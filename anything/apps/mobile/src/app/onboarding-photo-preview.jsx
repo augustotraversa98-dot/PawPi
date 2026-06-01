@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Alert, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -7,6 +7,24 @@ import { Check, RefreshCw, Image as ImageIcon, X } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
+
+// On web, expo-image-picker returns a transient blob: URL (URL.createObjectURL)
+// that is revoked on page reload and can't be turned into an upload file. Convert
+// it to a self-contained base64 data URL so it survives AsyncStorage + reloads,
+// renders in previews, and can be uploaded. Native file:// uris persist fine and
+// are returned unchanged.
+async function toPersistentPhotoUri(uri) {
+  if (Platform.OS !== "web" || !uri || uri.startsWith("data:")) {
+    return uri;
+  }
+  const blob = await fetch(uri).then((r) => r.blob());
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read photo"));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
 
 const C = {
   coral: "#FF6F61",
@@ -28,8 +46,10 @@ export default function OnboardingPhotoPreviewScreen() {
     try {
       console.log("[PhotoPreview] Saving photo, createPost:", shouldCreatePost);
 
-      // Save photo URI to be used in main onboarding
-      await AsyncStorage.setItem("onboarding_pet_photo", photoUri);
+      // Save photo URI to be used in main onboarding. On web, persist a data URL
+      // (the picker's blob: URL would be dead by the time onboarding reads it).
+      const persistentUri = await toPersistentPhotoUri(photoUri);
+      await AsyncStorage.setItem("onboarding_pet_photo", persistentUri);
 
       // Set flag for whether to create first daily moment post
       if (shouldCreatePost) {

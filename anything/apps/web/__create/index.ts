@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import nodeConsole from 'node:console';
-import { skipCSRFCheck } from '@auth/core';
 import Credentials from '@auth/core/providers/credentials';
 import { authHandler, initAuthConfig } from '@hono/auth-js';
 import pg from 'pg';
@@ -102,7 +101,14 @@ if (process.env.AUTH_SECRET) {
         signIn: '/account/signin',
         signOut: '/account/logout',
       },
-      skipCSRFCheck,
+      // NOTE: do NOT set `skipCSRFCheck` off-platform. The Anything platform
+      // served /api/auth/csrf at its edge, so the client always got a token even
+      // with CSRF "skipped". Off-platform we rely on @auth/core directly, which
+      // returns 404 for /api/auth/csrf when skipCSRFCheck is set — and the auth
+      // client (getCsrfToken -> signIn) treats that token as mandatory, so every
+      // sign-in/sign-up aborts with "Unexpected end of JSON input". Leaving CSRF
+      // enabled makes /csrf return a real token; validation works same-origin
+      // (web localhost) and on device given the protocol-aware cookies below.
       session: {
         strategy: 'jwt',
       },

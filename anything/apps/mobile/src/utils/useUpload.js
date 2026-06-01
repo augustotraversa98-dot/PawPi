@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Platform } from "react-native";
 
 function useUpload() {
   const [loading, setLoading] = React.useState(false);
@@ -34,14 +35,24 @@ function useUpload() {
           );
 
           // Upload the file bytes to our backend, which stores them in Supabase
-          // Storage (service_role key stays server-side) and returns the public
-          // URL. React Native's FormData streams the file straight from its uri.
+          // Storage (service_role key stays server-side) and returns the public URL.
+          const fileName = asset.name ?? asset.uri.split("/").pop() ?? "upload";
           const formData = new FormData();
-          formData.append("file", {
-            uri: asset.uri,
-            name: asset.name ?? asset.uri.split("/").pop() ?? "upload",
-            type: asset.mimeType ?? "image/jpeg",
-          });
+          if (Platform.OS === "web") {
+            // Browser FormData can't consume RN's { uri, name, type } shape — it
+            // stringifies it to "[object Object]" and the server rejects it with
+            // 400 "file is required". Fetch the uri (data: / blob: / http:) into a
+            // real Blob so the backend receives an actual file.
+            const blob = await fetch(asset.uri).then((r) => r.blob());
+            formData.append("file", blob, fileName);
+          } else {
+            // React Native's FormData streams the file straight from its uri.
+            formData.append("file", {
+              uri: asset.uri,
+              name: fileName,
+              type: asset.mimeType ?? "image/jpeg",
+            });
+          }
 
           response = await fetch("/api/upload", {
             method: "POST",
