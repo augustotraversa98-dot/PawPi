@@ -90,6 +90,14 @@ if (process.env.AUTH_SECRET) {
     '*',
     initAuthConfig((c) => ({
       secret: c.env.AUTH_SECRET,
+      // Auth routes are mounted at /api/auth (see app.use('/api/auth/*') below),
+      // so basePath is always /api/auth. Pin it explicitly instead of letting
+      // @auth/core derive it from new URL(AUTH_URL).pathname: off-platform,
+      // AUTH_URL is a bare origin (http://localhost:4000) whose pathname is '/',
+      // which makes the action parser read '/api/auth/csrf' as a 3-segment path
+      // and throw UnknownAction. (On the Anything platform AUTH_URL carried the
+      // /api/auth path, masking this.)
+      basePath: '/api/auth',
       pages: {
         signIn: '/account/signin',
         signOut: '/account/logout',
@@ -106,26 +114,26 @@ if (process.env.AUTH_SECRET) {
           return session;
         },
       },
-      cookies: {
-        csrfToken: {
-          options: {
-            secure: true,
-            sameSite: 'none',
-          },
-        },
-        sessionToken: {
-          options: {
-            secure: true,
-            sameSite: 'none',
-          },
-        },
-        callbackUrl: {
-          options: {
-            secure: true,
-            sameSite: 'none',
-          },
-        },
-      },
+      // Cookie security must follow the deployment protocol. On the Anything
+      // platform AUTH_URL was https, so Secure + SameSite=None was correct (and
+      // needed for the cross-site mobile WebView). Off-platform we serve plain
+      // http (AUTH_URL=http://localhost:4000, and the device WebView hits a LAN
+      // http origin) — a hardcoded Secure cookie is silently dropped by the
+      // browser/WebView on any non-localhost http origin, so no session sticks.
+      // Derive the flags from the protocol: https keeps the platform behaviour,
+      // http uses non-Secure + Lax (fine for the first-party local/LAN flow).
+      cookies: (() => {
+        const useSecure = (c.env.AUTH_URL ?? '').startsWith('https');
+        const options = {
+          secure: useSecure,
+          sameSite: useSecure ? ('none' as const) : ('lax' as const),
+        };
+        return {
+          csrfToken: { options },
+          sessionToken: { options },
+          callbackUrl: { options },
+        };
+      })(),
       providers: [
         // Dev-only provider for simulated social sign-in (Google, Facebook, etc.)
         // Creates or finds a user by email without requiring a password.
