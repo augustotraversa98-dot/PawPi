@@ -1,0 +1,324 @@
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Platform,
+  KeyboardAvoidingView,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Megaphone, Send } from "lucide-react-native";
+import { COLORS } from "@/constants/colors";
+import { usePostBarks, useCreateBark } from "@/hooks/useFeedPosts";
+
+export const BarkModal = memo(function BarkModal({
+  visible,
+  post,
+  onClose,
+  onBarkAdded,
+}) {
+  const insets = useSafeAreaInsets();
+  const [text, setText] = useState("");
+  const inputRef = useRef(null);
+
+  // Fetch barks from database
+  const { data: barks = [], isLoading, refetch } = usePostBarks(post?.id);
+
+  // Create bark mutation
+  const createBarkMutation = useCreateBark(post?.id);
+
+  useEffect(() => {
+    if (visible && post) {
+      setText("");
+      refetch();
+      // Small delay so Modal animation is done before focusing
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 400);
+    }
+  }, [visible, post, refetch]);
+
+  const handleSend = useCallback(async () => {
+    const trimmed = text.trim();
+    if (!trimmed || !post) return;
+
+    try {
+      await createBarkMutation.mutateAsync(trimmed);
+      setText("");
+      // Success - bark saved, UI will update automatically
+      if (onBarkAdded) onBarkAdded(post.id, barks.length + 1);
+    } catch (error) {
+      console.error("Error creating bark:", error);
+      Alert.alert("Error", "Could not save. Please try again.");
+    }
+  }, [text, post, createBarkMutation, barks.length, onBarkAdded]);
+
+  if (!post) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <KeyboardAvoidingView
+        style={{ flex: 1, justifyContent: "flex-end" }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {/* Dim backdrop */}
+        <TouchableOpacity
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(59,36,27,0.45)",
+          }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
+        <View
+          style={{
+            backgroundColor: COLORS.cream,
+            borderTopLeftRadius: 30,
+            borderTopRightRadius: 30,
+            maxHeight: "80%",
+            paddingBottom: insets.bottom + 8,
+          }}
+        >
+          {/* Handle */}
+          <View
+            style={{ alignItems: "center", paddingTop: 12, paddingBottom: 2 }}
+          >
+            <View
+              style={{
+                width: 38,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: COLORS.peach,
+              }}
+            />
+          </View>
+
+          {/* Compact post header */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.peach,
+              gap: 12,
+            }}
+          >
+            <Image
+              source={{ uri: post.pet_avatar || post.avatar }}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                borderWidth: 2,
+                borderColor: COLORS.coral,
+              }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontWeight: "800",
+                  fontSize: 15,
+                  color: COLORS.warmBrown,
+                }}
+              >
+                {post.pet_name || post.dogName}
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}
+                numberOfLines={1}
+              >
+                {post.caption}
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: COLORS.sand,
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <Megaphone size={13} color={COLORS.terracotta} />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: COLORS.terracotta,
+                }}
+              >
+                {barks.length} barks
+              </Text>
+            </View>
+          </View>
+
+          {/* Comments list */}
+          <ScrollView
+            style={{ flexGrow: 0, maxHeight: 280 }}
+            contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {isLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 30 }}>
+                <ActivityIndicator size="small" color={COLORS.coral} />
+              </View>
+            ) : barks.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 30 }}>
+                <Text style={{ fontSize: 32 }}>🐾</Text>
+                <Text
+                  style={{
+                    color: COLORS.mutedBrown,
+                    fontSize: 14,
+                    marginTop: 10,
+                    fontWeight: "600",
+                  }}
+                >
+                  Be the first to bark!
+                </Text>
+              </View>
+            ) : (
+              barks.map((bark) => (
+                <View
+                  key={bark.id}
+                  style={{
+                    flexDirection: "row",
+                    marginBottom: 16,
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <Image
+                    source={{
+                      uri: bark.avatar_url || "https://i.pravatar.cc/150",
+                    }}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: COLORS.card,
+                      borderRadius: 14,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor: COLORS.peach,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "800",
+                          color: COLORS.coral,
+                        }}
+                      >
+                        {bark.username}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
+                        {new Date(bark.created_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: COLORS.warmBrown,
+                        lineHeight: 20,
+                      }}
+                    >
+                      {bark.text}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+
+          {/* Text input row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderTopWidth: 1,
+              borderTopColor: COLORS.peach,
+              gap: 10,
+              backgroundColor: COLORS.card,
+            }}
+          >
+            <TextInput
+              ref={inputRef}
+              style={{
+                flex: 1,
+                backgroundColor: COLORS.sand,
+                borderRadius: 22,
+                paddingHorizontal: 16,
+                paddingVertical: 11,
+                fontSize: 14,
+                color: COLORS.warmBrown,
+                borderWidth: 1.5,
+                borderColor: COLORS.peach,
+                maxHeight: 90,
+              }}
+              placeholder={`Leave a bark for ${post.pet_name || post.dogName}…`}
+              placeholderTextColor={COLORS.mutedBrown}
+              value={text}
+              onChangeText={setText}
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              blurOnSubmit={false}
+              editable={!createBarkMutation.isPending}
+            />
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={!text.trim() || createBarkMutation.isPending}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor:
+                  text.trim() && !createBarkMutation.isPending
+                    ? COLORS.coral
+                    : COLORS.peach,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {createBarkMutation.isPending ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Send size={18} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+});

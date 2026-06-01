@@ -1,0 +1,667 @@
+import React, { useState, useRef } from "react";
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Alert,
+} from "react-native";
+import {
+  X,
+  ChevronRight,
+  CheckCircle,
+  Camera,
+  Image as ImageIcon,
+  Info,
+  Lock,
+  Sparkles,
+} from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  CHECK_AREAS,
+  CHANGE_OPTIONS,
+  addGeneralCheck,
+  getRecommendation,
+} from "@/data/generalCheckData";
+
+const C = {
+  cream: "#FFF7EF",
+  card: "#FFFBF7",
+  coral: "#FF6F61",
+  peach: "#FFE5D9",
+  terracotta: "#B75D32",
+  warmBrown: "#3B241B",
+  mutedBrown: "#8B7355",
+  sage: "#A7BFA3",
+  sand: "#F5EDE4",
+};
+
+export default function GeneralCheckModal({ visible, onClose }) {
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef(null);
+
+  const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
+  const [checkData, setCheckData] = useState({});
+
+  const currentArea = CHECK_AREAS[currentAreaIndex];
+  const currentAreaData = checkData[currentArea?.key] || {
+    status: null,
+    changes: [],
+    notes: "",
+    photos: [],
+  };
+
+  const handleAreaStatus = (status) => {
+    setCheckData({
+      ...checkData,
+      [currentArea.key]: {
+        ...currentAreaData,
+        status,
+        changes: status === "usual" ? [] : currentAreaData.changes,
+      },
+    });
+  };
+
+  const toggleChange = (changeKey) => {
+    const currentChanges = currentAreaData.changes || [];
+    const newChanges = currentChanges.includes(changeKey)
+      ? currentChanges.filter((c) => c !== changeKey)
+      : [...currentChanges, changeKey];
+
+    setCheckData({
+      ...checkData,
+      [currentArea.key]: {
+        ...currentAreaData,
+        changes: newChanges,
+      },
+    });
+  };
+
+  const handleNotesChange = (text) => {
+    setCheckData({
+      ...checkData,
+      [currentArea.key]: {
+        ...currentAreaData,
+        notes: text,
+      },
+    });
+  };
+
+  const handleNext = () => {
+    if (currentAreaIndex < CHECK_AREAS.length - 1) {
+      setCurrentAreaIndex(currentAreaIndex + 1);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    } else {
+      handleComplete();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentAreaIndex > 0) {
+      setCurrentAreaIndex(currentAreaIndex - 1);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  };
+
+  const handleComplete = () => {
+    // Calculate overall status
+    const hasChanges = Object.values(checkData).some(
+      (area) => area.status === "changed",
+    );
+    const overallStatus = hasChanges ? "some_changes" : "all_usual";
+
+    // Add the check
+    const savedCheck = addGeneralCheck({
+      overallStatus,
+      areas: checkData,
+    });
+
+    // Show completion message
+    const changedCount = Object.values(checkData).filter(
+      (area) => area.status === "changed",
+    ).length;
+
+    if (changedCount > 0) {
+      Alert.alert(
+        "General check saved",
+        `${changedCount} area${changedCount > 1 ? "s" : ""} with changes noted. Continue monitoring and contact your vet if needed.`,
+        [{ text: "OK", onPress: handleCloseModal }],
+      );
+    } else {
+      handleCloseModal();
+    }
+  };
+
+  const handleCloseModal = () => {
+    setCurrentAreaIndex(0);
+    setCheckData({});
+    onClose();
+  };
+
+  const canProceed = currentAreaData.status !== null;
+  const isLastArea = currentAreaIndex === CHECK_AREAS.length - 1;
+  const progress = ((currentAreaIndex + 1) / CHECK_AREAS.length) * 100;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          justifyContent: "flex-end",
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: C.cream,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: 20,
+            paddingBottom: insets.bottom + 20,
+            maxHeight: "90%",
+          }}
+        >
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
+            >
+              General Check
+            </Text>
+            <TouchableOpacity onPress={handleCloseModal}>
+              <X size={24} color={C.warmBrown} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}
+              >
+                {currentAreaIndex + 1} of {CHECK_AREAS.length}
+              </Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
+                {Math.round(progress)}% complete
+              </Text>
+            </View>
+            <View
+              style={{
+                height: 6,
+                backgroundColor: C.peach,
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  height: "100%",
+                  width: `${progress}%`,
+                  backgroundColor: C.sage,
+                  borderRadius: 3,
+                }}
+              />
+            </View>
+          </View>
+
+          <ScrollView
+            ref={scrollViewRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Current Area */}
+            <View
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 18,
+                padding: 20,
+                borderWidth: 1.5,
+                borderColor: C.peach,
+                marginBottom: 16,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 10,
+                }}
+              >
+                <Text style={{ fontSize: 32 }}>{currentArea.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "800",
+                      color: C.warmBrown,
+                      marginBottom: 2,
+                    }}
+                  >
+                    {currentArea.label}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+                    {currentArea.description}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Status Selection */}
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              >
+                How does this look?
+              </Text>
+              <View style={{ gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => handleAreaStatus("usual")}
+                  style={{
+                    backgroundColor:
+                      currentAreaData.status === "usual" ? C.sage : C.card,
+                    borderRadius: 14,
+                    padding: 16,
+                    borderWidth: 1.5,
+                    borderColor:
+                      currentAreaData.status === "usual" ? C.sage : C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor:
+                        currentAreaData.status === "usual" ? "#FFF" : C.sand,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    {currentAreaData.status === "usual" && (
+                      <CheckCircle size={16} color={C.sage} />
+                    )}
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color:
+                        currentAreaData.status === "usual"
+                          ? "#FFF"
+                          : C.warmBrown,
+                      flex: 1,
+                    }}
+                  >
+                    Looks usual
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleAreaStatus("changed")}
+                  style={{
+                    backgroundColor:
+                      currentAreaData.status === "changed" ? "#FFB74D" : C.card,
+                    borderRadius: 14,
+                    padding: 16,
+                    borderWidth: 1.5,
+                    borderColor:
+                      currentAreaData.status === "changed"
+                        ? "#FFB74D"
+                        : C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor:
+                        currentAreaData.status === "changed" ? "#FFF" : C.sand,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    {currentAreaData.status === "changed" && (
+                      <CheckCircle size={16} color="#FFB74D" />
+                    )}
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color:
+                        currentAreaData.status === "changed"
+                          ? "#FFF"
+                          : C.warmBrown,
+                      flex: 1,
+                    }}
+                  >
+                    Something changed
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Change Options (if "Something changed" is selected) */}
+            {currentAreaData.status === "changed" && (
+              <View style={{ marginBottom: 20 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "700",
+                    color: C.warmBrown,
+                    marginBottom: 12,
+                  }}
+                >
+                  What changed? (select all that apply)
+                </Text>
+                <View style={{ gap: 8 }}>
+                  {CHANGE_OPTIONS.map((option) => {
+                    const isSelected = currentAreaData.changes?.includes(
+                      option.key,
+                    );
+                    return (
+                      <TouchableOpacity
+                        key={option.key}
+                        onPress={() => toggleChange(option.key)}
+                        style={{
+                          backgroundColor: isSelected ? C.coral + "20" : C.card,
+                          borderRadius: 12,
+                          padding: 14,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? C.coral : C.peach,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: isSelected ? "700" : "600",
+                            color: isSelected ? C.coral : C.warmBrown,
+                            flex: 1,
+                          }}
+                        >
+                          {option.label}
+                        </Text>
+                        {isSelected && (
+                          <CheckCircle size={18} color={C.coral} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Photo Actions */}
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              >
+                Add photo (optional)
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: C.card,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Camera size={18} color={C.terracotta} />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: C.warmBrown,
+                    }}
+                  >
+                    Take photo
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: C.card,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <ImageIcon size={18} color={C.terracotta} />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: C.warmBrown,
+                    }}
+                  >
+                    Choose photo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* AI Placeholder */}
+              <View
+                style={{
+                  backgroundColor: "#F3E5F5",
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1.5,
+                  borderColor: "#E1BEE7",
+                  marginTop: 10,
+                  opacity: 0.6,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                  }}
+                >
+                  <Sparkles size={16} color="#9C27B0" />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: "#6A1B9A",
+                      flex: 1,
+                    }}
+                  >
+                    Ask AI about this photo
+                  </Text>
+                  <Lock size={14} color="#9C27B0" />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#6A1B9A",
+                    lineHeight: 15,
+                  }}
+                >
+                  Coming soon — AI can help summarize visible changes, but it
+                  does not diagnose.
+                </Text>
+              </View>
+            </View>
+
+            {/* Notes */}
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              >
+                Notes (optional)
+              </Text>
+              <TextInput
+                value={currentAreaData.notes}
+                onChangeText={handleNotesChange}
+                placeholder="Any additional observations..."
+                placeholderTextColor={C.mutedBrown + "80"}
+                multiline
+                numberOfLines={3}
+                style={{
+                  backgroundColor: C.card,
+                  borderRadius: 12,
+                  padding: 14,
+                  fontSize: 15,
+                  color: C.warmBrown,
+                  borderWidth: 1,
+                  borderColor: C.peach,
+                  minHeight: 80,
+                  textAlignVertical: "top",
+                }}
+              />
+            </View>
+
+            {/* Safety Warning */}
+            <View
+              style={{
+                backgroundColor: "#FFF4E6",
+                borderRadius: 12,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: "#FFE4C4",
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: C.mutedBrown,
+                  lineHeight: 16,
+                  flex: 1,
+                }}
+              >
+                Photos can help track changes over time. For pain, swelling,
+                wounds, discharge, or symptoms that continue, contact your
+                veterinarian.
+              </Text>
+            </View>
+          </ScrollView>
+
+          {/* Navigation Buttons */}
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 16,
+              borderTopWidth: 1,
+              borderTopColor: C.peach,
+              flexDirection: "row",
+              gap: 12,
+            }}
+          >
+            {currentAreaIndex > 0 && (
+              <TouchableOpacity
+                onPress={handleBack}
+                style={{
+                  flex: 1,
+                  backgroundColor: C.card,
+                  borderRadius: 14,
+                  padding: 16,
+                  alignItems: "center",
+                  borderWidth: 1.5,
+                  borderColor: C.peach,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: C.warmBrown,
+                  }}
+                >
+                  Back
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={handleNext}
+              disabled={!canProceed}
+              style={{
+                flex: currentAreaIndex > 0 ? 2 : 1,
+                backgroundColor: canProceed ? C.coral : C.mutedBrown + "40",
+                borderRadius: 14,
+                padding: 16,
+                alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "700",
+                  color: "#FFF",
+                }}
+              >
+                {isLastArea ? "Complete" : "Next"}
+              </Text>
+              {!isLastArea && <ChevronRight size={20} color="#FFF" />}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}

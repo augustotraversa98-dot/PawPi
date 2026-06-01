@@ -1,0 +1,122 @@
+import sql from "@/app/api/utils/sql";
+import { auth } from "@/auth";
+
+// Add a paw to a post
+export async function POST(request, { params }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const authUserId = session.user.id;
+    const postId = params.id;
+
+    // Get user profile
+    const userProfile = await sql`
+      SELECT id FROM user_profiles 
+      WHERE auth_user_id = ${authUserId}
+      LIMIT 1
+    `;
+
+    if (userProfile.length === 0) {
+      return Response.json(
+        { error: "User profile not found" },
+        { status: 404 },
+      );
+    }
+
+    const userId = userProfile[0].id;
+
+    // Check if post exists
+    const post = await sql`
+      SELECT id FROM posts WHERE id = ${postId} LIMIT 1
+    `;
+
+    if (post.length === 0) {
+      return Response.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Check if already pawed
+    const existingPaw = await sql`
+      SELECT id FROM post_paws 
+      WHERE post_id = ${postId} AND user_id = ${userId}
+      LIMIT 1
+    `;
+
+    if (existingPaw.length > 0) {
+      return Response.json({ message: "Already pawed" }, { status: 200 });
+    }
+
+    // Add paw
+    await sql`
+      INSERT INTO post_paws (post_id, user_id)
+      VALUES (${postId}, ${userId})
+    `;
+
+    // Get new paw count
+    const pawCount = await sql`
+      SELECT COUNT(*)::int as count 
+      FROM post_paws 
+      WHERE post_id = ${postId}
+    `;
+
+    return Response.json({
+      success: true,
+      paw_count: pawCount[0].count,
+    });
+  } catch (error) {
+    console.error("Error adding paw:", error);
+    return Response.json({ error: "Failed to add paw" }, { status: 500 });
+  }
+}
+
+// Remove a paw from a post
+export async function DELETE(request, { params }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const authUserId = session.user.id;
+    const postId = params.id;
+
+    // Get user profile
+    const userProfile = await sql`
+      SELECT id FROM user_profiles 
+      WHERE auth_user_id = ${authUserId}
+      LIMIT 1
+    `;
+
+    if (userProfile.length === 0) {
+      return Response.json(
+        { error: "User profile not found" },
+        { status: 404 },
+      );
+    }
+
+    const userId = userProfile[0].id;
+
+    // Remove paw
+    await sql`
+      DELETE FROM post_paws 
+      WHERE post_id = ${postId} AND user_id = ${userId}
+    `;
+
+    // Get new paw count
+    const pawCount = await sql`
+      SELECT COUNT(*)::int as count 
+      FROM post_paws 
+      WHERE post_id = ${postId}
+    `;
+
+    return Response.json({
+      success: true,
+      paw_count: pawCount[0].count,
+    });
+  } catch (error) {
+    console.error("Error removing paw:", error);
+    return Response.json({ error: "Failed to remove paw" }, { status: 500 });
+  }
+}

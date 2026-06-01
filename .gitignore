@@ -1,0 +1,52 @@
+# ---- Dependencies ----
+node_modules/
+.pnp
+.pnp.js
+
+# ---- Expo / React Native ----
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+.metro-virtual/
+
+# ---- React Router / Vite / web build ----
+.react-router/
+build/
+.vitest/
+
+# ---- Native ----
+ios/Pods/
+android/.gradle/
+android/app/build/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Logs / debug ----
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# ---- TypeScript ----
+*.tsbuildinfo
+
+# ---- Caches ----
+caches/
+
+# ---- OS ----
+.DS_Store
+
+# ---- Local tooling ----
+.claude/settings.local.json

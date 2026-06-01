@@ -1,0 +1,14 @@
+import { Stack } from "expo-router";
+
+export default function MoreLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="vet" />
+      <Stack.Screen name="adopt" />
+      <Stack.Screen name="shop" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="settings" />
+    </Stack>
+  );
+}

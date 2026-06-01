@@ -1,0 +1,135 @@
+import sql from "@/app/api/utils/sql";
+import { auth } from "@/auth";
+
+export async function GET(request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const petId = searchParams.get("petId");
+  const checkType = searchParams.get("checkType");
+  const limit = parseInt(searchParams.get("limit") || "20");
+
+  if (!petId) {
+    return Response.json({ error: "petId is required" }, { status: 400 });
+  }
+
+  try {
+    // Get user profile
+    const userProfiles = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
+    if (userProfiles.length === 0) {
+      return Response.json(
+        { error: "User profile not found" },
+        { status: 404 },
+      );
+    }
+    const userProfileId = userProfiles[0].id;
+
+    // Build query with optional checkType filter
+    let logs;
+    if (checkType) {
+      logs = await sql`
+        SELECT * FROM health_wellness_logs
+        WHERE pet_id = ${parseInt(petId)}
+          AND owner_user_id = ${userProfileId}
+          AND check_type = ${checkType}
+        ORDER BY logged_at DESC
+        LIMIT ${limit}
+      `;
+    } else {
+      logs = await sql`
+        SELECT * FROM health_wellness_logs
+        WHERE pet_id = ${parseInt(petId)}
+          AND owner_user_id = ${userProfileId}
+        ORDER BY logged_at DESC
+        LIMIT ${limit}
+      `;
+    }
+
+    return Response.json({ logs });
+  } catch (error) {
+    console.error("[wellness-logs GET] Error:", error);
+    return Response.json(
+      { error: "Failed to fetch wellness logs" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const {
+      petId,
+      checkType,
+      loggedAt,
+      valuesJson,
+      notes,
+      imageUrl,
+      routineId,
+      wellnessCheckItemIndex,
+    } = body;
+
+    if (!petId || !checkType) {
+      return Response.json(
+        { error: "petId and checkType are required" },
+        { status: 400 },
+      );
+    }
+
+    // Get user profile
+    const userProfiles = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
+    if (userProfiles.length === 0) {
+      return Response.json(
+        { error: "User profile not found" },
+        { status: 404 },
+      );
+    }
+    const userProfileId = userProfiles[0].id;
+
+    // Insert wellness log
+    const result = await sql`
+      INSERT INTO health_wellness_logs (
+        pet_id,
+        owner_user_id,
+        routine_id,
+        wellness_check_item_index,
+        check_type,
+        logged_at,
+        values_json,
+        notes,
+        image_url
+      ) VALUES (
+        ${parseInt(petId)},
+        ${userProfileId},
+        ${routineId || null},
+        ${wellnessCheckItemIndex !== undefined ? parseInt(wellnessCheckItemIndex) : null},
+        ${checkType},
+        ${loggedAt || new Date().toISOString()},
+        ${valuesJson ? JSON.stringify(valuesJson) : null},
+        ${notes || null},
+        ${imageUrl || null}
+      )
+      RETURNING *
+    `;
+
+    return Response.json({ log: result[0] });
+  } catch (error) {
+    console.error("[wellness-logs POST] Error:", error);
+    return Response.json(
+      { error: "Failed to create wellness log" },
+      { status: 500 },
+    );
+  }
+}
