@@ -5,7 +5,7 @@ import type {
   VerificationToken,
 } from '@auth/core/adapters';
 import type { ProviderType } from '@auth/core/providers';
-import type { Pool } from '@neondatabase/serverless';
+import type { Pool } from 'pg';
 
 interface NeonUser extends AdapterUser {
   accounts: {
