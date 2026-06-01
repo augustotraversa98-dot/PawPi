@@ -42,3 +42,7 @@ app-example
 .metro-virtual/*
 
 caches/*
+
+# bun.lock is not the canonical lockfile for this app (uses npm / package-lock.json);
+# it only appears when running with bun (e.g. on machines without node). Don't commit it.
+bun.lock

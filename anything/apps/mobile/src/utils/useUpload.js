@@ -1,8 +1,5 @@
 import * as React from "react";
-import { UploadClient } from "@uploadcare/upload-client";
-const client = new UploadClient({
-  publicKey: process.env.EXPO_PUBLIC_UPLOADCARE_PUBLIC_KEY,
-});
+import { Platform } from "react-native";
 
 function useUpload() {
   const [loading, setLoading] = React.useState(false);
@@ -34,55 +31,33 @@ function useUpload() {
           });
         } else {
           console.log(
-            "[useUpload] Asset has no file property, using Uploadcare presigned upload",
+            "[useUpload] Asset has no file property, uploading bytes to /api/upload",
           );
-          console.log("[useUpload] Requesting presigned URL...");
 
-          // Fallback to presigned Uploadcare upload
-          const presignRes = await fetch("/_create/api/upload/presign/", {
-            method: "POST",
-          });
-
-          if (!presignRes.ok) {
-            const errorText = await presignRes.text();
-            console.error("[useUpload] ERROR: Presign request failed");
-            console.error("[useUpload] Status:", presignRes.status);
-            console.error("[useUpload] Response:", errorText);
-            throw new Error(
-              `Failed to get presigned URL: ${presignRes.status} ${errorText}`,
-            );
+          // Upload the file bytes to our backend, which stores them in Supabase
+          // Storage (service_role key stays server-side) and returns the public URL.
+          const fileName = asset.name ?? asset.uri.split("/").pop() ?? "upload";
+          const formData = new FormData();
+          if (Platform.OS === "web") {
+            // Browser FormData can't consume RN's { uri, name, type } shape — it
+            // stringifies it to "[object Object]" and the server rejects it with
+            // 400 "file is required". Fetch the uri (data: / blob: / http:) into a
+            // real Blob so the backend receives an actual file.
+            const blob = await fetch(asset.uri).then((r) => r.blob());
+            formData.append("file", blob, fileName);
+          } else {
+            // React Native's FormData streams the file straight from its uri.
+            formData.append("file", {
+              uri: asset.uri,
+              name: fileName,
+              type: asset.mimeType ?? "image/jpeg",
+            });
           }
 
-          const { secureSignature, secureExpire } = await presignRes.json();
-          console.log("[useUpload] ✅ Presigned URL obtained");
-          console.log("[useUpload] Secure signature:", secureSignature);
-          console.log("[useUpload] Secure expire:", secureExpire);
-
-          console.log("[useUpload] Uploading to Uploadcare...");
-          const result = await client.uploadFile(asset, {
-            fileName: asset.name ?? asset.uri.split("/").pop(),
-            contentType: asset.mimeType,
-            secureSignature,
-            secureExpire,
+          response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
           });
-
-          console.log("[useUpload] ✅ Uploadcare upload result:", result);
-          console.log("[useUpload] File UUID:", result.uuid);
-          console.log("[useUpload] MIME type:", result.mimeType);
-
-          // Construct URL - use standard Uploadcare CDN
-          const baseUrl =
-            process.env.EXPO_PUBLIC_BASE_CREATE_USER_CONTENT_URL ||
-            "https://ucarecdn.com";
-          const uploadedUrl = `${baseUrl}/${result.uuid}/`;
-          console.log("[useUpload] Base URL:", baseUrl);
-          console.log("[useUpload] Final URL:", uploadedUrl);
-          console.log("[useUpload] ========================================");
-
-          return {
-            url: uploadedUrl,
-            mimeType: result.mimeType || null,
-          };
         }
       } else if ("url" in input) {
         console.log("[useUpload] URL input detected:", input.url);

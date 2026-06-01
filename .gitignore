@@ -50,3 +50,7 @@ caches/
 
 # ---- Local tooling ----
 .claude/settings.local.json
+.claude/launch.json
+
+# ---- Local exports / scratch ----
+anything-new-database.zip
