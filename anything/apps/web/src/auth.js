@@ -6,8 +6,10 @@
 import CreateAuth from "@auth/create"
 import Credentials from "@auth/core/providers/credentials"
 import { CredentialsSignin } from '@auth/core/errors'
-import { Pool } from '@neondatabase/serverless'
+import pg from 'pg'
 import { hash, verify } from 'argon2'
+
+const { Pool } = pg
 
 function Adapter(client) {
   return {
@@ -252,6 +254,7 @@ function Adapter(client) {
 }
 const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
     });
 const adapter = Adapter(pool);
 
