@@ -84,7 +84,12 @@ export default function OnboardingScreen() {
         const savedProfile = await AsyncStorage.getItem("onboarding_progress");
         if (savedProfile) {
           const parsed = JSON.parse(savedProfile);
-          setFormData((prev) => ({ ...prev, ...parsed }));
+          // onboarding_pet_photo is the source of truth for the photo (a data:
+          // URL on web, a file:// uri on native). Don't let a stale photo in
+          // onboarding_progress — e.g. a revoked blob: URL from an earlier
+          // session — overwrite it.
+          const { photo: _ignore, ...rest } = parsed;
+          setFormData((prev) => ({ ...prev, ...rest }));
         }
       } catch (error) {
         console.error("Error loading saved data:", error);
