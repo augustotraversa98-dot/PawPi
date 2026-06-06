@@ -303,7 +303,7 @@ export async function PUT(request) {
       RETURNING *
     `;
 
-    const result = await sql(query, values);
+    const result = await sql.unsafe(query, values);
 
     if (result.length === 0) {
       return Response.json(

@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import {
   X,
@@ -18,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import useUpload from "@/utils/useUpload";
@@ -36,7 +38,7 @@ const C = {
 
 export default function VomitTrackerModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
-  const { uploadFile } = useUpload();
+  const [upload, { loading: uploading }] = useUpload();
   const { data: currentPet } = useCurrentPet();
   const queryClient = useQueryClient();
 
@@ -54,7 +56,6 @@ export default function VomitTrackerModal({ visible, onClose }) {
   const [energy, setEnergy] = useState("normal");
   const [diarrheaPresent, setDiarrheaPresent] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [notes, setNotes] = useState("");
 
   const resetForm = () => {
@@ -167,20 +168,64 @@ export default function VomitTrackerModal({ visible, onClose }) {
     }
   };
 
-  const handlePhotoUpload = async () => {
+  // Pick from camera or gallery, then upload via the same native-safe path as
+  // the avatar flow. Photo is optional — a failure here never blocks saving.
+  const pickAndUpload = async (fromCamera) => {
     try {
-      setUploadingPhoto(true);
-      const url = await uploadFile({ mediaTypes: "images" });
-      if (url) {
-        setPhotoUrl(url);
-        console.log("[VomitTracker] Photo uploaded:", url);
+      const permission = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        alert(
+          fromCamera
+            ? "Camera permission is required to take photos."
+            : "Photo library permission is required.",
+        );
+        return;
       }
+
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.8,
+          });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const uploadResult = await upload({
+        reactNativeAsset: {
+          uri: result.assets[0].uri,
+          name: `vomit_${Date.now()}.jpg`,
+          mimeType: "image/jpeg",
+        },
+      });
+
+      if (uploadResult.error) {
+        alert("Photo upload failed. You can still save without a photo.");
+        return;
+      }
+
+      setPhotoUrl(uploadResult.url);
+      console.log("[VomitTracker] Photo uploaded:", uploadResult.url);
     } catch (error) {
       console.error("[VomitTracker] Photo upload failed:", error);
-      alert("Photo upload failed. Please try again.");
-    } finally {
-      setUploadingPhoto(false);
+      alert("Photo upload failed. You can still save without a photo.");
     }
+  };
+
+  const handlePhotoUpload = () => {
+    Alert.alert("Add Photo", "Choose a photo source", [
+      { text: "Take Photo", onPress: () => pickAndUpload(true) },
+      { text: "Choose from Library", onPress: () => pickAndUpload(false) },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const handleRemovePhoto = () => {
@@ -886,7 +931,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 ) : (
                   <TouchableOpacity
                     onPress={handlePhotoUpload}
-                    disabled={uploadingPhoto}
+                    disabled={uploading}
                     style={{
                       backgroundColor: C.sand,
                       borderRadius: 12,
@@ -905,7 +950,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                         marginTop: 8,
                       }}
                     >
-                      {uploadingPhoto ? "Uploading..." : "Add photo"}
+                      {uploading ? "Uploading..." : "Add photo"}
                     </Text>
                   </TouchableOpacity>
                 )}

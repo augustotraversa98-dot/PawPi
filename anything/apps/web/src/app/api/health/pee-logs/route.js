@@ -9,10 +9,9 @@ export async function GET(request) {
     }
 
     // Get user_profiles.id from auth_users.id
-    const userProfileRows = await sql(
-      "SELECT id FROM user_profiles WHERE auth_user_id = $1",
-      [session.user.id],
-    );
+    const userProfileRows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
     if (userProfileRows.length === 0) {
       return Response.json(
         { error: "User profile not found" },
@@ -29,13 +28,12 @@ export async function GET(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const logs = await sql(
-      `SELECT * FROM health_pee_logs 
-       WHERE pet_id = $1 AND owner_user_id = $2 
-       ORDER BY logged_at DESC 
-       LIMIT $3`,
-      [parseInt(petId), userProfileId, limit],
-    );
+    const logs = await sql`
+      SELECT * FROM health_pee_logs
+      WHERE pet_id = ${parseInt(petId)} AND owner_user_id = ${userProfileId}
+      ORDER BY logged_at DESC
+      LIMIT ${limit}
+    `;
 
     return Response.json({ logs });
   } catch (error) {
@@ -55,10 +53,9 @@ export async function POST(request) {
     }
 
     // Get user_profiles.id from auth_users.id
-    const userProfileRows = await sql(
-      "SELECT id FROM user_profiles WHERE auth_user_id = $1",
-      [session.user.id],
-    );
+    const userProfileRows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
     if (userProfileRows.length === 0) {
       return Response.json(
         { error: "User profile not found" },
@@ -85,27 +82,26 @@ export async function POST(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const result = await sql(
-      `INSERT INTO health_pee_logs (
-        pet_id, owner_user_id, frequency, volume, color, 
-        accident_in_house, difficulty_peeing, pain_or_crying, 
+    const result = await sql`
+      INSERT INTO health_pee_logs (
+        pet_id, owner_user_id, frequency, volume, color,
+        accident_in_house, difficulty_peeing, pain_or_crying,
         blood_visible, increased_thirst, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-      RETURNING *`,
-      [
-        parseInt(petId),
-        userProfileId,
-        frequency || null,
-        volume || null,
-        color || null,
-        accidentInHouse || false,
-        difficultyPeeing || false,
-        painOrCrying || false,
-        bloodVisible || false,
-        increasedThirst || false,
-        notes || null,
-      ],
-    );
+      ) VALUES (
+        ${parseInt(petId)},
+        ${userProfileId},
+        ${frequency || null},
+        ${volume || null},
+        ${color || null},
+        ${accidentInHouse || false},
+        ${difficultyPeeing || false},
+        ${painOrCrying || false},
+        ${bloodVisible || false},
+        ${increasedThirst || false},
+        ${notes || null}
+      )
+      RETURNING *
+    `;
 
     return Response.json({ log: result[0] }, { status: 201 });
   } catch (error) {

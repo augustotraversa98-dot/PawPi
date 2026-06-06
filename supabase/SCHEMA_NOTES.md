@@ -10,6 +10,20 @@ Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---
 
+## Gotchas
+
+### DB query gotcha (neon→porsager, Phase 2 regression)
+
+`api/utils/sql.js` is **porsager's `postgres`** — it executes queries **only via tagged templates**: `` sql`SELECT ... ${val}` ``. The neon-style **positional call `sql(queryString, paramsArray)` does not execute** — it silently returns a `Builder`, runs no query, throws no error, and returns `undefined` with HTTP 200 (so callers believe the write/read succeeded when nothing happened).
+
+- For static queries: use a tagged template — `` sql`...${val}...` ``.
+- For runtime-built/dynamic queries (variable column lists): use **`sql.unsafe(queryString, paramsArray)`** — params are still bound; "unsafe" refers only to the query string being non-templated.
+- **Never use `sql(string, array)`.**
+
+Swept repo-wide **June 2026**: `health/pee-logs`, `health/weight-logs`, `health/vomit-logs`, `pets/[id]`, `user-profile`, `vet-appointments`, `pet-medical-profiles`.
+
+---
+
 ## Previously-flagged uncertainties: RESOLVED
 
 | # | Earlier guess | Reality in the dump | Action taken |

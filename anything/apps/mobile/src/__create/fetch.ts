@@ -19,7 +19,10 @@ const getURLFromArgs = (...args: Parameters<typeof fetch>) => {
 };
 
 const isFileURL = (url: string) => {
-  return url.startsWith('file://') || url.startsWith('data:');
+  // blob: included so picked-file reads (URL.createObjectURL on web) use the
+  // browser's native fetch — expo/fetch can't read blob: URLs and fails with
+  // "Failed to fetch", which broke web photo uploads (useUpload reads asset.uri).
+  return url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:');
 };
 
 const isFirstPartyURL = (url: string) => {

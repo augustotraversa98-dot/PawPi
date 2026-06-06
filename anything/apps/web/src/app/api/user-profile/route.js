@@ -108,7 +108,7 @@ export async function PATCH(request) {
       RETURNING *
     `;
 
-    const result = await sql(updateQuery, values);
+    const result = await sql.unsafe(updateQuery, values);
 
     return Response.json({ profile: result[0] });
   } catch (error) {

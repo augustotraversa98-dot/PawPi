@@ -38,12 +38,11 @@ const C = {
 export default function PooTrackerModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const logPooMutation = useLogPoo();
-  const { uploadImage } = useUpload();
+  const [upload, { loading: uploading }] = useUpload();
 
   const [step, setStep] = useState("quickChoice");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Form state
   const [amount, setAmount] = useState("medium");
@@ -61,7 +60,6 @@ export default function PooTrackerModal({ visible, onClose }) {
     setStep("quickChoice");
     setShowConfirmation(false);
     setShowWarning(false);
-    setIsUploading(false);
     setAmount("medium");
     setShape("normal");
     setColor("brown");
@@ -109,12 +107,22 @@ export default function PooTrackerModal({ visible, onClose }) {
 
   const handleDetailedSubmit = async () => {
     try {
-      // Upload photo first if there is one
+      // Upload photo first if there is one. Photo is optional — if the upload
+      // fails we still save the log without it.
       let uploadedPhotoUrl = null;
       if (localPhotoUri) {
-        setIsUploading(true);
-        uploadedPhotoUrl = await uploadImage(localPhotoUri);
-        setIsUploading(false);
+        const uploadResult = await upload({
+          reactNativeAsset: {
+            uri: localPhotoUri,
+            name: `poo_${Date.now()}.jpg`,
+            mimeType: "image/jpeg",
+          },
+        });
+        if (uploadResult.error) {
+          alert("Photo upload failed. Saving without a photo.");
+        } else {
+          uploadedPhotoUrl = uploadResult.url;
+        }
       }
 
       const newLog = {
@@ -143,7 +151,6 @@ export default function PooTrackerModal({ visible, onClose }) {
         }, 1500);
       }
     } catch (error) {
-      setIsUploading(false);
       console.error("Detailed submit failed:", error);
     }
   };
@@ -182,6 +189,7 @@ export default function PooTrackerModal({ visible, onClose }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.8,
     });
@@ -196,7 +204,7 @@ export default function PooTrackerModal({ visible, onClose }) {
     onClose();
   };
 
-  const isBusy = logPooMutation.isPending || isUploading;
+  const isBusy = logPooMutation.isPending || uploading;
 
   return (
     <Modal
