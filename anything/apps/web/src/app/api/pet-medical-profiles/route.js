@@ -192,7 +192,7 @@ export async function POST(request) {
     updateValues.push(ownerUserId);
 
     if (updateFields.length > 1) {
-      await sql(
+      await sql.unsafe(
         `UPDATE pets SET ${updateFields.join(", ")} WHERE id = $${paramIndex++} AND owner_user_id = $${paramIndex++}`,
         updateValues,
       );

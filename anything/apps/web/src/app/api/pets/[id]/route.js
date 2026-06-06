@@ -181,7 +181,7 @@ export async function PATCH(request, { params }) {
 
     console.log("[PATCH /api/pets/[id]] Update query:", updateQuery);
 
-    const result = await sql(updateQuery, values);
+    const result = await sql.unsafe(updateQuery, values);
 
     console.log("[PATCH /api/pets/[id]] ✅ Pet updated successfully");
     console.log("[PATCH /api/pets/[id]] Updated pet:", result[0]);

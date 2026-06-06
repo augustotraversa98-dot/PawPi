@@ -9,10 +9,9 @@ export async function GET(request) {
     }
 
     // Get user_profiles.id from auth_users.id
-    const userProfileRows = await sql(
-      "SELECT id FROM user_profiles WHERE auth_user_id = $1",
-      [session.user.id],
-    );
+    const userProfileRows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
     if (userProfileRows.length === 0) {
       return Response.json(
         { error: "User profile not found" },
@@ -29,13 +28,12 @@ export async function GET(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const logs = await sql(
-      `SELECT * FROM health_weight_logs 
-       WHERE pet_id = $1 AND owner_user_id = $2 
-       ORDER BY logged_at DESC 
-       LIMIT $3`,
-      [parseInt(petId), userProfileId, limit],
-    );
+    const logs = await sql`
+      SELECT * FROM health_weight_logs
+      WHERE pet_id = ${parseInt(petId)} AND owner_user_id = ${userProfileId}
+      ORDER BY logged_at DESC
+      LIMIT ${limit}
+    `;
 
     return Response.json({ logs });
   } catch (error) {
@@ -55,10 +53,9 @@ export async function POST(request) {
     }
 
     // Get user_profiles.id from auth_users.id
-    const userProfileRows = await sql(
-      "SELECT id FROM user_profiles WHERE auth_user_id = $1",
-      [session.user.id],
-    );
+    const userProfileRows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
     if (userProfileRows.length === 0) {
       return Response.json(
         { error: "User profile not found" },
@@ -78,22 +75,21 @@ export async function POST(request) {
       );
     }
 
-    const result = await sql(
-      `INSERT INTO health_weight_logs (
-        pet_id, owner_user_id, weight, weight_unit, 
+    const result = await sql`
+      INSERT INTO health_weight_logs (
+        pet_id, owner_user_id, weight, weight_unit,
         body_shape_estimate, photo_url, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7) 
-      RETURNING *`,
-      [
-        parseInt(petId),
-        userProfileId,
-        parseFloat(weight),
-        weightUnit || "lbs",
-        bodyShapeEstimate || null,
-        photoUrl || null,
-        notes || null,
-      ],
-    );
+      ) VALUES (
+        ${parseInt(petId)},
+        ${userProfileId},
+        ${parseFloat(weight)},
+        ${weightUnit || "lbs"},
+        ${bodyShapeEstimate || null},
+        ${photoUrl || null},
+        ${notes || null}
+      )
+      RETURNING *
+    `;
 
     return Response.json({ log: result[0] }, { status: 201 });
   } catch (error) {
