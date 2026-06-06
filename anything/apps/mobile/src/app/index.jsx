@@ -7,7 +7,7 @@ import { useAuth } from "@/utils/auth/useAuth";
 export default function EntryPoint() {
   const [loading, setLoading] = useState(true);
   const [destination, setDestination] = useState(null);
-  const { auth, isReady } = useAuth();
+  const { auth, isReady, setAuth } = useAuth();
 
   useEffect(() => {
     async function determineRoute() {
@@ -34,6 +34,22 @@ export default function EntryPoint() {
 
         try {
           const petsResponse = await fetch("/api/pets");
+
+          // A 401 means the stored token is invalid/stale (e.g. an Anything-era
+          // JWT the new backend can't verify under the current AUTH_SECRET).
+          // Don't mask it as "no pets" → onboarding. Clear the bad token
+          // (setAuth(null) deletes the keychain key) and surface sign-in so the
+          // user re-authenticates against the current backend and gets a JWT
+          // the server can actually verify.
+          if (petsResponse.status === 401) {
+            console.warn(
+              "[EntryPoint] 401 from /api/pets — invalid session, clearing token and routing to sign-in",
+            );
+            setAuth(null);
+            setDestination("/welcome");
+            setLoading(false);
+            return;
+          }
 
           if (!petsResponse.ok) {
             console.error("[EntryPoint] Pets API failed:", petsResponse.status);
