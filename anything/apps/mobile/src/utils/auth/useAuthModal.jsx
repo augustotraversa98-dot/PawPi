@@ -15,7 +15,14 @@ export const AuthModal = () => {
 
   const snapPoints = useMemo(() => ["100%"], []);
   const proxyURL = process.env.EXPO_PUBLIC_PROXY_BASE_URL;
-  const baseURL = process.env.EXPO_PUBLIC_BASE_URL;
+  // Native sign-in must hit the same host fetch.ts uses for the API. On a
+  // physical device "localhost" is the phone itself, so the WebView can't reach
+  // the dev backend — prefer EXPO_PUBLIC_API_URL (the LAN IP) like fetch.ts,
+  // falling back to EXPO_PUBLIC_BASE_URL for simulator/web. This keeps the JWT
+  // minted by the current local backend (correct AUTH_SECRET / salt), not an
+  // unreachable host. (Web uses the iframe + proxyURL below, so it's unaffected.)
+  const baseURL =
+    process.env.EXPO_PUBLIC_API_URL ?? process.env.EXPO_PUBLIC_BASE_URL;
 
   // Close modal when authentication succeeds
   useEffect(() => {
