@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Clock, CheckCircle, Zap, AlertCircle } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import FeedingIssueModal from "./FeedingIssueModal";
 

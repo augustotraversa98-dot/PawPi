@@ -11,7 +11,7 @@ import {
 import { getTimeDisplay } from "@/data/remindersData";
 import StartWalkModal from "./StartWalkModal";
 import PostWalkFeedbackModal from "./PostWalkFeedbackModal";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { addWalkToCalendar } from "@/utils/calendarIntegration";
 
 const C = {

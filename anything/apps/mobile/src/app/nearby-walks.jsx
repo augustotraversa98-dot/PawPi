@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react-native";
 import { useSocialWalks, useJoinSocialWalk } from "@/hooks/useSocialWalks";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 
 const C = {
   cream: "#FFF7EF",

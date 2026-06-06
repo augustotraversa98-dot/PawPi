@@ -13,7 +13,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Camera } from "lucide-react-native";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";

@@ -10,7 +10,7 @@ import {
 import { Plus } from "lucide-react-native";
 import useRoutinesStore from "@/store/routinesStore";
 import { ROUTINE_TYPES } from "@/data/routinesData";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import RoutineCard from "./RoutineCard";
 import RoutineTypeSelector from "./RoutineTypeSelector";
 import FeedingRoutineModal from "./FeedingRoutineModal";

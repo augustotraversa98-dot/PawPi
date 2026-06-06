@@ -18,7 +18,7 @@ import {
   Info,
   User,
 } from "lucide-react-native";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import useUser from "@/utils/auth/useUser";
 
 const C = {
@@ -38,7 +38,7 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   // Fetch pet from database instead of AsyncStorage
-  const { data: currentPet, isLoading: loadingPet, refetch } = useCurrentPet();
+  const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
   const { data: authUser } = useUser();
 
   // Debug logging

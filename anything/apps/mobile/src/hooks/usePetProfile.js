@@ -37,7 +37,7 @@ export function usePetProfile() {
 
       return data.pets;
     },
-    staleTime: 0, // Always fetch fresh data to catch newly created pets
+    staleTime: 1000 * 45, // 45s — shared by ~20 sites; create/repair still invalidate ["pets"] to refetch immediately
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
