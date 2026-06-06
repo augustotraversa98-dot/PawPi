@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { X, Camera } from "lucide-react-native";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 

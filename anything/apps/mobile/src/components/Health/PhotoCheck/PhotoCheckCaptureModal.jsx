@@ -20,7 +20,7 @@ import {
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import useUpload from "@/utils/useUpload";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 
 const C = {
   cream: "#FFF7EF",

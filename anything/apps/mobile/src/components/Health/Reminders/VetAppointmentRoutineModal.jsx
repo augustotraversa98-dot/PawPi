@@ -13,7 +13,7 @@ import {
 import { X, Plus, ChevronDown, ChevronUp, Calendar } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   addVetAppointmentToCalendar,
   updateVetAppointmentInCalendar,

@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { X, Check, AlertCircle, AlertTriangle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
 
 const C = {

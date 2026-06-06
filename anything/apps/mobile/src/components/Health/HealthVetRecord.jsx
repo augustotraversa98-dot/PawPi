@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import { useCurrentPet } from "@/hooks/useCurrentPet";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   FileText,
   Calendar,

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
-import { useCurrentPet } from "./useCurrentPet";
+import { useCurrentPet } from "./usePetProfile";
 
 // Food logging
 export function useLogFood() {

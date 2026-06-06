@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCurrentPet } from "./useCurrentPet";
+import { useCurrentPet } from "./usePetProfile";
 
 /**
  * Hook to fetch vet appointments and generate reminders
