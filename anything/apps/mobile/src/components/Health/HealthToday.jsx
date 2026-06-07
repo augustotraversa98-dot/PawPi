@@ -14,6 +14,8 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import useRemindersStore from "@/store/remindersStore";
+import useRoutinesStore from "@/store/routinesStore";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   getReminderStatus,
   getTimeDisplay,
@@ -44,9 +46,22 @@ const C = {
 
 export default function HealthToday() {
   const router = useRouter();
+  const { data: currentPet } = useCurrentPet();
   const { reminders, completeReminder, snoozeReminder } = useRemindersStore();
+  const loadRoutines = useRoutinesStore((s) => s.loadRoutines);
+  const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
   const { data: vetAppointmentReminders = [] } = useVetAppointmentReminders();
+
+  // Load the active pet's routines so the reminders store is populated/refreshed
+  // for whichever dog is currently selected. Mirrors RoutinesTab's guard so a
+  // pet switch rebuilds Today's reminders without needing the More tab.
+  useEffect(() => {
+    if (currentPet?.id && currentPet.id !== loadedPetId) {
+      loadRoutines(currentPet.id);
+      setLoadedPetId(currentPet.id);
+    }
+  }, [currentPet?.id, loadedPetId, loadRoutines]);
   const [snoozeModalVisible, setSnoozeModalVisible] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -73,8 +88,17 @@ export default function HealthToday() {
     return () => clearInterval(interval);
   }, []);
 
-  // Combine routine reminders with vet appointment reminders
-  const allReminders = [...reminders, ...vetAppointmentReminders];
+  // Combine routine reminders with vet appointment reminders, scoped to the
+  // active pet. The reminders store is a flat, multi-pet array (routines carry
+  // one petId today), so we filter by the active pet's id to prevent any other
+  // dog's reminders from showing here. Vet reminders are already pet-scoped by
+  // their query, but we filter uniformly as a safety net.
+  const activePetId = currentPet?.id != null ? String(currentPet.id) : null;
+  const allReminders = activePetId
+    ? [...reminders, ...vetAppointmentReminders].filter(
+        (r) => String(r.petId) === activePetId,
+      )
+    : [];
 
   // Get time-sensitive reminders for countdown cards
   const timeSensitiveReminders = allReminders.filter((r) => {
