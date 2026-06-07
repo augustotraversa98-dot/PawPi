@@ -155,7 +155,7 @@ export default function PostWalkFeedbackModal({
     return notes.join(". ");
   };
 
-  const petName = currentPet?.name || "Phoebe";
+  const petName = currentPet?.name || "your dog";
 
   return (
     <Modal

@@ -34,7 +34,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
   const { data: currentPet } = useCurrentPet();
 
   const timeDisplay = getTimeDisplay(reminder);
-  const petName = currentPet?.name || "Phoebe";
+  const petName = currentPet?.name || "your dog";
 
   // Extract walk info from reminder
   const walk = reminder.relatedWalk || {

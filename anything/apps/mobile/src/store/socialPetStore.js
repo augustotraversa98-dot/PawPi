@@ -12,10 +12,6 @@ const useSocialPetStore = create((set, get) => ({
     avatar: "https://i.pravatar.cc/150?img=3",
   },
 
-  // ── Current Pet ──
-  currentPet: null,
-  setCurrentPet: (pet) => set({ currentPet: pet }),
-
   // ── Has Posted Today ──
   hasPostedToday: false,
   setHasPostedToday: (status) => set({ hasPostedToday: status }),
