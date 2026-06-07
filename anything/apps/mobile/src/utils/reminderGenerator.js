@@ -119,7 +119,7 @@ function generateFeedingReminders(
   relatedTracker,
 ) {
   const reminders = [];
-  const meals = routine.meals || [];
+  const meals = Array.isArray(routine.meals) ? routine.meals : [];
 
   // Generate reminders for each meal based on its individual schedule
   meals.forEach((meal, mealIndex) => {
@@ -185,7 +185,7 @@ function generateWalkReminders(
   relatedTracker,
 ) {
   const reminders = [];
-  const walks = routine.walks || [];
+  const walks = Array.isArray(routine.walks) ? routine.walks : [];
 
   let currentDate = new Date(now);
   currentDate.setHours(0, 0, 0, 0);
@@ -253,7 +253,7 @@ function generateMedicationReminders(
   relatedTracker,
 ) {
   const reminders = [];
-  const times = routine.times || [];
+  const times = Array.isArray(routine.times) ? routine.times : [];
   const startDate = routine.startDate
     ? new Date(routine.startDate)
     : new Date();
@@ -703,7 +703,7 @@ function generateMedicalCareReminders(routine, now, endDate) {
 
     // --- Daily-schedule items: medication, supplement ---
     if (careType === "medication" || careType === "supplement") {
-      const times = item.times || [];
+      const times = Array.isArray(item.times) ? item.times : [];
       const startDate = item.startDate ? new Date(item.startDate) : new Date();
       const itemEndDate = item.endDate ? new Date(item.endDate) : endDate;
 
