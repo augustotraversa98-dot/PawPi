@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 
@@ -92,13 +91,15 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     finalHeaders.set('authorization', `Bearer ${auth.jwt}`);
   }
 
-  // On web, expo/fetch does not serialize a multipart FormData/Blob body with the
-  // correct boundary, so the server receives no file (upload 400 "file is required").
-  // The browser's native fetch encodes multipart correctly — use it for FormData
-  // uploads on web. Native keeps using expo/fetch (its uri-based FormData works).
+  // expo/fetch can't serialize a multipart FormData body on any platform: on web it
+  // omits the multipart boundary (server sees 400 "file is required"); on native it
+  // rejects RN's { uri, name, type } file part ("Unsupported FormDataPart
+  // implementation"). The platform-native fetch handles both correctly, so route all
+  // FormData bodies through it. Non-FormData requests stay on expo/fetch so
+  // streaming/SSE is unaffected.
   const isFormDataBody =
     typeof FormData !== 'undefined' && init?.body instanceof FormData;
-  const fetchImpl = Platform.OS === 'web' && isFormDataBody ? originalFetch : expoFetch;
+  const fetchImpl = isFormDataBody ? originalFetch : expoFetch;
 
   return fetchImpl(finalInput, {
     ...init,
