@@ -8,6 +8,7 @@ import HealthToday from "../../components/Health/HealthToday";
 import HealthTrack from "../../components/Health/HealthTrack";
 import HealthInsights from "../../components/Health/HealthInsights";
 import HealthVetRecord from "../../components/Health/HealthVetRecord";
+import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 
 const C = {
   cream: "#FFF7EF",
@@ -79,6 +80,11 @@ export default function HealthScreen() {
             Health Hub
           </Text>
           <Text style={{ fontSize: 22 }}>🩺</Text>
+        </View>
+
+        {/* Pet switcher */}
+        <View style={{ marginBottom: 12 }}>
+          <PetSwitcher variant="pill" />
         </View>
 
         {/* Disclaimer */}

@@ -17,6 +17,7 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
+import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 
 const C = {
   coral: "#FF6F61",
@@ -246,6 +247,10 @@ export default function MoreScreen() {
         >
           YOUR ACCOUNT
         </Text>
+
+        {/* My Dogs — opens the pet switcher / add-a-dog */}
+        <PetSwitcher variant="row" />
+
         <MenuItem
           title="Dog Profile"
           emoji="🐾"

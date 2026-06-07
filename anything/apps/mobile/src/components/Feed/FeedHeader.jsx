@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
 import useSocialPetStore from "@/store/socialPetStore";
+import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 
 export function FeedHeader() {
   const insets = useSafeAreaInsets();
@@ -20,14 +21,18 @@ export function FeedHeader() {
         paddingHorizontal: 20,
         paddingBottom: 14,
         backgroundColor: COLORS.card,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
         borderBottomWidth: 1,
         borderBottomColor: COLORS.peach,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Text
           style={{
             fontSize: 26,
@@ -108,6 +113,11 @@ export function FeedHeader() {
             </View>
           )}
         </TouchableOpacity>
+      </View>
+      </View>
+
+      <View style={{ marginTop: 12 }}>
+        <PetSwitcher variant="pill" />
       </View>
     </View>
   );
