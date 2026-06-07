@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import useSelectedPetStore from "@/store/selectedPetStore";
 
 // Get all pets for the current user
 export function usePetProfile() {
@@ -112,22 +113,50 @@ export function usePetProfile() {
   return query;
 }
 
-// Get the current/primary pet (first pet sorted by created_at DESC)
+// Resolve the active pet: the persisted selection if it still exists in the
+// list, otherwise the newest pet (pets[0]), otherwise null.
+function resolveCurrentPet(pets, selectedPetId) {
+  if (!pets || pets.length === 0) return null;
+  return pets.find((p) => p.id === selectedPetId) ?? pets[0] ?? null;
+}
+
+// Get the current/active pet.
+// The active pet is the user's persisted selection (selectedPetStore), resolved
+// against the fetched list. Falls back to the newest pet, then null.
 export function useCurrentPet() {
   const { data: pets, isLoading, error } = usePetProfile();
+  const selectedPetId = useSelectedPetStore((s) => s.selectedPetId);
+  const setSelectedPetId = useSelectedPetStore((s) => s.setSelectedPetId);
+  const hasHydrated = useSelectedPetStore((s) => s.hasHydrated);
 
-  const currentPet = pets && pets.length > 0 ? pets[0] : null;
+  const currentPet = resolveCurrentPet(pets, selectedPetId);
 
-  console.log(
-    "[useCurrentPet] Current pet:",
-    currentPet ? { id: currentPet.id, name: currentPet.name } : null,
-  );
+  // Keep the persisted selection consistent with the real list:
+  //   0 pets  → clear it (active pet is null; the entry point routes to onboarding)
+  //   1 pet   → write that pet's id back as the selection
+  //   ≥2 pets → if the stored id is gone, fall back to pets[0] and overwrite it
+  // Gated on hydration so we never overwrite a stored choice before it loads.
+  useEffect(() => {
+    if (!hasHydrated || isLoading) return;
+
+    if (!pets || pets.length === 0) {
+      if (selectedPetId !== null) setSelectedPetId(null);
+      return;
+    }
+
+    const stillExists = pets.some((p) => p.id === selectedPetId);
+    if (!stillExists && currentPet) {
+      setSelectedPetId(currentPet.id);
+    }
+  }, [hasHydrated, isLoading, pets, selectedPetId, currentPet, setSelectedPetId]);
 
   return {
     data: currentPet,
     isLoading,
     error,
     hasPet: !!currentPet,
+    // Persist a new active pet by id; reflected across every useCurrentPet consumer.
+    setCurrentPet: setSelectedPetId,
   };
 }
 

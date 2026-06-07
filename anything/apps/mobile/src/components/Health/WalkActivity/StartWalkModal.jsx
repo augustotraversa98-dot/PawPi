@@ -29,7 +29,7 @@ export default function StartWalkModal({
   visible,
   onClose,
   walk,
-  petName = "Phoebe",
+  petName = "your dog",
   onWalkComplete,
 }) {
   const insets = useSafeAreaInsets();
