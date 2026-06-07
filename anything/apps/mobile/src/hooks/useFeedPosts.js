@@ -55,6 +55,10 @@ export function useCreatePost() {
       // IMPORTANT: Invalidate today's daily update query to unlock the Feed
       queryClient.invalidateQueries({ queryKey: ["today-daily-update"] });
 
+      // Owner-level lock state (any owned pet posted today) — refresh so the
+      // BeReal-style feed lock reflects the new post immediately.
+      queryClient.invalidateQueries({ queryKey: ["owner-posted-today"] });
+
       console.log("[useCreatePost] ✅ All queries invalidated");
     },
   });

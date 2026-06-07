@@ -7,10 +7,12 @@ import {
   Image,
   Modal,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PawPrint, Megaphone, Share2, X } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
+import { usePostBarks } from "@/hooks/useFeedPosts";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -24,9 +26,27 @@ export const PostDetailModal = memo(function PostDetailModal({
   onOpenProfile,
 }) {
   const insets = useSafeAreaInsets();
+
+  // Real bark thread for this post, scoped by post.id (same hook the BarkModal
+  // uses). Called before the early return so hook order stays stable.
+  const { data: barks = [], isLoading: loadingBarks } = usePostBarks(post?.id);
+
   if (!post) return null;
 
-  const tagStyle = TAG_COLORS[post.tag] || {
+  // Read the real DB post fields, mirroring PostCard so the viewer matches the
+  // feed card exactly (same paw/bark counts). Old denormalized names are kept
+  // only as a compatibility fallback — no mock store, no placeholder images.
+  const dogName = post.pet_name || post.dogName;
+  const ownerName = post.username || post.ownerName;
+  const avatar = post.pet_avatar || post.avatar;
+  const photo = post.image_url || post.photo;
+  const caption = post.caption;
+  const timestamp = post.timestamp || "Just now";
+  const pawsCount = post.paw_count ?? post.paws ?? 0;
+  const barksCount = post.bark_count ?? post.barks ?? 0;
+  const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
+
+  const tagStyle = TAG_COLORS[tag] || {
     bg: COLORS.peach,
     text: COLORS.terracotta,
   };
@@ -83,7 +103,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
               <Image
-                source={{ uri: post.avatar }}
+                source={{ uri: avatar }}
                 style={{
                   width: 46,
                   height: 46,
@@ -100,10 +120,10 @@ export const PostDetailModal = memo(function PostDetailModal({
                     color: COLORS.warmBrown,
                   }}
                 >
-                  {post.dogName}
+                  {dogName}
                 </Text>
                 <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
-                  by {post.ownerName} · {post.timestamp}
+                  by {ownerName} · {timestamp}
                 </Text>
               </View>
             </View>
@@ -122,14 +142,14 @@ export const PostDetailModal = memo(function PostDetailModal({
                   fontWeight: "700",
                 }}
               >
-                {post.tag}
+                {tag}
               </Text>
             </View>
           </TouchableOpacity>
 
           {/* Photo */}
           <Image
-            source={{ uri: post.photo }}
+            source={{ uri: photo }}
             style={{ width: SCREEN_W, height: SCREEN_W }}
             resizeMode="cover"
           />
@@ -144,8 +164,8 @@ export const PostDetailModal = memo(function PostDetailModal({
                 marginBottom: 16,
               }}
             >
-              <Text style={{ fontWeight: "800" }}>{post.dogName} </Text>
-              {post.caption}
+              <Text style={{ fontWeight: "800" }}>{dogName} </Text>
+              {caption}
             </Text>
 
             {/* Action row */}
@@ -175,7 +195,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     fontSize: 14,
                   }}
                 >
-                  {post.paws} paws
+                  {pawsCount} paws
                 </Text>
               </TouchableOpacity>
 
@@ -191,7 +211,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     fontSize: 14,
                   }}
                 >
-                  {post.barks} barks
+                  {barksCount} barks
                 </Text>
               </TouchableOpacity>
             </View>
@@ -214,59 +234,79 @@ export const PostDetailModal = memo(function PostDetailModal({
                 marginBottom: 14,
               }}
             >
-              Barks ({post.comments?.length || 0})
+              Barks ({barksCount})
             </Text>
-            {(post.comments || []).map((c) => (
-              <View
-                key={c.id}
-                style={{
-                  flexDirection: "row",
-                  marginBottom: 14,
-                  gap: 10,
-                  alignItems: "flex-start",
-                }}
-              >
-                <Image
-                  source={{ uri: c.authorAvatar }}
+            {loadingBarks ? (
+              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                <ActivityIndicator size="small" color={COLORS.coral} />
+              </View>
+            ) : barks.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                <Text style={{ fontSize: 28 }}>🐾</Text>
+                <Text
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    flexShrink: 0,
-                  }}
-                />
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 14,
-                    padding: 12,
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
+                    color: COLORS.mutedBrown,
+                    fontSize: 13,
+                    fontWeight: "600",
+                    marginTop: 8,
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "800",
-                      color: COLORS.coral,
-                      marginBottom: 3,
-                    }}
-                  >
-                    {c.author}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: COLORS.warmBrown,
-                      lineHeight: 19,
-                    }}
-                  >
-                    {c.text}
-                  </Text>
-                </View>
+                  No barks yet
+                </Text>
               </View>
-            ))}
+            ) : (
+              barks.map((bark) => (
+                <View
+                  key={bark.id}
+                  style={{
+                    flexDirection: "row",
+                    marginBottom: 14,
+                    gap: 10,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Image
+                    source={{ uri: bark.avatar_url }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: COLORS.card,
+                      borderRadius: 14,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor: COLORS.peach,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "800",
+                        color: COLORS.coral,
+                        marginBottom: 3,
+                      }}
+                    >
+                      {bark.username}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: COLORS.warmBrown,
+                        lineHeight: 19,
+                      }}
+                    >
+                      {bark.text}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
             <TouchableOpacity
               onPress={onOpenBarks}
               style={{
