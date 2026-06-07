@@ -18,6 +18,7 @@ import {
   Users,
   Grid3X3,
 } from "lucide-react-native";
+import { PetAvatar } from "@/components/Pets/PetAvatar";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
@@ -44,9 +45,14 @@ export default function PetProfileScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
 
   const {
+    // Real identity of this dog. The stats/daily-moments data fetch keyed on
+    // these is a separate Dog Social Profile ticket; passed through here so the
+    // tap target carries the real pet_id/handle.
+    petId = "",
+    petHandle = "",
     dogName = "Buddy",
     ownerName = "Alice",
-    avatar = "https://images.unsplash.com/photo-1544568100-847a948585b9?q=80&w=300&auto=format&fit=crop",
+    avatar = "",
     breed = "Mixed Breed",
     age = "",
     bio = "",
@@ -57,40 +63,14 @@ export default function PetProfileScreen() {
     friends = "0",
   } = params;
 
-  let pastPosts = [];
+  // Real daily moments only — no stock/placeholder images. Until the data-fetch
+  // ticket lands, none are passed and the empty state below is shown.
+  let gridPosts = [];
   try {
-    pastPosts = params.pastPosts ? JSON.parse(params.pastPosts) : [];
+    gridPosts = params.pastPosts ? JSON.parse(params.pastPosts) : [];
   } catch (e) {
-    pastPosts = [];
+    gridPosts = [];
   }
-
-  // Fallback posts if none provided
-  const gridPosts =
-    pastPosts.length > 0
-      ? pastPosts
-      : [
-          {
-            id: "fallback1",
-            photo:
-              "https://images.unsplash.com/photo-1508532566027-b2579a8a1939?q=80&w=400&auto=format&fit=crop",
-            paws: 18,
-            timestamp: "Yesterday",
-          },
-          {
-            id: "fallback2",
-            photo:
-              "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=400&auto=format&fit=crop",
-            paws: 31,
-            timestamp: "2 days ago",
-          },
-          {
-            id: "fallback3",
-            photo:
-              "https://images.unsplash.com/photo-1551717743-8f5b868a2e63?q=80&w=400&auto=format&fit=crop",
-            paws: 27,
-            timestamp: "3 days ago",
-          },
-        ];
 
   const StatPill = ({ value, label, color }) => (
     <View style={{ alignItems: "center", flex: 1 }}>
@@ -183,10 +163,7 @@ export default function PetProfileScreen() {
               shadowRadius: 12,
             }}
           >
-            <Image
-              source={{ uri: avatar }}
-              style={{ width: 110, height: 110, borderRadius: 55 }}
-            />
+            <PetAvatar uri={avatar || undefined} size={110} />
           </View>
 
           {/* Name + breed */}

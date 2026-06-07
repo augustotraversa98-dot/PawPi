@@ -17,6 +17,7 @@ export default function FeedScreen() {
     petProfile,
     petName,
     hasPostedToday,
+    feedUnlocked,
     todayPostId,
     posts,
     likedPosts,
@@ -38,9 +39,13 @@ export default function FeedScreen() {
       router.push({
         pathname: "/pet-profile",
         params: {
+          // Real identity of the tapped dog — the source of truth for the
+          // separate Dog Social Profile data-fetch ticket.
+          petId: String(post.pet_id ?? ""),
+          petHandle: post.pet_handle || "",
           dogName: post.pet_name || post.dogName,
           ownerName: post.username || post.ownerName,
-          avatar: post.pet_avatar || post.avatar,
+          avatar: post.pet_avatar || post.avatar || "",
           breed: post.breed || "",
           age: post.age || "",
           bio: post.bio || "",
@@ -49,7 +54,6 @@ export default function FeedScreen() {
           totalPaws: String(post.totalPaws || 0),
           totalBarks: String(post.totalBarks || 0),
           friends: String(post.friends || 0),
-          pastPosts: JSON.stringify(post.pastPosts || []),
         },
       });
     },
@@ -106,12 +110,15 @@ export default function FeedScreen() {
           <DailyPromptCard
             petName={petName}
             hasPostedToday={hasPostedToday}
+            todayPostId={todayPostId}
             onPostPress={() => setComposerVisible(true)}
             onViewTodayPost={handleViewTodayPost}
           />
 
-          {/* ── Feed: locked or unlocked ── */}
-          {!hasPostedToday ? (
+          {/* ── Feed: locked or unlocked ──
+              Lock is per-OWNER: unlocked once any of the user's dogs posted
+              today. The DailyPromptCard above stays per-active-pet. */}
+          {!feedUnlocked ? (
             <LockedFeedOverlay
               posts={posts}
               petName={petName}

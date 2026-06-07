@@ -2,16 +2,14 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Camera, Sparkles, PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
-import useSocialPetStore from "@/store/socialPetStore";
 
 export function DailyPromptCard({
   petName,
   hasPostedToday,
+  todayPostId,
   onPostPress,
   onViewTodayPost,
 }) {
-  const todayPostId = useSocialPetStore((state) => state.todayPostId);
-
   return (
     <View
       style={{

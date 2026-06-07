@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useFeedPosts, useCreatePost, useTogglePaw } from "./useFeedPosts";
 import { useCurrentPet } from "./usePetProfile";
 import { useTodayDailyUpdate } from "./useTodayDailyUpdate";
+import { useOwnerPostedToday } from "./useOwnerPostedToday";
 import { useUpload } from "@/utils/useUpload";
 import { Alert, Platform } from "react-native";
 import { getLocalPostDateString, normalizePostDate } from "@/utils/dateUtils";
@@ -49,10 +50,19 @@ export function useFeedData() {
     return matches;
   });
 
-  // Use the API result if available, otherwise fall back to Feed post
+  // Use the API result if available, otherwise fall back to Feed post.
+  // hasPostedToday is PER ACTIVE PET — drives the DailyPromptCard prompt.
   const effectiveTodayDailyUpdate = todayDailyUpdate || dailyPostInFeed || null;
   const hasPostedToday = !!effectiveTodayDailyUpdate;
   const todayPostId = effectiveTodayDailyUpdate?.id;
+
+  // Owner-level lock: the feed unlocks once ANY of the user's dogs has posted
+  // today, and stays unlocked regardless of which dog is active. OR-ing in the
+  // active pet's own status unlocks instantly (before the owner query resolves)
+  // when it was the active dog that just posted.
+  const { data: ownerPostedToday = false, isLoading: loadingOwnerPosted } =
+    useOwnerPostedToday(hasPet);
+  const feedUnlocked = ownerPostedToday || hasPostedToday;
 
   // Debug logging on mount and when key values change
   useEffect(() => {
@@ -295,14 +305,16 @@ export function useFeedData() {
   return {
     petProfile: currentPet, // Return database pet instead of AsyncStorage
     petName,
-    hasPostedToday,
+    hasPostedToday, // per active pet (DailyPromptCard prompt)
+    feedUnlocked, // per owner (feed lock)
     todayPostId,
     posts,
     likedPosts,
     handlePost,
     handleToggleLike,
     handleBarkAdded,
-    loadingPosts: loadingPosts || loadingPet || loadingDailyUpdate,
+    loadingPosts:
+      loadingPosts || loadingPet || loadingDailyUpdate || loadingOwnerPosted,
     uploading,
     hasPet, // Add hasPet flag
   };
