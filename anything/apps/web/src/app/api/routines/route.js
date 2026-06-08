@@ -167,13 +167,13 @@ export async function POST(request) {
         ${isActive ?? true},
         ${title || null},
         ${description || null},
-        ${feedingSchedule ? JSON.stringify(feedingSchedule) : null},
-        ${walkSchedule ? JSON.stringify(walkSchedule) : null},
-        ${medicationDetails ? JSON.stringify(medicationDetails) : null},
-        ${photoCheckDetails ? JSON.stringify(photoCheckDetails) : null},
-        ${medicalCareDetails ? JSON.stringify(medicalCareDetails) : null},
-        ${wellnessCheckSchedule ? JSON.stringify(wellnessCheckSchedule) : null},
-        ${vetAppointmentSchedule ? JSON.stringify(vetAppointmentSchedule) : null},
+        ${feedingSchedule ? sql.json(feedingSchedule) : null},
+        ${walkSchedule ? sql.json(walkSchedule) : null},
+        ${medicationDetails ? sql.json(medicationDetails) : null},
+        ${photoCheckDetails ? sql.json(photoCheckDetails) : null},
+        ${medicalCareDetails ? sql.json(medicalCareDetails) : null},
+        ${wellnessCheckSchedule ? sql.json(wellnessCheckSchedule) : null},
+        ${vetAppointmentSchedule ? sql.json(vetAppointmentSchedule) : null},
         ${frequency || null},
         ${preferredDay || null},
         ${times || null},
@@ -271,25 +271,25 @@ export async function PUT(request) {
         title = COALESCE(${title || null}, title),
         description = COALESCE(${description || null}, description),
         feeding_schedule = COALESCE(${
-          feedingSchedule ? JSON.stringify(feedingSchedule) : null
+          feedingSchedule ? sql.json(feedingSchedule) : null
         }, feeding_schedule),
         walk_schedule = COALESCE(${
-          walkSchedule ? JSON.stringify(walkSchedule) : null
+          walkSchedule ? sql.json(walkSchedule) : null
         }, walk_schedule),
         medication_details = COALESCE(${
-          medicationDetails ? JSON.stringify(medicationDetails) : null
+          medicationDetails ? sql.json(medicationDetails) : null
         }, medication_details),
         photo_check_details = COALESCE(${
-          photoCheckDetails ? JSON.stringify(photoCheckDetails) : null
+          photoCheckDetails ? sql.json(photoCheckDetails) : null
         }, photo_check_details),
         medical_care_details = COALESCE(${
-          medicalCareDetails ? JSON.stringify(medicalCareDetails) : null
+          medicalCareDetails ? sql.json(medicalCareDetails) : null
         }, medical_care_details),
         wellness_check_schedule = COALESCE(${
-          wellnessCheckSchedule ? JSON.stringify(wellnessCheckSchedule) : null
+          wellnessCheckSchedule ? sql.json(wellnessCheckSchedule) : null
         }, wellness_check_schedule),
         vet_appointment_schedule = COALESCE(${
-          vetAppointmentSchedule ? JSON.stringify(vetAppointmentSchedule) : null
+          vetAppointmentSchedule ? sql.json(vetAppointmentSchedule) : null
         }, vet_appointment_schedule),
         frequency = COALESCE(${frequency || null}, frequency),
         preferred_day = ${preferredDay !== undefined ? preferredDay : null},

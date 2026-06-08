@@ -75,7 +75,7 @@ export async function POST(request) {
         ${givenAt || new Date().toISOString()},
         ${status},
         ${notes || null},
-        ${reactionOrIssue ? JSON.stringify(reactionOrIssue) : null}
+        ${reactionOrIssue ? sql.json(reactionOrIssue) : null}
       )
       RETURNING *
     `;

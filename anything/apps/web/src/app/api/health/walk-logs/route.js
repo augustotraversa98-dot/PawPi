@@ -83,7 +83,7 @@ export async function POST(request) {
         ${distanceUnit || "miles"},
         ${pace || null},
         ${energyAfter || null},
-        ${pottyEvents ? JSON.stringify(pottyEvents) : null},
+        ${pottyEvents ? sql.json(pottyEvents) : null},
         ${routeOrLocation || null},
         ${notes || null},
         ${steps || null},

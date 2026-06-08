@@ -3,25 +3,6 @@ import { mockRoutines } from "@/data/routinesData";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
 
-// Normalize a routine's schedule field (feeding/walk/wellness/medical items) to a
-// real array. The backend stores these as jsonb and they can re-enter the app as
-// a stringified JSON array rather than a parsed array; `value || []` does NOT
-// coerce a non-empty string, which is what crashes the reminder generators
-// (`x.forEach is not a function`). Parse a JSON string back to an array; anything
-// that isn't an array (or doesn't parse to one) becomes [].
-function toArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 const useRoutinesStore = create((set, get) => ({
   // State
   routines: [],
@@ -54,11 +35,11 @@ const useRoutinesStore = create((set, get) => ({
         title: routine.title,
         description: routine.description,
 
-        // Feeding-specific: parse feeding_schedule JSON
-        meals: toArray(routine.feeding_schedule),
+        // Feeding-specific: feeding_schedule JSON array
+        meals: routine.feeding_schedule || [],
 
-        // Walk-specific: parse walk_schedule JSON
-        walks: toArray(routine.walk_schedule),
+        // Walk-specific: walk_schedule JSON array
+        walks: routine.walk_schedule || [],
 
         // Medication-specific
         medicationName: routine.medication_details?.medicationName,
@@ -87,10 +68,10 @@ const useRoutinesStore = create((set, get) => ({
         bodyArea: routine.photo_check_details?.bodyArea, // Legacy field
 
         // Medical Care specific - multi-item schedule
-        medicalCareItems: toArray(routine.medical_care_details?.medicalCareItems),
+        medicalCareItems: routine.medical_care_details?.medicalCareItems || [],
 
         // Wellness Check specific - multi-item schedule (use camelCase to match RoutineCard expectations)
-        wellnessCheckItems: toArray(routine.wellness_check_schedule),
+        wellnessCheckItems: routine.wellness_check_schedule || [],
 
         // General fields
         frequency: routine.frequency,
@@ -228,8 +209,8 @@ const useRoutinesStore = create((set, get) => ({
         isActive: newRoutine.is_active,
         title: newRoutine.title,
         description: newRoutine.description,
-        meals: toArray(newRoutine.feeding_schedule),
-        walks: toArray(newRoutine.walk_schedule),
+        meals: newRoutine.feeding_schedule || [],
+        walks: newRoutine.walk_schedule || [],
         medicationName: newRoutine.medication_details?.medicationName,
         dose: newRoutine.medication_details?.dose,
         prescribedBy: newRoutine.medication_details?.prescribedBy,
@@ -252,11 +233,11 @@ const useRoutinesStore = create((set, get) => ({
               ]
             : null),
         bodyArea: newRoutine.photo_check_details?.bodyArea,
-        medicalCareItems: toArray(newRoutine.medical_care_details?.medicalCareItems),
+        medicalCareItems: newRoutine.medical_care_details?.medicalCareItems || [],
         // Use `wellnessCheckItems` to match the reminder generator and loadRoutines
         // (the old `wellnessCheckSchedule` key meant new wellness routines generated
         // no reminders until reload).
-        wellnessCheckItems: toArray(newRoutine.wellness_check_schedule),
+        wellnessCheckItems: newRoutine.wellness_check_schedule || [],
         frequency: newRoutine.frequency,
         preferredDay: newRoutine.preferred_day,
         times: newRoutine.times || [],
@@ -388,8 +369,8 @@ const useRoutinesStore = create((set, get) => ({
         isActive: updatedRoutine.is_active,
         title: updatedRoutine.title,
         description: updatedRoutine.description,
-        meals: toArray(updatedRoutine.feeding_schedule),
-        walks: toArray(updatedRoutine.walk_schedule),
+        meals: updatedRoutine.feeding_schedule || [],
+        walks: updatedRoutine.walk_schedule || [],
         medicationName: updatedRoutine.medication_details?.medicationName,
         dose: updatedRoutine.medication_details?.dose,
         prescribedBy: updatedRoutine.medication_details?.prescribedBy,
@@ -412,10 +393,9 @@ const useRoutinesStore = create((set, get) => ({
               ]
             : null),
         bodyArea: updatedRoutine.photo_check_details?.bodyArea,
-        medicalCareItems: toArray(
-          updatedRoutine.medical_care_details?.medicalCareItems,
-        ),
-        wellnessCheckItems: toArray(updatedRoutine.wellness_check_schedule),
+        medicalCareItems:
+          updatedRoutine.medical_care_details?.medicalCareItems || [],
+        wellnessCheckItems: updatedRoutine.wellness_check_schedule || [],
         frequency: updatedRoutine.frequency,
         preferredDay: updatedRoutine.preferred_day,
         times: updatedRoutine.times || [],
