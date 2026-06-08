@@ -117,7 +117,7 @@ export async function POST(request) {
         ${wellnessCheckItemIndex !== undefined ? parseInt(wellnessCheckItemIndex) : null},
         ${checkType},
         ${loggedAt || new Date().toISOString()},
-        ${valuesJson ? JSON.stringify(valuesJson) : null},
+        ${valuesJson ? sql.json(valuesJson) : null},
         ${notes || null},
         ${imageUrl || null}
       )
