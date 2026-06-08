@@ -1,104 +1,118 @@
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { View, ActivityIndicator, Text, Pressable } from "react-native";
 import { Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
+import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 
 export default function EntryPoint() {
   const [loading, setLoading] = useState(true);
   const [destination, setDestination] = useState(null);
-  const { auth, isReady } = useAuth();
+  const [error, setError] = useState(false);
+  const { auth, isReady, setAuth } = useAuth();
 
-  useEffect(() => {
-    async function determineRoute() {
-      try {
-        console.log("[EntryPoint] Starting route determination");
-        console.log("[EntryPoint] Auth ready:", isReady, "Auth:", !!auth);
+  const determineRoute = useCallback(async () => {
+    setError(false);
+    setLoading(true);
 
-        // Wait for auth to be ready
-        if (!isReady) {
-          console.log("[EntryPoint] Waiting for auth to be ready");
-          return;
-        }
-
-        // Not authenticated → Welcome screen
-        if (!auth) {
-          console.log("[EntryPoint] No auth, redirecting to /welcome");
-          setDestination("/welcome");
-          setLoading(false);
-          return;
-        }
-
-        // Authenticated → Check for pets
-        console.log("[EntryPoint] User authenticated, checking for pets");
-
-        try {
-          const petsResponse = await fetch("/api/pets");
-
-          if (!petsResponse.ok) {
-            console.error("[EntryPoint] Pets API failed:", petsResponse.status);
-            // If API fails, check AsyncStorage as fallback
-            const cachedProfile = await AsyncStorage.getItem("pet_profile");
-            const cachedOnboarding = await AsyncStorage.getItem(
-              "has_completed_onboarding",
-            );
-
-            if (cachedProfile && cachedOnboarding === "true") {
-              console.log(
-                "[EntryPoint] Using cached data, redirecting to feed",
-              );
-              setDestination("/(tabs)");
-            } else {
-              console.log(
-                "[EntryPoint] No cached data, redirecting to onboarding",
-              );
-              setDestination("/onboarding-photo");
-            }
-            setLoading(false);
-            return;
-          }
-
-          const { pets } = await petsResponse.json();
-          console.log("[EntryPoint] Pets found:", pets?.length || 0);
-
-          if (pets && pets.length > 0) {
-            // Has pets → Main app Feed
-            console.log("[EntryPoint] User has pets, redirecting to feed");
-            await AsyncStorage.setItem("has_completed_onboarding", "true");
-            setDestination("/(tabs)");
-          } else {
-            // No pets → Onboarding
-            console.log("[EntryPoint] No pets, redirecting to onboarding");
-            setDestination("/onboarding-photo");
-          }
-        } catch (apiError) {
-          console.error("[EntryPoint] API error:", apiError);
-          // Fallback to cache
-          const cachedProfile = await AsyncStorage.getItem("pet_profile");
-          const cachedOnboarding = await AsyncStorage.getItem(
-            "has_completed_onboarding",
-          );
-
-          if (cachedProfile && cachedOnboarding === "true") {
-            console.log("[EntryPoint] API failed, using cache → feed");
-            setDestination("/(tabs)");
-          } else {
-            console.log("[EntryPoint] API failed, no cache → onboarding");
-            setDestination("/onboarding-photo");
-          }
-        }
-
-        setLoading(false);
-      } catch (error) {
-        console.error("[EntryPoint] Error determining route:", error);
-        // On any error, default to welcome screen for safety
-        setDestination("/welcome");
-        setLoading(false);
-      }
+    // Wait for auth to be ready
+    if (!isReady) {
+      return;
     }
 
+    // Not authenticated → Welcome screen
+    if (!auth) {
+      console.log("[EntryPoint] No auth, redirecting to /welcome");
+      setDestination("/welcome");
+      setLoading(false);
+      return;
+    }
+
+    // Authenticated → ask the server for pets. Resolve the routing from the
+    // *outcome* of that call so an auth failure (401/403) and a transient
+    // network failure aren't both mistaken for "no pets → onboarding".
+    console.log("[EntryPoint] User authenticated, checking for pets");
+    let outcome;
+    try {
+      const petsResponse = await fetch("/api/pets");
+      if (petsResponse.ok) {
+        const { pets } = await petsResponse.json();
+        outcome = { ok: true, status: petsResponse.status, pets };
+      } else {
+        outcome = { ok: false, status: petsResponse.status };
+      }
+    } catch (apiError) {
+      console.error("[EntryPoint] Pets fetch failed:", apiError);
+      outcome = { networkError: true };
+    }
+
+    const result = determinePetsRoute(outcome);
+    console.log("[EntryPoint] Pets outcome:", outcome, "→", result.action);
+
+    if (result.clearSession) {
+      // Expired/invalid token: drop the stored JWT so the app stops reading
+      // Auth: true with a dead token, then send the user to log in fresh.
+      setAuth(null);
+    }
+    if (result.action === "home") {
+      await AsyncStorage.setItem("has_completed_onboarding", "true");
+    }
+    if (result.action === "error") {
+      // Network / non-auth failure: never onboarding (avoids duplicate pets
+      // from a transient blip). Surface a retry instead.
+      setError(true);
+      setLoading(false);
+      return;
+    }
+
+    setDestination(result.destination);
+    setLoading(false);
+  }, [isReady, auth, setAuth]);
+
+  useEffect(() => {
     determineRoute();
-  }, [isReady, auth]);
+  }, [determineRoute]);
+
+  // Network / non-auth failure → retry state. Never silently onboarding.
+  if (error) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#FFF7EF",
+          paddingHorizontal: 32,
+        }}
+      >
+        <Text style={{ fontSize: 72, marginBottom: 20 }}>🐾</Text>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "600",
+            color: "#7A6254",
+            textAlign: "center",
+            marginBottom: 24,
+          }}
+        >
+          We couldn't reach PawPi. Check your connection and try again.
+        </Text>
+        <Pressable
+          onPress={determineRoute}
+          style={{
+            backgroundColor: "#FF6F61",
+            paddingHorizontal: 32,
+            paddingVertical: 12,
+            borderRadius: 24,
+          }}
+        >
+          <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
+            Try Again
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   // Show loading screen while determining route
   if (!isReady || loading || !destination) {
