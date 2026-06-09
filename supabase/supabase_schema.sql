@@ -571,7 +571,7 @@ CREATE TABLE public.health_wellness_logs (
     image_url text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT health_wellness_logs_check_type_check CHECK ((check_type = ANY (ARRAY['body_condition'::text, 'mobility'::text, 'mood_energy'::text, 'skin_coat'::text, 'appetite_hydration'::text, 'custom'::text])))
+    CONSTRAINT health_wellness_logs_check_type_check CHECK ((check_type = ANY (ARRAY['general'::text, 'body_condition'::text, 'mobility'::text, 'mood_energy'::text, 'skin_coat'::text, 'appetite_hydration'::text, 'custom'::text])))
 );
 
 --
