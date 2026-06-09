@@ -159,6 +159,116 @@ describe("generateOverdueInstances — medical care", () => {
   });
 });
 
+describe("generateOverdueInstances — clamp to routine/item start (no phantom backfill)", () => {
+  // An ISO timestamp N whole days before the pinned NOW.
+  const daysAgo = (n) => {
+    const d = new Date(NOW);
+    d.setDate(d.getDate() - n);
+    return d.toISOString();
+  };
+
+  it("a routine created now yields 0 overdue — wellness/medical/photo", () => {
+    const wellness = makeRoutine({
+      type: ROUTINE_TYPES.WELLNESS_CHECK,
+      createdAt: NOW.toISOString(),
+      wellnessCheckItems: [
+        { checkType: "general", frequency: ROUTINE_FREQUENCY.DAILY, preferredTime: "09:00" },
+      ],
+    });
+    const medical = makeRoutine({
+      type: ROUTINE_TYPES.MEDICAL_CARE,
+      createdAt: NOW.toISOString(),
+      medicalCareItems: [
+        { id: "med1", type: "medication", name: "Rimadyl", times: ["07:00", "19:00"] },
+      ],
+    });
+    const photo = makeRoutine({
+      type: ROUTINE_TYPES.PHOTO_CHECK,
+      createdAt: NOW.toISOString(),
+      photoCheckSchedule: [
+        { bodyArea: "paws", frequency: ROUTINE_FREQUENCY.WEEKLY, preferredDay: 2, preferredTime: "10:00" },
+      ],
+    });
+
+    expect(generateOverdueInstances(wellness)).toEqual([]);
+    expect(generateOverdueInstances(medical)).toEqual([]);
+    expect(generateOverdueInstances(photo)).toEqual([]);
+  });
+
+  it("a daily wellness routine created N days ago yields at most N instances, none before creation", () => {
+    const N = 5;
+    const createdAt = daysAgo(N);
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.WELLNESS_CHECK,
+      createdAt,
+      wellnessCheckItems: [
+        { checkType: "general", frequency: ROUTINE_FREQUENCY.DAILY, preferredTime: "09:00" },
+      ],
+    });
+
+    const reminders = generateOverdueInstances(routine);
+
+    expect(reminders.length).toBeGreaterThan(0);
+    expect(reminders.length).toBeLessThanOrEqual(N);
+    expect(
+      reminders.every((r) => new Date(r.scheduledAt) >= new Date(createdAt)),
+    ).toBe(true);
+    expect(reminders.every((r) => new Date(r.scheduledAt) < NOW)).toBe(true);
+  });
+
+  it("daily medical care clamps to the routine's creation day", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.MEDICAL_CARE,
+      createdAt: daysAgo(2),
+      medicalCareItems: [
+        { id: "med1", type: "medication", name: "Rimadyl", times: ["08:00"] },
+      ],
+    });
+
+    // From 2 days ago at 08:00 up to (not incl.) today's 08:00 == now → 2 doses.
+    const reminders = generateOverdueInstances(routine);
+    expect(reminders.length).toBeLessThanOrEqual(2);
+    expect(
+      reminders.every((r) => new Date(r.scheduledAt) >= new Date(daysAgo(2))),
+    ).toBe(true);
+  });
+
+  it("medical care also clamps to a later item.startDate", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.MEDICAL_CARE,
+      createdAt: daysAgo(20), // routine is old…
+      medicalCareItems: [
+        // …but this item only started 2 days ago.
+        { id: "med1", type: "medication", name: "Rimadyl", times: ["08:00"], startDate: daysAgo(2) },
+      ],
+    });
+
+    const reminders = generateOverdueInstances(routine);
+    expect(reminders.length).toBeLessThanOrEqual(2);
+    expect(
+      reminders.every((r) => new Date(r.scheduledAt) >= new Date(daysAgo(2))),
+    ).toBe(true);
+  });
+
+  it("does not suppress genuinely-missed past instances (routine older than the window)", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.WELLNESS_CHECK,
+      createdAt: daysAgo(40), // older than the 30-day lookback → window governs
+      wellnessCheckItems: [
+        {
+          checkType: "body_condition",
+          frequency: ROUTINE_FREQUENCY.WEEKLY,
+          preferredDay: 2,
+          preferredTime: "09:00",
+        },
+      ],
+    });
+
+    // Same 4 weekly Wednesdays in the window as the un-clamped case.
+    expect(generateOverdueInstances(routine)).toHaveLength(4);
+  });
+});
+
 describe("generateOverdueInstances — photo check", () => {
   it("emits a separate per-area overdue instance, none merged", () => {
     const routine = makeRoutine({
