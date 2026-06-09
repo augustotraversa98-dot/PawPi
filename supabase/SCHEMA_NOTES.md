@@ -4,9 +4,11 @@
 
 The earlier version of this file documented *guesses* from a code-only reconstruction. Those guesses have now been confirmed or corrected against the dump — see "Previously-flagged uncertainties: RESOLVED" below.
 
-Migration order: `0001_auth` → `0002_user_profiles` → `0003_pets` → `0004_social` → `0005_vet_records` → `0006_routines` → `0007_social_walks` → `0008_health_logs` → `0009_backfill_double_encoded_jsonb` → `0010_wellness_general_check_type`. The DDL set (0001–0008) uses `IF NOT EXISTS`; 0009 (data backfill) and 0010 (constraint widen, drop-if-exists then re-add) are likewise re-runnable.
+Migration order: `0001_auth` → `0002_user_profiles` → `0003_pets` → `0004_social` → `0005_vet_records` → `0006_routines` → `0007_social_walks` → `0008_health_logs` → `0009_backfill_double_encoded_jsonb` → `0010_wellness_general_check_type` → `0011_reminder_dismissals`. The DDL set (0001–0008, 0011) uses `IF NOT EXISTS`; 0009 (data backfill) and 0010 (constraint widen, drop-if-exists then re-add) are likewise re-runnable.
 
 > **0010** widens `health_wellness_logs.check_type` to also allow `'general'` (Ticket 7 wellness-log slice) so a "General check" lands in `health_wellness_logs` with the same `routine_id` + `wellness_check_item_index` linkage as the other wellness checks. Weight intentionally stays on `health_weight_logs` (Insights path) and is **not** in this constraint. `supabase_schema.sql` (line ~574) was updated to match.
+
+> **0011** adds `reminder_dismissals` — a durable "skip/dismiss" record per scheduled reminder instance (Ticket 8 Today-Overdue slice). The reminders store is in-memory, so a skip would otherwise reappear after an app restart; this table lets the on-load reconciliation clear dismissed overdue items alongside the log-derived "resolved" set. `instance_key` is the reminder's deterministic id (`reminder_<routine>_<item>_<date>` or `vet_apt_<id>`); the `UNIQUE(owner_user_id, pet_id, instance_key)` makes a repeat dismissal idempotent. `routine_id` is nullable (vet-appointment reminders are not routine-backed) with `ON DELETE SET NULL`. Appended to `supabase_schema.sql` as a post-dump addendum.
 
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
