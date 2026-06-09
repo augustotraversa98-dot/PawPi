@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
   Calendar,
@@ -51,7 +52,30 @@ const C = {
 
 export default function HealthVetRecord() {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+
+  // Pull-to-refresh: invalidate every vet-record query for the active pet.
+  // Expanded sections refetch immediately; collapsed ones (disabled queries)
+  // are marked stale and refetch when next opened.
+  const refetchVetRecord = useCallback(async () => {
+    if (currentPet?.id == null) return;
+    await Promise.all(
+      [
+        "vet-record-summary",
+        "pet-medical-profile",
+        "vet-record-allergies",
+        "vet-record-conditions",
+        "vet-record-surgeries",
+        "vet-record-lab-results",
+        "vet-record-documents",
+        "vet-record-notes",
+        "vet-appointments",
+      ].map((key) =>
+        queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
+      ),
+    );
+  }, [queryClient, currentPet?.id]);
 
   const [expandedSections, setExpandedSections] = useState({
     profile: true,
@@ -393,7 +417,8 @@ export default function HealthVetRecord() {
   }
 
   return (
-    <ScrollView
+    <RefreshableScrollView
+      refetch={refetchVetRecord}
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
     >
@@ -1923,6 +1948,6 @@ export default function HealthVetRecord() {
           onSave={refetchMedicalProfile}
         />
       )}
-    </ScrollView>
+    </RefreshableScrollView>
   );
 }

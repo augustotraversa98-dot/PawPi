@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { Plus } from "lucide-react-native";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import useRoutinesStore from "@/store/routinesStore";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { useCurrentPet } from "@/hooks/usePetProfile";
@@ -133,6 +133,13 @@ export default function RoutinesTab() {
     setTypeSelectorVisible(true);
   };
 
+  // Pull-to-refresh: reload the active pet's routines from the server.
+  const handleRefresh = useCallback(async () => {
+    if (currentPet?.id != null) {
+      await loadRoutines(currentPet.id);
+    }
+  }, [currentPet?.id, loadRoutines]);
+
   const handleSelectType = (type) => {
     setSelectedType(type);
   };
@@ -203,7 +210,11 @@ export default function RoutinesTab() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+      <RefreshableScrollView
+        refetch={handleRefresh}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16 }}
+      >
         {/* Header */}
         <View style={{ marginBottom: 20 }}>
           <Text
@@ -313,7 +324,7 @@ export default function RoutinesTab() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </RefreshableScrollView>
 
       {/* Floating Add Button */}
       {hasAnyRoutines && (

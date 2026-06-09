@@ -21,6 +21,7 @@ import {
 } from "lucide-react-native";
 import { useSocialWalks, useJoinSocialWalk } from "@/hooks/useSocialWalks";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -38,7 +39,11 @@ export default function NearbyWalksPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
-  const { data: nearbyWalks, isLoading } = useSocialWalks("nearby_pets");
+  const {
+    data: nearbyWalks,
+    isLoading,
+    refetch: refetchNearbyWalks,
+  } = useSocialWalks("nearby_pets");
   const [selectedWalk, setSelectedWalk] = useState(null);
   const [joinMessage, setJoinMessage] = useState("");
   const joinMutation = useJoinSocialWalk();
@@ -139,7 +144,8 @@ export default function NearbyWalksPage() {
       </View>
 
       {/* Content */}
-      <ScrollView
+      <RefreshableScrollView
+        refetch={refetchNearbyWalks}
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 20,
@@ -388,7 +394,7 @@ export default function NearbyWalksPage() {
               </View>
             );
           })}
-      </ScrollView>
+      </RefreshableScrollView>
 
       {/* Join Request Modal */}
       <Modal
