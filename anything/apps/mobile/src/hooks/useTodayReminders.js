@@ -1,13 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "./usePetProfile";
 import { useVetAppointmentReminders } from "./useVetAppointmentReminders";
 import useRoutinesStore from "@/store/routinesStore";
-import useRemindersStore from "@/store/remindersStore";
-import { generateOverdueInstances } from "@/utils/reminderGenerator";
 import {
   buildResolutionIndex,
-  selectOverdueReminders,
+  buildOverdueReminders,
   instanceKey,
 } from "@/utils/reminderResolution";
 import { toDateStr } from "@/utils/wellnessLog";
@@ -36,10 +34,11 @@ function usePetList(name, url, pick, petId) {
 /**
  * Today's reconciled Overdue list for the current pet.
  *
- * Merges the in-store future reminders, the DB-backed vet reminders, and freshly
- * enumerated past-due instances (generateOverdueInstances) for the persistent types,
- * then subtracts (resolved ∪ dismissed) keys in a single pass — so a logged or
- * skipped instance never reappears, including after an app restart.
+ * Derived DETERMINISTICALLY from the active pet's routines (past-due instances via
+ * generateOverdueInstances) plus the DB-backed vet reminders, minus (resolved ∪
+ * dismissed) — NOT from the mutable reminders store, so unrelated store activity can
+ * never drop a missed item. A per-minute `now` tick drives recomputation so the list
+ * tracks the clock rather than piggybacking on query refetches.
  *
  * Returns { overdue, dismiss, isLoading }. `dismiss(reminder)` durably records a skip.
  */
@@ -50,8 +49,18 @@ export function useTodayReminders({ now } = {}) {
   const activePetId = petId != null ? String(petId) : null;
 
   const routines = useRoutinesStore((s) => s.routines);
-  const storeReminders = useRemindersStore((s) => s.reminders);
   const { data: vetReminders = [] } = useVetAppointmentReminders();
+
+  // Per-minute clock tick so Overdue updates on the clock (a missed instance appears
+  // within ~1 min and stays), instead of only when a query refetch / store change
+  // happens to fire. Tests inject a fixed `now` to pin it.
+  const [tick, setTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (now != null) return; // caller pins the clock
+    const id = setInterval(() => setTick(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, [now]);
+  const nowMs = now != null ? new Date(now).getTime() : tick;
 
   const dismissalsQuery = usePetList(
     "reminder-dismissals",
@@ -89,25 +98,6 @@ export function useTodayReminders({ now } = {}) {
   const overdue = useMemo(() => {
     if (!activePetId) return [];
 
-    const nowDate = now ? new Date(now) : new Date();
-
-    // Past-due instances for the persistent types, freshly enumerated from the
-    // active pet's routines (survives restart — the store starts empty each launch).
-    const generated = (routines || [])
-      .filter(
-        (r) => r.isActive && String(r.petId) === activePetId,
-      )
-      .flatMap((r) =>
-        generateOverdueInstances(r, {
-          lookbackDays: OVERDUE_LOOKBACK_DAYS,
-          now: nowDate,
-        }),
-      );
-
-    const candidates = [...generated, ...storeReminders, ...vetReminders].filter(
-      (r) => r && String(r.petId) === activePetId,
-    );
-
     const index = buildResolutionIndex({
       wellnessLogs: wellnessQuery.data || [],
       weightLogs: weightQuery.data || [],
@@ -119,17 +109,20 @@ export function useTodayReminders({ now } = {}) {
       (dismissalsQuery.data || []).map((d) => d.instance_key),
     );
 
-    return selectOverdueReminders({
-      reminders: candidates,
+    return buildOverdueReminders({
+      routines,
+      vetReminders,
       index,
       dismissedKeys,
-      now: nowDate,
+      now: new Date(nowMs),
+      lookbackDays: OVERDUE_LOOKBACK_DAYS,
+      petId,
     });
   }, [
     activePetId,
-    now,
+    petId,
+    nowMs,
     routines,
-    storeReminders,
     vetReminders,
     wellnessQuery.data,
     weightQuery.data,

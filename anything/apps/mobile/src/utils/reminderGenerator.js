@@ -1297,6 +1297,9 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
       const effectiveStart = clampOverdueStart(windowStart, routine, item);
+      // Parity with the future generator: don't emit doses after the course ended.
+      const itemEnd = item.endDate ? new Date(item.endDate) : null;
+      const itemEndValid = itemEnd && !isNaN(itemEnd.getTime());
       let currentDate = startOfDay(effectiveStart);
 
       while (currentDate < now) {
@@ -1305,7 +1308,11 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
           const scheduledTime = new Date(currentDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-          if (scheduledTime < now && scheduledTime >= effectiveStart) {
+          if (
+            scheduledTime < now &&
+            scheduledTime >= effectiveStart &&
+            (!itemEndValid || scheduledTime <= itemEnd)
+          ) {
             const dateStr = currentDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,

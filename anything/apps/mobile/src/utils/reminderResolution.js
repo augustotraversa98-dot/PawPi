@@ -23,6 +23,7 @@
 //     reconciled here.
 
 import { toDateStr } from "./wellnessLog";
+import { generateOverdueInstances } from "./reminderGenerator";
 
 // Reminder types whose overdue instances persist across days / survive restart.
 export const PERSISTENT_TYPES = new Set([
@@ -157,4 +158,40 @@ export function selectOverdueReminders({
       new Date(a.scheduledAt ?? a.nextTriggerAt),
   );
   return overdue;
+}
+
+// Build the Overdue list DETERMINISTICALLY from the routines + vet reminders alone —
+// NOT from the mutable in-memory reminders store. A missed instance is re-derived
+// from its routine on every call (generateOverdueInstances), so unrelated store
+// activity (a future-reminder regeneration, a status flip, a notification sync) can
+// never remove it; it persists until a DB log resolves it or it is dismissed. `now`
+// is injected so the caller can make it reactive (tick) and tests can pin it.
+export function buildOverdueReminders({
+  routines = [],
+  vetReminders = [],
+  index,
+  dismissedKeys = new Set(),
+  now = new Date(),
+  lookbackDays = 30,
+  petId = null,
+}) {
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const activePetId = petId != null ? String(petId) : null;
+  const matchesPet = (r) =>
+    activePetId == null || String(r?.petId) === activePetId;
+
+  const generated = (routines || [])
+    .filter((r) => r && r.isActive && matchesPet(r))
+    .flatMap((r) =>
+      generateOverdueInstances(r, { lookbackDays, now: nowDate }),
+    );
+
+  const candidates = [...generated, ...(vetReminders || [])].filter(matchesPet);
+
+  return selectOverdueReminders({
+    reminders: candidates,
+    index,
+    dismissedKeys,
+    now: nowDate,
+  });
 }

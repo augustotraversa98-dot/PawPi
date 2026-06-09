@@ -2,10 +2,12 @@ import {
   buildResolutionIndex,
   isInstanceResolved,
   selectOverdueReminders,
+  buildOverdueReminders,
   instanceKey,
   PERSISTENT_TYPES,
 } from "./reminderResolution";
 import { toDateStr } from "./wellnessLog";
+import { ROUTINE_TYPES } from "../data/routinesData";
 
 // Pure tests for the resolution layer — "is this scheduled instance already done?"
 // and the Overdue selection. No React, no fetch: feed it rows + reminders, read the
@@ -195,6 +197,137 @@ describe("selectOverdueReminders", () => {
       now: NOW,
     });
     expect(overdue.map((r) => r.id)).toEqual(["new", "old"]);
+  });
+});
+
+describe("buildOverdueReminders — deterministic, store-independent (regression for the disappearing-medication bug)", () => {
+  // Medication routine created today at 07:00 with a dose at 08:00 that has passed.
+  const routine = {
+    id: "100",
+    petId: "42",
+    isActive: true,
+    notificationEnabled: true,
+    type: ROUTINE_TYPES.MEDICAL_CARE,
+    createdAt: new Date(2026, 5, 10, 7, 0, 0).toISOString(),
+    medicalCareItems: [
+      { id: "med1", type: "medication", name: "Rimadyl", times: ["08:00"] },
+    ],
+  };
+  const t1 = new Date(2026, 5, 10, 9, 0, 0); // 09:00, dose passed
+  const t2 = new Date(2026, 5, 10, 9, 30, 0); // 30 min later
+
+  it("derives the passed dose from the routine alone — no reminders store involved", () => {
+    const overdue = buildOverdueReminders({
+      routines: [routine],
+      index: buildResolutionIndex({}),
+      now: t1,
+      petId: "42",
+    });
+    expect(overdue).toHaveLength(1);
+    expect(overdue[0].type).toBe("medical_care");
+    expect(overdue[0].medicalCareItemId).toBe("med1");
+  });
+
+  it("KEEPS the instance across a recompute with UNCHANGED routines and an advanced clock", () => {
+    // This is the core regression: nothing about the in-memory store or refetch
+    // timing can remove it — re-deriving from the same routine yields it again.
+    const first = buildOverdueReminders({
+      routines: [routine],
+      index: buildResolutionIndex({}),
+      now: t1,
+      petId: "42",
+    });
+    const second = buildOverdueReminders({
+      routines: [routine],
+      index: buildResolutionIndex({}),
+      now: t2,
+      petId: "42",
+    });
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    expect(second[0].id).toBe(first[0].id);
+  });
+
+  it("a routine created just now (dose still future) yields nothing", () => {
+    const fresh = {
+      ...routine,
+      createdAt: t1.toISOString(),
+      medicalCareItems: [
+        { id: "med1", type: "medication", times: ["09:05"] }, // 5 min in the future
+      ],
+    };
+    expect(
+      buildOverdueReminders({
+        routines: [fresh],
+        index: buildResolutionIndex({}),
+        now: t1,
+        petId: "42",
+      }),
+    ).toEqual([]);
+  });
+
+  it("clears ONLY via an exact-day medical log", () => {
+    const index = buildResolutionIndex({
+      medicalLogs: [
+        {
+          routine_id: 100,
+          medical_care_item_id: "med1",
+          given_at: new Date(2026, 5, 10, 8, 0, 0).toISOString(),
+        },
+      ],
+    });
+    expect(
+      buildOverdueReminders({ routines: [routine], index, now: t2, petId: "42" }),
+    ).toEqual([]);
+  });
+
+  it("clears via a dismissal of the instance id", () => {
+    const [item] = buildOverdueReminders({
+      routines: [routine],
+      index: buildResolutionIndex({}),
+      now: t1,
+      petId: "42",
+    });
+    expect(
+      buildOverdueReminders({
+        routines: [routine],
+        index: buildResolutionIndex({}),
+        dismissedKeys: new Set([item.id]),
+        now: t2,
+        petId: "42",
+      }),
+    ).toEqual([]);
+  });
+
+  it("is scoped to the active pet and includes past vet reminders", () => {
+    const vet = {
+      id: "vet_apt_7",
+      type: "vet_appointment",
+      petId: "42",
+      scheduledAt: new Date(2026, 5, 9, 14, 0, 0).toISOString(),
+    };
+    const overdue = buildOverdueReminders({
+      routines: [routine],
+      vetReminders: [vet],
+      index: buildResolutionIndex({}),
+      now: t2,
+      petId: "42",
+    });
+    expect(overdue.map((r) => r.type).sort()).toEqual([
+      "medical_care",
+      "vet_appointment",
+    ]);
+
+    // A different pet sees none of pet 42's items.
+    expect(
+      buildOverdueReminders({
+        routines: [routine],
+        vetReminders: [vet],
+        index: buildResolutionIndex({}),
+        now: t2,
+        petId: "99",
+      }),
+    ).toEqual([]);
   });
 });
 
