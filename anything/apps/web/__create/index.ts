@@ -97,6 +97,20 @@ if (process.env.AUTH_SECRET) {
       // and throw UnknownAction. (On the Anything platform AUTH_URL carried the
       // /api/auth path, masking this.)
       basePath: '/api/auth',
+      // Derive the auth origin from the incoming request host instead of a fixed
+      // AUTH_URL. AUTH_URL is intentionally unset off-platform: with it set,
+      // @hono/auth-js's reqWithEnvUrl rewrites every request's origin to AUTH_URL,
+      // so a device authenticating against the LAN host (192.168.x.x:4000) got a
+      // post-login redirect to http://localhost:4000/... — unreachable on the
+      // phone (iOS -1004). With AUTH_URL unset, the origin follows the request's
+      // host/x-forwarded-host header (the WebView sends the LAN host), so the
+      // redirect lands back on the same origin the WebView can reach and the
+      // ${baseURL}/api/auth/token interception matches. trustHost must be pinned
+      // explicitly: setEnvDefaults only auto-enables it when AUTH_URL (or
+      // VERCEL/CF_PAGES/non-prod NODE_ENV) is present, which it no longer is.
+      // Keeping basePath pinned (not AUTH_URL) is also what clears the
+      // env-url-basepath-redundant warning, which only fires when both are set.
+      trustHost: true,
       pages: {
         signIn: '/account/signin',
         signOut: '/account/logout',
