@@ -30,6 +30,7 @@ import VetAppointmentCountdownCard from "./VetAppointmentCountdownCard";
 import SnoozeModal from "./Reminders/SnoozeModal";
 import PhotoCheckCaptureModal from "./PhotoCheck/PhotoCheckCaptureModal";
 import MedicalCareIssueModal from "./Reminders/MedicalCareIssueModal";
+import WellnessLogModal from "./WellnessCheck/WellnessLogModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 
 const C = {
@@ -69,15 +70,8 @@ export default function HealthToday() {
   const [photoCheckReminder, setPhotoCheckReminder] = useState(null);
   const [issueModalVisible, setIssueModalVisible] = useState(false);
   const [issueReminder, setIssueReminder] = useState(null);
-  const [weightModalVisible, setWeightModalVisible] = useState(false);
-  const [weightReminder, setWeightReminder] = useState(null);
-  const [mobilityModalVisible, setMobilityModalVisible] = useState(false);
-  const [mobilityReminder, setMobilityReminder] = useState(null);
-  const [moodEnergyModalVisible, setMoodEnergyModalVisible] = useState(false);
-  const [moodEnergyReminder, setMoodEnergyReminder] = useState(null);
-  const [generalCheckModalVisible, setGeneralCheckModalVisible] =
-    useState(false);
-  const [generalCheckReminder, setGeneralCheckReminder] = useState(null);
+  // One config-driven modal handles every wellness check type.
+  const [wellnessReminder, setWellnessReminder] = useState(null);
 
   // Auto-refresh countdown every minute
   useEffect(() => {
@@ -185,9 +179,22 @@ export default function HealthToday() {
       return;
     }
 
+    // Wellness check: open the config-driven log modal. Persistence and
+    // completion happen on save, so this stays a no-op until then.
+    if (reminder.type === REMINDER_TYPES.WELLNESS_CHECK) {
+      setWellnessReminder(reminder);
+      return;
+    }
+
     // For other types, mark as complete immediately
     completeReminder(reminder.id);
     Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
+  };
+
+  // Wellness save succeeded: complete ONLY this reminder instance.
+  const handleWellnessSaved = (reminderId) => {
+    completeReminder(reminderId);
+    Alert.alert("✅ Saved", `${wellnessReminder?.title || "Entry"} logged`);
   };
 
   const handleSomethingOff = (reminder) => {
@@ -686,6 +693,14 @@ export default function HealthToday() {
           setIssueReminder(null);
         }}
         onSubmit={handleIssueSubmit}
+      />
+
+      {/* Wellness Check Log Modal (config-driven, all check types) */}
+      <WellnessLogModal
+        visible={!!wellnessReminder}
+        reminder={wellnessReminder}
+        onClose={() => setWellnessReminder(null)}
+        onSaved={handleWellnessSaved}
       />
     </View>
   );

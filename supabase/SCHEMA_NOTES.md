@@ -4,7 +4,9 @@
 
 The earlier version of this file documented *guesses* from a code-only reconstruction. Those guesses have now been confirmed or corrected against the dump — see "Previously-flagged uncertainties: RESOLVED" below.
 
-Migration order: `0001_auth` → `0002_user_profiles` → `0003_pets` → `0004_social` → `0005_vet_records` → `0006_routines` → `0007_social_walks` → `0008_health_logs`. All use `IF NOT EXISTS`, so the set is re-runnable.
+Migration order: `0001_auth` → `0002_user_profiles` → `0003_pets` → `0004_social` → `0005_vet_records` → `0006_routines` → `0007_social_walks` → `0008_health_logs` → `0009_backfill_double_encoded_jsonb` → `0010_wellness_general_check_type`. The DDL set (0001–0008) uses `IF NOT EXISTS`; 0009 (data backfill) and 0010 (constraint widen, drop-if-exists then re-add) are likewise re-runnable.
+
+> **0010** widens `health_wellness_logs.check_type` to also allow `'general'` (Ticket 7 wellness-log slice) so a "General check" lands in `health_wellness_logs` with the same `routine_id` + `wellness_check_item_index` linkage as the other wellness checks. Weight intentionally stays on `health_weight_logs` (Insights path) and is **not** in this constraint. `supabase_schema.sql` (line ~574) was updated to match.
 
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
