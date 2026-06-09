@@ -1,15 +1,7 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  TextInput,
-  Alert,
-} from "react-native";
-import { X, Plus, Check } from "lucide-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import { Check } from "lucide-react-native";
+import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import useRemindersStore from "@/store/remindersStore";
 import {
   REMINDER_TYPES,
@@ -51,7 +43,6 @@ const BODY_AREA_LABELS = {
 };
 
 export default function ReminderCreationModal({ visible, onClose }) {
-  const insets = useSafeAreaInsets();
   const { addReminder } = useRemindersStore();
 
   const [selectedType, setSelectedType] = useState(null);
@@ -142,158 +133,75 @@ export default function ReminderCreationModal({ visible, onClose }) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
-      <View
-        style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
+    <KeyboardSafeFormModal
+      visible={visible}
+      onClose={handleClose}
+      title="Create Reminder"
+      ctaLabel="Create Reminder"
+      ctaColor={C.coral}
+      onCtaPress={handleCreate}
+      backgroundColor={C.cream}
+    >
+      {/* Type Selection */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
       >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            Create Reminder
-          </Text>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: C.sand,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <X size={18} color={C.mutedBrown} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            padding: 20,
-            paddingBottom: insets.bottom + 100,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Type Selection */}
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Reminder Type *
-          </Text>
-          <View style={{ gap: 10, marginBottom: 24 }}>
-            {Object.entries(REMINDER_TYPE_CONFIG).map(([type, config]) => {
-              const isSelected = selectedType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => {
-                    setSelectedType(type);
-                    // Auto-fill defaults
-                    if (!title) setTitle(config.label);
-                    if (type === REMINDER_TYPES.PHOTO_CHECK && !bodyArea) {
-                      setBodyArea(PHOTO_CHECK_AREAS.PAWS);
-                      setRepeatRule(
-                        DEFAULT_PHOTO_FREQUENCIES[PHOTO_CHECK_AREAS.PAWS],
-                      );
-                    }
-                  }}
-                  style={{
-                    backgroundColor: isSelected ? config.color + "15" : C.card,
-                    borderRadius: 14,
-                    padding: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1.5,
-                    borderColor: isSelected ? config.color : C.peach,
-                  }}
-                >
-                  <Text style={{ fontSize: 24, marginRight: 12 }}>
-                    {config.icon}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: isSelected ? "700" : "600",
-                      color: C.warmBrown,
-                      flex: 1,
-                    }}
-                  >
-                    {config.label}
-                  </Text>
-                  {isSelected && <Check size={18} color={config.color} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Photo Check Body Area (conditional) */}
-          {selectedType === REMINDER_TYPES.PHOTO_CHECK && (
-            <>
+        Reminder Type *
+      </Text>
+      <View style={{ gap: 10, marginBottom: 24 }}>
+        {Object.entries(REMINDER_TYPE_CONFIG).map(([type, config]) => {
+          const isSelected = selectedType === type;
+          return (
+            <TouchableOpacity
+              key={type}
+              onPress={() => {
+                setSelectedType(type);
+                // Auto-fill defaults
+                if (!title) setTitle(config.label);
+                if (type === REMINDER_TYPES.PHOTO_CHECK && !bodyArea) {
+                  setBodyArea(PHOTO_CHECK_AREAS.PAWS);
+                  setRepeatRule(
+                    DEFAULT_PHOTO_FREQUENCIES[PHOTO_CHECK_AREAS.PAWS],
+                  );
+                }
+              }}
+              style={{
+                backgroundColor: isSelected ? config.color + "15" : C.card,
+                borderRadius: 14,
+                padding: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1.5,
+                borderColor: isSelected ? config.color : C.peach,
+              }}
+            >
+              <Text style={{ fontSize: 24, marginRight: 12 }}>
+                {config.icon}
+              </Text>
               <Text
                 style={{
                   fontSize: 15,
-                  fontWeight: "700",
+                  fontWeight: isSelected ? "700" : "600",
                   color: C.warmBrown,
-                  marginBottom: 12,
+                  flex: 1,
                 }}
               >
-                Body Area *
+                {config.label}
               </Text>
-              <View style={{ gap: 10, marginBottom: 24 }}>
-                {Object.entries(BODY_AREA_LABELS).map(([area, label]) => {
-                  const isSelected = bodyArea === area;
-                  return (
-                    <TouchableOpacity
-                      key={area}
-                      onPress={() => {
-                        setBodyArea(area);
-                        setRepeatRule(DEFAULT_PHOTO_FREQUENCIES[area]);
-                        setTitle(`${label} photo check`);
-                      }}
-                      style={{
-                        backgroundColor: isSelected ? C.coral + "15" : C.card,
-                        borderRadius: 12,
-                        padding: 12,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        borderWidth: 1.5,
-                        borderColor: isSelected ? C.coral : C.peach,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: isSelected ? "700" : "600",
-                          color: C.warmBrown,
-                          flex: 1,
-                        }}
-                      >
-                        {label}
-                      </Text>
-                      {isSelected && <Check size={16} color={C.coral} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
+              {isSelected && <Check size={18} color={config.color} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-          {/* Title */}
+      {/* Photo Check Body Area (conditional) */}
+      {selectedType === REMINDER_TYPES.PHOTO_CHECK && (
+        <>
           <Text
             style={{
               fontSize: 15,
@@ -302,111 +210,27 @@ export default function ReminderCreationModal({ visible, onClose }) {
               marginBottom: 12,
             }}
           >
-            Title *
-          </Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g., Dinner time"
-            placeholderTextColor={C.mutedBrown}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 15,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 24,
-            }}
-          />
-
-          {/* Description */}
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Description
-          </Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Add more details..."
-            placeholderTextColor={C.mutedBrown}
-            multiline
-            numberOfLines={3}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 14,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 24,
-              minHeight: 80,
-              textAlignVertical: "top",
-            }}
-          />
-
-          {/* Time */}
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Time
-          </Text>
-          <TextInput
-            value={selectedTime}
-            onChangeText={setSelectedTime}
-            placeholder="09:00"
-            placeholderTextColor={C.mutedBrown}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 15,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 24,
-            }}
-          />
-
-          {/* Repeat */}
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Repeat
+            Body Area *
           </Text>
           <View style={{ gap: 10, marginBottom: 24 }}>
-            {Object.entries(REPEAT_LABELS).map(([rule, label]) => {
-              const isSelected = repeatRule === rule;
+            {Object.entries(BODY_AREA_LABELS).map(([area, label]) => {
+              const isSelected = bodyArea === area;
               return (
                 <TouchableOpacity
-                  key={rule}
-                  onPress={() => setRepeatRule(rule)}
+                  key={area}
+                  onPress={() => {
+                    setBodyArea(area);
+                    setRepeatRule(DEFAULT_PHOTO_FREQUENCIES[area]);
+                    setTitle(`${label} photo check`);
+                  }}
                   style={{
-                    backgroundColor: isSelected ? C.sage + "15" : C.card,
+                    backgroundColor: isSelected ? C.coral + "15" : C.card,
                     borderRadius: 12,
                     padding: 12,
                     flexDirection: "row",
                     alignItems: "center",
                     borderWidth: 1.5,
-                    borderColor: isSelected ? C.sage : C.peach,
+                    borderColor: isSelected ? C.coral : C.peach,
                   }}
                 >
                   <Text
@@ -419,119 +243,221 @@ export default function ReminderCreationModal({ visible, onClose }) {
                   >
                     {label}
                   </Text>
-                  {isSelected && <Check size={16} color={C.sage} />}
+                  {isSelected && <Check size={16} color={C.coral} />}
                 </TouchableOpacity>
               );
             })}
           </View>
+        </>
+      )}
 
-          {/* Time-sensitive toggle */}
-          <TouchableOpacity
-            onPress={() => setTimeSensitive(!timeSensitive)}
-            style={{
-              backgroundColor: timeSensitive ? C.coral + "15" : C.card,
-              borderRadius: 12,
-              padding: 14,
-              flexDirection: "row",
-              alignItems: "center",
-              borderWidth: 1.5,
-              borderColor: timeSensitive ? C.coral : C.peach,
-              marginBottom: 24,
-            }}
-          >
-            <View style={{ flex: 1 }}>
+      {/* Title */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Title *
+      </Text>
+      <TextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder="e.g., Dinner time"
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 24,
+        }}
+      />
+
+      {/* Description */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Description
+      </Text>
+      <TextInput
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Add more details..."
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={3}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 24,
+          minHeight: 80,
+          textAlignVertical: "top",
+        }}
+      />
+
+      {/* Time */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Time
+      </Text>
+      <TextInput
+        value={selectedTime}
+        onChangeText={setSelectedTime}
+        placeholder="09:00"
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 24,
+        }}
+      />
+
+      {/* Repeat */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Repeat
+      </Text>
+      <View style={{ gap: 10, marginBottom: 24 }}>
+        {Object.entries(REPEAT_LABELS).map(([rule, label]) => {
+          const isSelected = repeatRule === rule;
+          return (
+            <TouchableOpacity
+              key={rule}
+              onPress={() => setRepeatRule(rule)}
+              style={{
+                backgroundColor: isSelected ? C.sage + "15" : C.card,
+                borderRadius: 12,
+                padding: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1.5,
+                borderColor: isSelected ? C.sage : C.peach,
+              }}
+            >
               <Text
                 style={{
                   fontSize: 14,
-                  fontWeight: "700",
+                  fontWeight: isSelected ? "700" : "600",
                   color: C.warmBrown,
-                  marginBottom: 2,
+                  flex: 1,
                 }}
               >
-                Time-sensitive reminder
+                {label}
               </Text>
-              <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                Show prominent countdown and notifications
-              </Text>
-            </View>
-            <View
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: timeSensitive ? C.coral : C.sand,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: timeSensitive ? 0 : 1,
-                borderColor: C.peach,
-              }}
-            >
-              {timeSensitive && <Check size={14} color="#FFF" />}
-            </View>
-          </TouchableOpacity>
+              {isSelected && <Check size={16} color={C.sage} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-          {/* Notes */}
+      {/* Time-sensitive toggle */}
+      <TouchableOpacity
+        onPress={() => setTimeSensitive(!timeSensitive)}
+        style={{
+          backgroundColor: timeSensitive ? C.coral + "15" : C.card,
+          borderRadius: 12,
+          padding: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          borderWidth: 1.5,
+          borderColor: timeSensitive ? C.coral : C.peach,
+          marginBottom: 24,
+        }}
+      >
+        <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: "700",
               color: C.warmBrown,
-              marginBottom: 12,
+              marginBottom: 2,
             }}
           >
-            Notes
+            Time-sensitive reminder
           </Text>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Optional notes..."
-            placeholderTextColor={C.mutedBrown}
-            multiline
-            numberOfLines={2}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 14,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              minHeight: 60,
-              textAlignVertical: "top",
-            }}
-          />
-        </ScrollView>
-
-        {/* Bottom Actions */}
+          <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+            Show prominent countdown and notifications
+          </Text>
+        </View>
         <View
           style={{
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            paddingBottom: insets.bottom + 16,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.card,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: timeSensitive ? C.coral : C.sand,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: timeSensitive ? 0 : 1,
+            borderColor: C.peach,
           }}
         >
-          <TouchableOpacity
-            onPress={handleCreate}
-            style={{
-              backgroundColor: C.coral,
-              borderRadius: 14,
-              paddingVertical: 14,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <Plus size={18} color="#FFF" />
-            <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>
-              Create Reminder
-            </Text>
-          </TouchableOpacity>
+          {timeSensitive && <Check size={14} color="#FFF" />}
         </View>
-      </View>
-    </Modal>
+      </TouchableOpacity>
+
+      {/* Notes */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Notes
+      </Text>
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Optional notes..."
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={2}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          minHeight: 60,
+          textAlignVertical: "top",
+        }}
+      />
+    </KeyboardSafeFormModal>
   );
 }

@@ -9,6 +9,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   X,
@@ -283,8 +285,9 @@ export default function VomitTrackerModal({ visible, onClose }) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View
+      <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -323,6 +326,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Loading State */}
           {isSaving && (
@@ -1023,7 +1027,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
             </View>
           )}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

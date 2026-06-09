@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   X,
@@ -205,12 +206,13 @@ export default function MedicationModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View
+      <KeyboardAvoidingView
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "flex-end",
         }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View
           style={{
@@ -340,6 +342,7 @@ export default function MedicationModal({
             ref={scrollViewRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* MEDICATIONS TAB */}
@@ -1150,6 +1153,7 @@ export default function MedicationModal({
                         <ScrollView
                           horizontal
                           showsHorizontalScrollIndicator={false}
+                          keyboardShouldPersistTaps="handled"
                           style={{ marginTop: 8 }}
                           contentContainerStyle={{ gap: 8 }}
                         >
@@ -1465,7 +1469,7 @@ export default function MedicationModal({
             )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

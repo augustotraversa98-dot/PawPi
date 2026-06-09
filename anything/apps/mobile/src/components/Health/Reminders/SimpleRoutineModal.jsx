@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Modal,
-  TextInput,
-  Switch,
-} from "react-native";
-import { X } from "lucide-react-native";
+import { View, Text, TouchableOpacity, TextInput, Switch } from "react-native";
+import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import {
   ROUTINE_TYPES,
   ROUTINE_FREQUENCY,
@@ -106,275 +98,211 @@ export default function SimpleRoutineModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <KeyboardSafeFormModal
+      visible={visible}
+      onClose={onClose}
+      title={`${editingRoutine ? "Edit" : "Create"} ${config.label}`}
+      subtitle={config.description}
+      icon={config.icon}
+      ctaLabel={editingRoutine ? "Save Changes" : "Create Routine"}
+      ctaColor={config.color}
+      onCtaPress={handleSave}
+      backgroundColor={C.cream}
+    >
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Frequency
+      </Text>
+      <View style={{ gap: 8, marginBottom: 20 }}>
+        {getFrequencyOptions().map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            onPress={() => setFrequency(option.value)}
+            style={{
+              backgroundColor:
+                frequency === option.value ? config.color + "20" : C.card,
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1.5,
+              borderColor: frequency === option.value ? config.color : C.peach,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: frequency === option.value ? "700" : "600",
+                color: frequency === option.value ? config.color : C.warmBrown,
+              }}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {frequency === ROUTINE_FREQUENCY.WEEKLY && (
+        <>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Preferred Day
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 20,
+            }}
+          >
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+              (day, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setPreferredDay(index)}
+                  style={{
+                    width: 45,
+                    height: 45,
+                    borderRadius: 23,
+                    backgroundColor:
+                      preferredDay === index ? config.color : C.sand,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor:
+                      preferredDay === index ? config.color : C.peach,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: preferredDay === index ? "#FFF" : C.mutedBrown,
+                    }}
+                  >
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+          </View>
+        </>
+      )}
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Preferred Time
+      </Text>
+      <TextInput
+        value={preferredTime}
+        onChangeText={setPreferredTime}
+        placeholder="HH:MM"
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 16,
+        }}
+      >
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            marginBottom: 14,
           }}
         >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
-              {config.icon} {editingRoutine ? "Edit" : "Create"} {config.label}
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {config.description}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: C.warmBrown }}>
+            Reminder enabled
+          </Text>
+          <Switch
+            value={reminderEnabled}
+            onValueChange={setReminderEnabled}
+            trackColor={{ false: C.sand, true: C.sage + "60" }}
+            thumbColor={reminderEnabled ? C.sage : C.peach}
+          />
         </View>
-
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Frequency
-          </Text>
-          <View style={{ gap: 8, marginBottom: 20 }}>
-            {getFrequencyOptions().map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                onPress={() => setFrequency(option.value)}
-                style={{
-                  backgroundColor:
-                    frequency === option.value ? config.color + "20" : C.card,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1.5,
-                  borderColor:
-                    frequency === option.value ? config.color : C.peach,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: frequency === option.value ? "700" : "600",
-                    color:
-                      frequency === option.value ? config.color : C.warmBrown,
-                  }}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {frequency === ROUTINE_FREQUENCY.WEEKLY && (
-            <>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Preferred Day
-              </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  marginBottom: 20,
-                }}
-              >
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => setPreferredDay(index)}
-                      style={{
-                        width: 45,
-                        height: 45,
-                        borderRadius: 23,
-                        backgroundColor:
-                          preferredDay === index ? config.color : C.sand,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderWidth: 1,
-                        borderColor:
-                          preferredDay === index ? config.color : C.peach,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: "700",
-                          color: preferredDay === index ? "#FFF" : C.mutedBrown,
-                        }}
-                      >
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  ),
-                )}
-              </View>
-            </>
-          )}
-
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Preferred Time
-          </Text>
-          <TextInput
-            value={preferredTime}
-            onChangeText={setPreferredTime}
-            placeholder="HH:MM"
-            placeholderTextColor={C.mutedBrown}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 15,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 20,
-            }}
-          />
-
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 16,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 14,
-              }}
-            >
-              <Text
-                style={{ fontSize: 15, fontWeight: "600", color: C.warmBrown }}
-              >
-                Reminder enabled
-              </Text>
-              <Switch
-                value={reminderEnabled}
-                onValueChange={setReminderEnabled}
-                trackColor={{ false: C.sand, true: C.sage + "60" }}
-                thumbColor={reminderEnabled ? C.sage : C.peach}
-              />
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Text
-                style={{ fontSize: 15, fontWeight: "600", color: C.warmBrown }}
-              >
-                Time-sensitive
-              </Text>
-              <Switch
-                value={timeSensitive}
-                onValueChange={setTimeSensitive}
-                trackColor={{ false: C.sand, true: C.coral + "60" }}
-                thumbColor={timeSensitive ? C.coral : C.peach}
-              />
-            </View>
-          </View>
-
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Notes (optional)
-          </Text>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Any special notes..."
-            placeholderTextColor={C.mutedBrown}
-            multiline
-            numberOfLines={3}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 14,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              textAlignVertical: "top",
-              marginBottom: 24,
-            }}
-          />
-        </ScrollView>
-
         <View
           style={{
-            padding: 20,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity
-            onPress={handleSave}
-            style={{
-              backgroundColor: config.color,
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine ? "Save Changes" : "Create Routine"}
-            </Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: C.warmBrown }}>
+            Time-sensitive
+          </Text>
+          <Switch
+            value={timeSensitive}
+            onValueChange={setTimeSensitive}
+            trackColor={{ false: C.sand, true: C.coral + "60" }}
+            thumbColor={timeSensitive ? C.coral : C.peach}
+          />
         </View>
       </View>
-    </Modal>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        Notes (optional)
+      </Text>
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Any special notes..."
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={3}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          textAlignVertical: "top",
+          marginBottom: 24,
+        }}
+      />
+    </KeyboardSafeFormModal>
   );
 }

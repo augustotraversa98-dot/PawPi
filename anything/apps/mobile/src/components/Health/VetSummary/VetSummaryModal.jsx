@@ -7,6 +7,8 @@ import {
   Modal,
   TextInput,
   Switch,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   X,
@@ -862,8 +864,9 @@ export default function VetSummaryModal({ visible, onClose }) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View
+      <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -891,6 +894,7 @@ export default function VetSummaryModal({ visible, onClose }) {
             padding: 20,
             paddingBottom: insets.bottom + 100,
           }}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Instructions */}
           <View
@@ -947,7 +951,7 @@ export default function VetSummaryModal({ visible, onClose }) {
         </View>
 
         {renderPreview()}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -8,6 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { X, Check, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -164,8 +166,9 @@ export default function PostWalkFeedbackModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View
+      <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -211,6 +214,7 @@ export default function PostWalkFeedbackModal({
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Confirmation Screen */}
           {step === "confirmation" && (
@@ -733,7 +737,7 @@ export default function PostWalkFeedbackModal({
             </View>
           )}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

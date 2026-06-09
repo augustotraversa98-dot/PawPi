@@ -3,13 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
-  Modal,
   TextInput,
   Switch,
   Alert,
 } from "react-native";
-import { X, Check, ChevronDown, ChevronUp } from "lucide-react-native";
+import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
+import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const C = {
@@ -309,807 +308,720 @@ export default function PhotoCheckRoutineModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
+    <KeyboardSafeFormModal
+      visible={visible}
+      onClose={onClose}
+      title={`${editingRoutine ? "Edit" : "Create"} Photo Check`}
+      subtitle="Visual health monitoring"
+      icon="📸"
+      ctaLabel={editingRoutine ? "Save Changes" : "Create Routine"}
+      ctaColor="#4DB8E8"
+      onCtaPress={handleSave}
+      backgroundColor={C.cream}
+    >
+      {/* Body Areas - Multi-select */}
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 8,
+        }}
+      >
+        Body Areas
+      </Text>
+      <Text
+        style={{
+          fontSize: 13,
+          color: C.mutedBrown,
+          marginBottom: 12,
+        }}
+      >
+        Select one or more areas to track
+      </Text>
+      <View style={{ gap: 10, marginBottom: 24 }}>
+        {BODY_AREAS.map((area) => {
+          const isSelected = selectedBodyAreas.includes(area.value);
+          return (
+            <TouchableOpacity
+              key={area.value}
+              onPress={() => toggleBodyArea(area.value)}
               style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
+                backgroundColor: isSelected ? "#4DB8E8" + "20" : C.card,
+                borderRadius: 14,
+                padding: 16,
+                borderWidth: 1.5,
+                borderColor: isSelected ? "#4DB8E8" : C.peach,
+                flexDirection: "row",
+                alignItems: "center",
               }}
             >
-              📸 {editingRoutine ? "Edit" : "Create"} Photo Check
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              Visual health monitoring
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
-        </View>
+              {isSelected && (
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: "#4DB8E8",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 10,
+                  }}
+                >
+                  <Check size={14} color="#FFF" strokeWidth={3} />
+                </View>
+              )}
+              <Text style={{ fontSize: 28, marginRight: 12 }}>{area.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: isSelected ? "700" : "600",
+                    color: isSelected ? "#4DB8E8" : C.warmBrown,
+                  }}
+                >
+                  {area.label}
+                </Text>
+                <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+                  Recommended:{" "}
+                  {area.defaultFreq === ROUTINE_FREQUENCY.WEEKLY
+                    ? "Weekly"
+                    : area.defaultFreq === ROUTINE_FREQUENCY.BIWEEKLY
+                      ? "Every 2 weeks"
+                      : "Monthly"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-          {/* Body Areas - Multi-select */}
+      {/* Schedule Mode Selection */}
+      {selectedBodyAreas.length > 0 && (
+        <>
           <Text
             style={{
               fontSize: 15,
               fontWeight: "700",
               color: C.warmBrown,
-              marginBottom: 8,
-            }}
-          >
-            Body Areas
-          </Text>
-          <Text
-            style={{
-              fontSize: 13,
-              color: C.mutedBrown,
               marginBottom: 12,
             }}
           >
-            Select one or more areas to track
+            Schedule
           </Text>
-          <View style={{ gap: 10, marginBottom: 24 }}>
-            {BODY_AREAS.map((area) => {
-              const isSelected = selectedBodyAreas.includes(area.value);
-              return (
-                <TouchableOpacity
-                  key={area.value}
-                  onPress={() => toggleBodyArea(area.value)}
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            <TouchableOpacity
+              onPress={() => handleScheduleModeChange("same")}
+              style={{
+                backgroundColor:
+                  scheduleMode === "same" ? "#4DB8E8" + "20" : C.card,
+                borderRadius: 12,
+                padding: 14,
+                borderWidth: 1.5,
+                borderColor: scheduleMode === "same" ? "#4DB8E8" : C.peach,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: scheduleMode === "same" ? "700" : "600",
+                  color: scheduleMode === "same" ? "#4DB8E8" : C.warmBrown,
+                }}
+              >
+                Use same schedule for all selected areas
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleScheduleModeChange("custom")}
+              style={{
+                backgroundColor:
+                  scheduleMode === "custom" ? "#4DB8E8" + "20" : C.card,
+                borderRadius: 12,
+                padding: 14,
+                borderWidth: 1.5,
+                borderColor: scheduleMode === "custom" ? "#4DB8E8" : C.peach,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: scheduleMode === "custom" ? "700" : "600",
+                  color: scheduleMode === "custom" ? "#4DB8E8" : C.warmBrown,
+                }}
+              >
+                Customize per area
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Same Schedule for All */}
+      {selectedBodyAreas.length > 0 && scheduleMode === "same" && (
+        <>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Frequency
+          </Text>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            {[
+              { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
+              { value: ROUTINE_FREQUENCY.BIWEEKLY, label: "Every 2 weeks" },
+              { value: ROUTINE_FREQUENCY.MONTHLY, label: "Monthly" },
+            ].map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => setFrequency(option.value)}
+                style={{
+                  backgroundColor:
+                    frequency === option.value ? "#4DB8E8" + "20" : C.card,
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1.5,
+                  borderColor: frequency === option.value ? "#4DB8E8" : C.peach,
+                }}
+              >
+                <Text
                   style={{
-                    backgroundColor: isSelected ? "#4DB8E8" + "20" : C.card,
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: 1.5,
-                    borderColor: isSelected ? "#4DB8E8" : C.peach,
-                    flexDirection: "row",
-                    alignItems: "center",
+                    fontSize: 15,
+                    fontWeight: frequency === option.value ? "700" : "600",
+                    color: frequency === option.value ? "#4DB8E8" : C.warmBrown,
                   }}
                 >
-                  {isSelected && (
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        backgroundColor: "#4DB8E8",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 10,
-                      }}
-                    >
-                      <Check size={14} color="#FFF" strokeWidth={3} />
-                    </View>
-                  )}
-                  <Text style={{ fontSize: 28, marginRight: 12 }}>
-                    {area.icon}
-                  </Text>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: isSelected ? "700" : "600",
-                        color: isSelected ? "#4DB8E8" : C.warmBrown,
-                      }}
-                    >
-                      {area.label}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                      Recommended:{" "}
-                      {area.defaultFreq === ROUTINE_FREQUENCY.WEEKLY
-                        ? "Weekly"
-                        : area.defaultFreq === ROUTINE_FREQUENCY.BIWEEKLY
-                          ? "Every 2 weeks"
-                          : "Monthly"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* Schedule Mode Selection */}
-          {selectedBodyAreas.length > 0 && (
-            <>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Schedule
-              </Text>
-              <View style={{ gap: 8, marginBottom: 20 }}>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Preferred Day
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 20,
+            }}
+          >
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+              (day, index) => (
                 <TouchableOpacity
-                  onPress={() => handleScheduleModeChange("same")}
+                  key={index}
+                  onPress={() => setPreferredDay(index)}
                   style={{
+                    width: 45,
+                    height: 45,
+                    borderRadius: 23,
                     backgroundColor:
-                      scheduleMode === "same" ? "#4DB8E8" + "20" : C.card,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: scheduleMode === "same" ? "#4DB8E8" : C.peach,
+                      preferredDay === index ? "#4DB8E8" : C.sand,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: preferredDay === index ? "#4DB8E8" : C.peach,
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 15,
-                      fontWeight: scheduleMode === "same" ? "700" : "600",
-                      color: scheduleMode === "same" ? "#4DB8E8" : C.warmBrown,
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: preferredDay === index ? "#FFF" : C.mutedBrown,
                     }}
                   >
-                    Use same schedule for all selected areas
+                    {day}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleScheduleModeChange("custom")}
-                  style={{
-                    backgroundColor:
-                      scheduleMode === "custom" ? "#4DB8E8" + "20" : C.card,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor:
-                      scheduleMode === "custom" ? "#4DB8E8" : C.peach,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: scheduleMode === "custom" ? "700" : "600",
-                      color:
-                        scheduleMode === "custom" ? "#4DB8E8" : C.warmBrown,
-                    }}
-                  >
-                    Customize per area
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+              ),
+            )}
+          </View>
 
-          {/* Same Schedule for All */}
-          {selectedBodyAreas.length > 0 && scheduleMode === "same" && (
-            <>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Preferred Time
+          </Text>
+          <TextInput
+            value={preferredTime}
+            onChangeText={setPreferredTime}
+            placeholder="HH:MM"
+            placeholderTextColor={C.mutedBrown}
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 15,
+              color: C.warmBrown,
+              borderWidth: 1,
+              borderColor: C.peach,
+              marginBottom: 20,
+            }}
+          />
+
+          <View
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 16,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: C.peach,
+              marginBottom: 16,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
+              }}
+            >
               <Text
                 style={{
                   fontSize: 15,
-                  fontWeight: "700",
+                  fontWeight: "600",
                   color: C.warmBrown,
-                  marginBottom: 12,
                 }}
               >
-                Frequency
+                Reminder enabled
               </Text>
-              <View style={{ gap: 8, marginBottom: 20 }}>
-                {[
-                  { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-                  { value: ROUTINE_FREQUENCY.BIWEEKLY, label: "Every 2 weeks" },
-                  { value: ROUTINE_FREQUENCY.MONTHLY, label: "Monthly" },
-                ].map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => setFrequency(option.value)}
-                    style={{
-                      backgroundColor:
-                        frequency === option.value ? "#4DB8E8" + "20" : C.card,
-                      borderRadius: 12,
-                      padding: 14,
-                      borderWidth: 1.5,
-                      borderColor:
-                        frequency === option.value ? "#4DB8E8" : C.peach,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: frequency === option.value ? "700" : "600",
-                        color:
-                          frequency === option.value ? "#4DB8E8" : C.warmBrown,
-                      }}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
+              <Switch
+                value={reminderEnabled}
+                onValueChange={setReminderEnabled}
+                trackColor={{ false: C.sand, true: C.sage + "60" }}
+                thumbColor={reminderEnabled ? C.sage : C.peach}
+              />
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
               <Text
                 style={{
                   fontSize: 15,
-                  fontWeight: "700",
+                  fontWeight: "600",
                   color: C.warmBrown,
-                  marginBottom: 12,
                 }}
               >
-                Preferred Day
+                Time-sensitive
               </Text>
+              <Switch
+                value={timeSensitive}
+                onValueChange={setTimeSensitive}
+                trackColor={{ false: C.sand, true: C.coral + "60" }}
+                thumbColor={timeSensitive ? C.coral : C.peach}
+              />
+            </View>
+          </View>
+
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Notes (optional)
+          </Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="What to look for..."
+            placeholderTextColor={C.mutedBrown}
+            multiline
+            numberOfLines={3}
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 14,
+              color: C.warmBrown,
+              borderWidth: 1,
+              borderColor: C.peach,
+              textAlignVertical: "top",
+              marginBottom: 24,
+            }}
+          />
+        </>
+      )}
+
+      {/* Custom Schedule Per Area */}
+      {selectedBodyAreas.length > 0 && scheduleMode === "custom" && (
+        <>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            Custom Schedules
+          </Text>
+          {selectedBodyAreas.map((areaValue) => {
+            const area = BODY_AREAS.find((a) => a.value === areaValue);
+            const schedule = customSchedules[areaValue] || {
+              frequency: area?.defaultFreq || ROUTINE_FREQUENCY.WEEKLY,
+              preferredDay: 6,
+              preferredTime: "10:00",
+              reminderEnabled: true,
+              timeSensitive: false,
+              notes: "",
+            };
+            const isExpanded = expandedAreas[areaValue];
+
+            return (
               <View
+                key={areaValue}
                 style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  marginBottom: 20,
+                  backgroundColor: C.card,
+                  borderRadius: 14,
+                  padding: 16,
+                  borderWidth: 1.5,
+                  borderColor: C.peach,
+                  marginBottom: 12,
                 }}
               >
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => setPreferredDay(index)}
-                      style={{
-                        width: 45,
-                        height: 45,
-                        borderRadius: 23,
-                        backgroundColor:
-                          preferredDay === index ? "#4DB8E8" : C.sand,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderWidth: 1,
-                        borderColor:
-                          preferredDay === index ? "#4DB8E8" : C.peach,
-                      }}
-                    >
+                <TouchableOpacity
+                  onPress={() => toggleExpandArea(areaValue)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 24, marginRight: 10 }}>
+                      {area?.icon}
+                    </Text>
+                    <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          fontSize: 12,
+                          fontSize: 15,
                           fontWeight: "700",
-                          color: preferredDay === index ? "#FFF" : C.mutedBrown,
+                          color: C.warmBrown,
                         }}
                       >
-                        {day}
+                        {area?.label}
                       </Text>
-                    </TouchableOpacity>
-                  ),
-                )}
-              </View>
+                      <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+                        {schedule.frequency === ROUTINE_FREQUENCY.WEEKLY
+                          ? "Weekly"
+                          : schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY
+                            ? "Every 2 weeks"
+                            : "Monthly"}{" "}
+                        ·{" "}
+                        {
+                          ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                            schedule.preferredDay
+                          ]
+                        }{" "}
+                        at {schedule.preferredTime}
+                      </Text>
+                    </View>
+                  </View>
+                  {isExpanded ? (
+                    <ChevronUp size={20} color={C.mutedBrown} />
+                  ) : (
+                    <ChevronDown size={20} color={C.mutedBrown} />
+                  )}
+                </TouchableOpacity>
 
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Preferred Time
-              </Text>
-              <TextInput
-                value={preferredTime}
-                onChangeText={setPreferredTime}
-                placeholder="HH:MM"
-                placeholderTextColor={C.mutedBrown}
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 15,
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  marginBottom: 20,
-                }}
-              />
-
-              <View
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  marginBottom: 16,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 14,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "600",
-                      color: C.warmBrown,
-                    }}
-                  >
-                    Reminder enabled
-                  </Text>
-                  <Switch
-                    value={reminderEnabled}
-                    onValueChange={setReminderEnabled}
-                    trackColor={{ false: C.sand, true: C.sage + "60" }}
-                    thumbColor={reminderEnabled ? C.sage : C.peach}
-                  />
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "600",
-                      color: C.warmBrown,
-                    }}
-                  >
-                    Time-sensitive
-                  </Text>
-                  <Switch
-                    value={timeSensitive}
-                    onValueChange={setTimeSensitive}
-                    trackColor={{ false: C.sand, true: C.coral + "60" }}
-                    thumbColor={timeSensitive ? C.coral : C.peach}
-                  />
-                </View>
-              </View>
-
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Notes (optional)
-              </Text>
-              <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="What to look for..."
-                placeholderTextColor={C.mutedBrown}
-                multiline
-                numberOfLines={3}
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 14,
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  textAlignVertical: "top",
-                  marginBottom: 24,
-                }}
-              />
-            </>
-          )}
-
-          {/* Custom Schedule Per Area */}
-          {selectedBodyAreas.length > 0 && scheduleMode === "custom" && (
-            <>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Custom Schedules
-              </Text>
-              {selectedBodyAreas.map((areaValue) => {
-                const area = BODY_AREAS.find((a) => a.value === areaValue);
-                const schedule = customSchedules[areaValue] || {
-                  frequency: area?.defaultFreq || ROUTINE_FREQUENCY.WEEKLY,
-                  preferredDay: 6,
-                  preferredTime: "10:00",
-                  reminderEnabled: true,
-                  timeSensitive: false,
-                  notes: "",
-                };
-                const isExpanded = expandedAreas[areaValue];
-
-                return (
+                {isExpanded && (
                   <View
-                    key={areaValue}
                     style={{
-                      backgroundColor: C.card,
-                      borderRadius: 14,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: C.peach,
-                      marginBottom: 12,
+                      marginTop: 16,
+                      paddingTop: 16,
+                      borderTopWidth: 1,
+                      borderTopColor: C.peach,
                     }}
                   >
-                    <TouchableOpacity
-                      onPress={() => toggleExpandArea(areaValue)}
+                    {/* Frequency */}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: C.warmBrown,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Frequency
+                    </Text>
+                    <View style={{ gap: 6, marginBottom: 12 }}>
+                      {[
+                        {
+                          value: ROUTINE_FREQUENCY.WEEKLY,
+                          label: "Weekly",
+                        },
+                        {
+                          value: ROUTINE_FREQUENCY.BIWEEKLY,
+                          label: "Every 2 weeks",
+                        },
+                        {
+                          value: ROUTINE_FREQUENCY.MONTHLY,
+                          label: "Monthly",
+                        },
+                      ].map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() =>
+                            updateCustomSchedule(
+                              areaValue,
+                              "frequency",
+                              option.value,
+                            )
+                          }
+                          style={{
+                            backgroundColor:
+                              schedule.frequency === option.value
+                                ? "#4DB8E8" + "20"
+                                : C.sand,
+                            borderRadius: 10,
+                            padding: 10,
+                            borderWidth: 1,
+                            borderColor:
+                              schedule.frequency === option.value
+                                ? "#4DB8E8"
+                                : C.peach,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight:
+                                schedule.frequency === option.value
+                                  ? "700"
+                                  : "600",
+                              color:
+                                schedule.frequency === option.value
+                                  ? "#4DB8E8"
+                                  : C.warmBrown,
+                            }}
+                          >
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {/* Day */}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: C.warmBrown,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Preferred Day
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 6,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (day, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            onPress={() =>
+                              updateCustomSchedule(
+                                areaValue,
+                                "preferredDay",
+                                index,
+                              )
+                            }
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor:
+                                schedule.preferredDay === index
+                                  ? "#4DB8E8"
+                                  : C.sand,
+                              justifyContent: "center",
+                              alignItems: "center",
+                              borderWidth: 1,
+                              borderColor:
+                                schedule.preferredDay === index
+                                  ? "#4DB8E8"
+                                  : C.peach,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: "700",
+                                color:
+                                  schedule.preferredDay === index
+                                    ? "#FFF"
+                                    : C.mutedBrown,
+                              }}
+                            >
+                              {day}
+                            </Text>
+                          </TouchableOpacity>
+                        ),
+                      )}
+                    </View>
+
+                    {/* Time */}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: C.warmBrown,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Preferred Time
+                    </Text>
+                    <TextInput
+                      value={schedule.preferredTime}
+                      onChangeText={(val) =>
+                        updateCustomSchedule(areaValue, "preferredTime", val)
+                      }
+                      placeholder="HH:MM"
+                      placeholderTextColor={C.mutedBrown}
+                      style={{
+                        backgroundColor: C.sand,
+                        borderRadius: 10,
+                        padding: 10,
+                        fontSize: 14,
+                        color: C.warmBrown,
+                        borderWidth: 1,
+                        borderColor: C.peach,
+                        marginBottom: 12,
+                      }}
+                    />
+
+                    {/* Toggles */}
+                    <View
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "space-between",
+                        marginBottom: 8,
                       }}
                     >
-                      <View
+                      <Text
                         style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          flex: 1,
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: C.warmBrown,
                         }}
                       >
-                        <Text style={{ fontSize: 24, marginRight: 10 }}>
-                          {area?.icon}
-                        </Text>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontSize: 15,
-                              fontWeight: "700",
-                              color: C.warmBrown,
-                            }}
-                          >
-                            {area?.label}
-                          </Text>
-                          <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                            {schedule.frequency === ROUTINE_FREQUENCY.WEEKLY
-                              ? "Weekly"
-                              : schedule.frequency ===
-                                  ROUTINE_FREQUENCY.BIWEEKLY
-                                ? "Every 2 weeks"
-                                : "Monthly"}{" "}
-                            ·{" "}
-                            {
-                              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                                schedule.preferredDay
-                              ]
-                            }{" "}
-                            at {schedule.preferredTime}
-                          </Text>
-                        </View>
-                      </View>
-                      {isExpanded ? (
-                        <ChevronUp size={20} color={C.mutedBrown} />
-                      ) : (
-                        <ChevronDown size={20} color={C.mutedBrown} />
-                      )}
-                    </TouchableOpacity>
-
-                    {isExpanded && (
-                      <View
+                        Reminder enabled
+                      </Text>
+                      <Switch
+                        value={schedule.reminderEnabled}
+                        onValueChange={(val) =>
+                          updateCustomSchedule(
+                            areaValue,
+                            "reminderEnabled",
+                            val,
+                          )
+                        }
+                        trackColor={{ false: C.sand, true: C.sage + "60" }}
+                        thumbColor={schedule.reminderEnabled ? C.sage : C.peach}
+                      />
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text
                         style={{
-                          marginTop: 16,
-                          paddingTop: 16,
-                          borderTopWidth: 1,
-                          borderTopColor: C.peach,
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: C.warmBrown,
                         }}
                       >
-                        {/* Frequency */}
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Frequency
-                        </Text>
-                        <View style={{ gap: 6, marginBottom: 12 }}>
-                          {[
-                            {
-                              value: ROUTINE_FREQUENCY.WEEKLY,
-                              label: "Weekly",
-                            },
-                            {
-                              value: ROUTINE_FREQUENCY.BIWEEKLY,
-                              label: "Every 2 weeks",
-                            },
-                            {
-                              value: ROUTINE_FREQUENCY.MONTHLY,
-                              label: "Monthly",
-                            },
-                          ].map((option) => (
-                            <TouchableOpacity
-                              key={option.value}
-                              onPress={() =>
-                                updateCustomSchedule(
-                                  areaValue,
-                                  "frequency",
-                                  option.value,
-                                )
-                              }
-                              style={{
-                                backgroundColor:
-                                  schedule.frequency === option.value
-                                    ? "#4DB8E8" + "20"
-                                    : C.sand,
-                                borderRadius: 10,
-                                padding: 10,
-                                borderWidth: 1,
-                                borderColor:
-                                  schedule.frequency === option.value
-                                    ? "#4DB8E8"
-                                    : C.peach,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight:
-                                    schedule.frequency === option.value
-                                      ? "700"
-                                      : "600",
-                                  color:
-                                    schedule.frequency === option.value
-                                      ? "#4DB8E8"
-                                      : C.warmBrown,
-                                }}
-                              >
-                                {option.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
+                        Time-sensitive
+                      </Text>
+                      <Switch
+                        value={schedule.timeSensitive}
+                        onValueChange={(val) =>
+                          updateCustomSchedule(areaValue, "timeSensitive", val)
+                        }
+                        trackColor={{ false: C.sand, true: C.coral + "60" }}
+                        thumbColor={schedule.timeSensitive ? C.coral : C.peach}
+                      />
+                    </View>
 
-                        {/* Day */}
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Preferred Day
-                        </Text>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 6,
-                            marginBottom: 12,
-                          }}
-                        >
-                          {[
-                            "Sun",
-                            "Mon",
-                            "Tue",
-                            "Wed",
-                            "Thu",
-                            "Fri",
-                            "Sat",
-                          ].map((day, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              onPress={() =>
-                                updateCustomSchedule(
-                                  areaValue,
-                                  "preferredDay",
-                                  index,
-                                )
-                              }
-                              style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                backgroundColor:
-                                  schedule.preferredDay === index
-                                    ? "#4DB8E8"
-                                    : C.sand,
-                                justifyContent: "center",
-                                alignItems: "center",
-                                borderWidth: 1,
-                                borderColor:
-                                  schedule.preferredDay === index
-                                    ? "#4DB8E8"
-                                    : C.peach,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: "700",
-                                  color:
-                                    schedule.preferredDay === index
-                                      ? "#FFF"
-                                      : C.mutedBrown,
-                                }}
-                              >
-                                {day}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-
-                        {/* Time */}
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Preferred Time
-                        </Text>
-                        <TextInput
-                          value={schedule.preferredTime}
-                          onChangeText={(val) =>
-                            updateCustomSchedule(
-                              areaValue,
-                              "preferredTime",
-                              val,
-                            )
-                          }
-                          placeholder="HH:MM"
-                          placeholderTextColor={C.mutedBrown}
-                          style={{
-                            backgroundColor: C.sand,
-                            borderRadius: 10,
-                            padding: 10,
-                            fontSize: 14,
-                            color: C.warmBrown,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                            marginBottom: 12,
-                          }}
-                        />
-
-                        {/* Toggles */}
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            marginBottom: 8,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              fontWeight: "600",
-                              color: C.warmBrown,
-                            }}
-                          >
-                            Reminder enabled
-                          </Text>
-                          <Switch
-                            value={schedule.reminderEnabled}
-                            onValueChange={(val) =>
-                              updateCustomSchedule(
-                                areaValue,
-                                "reminderEnabled",
-                                val,
-                              )
-                            }
-                            trackColor={{ false: C.sand, true: C.sage + "60" }}
-                            thumbColor={
-                              schedule.reminderEnabled ? C.sage : C.peach
-                            }
-                          />
-                        </View>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            marginBottom: 8,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              fontWeight: "600",
-                              color: C.warmBrown,
-                            }}
-                          >
-                            Time-sensitive
-                          </Text>
-                          <Switch
-                            value={schedule.timeSensitive}
-                            onValueChange={(val) =>
-                              updateCustomSchedule(
-                                areaValue,
-                                "timeSensitive",
-                                val,
-                              )
-                            }
-                            trackColor={{ false: C.sand, true: C.coral + "60" }}
-                            thumbColor={
-                              schedule.timeSensitive ? C.coral : C.peach
-                            }
-                          />
-                        </View>
-
-                        {/* Notes */}
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Notes (optional)
-                        </Text>
-                        <TextInput
-                          value={schedule.notes}
-                          onChangeText={(val) =>
-                            updateCustomSchedule(areaValue, "notes", val)
-                          }
-                          placeholder="What to look for..."
-                          placeholderTextColor={C.mutedBrown}
-                          multiline
-                          numberOfLines={2}
-                          style={{
-                            backgroundColor: C.sand,
-                            borderRadius: 10,
-                            padding: 10,
-                            fontSize: 13,
-                            color: C.warmBrown,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                            textAlignVertical: "top",
-                          }}
-                        />
-                      </View>
-                    )}
+                    {/* Notes */}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: C.warmBrown,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Notes (optional)
+                    </Text>
+                    <TextInput
+                      value={schedule.notes}
+                      onChangeText={(val) =>
+                        updateCustomSchedule(areaValue, "notes", val)
+                      }
+                      placeholder="What to look for..."
+                      placeholderTextColor={C.mutedBrown}
+                      multiline
+                      numberOfLines={2}
+                      style={{
+                        backgroundColor: C.sand,
+                        borderRadius: 10,
+                        padding: 10,
+                        fontSize: 13,
+                        color: C.warmBrown,
+                        borderWidth: 1,
+                        borderColor: C.peach,
+                        textAlignVertical: "top",
+                      }}
+                    />
                   </View>
-                );
-              })}
-            </>
-          )}
-        </ScrollView>
-
-        {/* Save Button */}
-        <View
-          style={{
-            padding: 20,
-            paddingBottom: 30,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleSave}
-            style={{
-              backgroundColor: "#4DB8E8",
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine ? "Save Changes" : "Create Routine"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+                )}
+              </View>
+            );
+          })}
+        </>
+      )}
+    </KeyboardSafeFormModal>
   );
 }
