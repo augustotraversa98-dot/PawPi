@@ -221,44 +221,35 @@ describe("generateRemindersFromRoutine — vet appointment", () => {
 });
 
 // ===========================================================================
-// KNOWN BUG — wellness check is never generated.
+// Wellness check — now wired into the dispatcher.
 //
-// `generateRemindersFromRoutine`'s switch (reminderGenerator.js) has NO
-// `case ROUTINE_TYPES.WELLNESS_CHECK`, so `generateWellnessCheckReminders` is
-// dead code and a wellness routine falls through to `default → return []`.
-// This is a standing bug since the original Anything import (b761542) — NOT
-// intended behavior. The field-name read inside the helper is already correct
-// (`routine.wellnessCheckItems`), so the only fix needed is a one-line dispatcher
-// wire; tracked as a separate ticket.
-//
-// This is written as test.failing (Jest >= 29.6): it asserts the CORRECT
-// post-fix contract, so it runs GREEN today (the assertions throw against the
-// buggy []), and flips RED the moment the dispatcher is wired — forcing whoever
-// fixes it to convert this to a normal `it(...)`. We deliberately do NOT assert
-// `[]` as correct current behavior.
+// `generateRemindersFromRoutine`'s switch previously had NO
+// `case ROUTINE_TYPES.WELLNESS_CHECK`, so `generateWellnessCheckReminders` was
+// dead code and a wellness routine fell through to `default → return []` — a
+// standing bug since the original Anything import (b761542). The dispatcher case
+// is now in place; the field-name read inside the helper was already correct
+// (`routine.wellnessCheckItems`). Each item produces its own independent
+// reminder, matching how the other per-item types behave.
 // ===========================================================================
-describe("generateRemindersFromRoutine — wellness check (KNOWN BUG: not wired)", () => {
-  it.failing(
-    "should read wellnessCheckItems and emit one reminder per item (currently [] — dispatcher missing the case)",
-    () => {
-      const routine = makeRoutine({
-        type: ROUTINE_TYPES.WELLNESS_CHECK,
-        wellnessCheckItems: [
-          { checkType: "weight", frequency: ROUTINE_FREQUENCY.WEEKLY, preferredDay: 1, preferredTime: "09:00" },
-          { checkType: "mobility", frequency: ROUTINE_FREQUENCY.WEEKLY, preferredDay: 2, preferredTime: "09:00" },
-        ],
-      });
+describe("generateRemindersFromRoutine — wellness check", () => {
+  it("reads wellnessCheckItems and emits one independent reminder per item", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.WELLNESS_CHECK,
+      wellnessCheckItems: [
+        { checkType: "weight", frequency: ROUTINE_FREQUENCY.WEEKLY, preferredDay: 1, preferredTime: "09:00" },
+        { checkType: "mobility", frequency: ROUTINE_FREQUENCY.WEEKLY, preferredDay: 2, preferredTime: "09:00" },
+      ],
+    });
 
-      const reminders = generateRemindersFromRoutine(routine);
+    const reminders = generateRemindersFromRoutine(routine);
 
-      expect(reminders.length).toBeGreaterThan(0);
-      expect(reminders.every((r) => r.type === "wellness_check")).toBe(true);
-      // Both items represented, read from wellnessCheckItems — not merged.
-      expect(new Set(reminders.map((r) => r.checkType))).toEqual(
-        new Set(["weight", "mobility"]),
-      );
-    },
-  );
+    expect(reminders.length).toBeGreaterThan(0);
+    expect(reminders.every((r) => r.type === "wellness_check")).toBe(true);
+    // Both items represented, read from wellnessCheckItems — not merged.
+    expect(new Set(reminders.map((r) => r.checkType))).toEqual(
+      new Set(["weight", "mobility"]),
+    );
+  });
 });
 
 // ===========================================================================
