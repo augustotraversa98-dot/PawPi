@@ -22,6 +22,14 @@ Still deferred: **no RLS, no seed data, no app-code changes.**
 
 Swept repo-wide **June 2026**: `health/pee-logs`, `health/weight-logs`, `health/vomit-logs`, `pets/[id]`, `user-profile`, `vet-appointments`, `pet-medical-profiles`.
 
+### Auth.js origin gotcha (dev: AUTH_URL vs the device)
+
+The Auth.js origin is derived from the **request host** via `trustHost: true` in `__create/index.ts`. For local/device dev, **`AUTH_URL` must NOT be set** in `web/.env`.
+
+- Re-adding `AUTH_URL=http://localhost:4000` makes `@hono/auth-js` rewrite every request's origin to `localhost`, so the post-login redirect points at `http://localhost:4000/...` — on a phone that's the device itself, so the auth WebView fails with iOS **-1004 "Could not connect to the server"** and sign-in/sign-up break. Leave `AUTH_URL` unset; the redirect then follows the host the client actually used (LAN IP on device, `localhost` in a browser).
+- **`basePath: '/api/auth'` stays pinned** in `__create/index.ts`. Without `AUTH_URL`, `@auth/core` would otherwise default `basePath` to `/auth` and break all auth routing.
+- **Production:** a fixed `AUTH_URL` on the real domain is expected (and re-enables `trustHost` automatically).
+
 ---
 
 ## Previously-flagged uncertainties: RESOLVED
