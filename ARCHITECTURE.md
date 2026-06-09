@@ -52,6 +52,23 @@ anything/
 
 ---
 
+## Testing
+
+Each app carries its own test runner and suite (no root/workspace runner). Run from each app dir; `npm test` works regardless of which package manager installed deps (use `npm`, not `bun test`, for web — `bun test` bypasses Vitest).
+
+| App | Runner | Convention | Run |
+|---|---|---|---|
+| `anything/apps/mobile` | jest-expo (`preset: jest-expo`) | colocated `*.test.{js,jsx,ts,tsx}` next to source (`testMatch` pinned in `package.json`) | `npm test` · `npm run test:watch` |
+| `anything/apps/web` | Vitest (jsdom, `vitest.config.ts`) | colocated `*.{test,spec}.{js,ts,jsx,tsx}` under `src/` | `npm test` · `npm run test:watch` |
+
+Current suites:
+- **mobile** — `src/utils/auth/determinePetsRoute.test.js` (the EntryPoint 401-vs-network gate, PR #20), plus two `__create/` logger tests.
+- **web** — `src/smoke.test.ts` (wiring proof) and `src/app/api/utils/jsonb.test.js`, the first data-shape regression: it pins the jsonb write/read boundary (PR #19) — values are encoded once not double-encoded, reads return parsed objects/arrays not string scalars, and masked `medical_care_details.medicalCareItems` resolves to `[]`. The rule it guards lives in `src/app/api/utils/jsonb.js`.
+
+No CI yet.
+
+---
+
 ## 2. Backend & Data Layer
 
 ### What backend is this?
