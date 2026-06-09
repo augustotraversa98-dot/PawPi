@@ -106,6 +106,15 @@ export function generateRemindersFromRoutine(routine, daysAhead = 14) {
     case ROUTINE_TYPES.MEDICAL_CARE:
       return generateMedicalCareReminders(routine, now, endDate);
 
+    case ROUTINE_TYPES.WELLNESS_CHECK:
+      return generateWellnessCheckReminders(
+        routine,
+        now,
+        endDate,
+        primaryAction,
+        relatedTracker,
+      );
+
     default:
       return [];
   }
