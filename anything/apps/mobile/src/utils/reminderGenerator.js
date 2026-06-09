@@ -1169,6 +1169,28 @@ function advanceByFrequency(currentDate, frequency) {
   }
 }
 
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Effective enumeration start for overdue instances: never before the lookback
+// window, never before the routine was created, never before the item's own start.
+// You can't have missed a reminder that didn't exist yet — without this clamp a
+// freshly-created routine backfills a full window of phantom OVERDUE instances.
+// Returns a precise timestamp (not floored) so the creation-day, pre-creation-time
+// occurrence is also excluded.
+function clampOverdueStart(windowStart, routine, item) {
+  let start = windowStart.getTime();
+  for (const candidate of [routine?.createdAt, item?.startDate]) {
+    if (!candidate) continue;
+    const t = new Date(candidate).getTime();
+    if (!Number.isNaN(t) && t > start) start = t;
+  }
+  return new Date(start);
+}
+
 function generateOverdueWellnessChecks(routine, now, windowStart) {
   const reminders = [];
   const wellnessCheckItems = Array.isArray(routine.wellnessCheckItems)
@@ -1184,7 +1206,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
     const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
     const preferredDay = item.preferredDay ?? 6;
 
-    let currentDate = new Date(windowStart);
+    const effectiveStart = clampOverdueStart(windowStart, routine);
+    let currentDate = startOfDay(effectiveStart);
 
     while (currentDate < now) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
@@ -1205,7 +1228,7 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        if (scheduledTime < now && scheduledTime >= windowStart) {
+        if (scheduledTime < now && scheduledTime >= effectiveStart) {
           const dateStr = currentDate.toISOString().split("T")[0];
           reminders.push({
             id: `reminder_${routine.id}_${checkType}_${itemIndex}_${dateStr}`,
@@ -1273,12 +1296,8 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     // --- Daily-schedule items: medication, supplement ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
-      const startDate = item.startDate ? new Date(item.startDate) : windowStart;
-
-      let currentDate = new Date(
-        Math.max(windowStart.getTime(), startDate.getTime()),
-      );
-      currentDate.setHours(0, 0, 0, 0);
+      const effectiveStart = clampOverdueStart(windowStart, routine, item);
+      let currentDate = startOfDay(effectiveStart);
 
       while (currentDate < now) {
         times.forEach((time, timeIdx) => {
@@ -1286,7 +1305,7 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
           const scheduledTime = new Date(currentDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-          if (scheduledTime < now && scheduledTime >= windowStart) {
+          if (scheduledTime < now && scheduledTime >= effectiveStart) {
             const dateStr = currentDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,
@@ -1316,7 +1335,8 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     }
     triggerTime.setHours(9, 0, 0, 0);
 
-    if (triggerTime < now && triggerTime >= windowStart) {
+    const effectiveStart = clampOverdueStart(windowStart, routine, item);
+    if (triggerTime < now && triggerTime >= effectiveStart) {
       const dateStr = triggerTime.toISOString().split("T")[0];
       reminders.push({
         ...baseFields,
@@ -1357,7 +1377,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
 
-    let currentDate = new Date(windowStart);
+    const effectiveStart = clampOverdueStart(windowStart, routine);
+    let currentDate = startOfDay(effectiveStart);
 
     while (currentDate < now) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
@@ -1366,7 +1387,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        if (scheduledTime < now && scheduledTime >= windowStart) {
+        if (scheduledTime < now && scheduledTime >= effectiveStart) {
           const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
           reminders.push({
             id: `reminder_${routine.id}_${schedule.bodyArea}_${

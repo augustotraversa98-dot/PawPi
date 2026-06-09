@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Bell,
   ChevronRight,
+  ChevronDown,
   Play,
   CheckCircle,
   Camera,
@@ -48,6 +49,10 @@ const C = {
   sand: "#F5EDE4",
 };
 
+// When Overdue holds more than this many items it defaults to collapsed so it
+// doesn't push "Due Soon"/"Next Up" off-screen; the user can still expand it.
+const OVERDUE_COLLAPSE_THRESHOLD = 5;
+
 export default function HealthToday() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -78,6 +83,7 @@ export default function HealthToday() {
       setLoadedPetId(currentPet.id);
     }
   }, [currentPet?.id, loadedPetId, loadRoutines]);
+  const [overdueExpanded, setOverdueExpanded] = useState(null);
   const [snoozeModalVisible, setSnoozeModalVisible] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -112,6 +118,11 @@ export default function HealthToday() {
   // Items shown in the dedicated Overdue section don't also belong in the
   // time-sensitive countdown — Overdue is their single home.
   const overdueIds = new Set(overdueReminders.map((r) => r.id));
+
+  // Collapsible Overdue. `null` = auto (collapsed when long); once the user taps,
+  // their choice sticks.
+  const isOverdueExpanded =
+    overdueExpanded ?? overdueReminders.length <= OVERDUE_COLLAPSE_THRESHOLD;
 
   // Get time-sensitive reminders for countdown cards
   const timeSensitiveReminders = allReminders.filter((r) => {
@@ -414,34 +425,36 @@ export default function HealthToday() {
       {/* Overdue — past-due persistent items, distinct + above everything else */}
       {overdueReminders.length > 0 && (
         <View style={{ marginBottom: 24 }}>
-          <View
+          <TouchableOpacity
+            onPress={() => setOverdueExpanded(!isOverdueExpanded)}
+            activeOpacity={0.7}
             style={{
               flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: 12,
             }}
           >
-            <AlertCircle size={18} color={C.coral} style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 16, fontWeight: "700", color: C.coral }}>
-              Overdue
-            </Text>
-            <View
-              style={{
-                backgroundColor: C.coral,
-                borderRadius: 12,
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                marginLeft: 8,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFF" }}>
-                {overdueReminders.length}
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <AlertCircle
+                size={18}
+                color={C.coral}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={{ fontSize: 16, fontWeight: "700", color: C.coral }}>
+                Overdue ({overdueReminders.length})
               </Text>
             </View>
-          </View>
+            {isOverdueExpanded ? (
+              <ChevronDown size={20} color={C.coral} />
+            ) : (
+              <ChevronRight size={20} color={C.coral} />
+            )}
+          </TouchableOpacity>
 
-          <View style={{ gap: 10 }}>
-            {overdueReminders.map((reminder) => {
+          {isOverdueExpanded && (
+            <View style={{ gap: 10 }}>
+              {overdueReminders.map((reminder) => {
               const config = REMINDER_TYPE_CONFIG[reminder.type];
               const action = getReminderAction(reminder);
               const ActionIcon = action.icon;
@@ -544,6 +557,7 @@ export default function HealthToday() {
               );
             })}
           </View>
+          )}
         </View>
       )}
 
