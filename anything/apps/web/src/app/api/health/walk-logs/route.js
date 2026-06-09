@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 
 export async function POST(request) {
@@ -83,7 +84,7 @@ export async function POST(request) {
         ${distanceUnit || "miles"},
         ${pace || null},
         ${energyAfter || null},
-        ${pottyEvents ? sql.json(pottyEvents) : null},
+        ${pottyEvents ? sql.json(jsonbWriteValue(pottyEvents)) : null},
         ${routeOrLocation || null},
         ${notes || null},
         ${steps || null},

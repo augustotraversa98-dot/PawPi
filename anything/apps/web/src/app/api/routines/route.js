@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 
 // GET - Fetch all routines for the authenticated user
@@ -167,13 +168,13 @@ export async function POST(request) {
         ${isActive ?? true},
         ${title || null},
         ${description || null},
-        ${feedingSchedule ? sql.json(feedingSchedule) : null},
-        ${walkSchedule ? sql.json(walkSchedule) : null},
-        ${medicationDetails ? sql.json(medicationDetails) : null},
-        ${photoCheckDetails ? sql.json(photoCheckDetails) : null},
-        ${medicalCareDetails ? sql.json(medicalCareDetails) : null},
-        ${wellnessCheckSchedule ? sql.json(wellnessCheckSchedule) : null},
-        ${vetAppointmentSchedule ? sql.json(vetAppointmentSchedule) : null},
+        ${feedingSchedule ? sql.json(jsonbWriteValue(feedingSchedule)) : null},
+        ${walkSchedule ? sql.json(jsonbWriteValue(walkSchedule)) : null},
+        ${medicationDetails ? sql.json(jsonbWriteValue(medicationDetails)) : null},
+        ${photoCheckDetails ? sql.json(jsonbWriteValue(photoCheckDetails)) : null},
+        ${medicalCareDetails ? sql.json(jsonbWriteValue(medicalCareDetails)) : null},
+        ${wellnessCheckSchedule ? sql.json(jsonbWriteValue(wellnessCheckSchedule)) : null},
+        ${vetAppointmentSchedule ? sql.json(jsonbWriteValue(vetAppointmentSchedule)) : null},
         ${frequency || null},
         ${preferredDay || null},
         ${times || null},
@@ -271,25 +272,25 @@ export async function PUT(request) {
         title = COALESCE(${title || null}, title),
         description = COALESCE(${description || null}, description),
         feeding_schedule = COALESCE(${
-          feedingSchedule ? sql.json(feedingSchedule) : null
+          feedingSchedule ? sql.json(jsonbWriteValue(feedingSchedule)) : null
         }, feeding_schedule),
         walk_schedule = COALESCE(${
-          walkSchedule ? sql.json(walkSchedule) : null
+          walkSchedule ? sql.json(jsonbWriteValue(walkSchedule)) : null
         }, walk_schedule),
         medication_details = COALESCE(${
-          medicationDetails ? sql.json(medicationDetails) : null
+          medicationDetails ? sql.json(jsonbWriteValue(medicationDetails)) : null
         }, medication_details),
         photo_check_details = COALESCE(${
-          photoCheckDetails ? sql.json(photoCheckDetails) : null
+          photoCheckDetails ? sql.json(jsonbWriteValue(photoCheckDetails)) : null
         }, photo_check_details),
         medical_care_details = COALESCE(${
-          medicalCareDetails ? sql.json(medicalCareDetails) : null
+          medicalCareDetails ? sql.json(jsonbWriteValue(medicalCareDetails)) : null
         }, medical_care_details),
         wellness_check_schedule = COALESCE(${
-          wellnessCheckSchedule ? sql.json(wellnessCheckSchedule) : null
+          wellnessCheckSchedule ? sql.json(jsonbWriteValue(wellnessCheckSchedule)) : null
         }, wellness_check_schedule),
         vet_appointment_schedule = COALESCE(${
-          vetAppointmentSchedule ? sql.json(vetAppointmentSchedule) : null
+          vetAppointmentSchedule ? sql.json(jsonbWriteValue(vetAppointmentSchedule)) : null
         }, vet_appointment_schedule),
         frequency = COALESCE(${frequency || null}, frequency),
         preferred_day = ${preferredDay !== undefined ? preferredDay : null},
