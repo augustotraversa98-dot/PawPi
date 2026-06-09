@@ -313,6 +313,8 @@ export function useFeedData() {
     handlePost,
     handleToggleLike,
     handleBarkAdded,
+    refetchPosts,
+    refetchTodayDailyUpdate,
     loadingPosts:
       loadingPosts || loadingPet || loadingDailyUpdate || loadingOwnerPosted,
     uploading,

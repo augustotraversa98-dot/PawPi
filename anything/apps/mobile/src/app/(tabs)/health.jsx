@@ -48,6 +48,12 @@ export default function HealthScreen() {
     }
   };
 
+  // Today and Vet Record own their scroll container (each wires its own
+  // pull-to-refresh), so they render directly. Track and Insights have no
+  // scroller of their own and rely on the shared wrapper below.
+  const selfScrolling =
+    activeSection === "today" || activeSection === "vet-record";
+
   return (
     <View style={{ flex: 1, backgroundColor: C.cream }}>
       {/* Header */}
@@ -164,13 +170,17 @@ export default function HealthScreen() {
       </View>
 
       {/* Content Area */}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderContent()}
-      </ScrollView>
+      {selfScrolling ? (
+        <View style={{ flex: 1 }}>{renderContent()}</View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderContent()}
+        </ScrollView>
+      )}
     </View>
   );
 }

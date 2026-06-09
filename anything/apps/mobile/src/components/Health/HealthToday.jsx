@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   Calendar,
   TrendingUp,
@@ -73,6 +74,26 @@ export default function HealthToday() {
       queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
     );
   };
+
+  // Pull-to-refresh: reload the active pet's routines (rebuilds the reminders
+  // store + the deterministic Overdue list) and refetch the resolver sources
+  // and vet-appointment reminders that Overdue/countdowns are derived from.
+  const handleRefresh = useCallback(async () => {
+    if (currentPet?.id == null) return;
+    await loadRoutines(currentPet.id);
+    await Promise.all(
+      [
+        "reminder-dismissals",
+        "wellness-logs",
+        "weight-logs",
+        "medical-care-logs",
+        "photo-checks",
+        "vet-appointment-reminders",
+      ].map((key) =>
+        queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
+      ),
+    );
+  }, [currentPet?.id, loadRoutines, queryClient]);
 
   // Load the active pet's routines so the reminders store is populated/refreshed
   // for whichever dog is currently selected. Mirrors RoutinesTab's guard so a
@@ -400,7 +421,11 @@ export default function HealthToday() {
   };
 
   return (
-    <View style={{ padding: 16 }}>
+    <RefreshableScrollView
+      refetch={handleRefresh}
+      contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Section Title */}
       <View style={{ marginBottom: 20 }}>
         <Text
@@ -897,6 +922,6 @@ export default function HealthToday() {
         onClose={() => setWellnessReminder(null)}
         onSaved={handleWellnessSaved}
       />
-    </View>
+    </RefreshableScrollView>
   );
 }

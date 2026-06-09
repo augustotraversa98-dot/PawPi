@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Bell, Clock, CheckCircle, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import useRemindersStore from "@/store/remindersStore";
 import useRoutinesStore from "@/store/routinesStore";
 import {
@@ -28,9 +30,10 @@ const C = {
 
 export default function UpcomingTab() {
   const router = useRouter();
+  const { data: currentPet } = useCurrentPet();
   const { reminders, completeReminder, snoozeReminder, deleteReminder } =
     useRemindersStore();
-  const { routines, initializeReminders } = useRoutinesStore();
+  const { routines, initializeReminders, loadRoutines } = useRoutinesStore();
 
   const [snoozeModalVisible, setSnoozeModalVisible] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
@@ -40,6 +43,15 @@ export default function UpcomingTab() {
   useEffect(() => {
     initializeReminders();
   }, []);
+
+  // Pull-to-refresh: reload the active pet's routines from the server, then
+  // rebuild the reminders these cards are derived from.
+  const handleRefresh = useCallback(async () => {
+    if (currentPet?.id != null) {
+      await loadRoutines(currentPet.id);
+    }
+    initializeReminders();
+  }, [currentPet?.id, loadRoutines, initializeReminders]);
 
   // Auto-refresh countdown every minute
   useEffect(() => {
@@ -306,7 +318,11 @@ export default function UpcomingTab() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+      <RefreshableScrollView
+        refetch={handleRefresh}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16 }}
+      >
         {/* Time-Sensitive Countdown Cards */}
         {timeSensitiveReminders.length > 0 && (
           <View style={{ marginBottom: 24 }}>
@@ -386,7 +402,7 @@ export default function UpcomingTab() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </RefreshableScrollView>
 
       {/* Snooze Modal */}
       <SnoozeModal

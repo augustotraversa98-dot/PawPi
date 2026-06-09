@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from "react";
-import { View, ScrollView, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
 import { LockedFeedOverlay } from "@/components/Feed/LockedFeedOverlay";
@@ -24,6 +25,8 @@ export default function FeedScreen() {
     handlePost,
     handleToggleLike,
     handleBarkAdded,
+    refetchPosts,
+    refetchTodayDailyUpdate,
     loadingPosts,
     uploading,
   } = useFeedData();
@@ -102,7 +105,8 @@ export default function FeedScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView
+        <RefreshableScrollView
+          refetch={[refetchPosts, refetchTodayDailyUpdate]}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 60 }}
         >
@@ -134,7 +138,7 @@ export default function FeedScreen() {
               onOpenProfile={openProfile}
             />
           )}
-        </ScrollView>
+        </RefreshableScrollView>
       )}
 
       {/* ── POST COMPOSER MODAL ── */}
