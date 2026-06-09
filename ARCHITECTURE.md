@@ -65,7 +65,7 @@ Current suites:
 - **mobile** — `src/utils/auth/determinePetsRoute.test.js` (the EntryPoint 401-vs-network gate, PR #20), plus two `__create/` logger tests.
 - **web** — `src/smoke.test.ts` (wiring proof) and `src/app/api/utils/jsonb.test.js`, the first data-shape regression: it pins the jsonb write/read boundary (PR #19) — values are encoded once not double-encoded, reads return parsed objects/arrays not string scalars, and masked `medical_care_details.medicalCareItems` resolves to `[]`. The rule it guards lives in `src/app/api/utils/jsonb.js`.
 
-No CI yet.
+**CI:** `.github/workflows/ci.yml` (PR #25) runs on every pull request and on pushes to `main`, as two parallel jobs on Node 20 — **mobile (jest)** installs with `npm ci` and runs `npm test`; **web (vitest)** installs with `bun install --frozen-lockfile` then runs `npm test` (via npm, not `bun test`, so Vitest isn't bypassed). Both must be green to merge.
 
 ---
 
