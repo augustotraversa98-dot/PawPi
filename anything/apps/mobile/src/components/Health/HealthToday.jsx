@@ -11,8 +11,10 @@ import {
   Camera,
   Scale,
   Eye,
+  X,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import useRemindersStore from "@/store/remindersStore";
 import useRoutinesStore from "@/store/routinesStore";
 import { useCurrentPet } from "@/hooks/usePetProfile";
@@ -32,6 +34,7 @@ import PhotoCheckCaptureModal from "./PhotoCheck/PhotoCheckCaptureModal";
 import MedicalCareIssueModal from "./Reminders/MedicalCareIssueModal";
 import WellnessLogModal from "./WellnessCheck/WellnessLogModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
+import { useTodayReminders } from "@/hooks/useTodayReminders";
 
 const C = {
   cream: "#FFF7EF",
@@ -47,12 +50,24 @@ const C = {
 
 export default function HealthToday() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
   const { reminders, completeReminder, snoozeReminder } = useRemindersStore();
   const loadRoutines = useRoutinesStore((s) => s.loadRoutines);
   const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
   const { data: vetAppointmentReminders = [] } = useVetAppointmentReminders();
+  // Reconciled Overdue list (persistent types, DB-resolved + dismissals applied).
+  const { overdue: overdueReminders, dismiss } = useTodayReminders();
+
+  // After a log/photo/wellness save, refetch the resolver sources so the acted-on
+  // overdue instance drops out of the list immediately.
+  const invalidateResolution = (keys) => {
+    if (currentPet?.id == null) return;
+    keys.forEach((key) =>
+      queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
+    );
+  };
 
   // Load the active pet's routines so the reminders store is populated/refreshed
   // for whichever dog is currently selected. Mirrors RoutinesTab's guard so a
@@ -94,10 +109,15 @@ export default function HealthToday() {
       )
     : [];
 
+  // Items shown in the dedicated Overdue section don't also belong in the
+  // time-sensitive countdown — Overdue is their single home.
+  const overdueIds = new Set(overdueReminders.map((r) => r.id));
+
   // Get time-sensitive reminders for countdown cards
   const timeSensitiveReminders = allReminders.filter((r) => {
     const status = getReminderStatus(r);
     return (
+      !overdueIds.has(r.id) &&
       r.timeSensitive &&
       (status === REMINDER_STATUS.DUE_NOW ||
         status === REMINDER_STATUS.DUE_SOON ||
@@ -170,6 +190,7 @@ export default function HealthToday() {
       }
 
       completeReminder(reminder.id);
+      invalidateResolution(["medical-care-logs"]);
       Alert.alert(
         "✅ Saved",
         action === "add_vet_record"
@@ -191,9 +212,12 @@ export default function HealthToday() {
     Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
   };
 
-  // Wellness save succeeded: complete ONLY this reminder instance.
+  // Wellness save succeeded: complete ONLY this reminder instance. Weight routes to
+  // health_weight_logs, every other check to health_wellness_logs — refetch both so
+  // an acted-on overdue wellness/weight instance reconciles out immediately.
   const handleWellnessSaved = (reminderId) => {
     completeReminder(reminderId);
+    invalidateResolution(["wellness-logs", "weight-logs"]);
     Alert.alert("✅ Saved", `${wellnessReminder?.title || "Entry"} logged`);
   };
 
@@ -211,6 +235,7 @@ export default function HealthToday() {
         reactionOrIssue,
       });
       completeReminder(issueReminder.id);
+      invalidateResolution(["medical-care-logs"]);
       setIssueModalVisible(false);
       setIssueReminder(null);
       Alert.alert("Saved", "Issue saved to medical care history");
@@ -234,7 +259,10 @@ export default function HealthToday() {
       careType: reminder.careType,
       name: reminder.title,
       dose: reminder.dose || null,
-      givenAt: new Date().toISOString(),
+      // Log against the instance's scheduled day. Medical resolution matches given_at's
+      // date to the scheduledDate exactly (so a genuinely missed dose is never hidden by
+      // a later one) — acting on an overdue dose must therefore record it on its own day.
+      givenAt: reminder.scheduledAt || new Date().toISOString(),
       status,
       notes: notes || null,
       reactionOrIssue: reactionOrIssue || null,
@@ -253,6 +281,21 @@ export default function HealthToday() {
   const handlePhotoCheckComplete = (reminderId) => {
     // Mark reminder as complete after photo check is saved
     completeReminder(reminderId);
+    invalidateResolution(["photo-checks"]);
+  };
+
+  // Skip/dismiss an overdue instance — durably recorded so it doesn't reappear after
+  // a restart. Used only from the Overdue section.
+  const handleSkipOverdue = async (reminder) => {
+    try {
+      await dismiss(reminder);
+    } catch (err) {
+      console.error("[HealthToday] dismiss failed", err);
+      Alert.alert(
+        "Could not skip",
+        "We couldn't skip this reminder. Please try again.",
+      );
+    }
   };
 
   const handleSnooze = (reminder) => {
@@ -367,6 +410,142 @@ export default function HealthToday() {
           })}
         </Text>
       </View>
+
+      {/* Overdue — past-due persistent items, distinct + above everything else */}
+      {overdueReminders.length > 0 && (
+        <View style={{ marginBottom: 24 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <AlertCircle size={18} color={C.coral} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: C.coral }}>
+              Overdue
+            </Text>
+            <View
+              style={{
+                backgroundColor: C.coral,
+                borderRadius: 12,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                marginLeft: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFF" }}>
+                {overdueReminders.length}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ gap: 10 }}>
+            {overdueReminders.map((reminder) => {
+              const config = REMINDER_TYPE_CONFIG[reminder.type];
+              const action = getReminderAction(reminder);
+              const ActionIcon = action.icon;
+
+              return (
+                <View
+                  key={reminder.id}
+                  style={{
+                    backgroundColor: C.card,
+                    borderRadius: 16,
+                    padding: 14,
+                    borderWidth: 1.5,
+                    borderColor: C.coral + "55",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Text style={{ fontSize: 22, marginRight: 12 }}>
+                      {config?.icon || "📌"}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "700",
+                          color: C.warmBrown,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {reminder.title}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: C.coral,
+                          fontWeight: "700",
+                        }}
+                      >
+                        {getTimeDisplay(reminder)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => handleComplete(reminder)}
+                      style={{
+                        flex: 1,
+                        backgroundColor: config?.color || C.sage,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <ActionIcon size={16} color="#FFF" strokeWidth={2.5} />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: "#FFF",
+                        }}
+                      >
+                        {action.label}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleSkipOverdue(reminder)}
+                      style={{
+                        paddingHorizontal: 14,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: C.peach,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <X size={15} color={C.mutedBrown} strokeWidth={2.5} />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: C.mutedBrown,
+                        }}
+                      >
+                        Skip
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {/* Time-Sensitive Countdown Cards */}
       {timeSensitiveReminders.length > 0 && (
@@ -525,7 +704,9 @@ export default function HealthToday() {
       )}
 
       {/* Empty State for Next Up */}
-      {nextUpReminders.length === 0 && timeSensitiveReminders.length === 0 && (
+      {nextUpReminders.length === 0 &&
+        timeSensitiveReminders.length === 0 &&
+        overdueReminders.length === 0 && (
         <View style={{ marginBottom: 24 }}>
           <View
             style={{

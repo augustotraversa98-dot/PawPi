@@ -1109,3 +1109,304 @@ function getRelatedTrackerForRoutineType(type) {
   };
   return trackers[type] || null;
 }
+
+// =========================================================================
+// Overdue enumeration — ADDITIVE sibling of generateRemindersFromRoutine.
+//
+// The locked default generator above emits future-only instances
+// (scheduledTime >= now), so a past-due instance can never be re-emitted after a
+// reload/restart. For the PERSISTENT reminder types — wellness check, medical
+// care, photo check — "overdue" must carry across days and survive restart until
+// the instance is resolved (logged) or dismissed. This function enumerates the
+// PAST scheduled instances for those types within a bounded lookback window so the
+// Today screen can reconcile them against the DB.
+//
+// It deliberately mirrors the schedule math of the locked generators (reusing the
+// same item/label/id helpers so the emitted reminder shape and id are identical),
+// rather than refactoring them to share code — the generator contract is locked +
+// tested. The only differences are: the time window is [windowStart, now) instead
+// of [now, endDate], and the emitted status is OVERDUE.
+//
+// Bounds: instances older than `lookbackDays` age out of Overdue silently. Note
+// that biweekly/monthly cadence is phase-anchored to the window start here; daily
+// and weekly (the common cases) are exact. Feeding/Walk are intentionally NOT
+// enumerated — they are today-only/transient (handled separately).
+// =========================================================================
+export function generateOverdueInstances(
+  routine,
+  { lookbackDays = 30, now = new Date() } = {},
+) {
+  if (!routine || !routine.isActive || !routine.notificationEnabled) {
+    return [];
+  }
+
+  const windowStart = new Date(now);
+  windowStart.setDate(windowStart.getDate() - lookbackDays);
+  windowStart.setHours(0, 0, 0, 0);
+
+  switch (routine.type) {
+    case ROUTINE_TYPES.WELLNESS_CHECK:
+      return generateOverdueWellnessChecks(routine, now, windowStart);
+    case ROUTINE_TYPES.MEDICAL_CARE:
+      return generateOverdueMedicalCare(routine, now, windowStart);
+    case ROUTINE_TYPES.PHOTO_CHECK:
+      return generateOverduePhotoChecks(routine, now, windowStart);
+    default:
+      return [];
+  }
+}
+
+// Step `currentDate` forward by one cadence period, matching the locked generators.
+function advanceByFrequency(currentDate, frequency) {
+  if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
+    currentDate.setDate(currentDate.getDate() + 7);
+  } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY) {
+    currentDate.setDate(currentDate.getDate() + 14);
+  } else if (frequency === ROUTINE_FREQUENCY.MONTHLY) {
+    currentDate.setDate(currentDate.getDate() + 30);
+  } else {
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+}
+
+function generateOverdueWellnessChecks(routine, now, windowStart) {
+  const reminders = [];
+  const wellnessCheckItems = Array.isArray(routine.wellnessCheckItems)
+    ? routine.wellnessCheckItems
+    : [];
+
+  wellnessCheckItems.forEach((item, itemIndex) => {
+    if (item.reminderEnabled === false) return;
+
+    const checkType = item.checkType || "general";
+    const checkLabel = getWellnessCheckLabel(item);
+    const [hours, minutes] = (item.preferredTime || "09:00").split(":");
+    const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
+    const preferredDay = item.preferredDay ?? 6;
+
+    let currentDate = new Date(windowStart);
+
+    while (currentDate < now) {
+      const dayOfWeek = (currentDate.getDay() + 6) % 7;
+      let shouldSchedule = false;
+
+      if (frequency === ROUTINE_FREQUENCY.DAILY) {
+        shouldSchedule = true;
+      } else if (
+        frequency === ROUTINE_FREQUENCY.WEEKLY ||
+        frequency === ROUTINE_FREQUENCY.BIWEEKLY
+      ) {
+        shouldSchedule = dayOfWeek === preferredDay;
+      } else if (frequency === ROUTINE_FREQUENCY.MONTHLY) {
+        shouldSchedule = currentDate.getDate() === (preferredDay % 28) + 1;
+      }
+
+      if (shouldSchedule) {
+        const scheduledTime = new Date(currentDate);
+        scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (scheduledTime < now && scheduledTime >= windowStart) {
+          const dateStr = currentDate.toISOString().split("T")[0];
+          reminders.push({
+            id: `reminder_${routine.id}_${checkType}_${itemIndex}_${dateStr}`,
+            routineId: routine.id,
+            wellnessCheckItemIndex: itemIndex,
+            petId: routine.petId,
+            type: "wellness_check",
+            checkType,
+            title: checkLabel,
+            description: getWellnessCheckDescription(item),
+            scheduledAt: scheduledTime.toISOString(),
+            nextTriggerAt: scheduledTime.toISOString(),
+            status: REMINDER_STATUS.OVERDUE,
+            priority: "medium",
+            timeSensitive: item.timeSensitive ?? false,
+            notificationEnabled: item.reminderEnabled ?? true,
+            relatedTracker: getWellnessCheckTracker(checkType),
+            primaryAction: getWellnessCheckAction(checkType),
+            notes: item.notes || "",
+            completedAt: null,
+            snoozedUntil: null,
+          });
+        }
+
+        advanceByFrequency(currentDate, frequency);
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  });
+
+  return reminders;
+}
+
+function generateOverdueMedicalCare(routine, now, windowStart) {
+  const items = Array.isArray(routine.medicalCareItems)
+    ? routine.medicalCareItems
+    : [];
+  const reminders = [];
+
+  items.forEach((item) => {
+    if (item.active === false) return;
+    if (item.reminderEnabled === false) return;
+
+    const careType = item.type;
+    const baseFields = {
+      routineId: routine.id,
+      medicalCareItemId: item.id,
+      petId: routine.petId,
+      type: "medical_care",
+      careType,
+      title: buildMedicalCareTitle(item),
+      description: buildMedicalCareDescription(item),
+      status: REMINDER_STATUS.OVERDUE,
+      priority: getMedicalCarePriority(careType),
+      timeSensitive: item.timeSensitive ?? true,
+      notificationEnabled: item.reminderEnabled ?? true,
+      relatedTracker: "medical_care",
+      primaryAction: getMedicalCarePrimaryAction(careType),
+      notes: item.notes || "",
+      completedAt: null,
+      snoozedUntil: null,
+    };
+
+    // --- Daily-schedule items: medication, supplement ---
+    if (careType === "medication" || careType === "supplement") {
+      const times = Array.isArray(item.times) ? item.times : [];
+      const startDate = item.startDate ? new Date(item.startDate) : windowStart;
+
+      let currentDate = new Date(
+        Math.max(windowStart.getTime(), startDate.getTime()),
+      );
+      currentDate.setHours(0, 0, 0, 0);
+
+      while (currentDate < now) {
+        times.forEach((time, timeIdx) => {
+          const [hours, minutes] = time.split(":");
+          const scheduledTime = new Date(currentDate);
+          scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+          if (scheduledTime < now && scheduledTime >= windowStart) {
+            const dateStr = currentDate.toISOString().split("T")[0];
+            reminders.push({
+              ...baseFields,
+              id: `reminder_${routine.id}_${item.id}_${dateStr}_${timeIdx}`,
+              scheduledAt: scheduledTime.toISOString(),
+              nextTriggerAt: scheduledTime.toISOString(),
+            });
+          }
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return;
+    }
+
+    // --- Date-based items: vaccine, preventives, other ---
+    const nextDueStr = item.nextDue;
+    if (!nextDueStr) return;
+
+    const nextDue = new Date(nextDueStr);
+    if (isNaN(nextDue.getTime())) return;
+
+    let triggerTime = new Date(nextDue);
+    if (careType === "vaccine" && item.reminderTiming) {
+      const offsetDays = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
+      const days = offsetDays[item.reminderTiming] ?? 0;
+      triggerTime.setDate(triggerTime.getDate() + days);
+    }
+    triggerTime.setHours(9, 0, 0, 0);
+
+    if (triggerTime < now && triggerTime >= windowStart) {
+      const dateStr = triggerTime.toISOString().split("T")[0];
+      reminders.push({
+        ...baseFields,
+        id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+        scheduledAt: triggerTime.toISOString(),
+        nextTriggerAt: triggerTime.toISOString(),
+      });
+    }
+  });
+
+  return reminders;
+}
+
+function generateOverduePhotoChecks(routine, now, windowStart) {
+  const reminders = [];
+
+  const photoCheckSchedules =
+    routine.photoCheckSchedule && Array.isArray(routine.photoCheckSchedule)
+      ? routine.photoCheckSchedule
+      : routine.bodyArea
+        ? [
+            {
+              bodyArea: routine.bodyArea,
+              frequency: routine.frequency || ROUTINE_FREQUENCY.WEEKLY,
+              preferredDay: routine.preferredDay ?? 6,
+              preferredTime: routine.times?.[0] || "10:00",
+              reminderEnabled: routine.notificationEnabled ?? true,
+              timeSensitive: routine.timeSensitive ?? false,
+              notes: routine.notes || "",
+            },
+          ]
+        : [];
+
+  photoCheckSchedules.forEach((schedule, scheduleIndex) => {
+    if (schedule.reminderEnabled === false) return;
+
+    const preferredDay = schedule.preferredDay ?? 6;
+    const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
+    const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+
+    let currentDate = new Date(windowStart);
+
+    while (currentDate < now) {
+      const dayOfWeek = (currentDate.getDay() + 6) % 7;
+
+      if (dayOfWeek === preferredDay) {
+        const scheduledTime = new Date(currentDate);
+        scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (scheduledTime < now && scheduledTime >= windowStart) {
+          const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
+          reminders.push({
+            id: `reminder_${routine.id}_${schedule.bodyArea}_${
+              currentDate.toISOString().split("T")[0]
+            }`,
+            routineId: routine.id,
+            photoCheckScheduleIndex: scheduleIndex,
+            petId: routine.petId,
+            type: "photo_check",
+            title: `${bodyAreaLabel} Check`,
+            description: `Take photo of ${
+              schedule.bodyArea?.replace("_", " ") || "body area"
+            }`,
+            scheduledAt: scheduledTime.toISOString(),
+            nextTriggerAt: scheduledTime.toISOString(),
+            status: REMINDER_STATUS.OVERDUE,
+            priority: "medium",
+            timeSensitive: schedule.timeSensitive ?? false,
+            notificationEnabled: schedule.reminderEnabled ?? true,
+            relatedTracker: "photo_check",
+            relatedBodyArea: schedule.bodyArea,
+            primaryAction: "Take photo",
+            notes: schedule.notes || "",
+            completedAt: null,
+            snoozedUntil: null,
+          });
+        }
+
+        if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY) {
+          currentDate.setDate(currentDate.getDate() + 14);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 30);
+        }
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  });
+
+  return reminders;
+}
