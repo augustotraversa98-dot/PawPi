@@ -7,6 +7,8 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   X,
@@ -146,12 +148,13 @@ export default function GeneralCheckModal({ visible, onClose }) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View
+      <KeyboardAvoidingView
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "flex-end",
         }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View
           style={{
@@ -225,6 +228,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
             ref={scrollViewRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* Current Area */}
@@ -661,7 +665,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -8,6 +8,8 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { X, CheckCircle, Edit, Trash2, FileText } from "lucide-react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -151,8 +153,11 @@ export default function VetAppointmentDetailModal({
   const isPending = completeMutation.isPending || deleteMutation.isPending;
 
   return (
-    <Modal visible={visible} animationType="slide">
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: C.cream }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {/* Header */}
         <View
           style={{
@@ -198,6 +203,7 @@ export default function VetAppointmentDetailModal({
 
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Appointment Title */}
@@ -411,7 +417,7 @@ export default function VetAppointmentDetailModal({
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

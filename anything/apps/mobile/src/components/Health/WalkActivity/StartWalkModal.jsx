@@ -8,6 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { X, Pause, Play, StopCircle, Plus, Edit3 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -153,8 +155,9 @@ export default function StartWalkModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View
+      <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -197,6 +200,7 @@ export default function StartWalkModal({
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Countdown Display */}
           {!showExtendOptions && (
@@ -511,7 +515,7 @@ export default function StartWalkModal({
             </Text>
           </TouchableOpacity>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

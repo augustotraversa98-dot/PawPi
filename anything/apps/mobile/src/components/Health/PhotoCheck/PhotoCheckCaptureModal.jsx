@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   X,
@@ -293,7 +295,10 @@ export default function PhotoCheckCaptureModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: C.cream }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {/* Header */}
         <View
           style={{
@@ -609,6 +614,7 @@ export default function PhotoCheckCaptureModal({
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+            keyboardShouldPersistTaps="handled"
           >
             {/* Photo Preview (if photo was taken) */}
             {imageUri && (
@@ -825,7 +831,7 @@ export default function PhotoCheckCaptureModal({
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

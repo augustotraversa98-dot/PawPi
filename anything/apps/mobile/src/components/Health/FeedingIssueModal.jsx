@@ -165,6 +165,7 @@ export default function FeedingIssueModal({
 
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Appetite */}

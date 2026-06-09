@@ -7,6 +7,8 @@ import {
   Modal,
   TextInput,
   Image,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   Camera,
@@ -174,7 +176,10 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: C.cream }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {/* Header */}
         <View
           style={{
@@ -213,7 +218,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
         </View>
 
         {/* Content */}
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
           {step === "select" && (
             <View style={{ padding: 16 }}>
               <Text
@@ -549,7 +554,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
             </View>
           )}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
