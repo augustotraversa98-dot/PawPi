@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 
 // POST - Save a medical care log entry (mark as given / completed / issue reported)
@@ -75,7 +76,7 @@ export async function POST(request) {
         ${givenAt || new Date().toISOString()},
         ${status},
         ${notes || null},
-        ${reactionOrIssue ? sql.json(reactionOrIssue) : null}
+        ${reactionOrIssue ? sql.json(jsonbWriteValue(reactionOrIssue)) : null}
       )
       RETURNING *
     `;

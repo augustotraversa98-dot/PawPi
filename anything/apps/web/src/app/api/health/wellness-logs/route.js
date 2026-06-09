@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 
 export async function GET(request) {
@@ -117,7 +118,7 @@ export async function POST(request) {
         ${wellnessCheckItemIndex !== undefined ? parseInt(wellnessCheckItemIndex) : null},
         ${checkType},
         ${loggedAt || new Date().toISOString()},
-        ${valuesJson ? sql.json(valuesJson) : null},
+        ${valuesJson ? sql.json(jsonbWriteValue(valuesJson)) : null},
         ${notes || null},
         ${imageUrl || null}
       )
