@@ -3,6 +3,7 @@
   "main": "index",
   "version": "1.0.0",
   "scripts": {
+    "preinstall": "npx -y only-allow npm",
     "postinstall": "patch-package",
     "test": "jest",
     "test:watch": "jest --watch"
