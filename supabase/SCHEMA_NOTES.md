@@ -28,6 +28,7 @@ The Auth.js origin is derived from the **request host** via `trustHost: true` in
 
 - Re-adding `AUTH_URL=http://localhost:4000` makes `@hono/auth-js` rewrite every request's origin to `localhost`, so the post-login redirect points at `http://localhost:4000/...` — on a phone that's the device itself, so the auth WebView fails with iOS **-1004 "Could not connect to the server"** and sign-in/sign-up break. Leave `AUTH_URL` unset; the redirect then follows the host the client actually used (LAN IP on device, `localhost` in a browser).
 - **`basePath: '/api/auth'` stays pinned** in `__create/index.ts`. Without `AUTH_URL`, `@auth/core` would otherwise default `basePath` to `/auth` and break all auth routing.
+- **`__create/@auth/create.js:10` `secureCookie` tolerates an unset `AUTH_URL`** — it reads `process.env.AUTH_URL?.startsWith('https') ?? false`. With `AUTH_URL` unset (the Option B dev state above), the old `process.env.AUTH_URL.startsWith(...)` threw `TypeError: undefined is not an object` *inside* `auth()`, before the session guard — so **every** app API route that calls `auth()` returned 500 (e.g. `GET /api/pets`), even unauthenticated. Do **not** "fix" a future cookie issue by re-adding `AUTH_URL=localhost`: that reopens the device -1004 redirect bug above. In dev (http) `secureCookie` is correctly `false`; in prod the https `AUTH_URL` makes it `true`.
 - **Production:** a fixed `AUTH_URL` on the real domain is expected (and re-enables `trustHost` automatically).
 
 ---
