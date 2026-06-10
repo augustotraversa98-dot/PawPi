@@ -30,8 +30,10 @@ jest.mock("@/store/remindersStore", () => ({
   __esModule: true,
   default: () => ({
     reminders: [],
+    snoozes: {},
     completeReminder: jest.fn(),
     snoozeReminder: jest.fn(),
+    clearSnooze: jest.fn(),
   }),
 }));
 jest.mock("@/store/routinesStore", () => ({
@@ -80,6 +82,7 @@ jest.mock("./FeedingIssueModal", () => ({
 const mockToday = {
   overdue: [],
   dismiss: jest.fn(),
+  dismissedKeys: new Set(),
   isLoading: false,
   now: new Date("2026-06-10T17:51:00+02:00").getTime(),
   refreshNow: jest.fn(),

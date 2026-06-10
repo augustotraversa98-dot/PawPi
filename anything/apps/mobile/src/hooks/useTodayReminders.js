@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "./usePetProfile";
 import { useVetAppointmentReminders } from "./useVetAppointmentReminders";
 import useRoutinesStore from "@/store/routinesStore";
+import useRemindersStore from "@/store/remindersStore";
 import {
   buildResolutionIndex,
   buildOverdueReminders,
@@ -40,9 +41,11 @@ function usePetList(name, url, pick, petId) {
  * never drop a missed item. A per-minute `now` tick drives recomputation so the list
  * tracks the clock rather than piggybacking on query refetches.
  *
- * Returns { overdue, dismiss, isLoading, now, refreshNow }. `dismiss(reminder)`
- * durably records a skip. `now` (ms) is the reactive clock — consumers section
- * Due Soon / Next Up against it so every section shares one time source.
+ * Returns { overdue, dismiss, dismissedKeys, isLoading, now, refreshNow }.
+ * `dismiss(reminder)` durably records a skip; `dismissedKeys` is the current skip
+ * set so the section layer can exclude dismissed instances uniformly. `now` (ms)
+ * is the reactive clock — consumers section Snoozed / Due Soon / Next Up against
+ * it so every section shares one time source.
  * `refreshNow()` advances the clock immediately (pull-to-refresh), so a refresh
  * reclassifies with the current time instead of waiting for the next tick.
  */
@@ -53,6 +56,9 @@ export function useTodayReminders({ now } = {}) {
   const activePetId = petId != null ? String(petId) : null;
 
   const routines = useRoutinesStore((s) => s.routines);
+  // Active snoozes (instance id → snoozedUntil ISO). An actively snoozed
+  // instance is excluded from Overdue — its home is the Snoozed section.
+  const snoozes = useRemindersStore((s) => s.snoozes);
   const { data: vetReminders = [] } = useVetAppointmentReminders();
 
   // Per-minute clock tick so Overdue updates on the clock (a missed instance appears
@@ -100,6 +106,14 @@ export function useTodayReminders({ now } = {}) {
 
   const dismissalsKey = ["reminder-dismissals", petId];
 
+  // Durable skips, exposed so the section layer can exclude dismissed instances
+  // uniformly (Snoozed/Due Soon/Next Up apply the same "dismissed means gone"
+  // rule the Overdue selector does).
+  const dismissedKeys = useMemo(
+    () => new Set((dismissalsQuery.data || []).map((d) => d.instance_key)),
+    [dismissalsQuery.data],
+  );
+
   const overdue = useMemo(() => {
     if (!activePetId) return [];
 
@@ -110,10 +124,6 @@ export function useTodayReminders({ now } = {}) {
       photoChecks: photoQuery.data || [],
     });
 
-    const dismissedKeys = new Set(
-      (dismissalsQuery.data || []).map((d) => d.instance_key),
-    );
-
     return buildOverdueReminders({
       routines,
       vetReminders,
@@ -122,6 +132,7 @@ export function useTodayReminders({ now } = {}) {
       now: new Date(nowMs),
       lookbackDays: OVERDUE_LOOKBACK_DAYS,
       petId,
+      snoozes,
     });
   }, [
     activePetId,
@@ -129,11 +140,12 @@ export function useTodayReminders({ now } = {}) {
     nowMs,
     routines,
     vetReminders,
+    snoozes,
     wellnessQuery.data,
     weightQuery.data,
     medicalQuery.data,
     photoQuery.data,
-    dismissalsQuery.data,
+    dismissedKeys,
   ]);
 
   const dismiss = async (reminder) => {
@@ -178,5 +190,5 @@ export function useTodayReminders({ now } = {}) {
     medicalQuery.isLoading ||
     photoQuery.isLoading;
 
-  return { overdue, dismiss, isLoading, now: nowMs, refreshNow };
+  return { overdue, dismiss, dismissedKeys, isLoading, now: nowMs, refreshNow };
 }

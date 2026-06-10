@@ -190,6 +190,43 @@ describe("reconciliation — the born-resolved bug stays dead", () => {
   });
 });
 
+describe("snooze against the real shape — Snoozed is the single home while active", () => {
+  it("an active snooze (store map) pulls the passed dose out of Overdue and into Snoozed", async () => {
+    const routines = await loadStoreFromFixture();
+    const snoozes = { [MED_ID]: "2026-06-10T18:30:00+02:00" }; // active at 17:51
+
+    const overdue = reconcile(routines, AFTERNOON, { snoozes });
+    expect(overdue).toEqual([]);
+
+    const storeCard = {
+      id: MED_ID,
+      routineId: "7",
+      petId: "2",
+      type: "medical_care",
+      timeSensitive: true,
+      status: "upcoming",
+      scheduledAt: "2026-06-10T15:34:00.000Z",
+      nextTriggerAt: "2026-06-10T15:34:00.000Z",
+    };
+    const { dueSoon, nextUp, snoozed } = sectionTodayReminders({
+      reminders: [storeCard],
+      overdueIds: new Set(),
+      now: AFTERNOON,
+      snoozes,
+    });
+    expect(snoozed.map((r) => r.id)).toEqual([MED_ID]);
+    expect(dueSoon).toEqual([]);
+    expect(nextUp).toEqual([]);
+  });
+
+  it("once the snooze elapses the unresolved dose returns to Overdue", async () => {
+    const routines = await loadStoreFromFixture();
+    const snoozes = { [MED_ID]: "2026-06-10T18:30:00+02:00" }; // over by 21:15
+    const ids = reconcile(routines, EVENING, { snoozes }).map((r) => r.id);
+    expect(ids).toContain(MED_ID);
+  });
+});
+
 describe("sectioning — Overdue is the single home for past-due persistent items", () => {
   it("the passed dose is in Overdue and in NO other section (the old 'disappears entirely' shape)", async () => {
     const routines = await loadStoreFromFixture();

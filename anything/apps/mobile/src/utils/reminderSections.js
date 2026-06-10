@@ -1,5 +1,6 @@
-// Today-screen sectioning — pure selection of the "Due Soon" countdown list and
-// the "Next Up" list from the combined reminder set (store reminders + vet).
+// Today-screen sectioning — pure selection of the "Snoozed" list, the "Due Soon"
+// countdown list and the "Next Up" list from the combined reminder set (store
+// reminders + vet).
 //
 // The classification boundary is isPastDue (reminderResolution.js): an instance
 // with scheduledAt <= now is overdue, scheduledAt > now is upcoming. Past
@@ -10,9 +11,25 @@
 // (today-only overdue handling is a planned follow-up PR), so a past-due
 // transient instance keeps its current countdown-card home until then.
 //
+// An actively snoozed instance is homed exclusively in Snoozed — it outranks
+// every other section, including Overdue, so a snoozed item whose scheduled time
+// passes mid-snooze stays in Snoozed (the Overdue selector skips it via the same
+// `snoozes` map) instead of surfacing in two places. When the snooze elapses the
+// instance falls back through the normal boundary: Overdue if its scheduled time
+// passed, Due Soon / Next Up otherwise.
+//
+// `snoozes` is the instance-id-keyed map from the reminders store (id →
+// snoozedUntil ISO); it exists because some reminders (vet appointments) never
+// live in the store, so a field on the reminder object can't hold their snooze.
+// The per-reminder snoozedUntil field is still honored as a fallback.
+//
+// `dismissedKeys` (durable skips from reminder_dismissals) excludes an instance
+// from EVERY section — same rule the Overdue selector applies — so a transient
+// instance skipped from Snoozed can't reappear in Due Soon when its snooze ends.
+//
 // `now` is injected (the caller passes the same reactive clock that drives the
-// Overdue list) so all three sections agree on which side of "now" an instance
-// is on, and so pull-to-refresh can reclassify by advancing that clock.
+// Overdue list) so all sections agree on which side of "now" an instance is on,
+// and so pull-to-refresh can reclassify by advancing that clock.
 
 import { PERSISTENT_TYPES, isPastDue } from "./reminderResolution";
 
@@ -25,23 +42,34 @@ export function sectionTodayReminders({
   reminders = [],
   overdueIds = new Set(),
   now = new Date(),
+  snoozes = {},
+  dismissedKeys = new Set(),
 }) {
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const dueSoon = [];
   const nextUp = [];
+  const snoozed = [];
 
   for (const reminder of reminders) {
     if (!reminder) continue;
-    if (overdueIds.has(reminder.id)) continue; // homed in Overdue
     if (reminder.status === "completed" || reminder.status === "disabled") {
       continue;
     }
-    if (
-      reminder.snoozedUntil &&
-      new Date(reminder.snoozedUntil).getTime() > nowMs
-    ) {
+    if (dismissedKeys.has(reminder.id)) continue; // durably skipped — gone
+
+    const snoozedUntil = snoozes[reminder.id] ?? reminder.snoozedUntil;
+    if (snoozedUntil && new Date(snoozedUntil).getTime() > nowMs) {
+      // Snoozed outranks Overdue — checked before the overdueIds exclusion so
+      // the instance has exactly one home while the snooze is active.
+      snoozed.push(
+        reminder.snoozedUntil === snoozedUntil
+          ? reminder
+          : { ...reminder, snoozedUntil },
+      );
       continue;
     }
+
+    if (overdueIds.has(reminder.id)) continue; // homed in Overdue
 
     const t = new Date(
       reminder.scheduledAt ?? reminder.nextTriggerAt,
@@ -70,6 +98,8 @@ export function sectionTodayReminders({
     new Date(b.scheduledAt ?? b.nextTriggerAt);
   dueSoon.sort(byTime);
   nextUp.sort(byTime);
+  // Soonest-to-return first.
+  snoozed.sort((a, b) => new Date(a.snoozedUntil) - new Date(b.snoozedUntil));
 
-  return { dueSoon, nextUp };
+  return { dueSoon, nextUp, snoozed };
 }

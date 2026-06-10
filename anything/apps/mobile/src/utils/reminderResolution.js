@@ -150,14 +150,19 @@ export function isInstanceResolved(reminder, index) {
 }
 
 // Select the Overdue list: persistent-type instances scheduled in the past that are
-// neither resolved (logged) nor dismissed (skipped). `now` is injectable for tests.
-// `dismissedKeys` is a Set of instance keys (reminder ids).
+// neither resolved (logged) nor dismissed (skipped) nor actively snoozed. `now` is
+// injectable for tests. `dismissedKeys` is a Set of instance keys (reminder ids);
+// `snoozes` is the store's instance-id-keyed snooze map (id → snoozedUntil ISO) —
+// an actively snoozed instance is homed in the Snoozed section instead, and falls
+// back here once the snooze elapses (if still past due and unresolved).
 export function selectOverdueReminders({
   reminders = [],
   index,
   dismissedKeys = new Set(),
   now = new Date(),
+  snoozes = {},
 }) {
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const seen = new Set();
   const overdue = [];
 
@@ -173,6 +178,8 @@ export function selectOverdueReminders({
       continue;
     }
     if (dismissedKeys.has(key)) continue;
+    const snoozedUntil = snoozes[key] ?? reminder.snoozedUntil;
+    if (snoozedUntil && new Date(snoozedUntil).getTime() > nowMs) continue;
     if (isInstanceResolved(reminder, index)) continue;
 
     seen.add(key);
@@ -202,6 +209,7 @@ export function buildOverdueReminders({
   now = new Date(),
   lookbackDays = 30,
   petId = null,
+  snoozes = {},
 }) {
   const nowDate = now instanceof Date ? now : new Date(now);
   const activePetId = petId != null ? String(petId) : null;
@@ -221,5 +229,6 @@ export function buildOverdueReminders({
     index,
     dismissedKeys,
     now: nowDate,
+    snoozes,
   });
 }

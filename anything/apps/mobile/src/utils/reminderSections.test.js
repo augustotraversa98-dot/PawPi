@@ -50,16 +50,29 @@ const feeding = (overrides = {}) => ({
 
 function classify(
   reminders,
-  { now = NOW, index = buildResolutionIndex({}), dismissedKeys = new Set() } = {},
+  {
+    now = NOW,
+    index = buildResolutionIndex({}),
+    dismissedKeys = new Set(),
+    snoozes = {},
+  } = {},
 ) {
-  const overdue = selectOverdueReminders({ reminders, index, dismissedKeys, now });
+  const overdue = selectOverdueReminders({
+    reminders,
+    index,
+    dismissedKeys,
+    now,
+    snoozes,
+  });
   const overdueIds = new Set(overdue.map((r) => r.id));
-  const { dueSoon, nextUp } = sectionTodayReminders({
+  const { dueSoon, nextUp, snoozed } = sectionTodayReminders({
     reminders,
     overdueIds,
     now,
+    snoozes,
+    dismissedKeys,
   });
-  return { overdue, dueSoon, nextUp };
+  return { overdue, dueSoon, nextUp, snoozed };
 }
 
 const ids = (list) => list.map((r) => r.id);
@@ -241,17 +254,165 @@ describe("completed / disabled / snoozed", () => {
     expect(nextUp).toEqual([]);
   });
 
-  it("an instance snoozed past now is hidden from Due Soon/Next Up", () => {
+  it("an instance snoozed past now leaves Due Soon/Next Up for the Snoozed section", () => {
     const snoozed = feeding({
       scheduledAt: atOffsetMin(10),
       snoozedUntil: atOffsetMin(45),
     });
-    const { dueSoon, nextUp } = sectionTodayReminders({
+    const result = sectionTodayReminders({
       reminders: [snoozed],
       now: NOW,
     });
+    expect(result.dueSoon).toEqual([]);
+    expect(result.nextUp).toEqual([]);
+    expect(ids(result.snoozed)).toEqual(["f1"]);
+  });
+});
+
+describe("snooze lifecycle — exactly one section at every step", () => {
+  // The snooze map (store: id → snoozedUntil ISO) is the canonical source; the
+  // per-reminder snoozedUntil field is a fallback. Vet reminders only ever have
+  // the map entry (they don't live in the reminders store).
+
+  it("snoozing a future Due Soon instance moves it to Snoozed only", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(30) });
+    const { overdue, dueSoon, nextUp, snoozed } = classify([r], {
+      snoozes: { w1: atOffsetMin(90) },
+    });
+    expect(ids(snoozed)).toEqual(["w1"]);
+    expect(overdue).toEqual([]);
     expect(dueSoon).toEqual([]);
     expect(nextUp).toEqual([]);
+  });
+
+  it("a map-only snooze works for instances outside the store (vet appointments)", () => {
+    const vet = wellness({
+      id: "vet_apt_7",
+      type: "vet_appointment",
+      scheduledAt: atOffsetMin(20),
+      snoozedUntil: null, // never set on the query-derived object
+    });
+    const { snoozed, dueSoon } = classify([vet], {
+      snoozes: { vet_apt_7: atOffsetMin(60) },
+    });
+    expect(ids(snoozed)).toEqual(["vet_apt_7"]);
+    expect(dueSoon).toEqual([]);
+    // The emitted card carries the map's snoozedUntil so the UI can show it.
+    expect(snoozed[0].snoozedUntil).toBe(atOffsetMin(60));
+  });
+
+  it("INVARIANT: a snoozed instance whose scheduled time passes mid-snooze stays in Snoozed, never Overdue", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(10) });
+    const snoozes = { w1: atOffsetMin(60) };
+    // 20 min later: scheduled time passed, snooze still active.
+    const mid = classify([r], {
+      now: new Date(NOW.getTime() + 20 * 60 * 1000),
+      snoozes,
+    });
+    expect(ids(mid.snoozed)).toEqual(["w1"]);
+    expect(mid.overdue).toEqual([]);
+    expect(mid.dueSoon).toEqual([]);
+    expect(mid.nextUp).toEqual([]);
+  });
+
+  it("snooze elapses with scheduled time passed → returns to Overdue only (persistent)", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(10) });
+    const snoozes = { w1: atOffsetMin(60) };
+    const after = classify([r], {
+      now: new Date(NOW.getTime() + 61 * 60 * 1000),
+      snoozes,
+    });
+    expect(ids(after.overdue)).toEqual(["w1"]);
+    expect(after.snoozed).toEqual([]);
+    expect(after.dueSoon).toEqual([]);
+  });
+
+  it("snooze elapses with scheduled time still in the future → returns to Due Soon", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(90) });
+    const snoozes = { w1: atOffsetMin(45) };
+    const after = classify([r], {
+      now: new Date(NOW.getTime() + 50 * 60 * 1000),
+      snoozes,
+    });
+    expect(ids(after.dueSoon)).toEqual(["w1"]);
+    expect(after.snoozed).toEqual([]);
+    expect(after.overdue).toEqual([]);
+  });
+
+  it("snooze elapses on a past-due transient (feeding) → returns to its Due Soon countdown home", () => {
+    const r = feeding({ scheduledAt: atOffsetMin(10) });
+    const snoozes = { f1: atOffsetMin(30) };
+    const after = classify([r], {
+      now: new Date(NOW.getTime() + 40 * 60 * 1000),
+      snoozes,
+    });
+    expect(ids(after.dueSoon)).toEqual(["f1"]);
+    expect(after.snoozed).toEqual([]);
+  });
+
+  it("logging during the snooze (resolved in DB) removes it from every section once the snooze ends", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(10) });
+    const index = buildResolutionIndex({
+      wellnessLogs: [
+        {
+          routine_id: 100,
+          wellness_check_item_index: 0,
+          values_json: { scheduledDate: toDateStr(r.scheduledAt) },
+        },
+      ],
+    });
+    const after = classify([r], {
+      now: new Date(NOW.getTime() + 61 * 60 * 1000),
+      snoozes: { w1: atOffsetMin(60) },
+      index,
+    });
+    expect(after.overdue).toEqual([]);
+    expect(after.snoozed).toEqual([]);
+    expect(after.dueSoon).toEqual([]);
+    expect(after.nextUp).toEqual([]);
+  });
+
+  it("a completed store instance never shows in Snoozed even with a live snooze entry", () => {
+    const r = wellness({ status: "completed" });
+    const { snoozed } = classify([r], { snoozes: { w1: atOffsetMin(60) } });
+    expect(snoozed).toEqual([]);
+  });
+
+  it("skipping (dismissing) while snoozed removes it from every section, now and after the snooze", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(10) });
+    const dismissedKeys = new Set(["w1"]);
+    const snoozes = { w1: atOffsetMin(60) };
+
+    const during = classify([r], { snoozes, dismissedKeys });
+    expect(during.snoozed).toEqual([]);
+    expect(during.overdue).toEqual([]);
+
+    const after = classify([r], {
+      now: new Date(NOW.getTime() + 90 * 60 * 1000),
+      snoozes,
+      dismissedKeys,
+    });
+    expect(after.overdue).toEqual([]);
+    expect(after.dueSoon).toEqual([]);
+    expect(after.snoozed).toEqual([]);
+  });
+
+  it("a dismissed transient (feeding) is excluded from Due Soon too — uniform 'dismissed means gone'", () => {
+    const r = feeding({ scheduledAt: atOffsetMin(-30) });
+    const { dueSoon, snoozed } = classify([r], {
+      dismissedKeys: new Set(["f1"]),
+    });
+    expect(dueSoon).toEqual([]);
+    expect(snoozed).toEqual([]);
+  });
+
+  it("Snoozed sorts soonest-to-return first", () => {
+    const a = wellness({ id: "a", scheduledAt: atOffsetMin(10) });
+    const b = wellness({ id: "b", scheduledAt: atOffsetMin(20) });
+    const { snoozed } = classify([a, b], {
+      snoozes: { a: atOffsetMin(120), b: atOffsetMin(60) },
+    });
+    expect(ids(snoozed)).toEqual(["b", "a"]);
   });
 });
 

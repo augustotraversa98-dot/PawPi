@@ -10,6 +10,13 @@ const useRemindersStore = create((set, get) => ({
   // State - start with empty array, will be populated from routines
   reminders: [],
 
+  // Active snoozes keyed by instance id (id → snoozedUntil ISO). This map — not
+  // the per-reminder snoozedUntil field — is the read path for Today's
+  // sectioning, because some reminders never live in this store (vet
+  // appointments come from React Query) yet still need a working snooze.
+  // In-memory only, like the rest of this store: lost on app restart.
+  snoozes: {},
+
   // Actions
   addReminder: async (reminder) => {
     // Schedule notification if enabled and not disabled
@@ -173,7 +180,19 @@ const useRemindersStore = create((set, get) => ({
     get().removeReminderNotification(id);
   },
 
+  // Drop an active snooze (after the instance is logged or skipped — the snooze
+  // no longer means anything once the instance is resolved).
+  clearSnooze: (id) => {
+    set((state) => {
+      if (!(id in state.snoozes)) return {};
+      const next = { ...state.snoozes };
+      delete next[id];
+      return { snoozes: next };
+    });
+  },
+
   completeReminder: (id) => {
+    get().clearSnooze(id);
     const reminder = get().reminders.find((r) => r.id === id);
     if (!reminder) return;
 
@@ -201,9 +220,6 @@ const useRemindersStore = create((set, get) => ({
   },
 
   snoozeReminder: async (id, snoozeOption) => {
-    const reminder = get().reminders.find((r) => r.id === id);
-    if (!reminder) return;
-
     let snoozeUntil;
     const snoozeMinutes = snoozeOption.value;
 
@@ -220,6 +236,15 @@ const useRemindersStore = create((set, get) => ({
     } else {
       snoozeUntil = new Date(Date.now() + snoozeMinutes * 60 * 1000);
     }
+
+    set((state) => ({
+      snoozes: { ...state.snoozes, [id]: snoozeUntil.toISOString() },
+    }));
+
+    const reminder = get().reminders.find((r) => r.id === id);
+    // Not store-backed (vet appointments): the map entry above is the whole
+    // snooze — there's no notification or reminder object to reschedule.
+    if (!reminder) return;
 
     // Cancel old notification
     if (reminder.scheduledNotificationId) {

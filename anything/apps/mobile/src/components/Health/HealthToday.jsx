@@ -6,6 +6,7 @@ import {
   TrendingUp,
   AlertCircle,
   Bell,
+  Clock,
   ChevronRight,
   ChevronDown,
   Play,
@@ -65,7 +66,8 @@ export default function HealthToday() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
-  const { reminders, completeReminder, snoozeReminder } = useRemindersStore();
+  const { reminders, completeReminder, snoozeReminder, snoozes, clearSnooze } =
+    useRemindersStore();
   const loadRoutines = useRoutinesStore((s) => s.loadRoutines);
   const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
@@ -75,6 +77,7 @@ export default function HealthToday() {
   const {
     overdue: overdueReminders,
     dismiss,
+    dismissedKeys,
     now: reminderNowMs,
     refreshNow,
   } = useTodayReminders();
@@ -121,6 +124,7 @@ export default function HealthToday() {
     }
   }, [currentPet?.id, loadedPetId, loadRoutines]);
   const [overdueExpanded, setOverdueExpanded] = useState(null);
+  const [snoozedExpanded, setSnoozedExpanded] = useState(null);
   const [snoozeModalVisible, setSnoozeModalVisible] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -162,17 +166,27 @@ export default function HealthToday() {
   const isOverdueExpanded =
     overdueExpanded ?? overdueReminders.length <= OVERDUE_COLLAPSE_THRESHOLD;
 
-  // Due Soon (countdown cards) / Next Up — sectioned by the shared boundary
-  // (isPastDue) against the same reactive clock that drives Overdue, so the
-  // sections can never disagree about which side of "now" an instance is on.
-  // A past-due persistent instance belongs to Overdue alone; a future one to
-  // exactly one of Due Soon / Next Up.
-  const { dueSoon: timeSensitiveReminders, nextUp } = sectionTodayReminders({
+  // Snoozed / Due Soon (countdown cards) / Next Up — sectioned by the shared
+  // boundary (isPastDue) against the same reactive clock that drives Overdue, so
+  // the sections can never disagree about which side of "now" an instance is on.
+  // An actively snoozed instance belongs to Snoozed alone (it outranks Overdue);
+  // a past-due persistent instance to Overdue alone; a future one to exactly one
+  // of Due Soon / Next Up. Dismissed instances appear nowhere.
+  const {
+    dueSoon: timeSensitiveReminders,
+    nextUp,
+    snoozed: snoozedReminders,
+  } = sectionTodayReminders({
     reminders: allReminders,
     overdueIds,
     now: reminderNowMs,
+    snoozes,
+    dismissedKeys,
   });
   const nextUpReminders = nextUp.slice(0, 3);
+
+  const isSnoozedExpanded =
+    snoozedExpanded ?? snoozedReminders.length <= OVERDUE_COLLAPSE_THRESHOLD;
 
   // Single entry point for "log/done" on ANY reminder card — today's and Overdue
   // alike. routeReminderLog owns the per-type decision; this switch only executes
@@ -347,11 +361,13 @@ export default function HealthToday() {
     invalidateResolution(["photo-checks"]);
   };
 
-  // Skip/dismiss an overdue instance — durably recorded so it doesn't reappear after
-  // a restart. Used only from the Overdue section.
+  // Skip/dismiss an instance — durably recorded so it doesn't reappear after
+  // a restart. Used from the Overdue and Snoozed sections; an active snooze is
+  // dropped alongside (the instance is resolved, the snooze means nothing now).
   const handleSkipOverdue = async (reminder) => {
     try {
       await dismiss(reminder);
+      clearSnooze(reminder.id);
     } catch (err) {
       console.error("[HealthToday] dismiss failed", err);
       Alert.alert(
@@ -620,6 +636,156 @@ export default function HealthToday() {
         </View>
       )}
 
+      {/* Snoozed — actively snoozed items keep a visible home so they can be
+          logged/skipped during the snooze window instead of disappearing */}
+      {snoozedReminders.length > 0 && (
+        <View style={{ marginBottom: 24 }}>
+          <TouchableOpacity
+            onPress={() => setSnoozedExpanded(!isSnoozedExpanded)}
+            activeOpacity={0.7}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Clock
+                size={18}
+                color={C.terracotta}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                style={{ fontSize: 16, fontWeight: "700", color: C.terracotta }}
+              >
+                Snoozed ({snoozedReminders.length})
+              </Text>
+            </View>
+            {isSnoozedExpanded ? (
+              <ChevronDown size={20} color={C.terracotta} />
+            ) : (
+              <ChevronRight size={20} color={C.terracotta} />
+            )}
+          </TouchableOpacity>
+
+          {isSnoozedExpanded && (
+            <View style={{ gap: 10 }}>
+              {snoozedReminders.map((reminder) => {
+                const config = REMINDER_TYPE_CONFIG[reminder.type];
+                const action = getReminderAction(reminder);
+                const ActionIcon = action.icon;
+
+                return (
+                  <View
+                    key={reminder.id}
+                    style={{
+                      backgroundColor: C.card,
+                      borderRadius: 16,
+                      padding: 14,
+                      borderWidth: 1.5,
+                      borderColor: C.terracotta + "55",
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Text style={{ fontSize: 22, marginRight: 12 }}>
+                        {config?.icon || "📌"}
+                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontWeight: "700",
+                            color: C.warmBrown,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {reminder.title}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: C.terracotta,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {formatScheduledTime(
+                            reminder.scheduledAt ?? reminder.nextTriggerAt,
+                            reminderNowMs,
+                          )}
+                          {" · snoozed until "}
+                          {formatScheduledTime(
+                            reminder.snoozedUntil,
+                            reminderNowMs,
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => handleComplete(reminder)}
+                        style={{
+                          flex: 1,
+                          backgroundColor: config?.color || C.sage,
+                          borderRadius: 12,
+                          paddingVertical: 10,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <ActionIcon size={16} color="#FFF" strokeWidth={2.5} />
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "700",
+                            color: "#FFF",
+                          }}
+                        >
+                          {action.label}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleSkipOverdue(reminder)}
+                        style={{
+                          paddingHorizontal: 14,
+                          borderRadius: 12,
+                          borderWidth: 1.5,
+                          borderColor: C.peach,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <X size={15} color={C.mutedBrown} strokeWidth={2.5} />
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "700",
+                            color: C.mutedBrown,
+                          }}
+                        >
+                          Skip
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Time-Sensitive Countdown Cards */}
       {timeSensitiveReminders.length > 0 && (
         <View style={{ marginBottom: 24 }}>
@@ -788,7 +954,8 @@ export default function HealthToday() {
       {/* Empty State for Next Up */}
       {nextUpReminders.length === 0 &&
         timeSensitiveReminders.length === 0 &&
-        overdueReminders.length === 0 && (
+        overdueReminders.length === 0 &&
+        snoozedReminders.length === 0 && (
         <View style={{ marginBottom: 24 }}>
           <View
             style={{
