@@ -39,6 +39,19 @@ export function instanceKey(reminder) {
   return reminder?.id ?? null;
 }
 
+// THE classification boundary for Today's sections: an instance whose scheduled
+// time has been reached (scheduledAt <= now) is overdue; a strictly-future one is
+// upcoming/"due soon". Every section derivation — Overdue selection below, the
+// Due Soon / Next Up sectioning in reminderSections.js — goes through this one
+// predicate, so an instance can never sit on both sides of the boundary.
+export function isPastDue(reminder, now = new Date()) {
+  const t = new Date(
+    reminder?.scheduledAt ?? reminder?.nextTriggerAt,
+  ).getTime();
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  return !Number.isNaN(t) && !Number.isNaN(nowMs) && t <= nowMs;
+}
+
 // Build the lookup index from fetched DB rows. Snake_case fields come straight from
 // the API (SELECT *). Dates are reduced to local YYYY-MM-DD via toDateStr so they
 // compare lexicographically.
@@ -138,8 +151,7 @@ export function selectOverdueReminders({
     const key = instanceKey(reminder);
     if (key == null || seen.has(key)) continue; // dedupe by id
 
-    const scheduled = new Date(reminder.scheduledAt ?? reminder.nextTriggerAt);
-    if (isNaN(scheduled.getTime()) || scheduled >= now) continue; // past only
+    if (!isPastDue(reminder, now)) continue; // past only — the shared boundary
 
     if (reminder.status === "completed" || reminder.status === "disabled") {
       continue;
