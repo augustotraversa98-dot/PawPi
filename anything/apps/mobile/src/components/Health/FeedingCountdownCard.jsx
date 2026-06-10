@@ -4,6 +4,7 @@ import { Clock, CheckCircle, Zap, AlertCircle } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { buildQuickFoodLogPayload } from "@/utils/reminderLogFlow";
 import FeedingIssueModal from "./FeedingIssueModal";
 
 const C = {
@@ -47,17 +48,7 @@ export default function FeedingCountdownCard({
       const response = await fetch("/api/health/food-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          petId: currentPet.id,
-          mealType: reminder.title || "meal",
-          foodName: null,
-          amount: null,
-          appetite: "normal",
-          finishedMeal: true,
-          waterIntake: null,
-          vomitingOrReaction: false,
-          notes: reminder.notes || "Logged as usual",
-        }),
+        body: JSON.stringify(buildQuickFoodLogPayload(reminder, currentPet.id)),
       });
 
       if (!response.ok) {
