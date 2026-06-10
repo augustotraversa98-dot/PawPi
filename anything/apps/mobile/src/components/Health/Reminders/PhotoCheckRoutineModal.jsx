@@ -10,6 +10,10 @@ import {
 import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import TimeField from "@/components/TimeField";
+import CadenceFrequencySelector, {
+  CADENCE_LABELS,
+} from "./CadenceFrequencySelector";
+import DayChips, { DAY_CHIP_LABELS } from "./DayChips";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const C = {
@@ -218,6 +222,17 @@ export default function PhotoCheckRoutineModal({
     });
   };
 
+  // Recommended hint for the shared schedule: only when every selected area
+  // agrees on a recommendation (per-area hints live in the custom path).
+  const sharedRecommendedFreq = (() => {
+    const freqs = selectedBodyAreas.map(
+      (v) => BODY_AREAS.find((a) => a.value === v)?.defaultFreq,
+    );
+    return freqs.length > 0 && freqs.every((f) => f === freqs[0])
+      ? freqs[0]
+      : undefined;
+  })();
+
   const handleScheduleModeChange = (mode) => {
     if (mode === "custom" && scheduleMode === "same") {
       // Initialize custom schedules from same schedule
@@ -384,12 +399,7 @@ export default function PhotoCheckRoutineModal({
                   {area.label}
                 </Text>
                 <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                  Recommended:{" "}
-                  {area.defaultFreq === ROUTINE_FREQUENCY.WEEKLY
-                    ? "Weekly"
-                    : area.defaultFreq === ROUTINE_FREQUENCY.BIWEEKLY
-                      ? "Every 2 weeks"
-                      : "Monthly"}
+                  Recommended: {CADENCE_LABELS[area.defaultFreq] || "Monthly"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -470,85 +480,36 @@ export default function PhotoCheckRoutineModal({
           >
             Frequency
           </Text>
-          <View style={{ gap: 8, marginBottom: 20 }}>
-            {[
-              { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-              { value: ROUTINE_FREQUENCY.BIWEEKLY, label: "Every 2 weeks" },
-              { value: ROUTINE_FREQUENCY.MONTHLY, label: "Monthly" },
-            ].map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                onPress={() => setFrequency(option.value)}
+          <CadenceFrequencySelector
+            value={frequency}
+            onChange={setFrequency}
+            recommended={sharedRecommendedFreq}
+            color="#4DB8E8"
+            style={{ marginBottom: 20 }}
+          />
+
+          {(frequency === ROUTINE_FREQUENCY.WEEKLY ||
+            frequency === ROUTINE_FREQUENCY.BIWEEKLY) && (
+            <>
+              <Text
                 style={{
-                  backgroundColor:
-                    frequency === option.value ? "#4DB8E8" + "20" : C.card,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1.5,
-                  borderColor: frequency === option.value ? "#4DB8E8" : C.peach,
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: C.warmBrown,
+                  marginBottom: 12,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: frequency === option.value ? "700" : "600",
-                    color: frequency === option.value ? "#4DB8E8" : C.warmBrown,
-                  }}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Preferred Day
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 20,
-            }}
-          >
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-              (day, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setPreferredDay(index)}
-                  style={{
-                    width: 45,
-                    height: 45,
-                    borderRadius: 23,
-                    backgroundColor:
-                      preferredDay === index ? "#4DB8E8" : C.sand,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: preferredDay === index ? "#4DB8E8" : C.peach,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "700",
-                      color: preferredDay === index ? "#FFF" : C.mutedBrown,
-                    }}
-                  >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ),
-            )}
-          </View>
+                Preferred Day
+              </Text>
+              <DayChips
+                value={[preferredDay]}
+                onChange={(days) => setPreferredDay(days[0])}
+                multiSelect={false}
+                color="#4DB8E8"
+                style={{ marginBottom: 20 }}
+              />
+            </>
+          )}
 
           <Text
             style={{
@@ -721,17 +682,11 @@ export default function PhotoCheckRoutineModal({
                         {area?.label}
                       </Text>
                       <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                        {schedule.frequency === ROUTINE_FREQUENCY.WEEKLY
-                          ? "Weekly"
-                          : schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY
-                            ? "Every 2 weeks"
-                            : "Monthly"}{" "}
-                        ·{" "}
-                        {
-                          ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                            schedule.preferredDay
-                          ]
-                        }{" "}
+                        {CADENCE_LABELS[schedule.frequency] || "Monthly"}
+                        {schedule.frequency === ROUTINE_FREQUENCY.WEEKLY ||
+                        schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY
+                          ? ` · ${DAY_CHIP_LABELS[schedule.preferredDay]}`
+                          : ""}{" "}
                         at {schedule.preferredTime}
                       </Text>
                     </View>
@@ -763,126 +718,45 @@ export default function PhotoCheckRoutineModal({
                     >
                       Frequency
                     </Text>
-                    <View style={{ gap: 6, marginBottom: 12 }}>
-                      {[
-                        {
-                          value: ROUTINE_FREQUENCY.WEEKLY,
-                          label: "Weekly",
-                        },
-                        {
-                          value: ROUTINE_FREQUENCY.BIWEEKLY,
-                          label: "Every 2 weeks",
-                        },
-                        {
-                          value: ROUTINE_FREQUENCY.MONTHLY,
-                          label: "Monthly",
-                        },
-                      ].map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          onPress={() =>
-                            updateCustomSchedule(
-                              areaValue,
-                              "frequency",
-                              option.value,
-                            )
-                          }
-                          style={{
-                            backgroundColor:
-                              schedule.frequency === option.value
-                                ? "#4DB8E8" + "20"
-                                : C.sand,
-                            borderRadius: 10,
-                            padding: 10,
-                            borderWidth: 1,
-                            borderColor:
-                              schedule.frequency === option.value
-                                ? "#4DB8E8"
-                                : C.peach,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              fontWeight:
-                                schedule.frequency === option.value
-                                  ? "700"
-                                  : "600",
-                              color:
-                                schedule.frequency === option.value
-                                  ? "#4DB8E8"
-                                  : C.warmBrown,
-                            }}
-                          >
-                            {option.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    <CadenceFrequencySelector
+                      value={schedule.frequency}
+                      onChange={(value) =>
+                        updateCustomSchedule(areaValue, "frequency", value)
+                      }
+                      recommended={area?.defaultFreq}
+                      color="#4DB8E8"
+                      style={{ marginBottom: 12 }}
+                    />
 
                     {/* Day */}
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Preferred Day
-                    </Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 6,
-                        marginBottom: 12,
-                      }}
-                    >
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                        (day, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            onPress={() =>
-                              updateCustomSchedule(
-                                areaValue,
-                                "preferredDay",
-                                index,
-                              )
-                            }
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              backgroundColor:
-                                schedule.preferredDay === index
-                                  ? "#4DB8E8"
-                                  : C.sand,
-                              justifyContent: "center",
-                              alignItems: "center",
-                              borderWidth: 1,
-                              borderColor:
-                                schedule.preferredDay === index
-                                  ? "#4DB8E8"
-                                  : C.peach,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                fontWeight: "700",
-                                color:
-                                  schedule.preferredDay === index
-                                    ? "#FFF"
-                                    : C.mutedBrown,
-                              }}
-                            >
-                              {day}
-                            </Text>
-                          </TouchableOpacity>
-                        ),
-                      )}
-                    </View>
+                    {(schedule.frequency === ROUTINE_FREQUENCY.WEEKLY ||
+                      schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY) && (
+                      <>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "700",
+                            color: C.warmBrown,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Preferred Day
+                        </Text>
+                        <DayChips
+                          value={[schedule.preferredDay]}
+                          onChange={(days) =>
+                            updateCustomSchedule(
+                              areaValue,
+                              "preferredDay",
+                              days[0],
+                            )
+                          }
+                          multiSelect={false}
+                          color="#4DB8E8"
+                          style={{ marginBottom: 12 }}
+                        />
+                      </>
+                    )}
 
                     {/* Time */}
                     <Text

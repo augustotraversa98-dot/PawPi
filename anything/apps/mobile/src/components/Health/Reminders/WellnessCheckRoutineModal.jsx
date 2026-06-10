@@ -18,6 +18,8 @@ import {
 } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import TimeField from "@/components/TimeField";
+import CadenceFrequencySelector from "./CadenceFrequencySelector";
+import DayChips from "./DayChips";
 
 const C = {
   cream: "#FFF7EF",
@@ -742,66 +744,14 @@ export default function WellnessCheckRoutineModal({
                         >
                           Frequency
                         </Text>
-                        <View style={{ gap: 8, marginBottom: 12 }}>
-                          {[
-                            {
-                              value: ROUTINE_FREQUENCY.DAILY,
-                              label: "Daily",
-                            },
-                            {
-                              value: ROUTINE_FREQUENCY.WEEKLY,
-                              label: "Weekly",
-                            },
-                            {
-                              value: ROUTINE_FREQUENCY.BIWEEKLY,
-                              label: "Every 2 weeks",
-                            },
-                            {
-                              value: ROUTINE_FREQUENCY.MONTHLY,
-                              label: "Monthly",
-                            },
-                          ].map((option) => (
-                            <TouchableOpacity
-                              key={option.value}
-                              onPress={() =>
-                                handleItemChange(
-                                  item.id,
-                                  "frequency",
-                                  option.value,
-                                )
-                              }
-                              style={{
-                                backgroundColor:
-                                  item.frequency === option.value
-                                    ? "#F4A460" + "20"
-                                    : C.sand,
-                                borderRadius: 12,
-                                padding: 12,
-                                borderWidth: 1.5,
-                                borderColor:
-                                  item.frequency === option.value
-                                    ? "#F4A460"
-                                    : C.peach,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 14,
-                                  fontWeight:
-                                    item.frequency === option.value
-                                      ? "700"
-                                      : "600",
-                                  color:
-                                    item.frequency === option.value
-                                      ? "#F4A460"
-                                      : C.warmBrown,
-                                }}
-                              >
-                                {option.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
+                        <CadenceFrequencySelector
+                          value={item.frequency}
+                          onChange={(value) =>
+                            handleItemChange(item.id, "frequency", value)
+                          }
+                          color="#F4A460"
+                          style={{ marginBottom: 12 }}
+                        />
 
                         {/* Preferred Day (if weekly/biweekly) */}
                         {(item.frequency === ROUTINE_FREQUENCY.WEEKLY ||
@@ -817,65 +767,19 @@ export default function WellnessCheckRoutineModal({
                             >
                               Preferred Day
                             </Text>
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 8,
-                                marginBottom: 12,
-                              }}
-                            >
-                              {[
-                                "Mon",
-                                "Tue",
-                                "Wed",
-                                "Thu",
-                                "Fri",
-                                "Sat",
-                                "Sun",
-                              ].map((day, dayIndex) => {
-                                const isSelected =
-                                  item.preferredDay === dayIndex;
-                                return (
-                                  <TouchableOpacity
-                                    key={dayIndex}
-                                    onPress={() =>
-                                      handleItemChange(
-                                        item.id,
-                                        "preferredDay",
-                                        dayIndex,
-                                      )
-                                    }
-                                    style={{
-                                      width: 45,
-                                      height: 45,
-                                      borderRadius: 23,
-                                      backgroundColor: isSelected
-                                        ? "#F4A460"
-                                        : C.sand,
-                                      justifyContent: "center",
-                                      alignItems: "center",
-                                      borderWidth: 1,
-                                      borderColor: isSelected
-                                        ? "#F4A460"
-                                        : C.peach,
-                                    }}
-                                  >
-                                    <Text
-                                      style={{
-                                        fontSize: 11,
-                                        fontWeight: "700",
-                                        color: isSelected
-                                          ? "#FFF"
-                                          : C.mutedBrown,
-                                      }}
-                                    >
-                                      {day}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </View>
+                            <DayChips
+                              value={[item.preferredDay]}
+                              onChange={(days) =>
+                                handleItemChange(
+                                  item.id,
+                                  "preferredDay",
+                                  days[0],
+                                )
+                              }
+                              multiSelect={false}
+                              color="#F4A460"
+                              style={{ marginBottom: 12 }}
+                            />
                           </>
                         )}
 
