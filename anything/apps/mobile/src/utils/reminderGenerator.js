@@ -3,16 +3,24 @@ import { REMINDER_STATUS } from "@/data/remindersData";
 
 /**
  * Generate reminders from a routine
- * Creates reminders for the next 7-14 days based on routine schedule
+ * Creates reminders for the next 7-14 days based on routine schedule.
+ * `fromTime` is injectable (defaults to the wall clock): instances are emitted
+ * from that moment forward — buildTodayProgress passes local midnight to
+ * enumerate ALL of today's instances, including already-passed ones, with the
+ * same deterministic ids the store carries.
  */
-export function generateRemindersFromRoutine(routine, daysAhead = 14) {
+export function generateRemindersFromRoutine(
+  routine,
+  daysAhead = 14,
+  fromTime = new Date(),
+) {
   if (!routine.isActive || !routine.notificationEnabled) {
     return [];
   }
 
   const reminders = [];
-  const now = new Date();
-  const endDate = new Date();
+  const now = fromTime instanceof Date ? new Date(fromTime) : new Date(fromTime);
+  const endDate = new Date(now);
   endDate.setDate(endDate.getDate() + daysAhead);
 
   // Get primary action based on routine type

@@ -41,11 +41,13 @@ function usePetList(name, url, pick, petId) {
  * never drop a missed item. A per-minute `now` tick drives recomputation so the list
  * tracks the clock rather than piggybacking on query refetches.
  *
- * Returns { overdue, dismiss, dismissedKeys, isLoading, now, refreshNow }.
- * `dismiss(reminder)` durably records a skip; `dismissedKeys` is the current skip
- * set so the section layer can exclude dismissed instances uniformly. `now` (ms)
- * is the reactive clock — consumers section Snoozed / Due Soon / Next Up against
- * it so every section shares one time source.
+ * Returns { overdue, dismiss, dismissedKeys, resolutionIndex, isLoading, now,
+ * refreshNow }. `dismiss(reminder)` durably records a skip; `dismissedKeys` is
+ * the current skip set so the section layer can exclude dismissed instances
+ * uniformly; `resolutionIndex` is the per-instance done-index so Today's
+ * Progress counts from the same source. `now` (ms) is the reactive clock —
+ * consumers section Snoozed / Due Soon / Next Up against it so every section
+ * shares one time source.
  * `refreshNow()` advances the clock immediately (pull-to-refresh), so a refresh
  * reclassifies with the current time instead of waiting for the next tick.
  */
@@ -114,15 +116,22 @@ export function useTodayReminders({ now } = {}) {
     [dismissalsQuery.data],
   );
 
+  // The per-instance resolution index, exposed so other Today derivations
+  // (buildTodayProgress) count "done" from the exact same source the Overdue
+  // reconciliation reads — one index, no parallel pipeline.
+  const index = useMemo(
+    () =>
+      buildResolutionIndex({
+        wellnessLogs: wellnessQuery.data || [],
+        weightLogs: weightQuery.data || [],
+        medicalLogs: medicalQuery.data || [],
+        photoChecks: photoQuery.data || [],
+      }),
+    [wellnessQuery.data, weightQuery.data, medicalQuery.data, photoQuery.data],
+  );
+
   const overdue = useMemo(() => {
     if (!activePetId) return [];
-
-    const index = buildResolutionIndex({
-      wellnessLogs: wellnessQuery.data || [],
-      weightLogs: weightQuery.data || [],
-      medicalLogs: medicalQuery.data || [],
-      photoChecks: photoQuery.data || [],
-    });
 
     return buildOverdueReminders({
       routines,
@@ -141,10 +150,7 @@ export function useTodayReminders({ now } = {}) {
     routines,
     vetReminders,
     snoozes,
-    wellnessQuery.data,
-    weightQuery.data,
-    medicalQuery.data,
-    photoQuery.data,
+    index,
     dismissedKeys,
   ]);
 
@@ -190,5 +196,13 @@ export function useTodayReminders({ now } = {}) {
     medicalQuery.isLoading ||
     photoQuery.isLoading;
 
-  return { overdue, dismiss, dismissedKeys, isLoading, now: nowMs, refreshNow };
+  return {
+    overdue,
+    dismiss,
+    dismissedKeys,
+    resolutionIndex: index,
+    isLoading,
+    now: nowMs,
+    refreshNow,
+  };
 }
