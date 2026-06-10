@@ -36,8 +36,11 @@ import MedicalCareIssueModal from "./Reminders/MedicalCareIssueModal";
 import WellnessLogModal from "./WellnessCheck/WellnessLogModal";
 import FeedingIssueModal from "./FeedingIssueModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
+import { useVetAppointments } from "@/hooks/useVetAppointments";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
+import { useFoodLogs, useWalkLogs } from "@/hooks/useFetchHealthData";
 import { sectionTodayReminders } from "@/utils/reminderSections";
+import { buildTodayProgress } from "@/utils/todayProgress";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import {
   LOG_FLOWS,
@@ -69,15 +72,23 @@ export default function HealthToday() {
   const { reminders, completeReminder, snoozeReminder, snoozes, clearSnooze } =
     useRemindersStore();
   const loadRoutines = useRoutinesStore((s) => s.loadRoutines);
+  const routines = useRoutinesStore((s) => s.routines);
   const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
   const { data: vetAppointmentReminders = [] } = useVetAppointmentReminders();
+  // Today's Progress sources: raw appointment rows (incl. completed) and
+  // today's food/walk logs — feeding/walk completion has no per-instance
+  // linkage, so it's counted scheduled-vs-logged.
+  const { appointments: vetAppointments } = useVetAppointments();
+  const { data: foodLogsData } = useFoodLogs(50);
+  const { data: walkLogsData } = useWalkLogs(50);
   // Reconciled Overdue list (persistent types, DB-resolved + dismissals applied),
   // plus the reactive clock every section classifies against.
   const {
     overdue: overdueReminders,
     dismiss,
     dismissedKeys,
+    resolutionIndex,
     now: reminderNowMs,
     refreshNow,
   } = useTodayReminders();
@@ -102,15 +113,17 @@ export default function HealthToday() {
     await loadRoutines(currentPet.id);
     await Promise.all(
       [
-        "reminder-dismissals",
-        "wellness-logs",
-        "weight-logs",
-        "medical-care-logs",
-        "photo-checks",
-        "vet-appointment-reminders",
-      ].map((key) =>
-        queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
-      ),
+        ["reminder-dismissals", currentPet.id],
+        ["wellness-logs", currentPet.id],
+        ["weight-logs", currentPet.id],
+        ["medical-care-logs", currentPet.id],
+        ["photo-checks", currentPet.id],
+        ["vet-appointment-reminders", currentPet.id],
+        // Today's Progress sources
+        ["vet-appointments", currentPet.id],
+        ["health", "food-logs", currentPet.id],
+        ["health", "walk-logs", currentPet.id],
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
     );
   }, [currentPet?.id, loadRoutines, queryClient, refreshNow]);
 
@@ -184,6 +197,23 @@ export default function HealthToday() {
     dismissedKeys,
   });
   const nextUpReminders = nextUp.slice(0, 3);
+
+  // Today's Progress — real counts from the SAME sources the sections read
+  // (instances + resolution index + dismissals + the reactive clock), plus
+  // today's food/walk logs and raw vet appointment rows. overdueCount is the
+  // section list's own length, so the badge can never disagree with the header.
+  const todayProgress = buildTodayProgress({
+    instances: allReminders,
+    routines,
+    petId: currentPet?.id,
+    index: resolutionIndex,
+    dismissedKeys,
+    foodLogs: foodLogsData?.logs || [],
+    walkLogs: walkLogsData?.logs || [],
+    vetAppointments,
+    overdue: overdueReminders,
+    now: reminderNowMs,
+  });
 
   const isSnoozedExpanded =
     snoozedExpanded ?? snoozedReminders.length <= OVERDUE_COLLAPSE_THRESHOLD;
@@ -1051,44 +1081,56 @@ export default function HealthToday() {
             Today's Progress
           </Text>
         </View>
-        <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              🍽️ Fed 2 times
-            </Text>
+        {todayProgress.categories.length === 0 &&
+        todayProgress.overdueCount === 0 ? (
+          <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+            No scheduled items today
+          </Text>
+        ) : (
+          <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
+            {todayProgress.categories.map((cat) => {
+              const complete = cat.done >= cat.total;
+              return (
+                <View
+                  key={cat.key}
+                  style={{
+                    backgroundColor:
+                      (complete ? C.sage : C.terracotta) + "20",
+                    borderRadius: 12,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: complete ? C.sage : C.terracotta,
+                    }}
+                  >
+                    {cat.emoji} {cat.label} {cat.done}/{cat.total}
+                  </Text>
+                </View>
+              );
+            })}
+            {todayProgress.overdueCount > 0 && (
+              <View
+                style={{
+                  backgroundColor: C.coral + "20",
+                  borderRadius: 12,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12, fontWeight: "700", color: C.coral }}
+                >
+                  ⚠️ {todayProgress.overdueCount} overdue
+                </Text>
+              </View>
+            )}
           </View>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              🚶 1 walk
-            </Text>
-          </View>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              💊 Medication given
-            </Text>
-          </View>
-        </View>
+        )}
       </View>
 
       {/* Snooze Modal */}

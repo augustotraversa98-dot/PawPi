@@ -26,6 +26,13 @@ jest.mock("@/hooks/usePetProfile", () => ({
 jest.mock("@/hooks/useVetAppointmentReminders", () => ({
   useVetAppointmentReminders: () => ({ data: [] }),
 }));
+jest.mock("@/hooks/useVetAppointments", () => ({
+  useVetAppointments: () => ({ appointments: [] }),
+}));
+jest.mock("@/hooks/useFetchHealthData", () => ({
+  useFoodLogs: () => ({ data: { logs: [] } }),
+  useWalkLogs: () => ({ data: { logs: [] } }),
+}));
 jest.mock("@/store/remindersStore", () => ({
   __esModule: true,
   default: () => ({
