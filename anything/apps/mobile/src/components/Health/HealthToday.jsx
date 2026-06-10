@@ -35,8 +35,15 @@ import SnoozeModal from "./Reminders/SnoozeModal";
 import PhotoCheckCaptureModal from "./PhotoCheck/PhotoCheckCaptureModal";
 import MedicalCareIssueModal from "./Reminders/MedicalCareIssueModal";
 import WellnessLogModal from "./WellnessCheck/WellnessLogModal";
+import FeedingIssueModal from "./FeedingIssueModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
+import {
+  LOG_FLOWS,
+  routeReminderLog,
+  buildMedicalCareLogPayload,
+  buildQuickFoodLogPayload,
+} from "@/utils/reminderLogFlow";
 
 const C = {
   cream: "#FFF7EF",
@@ -114,6 +121,7 @@ export default function HealthToday() {
   const [issueReminder, setIssueReminder] = useState(null);
   // One config-driven modal handles every wellness check type.
   const [wellnessReminder, setWellnessReminder] = useState(null);
+  const [feedingIssueReminder, setFeedingIssueReminder] = useState(null);
 
   // Auto-refresh countdown every minute
   useEffect(() => {
@@ -183,65 +191,113 @@ export default function HealthToday() {
 
   const nextUpReminders = getNextUpReminders();
 
+  // Single entry point for "log/done" on ANY reminder card — today's and Overdue
+  // alike. routeReminderLog owns the per-type decision; this switch only executes
+  // the flow it picks, so an overdue item can never take a per-type shortcut past
+  // its detail flow.
   const handleComplete = async (reminder, extra) => {
-    // Check if this is a vet appointment reminder
-    if (reminder.type === "vet_appointment") {
-      // Vet appointment completion is handled in VetAppointmentDetailModal
-      // Just acknowledge here
-      Alert.alert("✅ Done!", "Vet appointment marked as completed");
-      return;
-    }
+    const route = routeReminderLog(reminder, extra);
 
-    // Check if this is a photo check reminder
-    if (reminder.type === REMINDER_TYPES.PHOTO_CHECK) {
-      // Open photo check capture modal instead of just completing
-      setPhotoCheckReminder(reminder);
-      setPhotoCheckModalVisible(true);
-      return;
-    }
+    switch (route.flow) {
+      case LOG_FLOWS.VET_APPOINTMENT:
+        // Vet appointment completion is handled in VetAppointmentDetailModal
+        // Just acknowledge here
+        Alert.alert("✅ Done!", "Vet appointment marked as completed");
+        return;
 
-    // Medical Care: save a log entry, then complete only this reminder
-    if (reminder.type === "medical_care") {
-      const action = extra?.action || "given";
-      const status =
-        action === "add_vet_record" || action === "completed"
-          ? "completed"
-          : "given";
-      const noteSuffix =
-        action === "add_vet_record" ? "Added to vet record" : null;
+      case LOG_FLOWS.PHOTO_CAPTURE:
+        // Open photo check capture modal instead of just completing
+        setPhotoCheckReminder(reminder);
+        setPhotoCheckModalVisible(true);
+        return;
 
-      try {
-        await saveMedicalCareLog(reminder, { status, notes: noteSuffix });
-      } catch (err) {
-        console.error("[HealthToday] medical care log save failed", err);
+      // Wellness check: open the config-driven log modal. Persistence and
+      // completion happen on save, so this stays a no-op until then.
+      case LOG_FLOWS.WELLNESS_MODAL:
+        setWellnessReminder(reminder);
+        return;
+
+      // The detail ask the today-cards present as buttons. Picking an option
+      // re-enters handleComplete with that explicit action; Cancel saves and
+      // completes nothing, so the item stays in place.
+      case LOG_FLOWS.MEDICAL_CHOICE:
+      case LOG_FLOWS.FEEDING_CHOICE:
+        Alert.alert(reminder.title, "How did it go?", [
+          ...route.options.map((option) => ({
+            text: option.label,
+            onPress: () => handleComplete(reminder, { action: option.action }),
+          })),
+          { text: "Cancel", style: "cancel" },
+        ]);
+        return;
+
+      case LOG_FLOWS.MEDICAL_ISSUE:
+        handleSomethingOff(reminder);
+        return;
+
+      // Medical Care: save a log entry, then complete only this reminder
+      case LOG_FLOWS.MEDICAL_SAVE: {
+        try {
+          await saveMedicalCareLog(reminder, {
+            status: route.status,
+            notes: route.notes,
+          });
+        } catch (err) {
+          console.error("[HealthToday] medical care log save failed", err);
+          Alert.alert(
+            "Could not save",
+            "We couldn't save this entry. Please try again.",
+          );
+          return;
+        }
+
+        completeReminder(reminder.id);
+        invalidateResolution(["medical-care-logs"]);
         Alert.alert(
-          "Could not save",
-          "We couldn't save this entry. Please try again.",
+          "✅ Saved",
+          route.savedToVetRecord
+            ? `${reminder.title} saved to vet record`
+            : `${reminder.title} logged`,
         );
         return;
       }
 
-      completeReminder(reminder.id);
-      invalidateResolution(["medical-care-logs"]);
-      Alert.alert(
-        "✅ Saved",
-        action === "add_vet_record"
-          ? `${reminder.title} saved to vet record`
-          : `${reminder.title} logged`,
-      );
-      return;
-    }
+      case LOG_FLOWS.FEEDING_ISSUE:
+        setFeedingIssueReminder(reminder);
+        return;
 
-    // Wellness check: open the config-driven log modal. Persistence and
-    // completion happen on save, so this stays a no-op until then.
-    if (reminder.type === REMINDER_TYPES.WELLNESS_CHECK) {
-      setWellnessReminder(reminder);
-      return;
-    }
+      // Feeding "as usual": same quick log FeedingCountdownCard performs.
+      case LOG_FLOWS.FEEDING_SAVE: {
+        try {
+          const res = await fetch("/api/health/food-logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              buildQuickFoodLogPayload(reminder, reminder.petId),
+            ),
+          });
+          if (!res.ok) throw new Error(`Save failed: ${res.statusText}`);
+        } catch (err) {
+          console.error("[HealthToday] food log save failed", err);
+          Alert.alert(
+            "Could not save",
+            "We couldn't save this entry. Please try again.",
+          );
+          return;
+        }
 
-    // For other types, mark as complete immediately
-    completeReminder(reminder.id);
-    Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
+        queryClient.invalidateQueries({ queryKey: ["health", "food-logs"] });
+        queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+        completeReminder(reminder.id);
+        Alert.alert("✅ Logged", `${reminder.title} logged`);
+        return;
+      }
+
+      // For other types, mark as complete immediately
+      default:
+        completeReminder(reminder.id);
+        Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
+    }
   };
 
   // Wellness save succeeded: complete ONLY this reminder instance. Weight routes to
@@ -284,21 +340,13 @@ export default function HealthToday() {
     reminder,
     { status, notes, reactionOrIssue },
   ) => {
-    const payload = {
-      petId: reminder.petId,
-      routineId: reminder.routineId,
-      medicalCareItemId: reminder.medicalCareItemId,
-      careType: reminder.careType,
-      name: reminder.title,
-      dose: reminder.dose || null,
-      // Log against the instance's scheduled day. Medical resolution matches given_at's
-      // date to the scheduledDate exactly (so a genuinely missed dose is never hidden by
-      // a later one) — acting on an overdue dose must therefore record it on its own day.
-      givenAt: reminder.scheduledAt || new Date().toISOString(),
+    // Logs against the instance's scheduled day (givenAt = scheduledAt) so
+    // resolution clears exactly that instance — see buildMedicalCareLogPayload.
+    const payload = buildMedicalCareLogPayload(reminder, {
       status,
-      notes: notes || null,
-      reactionOrIssue: reactionOrIssue || null,
-    };
+      notes,
+      reactionOrIssue,
+    });
     const res = await fetch("/api/health/medical-care-logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -921,6 +969,18 @@ export default function HealthToday() {
         reminder={wellnessReminder}
         onClose={() => setWellnessReminder(null)}
         onSaved={handleWellnessSaved}
+      />
+
+      {/* Feeding Issue Modal (saves its own food log; completes only on save) */}
+      <FeedingIssueModal
+        visible={!!feedingIssueReminder}
+        reminder={feedingIssueReminder}
+        petName={currentPet?.name}
+        onClose={() => setFeedingIssueReminder(null)}
+        onSaved={() => {
+          if (feedingIssueReminder) completeReminder(feedingIssueReminder.id);
+          setFeedingIssueReminder(null);
+        }}
       />
     </RefreshableScrollView>
   );
