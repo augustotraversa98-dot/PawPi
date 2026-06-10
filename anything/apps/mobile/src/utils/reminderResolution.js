@@ -16,8 +16,12 @@
 //     window a single weigh-in clears every earlier one. Linkage columns deferred.
 //   - photo check → health_photo_checks, same date heuristic per body_area (no linkage).
 //   - medical care → health_medical_care_logs, matched on routine_id +
-//     medical_care_item_id + the given_at date EQUALLING scheduledDate (exact day, so a
-//     genuinely missed dose is never hidden by a later one).
+//     medical_care_item_id + given_at EQUALLING the instance's scheduledAt timestamp.
+//     The log flow writes givenAt = the acted instance's scheduledAt
+//     (buildMedicalCareLogPayload), so the timestamp IS the instance identity. Exact
+//     match per instance — never per day: a morning "given" log must not resolve the
+//     same item's evening dose (day-level matching hid every later same-day instance,
+//     the bug behind "overdue never appears"). No same-day fallback, deliberately.
 //   - vet appointment → resolution is the appointment's status, already filtered out
 //     upstream by useVetAppointmentReminders (it only returns scheduled/missed). Not
 //     reconciled here.
@@ -90,13 +94,19 @@ export function buildResolutionIndex({
     if (cur == null || d > cur) maxPhotoDateByArea.set(pc.body_area, d);
   }
 
+  // Keyed on the exact given_at timestamp (epoch ms, so "+00:00" vs "Z" ISO
+  // variants compare equal) — one log resolves exactly one scheduled instance.
   const medicalKeys = new Set();
   for (const log of medicalLogs) {
-    const d = toDateStr(log?.given_at);
-    if (log?.routine_id == null || log?.medical_care_item_id == null || !d) {
+    const t = new Date(log?.given_at ?? NaN).getTime();
+    if (
+      log?.routine_id == null ||
+      log?.medical_care_item_id == null ||
+      Number.isNaN(t)
+    ) {
       continue;
     }
-    medicalKeys.add(`${log.routine_id}:${log.medical_care_item_id}:${d}`);
+    medicalKeys.add(`${log.routine_id}:${log.medical_care_item_id}:${t}`);
   }
 
   return { wellnessKeys, maxWeightDate, maxPhotoDateByArea, medicalKeys };
@@ -123,8 +133,14 @@ export function isInstanceResolved(reminder, index) {
       return max != null && max >= scheduledDate;
     }
     case "medical_care": {
-      return index.medicalKeys.has(
-        `${reminder.routineId}:${reminder.medicalCareItemId}:${scheduledDate}`,
+      const t = new Date(
+        reminder.scheduledAt ?? reminder.nextTriggerAt,
+      ).getTime();
+      return (
+        !Number.isNaN(t) &&
+        index.medicalKeys.has(
+          `${reminder.routineId}:${reminder.medicalCareItemId}:${t}`,
+        )
       );
     }
     default:

@@ -1,0 +1,544 @@
+{
+  "_meta": {
+    "capturedAt": "2026-06-10T15:55:00Z",
+    "source": "Supabase REST (same rows GET /api/routines et al. return via SELECT *)",
+    "deviceTimezone": "UTC+2 (CEST)",
+    "note": "Real runtime shapes for the Today/Overdue pipeline. routines = GET /api/routines payload (snake_case, SELECT *). Logs/dismissals = the resolver-source rows the useTodayReminders hook fetches."
+  },
+  "routines": [
+    {
+      "id": 8,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "feeding",
+      "is_active": true,
+      "title": "Feeding",
+      "description": "1 meal per day",
+      "feeding_schedule": [
+        {
+          "days": [],
+          "name": "Meal",
+          "time": "11:35",
+          "notes": "",
+          "frequency": "daily",
+          "timeSensitive": true,
+          "reminderEnabled": true
+        }
+      ],
+      "walk_schedule": null,
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": "custom",
+      "preferred_day": null,
+      "times": [
+        "11:35"
+      ],
+      "days": [],
+      "notification_enabled": true,
+      "time_sensitive": true,
+      "notes": null,
+      "created_at": "2026-06-10T09:32:03.961688+00:00",
+      "updated_at": "2026-06-10T09:32:03.961688+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": null,
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 7,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "medical_care",
+      "is_active": true,
+      "title": "Medical Care",
+      "description": "1 care item",
+      "feeding_schedule": [],
+      "walk_schedule": [],
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": null,
+      "preferred_day": null,
+      "times": [],
+      "days": [],
+      "notification_enabled": true,
+      "time_sensitive": true,
+      "notes": null,
+      "created_at": "2026-06-09T19:11:24.14368+00:00",
+      "updated_at": "2026-06-10T15:33:56.4616+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": {
+        "medicalCareItems": [
+          {
+            "id": "mc_1781032258166_dmcnka",
+            "dose": "1 tabla",
+            "name": "Ffkk",
+            "type": "medication",
+            "notes": "",
+            "times": [
+              "17:34"
+            ],
+            "endDate": "",
+            "nextDue": "",
+            "frequency": "daily",
+            "lastGiven": "",
+            "startDate": "2026-06-09",
+            "vetClinic": "",
+            "customDays": [],
+            "linkedMeal": "breakfast",
+            "timingMode": "time",
+            "customHours": 12,
+            "description": "",
+            "productName": "",
+            "instructions": "",
+            "timeSensitive": true,
+            "reminderTiming": "1w",
+            "repeatInterval": "monthly",
+            "reminderEnabled": true
+          }
+        ]
+      },
+      "wellness_check_schedule": null,
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 6,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "wellness_check",
+      "is_active": true,
+      "title": "Wellness Check",
+      "description": "2 checks",
+      "feeding_schedule": null,
+      "walk_schedule": null,
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": "daily",
+      "preferred_day": 6,
+      "times": [
+        "21:12"
+      ],
+      "days": [
+        6
+      ],
+      "notification_enabled": true,
+      "time_sensitive": false,
+      "notes": null,
+      "created_at": "2026-06-09T19:10:05.017027+00:00",
+      "updated_at": "2026-06-09T19:10:05.017027+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": [
+        {
+          "id": "wellness_general_1781032181395_ktc7ysstp",
+          "name": null,
+          "unit": "lbs",
+          "notes": "",
+          "active": true,
+          "checkType": "general",
+          "frequency": "daily",
+          "description": null,
+          "observations": [],
+          "preferredDay": 6,
+          "preferredTime": "21:12",
+          "timeSensitive": false,
+          "areasToInclude": [],
+          "reminderEnabled": true
+        },
+        {
+          "id": "wellness_mobility_1781032195306_ccbg3pvps",
+          "name": null,
+          "unit": "lbs",
+          "notes": "",
+          "active": true,
+          "checkType": "mobility",
+          "frequency": "daily",
+          "description": null,
+          "observations": [],
+          "preferredDay": 6,
+          "preferredTime": "21:10",
+          "timeSensitive": false,
+          "areasToInclude": [],
+          "reminderEnabled": true
+        }
+      ],
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 5,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "wellness_check",
+      "is_active": false,
+      "title": "Wellness Check",
+      "description": "1 check",
+      "feeding_schedule": [],
+      "walk_schedule": [],
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": "daily",
+      "preferred_day": 6,
+      "times": [
+        "19:00"
+      ],
+      "days": [
+        6
+      ],
+      "notification_enabled": true,
+      "time_sensitive": false,
+      "notes": null,
+      "created_at": "2026-06-09T17:23:36.905437+00:00",
+      "updated_at": "2026-06-09T19:08:53.739783+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": [],
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 4,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "wellness_check",
+      "is_active": false,
+      "title": "Wellness Check",
+      "description": "1 check",
+      "feeding_schedule": [],
+      "walk_schedule": [],
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": "daily",
+      "preferred_day": 6,
+      "times": [
+        "19:29"
+      ],
+      "days": [
+        6
+      ],
+      "notification_enabled": true,
+      "time_sensitive": false,
+      "notes": "Test\n",
+      "created_at": "2026-06-09T17:23:01.779979+00:00",
+      "updated_at": "2026-06-09T19:08:54.951943+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": [],
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 2,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_type": "feeding",
+      "is_active": true,
+      "title": "Feeding",
+      "description": "1 meal per day",
+      "feeding_schedule": [
+        {
+          "days": [],
+          "name": "Dinner",
+          "time": "23:40",
+          "notes": "",
+          "frequency": "daily",
+          "timeSensitive": true,
+          "reminderEnabled": true
+        }
+      ],
+      "walk_schedule": [],
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": "custom",
+      "preferred_day": null,
+      "times": [
+        "23:40"
+      ],
+      "days": [],
+      "notification_enabled": true,
+      "time_sensitive": true,
+      "notes": null,
+      "created_at": "2026-06-07T20:52:02.937602+00:00",
+      "updated_at": "2026-06-09T19:09:14.466641+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": null,
+      "vet_appointment_schedule": null
+    },
+    {
+      "id": 1,
+      "pet_id": 3,
+      "owner_user_id": 2,
+      "routine_type": "walk",
+      "is_active": true,
+      "title": "Walks",
+      "description": "2 walks per day",
+      "feeding_schedule": [],
+      "walk_schedule": [
+        {
+          "days": [],
+          "name": "Morning walk",
+          "pace": "normal",
+          "time": "10:30",
+          "notes": "",
+          "frequency": "daily",
+          "visibility": "friends_only",
+          "timeSensitive": true,
+          "durationMinutes": 30,
+          "reminderEnabled": true,
+          "socialWalkEnabled": false
+        },
+        {
+          "days": [],
+          "name": "Evening walk",
+          "pace": "normal",
+          "time": "23:00",
+          "notes": "",
+          "frequency": "daily",
+          "visibility": "friends_only",
+          "timeSensitive": true,
+          "durationMinutes": 30,
+          "reminderEnabled": true,
+          "socialWalkEnabled": false
+        }
+      ],
+      "medication_details": null,
+      "photo_check_details": null,
+      "frequency": null,
+      "preferred_day": null,
+      "times": [
+        "10:30",
+        "23:00"
+      ],
+      "days": [],
+      "notification_enabled": true,
+      "time_sensitive": true,
+      "notes": null,
+      "created_at": "2026-06-07T20:27:25.202898+00:00",
+      "updated_at": "2026-06-07T20:53:13.744242+00:00",
+      "deleted_at": null,
+      "medical_care_schedule": null,
+      "medical_care_details": null,
+      "wellness_check_schedule": null,
+      "vet_appointment_schedule": null
+    }
+  ],
+  "wellnessLogs": [
+    {
+      "id": 1,
+      "pet_id": 2,
+      "routine_id": 6,
+      "wellness_check_item_index": 0,
+      "check_type": "general",
+      "values_json": {
+        "label": "Noticed something",
+        "status": "noticed_something",
+        "scheduledDate": "2026-06-09"
+      },
+      "logged_at": "2026-06-09T19:10:34.98+00:00",
+      "created_at": "2026-06-09T19:10:35.738975+00:00"
+    }
+  ],
+  "medicalLogs": [
+    {
+      "id": 2,
+      "pet_id": 2,
+      "routine_id": 7,
+      "medical_care_item_id": "mc_1781032258166_dmcnka",
+      "status": "given",
+      "given_at": "2026-06-10T09:32:00+00:00",
+      "created_at": "2026-06-10T09:33:38.149945+00:00"
+    },
+    {
+      "id": 1,
+      "pet_id": 2,
+      "routine_id": 7,
+      "medical_care_item_id": "mc_1781032258166_dmcnka",
+      "status": "issue_reported",
+      "given_at": "2026-06-09T19:11:52.573+00:00",
+      "created_at": "2026-06-09T19:11:53.700331+00:00"
+    }
+  ],
+  "photoChecks": [],
+  "weightLogs": [],
+  "dismissals": [
+    {
+      "id": 1,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-08",
+      "scheduled_date": "2026-06-09",
+      "dismissed_at": "2026-06-09T20:44:31.450804+00:00",
+      "created_at": "2026-06-09T20:44:31.450804+00:00"
+    },
+    {
+      "id": 2,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-07",
+      "scheduled_date": "2026-06-08",
+      "dismissed_at": "2026-06-09T20:44:31.874859+00:00",
+      "created_at": "2026-06-09T20:44:31.874859+00:00"
+    },
+    {
+      "id": 3,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-07",
+      "scheduled_date": "2026-06-08",
+      "dismissed_at": "2026-06-09T20:44:32.258459+00:00",
+      "created_at": "2026-06-09T20:44:32.258459+00:00"
+    },
+    {
+      "id": 4,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-06",
+      "scheduled_date": "2026-06-07",
+      "dismissed_at": "2026-06-09T20:44:32.783181+00:00",
+      "created_at": "2026-06-09T20:44:32.783181+00:00"
+    },
+    {
+      "id": 5,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-06",
+      "scheduled_date": "2026-06-07",
+      "dismissed_at": "2026-06-09T20:44:33.288725+00:00",
+      "created_at": "2026-06-09T20:44:33.288725+00:00"
+    },
+    {
+      "id": 6,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-05",
+      "scheduled_date": "2026-06-06",
+      "dismissed_at": "2026-06-09T20:44:33.811997+00:00",
+      "created_at": "2026-06-09T20:44:33.811997+00:00"
+    },
+    {
+      "id": 7,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-05",
+      "scheduled_date": "2026-06-06",
+      "dismissed_at": "2026-06-09T20:44:34.338799+00:00",
+      "created_at": "2026-06-09T20:44:34.338799+00:00"
+    },
+    {
+      "id": 8,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-04",
+      "scheduled_date": "2026-06-05",
+      "dismissed_at": "2026-06-09T20:44:34.665547+00:00",
+      "created_at": "2026-06-09T20:44:34.665547+00:00"
+    },
+    {
+      "id": 9,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-04",
+      "scheduled_date": "2026-06-05",
+      "dismissed_at": "2026-06-09T20:44:35.402188+00:00",
+      "created_at": "2026-06-09T20:44:35.402188+00:00"
+    },
+    {
+      "id": 10,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-03",
+      "scheduled_date": "2026-06-04",
+      "dismissed_at": "2026-06-09T20:44:45.808698+00:00",
+      "created_at": "2026-06-09T20:44:45.808698+00:00"
+    },
+    {
+      "id": 11,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-03",
+      "scheduled_date": "2026-06-04",
+      "dismissed_at": "2026-06-09T20:44:46.239524+00:00",
+      "created_at": "2026-06-09T20:44:46.239524+00:00"
+    },
+    {
+      "id": 12,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-02",
+      "scheduled_date": "2026-06-03",
+      "dismissed_at": "2026-06-09T20:44:46.609146+00:00",
+      "created_at": "2026-06-09T20:44:46.609146+00:00"
+    },
+    {
+      "id": 13,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-02",
+      "scheduled_date": "2026-06-03",
+      "dismissed_at": "2026-06-09T20:44:47.097199+00:00",
+      "created_at": "2026-06-09T20:44:47.097199+00:00"
+    },
+    {
+      "id": 14,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_mobility_1_2026-06-01",
+      "scheduled_date": "2026-06-02",
+      "dismissed_at": "2026-06-09T20:44:49.576293+00:00",
+      "created_at": "2026-06-09T20:44:49.576293+00:00"
+    },
+    {
+      "id": 15,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-05-31",
+      "scheduled_date": "2026-06-01",
+      "dismissed_at": "2026-06-09T20:44:50.253766+00:00",
+      "created_at": "2026-06-09T20:44:50.253766+00:00"
+    },
+    {
+      "id": 16,
+      "pet_id": 2,
+      "owner_user_id": 2,
+      "routine_id": 6,
+      "reminder_type": "wellness_check",
+      "instance_key": "reminder_6_general_0_2026-06-01",
+      "scheduled_date": "2026-06-02",
+      "dismissed_at": "2026-06-09T20:44:50.459741+00:00",
+      "created_at": "2026-06-09T20:44:50.459741+00:00"
+    }
+  ]
+}

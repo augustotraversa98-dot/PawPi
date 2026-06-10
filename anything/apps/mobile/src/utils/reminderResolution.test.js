@@ -94,7 +94,7 @@ describe("isInstanceResolved — photo check (per-area date heuristic)", () => {
   });
 });
 
-describe("isInstanceResolved — medical care (exact day)", () => {
+describe("isInstanceResolved — medical care (exact instance timestamp)", () => {
   const reminder = {
     type: "medical_care",
     routineId: 100,
@@ -102,19 +102,46 @@ describe("isInstanceResolved — medical care (exact day)", () => {
     scheduledAt: at(2026, 5, 3, 8),
   };
 
-  it("resolves when a dose was given ON the scheduled day", () => {
+  it("resolves when given_at equals the instance's scheduledAt (the log flow writes givenAt = scheduledAt)", () => {
     const index = buildResolutionIndex({
       medicalLogs: [
-        { routine_id: 100, medical_care_item_id: "med1", given_at: at(2026, 5, 3) },
+        { routine_id: 100, medical_care_item_id: "med1", given_at: at(2026, 5, 3, 8) },
       ],
     });
     expect(isInstanceResolved(reminder, index)).toBe(true);
   });
 
+  it("resolves across ISO offset spellings of the same instant (+00:00 vs Z)", () => {
+    // The DB round-trips given_at as "+00:00"; the generator emits "Z". Same epoch.
+    const index = buildResolutionIndex({
+      medicalLogs: [
+        {
+          routine_id: 100,
+          medical_care_item_id: "med1",
+          given_at: at(2026, 5, 3, 8).replace("Z", "+00:00"),
+        },
+      ],
+    });
+    expect(isInstanceResolved(reminder, index)).toBe(true);
+  });
+
+  it("does NOT resolve from an EARLIER same-day log — a morning 'given' must not hide the evening dose", () => {
+    // THE born-resolved bug: day-level matching let any earlier log of the item
+    // resolve every later instance that day, so a dose that passed its time
+    // vanished from Overdue (and from every section). Pinned per-instance.
+    const eveningDose = { ...reminder, scheduledAt: at(2026, 5, 3, 20) };
+    const index = buildResolutionIndex({
+      medicalLogs: [
+        { routine_id: 100, medical_care_item_id: "med1", given_at: at(2026, 5, 3, 8) },
+      ],
+    });
+    expect(isInstanceResolved(eveningDose, index)).toBe(false);
+  });
+
   it("does NOT resolve from a dose given on a DIFFERENT day (missed doses stay)", () => {
     const index = buildResolutionIndex({
       medicalLogs: [
-        { routine_id: 100, medical_care_item_id: "med1", given_at: at(2026, 5, 4) },
+        { routine_id: 100, medical_care_item_id: "med1", given_at: at(2026, 5, 4, 8) },
       ],
     });
     expect(isInstanceResolved(reminder, index)).toBe(false);
@@ -266,7 +293,7 @@ describe("buildOverdueReminders — deterministic, store-independent (regression
     ).toEqual([]);
   });
 
-  it("clears ONLY via an exact-day medical log", () => {
+  it("clears ONLY via a medical log matching the instance's exact scheduledAt", () => {
     const index = buildResolutionIndex({
       medicalLogs: [
         {

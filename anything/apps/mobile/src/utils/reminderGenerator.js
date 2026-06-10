@@ -120,6 +120,16 @@ export function generateRemindersFromRoutine(routine, daysAhead = 14) {
   }
 }
 
+// =========================================================================
+// Instance id convention — `reminder_<routineId>_<item/part>_<dateStr>[_idx]`,
+// where dateStr is `currentDate.toISOString().split("T")[0]`: the UTC date of
+// LOCAL midnight. For UTC+ timezones that is one day BEHIND the local calendar
+// day (local Jun 10 → "2026-06-09"). Ids are deterministic and double as the
+// durable dismissal key (reminder_dismissals.instance_key), so this scheme is
+// locked for compatibility with stored rows. NEVER derive a local/user-facing
+// date from an id — use the reminder's scheduledAt. (Migrating the id scheme
+// is backlogged; it requires migrating stored dismissal keys.)
+// =========================================================================
 function generateFeedingReminders(
   routine,
   now,

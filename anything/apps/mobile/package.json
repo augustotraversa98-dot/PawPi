@@ -104,6 +104,7 @@
   "devDependencies": {
     "@expo/cli": "54.0.1",
     "@tailwindcss/postcss": "4.1.18",
+    "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "19.1.10",
     "autoprefixer": "10.4.20",
@@ -112,12 +113,14 @@
     "jest-expo": "~54.0.17",
     "patch-package": "8.0.0",
     "postcss": "8.5.10",
+    "react-test-renderer": "^19.1.0",
     "tailwind-scrollbar": "3.1.0",
     "tailwindcss": "3",
     "tailwindcss-animate": "1.0.7"
   },
   "jest": {
     "preset": "jest-expo",
+    "globalSetup": "<rootDir>/jest.tz.setup.js",
     "testMatch": [
       "**/*.test.{js,jsx,ts,tsx}"
     ]
