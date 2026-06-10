@@ -9,6 +9,7 @@ import {
 } from "lucide-react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
+import TimeField from "@/components/TimeField";
 import FrequencySelector from "./FrequencySelector";
 import CustomDaysSelector from "./CustomDaysSelector";
 import DurationPaceSelector from "./DurationPaceSelector";
@@ -283,19 +284,12 @@ export default function WalkItem({
             >
               Walk time
             </Text>
-            <TextInput
+            <TimeField
               value={walk.time}
-              onChangeText={(text) => onChange("time", text)}
-              placeholder="Time (HH:MM)"
-              placeholderTextColor={C.mutedBrown + "80"}
-              style={{
+              onChange={(time) => onChange("time", time)}
+              fieldStyle={{
                 backgroundColor: C.sand,
-                borderRadius: 12,
                 padding: 14,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
               }}
             />
           </View>

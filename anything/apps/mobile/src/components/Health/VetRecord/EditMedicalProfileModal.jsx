@@ -12,6 +12,7 @@ import {
 import { X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
+import DateField from "@/components/DateField";
 
 const C = {
   cream: "#FFF7EF",
@@ -265,6 +266,42 @@ export default function EditMedicalProfileModal({
     </View>
   );
 
+  const FormDateField = ({ label, value, onChange, error }) => (
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: C.warmBrown,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </Text>
+      <DateField
+        value={value}
+        onChange={onChange}
+        fieldStyle={{
+          padding: 14,
+          borderWidth: 1.5,
+          borderColor: error ? "#FF6B6B" : C.peach,
+        }}
+        textStyle={{ fontSize: 14 }}
+      />
+      {error && (
+        <Text
+          style={{
+            fontSize: 12,
+            color: "#FF6B6B",
+            marginTop: 4,
+          }}
+        >
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+
   const GenderSelector = () => (
     <View style={{ marginBottom: 16 }}>
       <Text
@@ -413,18 +450,16 @@ export default function EditMedicalProfileModal({
           onChangeText={setBreed}
           placeholder="e.g., Golden Retriever"
         />
-        <FormInput
+        <FormDateField
           label="Birthday"
           value={birthday}
-          onChangeText={setBirthday}
-          placeholder="YYYY-MM-DD"
+          onChange={setBirthday}
           error={errors.birthday}
         />
-        <FormInput
+        <FormDateField
           label="Adoption Date (optional)"
           value={adoptionDate}
-          onChangeText={setAdoptionDate}
-          placeholder="YYYY-MM-DD"
+          onChange={setAdoptionDate}
           error={errors.adoptionDate}
         />
         <GenderSelector />
@@ -441,11 +476,10 @@ export default function EditMedicalProfileModal({
 
       <FormSection title="Medical Details">
         <SpayedNeuteredSelector />
-        <FormInput
+        <FormDateField
           label="Spayed / Neutered Date (optional)"
           value={spayedNeuteredDate}
-          onChangeText={setSpayedNeuteredDate}
-          placeholder="YYYY-MM-DD"
+          onChange={setSpayedNeuteredDate}
           error={errors.spayedNeuteredDate}
         />
         <FormInput

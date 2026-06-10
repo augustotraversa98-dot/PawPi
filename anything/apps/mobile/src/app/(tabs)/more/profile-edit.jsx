@@ -17,6 +17,8 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import DateField from "@/components/DateField";
+import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 
 const C = {
   coral: "#FF6F61",
@@ -70,8 +72,8 @@ export default function ProfileEditScreen() {
         gender: currentPet.gender || "",
         weight: currentPet.weight?.toString() || "",
         weightUnit: currentPet.weight_unit || "lbs",
-        birthday: currentPet.birthday || "",
-        adoptionDate: currentPet.adoption_date || "",
+        birthday: canonicalizeDateValue(currentPet.birthday),
+        adoptionDate: canonicalizeDateValue(currentPet.adoption_date),
         notes: currentPet.notes || "",
       });
     }
@@ -521,26 +523,58 @@ export default function ProfileEditScreen() {
           </View>
 
           {/* Birthday */}
-          <FormField
-            label="Birthday"
-            value={formData.birthday}
-            onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, birthday: text }))
-            }
-            placeholder="MM/DD/YYYY"
-            keyboardType="numbers-and-punctuation"
-          />
+          <View style={{ marginBottom: 20 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "700",
+                color: C.warmBrown,
+                marginBottom: 8,
+              }}
+            >
+              Birthday
+            </Text>
+            <DateField
+              value={formData.birthday}
+              onChange={(date) =>
+                setFormData((prev) => ({ ...prev, birthday: date }))
+              }
+              maximumDate={new Date()}
+              fieldStyle={{
+                backgroundColor: "#FFF",
+                padding: 14,
+                borderColor: C.sand,
+              }}
+              textStyle={{ fontSize: 16, fontWeight: "600" }}
+            />
+          </View>
 
           {/* Adoption Date */}
-          <FormField
-            label="Adoption Date"
-            value={formData.adoptionDate}
-            onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, adoptionDate: text }))
-            }
-            placeholder="MM/DD/YYYY"
-            keyboardType="numbers-and-punctuation"
-          />
+          <View style={{ marginBottom: 20 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "700",
+                color: C.warmBrown,
+                marginBottom: 8,
+              }}
+            >
+              Adoption Date
+            </Text>
+            <DateField
+              value={formData.adoptionDate}
+              onChange={(date) =>
+                setFormData((prev) => ({ ...prev, adoptionDate: date }))
+              }
+              maximumDate={new Date()}
+              fieldStyle={{
+                backgroundColor: "#FFF",
+                padding: 14,
+                borderColor: C.sand,
+              }}
+              textStyle={{ fontSize: 16, fontWeight: "600" }}
+            />
+          </View>
 
           {/* Notes */}
           <Text

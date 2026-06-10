@@ -19,6 +19,7 @@ import { COLORS } from "@/constants/colors";
 import { useCreatePet, useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import DateField from "@/components/DateField";
 
 const EMPTY = {
   photo: null,
@@ -170,7 +171,9 @@ export function AddDogModal({ visible, onClose }) {
           <TouchableOpacity onPress={close}>
             <X size={22} color={COLORS.warmBrown} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text
+            style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}
+          >
             Add a dog
           </Text>
           <View style={{ width: 22 }} />
@@ -222,7 +225,9 @@ export function AddDogModal({ visible, onClose }) {
               }}
             >
               <Camera size={16} color={COLORS.coral} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}
+              >
                 {form.photo ? "Change photo" : "Add photo"}
               </Text>
             </TouchableOpacity>
@@ -332,14 +337,20 @@ export function AddDogModal({ visible, onClose }) {
           </View>
 
           {/* Birthday */}
-          <Field
-            label="Birthday"
-            value={form.birthday}
-            onChangeText={(t) => setField("birthday", t)}
-            placeholder="MM/DD/YYYY"
-            keyboardType="numbers-and-punctuation"
-            autoCapitalize="none"
-          />
+          <View style={{ marginBottom: 20 }}>
+            <Label>Birthday</Label>
+            <DateField
+              value={form.birthday}
+              onChange={(date) => setField("birthday", date)}
+              maximumDate={new Date()}
+              fieldStyle={{
+                backgroundColor: "#FFF",
+                padding: 14,
+                borderColor: COLORS.sand,
+              }}
+              textStyle={{ fontSize: 16, fontWeight: "600" }}
+            />
+          </View>
 
           {/* Notes */}
           <Label>Notes</Label>
@@ -385,7 +396,9 @@ export function AddDogModal({ visible, onClose }) {
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Text style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}>
+                <Text
+                  style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
+                >
                   Save
                 </Text>
                 <Check size={20} color="#FFF" />

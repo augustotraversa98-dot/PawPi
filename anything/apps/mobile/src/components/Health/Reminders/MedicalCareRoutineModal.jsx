@@ -17,6 +17,8 @@ import {
   ROUTINE_FREQUENCY,
   MEDICAL_CARE_SUBTYPES,
 } from "@/data/routinesData";
+import DateField from "@/components/DateField";
+import TimeField from "@/components/TimeField";
 
 const C = {
   cream: "#FFF7EF",
@@ -176,7 +178,7 @@ export default function MedicalCareRoutineModal({
           style: "destructive",
           onPress: () => setItems(items.filter((i) => i.id !== itemId)),
         },
-      ]
+      ],
     );
   };
 
@@ -661,12 +663,12 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
                 ? "Medication name"
                 : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                ? "Vaccine name"
-                : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                ? "Supplement name"
-                : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                ? "Care name"
-                : "Product / treatment name"}
+                  ? "Vaccine name"
+                  : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
+                    ? "Supplement name"
+                    : subtype === MEDICAL_CARE_SUBTYPES.OTHER
+                      ? "Care name"
+                      : "Product / treatment name"}
             </Label>
             <Input
               value={draft.name}
@@ -675,12 +677,12 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                 subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
                   ? "e.g., Apoquel"
                   : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                  ? "e.g., Rabies vaccine"
-                  : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                  ? "e.g., Omega 3"
-                  : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                  ? "e.g., Ear cleaning"
-                  : "e.g., Bravecto"
+                    ? "e.g., Rabies vaccine"
+                    : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
+                      ? "e.g., Omega 3"
+                      : subtype === MEDICAL_CARE_SUBTYPES.OTHER
+                        ? "e.g., Ear cleaning"
+                        : "e.g., Bravecto"
               }
             />
 
@@ -747,36 +749,33 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
 
                 <Label>Time(s)</Label>
                 {(draft.times || []).map((time, index) => (
-                  <Input
-                    key={index}
-                    value={time}
-                    onChangeText={(text) => {
-                      const updated = [...draft.times];
-                      updated[index] = text;
-                      set({ times: updated });
-                    }}
-                    placeholder="HH:MM"
-                  />
+                  <View key={index} style={{ marginBottom: 10 }}>
+                    <TimeField
+                      value={time}
+                      onChange={(next) => {
+                        const updated = [...draft.times];
+                        updated[index] = next;
+                        set({ times: updated });
+                      }}
+                    />
+                  </View>
                 ))}
 
-                <Row>
-                  <Half>
-                    <Label small>Start date</Label>
-                    <Input
-                      value={draft.startDate}
-                      onChangeText={(v) => set({ startDate: v })}
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </Half>
-                  <Half>
-                    <Label small>End date (optional)</Label>
-                    <Input
-                      value={draft.endDate}
-                      onChangeText={(v) => set({ endDate: v })}
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </Half>
-                </Row>
+                {/* Stacked (not Row/Half) so the inline calendar has full width */}
+                <Label small>Start date</Label>
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.startDate}
+                    onChange={(v) => set({ startDate: v })}
+                  />
+                </View>
+                <Label small>End date (optional)</Label>
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.endDate}
+                    onChange={(v) => set({ endDate: v })}
+                  />
+                </View>
 
                 <Label>Instructions (optional)</Label>
                 <Input
@@ -792,18 +791,20 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
               <>
                 <Label>Last given date (optional)</Label>
-                <Input
-                  value={draft.lastGiven}
-                  onChangeText={(v) => set({ lastGiven: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.lastGiven}
+                    onChange={(v) => set({ lastGiven: v })}
+                  />
+                </View>
 
                 <Label>Next due date</Label>
-                <Input
-                  value={draft.nextDue}
-                  onChangeText={(v) => set({ nextDue: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.nextDue}
+                    onChange={(v) => set({ nextDue: v })}
+                  />
+                </View>
 
                 <Label>Vet clinic (optional)</Label>
                 <Input
@@ -837,11 +838,12 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
               <>
                 <Label>Last given date</Label>
-                <Input
-                  value={draft.lastGiven}
-                  onChangeText={(v) => set({ lastGiven: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.lastGiven}
+                    onChange={(v) => set({ lastGiven: v })}
+                  />
+                </View>
 
                 <Label>Repeat interval</Label>
                 <View style={{ gap: 8, marginBottom: 20 }}>
@@ -862,11 +864,12 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                 </View>
 
                 <Label>Next due date</Label>
-                <Input
-                  value={draft.nextDue}
-                  onChangeText={(v) => set({ nextDue: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.nextDue}
+                    onChange={(v) => set({ nextDue: v })}
+                  />
+                </View>
               </>
             )}
 
@@ -948,16 +951,16 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   <>
                     <Label small>Time(s)</Label>
                     {(draft.times || []).map((time, index) => (
-                      <Input
-                        key={index}
-                        value={time}
-                        onChangeText={(text) => {
-                          const updated = [...draft.times];
-                          updated[index] = text;
-                          set({ times: updated });
-                        }}
-                        placeholder="HH:MM"
-                      />
+                      <View key={index} style={{ marginBottom: 10 }}>
+                        <TimeField
+                          value={time}
+                          onChange={(next) => {
+                            const updated = [...draft.times];
+                            updated[index] = next;
+                            set({ times: updated });
+                          }}
+                        />
+                      </View>
                     ))}
                   </>
                 )}
@@ -1001,24 +1004,21 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   ))}
                 </View>
 
-                <Row>
-                  <Half>
-                    <Label small>Date</Label>
-                    <Input
-                      value={draft.startDate}
-                      onChangeText={(v) => set({ startDate: v })}
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </Half>
-                  <Half>
-                    <Label small>Time</Label>
-                    <Input
-                      value={draft.times?.[0] || ""}
-                      onChangeText={(v) => set({ times: [v] })}
-                      placeholder="HH:MM"
-                    />
-                  </Half>
-                </Row>
+                {/* Stacked (not Row/Half) so the inline pickers have full width */}
+                <Label small>Date</Label>
+                <View style={{ marginBottom: 10 }}>
+                  <DateField
+                    value={draft.startDate}
+                    onChange={(v) => set({ startDate: v })}
+                  />
+                </View>
+                <Label small>Time</Label>
+                <View style={{ marginBottom: 10 }}>
+                  <TimeField
+                    value={draft.times?.[0] || ""}
+                    onChange={(v) => set({ times: [v] })}
+                  />
+                </View>
               </>
             )}
 
@@ -1142,18 +1142,6 @@ function Input(props) {
       }}
     />
   );
-}
-
-function Row({ children }) {
-  return (
-    <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
-      {children}
-    </View>
-  );
-}
-
-function Half({ children }) {
-  return <View style={{ flex: 1 }}>{children}</View>;
 }
 
 function ChoiceRow({ selected, label, onPress }) {

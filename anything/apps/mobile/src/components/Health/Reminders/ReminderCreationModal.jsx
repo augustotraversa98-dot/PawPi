@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
 import { Check } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
+import TimeField from "@/components/TimeField";
 import useRemindersStore from "@/store/remindersStore";
 import {
   REMINDER_TYPES,
@@ -322,22 +323,13 @@ export default function ReminderCreationModal({ visible, onClose }) {
       >
         Time
       </Text>
-      <TextInput
-        value={selectedTime}
-        onChangeText={setSelectedTime}
-        placeholder="09:00"
-        placeholderTextColor={C.mutedBrown}
-        style={{
-          backgroundColor: C.card,
-          borderRadius: 12,
-          padding: 14,
-          fontSize: 15,
-          color: C.warmBrown,
-          borderWidth: 1,
-          borderColor: C.peach,
-          marginBottom: 24,
-        }}
-      />
+      <View style={{ marginBottom: 24 }}>
+        <TimeField
+          value={selectedTime}
+          onChange={setSelectedTime}
+          fieldStyle={{ padding: 14 }}
+        />
+      </View>
 
       {/* Repeat */}
       <Text

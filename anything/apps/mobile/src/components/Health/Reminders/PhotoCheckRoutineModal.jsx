@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
+import TimeField from "@/components/TimeField";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const C = {
@@ -559,22 +560,9 @@ export default function PhotoCheckRoutineModal({
           >
             Preferred Time
           </Text>
-          <TextInput
-            value={preferredTime}
-            onChangeText={setPreferredTime}
-            placeholder="HH:MM"
-            placeholderTextColor={C.mutedBrown}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 15,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 20,
-            }}
-          />
+          <View style={{ marginBottom: 20 }}>
+            <TimeField value={preferredTime} onChange={setPreferredTime} />
+          </View>
 
           <View
             style={{
@@ -907,24 +895,20 @@ export default function PhotoCheckRoutineModal({
                     >
                       Preferred Time
                     </Text>
-                    <TextInput
-                      value={schedule.preferredTime}
-                      onChangeText={(val) =>
-                        updateCustomSchedule(areaValue, "preferredTime", val)
-                      }
-                      placeholder="HH:MM"
-                      placeholderTextColor={C.mutedBrown}
-                      style={{
-                        backgroundColor: C.sand,
-                        borderRadius: 10,
-                        padding: 10,
-                        fontSize: 14,
-                        color: C.warmBrown,
-                        borderWidth: 1,
-                        borderColor: C.peach,
-                        marginBottom: 12,
-                      }}
-                    />
+                    <View style={{ marginBottom: 12 }}>
+                      <TimeField
+                        value={schedule.preferredTime}
+                        onChange={(time) =>
+                          updateCustomSchedule(areaValue, "preferredTime", time)
+                        }
+                        fieldStyle={{
+                          backgroundColor: C.sand,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                        textStyle={{ fontSize: 14 }}
+                      />
+                    </View>
 
                     {/* Toggles */}
                     <View

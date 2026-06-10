@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { X } from "lucide-react-native";
 import { ROUTINE_TYPES } from "@/data/routinesData";
+import DateField from "@/components/DateField";
 
 const C = {
   cream: "#FFF7EF",
@@ -219,8 +220,9 @@ export default function PreventiveCareRoutineModal({
               ))}
             </View>
 
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
-              <View style={{ flex: 1 }}>
+            {/* Stacked (not side-by-side) so the inline calendar has full width */}
+            <View style={{ gap: 12, marginBottom: 20 }}>
+              <View>
                 <Text
                   style={{
                     fontSize: 13,
@@ -231,23 +233,9 @@ export default function PreventiveCareRoutineModal({
                 >
                   Last Given
                 </Text>
-                <TextInput
-                  value={lastGiven}
-                  onChangeText={setLastGiven}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={C.mutedBrown}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 12,
-                    fontSize: 14,
-                    color: C.warmBrown,
-                    borderWidth: 1,
-                    borderColor: C.peach,
-                  }}
-                />
+                <DateField value={lastGiven} onChange={setLastGiven} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View>
                 <Text
                   style={{
                     fontSize: 13,
@@ -258,21 +246,7 @@ export default function PreventiveCareRoutineModal({
                 >
                   Next Due
                 </Text>
-                <TextInput
-                  value={nextDue}
-                  onChangeText={setNextDue}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={C.mutedBrown}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 12,
-                    fontSize: 14,
-                    color: C.warmBrown,
-                    borderWidth: 1,
-                    borderColor: C.peach,
-                  }}
-                />
+                <DateField value={nextDue} onChange={setNextDue} />
               </View>
             </View>
 
