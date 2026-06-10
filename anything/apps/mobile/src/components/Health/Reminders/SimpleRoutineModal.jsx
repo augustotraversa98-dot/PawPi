@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, Switch } from "react-native";
+import { View, Text, TextInput, Switch } from "react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import TimeField from "@/components/TimeField";
+import CadenceFrequencySelector from "./CadenceFrequencySelector";
+import DayChips from "./DayChips";
 import {
   ROUTINE_TYPES,
   ROUTINE_FREQUENCY,
@@ -85,15 +87,15 @@ export default function SimpleRoutineModal({
   const getFrequencyOptions = () => {
     if (routineType === ROUTINE_TYPES.GENERAL_CHECK) {
       return [
-        { value: ROUTINE_FREQUENCY.DAILY, label: "Daily" },
-        { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-        { value: ROUTINE_FREQUENCY.BIWEEKLY, label: "Every 2 weeks" },
+        ROUTINE_FREQUENCY.DAILY,
+        ROUTINE_FREQUENCY.WEEKLY,
+        ROUTINE_FREQUENCY.BIWEEKLY,
       ];
     } else {
       return [
-        { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-        { value: ROUTINE_FREQUENCY.BIWEEKLY, label: "Every 2 weeks" },
-        { value: ROUTINE_FREQUENCY.MONTHLY, label: "Monthly" },
+        ROUTINE_FREQUENCY.WEEKLY,
+        ROUTINE_FREQUENCY.BIWEEKLY,
+        ROUTINE_FREQUENCY.MONTHLY,
       ];
     }
   };
@@ -120,32 +122,13 @@ export default function SimpleRoutineModal({
       >
         Frequency
       </Text>
-      <View style={{ gap: 8, marginBottom: 20 }}>
-        {getFrequencyOptions().map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            onPress={() => setFrequency(option.value)}
-            style={{
-              backgroundColor:
-                frequency === option.value ? config.color + "20" : C.card,
-              borderRadius: 12,
-              padding: 14,
-              borderWidth: 1.5,
-              borderColor: frequency === option.value ? config.color : C.peach,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: frequency === option.value ? "700" : "600",
-                color: frequency === option.value ? config.color : C.warmBrown,
-              }}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <CadenceFrequencySelector
+        value={frequency}
+        onChange={setFrequency}
+        options={getFrequencyOptions()}
+        color={config.color}
+        style={{ marginBottom: 20 }}
+      />
 
       {frequency === ROUTINE_FREQUENCY.WEEKLY && (
         <>
@@ -159,45 +142,13 @@ export default function SimpleRoutineModal({
           >
             Preferred Day
           </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 20,
-            }}
-          >
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-              (day, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setPreferredDay(index)}
-                  style={{
-                    width: 45,
-                    height: 45,
-                    borderRadius: 23,
-                    backgroundColor:
-                      preferredDay === index ? config.color : C.sand,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor:
-                      preferredDay === index ? config.color : C.peach,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "700",
-                      color: preferredDay === index ? "#FFF" : C.mutedBrown,
-                    }}
-                  >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ),
-            )}
-          </View>
+          <DayChips
+            value={[preferredDay]}
+            onChange={(days) => setPreferredDay(days[0])}
+            multiSelect={false}
+            color={config.color}
+            style={{ marginBottom: 20 }}
+          />
         </>
       )}
 

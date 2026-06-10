@@ -358,6 +358,9 @@ function generatePhotoCheckReminders(
     const preferredDay = schedule.preferredDay ?? 6; // Sunday
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+    // Daily photo checks fire every day, ignoring preferredDay (same rule as
+    // daily wellness checks).
+    const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -366,7 +369,7 @@ function generatePhotoCheckReminders(
     while (currentDate <= endDate) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
 
-      if (dayOfWeek === preferredDay) {
+      if (isDaily || dayOfWeek === preferredDay) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
@@ -401,7 +404,9 @@ function generatePhotoCheckReminders(
         }
 
         // Move to next occurrence based on frequency
-        if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
+        if (isDaily) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
         } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY) {
           currentDate.setDate(currentDate.getDate() + 14);
@@ -1393,6 +1398,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     const preferredDay = schedule.preferredDay ?? 6;
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+    // Same rule as the upcoming generator: daily ignores preferredDay.
+    const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1400,7 +1407,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     while (currentDate < now) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
 
-      if (dayOfWeek === preferredDay) {
+      if (isDaily || dayOfWeek === preferredDay) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
@@ -1433,7 +1440,9 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           });
         }
 
-        if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
+        if (isDaily) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
         } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY) {
           currentDate.setDate(currentDate.getDate() + 14);
