@@ -123,6 +123,27 @@ describe("generateRemindersFromRoutine — photo check", () => {
     expect(allIdsUnique(reminders)).toBe(true);
   });
 
+  it("generates one reminder per calendar day for a DAILY photo schedule, ignoring preferredDay", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.PHOTO_CHECK,
+      photoCheckSchedule: [
+        { bodyArea: "paws", frequency: ROUTINE_FREQUENCY.DAILY, preferredDay: 6, preferredTime: "10:00" },
+      ],
+    });
+
+    const reminders = generateRemindersFromRoutine(routine);
+
+    // 14-day window from the pinned Wednesday: today (10:00 is still ahead of
+    // the 08:00 NOW) through day +14 inclusive = 15 dailies, not one per week.
+    expect(reminders).toHaveLength(15);
+    expect(reminders.every((r) => r.type === "photo_check")).toBe(true);
+    const times = reminders.map((r) => new Date(r.scheduledAt).getTime());
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i] - times[i - 1]).toBe(24 * 60 * 60 * 1000);
+    }
+    expect(allIdsUnique(reminders)).toBe(true);
+  });
+
   it("supports the legacy single bodyArea field", () => {
     const routine = makeRoutine({
       type: ROUTINE_TYPES.PHOTO_CHECK,

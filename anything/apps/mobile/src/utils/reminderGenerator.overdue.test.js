@@ -288,4 +288,29 @@ describe("generateOverdueInstances — photo check", () => {
     expect(reminders.every((r) => new Date(r.scheduledAt) < NOW)).toBe(true);
     expect(allIdsUnique(reminders)).toBe(true);
   });
+
+  it("enumerates every missed day for a DAILY photo schedule, ignoring preferredDay", () => {
+    const routine = makeRoutine({
+      type: ROUTINE_TYPES.PHOTO_CHECK,
+      // Created Sunday 06:00, before that day's 10:00 slot.
+      createdAt: new Date(2026, 5, 7, 6, 0, 0).toISOString(),
+      photoCheckSchedule: [
+        { bodyArea: "paws", frequency: ROUTINE_FREQUENCY.DAILY, preferredDay: 6, preferredTime: "10:00" },
+      ],
+    });
+
+    const reminders = generateOverdueInstances(routine);
+
+    // Sun 7th, Mon 8th, Tue 9th at 10:00 were all missed; Wed 10th 10:00 is
+    // still ahead of the 08:00 NOW. A weekly read of this schedule would have
+    // produced only the Sunday instance.
+    expect(reminders.map((r) => r.scheduledAt)).toEqual(
+      [
+        new Date(2026, 5, 7, 10, 0, 0),
+        new Date(2026, 5, 8, 10, 0, 0),
+        new Date(2026, 5, 9, 10, 0, 0),
+      ].map((d) => d.toISOString()),
+    );
+    expect(allIdsUnique(reminders)).toBe(true);
+  });
 });
