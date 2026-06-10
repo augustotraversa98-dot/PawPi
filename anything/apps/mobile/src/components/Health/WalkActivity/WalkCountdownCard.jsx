@@ -9,6 +9,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
+import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import StartWalkModal from "./StartWalkModal";
 import PostWalkFeedbackModal from "./PostWalkFeedbackModal";
 import { useCurrentPet } from "@/hooks/usePetProfile";
@@ -122,6 +123,16 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
             }}
           >
             {timeDisplay}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 4,
+            }}
+          >
+            {formatScheduledTime(reminder.scheduledAt ?? reminder.nextTriggerAt)}
           </Text>
           <Text
             style={{

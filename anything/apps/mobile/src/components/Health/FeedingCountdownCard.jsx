@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Clock, CheckCircle, Zap, AlertCircle } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
+import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { buildQuickFoodLogPayload } from "@/utils/reminderLogFlow";
@@ -137,6 +138,16 @@ export default function FeedingCountdownCard({
             }}
           >
             {timeDisplay}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 4,
+            }}
+          >
+            {formatScheduledTime(reminder.scheduledAt ?? reminder.nextTriggerAt)}
           </Text>
           <Text
             style={{

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Calendar, Clock, Zap, Eye } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
+import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import VetAppointmentDetailModal from "./VetAppointmentDetailModal";
 
 const C = {
@@ -133,6 +134,16 @@ export default function VetAppointmentCountdownCard({
             }}
           >
             {timeDisplay}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 4,
+            }}
+          >
+            {formatScheduledTime(reminder.scheduledAt ?? reminder.nextTriggerAt)}
           </Text>
           <Text
             style={{

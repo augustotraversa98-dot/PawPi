@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Clock, CheckCircle, Zap } from "lucide-react-native";
 import { getTimeDisplay, REMINDER_TYPE_CONFIG } from "@/data/remindersData";
+import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 
 const C = {
   coral: "#FF6F61",
@@ -85,6 +86,16 @@ export default function CountdownCard({
           }}
         >
           {timeDisplay}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "600",
+            color: C.mutedBrown,
+            marginBottom: 4,
+          }}
+        >
+          {formatScheduledTime(reminder.scheduledAt ?? reminder.nextTriggerAt)}
         </Text>
         <Text
           style={{

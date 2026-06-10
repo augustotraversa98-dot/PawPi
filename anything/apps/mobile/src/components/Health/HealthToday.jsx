@@ -37,6 +37,7 @@ import FeedingIssueModal from "./FeedingIssueModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
 import { sectionTodayReminders } from "@/utils/reminderSections";
+import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import {
   LOG_FLOWS,
   routeReminderLog,
@@ -553,7 +554,10 @@ export default function HealthToday() {
                           fontWeight: "700",
                         }}
                       >
-                        {getTimeDisplay(reminder)}
+                        {formatScheduledTime(
+                          reminder.scheduledAt ?? reminder.nextTriggerAt,
+                          reminderNowMs,
+                        )}
                       </Text>
                     </View>
                   </View>
@@ -693,7 +697,16 @@ export default function HealthToday() {
           <View style={{ gap: 10 }}>
             {nextUpReminders.map((reminder) => {
               const config = REMINDER_TYPE_CONFIG[reminder.type];
-              const timeDisplay = getTimeDisplay(reminder);
+              // Scheduled clock time first (the card's anchor), relative
+              // countdown as secondary context.
+              const scheduledDisplay = formatScheduledTime(
+                reminder.scheduledAt ?? reminder.nextTriggerAt,
+                reminderNowMs,
+              );
+              const relativeDisplay = getTimeDisplay(reminder);
+              const timeDisplay = scheduledDisplay
+                ? `${scheduledDisplay} · ${relativeDisplay}`
+                : relativeDisplay;
               const action = getReminderAction(reminder);
               const ActionIcon = action.icon;
 
