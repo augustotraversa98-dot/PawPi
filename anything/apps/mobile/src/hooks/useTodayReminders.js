@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "./usePetProfile";
 import { useVetAppointmentReminders } from "./useVetAppointmentReminders";
@@ -40,7 +40,11 @@ function usePetList(name, url, pick, petId) {
  * never drop a missed item. A per-minute `now` tick drives recomputation so the list
  * tracks the clock rather than piggybacking on query refetches.
  *
- * Returns { overdue, dismiss, isLoading }. `dismiss(reminder)` durably records a skip.
+ * Returns { overdue, dismiss, isLoading, now, refreshNow }. `dismiss(reminder)`
+ * durably records a skip. `now` (ms) is the reactive clock — consumers section
+ * Due Soon / Next Up against it so every section shares one time source.
+ * `refreshNow()` advances the clock immediately (pull-to-refresh), so a refresh
+ * reclassifies with the current time instead of waiting for the next tick.
  */
 export function useTodayReminders({ now } = {}) {
   const queryClient = useQueryClient();
@@ -61,6 +65,7 @@ export function useTodayReminders({ now } = {}) {
     return () => clearInterval(id);
   }, [now]);
   const nowMs = now != null ? new Date(now).getTime() : tick;
+  const refreshNow = useCallback(() => setTick(Date.now()), []);
 
   const dismissalsQuery = usePetList(
     "reminder-dismissals",
@@ -173,5 +178,5 @@ export function useTodayReminders({ now } = {}) {
     medicalQuery.isLoading ||
     photoQuery.isLoading;
 
-  return { overdue, dismiss, isLoading };
+  return { overdue, dismiss, isLoading, now: nowMs, refreshNow };
 }

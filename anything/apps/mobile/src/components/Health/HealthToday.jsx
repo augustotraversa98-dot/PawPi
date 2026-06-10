@@ -21,9 +21,7 @@ import useRemindersStore from "@/store/remindersStore";
 import useRoutinesStore from "@/store/routinesStore";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
-  getReminderStatus,
   getTimeDisplay,
-  REMINDER_STATUS,
   REMINDER_TYPE_CONFIG,
   REMINDER_TYPES,
 } from "@/data/remindersData";
@@ -38,6 +36,7 @@ import WellnessLogModal from "./WellnessCheck/WellnessLogModal";
 import FeedingIssueModal from "./FeedingIssueModal";
 import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
+import { sectionTodayReminders } from "@/utils/reminderSections";
 import {
   LOG_FLOWS,
   routeReminderLog,
@@ -70,8 +69,14 @@ export default function HealthToday() {
   const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
   const { data: vetAppointmentReminders = [] } = useVetAppointmentReminders();
-  // Reconciled Overdue list (persistent types, DB-resolved + dismissals applied).
-  const { overdue: overdueReminders, dismiss } = useTodayReminders();
+  // Reconciled Overdue list (persistent types, DB-resolved + dismissals applied),
+  // plus the reactive clock every section classifies against.
+  const {
+    overdue: overdueReminders,
+    dismiss,
+    now: reminderNowMs,
+    refreshNow,
+  } = useTodayReminders();
 
   // After a log/photo/wellness save, refetch the resolver sources so the acted-on
   // overdue instance drops out of the list immediately.
@@ -82,11 +87,14 @@ export default function HealthToday() {
     );
   };
 
-  // Pull-to-refresh: reload the active pet's routines (rebuilds the reminders
-  // store + the deterministic Overdue list) and refetch the resolver sources
-  // and vet-appointment reminders that Overdue/countdowns are derived from.
+  // Pull-to-refresh: advance the section clock (so a passed item reclassifies to
+  // Overdue right now, not on the next minute tick), reload the active pet's
+  // routines (rebuilds the reminders store + the deterministic Overdue list) and
+  // refetch the resolver sources and vet-appointment reminders that
+  // Overdue/countdowns are derived from.
   const handleRefresh = useCallback(async () => {
     if (currentPet?.id == null) return;
+    refreshNow();
     await loadRoutines(currentPet.id);
     await Promise.all(
       [
@@ -100,7 +108,7 @@ export default function HealthToday() {
         queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
       ),
     );
-  }, [currentPet?.id, loadRoutines, queryClient]);
+  }, [currentPet?.id, loadRoutines, queryClient, refreshNow]);
 
   // Load the active pet's routines so the reminders store is populated/refreshed
   // for whichever dog is currently selected. Mirrors RoutinesTab's guard so a
@@ -153,43 +161,17 @@ export default function HealthToday() {
   const isOverdueExpanded =
     overdueExpanded ?? overdueReminders.length <= OVERDUE_COLLAPSE_THRESHOLD;
 
-  // Get time-sensitive reminders for countdown cards
-  const timeSensitiveReminders = allReminders.filter((r) => {
-    const status = getReminderStatus(r);
-    return (
-      !overdueIds.has(r.id) &&
-      r.timeSensitive &&
-      (status === REMINDER_STATUS.DUE_NOW ||
-        status === REMINDER_STATUS.DUE_SOON ||
-        status === REMINDER_STATUS.OVERDUE) &&
-      status !== REMINDER_STATUS.COMPLETED &&
-      status !== REMINDER_STATUS.DISABLED
-    );
+  // Due Soon (countdown cards) / Next Up — sectioned by the shared boundary
+  // (isPastDue) against the same reactive clock that drives Overdue, so the
+  // sections can never disagree about which side of "now" an instance is on.
+  // A past-due persistent instance belongs to Overdue alone; a future one to
+  // exactly one of Due Soon / Next Up.
+  const { dueSoon: timeSensitiveReminders, nextUp } = sectionTodayReminders({
+    reminders: allReminders,
+    overdueIds,
+    now: reminderNowMs,
   });
-
-  // Get next 1-3 actionable reminders (upcoming within next few hours)
-  const getNextUpReminders = () => {
-    const now = new Date();
-    const inSixHours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-
-    const upcomingReminders = allReminders
-      .filter((r) => {
-        const status = getReminderStatus(r);
-        const reminderTime = new Date(r.nextTriggerAt);
-        return (
-          reminderTime >= now &&
-          reminderTime <= inSixHours &&
-          status !== REMINDER_STATUS.COMPLETED &&
-          status !== REMINDER_STATUS.DISABLED
-        );
-      })
-      .sort((a, b) => new Date(a.nextTriggerAt) - new Date(b.nextTriggerAt))
-      .slice(0, 3);
-
-    return upcomingReminders;
-  };
-
-  const nextUpReminders = getNextUpReminders();
+  const nextUpReminders = nextUp.slice(0, 3);
 
   // Single entry point for "log/done" on ANY reminder card — today's and Overdue
   // alike. routeReminderLog owns the per-type decision; this switch only executes
