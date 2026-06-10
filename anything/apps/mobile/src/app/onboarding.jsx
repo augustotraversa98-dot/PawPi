@@ -14,6 +14,8 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Check } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import DateField from "@/components/DateField";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1346,24 +1348,18 @@ const StepBirthday = ({ formData, setFormData }) => {
           >
             Date:
           </Text>
-          <TextInput
-            style={{
+          <DateField
+            value={formData.date}
+            onChange={(date) => setFormData((prev) => ({ ...prev, date }))}
+            maximumDate={new Date()}
+            fieldStyle={{
               backgroundColor: "#FFF",
               borderRadius: 16,
               padding: 18,
-              fontSize: 18,
-              fontWeight: "600",
-              color: C.warmBrown,
               borderWidth: 2,
               borderColor: formData.date ? C.coral : C.sand,
             }}
-            placeholder="MM/DD/YYYY"
-            placeholderTextColor={C.mutedBrown}
-            value={formData.date}
-            onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, date: text }))
-            }
-            keyboardType="numbers-and-punctuation"
+            textStyle={{ fontSize: 18, fontWeight: "600" }}
           />
         </View>
       )}
@@ -1545,7 +1541,7 @@ const StepReview = ({ formData, goToStep }) => {
             formData.date && formData.dateType !== "unknown"
               ? `${
                   formData.dateType === "birthday" ? "🎂" : "💝"
-                } ${formData.date}`
+                } ${formatDisplayDate(formData.date)}`
               : "Not specified"
           }
           onEdit={() => goToStep(6)}

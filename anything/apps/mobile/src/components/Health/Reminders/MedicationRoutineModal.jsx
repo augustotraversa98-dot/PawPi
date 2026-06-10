@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { X } from "lucide-react-native";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
+import DateField from "@/components/DateField";
+import TimeField from "@/components/TimeField";
 
 const C = {
   cream: "#FFF7EF",
@@ -285,38 +287,21 @@ export default function MedicationRoutineModal({
               Time(s)
             </Text>
             {times.map((time, index) => (
-              <TextInput
-                key={index}
-                value={time}
-                onChangeText={(text) => {
-                  const updated = [...times];
-                  updated[index] = text;
-                  setTimes(updated);
-                }}
-                placeholder="HH:MM"
-                placeholderTextColor={C.mutedBrown}
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 15,
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  marginBottom: 10,
-                }}
-              />
+              <View key={index} style={{ marginBottom: 10 }}>
+                <TimeField
+                  value={time}
+                  onChange={(next) => {
+                    const updated = [...times];
+                    updated[index] = next;
+                    setTimes(updated);
+                  }}
+                />
+              </View>
             ))}
 
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 12,
-                marginBottom: 20,
-                marginTop: 10,
-              }}
-            >
-              <View style={{ flex: 1 }}>
+            {/* Stacked (not side-by-side) so the inline calendar has full width */}
+            <View style={{ gap: 12, marginBottom: 20, marginTop: 10 }}>
+              <View>
                 <Text
                   style={{
                     fontSize: 13,
@@ -327,23 +312,9 @@ export default function MedicationRoutineModal({
                 >
                   Start Date
                 </Text>
-                <TextInput
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={C.mutedBrown}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 12,
-                    fontSize: 14,
-                    color: C.warmBrown,
-                    borderWidth: 1,
-                    borderColor: C.peach,
-                  }}
-                />
+                <DateField value={startDate} onChange={setStartDate} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View>
                 <Text
                   style={{
                     fontSize: 13,
@@ -354,21 +325,7 @@ export default function MedicationRoutineModal({
                 >
                   End Date
                 </Text>
-                <TextInput
-                  value={endDate}
-                  onChangeText={setEndDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={C.mutedBrown}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 12,
-                    fontSize: 14,
-                    color: C.warmBrown,
-                    borderWidth: 1,
-                    borderColor: C.peach,
-                  }}
-                />
+                <DateField value={endDate} onChange={setEndDate} />
               </View>
             </View>
 

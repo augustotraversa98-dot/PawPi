@@ -44,6 +44,8 @@ import {
   getPreventiveTypeLabel,
   getPreventiveTypeEmoji,
 } from "@/data/medicationData";
+import DateField from "@/components/DateField";
+import { parseDateValue } from "@/utils/canonicalDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -139,8 +141,10 @@ export default function MedicationModal({
 
     addVaccine({
       name: vaxName,
-      dateGiven: vaxDateGiven ? new Date(vaxDateGiven).getTime() : Date.now(),
-      dueDate: vaxDueDate ? new Date(vaxDueDate).getTime() : null,
+      dateGiven: vaxDateGiven
+        ? parseDateValue(vaxDateGiven).getTime()
+        : Date.now(),
+      dueDate: vaxDueDate ? parseDateValue(vaxDueDate).getTime() : null,
       vetClinic: vaxVetClinic,
       notes: vaxNotes,
       reminderEnabled: vaxReminderEnabled,
@@ -168,8 +172,8 @@ export default function MedicationModal({
       productName: prevProductName,
       type: prevType || "other",
       frequency: prevFrequency,
-      lastGiven: prevLastGiven ? new Date(prevLastGiven).getTime() : null,
-      nextDue: prevNextDue ? new Date(prevNextDue).getTime() : null,
+      lastGiven: prevLastGiven ? parseDateValue(prevLastGiven).getTime() : null,
+      nextDue: prevNextDue ? parseDateValue(prevNextDue).getTime() : null,
       notes: prevNotes,
       reminderEnabled: prevReminderEnabled,
     });
@@ -829,23 +833,19 @@ export default function MedicationModal({
 
                       <View>
                         <Text style={styles.label}>Date given</Text>
-                        <TextInput
+                        <DateField
                           value={vaxDateGiven}
-                          onChangeText={setVaxDateGiven}
-                          placeholder="MM/DD/YYYY"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
+                          onChange={setVaxDateGiven}
+                          fieldStyle={styles.input}
                         />
                       </View>
 
                       <View>
                         <Text style={styles.label}>Due/expiration date</Text>
-                        <TextInput
+                        <DateField
                           value={vaxDueDate}
-                          onChangeText={setVaxDueDate}
-                          placeholder="MM/DD/YYYY"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
+                          onChange={setVaxDueDate}
+                          fieldStyle={styles.input}
                         />
                       </View>
 
@@ -1203,23 +1203,19 @@ export default function MedicationModal({
 
                       <View>
                         <Text style={styles.label}>Last given</Text>
-                        <TextInput
+                        <DateField
                           value={prevLastGiven}
-                          onChangeText={setPrevLastGiven}
-                          placeholder="MM/DD/YYYY"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
+                          onChange={setPrevLastGiven}
+                          fieldStyle={styles.input}
                         />
                       </View>
 
                       <View>
                         <Text style={styles.label}>Next due</Text>
-                        <TextInput
+                        <DateField
                           value={prevNextDue}
-                          onChangeText={setPrevNextDue}
-                          placeholder="MM/DD/YYYY"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
+                          onChange={setPrevNextDue}
+                          fieldStyle={styles.input}
                         />
                       </View>
 

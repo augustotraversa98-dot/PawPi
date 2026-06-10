@@ -13,6 +13,8 @@ import {
 import { X, Plus, ChevronDown, ChevronUp, Calendar } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import DateField from "@/components/DateField";
+import TimeField from "@/components/TimeField";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   addVetAppointmentToCalendar,
@@ -317,14 +319,11 @@ export default function VetAppointmentRoutineModal({
       return;
     }
     if (!validateDate(formData.appointmentDate)) {
-      Alert.alert("Validation Error", "Invalid date format. Use YYYY-MM-DD");
+      Alert.alert("Validation Error", "Please select a valid date");
       return;
     }
     if (!validateTime(formData.appointmentTime)) {
-      Alert.alert(
-        "Validation Error",
-        "Invalid time format. Use HH:MM (24-hour)",
-      );
+      Alert.alert("Validation Error", "Please select a time");
       return;
     }
 
@@ -548,11 +547,9 @@ export default function VetAppointmentRoutineModal({
                     }}
                   />
 
-                  {/* Date and Time */}
-                  <View
-                    style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}
-                  >
-                    <View style={{ flex: 1 }}>
+                  {/* Date and Time — stacked so the inline pickers have full width */}
+                  <View style={{ gap: 12, marginBottom: 12 }}>
+                    <View>
                       <Text
                         style={{
                           fontSize: 12,
@@ -561,28 +558,23 @@ export default function VetAppointmentRoutineModal({
                           marginBottom: 6,
                         }}
                       >
-                        Date * (YYYY-MM-DD)
+                        Date *
                       </Text>
-                      <TextInput
+                      <DateField
                         value={formData.appointmentDate}
-                        onChangeText={(text) =>
+                        onChange={(date) =>
                           setFormData((prev) => ({
                             ...prev,
-                            appointmentDate: text,
+                            appointmentDate: date,
                           }))
                         }
-                        placeholder="2026-05-20"
-                        placeholderTextColor={C.mutedBrown}
-                        style={{
+                        fieldStyle={{
                           backgroundColor: C.sand,
-                          borderRadius: 12,
-                          padding: 12,
-                          fontSize: 14,
-                          color: C.warmBrown,
+                          borderWidth: 0,
                         }}
                       />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View>
                       <Text
                         style={{
                           fontSize: 12,
@@ -591,24 +583,19 @@ export default function VetAppointmentRoutineModal({
                           marginBottom: 6,
                         }}
                       >
-                        Time * (HH:MM)
+                        Time *
                       </Text>
-                      <TextInput
+                      <TimeField
                         value={formData.appointmentTime}
-                        onChangeText={(text) =>
+                        onChange={(time) =>
                           setFormData((prev) => ({
                             ...prev,
-                            appointmentTime: text,
+                            appointmentTime: time,
                           }))
                         }
-                        placeholder="10:00"
-                        placeholderTextColor={C.mutedBrown}
-                        style={{
+                        fieldStyle={{
                           backgroundColor: C.sand,
-                          borderRadius: 12,
-                          padding: 12,
-                          fontSize: 14,
-                          color: C.warmBrown,
+                          borderWidth: 0,
                         }}
                       />
                     </View>

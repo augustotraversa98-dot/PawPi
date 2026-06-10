@@ -12,6 +12,7 @@ import {
 import { X, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react-native";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import TimeField from "@/components/TimeField";
 
 const C = {
   cream: "#FFF7EF",
@@ -517,22 +518,18 @@ export default function FeedingRoutineModal({
                     >
                       Time
                     </Text>
-                    <TextInput
-                      value={meal.time}
-                      onChangeText={(text) =>
-                        handleMealChange(index, "time", text)
-                      }
-                      placeholder="HH:MM (24-hour format)"
-                      placeholderTextColor={C.mutedBrown}
-                      style={{
-                        backgroundColor: C.sand,
-                        borderRadius: 12,
-                        padding: 12,
-                        fontSize: 15,
-                        color: C.warmBrown,
-                        marginBottom: 16,
-                      }}
-                    />
+                    <View style={{ marginBottom: 16 }}>
+                      <TimeField
+                        value={meal.time}
+                        onChange={(time) =>
+                          handleMealChange(index, "time", time)
+                        }
+                        fieldStyle={{
+                          backgroundColor: C.sand,
+                          borderWidth: 0,
+                        }}
+                      />
+                    </View>
 
                     {/* Repeat Frequency */}
                     <Text

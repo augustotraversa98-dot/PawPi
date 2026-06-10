@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput, Switch } from "react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
+import TimeField from "@/components/TimeField";
 import {
   ROUTINE_TYPES,
   ROUTINE_FREQUENCY,
@@ -210,22 +211,9 @@ export default function SimpleRoutineModal({
       >
         Preferred Time
       </Text>
-      <TextInput
-        value={preferredTime}
-        onChangeText={setPreferredTime}
-        placeholder="HH:MM"
-        placeholderTextColor={C.mutedBrown}
-        style={{
-          backgroundColor: C.card,
-          borderRadius: 12,
-          padding: 12,
-          fontSize: 15,
-          color: C.warmBrown,
-          borderWidth: 1,
-          borderColor: C.peach,
-          marginBottom: 20,
-        }}
-      />
+      <View style={{ marginBottom: 20 }}>
+        <TimeField value={preferredTime} onChange={setPreferredTime} />
+      </View>
 
       <View
         style={{

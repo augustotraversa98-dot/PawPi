@@ -17,6 +17,7 @@ import {
   WELLNESS_CHECK_ITEMS,
 } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import TimeField from "@/components/TimeField";
 
 const C = {
   cream: "#FFF7EF",
@@ -889,22 +890,18 @@ export default function WellnessCheckRoutineModal({
                         >
                           Preferred Time
                         </Text>
-                        <TextInput
-                          value={item.preferredTime}
-                          onChangeText={(text) =>
-                            handleItemChange(item.id, "preferredTime", text)
-                          }
-                          placeholder="HH:MM (24-hour format)"
-                          placeholderTextColor={C.mutedBrown}
-                          style={{
-                            backgroundColor: C.sand,
-                            borderRadius: 12,
-                            padding: 12,
-                            fontSize: 15,
-                            color: C.warmBrown,
-                            marginBottom: 12,
-                          }}
-                        />
+                        <View style={{ marginBottom: 12 }}>
+                          <TimeField
+                            value={item.preferredTime}
+                            onChange={(time) =>
+                              handleItemChange(item.id, "preferredTime", time)
+                            }
+                            fieldStyle={{
+                              backgroundColor: C.sand,
+                              borderWidth: 0,
+                            }}
+                          />
+                        </View>
 
                         {/* Weight Unit (for Weight check only) */}
                         {item.checkType === WELLNESS_CHECK_ITEMS.WEIGHT && (
