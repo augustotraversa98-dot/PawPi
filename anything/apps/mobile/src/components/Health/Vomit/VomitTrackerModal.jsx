@@ -4,14 +4,12 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
   Image,
   ActivityIndicator,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Check,
@@ -285,9 +283,8 @@ export default function VomitTrackerModal({ visible, onClose }) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
+      <View
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -320,13 +317,12 @@ export default function VomitTrackerModal({ visible, onClose }) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Loading State */}
           {isSaving && (
@@ -1026,8 +1022,8 @@ export default function VomitTrackerModal({ visible, onClose }) {
               </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }

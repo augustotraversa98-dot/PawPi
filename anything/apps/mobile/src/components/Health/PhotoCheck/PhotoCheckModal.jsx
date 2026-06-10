@@ -3,13 +3,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Image,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   Camera,
   Image as ImageIcon,
@@ -176,10 +174,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: C.cream }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={{ flex: 1, backgroundColor: C.cream }}>
         {/* Header */}
         <View
           style={{
@@ -218,7 +213,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
         </View>
 
         {/* Content */}
-        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView style={{ flex: 1 }}>
           {step === "select" && (
             <View style={{ padding: 16 }}>
               <Text
@@ -553,8 +548,8 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
               </View>
             </View>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }

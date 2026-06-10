@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Pill,
@@ -342,11 +343,10 @@ export default function MedicationModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* MEDICATIONS TAB */}
@@ -1463,7 +1463,7 @@ export default function MedicationModal({
                 )}
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

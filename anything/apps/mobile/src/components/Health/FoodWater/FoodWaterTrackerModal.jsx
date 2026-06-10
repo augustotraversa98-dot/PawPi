@@ -4,12 +4,10 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
-  Platform,
   ActivityIndicator,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Check,
@@ -181,9 +179,8 @@ export default function FoodWaterTrackerModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
+      <View
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -215,10 +212,9 @@ export default function FoodWaterTrackerModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20 }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Confirmation Screen */}
           {showConfirmation && (
@@ -1074,8 +1070,8 @@ export default function FoodWaterTrackerModal({
               </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }
