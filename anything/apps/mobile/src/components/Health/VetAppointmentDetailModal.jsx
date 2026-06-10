@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  ScrollView,
   TouchableOpacity,
   Alert,
   TextInput,
@@ -11,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, CheckCircle, Edit, Trash2, FileText } from "lucide-react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -201,9 +201,8 @@ export default function VetAppointmentDetailModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Appointment Title */}
@@ -313,7 +312,7 @@ export default function VetAppointmentDetailModal({
               />
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Action Buttons */}
         <View

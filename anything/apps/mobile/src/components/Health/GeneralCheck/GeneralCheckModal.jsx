@@ -4,12 +4,12 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Alert,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   ChevronRight,
@@ -224,11 +224,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
             </View>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* Current Area */}
@@ -601,7 +600,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                 veterinarian.
               </Text>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           {/* Navigation Buttons */}
           <View

@@ -4,13 +4,11 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Check, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -166,9 +164,8 @@ export default function PostWalkFeedbackModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
+      <View
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -208,13 +205,12 @@ export default function PostWalkFeedbackModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Confirmation Screen */}
           {step === "confirmation" && (
@@ -736,8 +732,8 @@ export default function PostWalkFeedbackModal({
               </Text>
             </View>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }

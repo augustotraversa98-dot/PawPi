@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Calendar,
@@ -888,13 +889,12 @@ export default function VetSummaryModal({ visible, onClose }) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,
             paddingBottom: insets.bottom + 100,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Instructions */}
           <View
@@ -916,7 +916,7 @@ export default function VetSummaryModal({ visible, onClose }) {
           {renderRangeSelector()}
           {renderPhotoSelection()}
           {renderQuestionsForVet()}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Bottom Actions */}
         <View

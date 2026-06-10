@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
 import { X } from "lucide-react-native";
+import KeyboardAwareScrollView from "./KeyboardAwareScrollView";
 
 const C = {
   cream: "#FAF7F0",
@@ -116,13 +116,12 @@ export default function KeyboardSafeFormModal({
           </View>
 
           {/* Scrollable Form Content */}
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {children}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           {/* Fixed Bottom CTA Button */}
           <View

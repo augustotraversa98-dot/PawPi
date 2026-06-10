@@ -4,13 +4,11 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Pause, Play, StopCircle, Plus, Edit3 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -155,9 +153,8 @@ export default function StartWalkModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
+      <View
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -194,13 +191,12 @@ export default function StartWalkModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Countdown Display */}
           {!showExtendOptions && (
@@ -514,8 +510,8 @@ export default function StartWalkModal({
               Finish Walk
             </Text>
           </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }

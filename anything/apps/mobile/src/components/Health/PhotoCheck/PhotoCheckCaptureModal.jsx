@@ -12,6 +12,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Camera,
@@ -611,10 +612,9 @@ export default function PhotoCheckCaptureModal({
 
         {/* Notes Step */}
         {step === "notes" && (
-          <ScrollView
+          <KeyboardAwareScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
           >
             {/* Photo Preview (if photo was taken) */}
             {imageUri && (
@@ -777,7 +777,7 @@ export default function PhotoCheckCaptureModal({
                 included in future Vet Summaries.
               </Text>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
 
         {/* Save Button (only in notes step) */}

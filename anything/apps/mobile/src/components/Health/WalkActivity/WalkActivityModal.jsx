@@ -4,12 +4,10 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
   ActivityIndicator,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Check, Play, Edit3, Users, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLogWalk } from "@/hooks/useHealthTracking";
@@ -113,9 +111,8 @@ export default function WalkActivityModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
+      <View
         style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View
@@ -148,13 +145,12 @@ export default function WalkActivityModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,
             paddingBottom: insets.bottom + 20,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Confirmation Screen */}
           {showConfirmation && (
@@ -673,8 +669,8 @@ export default function WalkActivityModal({
               </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }
