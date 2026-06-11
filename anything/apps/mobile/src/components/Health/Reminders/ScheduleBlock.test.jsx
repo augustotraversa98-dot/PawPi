@@ -24,16 +24,52 @@ function renderBlock(frequency, extra = {}) {
 }
 
 describe("ScheduleBlock — always-present controls", () => {
-  it("renders Date, Time and the full Frequency list", () => {
-    const { getByTestId } = renderBlock(ROUTINE_FREQUENCY.WEEKLY);
+  it("renders Date, Time and a collapsed Frequency header (not the full list)", () => {
+    const { getByTestId, getByText, queryByTestId } = renderBlock(
+      ROUTINE_FREQUENCY.WEEKLY,
+    );
     expect(getByTestId("schedule-block-date")).toBeTruthy();
     expect(getByTestId("schedule-block-time")).toBeTruthy();
-    // Full cadence list incl. hourly, yearly, custom, once.
+    // Frequency starts collapsed: tappable header + current label, list hidden.
+    expect(getByTestId("schedule-block-frequency-toggle")).toBeTruthy();
+    expect(getByText("Weekly")).toBeTruthy();
+    expect(queryByTestId("schedule-block-frequency-hourly")).toBeNull();
+    expect(queryByTestId("schedule-block-frequency-once")).toBeNull();
+    // Early reminder always present.
+    expect(getByTestId("schedule-block-early-on_time")).toBeTruthy();
+  });
+});
+
+describe("ScheduleBlock — collapsible Frequency", () => {
+  it("tapping the header expands the full list; picking an option emits and collapses", () => {
+    const { getByTestId, queryByTestId, onChange } = renderBlock(
+      ROUTINE_FREQUENCY.WEEKLY,
+    );
+    // Collapsed: list hidden.
+    expect(queryByTestId("schedule-block-frequency-monthly")).toBeNull();
+
+    // Expand → full list, incl. hourly/yearly/once.
+    fireEvent.press(getByTestId("schedule-block-frequency-toggle"));
     expect(getByTestId("schedule-block-frequency-hourly")).toBeTruthy();
     expect(getByTestId("schedule-block-frequency-yearly")).toBeTruthy();
     expect(getByTestId("schedule-block-frequency-once")).toBeTruthy();
-    // Early reminder always present.
-    expect(getByTestId("schedule-block-early-on_time")).toBeTruthy();
+
+    // Pick Monthly → emits the change AND collapses back to the header.
+    fireEvent.press(getByTestId("schedule-block-frequency-monthly"));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ frequency: ROUTINE_FREQUENCY.MONTHLY }),
+    );
+    expect(queryByTestId("schedule-block-frequency-monthly")).toBeNull();
+  });
+
+  it.each([
+    [ROUTINE_FREQUENCY.HOURLY, "Hourly"],
+    [ROUTINE_FREQUENCY.YEARLY, "Yearly"],
+    [ROUTINE_FREQUENCY.ONCE, "Once / Never"],
+    [ROUTINE_FREQUENCY.EVERY_3_MONTHS, "Every 3 months"],
+  ])("collapsed header shows the human label for %s", (frequency, label) => {
+    const { getByText } = renderBlock(frequency);
+    expect(getByText(label)).toBeTruthy();
   });
 });
 
@@ -99,6 +135,7 @@ describe("ScheduleBlock — emits canonical fields", () => {
     const { getByTestId, onChange } = renderBlock(ROUTINE_FREQUENCY.WEEKLY, {
       startDate: "2026-06-10",
     });
+    fireEvent.press(getByTestId("schedule-block-frequency-toggle")); // expand list
     fireEvent.press(getByTestId("schedule-block-frequency-monthly"));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
