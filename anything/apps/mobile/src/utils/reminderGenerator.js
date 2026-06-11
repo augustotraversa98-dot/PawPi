@@ -364,6 +364,51 @@ function generatePhotoCheckReminders(
     const preferredDay = schedule.preferredDay ?? 6; // Sunday
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+
+    // HOURLY: intra-day interval series — the same machinery as the wellness /
+    // medical-care hourly cadence. Replaces the once-per-day weekday walk.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(schedule, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        schedule,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        reminders.push({
+          id: `reminder_${routine.id}_${schedule.bodyArea}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+          routineId: routine.id,
+          photoCheckScheduleIndex: scheduleIndex,
+          petId: routine.petId,
+          type: "photo_check",
+          title: `${bodyAreaLabel} Check`,
+          description: `Take photo of ${
+            schedule.bodyArea?.replace("_", " ") || "body area"
+          }`,
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.UPCOMING,
+          priority: "medium",
+          timeSensitive: schedule.timeSensitive ?? false,
+          notificationEnabled: schedule.reminderEnabled ?? true,
+          relatedTracker: relatedTracker,
+          relatedBodyArea: schedule.bodyArea,
+          primaryAction,
+          notes: schedule.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Daily photo checks fire every day, ignoring preferredDay (same rule as
     // daily wellness checks).
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
@@ -1447,14 +1492,19 @@ function medicalCareHourlyAnchorTime(item) {
   return "09:00";
 }
 
-// Hourly medical-care instance id — the locked `_HHMM` intra-day suffix (HOURLY is
-// the only cadence with sibling occurrences within a day), keyed on the item id
-// like every other medical-care id.
-function medicalCareHourlyInstanceId(routineId, itemId, occurrence) {
-  const dateStr = startOfDay(occurrence).toISOString().split("T")[0];
+// The `HHMM` local-time fragment appended to a date-only base id for HOURLY
+// occurrences (the only cadence with sibling occurrences within a day).
+function hourlyIdSuffix(occurrence) {
   const hh = String(occurrence.getHours()).padStart(2, "0");
   const mm = String(occurrence.getMinutes()).padStart(2, "0");
-  return `reminder_${routineId}_${itemId}_${dateStr}_${hh}${mm}`;
+  return `${hh}${mm}`;
+}
+
+// Hourly medical-care instance id — the locked `_HHMM` intra-day suffix, keyed on
+// the item id like every other medical-care id.
+function medicalCareHourlyInstanceId(routineId, itemId, occurrence) {
+  const dateStr = startOfDay(occurrence).toISOString().split("T")[0];
+  return `reminder_${routineId}_${itemId}_${dateStr}_${hourlyIdSuffix(occurrence)}`;
 }
 
 // =========================================================================
@@ -2008,6 +2058,52 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     const preferredDay = schedule.preferredDay ?? 6;
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+
+    // HOURLY: overdue capped to TODAY only (same as wellness / medical-care
+    // hourly overdue), clamped to the routine/schedule start.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(schedule, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        schedule,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      const hourlyStart = clampOverdueStart(startOfDay(now), routine, schedule);
+      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
+      hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
+        includeEnd: false,
+      }).forEach((occ) => {
+        reminders.push({
+          id: `reminder_${routine.id}_${schedule.bodyArea}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+          routineId: routine.id,
+          photoCheckScheduleIndex: scheduleIndex,
+          petId: routine.petId,
+          type: "photo_check",
+          title: `${bodyAreaLabel} Check`,
+          description: `Take photo of ${
+            schedule.bodyArea?.replace("_", " ") || "body area"
+          }`,
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.OVERDUE,
+          priority: "medium",
+          timeSensitive: schedule.timeSensitive ?? false,
+          notificationEnabled: schedule.reminderEnabled ?? true,
+          relatedTracker: "photo_check",
+          relatedBodyArea: schedule.bodyArea,
+          primaryAction: "Take photo",
+          notes: schedule.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Same rule as the upcoming generator: daily ignores preferredDay.
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
     // Month-multiple and ONCE cadences match by an anchored date set (same set as
