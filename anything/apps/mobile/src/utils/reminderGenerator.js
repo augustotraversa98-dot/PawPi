@@ -277,6 +277,10 @@ function generateFeedingReminders(
     const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
     const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
     const preferredDay = meal.preferredDay ?? 6;
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(meal, frequency);
+    const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, meal, now) : null;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -287,7 +291,10 @@ function generateFeedingReminders(
       if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       } else if (isWeekly || isBiweekly) {
-        shouldSchedule = dayOfWeek === preferredDay;
+        shouldSchedule = multiDays
+          ? multiDays.includes(dayOfWeek) &&
+            (isWeekly || isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+          : dayOfWeek === preferredDay;
       } else {
         // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
         shouldSchedule = mealDays.includes(dayOfWeek);
@@ -302,9 +309,9 @@ function generateFeedingReminders(
           pushMeal(scheduledTime, `reminder_${routine.id}_${mealId}_${dateStr}`);
         }
 
-        if (isWeekly) {
+        if (isWeekly && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 7);
-        } else if (isBiweekly) {
+        } else if (isBiweekly && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 14);
         } else {
           currentDate.setDate(currentDate.getDate() + 1);
@@ -400,6 +407,10 @@ function generateWalkReminders(
     const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
     const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
     const preferredDay = walk.preferredDay ?? 6;
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(walk, frequency);
+    const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, walk, now) : null;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -410,7 +421,10 @@ function generateWalkReminders(
       if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       } else if (isWeekly || isBiweekly) {
-        shouldSchedule = dayOfWeek === preferredDay;
+        shouldSchedule = multiDays
+          ? multiDays.includes(dayOfWeek) &&
+            (isWeekly || isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+          : dayOfWeek === preferredDay;
       } else {
         // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
         shouldSchedule = walkDays.includes(dayOfWeek);
@@ -425,9 +439,9 @@ function generateWalkReminders(
           pushWalk(scheduledTime, `reminder_${routine.id}_${dateStr}_${index}`);
         }
 
-        if (isWeekly) {
+        if (isWeekly && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 7);
-        } else if (isBiweekly) {
+        } else if (isBiweekly && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 14);
         } else {
           currentDate.setDate(currentDate.getDate() + 1);
@@ -593,6 +607,12 @@ function generatePhotoCheckReminders(
     );
     // weekday / weekend / custom cadences match by a weekday set (null otherwise).
     const activeDays = dayPatternActiveDays(schedule, frequency);
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(schedule, frequency);
+    const biweeklyAnchor = multiDays
+      ? getScheduleAnchor(routine, schedule, now)
+      : null;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -604,7 +624,11 @@ function generatePhotoCheckReminders(
         ? cadenceDates.has(currentDate.getTime())
         : activeDays
           ? activeDays.includes(dayOfWeek)
-          : isDaily || dayOfWeek === preferredDay;
+          : multiDays
+            ? multiDays.includes(dayOfWeek) &&
+              (frequency === ROUTINE_FREQUENCY.WEEKLY ||
+                isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+            : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -640,9 +664,10 @@ function generatePhotoCheckReminders(
           });
         }
 
-        // Move to next occurrence based on frequency (date-set and day-pattern
-        // cadences walk day-by-day; their predicate governs matching)
-        if (isDaily || cadenceDates || activeDays) {
+        // Move to next occurrence based on frequency (date-set, day-pattern and
+        // multi-day weekly/biweekly cadences walk day-by-day; their predicate
+        // governs matching)
+        if (isDaily || cadenceDates || activeDays || multiDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
@@ -1229,6 +1254,10 @@ function generateWellnessCheckReminders(
     );
     // weekday / weekend / custom cadences match by a weekday set (null otherwise).
     const activeDays = dayPatternActiveDays(item, frequency);
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(item, frequency);
+    const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, item, now) : null;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -1244,7 +1273,11 @@ function generateWellnessCheckReminders(
         frequency === ROUTINE_FREQUENCY.WEEKLY ||
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
-        shouldSchedule = dayOfWeek === preferredDay;
+        shouldSchedule = multiDays
+          ? multiDays.includes(dayOfWeek) &&
+            (frequency === ROUTINE_FREQUENCY.WEEKLY ||
+              isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+          : dayOfWeek === preferredDay;
       } else if (activeDays) {
         shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
@@ -1285,11 +1318,12 @@ function generateWellnessCheckReminders(
           });
         }
 
-        // Move to next occurrence based on frequency (month cadences walk
-        // day-by-day; the anchored date set governs matching)
-        if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
+        // Move to next occurrence based on frequency (month cadences and
+        // multi-day weekly/biweekly walk day-by-day; their predicate governs
+        // matching)
+        if (frequency === ROUTINE_FREQUENCY.WEEKLY && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 7);
-        } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY) {
+        } else if (frequency === ROUTINE_FREQUENCY.BIWEEKLY && !multiDays) {
           currentDate.setDate(currentDate.getDate() + 14);
         } else {
           currentDate.setDate(currentDate.getDate() + 1);
@@ -1596,6 +1630,50 @@ function dayPatternActiveDays(item, frequency) {
     return Array.isArray(item.days) ? item.days : [0, 1, 2, 3, 4, 5, 6];
   }
   return null;
+}
+
+// =========================================================================
+// Multi-day WEEKLY / BIWEEKLY — an item may fire on several weekdays per
+// (on-)week via an explicit days[] (Mon=0), e.g. "every Wed and Fri". This is
+// purely ADDITIVE and gated on a non-empty days[]: when days[] is absent the
+// callers keep their locked single-`preferredDay` path BYTE-FOR-BYTE (same
+// instances + ids), so existing weekly/biweekly routines are untouched. No
+// existing weekly/biweekly schedule item persists a multi-element days[] (the
+// modals only ever wrote preferredDay), so the fallback is exhaustive for stored
+// data. Biweekly "on" weeks are anchored on the schedule's startDate (via
+// getScheduleAnchor), matching the month-multiple / hourly / once anchor.
+// =========================================================================
+
+// Selected weekdays (Mon=0) for a multi-day weekly/biweekly item, or null to use
+// the legacy single-preferredDay path. Only weekly/biweekly with a non-empty
+// days[] opt in; every other cadence returns null and is matched elsewhere.
+function weeklyMultiDays(item, frequency) {
+  if (
+    frequency !== ROUTINE_FREQUENCY.WEEKLY &&
+    frequency !== ROUTINE_FREQUENCY.BIWEEKLY
+  ) {
+    return null;
+  }
+  return Array.isArray(item?.days) && item.days.length ? item.days : null;
+}
+
+// Local-midnight Monday (Mon=0) of the week containing `date`.
+function startOfWeekMonday(date) {
+  const d = startOfDay(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+// Whether `date` lands in a biweekly "on" week: the week containing `anchor` is
+// on (week 0), every other week after/before it is on. The whole-week delta uses
+// Math.round so a DST hour can't skew the parity. Weekday-independent — every
+// selected day in an on-week fires together.
+function isBiweeklyOnWeek(date, anchor) {
+  const weeks = Math.round(
+    (startOfWeekMonday(date).getTime() - startOfWeekMonday(anchor).getTime()) /
+      (7 * MS_PER_DAY),
+  );
+  return (((weeks % 2) + 2) % 2) === 0;
 }
 
 // Occurrence dates (local midnight) of a recurring medical-care schedule within
@@ -1973,6 +2051,10 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
     );
     // weekday / weekend / custom cadences match by a weekday set (null otherwise).
     const activeDays = dayPatternActiveDays(item, frequency);
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(item, frequency);
+    const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, item, now) : null;
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1987,7 +2069,11 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         frequency === ROUTINE_FREQUENCY.WEEKLY ||
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
-        shouldSchedule = dayOfWeek === preferredDay;
+        shouldSchedule = multiDays
+          ? multiDays.includes(dayOfWeek) &&
+            (frequency === ROUTINE_FREQUENCY.WEEKLY ||
+              isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+          : dayOfWeek === preferredDay;
       } else if (activeDays) {
         shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
@@ -2028,7 +2114,11 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
           });
         }
 
-        advanceByFrequency(currentDate, frequency);
+        if (multiDays) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        } else {
+          advanceByFrequency(currentDate, frequency);
+        }
       } else {
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -2302,6 +2392,12 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     );
     // weekday / weekend / custom cadences match by a weekday set (null otherwise).
     const activeDays = dayPatternActiveDays(schedule, frequency);
+    // Multi-day weekly/biweekly: explicit days[] (Mon=0); null → legacy single
+    // preferredDay path (byte-for-byte). Biweekly "on" weeks anchor on startDate.
+    const multiDays = weeklyMultiDays(schedule, frequency);
+    const biweeklyAnchor = multiDays
+      ? getScheduleAnchor(routine, schedule, now)
+      : null;
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -2312,7 +2408,11 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
         ? cadenceDates.has(currentDate.getTime())
         : activeDays
           ? activeDays.includes(dayOfWeek)
-          : isDaily || dayOfWeek === preferredDay;
+          : multiDays
+            ? multiDays.includes(dayOfWeek) &&
+              (frequency === ROUTINE_FREQUENCY.WEEKLY ||
+                isBiweeklyOnWeek(currentDate, biweeklyAnchor))
+            : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -2347,7 +2447,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           });
         }
 
-        if (isDaily || cadenceDates || activeDays) {
+        if (isDaily || cadenceDates || activeDays || multiDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
