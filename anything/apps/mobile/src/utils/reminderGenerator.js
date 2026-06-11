@@ -1052,6 +1052,8 @@ function generateWellnessCheckReminders(
       endDate,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(item, frequency);
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -1068,6 +1070,8 @@ function generateWellnessCheckReminders(
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
+      } else if (activeDays) {
+        shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
@@ -1406,10 +1410,11 @@ function buildCadenceDateSet(routine, item, frequency, rangeEnd, fallback) {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-// Weekday set (Mon=0) for a medical-care item's day-pattern cadence; null means
-// "every day" (DAILY). Mirrors getMealActiveDays so the day patterns match the
-// rest of the app.
-function medicalCareActiveDays(item, frequency) {
+// Weekday set (Mon=0) for a day-pattern cadence; null means the cadence is not a
+// day pattern (the caller matches it another way — e.g. DAILY every day, or a
+// weekday/date-set match). Mirrors getMealActiveDays so the patterns match the
+// rest of the app. Shared by every item-driven generator path.
+function dayPatternActiveDays(item, frequency) {
   if (frequency === ROUTINE_FREQUENCY.WEEKDAYS) return [0, 1, 2, 3, 4];
   if (frequency === ROUTINE_FREQUENCY.WEEKENDS) return [5, 6];
   if (frequency === ROUTINE_FREQUENCY.CUSTOM) {
@@ -1451,7 +1456,7 @@ function medicalCareOccurrences(item, frequency, anchor, rangeStart, rangeEnd) {
       : frequency === ROUTINE_FREQUENCY.BIWEEKLY
         ? 14
         : 0;
-  const activeDays = stepDays ? null : medicalCareActiveDays(item, frequency);
+  const activeDays = stepDays ? null : dayPatternActiveDays(item, frequency);
 
   for (
     let cur = new Date(start);
@@ -1790,6 +1795,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
       now,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(item, frequency);
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1805,6 +1812,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
+      } else if (activeDays) {
+        shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
