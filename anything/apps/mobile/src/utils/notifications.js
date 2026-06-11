@@ -276,7 +276,14 @@ export async function scheduleReminderNotification(reminder, reminderTiming) {
           : Notifications.AndroidNotificationPriority.DEFAULT,
         categoryIdentifier: reminder.type,
       },
-      trigger: triggerTime,
+      // SDK 54 (expo-notifications 0.32) rejects a bare Date — the trigger must
+      // be typed. channelId routes Android to the "default" channel
+      // initNotifications() creates; iOS ignores it.
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerTime,
+        channelId: "default",
+      },
     });
 
     return notificationId;
