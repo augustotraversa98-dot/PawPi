@@ -1,6 +1,16 @@
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { REMINDER_STATUS } from "@/data/remindersData";
 
+// A soft-deleted routine must generate NO reminders — neither forward nor overdue —
+// independent of its is_active flag (delete also flips is_active off, but pausing
+// shares that flag, so deletion needs its own marker). Checks both the app-format
+// `deletedAt` and the raw `deleted_at` so any shape that reaches the generators is
+// caught. This is the one boundary that distinguishes "deleted" (gone everywhere)
+// from "inactive/paused" (still listed, regenerates when re-enabled).
+export function isRoutineDeleted(routine) {
+  return Boolean(routine?.deletedAt || routine?.deleted_at);
+}
+
 // =========================================================================
 // Dev-time cadence guard
 //
@@ -66,7 +76,7 @@ function assertCadenceHonored(routine) {
  */
 export function generateRemindersFromRoutine(routine, daysAhead = 14) {
   assertCadenceHonored(routine);
-  if (!routine.isActive || !routine.notificationEnabled) {
+  if (isRoutineDeleted(routine) || !routine.isActive || !routine.notificationEnabled) {
     return [];
   }
 
@@ -1937,7 +1947,12 @@ export function generateOverdueInstances(
   { lookbackDays = 30, now = new Date() } = {},
 ) {
   assertCadenceHonored(routine);
-  if (!routine || !routine.isActive || !routine.notificationEnabled) {
+  if (
+    !routine ||
+    isRoutineDeleted(routine) ||
+    !routine.isActive ||
+    !routine.notificationEnabled
+  ) {
     return [];
   }
 

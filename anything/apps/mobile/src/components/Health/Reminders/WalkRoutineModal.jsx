@@ -181,37 +181,15 @@ export default function WalkRoutineModal({
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`/api/routines?id=${editingRoutine.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Delete failed: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json();
-      setDebugStatus("Routine deleted ✓ - closing modal");
-
-      // Call parent onDelete to trigger refetch
+      // Single delete path: route through the parent's onDelete (the store's
+      // soft-delete + future-reminder/early-ack clear + refetch). The parent
+      // owns the "Routine deleted" toast, so we don't duplicate it here.
       if (onDelete) {
-        try {
-          await onDelete(editingRoutine.id);
-        } catch (refetchError) {
-          // Non-fatal, just log
-        }
+        await onDelete(editingRoutine.id);
       }
-
       setIsDeleting(false);
-      Alert.alert("Success", "Routine deleted", [
-        {
-          text: "OK",
-          onPress: () => {
-            setDebugStatus("");
-            onClose();
-          },
-        },
-      ]);
+      setDebugStatus("");
+      onClose();
     } catch (error) {
       setDebugStatus(`Delete failed: ${error.message}`);
       setIsDeleting(false);

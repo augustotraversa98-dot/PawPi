@@ -83,6 +83,10 @@ const useRoutinesStore = create((set, get) => ({
         notes: routine.notes,
         createdAt: routine.created_at,
         updatedAt: routine.updated_at,
+        // Soft-delete marker. The backend already excludes deleted routines from
+        // this fetch, so this is normally null; carried so the listing/generators
+        // can defensively skip any soft-deleted routine that ever reaches state.
+        deletedAt: routine.deleted_at ?? null,
       }));
 
       set({ routines: transformedRoutines, loading: false, initialized: true });
@@ -471,7 +475,15 @@ const useRoutinesStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
+      // Capture the pet id BEFORE we drop the routine from state — reading it
+      // afterward (off routines[0]) is fragile when the deleted routine is the
+      // only/first one, and is what we refetch against below.
+      const deletedRoutine = get().routines.find((r) => r.id === id);
+      const petId = deletedRoutine?.petId ?? get().routines[0]?.petId ?? null;
+
       console.log("[routinesStore] Sending DELETE request to API");
+      // Soft delete: the backend sets deleted_at + is_active = false. Past health
+      // logs are untouched; the routine is excluded from every subsequent fetch.
       const response = await fetch(`/api/routines?id=${id}`, {
         method: "DELETE",
       });
@@ -496,19 +508,23 @@ const useRoutinesStore = create((set, get) => ({
         loading: false,
       }));
 
-      console.log("[routinesStore] Removing future reminders");
-      // Remove future reminders
+      // Clear anything that could let this routine linger in Today/Upcoming.
+      // AWAIT both before the refetch (the PR #52 ordering lesson): the removal
+      // clears upcoming store instances inside a set() that lives past an
+      // `await cancelNotification` loop, and clearing the `${id}::early` acks
+      // hits the server — if the refetch ran first, a still-present instance or
+      // a stale ack could race back into the lists.
+      console.log("[routinesStore] Removing future reminders + early acks");
       const remindersStore = useRemindersStore.getState();
-      remindersStore.removeFutureRemindersByRoutine(id);
+      await remindersStore.removeFutureRemindersByRoutine(id);
+      // Reuse the store's own early-ack clear (added by ticket/early-reminder-headsup).
+      // Note its arg order is (petId, routineId).
+      await get().clearEarlyDismissalsByRoutine(petId, id);
 
       // Refetch routines to ensure UI is in sync with backend
-      const currentPetId = get().routines[0]?.petId;
-      if (currentPetId) {
-        console.log(
-          "[routinesStore] Refetching routines for pet:",
-          currentPetId,
-        );
-        await get().loadRoutines(currentPetId);
+      if (petId) {
+        console.log("[routinesStore] Refetching routines for pet:", petId);
+        await get().loadRoutines(petId);
       } else {
         console.log("[routinesStore] No pet ID found for refetch");
       }

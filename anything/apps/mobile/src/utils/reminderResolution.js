@@ -27,7 +27,10 @@
 //     reconciled here.
 
 import { toDateStr } from "./wellnessLog";
-import { generateOverdueInstances } from "./reminderGenerator";
+import {
+  generateOverdueInstances,
+  isRoutineDeleted,
+} from "./reminderGenerator";
 
 // Reminder types whose overdue instances persist across days / survive restart.
 export const PERSISTENT_TYPES = new Set([
@@ -217,7 +220,7 @@ export function buildOverdueReminders({
     activePetId == null || String(r?.petId) === activePetId;
 
   const generated = (routines || [])
-    .filter((r) => r && r.isActive && matchesPet(r))
+    .filter((r) => r && r.isActive && !isRoutineDeleted(r) && matchesPet(r))
     .flatMap((r) =>
       generateOverdueInstances(r, { lookbackDays, now: nowDate }),
     );
