@@ -361,10 +361,14 @@ function generatePhotoCheckReminders(
     // Daily photo checks fire every day, ignoring preferredDay (same rule as
     // daily wellness checks).
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
-    // Month-multiple cadences match by anchored day-of-month, not weekday.
-    const monthDates = isMonthCadenceFrequency(frequency)
-      ? buildMonthCadenceDates(routine, schedule, frequency, endDate, now)
-      : null;
+    // Month-multiple and ONCE cadences match by an anchored date set, not weekday.
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      schedule,
+      frequency,
+      endDate,
+      now,
+    );
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -372,8 +376,8 @@ function generatePhotoCheckReminders(
     // Find next occurrence of preferred day
     while (currentDate <= endDate) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
-      const matchesDay = monthDates
-        ? monthDates.has(currentDate.getTime())
+      const matchesDay = cadenceDates
+        ? cadenceDates.has(currentDate.getTime())
         : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
@@ -410,9 +414,9 @@ function generatePhotoCheckReminders(
           });
         }
 
-        // Move to next occurrence based on frequency (month cadences walk
+        // Move to next occurrence based on frequency (date-set cadences walk
         // day-by-day; the anchored date set governs matching)
-        if (isDaily || monthDates) {
+        if (isDaily || cadenceDates) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
@@ -474,19 +478,23 @@ function generateGeneralCheckReminders(
       currentDate.setDate(currentDate.getDate() + 1);
     }
   } else {
-    // Weekly/Biweekly anchor on preferredDay; month-multiple cadences on the
-    // anchored day-of-month.
+    // Weekly/Biweekly anchor on preferredDay; month-multiple and ONCE cadences
+    // on the anchored date set.
     const preferredDay = routine.preferredDay ?? 6;
-    const monthDates = isMonthCadenceFrequency(routine.frequency)
-      ? buildMonthCadenceDates(routine, null, routine.frequency, endDate, now)
-      : null;
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      null,
+      routine.frequency,
+      endDate,
+      now,
+    );
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
 
     while (currentDate <= endDate) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
-      const matchesDay = monthDates
-        ? monthDates.has(currentDate.getTime())
+      const matchesDay = cadenceDates
+        ? cadenceDates.has(currentDate.getTime())
         : dayOfWeek === preferredDay;
 
       if (matchesDay) {
@@ -516,7 +524,7 @@ function generateGeneralCheckReminders(
           });
         }
 
-        if (monthDates) {
+        if (cadenceDates) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else {
           const increment =
@@ -542,18 +550,22 @@ function generateWeightCheckReminders(
   const reminders = [];
   const preferredDay = routine.preferredDay ?? 6;
   const [hours, minutes] = (routine.times?.[0] || "09:00").split(":");
-  // Month-multiple cadences match by anchored day-of-month, not weekday.
-  const monthDates = isMonthCadenceFrequency(routine.frequency)
-    ? buildMonthCadenceDates(routine, null, routine.frequency, endDate, now)
-    : null;
+  // Month-multiple and ONCE cadences match by an anchored date set, not weekday.
+  const cadenceDates = buildCadenceDateSet(
+    routine,
+    null,
+    routine.frequency,
+    endDate,
+    now,
+  );
 
   let currentDate = new Date(now);
   currentDate.setHours(0, 0, 0, 0);
 
   while (currentDate <= endDate) {
     const dayOfWeek = (currentDate.getDay() + 6) % 7;
-    const matchesDay = monthDates
-      ? monthDates.has(currentDate.getTime())
+    const matchesDay = cadenceDates
+      ? cadenceDates.has(currentDate.getTime())
       : dayOfWeek === preferredDay;
 
     if (matchesDay) {
@@ -583,8 +595,8 @@ function generateWeightCheckReminders(
         });
       }
 
-      const increment = monthDates
-        ? 1 // month cadences walk day-by-day; the anchored date set governs matching
+      const increment = cadenceDates
+        ? 1 // date-set cadences walk day-by-day; the anchored date set governs matching
         : routine.frequency === ROUTINE_FREQUENCY.WEEKLY
           ? 7
           : routine.frequency === ROUTINE_FREQUENCY.BIWEEKLY
@@ -848,10 +860,14 @@ function generateWellnessCheckReminders(
     const [hours, minutes] = (item.preferredTime || "09:00").split(":");
     const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
     const preferredDay = item.preferredDay ?? 6;
-    // Month-multiple cadences match by anchored day-of-month, not weekday.
-    const monthDates = isMonthCadenceFrequency(frequency)
-      ? buildMonthCadenceDates(routine, item, frequency, endDate, now)
-      : null;
+    // Month-multiple and ONCE cadences match by an anchored date set, not weekday.
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      item,
+      frequency,
+      endDate,
+      now,
+    );
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -868,8 +884,8 @@ function generateWellnessCheckReminders(
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
-      } else if (monthDates) {
-        shouldSchedule = monthDates.has(currentDate.getTime());
+      } else if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
 
       if (shouldSchedule) {
@@ -1090,6 +1106,12 @@ export function isMonthCadenceFrequency(frequency) {
   return frequency in MONTH_CADENCE_STEPS;
 }
 
+// Non-repeating cadence — fires exactly once at the routine's scheduled
+// date+time and never recurs (iOS "Never").
+export function isOnceFrequency(frequency) {
+  return frequency === ROUTINE_FREQUENCY.ONCE;
+}
+
 // Date-only strings ("YYYY-MM-DD", the app's canonical date format) must parse
 // as LOCAL dates — new Date("2026-01-31") is UTC midnight, which is Jan 30 in
 // UTC- timezones and would shift the day-of-month anchor.
@@ -1105,8 +1127,9 @@ function parseLocalDate(value) {
 // The anchor is the schedule's true start: the item/schedule-level startDate
 // when present, else the routine-level startDate, else the routine's
 // createdAt. A routine with none of these (being created right now) anchors
-// at `fallback` (the generation clock).
-function getMonthCadenceAnchor(routine, item, fallback) {
+// at `fallback` (the generation clock). Shared by the month-multiple and ONCE
+// cadence families — both fire on the day-of-month of this true start.
+function getScheduleAnchor(routine, item, fallback) {
   for (const candidate of [
     item?.startDate,
     routine?.startDate,
@@ -1136,7 +1159,7 @@ function monthCadenceOccurrence(anchor, stepMonths, n) {
 // predicate, so both enumerate the identical schedule.
 function buildMonthCadenceDates(routine, item, frequency, rangeEnd, fallback) {
   const stepMonths = MONTH_CADENCE_STEPS[frequency];
-  const anchor = getMonthCadenceAnchor(routine, item, fallback);
+  const anchor = getScheduleAnchor(routine, item, fallback);
   anchor.setHours(0, 0, 0, 0);
   const dates = new Set();
   for (let n = 0; ; n++) {
@@ -1145,6 +1168,31 @@ function buildMonthCadenceDates(routine, item, frequency, rangeEnd, fallback) {
     dates.add(occurrence.getTime());
   }
   return dates;
+}
+
+// Single local-midnight date for a non-repeating (ONCE) schedule: the anchor's
+// own day. Returned as a one-element Set so the generators' day-walk loops
+// consume it with the identical date-membership predicate they use for the
+// month-multiple family — guaranteeing EXACTLY ONE instance with no recurrence.
+function buildOnceDate(routine, item, fallback) {
+  const anchor = getScheduleAnchor(routine, item, fallback);
+  anchor.setHours(0, 0, 0, 0);
+  return new Set([anchor.getTime()]);
+}
+
+// Cadences whose schedule is an explicit set of local-midnight dates (rather
+// than a weekday match): the month-multiple family and the non-repeating ONCE
+// value. One builder serves every forward/overdue call site, so both paths
+// enumerate the identical schedule. Returns null for weekday/day-pattern
+// cadences, which the callers match by day-of-week instead.
+function buildCadenceDateSet(routine, item, frequency, rangeEnd, fallback) {
+  if (isMonthCadenceFrequency(frequency)) {
+    return buildMonthCadenceDates(routine, item, frequency, rangeEnd, fallback);
+  }
+  if (isOnceFrequency(frequency)) {
+    return buildOnceDate(routine, item, fallback);
+  }
+  return null;
 }
 
 // Helper: Get active days for a routine
@@ -1326,11 +1374,15 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
     const [hours, minutes] = (item.preferredTime || "09:00").split(":");
     const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
     const preferredDay = item.preferredDay ?? 6;
-    // Month-multiple cadences match by anchored day-of-month (same date set as
+    // Month-multiple and ONCE cadences match by an anchored date set (same set as
     // the forward generator), so overdue and future instances share one schedule.
-    const monthDates = isMonthCadenceFrequency(frequency)
-      ? buildMonthCadenceDates(routine, item, frequency, now, now)
-      : null;
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      item,
+      frequency,
+      now,
+      now,
+    );
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1346,8 +1398,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
-      } else if (monthDates) {
-        shouldSchedule = monthDates.has(currentDate.getTime());
+      } else if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
 
       if (shouldSchedule) {
@@ -1511,19 +1563,23 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
     // Same rule as the upcoming generator: daily ignores preferredDay.
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
-    // Month-multiple cadences match by anchored day-of-month (same date set as
+    // Month-multiple and ONCE cadences match by an anchored date set (same set as
     // the forward generator), so overdue and future instances share one schedule.
-    const monthDates = isMonthCadenceFrequency(frequency)
-      ? buildMonthCadenceDates(routine, schedule, frequency, now, now)
-      : null;
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      schedule,
+      frequency,
+      now,
+      now,
+    );
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
 
     while (currentDate < now) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
-      const matchesDay = monthDates
-        ? monthDates.has(currentDate.getTime())
+      const matchesDay = cadenceDates
+        ? cadenceDates.has(currentDate.getTime())
         : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
@@ -1559,7 +1615,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           });
         }
 
-        if (isDaily || monthDates) {
+        if (isDaily || cadenceDates) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
