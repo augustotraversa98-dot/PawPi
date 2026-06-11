@@ -807,30 +807,72 @@ function generateMedicalCareReminders(routine, now, endDate) {
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
 
-    // Vaccine reminder timing offset
-    let triggerTime = new Date(nextDue);
-    if (careType === "vaccine" && item.reminderTiming) {
-      const offsetDays = {
-        on_due: 0,
-        "1w": -7,
-        "2w": -14,
-        "1m": -30,
-      };
-      const days = offsetDays[item.reminderTiming] ?? 0;
-      triggerTime.setDate(triggerTime.getDate() + days);
-    }
-    // Default scheduled time of day for date-based items
-    triggerTime.setHours(9, 0, 0, 0);
+    const frequency = item.frequency;
 
-    if (triggerTime >= now && triggerTime <= endDate) {
-      const dateStr = triggerTime.toISOString().split("T")[0];
-      reminders.push({
-        ...baseFields,
-        id: `reminder_${routine.id}_${item.id}_${dateStr}`,
-        scheduledAt: triggerTime.toISOString(),
-        nextTriggerAt: triggerTime.toISOString(),
-      });
+    // Back-compat / ONCE: a single occurrence at nextDue. Kept BYTE-FOR-BYTE
+    // (including the legacy UTC-parsed nextDue) — this id is a durable dismissal
+    // key, so the no-cadence path must not shift.
+    if (!frequency || isOnceFrequency(frequency)) {
+      // Vaccine reminder timing offset
+      let triggerTime = new Date(nextDue);
+      if (careType === "vaccine" && item.reminderTiming) {
+        const offsetDays = {
+          on_due: 0,
+          "1w": -7,
+          "2w": -14,
+          "1m": -30,
+        };
+        const days = offsetDays[item.reminderTiming] ?? 0;
+        triggerTime.setDate(triggerTime.getDate() + days);
+      }
+      // Default scheduled time of day for date-based items
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime >= now && triggerTime <= endDate) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+      return;
     }
+
+    // Recurring cadence (daily / weekly / biweekly / month-multiple / weekday /
+    // weekend / custom): occurrences are phase-anchored on nextDue and parsed as a
+    // LOCAL date so the schedule is timezone-robust. The vaccine reminder-timing
+    // offset shifts each occurrence's trigger off its due date.
+    const anchor = parseLocalDate(nextDueStr) || nextDue;
+    const offsetDays = dateBasedReminderOffsetDays(item);
+    // A "remind N days before due" offset can pull an occurrence just past the
+    // horizon into range, so widen the occurrence horizon by that offset and let
+    // the emit-time bounds do the precise cut.
+    const occHorizon = new Date(endDate);
+    occHorizon.setDate(occHorizon.getDate() + Math.max(0, -offsetDays));
+
+    medicalCareOccurrences(
+      item,
+      frequency,
+      anchor,
+      startOfDay(now),
+      occHorizon,
+    ).forEach((due) => {
+      const triggerTime = new Date(due);
+      triggerTime.setDate(triggerTime.getDate() + offsetDays);
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime >= now && triggerTime <= endDate) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+    });
   });
 
   return reminders;
@@ -1267,6 +1309,86 @@ function buildCadenceDateSet(routine, item, frequency, rangeEnd, fallback) {
   return null;
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Weekday set (Mon=0) for a medical-care item's day-pattern cadence; null means
+// "every day" (DAILY). Mirrors getMealActiveDays so the day patterns match the
+// rest of the app.
+function medicalCareActiveDays(item, frequency) {
+  if (frequency === ROUTINE_FREQUENCY.WEEKDAYS) return [0, 1, 2, 3, 4];
+  if (frequency === ROUTINE_FREQUENCY.WEEKENDS) return [5, 6];
+  if (frequency === ROUTINE_FREQUENCY.CUSTOM) {
+    return Array.isArray(item.days) ? item.days : [0, 1, 2, 3, 4, 5, 6];
+  }
+  return null;
+}
+
+// Occurrence dates (local midnight) of a recurring medical-care schedule within
+// [rangeStart, rangeEnd] inclusive, phase-anchored at `anchor` (the item's due
+// date). One generator serves both the forward and overdue paths so they
+// enumerate the identical schedule. Month-multiple cadences step off the anchor's
+// day-of-month (clamped to short months); weekly/biweekly hold the anchor's
+// weekday + week phase; the day patterns (daily/weekday/weekend/custom) match by
+// weekday across the range. The anchor may sit in the future (a not-yet-due
+// item), so month cadences walk their index backward to reach rangeStart.
+function medicalCareOccurrences(item, frequency, anchor, rangeStart, rangeEnd) {
+  const out = [];
+  const start = startOfDay(rangeStart);
+  if (rangeEnd < start) return out;
+  const anchorDay = startOfDay(anchor);
+
+  if (isMonthCadenceFrequency(frequency)) {
+    const step = MONTH_CADENCE_STEPS[frequency];
+    let n = 0;
+    while (monthCadenceOccurrence(anchorDay, step, n - 1) >= start) n--;
+    while (monthCadenceOccurrence(anchorDay, step, n) < start) n++;
+    for (; ; n++) {
+      const occ = monthCadenceOccurrence(anchorDay, step, n);
+      if (occ > rangeEnd) break;
+      out.push(occ);
+    }
+    return out;
+  }
+
+  const stepDays =
+    frequency === ROUTINE_FREQUENCY.WEEKLY
+      ? 7
+      : frequency === ROUTINE_FREQUENCY.BIWEEKLY
+        ? 14
+        : 0;
+  const activeDays = stepDays ? null : medicalCareActiveDays(item, frequency);
+
+  for (
+    let cur = new Date(start);
+    cur <= rangeEnd;
+    cur.setDate(cur.getDate() + 1)
+  ) {
+    let match;
+    if (stepDays) {
+      // Whole-day delta from the anchor (Math.round absorbs any DST hour); a
+      // multiple of the step lands on the anchor's weekday and week phase.
+      const diff = Math.round((cur.getTime() - anchorDay.getTime()) / MS_PER_DAY);
+      match = diff % stepDays === 0;
+    } else {
+      const dow = (cur.getDay() + 6) % 7;
+      match = !activeDays || activeDays.includes(dow);
+    }
+    if (match) out.push(new Date(cur));
+  }
+  return out;
+}
+
+// Vaccine "remind me before due" offset in days (≤ 0). Date-based medical items
+// fire at this offset from the due date; everything else fires on the due date.
+const VACCINE_REMINDER_OFFSETS = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
+
+function dateBasedReminderOffsetDays(item) {
+  if (item.type === "vaccine" && item.reminderTiming) {
+    return VACCINE_REMINDER_OFFSETS[item.reminderTiming] ?? 0;
+  }
+  return 0;
+}
+
 // =========================================================================
 // Intra-day interval cadence — HOURLY fires every `intervalHours` hours from
 // the schedule's start anchor datetime (anchor day-of-month at the preferred
@@ -1684,24 +1806,61 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
 
-    let triggerTime = new Date(nextDue);
-    if (careType === "vaccine" && item.reminderTiming) {
-      const offsetDays = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
-      const days = offsetDays[item.reminderTiming] ?? 0;
-      triggerTime.setDate(triggerTime.getDate() + days);
-    }
-    triggerTime.setHours(9, 0, 0, 0);
-
+    const frequency = item.frequency;
     const effectiveStart = clampOverdueStart(windowStart, routine, item);
-    if (triggerTime < now && triggerTime >= effectiveStart) {
-      const dateStr = triggerTime.toISOString().split("T")[0];
-      reminders.push({
-        ...baseFields,
-        id: `reminder_${routine.id}_${item.id}_${dateStr}`,
-        scheduledAt: triggerTime.toISOString(),
-        nextTriggerAt: triggerTime.toISOString(),
-      });
+
+    // Back-compat / ONCE — single past occurrence, byte-for-byte legacy behavior.
+    if (!frequency || isOnceFrequency(frequency)) {
+      let triggerTime = new Date(nextDue);
+      if (careType === "vaccine" && item.reminderTiming) {
+        const offsetDays = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
+        const days = offsetDays[item.reminderTiming] ?? 0;
+        triggerTime.setDate(triggerTime.getDate() + days);
+      }
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime < now && triggerTime >= effectiveStart) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+      return;
     }
+
+    // Recurring cadence — same anchored schedule as the forward path, enumerated
+    // backward across the lookback window.
+    const anchor = parseLocalDate(nextDueStr) || nextDue;
+    const offsetDays = dateBasedReminderOffsetDays(item);
+    // A "remind N days before due" offset can put a still-future occurrence's
+    // trigger in the past, so widen the search past `now` by that offset.
+    const occEnd = new Date(now);
+    occEnd.setDate(occEnd.getDate() + Math.max(0, -offsetDays));
+
+    medicalCareOccurrences(
+      item,
+      frequency,
+      anchor,
+      effectiveStart,
+      occEnd,
+    ).forEach((due) => {
+      const triggerTime = new Date(due);
+      triggerTime.setDate(triggerTime.getDate() + offsetDays);
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime < now && triggerTime >= effectiveStart) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+    });
   });
 
   return reminders;
