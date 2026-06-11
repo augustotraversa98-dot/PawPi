@@ -239,6 +239,11 @@ export default function ScheduleBlock({
         accessibilityRole="button"
         activeOpacity={0.7}
         style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          borderWidth: 1.5,
+          borderColor: C.peach,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
