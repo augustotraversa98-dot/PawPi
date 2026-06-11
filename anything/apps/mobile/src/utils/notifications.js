@@ -6,6 +6,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform, Alert } from "react-native";
 import { ROUTINE_TYPES } from "@/data/routinesData";
+import { formatScheduledTime } from "./scheduledTimeFormat";
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -128,6 +129,40 @@ export function resolveReminderTiming(reminder, routine) {
 }
 
 /**
+ * Pure: build the OS notification {title, body} for a reminder.
+ *
+ * - On-time (leadMs falsy / 0): UNCHANGED — title "<icon> <title>", body is the
+ *   raw reminder.description (kept byte-for-byte, undefined included).
+ * - Early (leadMs > 0): a heads-up, because the in-app "Next Up" list only spans
+ *   a few hours so the push is the only early artifact the user sees. The title is
+ *   prefixed so it doesn't read as a do-it-now task, and the body names the real
+ *   due day/time via formatScheduledTime(eventTime, triggerTime) — "Tomorrow" is
+ *   thus computed relative to the day the alert fires, never derived from the id.
+ *   e.g. body "Time for breakfast\nDue Tomorrow 9:00 AM".
+ *
+ * @param {Object} reminder
+ * @param {{eventTime: Date, triggerTime: Date, leadMs: number}} timing
+ * @returns {{title: string, body: string|undefined}}
+ */
+export function buildReminderNotificationContent(
+  reminder,
+  { eventTime, triggerTime, leadMs } = {},
+) {
+  const config = getReminderConfig(reminder.type);
+
+  // On-time path stays exactly as before.
+  if (!(leadMs > 0)) {
+    return { title: `${config.icon} ${reminder.title}`, body: reminder.description };
+  }
+
+  const dueLine = `Due ${formatScheduledTime(eventTime, triggerTime)}`;
+  const body = reminder.description
+    ? `${reminder.description}\n${dueLine}`
+    : dueLine;
+  return { title: `${config.icon} Upcoming: ${reminder.title}`, body };
+}
+
+/**
  * Schedule a local notification for a reminder
  * @param {Object} reminder - The reminder object
  * @param {string} [reminderTiming] - Early-reminder lead-time option (e.g. "1h").
@@ -158,13 +193,18 @@ export async function scheduleReminderNotification(reminder, reminderTiming) {
       return null;
     }
 
-    // Get reminder config for icon and action label
-    const config = getReminderConfig(reminder.type);
+    // Build the title/body. Early (leadMs > 0) reads as a heads-up naming the
+    // real due day/time; on-time is unchanged.
+    const { title, body } = buildReminderNotificationContent(reminder, {
+      eventTime,
+      triggerTime,
+      leadMs,
+    });
 
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: `${config.icon} ${reminder.title}`,
-        body: reminder.description,
+        title,
+        body,
         data: {
           reminderId: reminder.id,
           type: reminder.type,
