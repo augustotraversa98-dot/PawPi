@@ -770,12 +770,38 @@ function generateMedicalCareReminders(routine, now, endDate) {
       snoozedUntil: null,
     };
 
+    const frequency = item.frequency;
+
+    // --- HOURLY (every N hours): an intra-day interval series — the same machinery
+    // as the wellness hourly cadence. Replaces the per-day dose / once logic. ---
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const [h, m] = medicalCareHourlyAnchorTime(item).split(":");
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(h),
+        parseInt(m),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        reminders.push({
+          ...baseFields,
+          id: medicalCareHourlyInstanceId(routine.id, item.id, occ),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+        });
+      });
+      return;
+    }
+
     // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
       const startDate = item.startDate ? new Date(item.startDate) : new Date();
       const itemEndDate = item.endDate ? new Date(item.endDate) : endDate;
-      const frequency = item.frequency;
 
       // Emit every dose of one cadence day (>= now). Shared by the back-compat
       // daily walk and the recurring-cadence path so the id (a durable dismissal
@@ -832,8 +858,6 @@ function generateMedicalCareReminders(routine, now, endDate) {
 
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
-
-    const frequency = item.frequency;
 
     // Back-compat / ONCE: a single occurrence at nextDue. Kept BYTE-FOR-BYTE
     // (including the legacy UTC-parsed nextDue) — this id is a durable dismissal
@@ -1415,6 +1439,24 @@ function dateBasedReminderOffsetDays(item) {
   return 0;
 }
 
+// Time-of-day anchor for an hourly medical-care item: an explicit preferredTime,
+// else the first scheduled dose time, else the date-based default (09:00).
+function medicalCareHourlyAnchorTime(item) {
+  if (item.preferredTime) return item.preferredTime;
+  if (Array.isArray(item.times) && item.times[0]) return item.times[0];
+  return "09:00";
+}
+
+// Hourly medical-care instance id — the locked `_HHMM` intra-day suffix (HOURLY is
+// the only cadence with sibling occurrences within a day), keyed on the item id
+// like every other medical-care id.
+function medicalCareHourlyInstanceId(routineId, itemId, occurrence) {
+  const dateStr = startOfDay(occurrence).toISOString().split("T")[0];
+  const hh = String(occurrence.getHours()).padStart(2, "0");
+  const mm = String(occurrence.getMinutes()).padStart(2, "0");
+  return `reminder_${routineId}_${itemId}_${dateStr}_${hh}${mm}`;
+}
+
 // =========================================================================
 // Intra-day interval cadence — HOURLY fires every `intervalHours` hours from
 // the schedule's start anchor datetime (anchor day-of-month at the preferred
@@ -1791,10 +1833,38 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
       snoozedUntil: null,
     };
 
+    const frequency = item.frequency;
+
+    // --- HOURLY (every N hours): overdue is capped to TODAY only (never the
+    // lookback window) — a dose missed earlier today is actionable, one missed
+    // weeks ago would flood the list. Same machinery as wellness hourly overdue. ---
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const [h, m] = medicalCareHourlyAnchorTime(item).split(":");
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(h),
+        parseInt(m),
+        now,
+      );
+      const hourlyStart = clampOverdueStart(startOfDay(now), routine, item);
+      hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
+        includeEnd: false,
+      }).forEach((occ) => {
+        reminders.push({
+          ...baseFields,
+          id: medicalCareHourlyInstanceId(routine.id, item.id, occ),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+        });
+      });
+      return;
+    }
+
     // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
-      const frequency = item.frequency;
       const effectiveStart = clampOverdueStart(windowStart, routine, item);
       // Parity with the future generator: don't emit doses after the course ended.
       const itemEnd = item.endDate ? new Date(item.endDate) : null;
@@ -1853,7 +1923,6 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
 
-    const frequency = item.frequency;
     const effectiveStart = clampOverdueStart(windowStart, routine, item);
 
     // Back-compat / ONCE — single past occurrence, byte-for-byte legacy behavior.
