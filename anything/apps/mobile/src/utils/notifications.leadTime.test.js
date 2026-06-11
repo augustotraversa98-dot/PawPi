@@ -16,6 +16,7 @@ jest.mock("expo-notifications", () => ({
   addNotificationResponseReceivedListener: jest.fn(),
   addNotificationReceivedListener: jest.fn(),
   AndroidNotificationPriority: { HIGH: "high", DEFAULT: "default" },
+  SchedulableTriggerInputTypes: { DATE: "date" },
 }));
 
 import * as Notifications from "expo-notifications";
@@ -154,27 +155,29 @@ describe("scheduleReminderNotification — lead-time trigger", () => {
     timeSensitive: false,
   });
 
-  const scheduledTrigger = () =>
-    Notifications.scheduleNotificationAsync.mock.calls[0][0].trigger;
+  // Trigger is now a typed DATE object ({ type, date, channelId }); the lead-time
+  // assertions read the `date` field.
+  const scheduledTriggerDate = () =>
+    Notifications.scheduleNotificationAsync.mock.calls[0][0].trigger.date;
 
   it("with no lead-time, fires at the event time (unchanged)", async () => {
     const event = new Date(NOW.getTime() + 2 * 60 * 60 * 1000); // +2h
     await scheduleReminderNotification(reminderAt(2 * 60 * 60 * 1000));
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
-    expect(scheduledTrigger().getTime()).toBe(event.getTime());
+    expect(scheduledTriggerDate().getTime()).toBe(event.getTime());
   });
 
   it("with a lead-time, fires at (event − leadTime)", async () => {
     await scheduleReminderNotification(reminderAt(2 * 60 * 60 * 1000), "1h");
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
     // event +2h, lead 1h → trigger +1h
-    expect(scheduledTrigger().getTime()).toBe(NOW.getTime() + 60 * 60 * 1000);
+    expect(scheduledTriggerDate().getTime()).toBe(NOW.getTime() + 60 * 60 * 1000);
   });
 
   it("on_time is treated as no shift", async () => {
     const event = new Date(NOW.getTime() + 2 * 60 * 60 * 1000);
     await scheduleReminderNotification(reminderAt(2 * 60 * 60 * 1000), "on_time");
-    expect(scheduledTrigger().getTime()).toBe(event.getTime());
+    expect(scheduledTriggerDate().getTime()).toBe(event.getTime());
   });
 
   it("skips when (event − leadTime) is already in the past, even if event is future", async () => {

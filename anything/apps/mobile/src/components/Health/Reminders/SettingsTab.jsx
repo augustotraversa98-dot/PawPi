@@ -96,7 +96,13 @@ export default function SettingsTab() {
           title: "🔔 Test notification",
           body: "If you see this, local notifications are working.",
         },
-        trigger: new Date(Date.now() + 10 * 1000),
+        // Typed DATE trigger — SDK 54 rejects a bare Date. channelId routes
+        // Android to the "default" channel; iOS ignores it.
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(Date.now() + 10 * 1000),
+          channelId: "default",
+        },
       });
       Alert.alert(
         "Test scheduled",
