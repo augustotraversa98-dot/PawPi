@@ -866,6 +866,47 @@ function generateWellnessCheckReminders(
     const [hours, minutes] = (item.preferredTime || "09:00").split(":");
     const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
     const preferredDay = item.preferredDay ?? 6;
+
+    // Intra-day HOURLY cadence: step the occurrence series directly instead of
+    // walking days. Each occurrence is an independent instance with its own
+    // time-bearing id.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        reminders.push({
+          id: wellnessInstanceId(routine.id, checkType, itemIndex, occ, frequency),
+          routineId: routine.id,
+          wellnessCheckItemIndex: itemIndex,
+          petId: routine.petId,
+          type: "wellness_check",
+          checkType,
+          title: checkLabel,
+          description: getWellnessCheckDescription(item),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.UPCOMING,
+          priority: "medium",
+          timeSensitive: item.timeSensitive ?? false,
+          notificationEnabled: item.reminderEnabled ?? true,
+          relatedTracker: getWellnessCheckTracker(checkType),
+          primaryAction: getWellnessCheckAction(checkType),
+          notes: item.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Month-multiple and ONCE cadences match by an anchored date set, not weekday.
     const cadenceDates = buildCadenceDateSet(
       routine,
@@ -1226,6 +1267,57 @@ function buildCadenceDateSet(routine, item, frequency, rangeEnd, fallback) {
   return null;
 }
 
+// =========================================================================
+// Intra-day interval cadence — HOURLY fires every `intervalHours` hours from
+// the schedule's start anchor datetime (anchor day-of-month at the preferred
+// time-of-day), e.g. interval 4 + start 08:00 → 08:00, 12:00, 16:00, 20:00,
+// 00:00(+1d), … Unlike the once-per-day cadences this enumerates DATETIMES, not
+// a set of local-midnight dates, so each occurrence is an independent instance
+// with its own time-bearing id (see wellnessInstanceId).
+// =========================================================================
+
+// Safe default when intervalHours is absent or invalid. The UI always sets it;
+// 4h keeps a never-configured routine to a sane 6 occurrences/day.
+const DEFAULT_INTERVAL_HOURS = 4;
+
+// Hours between occurrences, read from the item then the routine config. Coerces
+// to a positive integer; anything missing/invalid falls back to the safe default.
+function resolveIntervalHours(item, routine) {
+  const raw = item?.intervalHours ?? routine?.intervalHours;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 ? n : DEFAULT_INTERVAL_HOURS;
+}
+
+// Every occurrence datetime of an hourly cadence within a range. Stepping is
+// anchored to `anchor` and INDEXED (anchor + n*step) rather than accumulated, so
+// it never drifts and the index fast-forward keeps it bounded to the range no
+// matter how old the anchor is. `includeEnd` admits rangeEnd itself (forward
+// uses the inclusive horizon end; overdue excludes "now").
+function hourlyOccurrences(anchor, intervalHours, rangeStart, rangeEnd, { includeEnd }) {
+  const stepMs = intervalHours * 60 * 60 * 1000;
+  const out = [];
+  let n = Math.max(
+    0,
+    Math.ceil((rangeStart.getTime() - anchor.getTime()) / stepMs),
+  );
+  for (;;) {
+    const occ = new Date(anchor.getTime() + n * stepMs);
+    if (includeEnd ? occ > rangeEnd : occ >= rangeEnd) break;
+    if (occ >= rangeStart) out.push(occ);
+    n++;
+  }
+  return out;
+}
+
+// Start anchor datetime for an hourly schedule: the cadence anchor's day at the
+// preferred hour:minute. Shared by the forward and overdue paths so both step
+// the identical occurrence series.
+function getHourlyAnchor(routine, item, hours, minutes, fallback) {
+  const anchor = getScheduleAnchor(routine, item, fallback);
+  anchor.setHours(hours, minutes, 0, 0);
+  return anchor;
+}
+
 // Helper: Get active days for a routine
 function getActiveDays(routine) {
   if (routine.frequency === ROUTINE_FREQUENCY.DAILY) {
@@ -1405,6 +1497,50 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
     const [hours, minutes] = (item.preferredTime || "09:00").split(":");
     const frequency = item.frequency || ROUTINE_FREQUENCY.WEEKLY;
     const preferredDay = item.preferredDay ?? 6;
+
+    // Intra-day HOURLY cadence: overdue is capped to TODAY only (NOT the 30-day
+    // lookback). A dose missed earlier today is actionable; one missed weeks ago
+    // is not and would flood the list. Each unresolved past occurrence from today
+    // shows once, resolving independently. The start still clamps to the
+    // routine's creation / item start so a routine made today backfills nothing.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      const hourlyStart = clampOverdueStart(startOfDay(now), routine, item);
+      hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
+        includeEnd: false,
+      }).forEach((occ) => {
+        reminders.push({
+          id: wellnessInstanceId(routine.id, checkType, itemIndex, occ, frequency),
+          routineId: routine.id,
+          wellnessCheckItemIndex: itemIndex,
+          petId: routine.petId,
+          type: "wellness_check",
+          checkType,
+          title: checkLabel,
+          description: getWellnessCheckDescription(item),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.OVERDUE,
+          priority: "medium",
+          timeSensitive: item.timeSensitive ?? false,
+          notificationEnabled: item.reminderEnabled ?? true,
+          relatedTracker: getWellnessCheckTracker(checkType),
+          primaryAction: getWellnessCheckAction(checkType),
+          notes: item.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Month-multiple and ONCE cadences match by an anchored date set (same set as
     // the forward generator), so overdue and future instances share one schedule.
     const cadenceDates = buildCadenceDateSet(
