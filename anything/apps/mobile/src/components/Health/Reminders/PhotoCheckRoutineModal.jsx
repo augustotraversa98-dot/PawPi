@@ -167,7 +167,13 @@ export default function PhotoCheckRoutineModal({
   // Expand/collapse custom schedule cards
   const [expandedAreas, setExpandedAreas] = useState({});
 
+  // UI-only: the Body-areas multi-select starts collapsed behind a boxed header
+  // (matching ScheduleBlock's Frequency header). Never touches emitted data.
+  const [bodyAreasExpanded, setBodyAreasExpanded] = useState(false);
+
   useEffect(() => {
+    // Always reopen with the body-areas picker collapsed to its summary header.
+    setBodyAreasExpanded(false);
     if (editingRoutine) {
       // Load existing routine
       if (
@@ -334,6 +340,17 @@ export default function PhotoCheckRoutineModal({
     onClose();
   };
 
+  // Live summary for the collapsed Body-areas header: list labels up to two,
+  // then collapse to a count; a sensible placeholder when nothing is selected.
+  const bodyAreasSummary = (() => {
+    if (selectedBodyAreas.length === 0) return "Select areas";
+    const labels = selectedBodyAreas
+      .map((v) => BODY_AREAS.find((a) => a.value === v)?.label)
+      .filter(Boolean);
+    if (labels.length <= 2) return labels.join(", ");
+    return `${labels.length} selected`;
+  })();
+
   return (
     <KeyboardSafeFormModal
       visible={visible}
@@ -346,26 +363,42 @@ export default function PhotoCheckRoutineModal({
       onCtaPress={handleSave}
       backgroundColor={C.cream}
     >
-      {/* Body Areas - Multi-select */}
-      <Text
+      {/* Body Areas — collapsible multi-select behind a boxed summary header
+          (matches ScheduleBlock's Frequency header). Multi-select, so picks do
+          NOT auto-collapse; a second header tap closes it. */}
+      <TouchableOpacity
+        testID="photo-bodyareas-toggle"
+        onPress={() => setBodyAreasExpanded((e) => !e)}
+        accessibilityRole="button"
+        activeOpacity={0.7}
         style={{
-          fontSize: 15,
-          fontWeight: "700",
-          color: C.warmBrown,
-          marginBottom: 8,
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          borderWidth: 1.5,
+          borderColor: C.peach,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: bodyAreasExpanded ? 8 : 24,
         }}
       >
-        Body Areas
-      </Text>
-      <Text
-        style={{
-          fontSize: 13,
-          color: C.mutedBrown,
-          marginBottom: 12,
-        }}
-      >
-        Select one or more areas to track
-      </Text>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>
+          Body areas
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text
+            testID="photo-bodyareas-value"
+            style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
+          >
+            {bodyAreasSummary}
+          </Text>
+          <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+            {bodyAreasExpanded ? "▲" : "▼"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+      {bodyAreasExpanded && (
       <View style={{ gap: 10, marginBottom: 24 }}>
         {BODY_AREAS.map((area) => {
           const isSelected = selectedBodyAreas.includes(area.value);
@@ -417,6 +450,7 @@ export default function PhotoCheckRoutineModal({
           );
         })}
       </View>
+      )}
 
       {/* Schedule Mode Selection */}
       {selectedBodyAreas.length > 0 && (
