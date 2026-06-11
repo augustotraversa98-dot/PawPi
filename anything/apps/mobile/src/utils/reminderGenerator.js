@@ -1,11 +1,71 @@
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { REMINDER_STATUS } from "@/data/remindersData";
 
+// =========================================================================
+// Dev-time cadence guard
+//
+// Every cadence-driven routine type now resolves its schedule through the shared
+// cadence layer, so the redesigned ScheduleBlock can offer any cadence on any of
+// these types and it will actually fire. This guard makes that contract explicit:
+// if a routine ever carries a cadence its generator path cannot honor, fail
+// LOUDLY in development instead of silently emitting nothing. No-op in production.
+//
+// "ALL" = every value in ROUTINE_FREQUENCY is honored (forward and, for the
+// persistent types, overdue). A Set lists the only honored cadences. A type
+// absent from the map is not driven by this layer and is left unchecked (the
+// legacy single-purpose types — medication/general-check/weight-check/preventive/
+// vaccine — keep their own narrower handling and are out of the redesign's
+// ScheduleBlock scope).
+// =========================================================================
+const CADENCE_SUPPORT = {
+  [ROUTINE_TYPES.WELLNESS_CHECK]: "ALL",
+  [ROUTINE_TYPES.PHOTO_CHECK]: "ALL",
+  [ROUTINE_TYPES.FEEDING]: "ALL",
+  [ROUTINE_TYPES.WALK]: "ALL",
+  [ROUTINE_TYPES.MEDICAL_CARE]: "ALL",
+  // A vet appointment is a single dated event — recurring/hourly cadences are
+  // genuinely N/A and must never be offered for it.
+  [ROUTINE_TYPES.VET_APPOINTMENT]: new Set([ROUTINE_FREQUENCY.ONCE]),
+};
+
+// The cadences a routine actually carries. Most types hold one per schedule item;
+// the legacy date-set types carry a single routine-level frequency.
+function collectRoutineCadences(routine) {
+  const itemLists = {
+    [ROUTINE_TYPES.WELLNESS_CHECK]: routine.wellnessCheckItems,
+    [ROUTINE_TYPES.PHOTO_CHECK]: routine.photoCheckSchedule,
+    [ROUTINE_TYPES.FEEDING]: routine.meals,
+    [ROUTINE_TYPES.WALK]: routine.walks,
+    [ROUTINE_TYPES.MEDICAL_CARE]: routine.medicalCareItems,
+  };
+  const items = itemLists[routine.type];
+  if (Array.isArray(items)) {
+    return items.map((i) => i?.frequency).filter(Boolean);
+  }
+  return routine.frequency ? [routine.frequency] : [];
+}
+
+function assertCadenceHonored(routine) {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  if (!routine) return;
+  const support = CADENCE_SUPPORT[routine.type];
+  if (!support || support === "ALL") return;
+  for (const frequency of collectRoutineCadences(routine)) {
+    if (!support.has(frequency)) {
+      throw new Error(
+        `[reminderGenerator] ${routine.type} cannot honor cadence "${frequency}" — ` +
+          `the schedule would silently never fire. Supported: ${[...support].join(", ")}.`,
+      );
+    }
+  }
+}
+
 /**
  * Generate reminders from a routine
  * Creates reminders for the next 7-14 days based on routine schedule
  */
 export function generateRemindersFromRoutine(routine, daysAhead = 14) {
+  assertCadenceHonored(routine);
   if (!routine.isActive || !routine.notificationEnabled) {
     return [];
   }
@@ -1788,6 +1848,7 @@ export function generateOverdueInstances(
   routine,
   { lookbackDays = 30, now = new Date() } = {},
 ) {
+  assertCadenceHonored(routine);
   if (!routine || !routine.isActive || !routine.notificationEnabled) {
     return [];
   }
