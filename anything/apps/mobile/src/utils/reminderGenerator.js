@@ -614,6 +614,11 @@ function generatePhotoCheckReminders(
       ? getScheduleAnchor(routine, schedule, now)
       : null;
 
+    // Never emit before the schedule's startDate (forward twin of the overdue
+    // clamp): daily/weekday/weekly cadences enumerate from `now`, so without this
+    // a schedule starting tomorrow would emit a today (pre-start) occurrence.
+    const forwardStart = forwardEnumStart(now, schedule.startDate);
+
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
 
@@ -634,7 +639,7 @@ function generatePhotoCheckReminders(
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        if (scheduledTime >= now) {
+        if (scheduledTime >= forwardStart) {
           const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
 
           reminders.push({
@@ -1259,6 +1264,11 @@ function generateWellnessCheckReminders(
     const multiDays = weeklyMultiDays(item, frequency);
     const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, item, now) : null;
 
+    // Never emit before the item's startDate (forward twin of the overdue
+    // clamp): daily/weekday/weekly cadences enumerate from `now`, so without this
+    // an item starting tomorrow would emit a today (pre-start) occurrence.
+    const forwardStart = forwardEnumStart(now, item.startDate);
+
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
 
@@ -1288,7 +1298,7 @@ function generateWellnessCheckReminders(
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        if (scheduledTime >= now) {
+        if (scheduledTime >= forwardStart) {
           reminders.push({
             id: wellnessInstanceId(
               routine.id,
@@ -1980,6 +1990,22 @@ function clampOverdueStart(windowStart, routine, item) {
     if (!Number.isNaN(t) && t > start) start = t;
   }
   return new Date(start);
+}
+
+// Forward twin of clampOverdueStart: the floor the FORWARD generators enumerate
+// from, so a schedule/item that starts on a future day emits no occurrence
+// before its startDate. First occurrence = max(now, startDate). When startDate
+// is absent, today, or in the past the floor is `now` — byte-for-byte as before.
+// startDate is parsed as a LOCAL day (parseLocalDate) and compared at day
+// granularity, so a date-only value can't trip the UTC-midnight off-by-one and
+// the start-day's own occurrence is admitted.
+function forwardEnumStart(now, startDate) {
+  const parsed = startDate ? parseLocalDate(startDate) : null;
+  if (parsed) {
+    const startDay = startOfDay(parsed);
+    if (startDay.getTime() > startOfDay(now).getTime()) return startDay;
+  }
+  return now;
 }
 
 function generateOverdueWellnessChecks(routine, now, windowStart) {
