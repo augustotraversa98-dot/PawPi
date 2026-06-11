@@ -420,6 +420,8 @@ function generatePhotoCheckReminders(
       endDate,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(schedule, frequency);
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -429,7 +431,9 @@ function generatePhotoCheckReminders(
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
       const matchesDay = cadenceDates
         ? cadenceDates.has(currentDate.getTime())
-        : isDaily || dayOfWeek === preferredDay;
+        : activeDays
+          ? activeDays.includes(dayOfWeek)
+          : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -465,9 +469,9 @@ function generatePhotoCheckReminders(
           });
         }
 
-        // Move to next occurrence based on frequency (date-set cadences walk
-        // day-by-day; the anchored date set governs matching)
-        if (isDaily || cadenceDates) {
+        // Move to next occurrence based on frequency (date-set and day-pattern
+        // cadences walk day-by-day; their predicate governs matching)
+        if (isDaily || cadenceDates || activeDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
@@ -2124,6 +2128,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
       now,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(schedule, frequency);
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -2132,7 +2138,9 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
       const matchesDay = cadenceDates
         ? cadenceDates.has(currentDate.getTime())
-        : isDaily || dayOfWeek === preferredDay;
+        : activeDays
+          ? activeDays.includes(dayOfWeek)
+          : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -2167,7 +2175,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           });
         }
 
-        if (isDaily || cadenceDates) {
+        if (isDaily || cadenceDates || activeDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
