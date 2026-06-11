@@ -268,60 +268,115 @@ function generateWalkReminders(
   const reminders = [];
   const walks = Array.isArray(routine.walks) ? routine.walks : [];
 
-  let currentDate = new Date(now);
-  currentDate.setHours(0, 0, 0, 0);
+  walks.forEach((walk, index) => {
+    const [hours, minutes] = walk.time.split(":");
+    const frequency = walk.frequency || ROUTINE_FREQUENCY.DAILY;
 
-  while (currentDate <= endDate) {
-    const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
-
-    walks.forEach((walk, index) => {
-      // Get walk-specific schedule
-      const walkDays = getWalkActiveDays(walk);
-
-      // Check if this walk is scheduled for this day
-      if (!walkDays.includes(dayOfWeek)) return;
-
-      const [hours, minutes] = walk.time.split(":");
-      const scheduledTime = new Date(currentDate);
-      scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-      if (scheduledTime >= now) {
-        reminders.push({
-          id: `reminder_${routine.id}_${
-            currentDate.toISOString().split("T")[0]
-          }_${index}`,
-          routineId: routine.id,
-          petId: routine.petId,
-          type: "walk",
-          title: walk.name,
-          description: `Time for ${walk.name.toLowerCase()}`,
-          scheduledAt: scheduledTime.toISOString(),
-          nextTriggerAt: scheduledTime.toISOString(),
-          status: REMINDER_STATUS.UPCOMING,
-          priority: "medium",
-          timeSensitive: walk.timeSensitive ?? routine.timeSensitive ?? true,
-          notificationEnabled:
-            walk.reminderEnabled ?? routine.notificationEnabled ?? true,
-          relatedTracker: relatedTracker,
-          primaryAction,
-          // Walk-specific data for countdown card and start walk flow
-          relatedWalk: {
-            name: walk.name,
-            durationMinutes: walk.durationMinutes || 30,
-            pace: walk.pace || "normal",
-            notes: walk.notes || "",
-          },
-          walkDuration: walk.durationMinutes || 30,
-          walkPace: walk.pace || "normal",
+    const pushWalk = (scheduledTime, id) => {
+      reminders.push({
+        id,
+        routineId: routine.id,
+        petId: routine.petId,
+        type: "walk",
+        title: walk.name,
+        description: `Time for ${walk.name.toLowerCase()}`,
+        scheduledAt: scheduledTime.toISOString(),
+        nextTriggerAt: scheduledTime.toISOString(),
+        status: REMINDER_STATUS.UPCOMING,
+        priority: "medium",
+        timeSensitive: walk.timeSensitive ?? routine.timeSensitive ?? true,
+        notificationEnabled:
+          walk.reminderEnabled ?? routine.notificationEnabled ?? true,
+        relatedTracker: relatedTracker,
+        primaryAction,
+        // Walk-specific data for countdown card and start walk flow
+        relatedWalk: {
+          name: walk.name,
+          durationMinutes: walk.durationMinutes || 30,
+          pace: walk.pace || "normal",
           notes: walk.notes || "",
-          completedAt: null,
-          snoozedUntil: null,
-        });
-      }
-    });
+        },
+        walkDuration: walk.durationMinutes || 30,
+        walkPace: walk.pace || "normal",
+        notes: walk.notes || "",
+        completedAt: null,
+        snoozedUntil: null,
+      });
+    };
 
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
+    // HOURLY: intra-day interval series — same machinery as the other paths.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(walk, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        walk,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        pushWalk(
+          occ,
+          `reminder_${routine.id}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${index}_${hourlyIdSuffix(occ)}`,
+        );
+      });
+      return;
+    }
+
+    // Day-pattern set (DAILY/WEEKDAYS/WEEKENDS/CUSTOM), anchored date set
+    // (month-multiple/once), and weekly/biweekly preferred-day matching.
+    const walkDays = getWalkActiveDays(walk);
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      walk,
+      frequency,
+      endDate,
+      now,
+    );
+    const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
+    const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
+    const preferredDay = walk.preferredDay ?? 6;
+
+    let currentDate = new Date(now);
+    currentDate.setHours(0, 0, 0, 0);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
+      let shouldSchedule;
+      if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
+      } else if (isWeekly || isBiweekly) {
+        shouldSchedule = dayOfWeek === preferredDay;
+      } else {
+        // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
+        shouldSchedule = walkDays.includes(dayOfWeek);
+      }
+
+      if (shouldSchedule) {
+        const scheduledTime = new Date(currentDate);
+        scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (scheduledTime >= now) {
+          const dateStr = currentDate.toISOString().split("T")[0];
+          pushWalk(scheduledTime, `reminder_${routine.id}_${dateStr}_${index}`);
+        }
+
+        if (isWeekly) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (isBiweekly) {
+          currentDate.setDate(currentDate.getDate() + 14);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  });
 
   return reminders;
 }
