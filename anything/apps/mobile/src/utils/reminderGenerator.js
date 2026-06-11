@@ -129,6 +129,12 @@ export function generateRemindersFromRoutine(routine, daysAhead = 14) {
 // locked for compatibility with stored rows. NEVER derive a local/user-facing
 // date from an id — use the reminder's scheduledAt. (Migrating the id scheme
 // is backlogged; it requires migrating stored dismissal keys.)
+//
+// INTRA-DAY EXCEPTION (HOURLY only): a date-only id collides for sibling
+// occurrences on the same day, so the HOURLY cadence — and ONLY that cadence —
+// appends the occurrence's local time as `_HHMM` (e.g. `..._2026-06-10_1200`).
+// All other cadences (daily/once/weekly/biweekly/month-multiple) keep the
+// date-only form byte-for-byte, so their existing dismissal keys still match.
 // =========================================================================
 function generateFeedingReminders(
   routine,
@@ -893,10 +899,14 @@ function generateWellnessCheckReminders(
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime >= now) {
-          const dateStr = currentDate.toISOString().split("T")[0];
-
           reminders.push({
-            id: `reminder_${routine.id}_${checkType}_${itemIndex}_${dateStr}`,
+            id: wellnessInstanceId(
+              routine.id,
+              checkType,
+              itemIndex,
+              currentDate,
+              frequency,
+            ),
             routineId: routine.id,
             wellnessCheckItemIndex: itemIndex,
             petId: routine.petId,
@@ -1110,6 +1120,27 @@ export function isMonthCadenceFrequency(frequency) {
 // date+time and never recurs (iOS "Never").
 export function isOnceFrequency(frequency) {
   return frequency === ROUTINE_FREQUENCY.ONCE;
+}
+
+// Intra-day interval cadence — fires every `intervalHours` hours from the start
+// anchor (iOS "Hourly"). The only cadence with multiple occurrences per day, so
+// its instance ids carry the occurrence time (see wellnessInstanceId).
+export function isHourlyFrequency(frequency) {
+  return frequency === ROUTINE_FREQUENCY.HOURLY;
+}
+
+// Instance id for a wellness-check occurrence. Non-intra-day cadences keep the
+// locked `reminder_<routine>_<checkType>_<itemIndex>_<dateStr>` form
+// byte-for-byte (the durable dismissal key). The HOURLY cadence appends the
+// occurrence's local time (`_HHMM`) so sibling occurrences on the same day get
+// distinct, deterministic ids — see the id-convention block above.
+function wellnessInstanceId(routineId, checkType, itemIndex, occurrence, frequency) {
+  const dateStr = startOfDay(occurrence).toISOString().split("T")[0];
+  const base = `reminder_${routineId}_${checkType}_${itemIndex}_${dateStr}`;
+  if (!isHourlyFrequency(frequency)) return base;
+  const hh = String(occurrence.getHours()).padStart(2, "0");
+  const mm = String(occurrence.getMinutes()).padStart(2, "0");
+  return `${base}_${hh}${mm}`;
 }
 
 // Date-only strings ("YYYY-MM-DD", the app's canonical date format) must parse
@@ -1407,9 +1438,14 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime < now && scheduledTime >= effectiveStart) {
-          const dateStr = currentDate.toISOString().split("T")[0];
           reminders.push({
-            id: `reminder_${routine.id}_${checkType}_${itemIndex}_${dateStr}`,
+            id: wellnessInstanceId(
+              routine.id,
+              checkType,
+              itemIndex,
+              currentDate,
+              frequency,
+            ),
             routineId: routine.id,
             wellnessCheckItemIndex: itemIndex,
             petId: routine.petId,

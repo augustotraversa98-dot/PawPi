@@ -52,6 +52,11 @@ export const ROUTINE_FREQUENCY = {
   CUSTOM: "custom",
   // Non-repeating — fires exactly once and never recurs (iOS "Never").
   ONCE: "once",
+  // Intra-day interval — fires every `intervalHours` hours from the start
+  // anchor (iOS "Hourly", implemented as a user-chosen interval like 2/4/6/8/12h
+  // to keep reminder volume sane). The only cadence with multiple occurrences
+  // per day; see the instance-id convention in reminderGenerator.js.
+  HOURLY: "hourly",
 };
 
 export const DAYS_OF_WEEK = {
