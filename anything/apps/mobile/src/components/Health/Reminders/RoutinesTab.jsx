@@ -6,6 +6,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react-native";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import useRoutinesStore from "@/store/routinesStore";
@@ -38,6 +39,7 @@ const C = {
 
 export default function RoutinesTab({ editRoutineId } = {}) {
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
+  const queryClient = useQueryClient();
   const {
     routines,
     addRoutine,
@@ -47,6 +49,17 @@ export default function RoutinesTab({ editRoutineId } = {}) {
     loadRoutines,
     loading,
   } = useRoutinesStore();
+
+  // After an edit / toggle clears this routine's `${id}::early` acks server-side,
+  // refetch the dismissals query so Health → Today re-derives heads-up without
+  // the stale keys (the cleared occurrences surface again in their early window).
+  const invalidateDismissals = useCallback(() => {
+    if (currentPet?.id != null) {
+      queryClient.invalidateQueries({
+        queryKey: ["reminder-dismissals", currentPet.id],
+      });
+    }
+  }, [currentPet?.id, queryClient]);
 
   const [typeSelectorVisible, setTypeSelectorVisible] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
@@ -136,6 +149,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   const handleToggle = async (id) => {
     try {
       await toggleRoutineActive(id);
+      invalidateDismissals();
     } catch (error) {
       console.error("[RoutinesTab] Error toggling routine:", error);
       Alert.alert("Could not update routine. Please try again.");
@@ -168,6 +182,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
 
       if (editingRoutine) {
         await updateRoutine(routineToSave.id, routineToSave);
+        invalidateDismissals();
         Alert.alert("Routine saved");
       } else {
         await addRoutine(routineToSave);

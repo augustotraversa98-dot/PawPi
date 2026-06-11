@@ -428,11 +428,41 @@ const useRoutinesStore = create((set, get) => ({
         await remindersStore.addReminderFromRoutine(reminder);
       }
 
+      // Editing rebuilds the occurrences fresh, so a previously-Closed heads-up
+      // for an affected (still-future) occurrence must reappear. Photo/wellness
+      // instance ids are stamped by DAY, so editing only the TIME keeps the same
+      // id and the old `${id}::early` ack would keep suppressing the card while
+      // the rescheduled push still fires. Clear those acks for this routine.
+      // Awaited AFTER the regenerate (PR #52 ordering lesson); best-effort inside.
+      // This also covers toggleRoutineActive re-enable, which routes through here.
+      await get().clearEarlyDismissalsByRoutine(transformedRoutine.petId, id);
+
       return transformedRoutine;
     } catch (error) {
       console.error("[routinesStore] Error updating routine:", error);
       set({ error: error.message, loading: false });
       throw error;
+    }
+  },
+
+  // Best-effort clear of a routine's heads-up acknowledgments (the `${id}::early`
+  // rows) for one pet, so regenerated occurrences are not suppressed by stale
+  // Closes. A failed clear must NOT block the save — log and move on.
+  clearEarlyDismissalsByRoutine: async (petId, routineId) => {
+    if (petId == null || routineId == null) return;
+    try {
+      const response = await fetch(
+        `/api/health/reminder-dismissals?petId=${petId}&routineId=${routineId}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        console.warn(
+          "[routinesStore] Failed to clear early dismissals:",
+          response.status,
+        );
+      }
+    } catch (error) {
+      console.warn("[routinesStore] Error clearing early dismissals:", error);
     }
   },
 
@@ -514,6 +544,8 @@ const useRoutinesStore = create((set, get) => ({
         // Re-enable: regenerate reminders. Await the removal first for the same
         // ordering reason as updateRoutine — otherwise the dedup runs against
         // not-yet-removed instances and skips rescheduling (incl. lead-time).
+        // (The `${id}::early` acks were already cleared by the awaited
+        // updateRoutine call above, so the regenerated occurrences surface.)
         await remindersStore.removeFutureRemindersByRoutine(id);
         const updatedRoutine = { ...routine, isActive: true };
         const reminders = generateRemindersFromRoutine(updatedRoutine);

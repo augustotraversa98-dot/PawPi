@@ -112,3 +112,54 @@ export async function POST(request) {
     );
   }
 }
+
+// Clear a routine's heads-up acknowledgments so editing / re-enabling the routine
+// rebuilds its early reminders fresh — a previously-Closed heads-up for a still-
+// future occurrence reappears (ticket/early-reminder-headsup). Scoped to the
+// owner + pet + routine, and ONLY to the `${id}::early` keys: real skip dismissals
+// (no `::early` suffix) and every health log/history are left untouched. Hard
+// delete is fine — this is an ack table, not health history.
+export async function DELETE(request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const petId = searchParams.get("petId");
+  const routineId = searchParams.get("routineId");
+
+  if (!petId || !routineId) {
+    return Response.json(
+      { error: "petId and routineId are required" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const userProfiles = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
+    if (userProfiles.length === 0) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+    const userProfileId = userProfiles[0].id;
+
+    const deleted = await sql`
+      DELETE FROM reminder_dismissals
+      WHERE pet_id = ${parseInt(petId)}
+        AND owner_user_id = ${userProfileId}
+        AND routine_id = ${parseInt(routineId)}
+        AND instance_key LIKE ${"%::early"}
+      RETURNING id
+    `;
+
+    return Response.json({ deleted: deleted.length });
+  } catch (error) {
+    console.error("[reminder-dismissals DELETE] Error:", error);
+    return Response.json(
+      { error: "Failed to clear reminder dismissals" },
+      { status: 500 },
+    );
+  }
+}

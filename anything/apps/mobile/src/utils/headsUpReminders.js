@@ -71,77 +71,11 @@ export function buildHeadsUpReminders({
   const seen = new Set();
   const headsUp = [];
 
-  // TEMPORARY diagnostic (remove with the heads-up card fix) — __DEV__-only, no
-  // behavior change. Tag: [headsup-debug]. Tracks why a heads-up candidate is or
-  // isn't surfaced. See ticket/early-reminder-headsup.
-  if (__DEV__) {
-    const iso = (ms) =>
-      Number.isFinite(ms) ? new Date(ms).toISOString() : String(ms);
-    console.log("[headsup-debug] ENTRY", {
-      nowMs: iso(nowMs),
-      remindersLength: (reminders || []).length,
-      photoChecks: (reminders || [])
-        .filter((r) => r?.type === "photo_check")
-        .map((r) => ({ id: r.id, type: r.type })),
-      routinesLength: (routines || []).length,
-      earlyDismissedKeys: Array.from(earlyDismissedKeys || []),
-      dismissedKeys: Array.from(dismissedKeys || []),
-      snoozeKeys: Object.keys(snoozes || {}),
-    });
-  }
-
   for (const reminder of [...(reminders || []), ...(vetReminders || [])]) {
     if (!reminder) continue;
 
     const key = instanceKey(reminder);
     if (key == null || seen.has(key)) continue; // dedupe by id
-
-    // TEMPORARY diagnostic ([headsup-debug]) — log one line per candidate with the
-    // resolved timing and the guard it hits, mirroring the real guard order below.
-    // __DEV__-only, computes its own throwaway values; no behavior change.
-    if (__DEV__) {
-      const iso = (ms) =>
-        Number.isFinite(ms) ? new Date(ms).toISOString() : String(ms);
-      const dbgRoutine = routineById.get(String(reminder.routineId));
-      const dbgTiming = resolveReminderTiming(reminder, dbgRoutine);
-      const dbgLeadMs = resolveLeadTimeMs(dbgTiming);
-      const dbgEventTime = reminder.scheduledAt ?? reminder.nextTriggerAt;
-      const dbgEventMs = new Date(dbgEventTime).getTime();
-      const dbgEarlyMs = dbgEventMs - dbgLeadMs;
-      const dbgSnoozedUntil = snoozes[key] ?? reminder.snoozedUntil;
-      let decision;
-      if (reminder.status === "completed" || reminder.status === "disabled") {
-        decision = "skip: status";
-      } else if (dismissedKeys.has(key)) {
-        decision = "skip: dismissed";
-      } else if (earlyDismissedKeys.has(`${key}::early`)) {
-        decision = `skip: early-dismissed (${key}::early)`;
-      } else if (dbgSnoozedUntil && new Date(dbgSnoozedUntil).getTime() > nowMs) {
-        decision = "skip: snoozed";
-      } else if (!(dbgLeadMs > 0)) {
-        decision = "skip: leadMs<=0";
-      } else if (Number.isNaN(dbgEventMs)) {
-        decision = "skip: after-event";
-      } else if (nowMs < dbgEarlyMs) {
-        decision = "skip: before-early-window";
-      } else if (nowMs >= dbgEventMs) {
-        decision = "skip: after-event";
-      } else {
-        decision = "INCLUDED";
-      }
-      console.log("[headsup-debug] candidate", {
-        id: key,
-        type: reminder.type,
-        routineId: reminder.routineId,
-        foundRoutine: dbgRoutine != null,
-        reminderTiming: dbgTiming,
-        leadMs: dbgLeadMs,
-        eventTime: iso(dbgEventMs),
-        earlyMs: iso(dbgEarlyMs),
-        nowMs: iso(nowMs),
-        decision,
-      });
-    }
 
     if (reminder.status === "completed" || reminder.status === "disabled") {
       continue;
