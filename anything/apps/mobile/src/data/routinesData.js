@@ -59,6 +59,32 @@ export const ROUTINE_FREQUENCY = {
   HOURLY: "hourly",
 };
 
+// Lowercase, human cadence labels for routine-card schedule summaries. Covers the
+// full ROUTINE_FREQUENCY set; the humanizing fallback (underscores → spaces) means
+// no raw enum (e.g. "every_3_months") can ever surface in a summary, even for a
+// future cadence not yet listed here.
+export const CADENCE_LABELS = {
+  [ROUTINE_FREQUENCY.DAILY]: "daily",
+  [ROUTINE_FREQUENCY.WEEKDAYS]: "weekdays",
+  [ROUTINE_FREQUENCY.WEEKENDS]: "weekends",
+  [ROUTINE_FREQUENCY.WEEKLY]: "weekly",
+  [ROUTINE_FREQUENCY.BIWEEKLY]: "every 2 weeks",
+  [ROUTINE_FREQUENCY.MONTHLY]: "monthly",
+  [ROUTINE_FREQUENCY.EVERY_3_MONTHS]: "every 3 months",
+  [ROUTINE_FREQUENCY.EVERY_6_MONTHS]: "every 6 months",
+  [ROUTINE_FREQUENCY.YEARLY]: "yearly",
+  [ROUTINE_FREQUENCY.CUSTOM]: "custom",
+  [ROUTINE_FREQUENCY.ONCE]: "once",
+  [ROUTINE_FREQUENCY.HOURLY]: "hourly",
+};
+
+// Resolve a cadence enum to its human label. Falsy → "" (nothing to render);
+// unknown → underscores replaced with spaces, so a raw enum never shows.
+export function getCadenceLabel(freq) {
+  if (!freq) return "";
+  return CADENCE_LABELS[freq] || String(freq).replace(/_/g, " ");
+}
+
 export const DAYS_OF_WEEK = {
   MONDAY: 0,
   TUESDAY: 1,
@@ -237,13 +263,7 @@ export function getScheduleSummary(routine) {
       } else if (it.type === MEDICAL_CARE_SUBTYPES.VACCINE) {
         detail = it.nextDue ? `next due ${it.nextDue}` : "";
       } else if (it.repeatInterval) {
-        const map = {
-          monthly: "monthly",
-          every_3_months: "every 3 months",
-          every_6_months: "every 6 months",
-          yearly: "yearly",
-        };
-        detail = map[it.repeatInterval] || it.repeatInterval;
+        detail = getCadenceLabel(it.repeatInterval);
       }
       return detail ? `${label} (${detail})` : label;
     });
@@ -381,19 +401,8 @@ export function getScheduleSummary(routine) {
       return areaLabels[bodyArea] || bodyArea;
     };
 
-    // Helper to format frequency
-    const getFreqLabel = (freq) => {
-      switch (freq) {
-        case ROUTINE_FREQUENCY.WEEKLY:
-          return "weekly";
-        case ROUTINE_FREQUENCY.BIWEEKLY:
-          return "every 2 weeks";
-        case ROUTINE_FREQUENCY.MONTHLY:
-          return "monthly";
-        default:
-          return freq;
-      }
-    };
+    // Helper to format frequency (shared full-cadence label map)
+    const getFreqLabel = getCadenceLabel;
 
     // Helper to format time
     const formatTime = (time) => {
@@ -480,21 +489,8 @@ export function getScheduleSummary(routine) {
       return itemLabels[checkType] || checkType;
     };
 
-    // Helper to format frequency
-    const getFreqLabel = (freq) => {
-      switch (freq) {
-        case ROUTINE_FREQUENCY.DAILY:
-          return "daily";
-        case ROUTINE_FREQUENCY.WEEKLY:
-          return "weekly";
-        case ROUTINE_FREQUENCY.BIWEEKLY:
-          return "every 2 weeks";
-        case ROUTINE_FREQUENCY.MONTHLY:
-          return "monthly";
-        default:
-          return freq;
-      }
-    };
+    // Helper to format frequency (shared full-cadence label map)
+    const getFreqLabel = getCadenceLabel;
 
     // Helper to format time
     const formatTime = (time) => {
