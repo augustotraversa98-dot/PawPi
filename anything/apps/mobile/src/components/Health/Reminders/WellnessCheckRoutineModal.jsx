@@ -17,9 +17,9 @@ import {
   WELLNESS_CHECK_ITEMS,
 } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
-import TimeField from "@/components/TimeField";
-import CadenceFrequencySelector from "./CadenceFrequencySelector";
-import DayChips from "./DayChips";
+import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
+import { CADENCE_LABELS } from "./CadenceFrequencySelector";
+import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 
 const C = {
   cream: "#FFF7EF",
@@ -67,6 +67,32 @@ const CHECK_TYPES = WELLNESS_OPTIONS.map((opt) => ({
   icon: opt.icon,
 }));
 
+// One persisted wellness_check_schedule entry (JSONB). Single source of truth for
+// the save shape, including the ScheduleBlock fields the reminder generator reads
+// (startDate / days / intervalHours) plus reminderTiming (stored only in P1).
+function toWellnessScheduleEntry(item, idx) {
+  return {
+    id: item.id || `wellness_${item.checkType}_${Date.now()}_${idx}`,
+    checkType: item.checkType,
+    name: item.customName || null,
+    frequency: item.frequency,
+    preferredDay: item.preferredDay,
+    preferredTime: item.preferredTime,
+    startDate: item.startDate || null,
+    days: Array.isArray(item.days) ? item.days : [],
+    intervalHours: item.intervalHours ?? null,
+    reminderTiming: item.reminderTiming || null,
+    areasToInclude: item.areasToInclude || null,
+    observations: item.observations || null,
+    unit: item.weightUnit || null,
+    description: item.description || null,
+    reminderEnabled: item.reminderEnabled,
+    timeSensitive: item.timeSensitive,
+    notes: item.notes,
+    active: true,
+  };
+}
+
 export default function WellnessCheckRoutineModal({
   visible,
   onClose,
@@ -101,6 +127,11 @@ export default function WellnessCheckRoutineModal({
           frequency: item.frequency || ROUTINE_FREQUENCY.WEEKLY,
           preferredDay: item.preferredDay ?? 6,
           preferredTime: item.preferredTime || "09:00",
+          // ScheduleBlock fields (JSONB round-trip; read by the generator)
+          startDate: item.startDate || null,
+          days: Array.isArray(item.days) ? item.days : [],
+          intervalHours: item.intervalHours ?? null,
+          reminderTiming: item.reminderTiming || null,
           reminderEnabled: item.reminderEnabled ?? true,
           timeSensitive: item.timeSensitive ?? false,
           notes: item.notes || "",
@@ -135,6 +166,11 @@ export default function WellnessCheckRoutineModal({
             frequency: item.frequency || ROUTINE_FREQUENCY.WEEKLY,
             preferredDay: item.preferredDay ?? 6,
             preferredTime: item.preferredTime || "18:00",
+            // ScheduleBlock fields (JSONB round-trip; read by the generator)
+            startDate: item.startDate || null,
+            days: Array.isArray(item.days) ? item.days : [],
+            intervalHours: item.intervalHours ?? null,
+            reminderTiming: item.reminderTiming || null,
             reminderEnabled: item.reminderEnabled ?? true,
             timeSensitive: item.timeSensitive ?? false,
             notes: item.notes || "",
@@ -210,6 +246,12 @@ export default function WellnessCheckRoutineModal({
         frequency: ROUTINE_FREQUENCY.WEEKLY,
         preferredDay: 6,
         preferredTime: "09:00",
+        // ScheduleBlock fields: weekly day chips start non-empty; date anchors
+        // month-multiple/once/hourly cadences (defaults to today).
+        startDate: canonicalizeDateValue(new Date()),
+        days: [6],
+        intervalHours: 4,
+        reminderTiming: "on_time",
         reminderEnabled: true,
         timeSensitive: false,
         notes: "",
@@ -253,6 +295,18 @@ export default function WellnessCheckRoutineModal({
       const safePrev = Array.isArray(prev) ? prev : [];
       return safePrev.map((item) =>
         item.id === itemId ? { ...item, [field]: value } : item,
+      );
+    });
+  };
+
+  // Merge a ScheduleBlock's emitted canonical object into the item. Its fields
+  // (frequency, preferredTime, startDate, preferredDay, days, intervalHours,
+  // reminderTiming) map 1:1 onto what the reminder generator reads per cadence.
+  const handleScheduleChange = (itemId, schedule) => {
+    setItems((prev) => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      return safePrev.map((item) =>
+        item.id === itemId ? { ...item, ...schedule } : item,
       );
     });
   };
@@ -328,24 +382,7 @@ export default function WellnessCheckRoutineModal({
                 // If editing existing routine, save to database immediately
                 if (editingRoutine?.id) {
                   const wellnessCheckSchedule = updatedItems.map(
-                    (item, idx) => ({
-                      id:
-                        item.id ||
-                        `wellness_${item.checkType}_${Date.now()}_${idx}`,
-                      checkType: item.checkType,
-                      name: item.customName || null,
-                      frequency: item.frequency,
-                      preferredDay: item.preferredDay,
-                      preferredTime: item.preferredTime,
-                      areasToInclude: item.areasToInclude || null,
-                      observations: item.observations || null,
-                      unit: item.weightUnit || null,
-                      description: item.description || null,
-                      reminderEnabled: item.reminderEnabled,
-                      timeSensitive: item.timeSensitive,
-                      notes: item.notes,
-                      active: true,
-                    }),
+                    toWellnessScheduleEntry,
                   );
 
                   const response = await fetch("/api/routines", {
@@ -448,22 +485,7 @@ export default function WellnessCheckRoutineModal({
     }
 
     // Structure wellness check items for persistence
-    const wellnessCheckSchedule = items.map((item, idx) => ({
-      id: item.id || `wellness_${item.checkType}_${Date.now()}_${idx}`,
-      checkType: item.checkType,
-      name: item.customName || null,
-      frequency: item.frequency,
-      preferredDay: item.preferredDay,
-      preferredTime: item.preferredTime,
-      areasToInclude: item.areasToInclude || null,
-      observations: item.observations || null,
-      unit: item.weightUnit || null,
-      description: item.description || null,
-      reminderEnabled: item.reminderEnabled,
-      timeSensitive: item.timeSensitive,
-      notes: item.notes,
-      active: true,
-    }));
+    const wellnessCheckSchedule = items.map(toWellnessScheduleEntry);
 
     const routine = {
       type: ROUTINE_TYPES.WELLNESS_CHECK,
@@ -667,13 +689,7 @@ export default function WellnessCheckRoutineModal({
                           </Text>
                           <Text style={{ fontSize: 13, color: C.mutedBrown }}>
                             {item.preferredTime} •{" "}
-                            {item.frequency === ROUTINE_FREQUENCY.DAILY
-                              ? "Daily"
-                              : item.frequency === ROUTINE_FREQUENCY.WEEKLY
-                                ? "Weekly"
-                                : item.frequency === ROUTINE_FREQUENCY.BIWEEKLY
-                                  ? "Every 2 weeks"
-                                  : "Monthly"}
+                            {CADENCE_LABELS[item.frequency] || "Custom"}
                           </Text>
                         </View>
                       </View>
@@ -733,79 +749,17 @@ export default function WellnessCheckRoutineModal({
                           </>
                         )}
 
-                        {/* Frequency */}
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "600",
-                            color: C.mutedBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Frequency
-                        </Text>
-                        <CadenceFrequencySelector
-                          value={item.frequency}
-                          onChange={(value) =>
-                            handleItemChange(item.id, "frequency", value)
+                        {/* Schedule — date, time, frequency (full cadence list),
+                            conditional sub-controls, and early reminder */}
+                        <ScheduleBlock
+                          value={scheduleFromItem(item)}
+                          onChange={(schedule) =>
+                            handleScheduleChange(item.id, schedule)
                           }
                           color="#F4A460"
                           style={{ marginBottom: 12 }}
+                          testID={`schedule-${item.id}`}
                         />
-
-                        {/* Preferred Day (if weekly/biweekly) */}
-                        {(item.frequency === ROUTINE_FREQUENCY.WEEKLY ||
-                          item.frequency === ROUTINE_FREQUENCY.BIWEEKLY) && (
-                          <>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontWeight: "600",
-                                color: C.mutedBrown,
-                                marginBottom: 8,
-                              }}
-                            >
-                              Preferred Day
-                            </Text>
-                            <DayChips
-                              value={[item.preferredDay]}
-                              onChange={(days) =>
-                                handleItemChange(
-                                  item.id,
-                                  "preferredDay",
-                                  days[0],
-                                )
-                              }
-                              multiSelect={false}
-                              color="#F4A460"
-                              style={{ marginBottom: 12 }}
-                            />
-                          </>
-                        )}
-
-                        {/* Preferred Time */}
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "600",
-                            color: C.mutedBrown,
-                            marginBottom: 6,
-                          }}
-                        >
-                          Preferred Time
-                        </Text>
-                        <View style={{ marginBottom: 12 }}>
-                          <TimeField
-                            value={item.preferredTime}
-                            onChange={(time) =>
-                              handleItemChange(item.id, "preferredTime", time)
-                            }
-                            fieldStyle={{
-                              backgroundColor: C.sand,
-                              borderWidth: 0,
-                            }}
-                          />
-                        </View>
 
                         {/* Weight Unit (for Weight check only) */}
                         {item.checkType === WELLNESS_CHECK_ITEMS.WEIGHT && (
