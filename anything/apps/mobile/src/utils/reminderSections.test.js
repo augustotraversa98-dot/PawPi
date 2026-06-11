@@ -54,6 +54,7 @@ function classify(
     now = NOW,
     index = buildResolutionIndex({}),
     dismissedKeys = new Set(),
+    earlyDismissedKeys = new Set(),
     snoozes = {},
   } = {},
 ) {
@@ -71,6 +72,7 @@ function classify(
     now,
     snoozes,
     dismissedKeys,
+    earlyDismissedKeys,
   });
   return { overdue, dueSoon, nextUp, snoozed };
 }
@@ -413,6 +415,54 @@ describe("snooze lifecycle — exactly one section at every step", () => {
       snoozes: { a: atOffsetMin(120), b: atOffsetMin(60) },
     });
     expect(ids(snoozed)).toEqual(["b", "a"]);
+  });
+});
+
+describe("early-dismissed (heads-up Closed) — hidden from pre-event sections until event time", () => {
+  // Closing a heads-up records `${id}::early`. The early reminder was the LEAD
+  // time, not the event distance, so the real event can still be inside the 6h
+  // Next Up window. Once acknowledged the user does not want it back in Today
+  // until its true event time. The `::early` key is partitioned out of the real
+  // dismissedKeys, so it never reaches the Overdue selector.
+  const earlyKey = (id) => new Set([`${id}::early`]);
+
+  it("a future instance within 6h that is early-dismissed is NOT in dueSoon nor nextUp", () => {
+    // Non-time-sensitive future instance ~2h out → normally Next Up.
+    const r = wellness({ timeSensitive: false, scheduledAt: atOffsetMin(120) });
+    const { overdue, dueSoon, nextUp } = classify([r], {
+      earlyDismissedKeys: earlyKey("w1"),
+    });
+    expect(overdue).toEqual([]);
+    expect(dueSoon).toEqual([]);
+    expect(nextUp).toEqual([]);
+  });
+
+  it("a time-sensitive future instance within the Due Soon window that is early-dismissed is NOT in dueSoon", () => {
+    const r = wellness({ scheduledAt: atOffsetMin(30) });
+    const { dueSoon, nextUp } = classify([r], {
+      earlyDismissedKeys: earlyKey("w1"),
+    });
+    expect(dueSoon).toEqual([]);
+    expect(nextUp).toEqual([]);
+  });
+
+  it("the SAME future instance, NOT early-dismissed, still lands in Next Up (no regression)", () => {
+    const r = wellness({ timeSensitive: false, scheduledAt: atOffsetMin(120) });
+    const { nextUp } = classify([r]);
+    expect(ids(nextUp)).toEqual(["w1"]);
+  });
+
+  it("an early-dismissed instance that is now PAST DUE still homes in Overdue (early key never suppresses Overdue)", () => {
+    // Event time has passed; only the `::early` key is set (dismissedKeys empty,
+    // mirroring the hook's partition). It must resume its normal Overdue home and
+    // must not be suppressed by the section layer.
+    const r = wellness({ scheduledAt: atOffsetMin(-5) });
+    const { overdue, dueSoon, nextUp } = classify([r], {
+      earlyDismissedKeys: earlyKey("w1"),
+    });
+    expect(ids(overdue)).toEqual(["w1"]);
+    expect(dueSoon).toEqual([]);
+    expect(nextUp).toEqual([]);
   });
 });
 
