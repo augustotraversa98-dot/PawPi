@@ -36,7 +36,7 @@ const C = {
   sand: "#F5EDE4",
 };
 
-export default function RoutinesTab() {
+export default function RoutinesTab({ editRoutineId } = {}) {
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
   const {
     routines,
@@ -52,6 +52,9 @@ export default function RoutinesTab() {
   const [selectedType, setSelectedType] = useState(null);
   const [editingRoutine, setEditingRoutine] = useState(null);
   const [loadedPetId, setLoadedPetId] = useState(null);
+  // Tracks which deep-link editRoutineId we've already auto-opened, so the edit
+  // modal opens once (not on every render) and re-opens if the param changes.
+  const [handledEditRoutineId, setHandledEditRoutineId] = useState(null);
 
   // Load routines when pet is available
   useEffect(() => {
@@ -118,6 +121,17 @@ export default function RoutinesTab() {
 
     setSelectedType(displayType);
   };
+
+  // Deep-link auto-open (Health → Today heads-up "Edit"): once the routines are
+  // loaded, open the matching routine's edit flow exactly once per param value.
+  useEffect(() => {
+    if (!editRoutineId || handledEditRoutineId === editRoutineId) return;
+    const match = routines.find((r) => String(r.id) === String(editRoutineId));
+    if (match) {
+      handleEdit(match);
+      setHandledEditRoutineId(editRoutineId);
+    }
+  }, [editRoutineId, handledEditRoutineId, routines]);
 
   const handleToggle = async (id) => {
     try {

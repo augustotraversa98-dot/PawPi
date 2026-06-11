@@ -27,6 +27,7 @@ import {
   REMINDER_TYPES,
 } from "@/data/remindersData";
 import CountdownCard from "./Reminders/CountdownCard";
+import HeadsUpReminderCard from "./Reminders/HeadsUpReminderCard";
 import FeedingCountdownCard from "./FeedingCountdownCard";
 import WalkCountdownCard from "./WalkActivity/WalkCountdownCard";
 import VetAppointmentCountdownCard from "./VetAppointmentCountdownCard";
@@ -76,7 +77,10 @@ export default function HealthToday() {
   // plus the reactive clock every section classifies against.
   const {
     overdue: overdueReminders,
+    headsUp: headsUpReminders = [],
+    headsUpIds = new Set(),
     dismiss,
+    dismissEarly,
     dismissedKeys,
     now: reminderNowMs,
     refreshNow,
@@ -179,6 +183,7 @@ export default function HealthToday() {
   } = sectionTodayReminders({
     reminders: allReminders,
     overdueIds,
+    headsUpIds,
     now: reminderNowMs,
     snoozes,
     dismissedKeys,
@@ -375,6 +380,35 @@ export default function HealthToday() {
         "We couldn't skip this reminder. Please try again.",
       );
     }
+  };
+
+  // Close a heads-up: acknowledge ONLY the early heads-up via the `${id}::early`
+  // dismissal key. It must NOT complete/log/resolve the reminder — the real
+  // instance still surfaces normally at its true event time.
+  const handleCloseHeadsUp = async (reminder) => {
+    try {
+      await dismissEarly(reminder);
+    } catch (err) {
+      console.error("[HealthToday] heads-up close failed", err);
+      Alert.alert(
+        "Could not dismiss",
+        "We couldn't dismiss this heads-up. Please try again.",
+      );
+    }
+  };
+
+  // Edit a heads-up: open the source routine's edit flow. No routine-edit deep-link
+  // route exists (creation/edit is in-component modal state owned by RoutinesTab), so
+  // route to the Routines screen and pass the routineId for it to auto-open.
+  const handleEditHeadsUp = (reminder) => {
+    if (!reminder?.routineId) {
+      router.push("/(tabs)/more/reminders");
+      return;
+    }
+    router.push({
+      pathname: "/(tabs)/more/reminders",
+      params: { editRoutineId: String(reminder.routineId) },
+    });
   };
 
   const handleSnooze = (reminder) => {
@@ -820,6 +854,52 @@ export default function HealthToday() {
         </View>
       )}
 
+      {/* Upcoming — heads-up for early (lead-time) reminders. Distinct, NON-actionable
+          cards covering the whole early window, regardless of the 6h Next Up horizon. */}
+      {headsUpReminders.length > 0 && (
+        <View style={{ marginBottom: 24 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Bell size={18} color={C.terracotta} style={{ marginRight: 8 }} />
+            <Text
+              style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
+            >
+              Upcoming
+            </Text>
+            <View
+              style={{
+                backgroundColor: C.terracotta,
+                borderRadius: 12,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                marginLeft: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFF" }}>
+                {headsUpReminders.length}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ gap: 10 }}>
+            {headsUpReminders.map((reminder) => (
+              <HeadsUpReminderCard
+                key={reminder.id}
+                reminder={reminder}
+                now={reminderNowMs}
+                onClose={handleCloseHeadsUp}
+                onEdit={handleEditHeadsUp}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Next Up - Actionable Reminders */}
       {nextUpReminders.length > 0 && (
         <View style={{ marginBottom: 24 }}>
@@ -955,7 +1035,8 @@ export default function HealthToday() {
       {nextUpReminders.length === 0 &&
         timeSensitiveReminders.length === 0 &&
         overdueReminders.length === 0 &&
-        snoozedReminders.length === 0 && (
+        snoozedReminders.length === 0 &&
+        headsUpReminders.length === 0 && (
         <View style={{ marginBottom: 24 }}>
           <View
             style={{
