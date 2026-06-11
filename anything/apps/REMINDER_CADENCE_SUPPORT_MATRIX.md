@@ -46,12 +46,33 @@ missed earlier today is actionable; one missed weeks ago would flood the list.
   wellness, medical-care, and photo carry overdue across days/restarts). Forward
   generation honors every cadence.
 
+## Weekly / Biweekly — single day vs. multi-day
+
+Weekly and biweekly accept **either** form, on every day-walk type (wellness,
+photo, feeding, walk — forward, plus wellness/photo overdue):
+
+- **Single day (legacy):** no `days[]` on the item → fires on the one
+  `preferredDay`. Biweekly phase is now-anchored (first match ≥ now, then +14).
+  This path is **byte-for-byte unchanged** (same instances + date-only ids) and
+  is what every stored routine uses.
+- **Multi-day:** a non-empty `days[]` (Mon=0) → fires on **every** selected
+  weekday. Weekly fires those days every week; **biweekly** fires them in "on"
+  weeks only, with week parity **anchored on the schedule's `startDate`** (the
+  week containing `startDate` is "on"). This is the shape `ScheduleBlock` emits
+  for multi-select weekly/biweekly; Custom remains a separate multi-day pattern
+  via `days[]`.
+
+The fallback is gated solely on `days[]` being non-empty, and no existing
+weekly/biweekly schedule item persists a multi-element `days[]` (the modals only
+ever wrote `preferredDay`), so stored data is fully covered by the legacy path.
+
 ## Invariants held across all paths
 
 - **Instance ids byte-for-byte** for every non-hourly cadence (the durable
   `reminder_dismissals.instance_key`); the back-compat (absent-frequency) paths
   reproduce their legacy ids exactly. **Hourly** keeps its `_HHMM` suffix — the
-  only cadence with same-day siblings.
+  only cadence with same-day siblings. **Multi-day weekly/biweekly** keeps the
+  date-only id form (one cadence-day = one instance).
 - **Overdue clamps** to `max(windowStart, routine.createdAt, item.startDate)`;
   hourly overdue additionally caps to today.
 - **Timezone-robust**: recurring occurrences anchor on local-parsed dates; the
