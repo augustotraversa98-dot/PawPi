@@ -12,6 +12,7 @@ import {
   mockPopularPetMoments,
 } from "@/data/mockDiscoveryData";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
+import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 
 SplashScreen.preventAutoHideAsync();
@@ -33,6 +34,12 @@ export default function RootLayout() {
   useEffect(() => {
     initiate();
   }, [initiate]);
+
+  // Ask for notification permission + set up the Android channel ONCE at startup,
+  // independent of the reminder loop (which now schedules silently).
+  useEffect(() => {
+    initNotifications();
+  }, []);
 
   // Start reminder notification sync
   useEffect(() => {

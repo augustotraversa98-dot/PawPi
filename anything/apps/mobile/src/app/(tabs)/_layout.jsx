@@ -9,6 +9,7 @@ import {
 } from "lucide-react-native";
 import useRoutinesStore from "@/store/routinesStore";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
+import { getScheduledNotifications } from "@/utils/notifications";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
 
@@ -19,12 +20,19 @@ export default function TabLayout() {
     const remindersStore = useRemindersStore.getState();
 
     // Generate reminders from all active routines
-    routinesStore.routines.forEach((routine) => {
-      if (routine.isActive) {
-        const reminders = generateRemindersFromRoutine(routine);
-        reminders.forEach((reminder) => {
-          remindersStore.addReminderFromRoutine(reminder);
-        });
+    const reminders = routinesStore.routines
+      .filter((routine) => routine.isActive)
+      .flatMap((routine) => generateRemindersFromRoutine(routine));
+
+    // Schedule them, then (DEV only) confirm how many OS notifications landed.
+    Promise.all(
+      reminders.map((reminder) =>
+        remindersStore.addReminderFromRoutine(reminder),
+      ),
+    ).then(async () => {
+      if (__DEV__) {
+        const scheduled = await getScheduledNotifications();
+        console.log(`[notifications] scheduled count: ${scheduled.length}`);
       }
     });
 

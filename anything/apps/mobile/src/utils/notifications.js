@@ -18,6 +18,53 @@ Notifications.setNotificationHandler({
 });
 
 /**
+ * Pure: does a getPermissionsAsync()/requestPermissionsAsync() response mean we
+ * may schedule? Accepts the whole permissions object (or null). expo-notifications
+ * exposes both a `granted` boolean and a `status` string ("granted" includes iOS
+ * provisional authorization) — treat either as granted, and a missing object as not.
+ *
+ * @param {{granted?: boolean, status?: string}|null|undefined} permissions
+ * @returns {boolean}
+ */
+export function isNotificationPermissionGranted(permissions) {
+  if (!permissions) return false;
+  if (permissions.granted === true) return true;
+  return permissions.status === "granted";
+}
+
+/**
+ * One-time startup init: create the Android channel and ask for permission ONCE.
+ * Called from src/app/_layout.jsx on mount. Memoized so a remount / React 18
+ * double-invoked effect can't stack a second "Enable Reminders" alert. The
+ * per-reminder schedule path no longer asks — it reads the granted state silently.
+ *
+ * @returns {Promise<boolean>} whether notifications are granted after init
+ */
+let initNotificationsPromise = null;
+export async function initNotifications() {
+  if (initNotificationsPromise) return initNotificationsPromise;
+  initNotificationsPromise = (async () => {
+    try {
+      // Android shows nothing for scheduled notifications without a channel.
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "Reminders",
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: "default",
+        });
+      }
+      // Ask once (the explainer Alert lives in requestNotificationPermissions,
+      // which no-ops when permission is already granted).
+      return await requestNotificationPermissions();
+    } catch (error) {
+      console.error("Error initializing notifications:", error);
+      return false;
+    }
+  })();
+  return initNotificationsPromise;
+}
+
+/**
  * Request notification permissions from the user
  * Shows an explanation first, then requests permission
  */
@@ -179,9 +226,10 @@ export function buildReminderNotificationContent(
  */
 export async function scheduleReminderNotification(reminder, reminderTiming) {
   try {
-    const hasPermission = await requestNotificationPermissions();
-    if (!hasPermission) {
-      console.log("Notification permission not granted");
+    // Silent guard — startup (initNotifications) already asked. Never pop an
+    // Alert here: this runs once per reminder in the load loop and would stack.
+    const permissions = await Notifications.getPermissionsAsync();
+    if (!isNotificationPermissionGranted(permissions)) {
       return null;
     }
 
@@ -196,7 +244,11 @@ export async function scheduleReminderNotification(reminder, reminderTiming) {
     // a lead-time this can skip an alert whose event is still upcoming — that's
     // intentional: we never schedule a past trigger.
     if (triggerTime < now) {
-      console.log("Trigger time is in the past, skipping notification");
+      if (__DEV__) {
+        console.warn(
+          `[notifications] skipping past reminder ${reminder.id} — trigger ${triggerTime.toISOString()}`,
+        );
+      }
       return null;
     }
 

@@ -88,6 +88,25 @@ export default function SettingsTab() {
     Alert.alert("Quiet Hours", "Configure quiet hours (coming soon)");
   };
 
+  // DEV-only: fastest on-device proof that local notifications fire at all.
+  const handleSendTestNotification = async () => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🔔 Test notification",
+          body: "If you see this, local notifications are working.",
+        },
+        trigger: new Date(Date.now() + 10 * 1000),
+      });
+      Alert.alert(
+        "Test scheduled",
+        "A test notification will fire in ~10 seconds. Background the app to see the banner.",
+      );
+    } catch (error) {
+      Alert.alert("Couldn't schedule test", String(error?.message ?? error));
+    }
+  };
+
   const SettingRow = ({
     icon: Icon,
     title,
@@ -236,6 +255,24 @@ export default function SettingsTab() {
 
       {/* Permission Status */}
       <PermissionStatusCard />
+
+      {/* DEV-only diagnostic — fastest on-device proof local notifications fire */}
+      {__DEV__ && (
+        <TouchableOpacity
+          onPress={handleSendTestNotification}
+          style={{
+            backgroundColor: C.warmBrown,
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 20,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>
+            Send test notification (10s)
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Explanation */}
       <View
