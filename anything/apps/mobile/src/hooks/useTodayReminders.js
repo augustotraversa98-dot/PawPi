@@ -46,10 +46,15 @@ function usePetList(name, url, pick, petId) {
  * tracks the clock rather than piggybacking on query refetches.
  *
  * Returns { overdue, headsUp, headsUpIds, dismiss, dismissEarly, dismissedKeys,
- * isLoading, now, refreshNow }. `headsUp` is the active early-reminder heads-up list
- * (whole early window); `headsUpIds` is its id set so the section layer keeps those
- * instances out of Due Soon / Next Up. `dismissEarly(reminder)` Closes a heads-up
- * via the `${id}::early` key, leaving the real instance untouched.
+ * earlyDismissedKeys, isLoading, now, refreshNow }. `headsUp` is the active
+ * early-reminder heads-up list (whole early window); `headsUpIds` is its id set so
+ * the section layer keeps those instances out of Due Soon / Next Up.
+ * `dismissEarly(reminder)` Closes a heads-up via the `${id}::early` key, leaving the
+ * real instance untouched. `earlyDismissedKeys` is the set of those `${id}::early`
+ * keys, surfaced so the section layer hides an early-dismissed instance from Due Soon
+ * / Next Up while it is still future (it resumes its normal Overdue home once its
+ * event time arrives — the `::early` key is partitioned out of `dismissedKeys` and
+ * never reaches the Overdue selector).
  * `dismiss(reminder)` durably records a (real) skip; `dismissedKeys` is the current
  * skip set so the section layer can exclude dismissed instances uniformly. `now` (ms)
  * is the reactive clock — consumers section Snoozed / Due Soon / Next Up against
@@ -275,6 +280,7 @@ export function useTodayReminders({ now } = {}) {
     dismiss,
     dismissEarly,
     dismissedKeys,
+    earlyDismissedKeys,
     isLoading,
     now: nowMs,
     refreshNow,

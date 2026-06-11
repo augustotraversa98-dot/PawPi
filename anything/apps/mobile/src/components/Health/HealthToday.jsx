@@ -82,6 +82,7 @@ export default function HealthToday() {
     dismiss,
     dismissEarly,
     dismissedKeys,
+    earlyDismissedKeys,
     now: reminderNowMs,
     refreshNow,
   } = useTodayReminders();
@@ -187,6 +188,7 @@ export default function HealthToday() {
     now: reminderNowMs,
     snoozes,
     dismissedKeys,
+    earlyDismissedKeys,
   });
   const nextUpReminders = nextUp.slice(0, 3);
 

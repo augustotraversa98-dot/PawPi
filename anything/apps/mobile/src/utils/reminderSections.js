@@ -33,6 +33,15 @@
 // from EVERY section — same rule the Overdue selector applies — so a transient
 // instance skipped from Snoozed can't reappear in Due Soon when its snooze ends.
 //
+// `earlyDismissedKeys` (the `${id}::early` acknowledgements from reminder_dismissals)
+// hides a FUTURE instance from every pre-event section once its heads-up was Closed:
+// the early reminder was the LEAD time, not the event distance, so the true event can
+// still be inside the 6h Next Up window. The user already acknowledged it, so it must
+// not fall back into Due Soon / Next Up. This applies ONLY while the instance is
+// future — a past-due instance is NOT skipped here, so persistent types still home in
+// the Overdue section at/after their event time (the `::early` key is partitioned out
+// of `dismissedKeys` and never reaches the Overdue selector).
+//
 // `now` is injected (the caller passes the same reactive clock that drives the
 // Overdue list) so all sections agree on which side of "now" an instance is on,
 // and so pull-to-refresh can reclassify by advancing that clock.
@@ -51,6 +60,7 @@ export function sectionTodayReminders({
   now = new Date(),
   snoozes = {},
   dismissedKeys = new Set(),
+  earlyDismissedKeys = new Set(),
 }) {
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const dueSoon = [];
@@ -92,6 +102,10 @@ export function sectionTodayReminders({
       }
       continue;
     }
+    // FUTURE branch: an early-dismissed (heads-up Closed) instance stays hidden
+    // from Due Soon / Next Up until its event time. Only future instances reach
+    // here, so this never suppresses an Overdue home.
+    if (earlyDismissedKeys.has(`${reminder.id}::early`)) continue;
     if (reminder.timeSensitive && t - nowMs <= DUE_SOON_WINDOW_MS) {
       dueSoon.push(reminder);
       continue; // exactly one section — never also in Next Up

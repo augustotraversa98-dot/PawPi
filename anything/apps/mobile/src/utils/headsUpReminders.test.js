@@ -174,6 +174,27 @@ describe("buildHeadsUpReminders — eligibility", () => {
   });
 });
 
+describe("buildHeadsUpReminders — per-occurrence independence (Close D1 ≠ Close D2)", () => {
+  // Every occurrence in a series has its OWN date-stamped id (and thus its own
+  // `${id}::early` ack), so Closing one date's heads-up must never suppress
+  // another date's. Two consecutive daily occurrences whose 1-day early windows
+  // overlap are both active at NOW; an early-dismissal of D1 leaves D2 intact.
+  const D1 = reminder(2 * HOUR, { id: "reminder_100_general_0_2026-06-11" }); // today, later
+  const D2 = reminder(20 * HOUR, { id: "reminder_100_general_0_2026-06-12" }); // tomorrow
+
+  it("both occurrences are active heads-ups when neither is dismissed", () => {
+    const out = build([D1, D2]);
+    expect(out.map((r) => r.id)).toEqual([D1.id, D2.id]); // soonest-first
+  });
+
+  it("Closing D1 (its ::early ack) leaves D2's heads-up showing", () => {
+    const out = build([D1, D2], {
+      earlyDismissedKeys: new Set([earlyDismissalKey(D1)]),
+    });
+    expect(out.map((r) => r.id)).toEqual([D2.id]); // only D1 suppressed
+  });
+});
+
 describe("buildHeadsUpReminders — single home (not also in Next Up)", () => {
   it("an active heads-up excluded via headsUpIds does not appear in Next Up", () => {
     // Event +3h: without heads-up it would be a Next Up item (future, within 6h).
