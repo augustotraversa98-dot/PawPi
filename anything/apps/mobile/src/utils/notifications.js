@@ -119,10 +119,17 @@ export function resolveReminderTiming(reminder, routine) {
       const item = items[reminder.wellnessCheckItemIndex];
       return item?.reminderTiming ?? null;
     }
-    // P3 extension point: feeding / walk / photo_check / general_check /
-    // weight_check / preventive get a branch here as their modals adopt
-    // ScheduleBlock. vet_appointment + medical-care vaccine stay absent (they
-    // own their offset already).
+    case ROUTINE_TYPES.PHOTO_CHECK: {
+      const schedules = Array.isArray(routine.photoCheckSchedule)
+        ? routine.photoCheckSchedule
+        : [];
+      const schedule = schedules[reminder.photoCheckScheduleIndex];
+      return schedule?.reminderTiming ?? null;
+    }
+    // P3 extension point: feeding / walk / general_check / weight_check /
+    // preventive get a branch here as their modals adopt ScheduleBlock.
+    // vet_appointment + medical-care vaccine stay absent (they own their offset
+    // already).
     default:
       return null;
   }

@@ -72,6 +72,42 @@ describe("resolveReminderTiming", () => {
     expect(resolveReminderTiming(reminder, routine)).toBeNull();
   });
 
+  it("reads a photo_check entry's reminderTiming by index", () => {
+    const reminder = { type: "photo_check", photoCheckScheduleIndex: 1 };
+    const routine = {
+      type: "photo_check",
+      photoCheckSchedule: [
+        { bodyArea: "paws", reminderTiming: "5m" },
+        { bodyArea: "ears", reminderTiming: "1h" },
+      ],
+    };
+    expect(resolveReminderTiming(reminder, routine)).toBe("1h");
+  });
+
+  it("returns null for a photo_check entry with no reminderTiming", () => {
+    const reminder = { type: "photo_check", photoCheckScheduleIndex: 0 };
+    const routine = {
+      type: "photo_check",
+      photoCheckSchedule: [{ bodyArea: "paws" }],
+    };
+    expect(resolveReminderTiming(reminder, routine)).toBeNull();
+  });
+
+  it("returns null for a photo_check index out of range or absent schedule", () => {
+    expect(
+      resolveReminderTiming(
+        { type: "photo_check", photoCheckScheduleIndex: 5 },
+        { type: "photo_check", photoCheckSchedule: [{ reminderTiming: "1h" }] },
+      ),
+    ).toBeNull();
+    expect(
+      resolveReminderTiming(
+        { type: "photo_check", photoCheckScheduleIndex: 0 },
+        { type: "photo_check" },
+      ),
+    ).toBeNull();
+  });
+
   it("excludes vet_appointment and medical_care (already offset elsewhere)", () => {
     expect(
       resolveReminderTiming(

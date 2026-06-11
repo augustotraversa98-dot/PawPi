@@ -9,11 +9,12 @@ import {
 } from "react-native";
 import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
-import TimeField from "@/components/TimeField";
-import CadenceFrequencySelector, {
-  CADENCE_LABELS,
-} from "./CadenceFrequencySelector";
-import DayChips, { DAY_CHIP_LABELS } from "./DayChips";
+import { CADENCE_LABELS } from "./CadenceFrequencySelector";
+import { DAY_CHIP_LABELS } from "./DayChips";
+import ScheduleBlock, {
+  scheduleFromItem,
+  defaultSchedule,
+} from "./ScheduleBlock";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const C = {
@@ -27,6 +28,8 @@ const C = {
   sage: "#A7BFA3",
   sand: "#F5EDE4",
 };
+
+const ACCENT = "#4DB8E8";
 
 const BODY_AREAS = [
   {
@@ -79,6 +82,70 @@ const BODY_AREAS = [
   },
 ];
 
+// =========================================================================
+// Per-area schedule object = ScheduleBlock's canonical fields (frequency /
+// preferredTime / startDate / preferredDay / days / intervalHours /
+// reminderTiming) PLUS the toggles + notes ScheduleBlock does NOT own. Same
+// shape for the shared "same schedule" object and each custom-area entry. The
+// two pure helpers below are the single source of truth for the load + save
+// transforms, so the JSONB round-trips through ScheduleBlock unchanged.
+// =========================================================================
+
+// Pure: a fresh per-area schedule, seeded from the area's recommended cadence
+// (defaultFreq) via defaultSchedule(today, ...) — mirrors wellness's new-item
+// seeding. Toggles/notes get their existing defaults.
+export function newPhotoSchedule(defaultFreq) {
+  return {
+    ...defaultSchedule(new Date(), defaultFreq ? { frequency: defaultFreq } : {}),
+    reminderEnabled: true,
+    timeSensitive: false,
+    notes: "",
+  };
+}
+
+// Pure: build the in-state schedule object from a stored photoCheckSchedule
+// entry (or a legacy single-area shape). Canonical ScheduleBlock fields via
+// scheduleFromItem + the toggles/notes it doesn't own. Back-compat: a
+// pre-redesign entry lacks startDate/days/intervalHours/reminderTiming, so
+// scheduleFromItem supplies "" / [] / 4 / "on_time" and it loads unchanged.
+export function photoScheduleFromEntry(entry = {}) {
+  return {
+    ...scheduleFromItem(entry),
+    reminderEnabled: entry.reminderEnabled ?? true,
+    timeSensitive: entry.timeSensitive ?? false,
+    notes: entry.notes || "",
+  };
+}
+
+// Pure: build one persisted photoCheckSchedule entry (JSONB) from a body area +
+// its in-state schedule object. Single source of truth for the save shape,
+// carrying the ScheduleBlock fields the generator reads (startDate / days /
+// intervalHours) plus reminderTiming and the existing toggles/notes. Empty
+// startDate persists as null so the generator anchors on routine.createdAt.
+export function photoScheduleEntry(bodyArea, sched = {}) {
+  return {
+    bodyArea,
+    frequency: sched.frequency,
+    preferredDay: sched.preferredDay,
+    preferredTime: sched.preferredTime,
+    startDate: sched.startDate || null,
+    days: Array.isArray(sched.days) ? sched.days : [],
+    intervalHours: sched.intervalHours ?? null,
+    reminderTiming: sched.reminderTiming || null,
+    reminderEnabled: sched.reminderEnabled,
+    timeSensitive: sched.timeSensitive,
+    notes: sched.notes,
+  };
+}
+
+// Deep-equal for the day arrays (Mon=0); element-wise so a per-area difference
+// in days[] opens the routine in custom mode.
+function sameDays(a, b) {
+  const x = Array.isArray(a) ? a : [];
+  const y = Array.isArray(b) ? b : [];
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+}
+
 export default function PhotoCheckRoutineModal({
   visible,
   onClose,
@@ -91,18 +158,13 @@ export default function PhotoCheckRoutineModal({
   // Schedule mode: "same" or "custom"
   const [scheduleMode, setScheduleMode] = useState("same");
 
-  // Same schedule for all
-  const [frequency, setFrequency] = useState(ROUTINE_FREQUENCY.WEEKLY);
-  const [preferredDay, setPreferredDay] = useState(6); // Sunday
-  const [preferredTime, setPreferredTime] = useState("10:00");
-  const [reminderEnabled, setReminderEnabled] = useState(true);
-  const [timeSensitive, setTimeSensitive] = useState(false);
-  const [notes, setNotes] = useState("");
+  // Shared schedule object for the "same schedule for all areas" path.
+  const [sharedSchedule, setSharedSchedule] = useState(() => newPhotoSchedule());
 
-  // Custom schedules per body area
+  // Custom schedules per body area (same object shape as sharedSchedule).
   const [customSchedules, setCustomSchedules] = useState({});
 
-  // Expand/collapse custom schedules
+  // Expand/collapse custom schedule cards
   const [expandedAreas, setExpandedAreas] = useState({});
 
   useEffect(() => {
@@ -116,7 +178,9 @@ export default function PhotoCheckRoutineModal({
         const areas = editingRoutine.photoCheckSchedule.map((s) => s.bodyArea);
         setSelectedBodyAreas(areas);
 
-        // Check if all schedules are the same
+        // Check if all schedules are the same — compares the ScheduleBlock
+        // fields too (startDate / days / intervalHours / reminderTiming), so a
+        // per-area difference in any of them correctly opens in custom mode.
         const first = editingRoutine.photoCheckSchedule[0];
         const allSame = editingRoutine.photoCheckSchedule.every(
           (s) =>
@@ -124,29 +188,21 @@ export default function PhotoCheckRoutineModal({
             s.preferredDay === first.preferredDay &&
             s.preferredTime === first.preferredTime &&
             s.reminderEnabled === first.reminderEnabled &&
-            s.timeSensitive === first.timeSensitive,
+            s.timeSensitive === first.timeSensitive &&
+            (s.startDate || null) === (first.startDate || null) &&
+            (s.intervalHours ?? null) === (first.intervalHours ?? null) &&
+            (s.reminderTiming || null) === (first.reminderTiming || null) &&
+            sameDays(s.days, first.days),
         );
 
         if (allSame) {
           setScheduleMode("same");
-          setFrequency(first.frequency || ROUTINE_FREQUENCY.WEEKLY);
-          setPreferredDay(first.preferredDay ?? 6);
-          setPreferredTime(first.preferredTime || "10:00");
-          setReminderEnabled(first.reminderEnabled ?? true);
-          setTimeSensitive(first.timeSensitive ?? false);
-          setNotes(first.notes || "");
+          setSharedSchedule(photoScheduleFromEntry(first));
         } else {
           setScheduleMode("custom");
           const schedules = {};
           editingRoutine.photoCheckSchedule.forEach((s) => {
-            schedules[s.bodyArea] = {
-              frequency: s.frequency || ROUTINE_FREQUENCY.WEEKLY,
-              preferredDay: s.preferredDay ?? 6,
-              preferredTime: s.preferredTime || "10:00",
-              reminderEnabled: s.reminderEnabled ?? true,
-              timeSensitive: s.timeSensitive ?? false,
-              notes: s.notes || "",
-            };
+            schedules[s.bodyArea] = photoScheduleFromEntry(s);
           });
           setCustomSchedules(schedules);
         }
@@ -154,23 +210,22 @@ export default function PhotoCheckRoutineModal({
         // Old single-area format - migrate
         setSelectedBodyAreas([editingRoutine.bodyArea]);
         setScheduleMode("same");
-        setFrequency(editingRoutine.frequency || ROUTINE_FREQUENCY.WEEKLY);
-        setPreferredDay(editingRoutine.preferredDay ?? 6);
-        setPreferredTime(editingRoutine.times?.[0] || "10:00");
-        setReminderEnabled(editingRoutine.notificationEnabled ?? true);
-        setTimeSensitive(editingRoutine.timeSensitive ?? false);
-        setNotes(editingRoutine.notes || "");
+        setSharedSchedule(
+          photoScheduleFromEntry({
+            frequency: editingRoutine.frequency,
+            preferredDay: editingRoutine.preferredDay,
+            preferredTime: editingRoutine.times?.[0],
+            reminderEnabled: editingRoutine.notificationEnabled,
+            timeSensitive: editingRoutine.timeSensitive,
+            notes: editingRoutine.notes,
+          }),
+        );
       }
     } else {
       // New routine - reset to defaults
       setSelectedBodyAreas(["paws"]);
       setScheduleMode("same");
-      setFrequency(ROUTINE_FREQUENCY.WEEKLY);
-      setPreferredDay(6);
-      setPreferredTime("10:00");
-      setReminderEnabled(true);
-      setTimeSensitive(false);
-      setNotes("");
+      setSharedSchedule(newPhotoSchedule());
       setCustomSchedules({});
       setExpandedAreas({});
     }
@@ -187,32 +242,33 @@ export default function PhotoCheckRoutineModal({
     } else {
       // Select
       setSelectedBodyAreas([...selectedBodyAreas, areaValue]);
-      // Initialize custom schedule with default frequency
+      // Seed the custom schedule from the area's recommended cadence
       const area = BODY_AREAS.find((a) => a.value === areaValue);
       if (scheduleMode === "custom") {
         setCustomSchedules({
           ...customSchedules,
-          [areaValue]: {
-            frequency: area?.defaultFreq || ROUTINE_FREQUENCY.WEEKLY,
-            preferredDay: 6,
-            preferredTime: "10:00",
-            reminderEnabled: true,
-            timeSensitive: false,
-            notes: "",
-          },
+          [areaValue]: newPhotoSchedule(area?.defaultFreq),
         });
       }
     }
   };
 
-  const updateCustomSchedule = (bodyArea, field, value) => {
-    setCustomSchedules({
-      ...customSchedules,
-      [bodyArea]: {
-        ...customSchedules[bodyArea],
-        [field]: value,
-      },
-    });
+  // Merge a ScheduleBlock's emitted canonical object into a custom area's
+  // schedule, preserving the toggles/notes it doesn't own.
+  const handleCustomScheduleChange = (areaValue, schedule) => {
+    setCustomSchedules((prev) => ({
+      ...prev,
+      [areaValue]: { ...prev[areaValue], ...schedule },
+    }));
+  };
+
+  // Update a single non-ScheduleBlock field (reminderEnabled / timeSensitive /
+  // notes) on a custom area's schedule.
+  const updateCustomScheduleField = (areaValue, field, value) => {
+    setCustomSchedules((prev) => ({
+      ...prev,
+      [areaValue]: { ...prev[areaValue], [field]: value },
+    }));
   };
 
   const toggleExpandArea = (areaValue) => {
@@ -222,30 +278,12 @@ export default function PhotoCheckRoutineModal({
     });
   };
 
-  // Recommended hint for the shared schedule: only when every selected area
-  // agrees on a recommendation (per-area hints live in the custom path).
-  const sharedRecommendedFreq = (() => {
-    const freqs = selectedBodyAreas.map(
-      (v) => BODY_AREAS.find((a) => a.value === v)?.defaultFreq,
-    );
-    return freqs.length > 0 && freqs.every((f) => f === freqs[0])
-      ? freqs[0]
-      : undefined;
-  })();
-
   const handleScheduleModeChange = (mode) => {
     if (mode === "custom" && scheduleMode === "same") {
-      // Initialize custom schedules from same schedule
+      // Initialize custom schedules from the shared schedule
       const newSchedules = {};
       selectedBodyAreas.forEach((areaValue) => {
-        newSchedules[areaValue] = {
-          frequency,
-          preferredDay,
-          preferredTime,
-          reminderEnabled,
-          timeSensitive,
-          notes,
-        };
+        newSchedules[areaValue] = { ...sharedSchedule };
       });
       setCustomSchedules(newSchedules);
     }
@@ -259,66 +297,39 @@ export default function PhotoCheckRoutineModal({
       return;
     }
 
-    // Build photoCheckSchedule array
+    // Build photoCheckSchedule array (carries the ScheduleBlock fields the
+    // reminder generator reads, per area).
     const photoCheckSchedule = selectedBodyAreas.map((bodyArea) => {
-      if (scheduleMode === "same") {
-        return {
-          bodyArea,
-          frequency,
-          preferredDay,
-          preferredTime,
-          reminderEnabled,
-          timeSensitive,
-          notes,
-        };
-      } else {
-        const schedule = customSchedules[bodyArea] || {
-          frequency: ROUTINE_FREQUENCY.WEEKLY,
-          preferredDay: 6,
-          preferredTime: "10:00",
-          reminderEnabled: true,
-          timeSensitive: false,
-          notes: "",
-        };
-        return {
-          bodyArea,
-          ...schedule,
-        };
-      }
+      const sched =
+        scheduleMode === "same"
+          ? sharedSchedule
+          : customSchedules[bodyArea] ||
+            newPhotoSchedule(
+              BODY_AREAS.find((a) => a.value === bodyArea)?.defaultFreq,
+            );
+      return photoScheduleEntry(bodyArea, sched);
     });
 
+    const primary = photoCheckSchedule[0];
     const routine = {
       type: ROUTINE_TYPES.PHOTO_CHECK,
-      petId: "phoebe",
+      petId: editingRoutine?.petId || "phoebe",
       isActive: true,
       photoCheckSchedule,
       // Legacy fields for backward compatibility
       bodyArea: selectedBodyAreas[0], // Use first selected area as primary
-      frequency:
-        scheduleMode === "same" ? frequency : photoCheckSchedule[0].frequency,
-      preferredDay:
-        scheduleMode === "same"
-          ? preferredDay
-          : photoCheckSchedule[0].preferredDay,
-      times:
-        scheduleMode === "same"
-          ? [preferredTime]
-          : [photoCheckSchedule[0].preferredTime],
-      days:
-        scheduleMode === "same"
-          ? [preferredDay]
-          : [photoCheckSchedule[0].preferredDay],
-      notificationEnabled: reminderEnabled,
-      timeSensitive:
-        scheduleMode === "same"
-          ? timeSensitive
-          : photoCheckSchedule[0].timeSensitive,
-      notes: scheduleMode === "same" ? notes : photoCheckSchedule[0].notes,
+      frequency: primary.frequency,
+      preferredDay: primary.preferredDay,
+      times: [primary.preferredTime],
+      days: primary.days?.length ? primary.days : [primary.preferredDay],
+      notificationEnabled: primary.reminderEnabled,
+      timeSensitive: primary.timeSensitive,
+      notes: primary.notes,
       title: "Photo Check",
       description: `Photo check for ${selectedBodyAreas.length} area${selectedBodyAreas.length > 1 ? "s" : ""}`,
     };
 
-    if (editingRoutine) routine.id = editingRoutine.id;
+    if (editingRoutine?.id) routine.id = editingRoutine.id;
     onSave(routine);
     onClose();
   };
@@ -331,7 +342,7 @@ export default function PhotoCheckRoutineModal({
       subtitle="Visual health monitoring"
       icon="📸"
       ctaLabel={editingRoutine ? "Save Changes" : "Create Routine"}
-      ctaColor="#4DB8E8"
+      ctaColor={ACCENT}
       onCtaPress={handleSave}
       backgroundColor={C.cream}
     >
@@ -363,11 +374,11 @@ export default function PhotoCheckRoutineModal({
               key={area.value}
               onPress={() => toggleBodyArea(area.value)}
               style={{
-                backgroundColor: isSelected ? "#4DB8E8" + "20" : C.card,
+                backgroundColor: isSelected ? ACCENT + "20" : C.card,
                 borderRadius: 14,
                 padding: 16,
                 borderWidth: 1.5,
-                borderColor: isSelected ? "#4DB8E8" : C.peach,
+                borderColor: isSelected ? ACCENT : C.peach,
                 flexDirection: "row",
                 alignItems: "center",
               }}
@@ -378,7 +389,7 @@ export default function PhotoCheckRoutineModal({
                     width: 24,
                     height: 24,
                     borderRadius: 12,
-                    backgroundColor: "#4DB8E8",
+                    backgroundColor: ACCENT,
                     justifyContent: "center",
                     alignItems: "center",
                     marginRight: 10,
@@ -393,7 +404,7 @@ export default function PhotoCheckRoutineModal({
                   style={{
                     fontSize: 15,
                     fontWeight: isSelected ? "700" : "600",
-                    color: isSelected ? "#4DB8E8" : C.warmBrown,
+                    color: isSelected ? ACCENT : C.warmBrown,
                   }}
                 >
                   {area.label}
@@ -424,19 +435,18 @@ export default function PhotoCheckRoutineModal({
             <TouchableOpacity
               onPress={() => handleScheduleModeChange("same")}
               style={{
-                backgroundColor:
-                  scheduleMode === "same" ? "#4DB8E8" + "20" : C.card,
+                backgroundColor: scheduleMode === "same" ? ACCENT + "20" : C.card,
                 borderRadius: 12,
                 padding: 14,
                 borderWidth: 1.5,
-                borderColor: scheduleMode === "same" ? "#4DB8E8" : C.peach,
+                borderColor: scheduleMode === "same" ? ACCENT : C.peach,
               }}
             >
               <Text
                 style={{
                   fontSize: 15,
                   fontWeight: scheduleMode === "same" ? "700" : "600",
-                  color: scheduleMode === "same" ? "#4DB8E8" : C.warmBrown,
+                  color: scheduleMode === "same" ? ACCENT : C.warmBrown,
                 }}
               >
                 Use same schedule for all selected areas
@@ -446,18 +456,18 @@ export default function PhotoCheckRoutineModal({
               onPress={() => handleScheduleModeChange("custom")}
               style={{
                 backgroundColor:
-                  scheduleMode === "custom" ? "#4DB8E8" + "20" : C.card,
+                  scheduleMode === "custom" ? ACCENT + "20" : C.card,
                 borderRadius: 12,
                 padding: 14,
                 borderWidth: 1.5,
-                borderColor: scheduleMode === "custom" ? "#4DB8E8" : C.peach,
+                borderColor: scheduleMode === "custom" ? ACCENT : C.peach,
               }}
             >
               <Text
                 style={{
                   fontSize: 15,
                   fontWeight: scheduleMode === "custom" ? "700" : "600",
-                  color: scheduleMode === "custom" ? "#4DB8E8" : C.warmBrown,
+                  color: scheduleMode === "custom" ? ACCENT : C.warmBrown,
                 }}
               >
                 Customize per area
@@ -470,60 +480,17 @@ export default function PhotoCheckRoutineModal({
       {/* Same Schedule for All */}
       {selectedBodyAreas.length > 0 && scheduleMode === "same" && (
         <>
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Frequency
-          </Text>
-          <CadenceFrequencySelector
-            value={frequency}
-            onChange={setFrequency}
-            recommended={sharedRecommendedFreq}
-            color="#4DB8E8"
+          {/* Schedule — date, time, frequency (full cadence list), conditional
+              sub-controls, and early reminder */}
+          <ScheduleBlock
+            value={scheduleFromItem(sharedSchedule)}
+            onChange={(schedule) =>
+              setSharedSchedule((prev) => ({ ...prev, ...schedule }))
+            }
+            color={ACCENT}
             style={{ marginBottom: 20 }}
+            testID="schedule-shared"
           />
-
-          {(frequency === ROUTINE_FREQUENCY.WEEKLY ||
-            frequency === ROUTINE_FREQUENCY.BIWEEKLY) && (
-            <>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                Preferred Day
-              </Text>
-              <DayChips
-                value={[preferredDay]}
-                onChange={(days) => setPreferredDay(days[0])}
-                multiSelect={false}
-                color="#4DB8E8"
-                style={{ marginBottom: 20 }}
-              />
-            </>
-          )}
-
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
-            Preferred Time
-          </Text>
-          <View style={{ marginBottom: 20 }}>
-            <TimeField value={preferredTime} onChange={setPreferredTime} />
-          </View>
 
           <View
             style={{
@@ -553,10 +520,15 @@ export default function PhotoCheckRoutineModal({
                 Reminder enabled
               </Text>
               <Switch
-                value={reminderEnabled}
-                onValueChange={setReminderEnabled}
+                value={sharedSchedule.reminderEnabled}
+                onValueChange={(value) =>
+                  setSharedSchedule((prev) => ({
+                    ...prev,
+                    reminderEnabled: value,
+                  }))
+                }
                 trackColor={{ false: C.sand, true: C.sage + "60" }}
-                thumbColor={reminderEnabled ? C.sage : C.peach}
+                thumbColor={sharedSchedule.reminderEnabled ? C.sage : C.peach}
               />
             </View>
             <View
@@ -576,10 +548,15 @@ export default function PhotoCheckRoutineModal({
                 Time-sensitive
               </Text>
               <Switch
-                value={timeSensitive}
-                onValueChange={setTimeSensitive}
+                value={sharedSchedule.timeSensitive}
+                onValueChange={(value) =>
+                  setSharedSchedule((prev) => ({
+                    ...prev,
+                    timeSensitive: value,
+                  }))
+                }
                 trackColor={{ false: C.sand, true: C.coral + "60" }}
-                thumbColor={timeSensitive ? C.coral : C.peach}
+                thumbColor={sharedSchedule.timeSensitive ? C.coral : C.peach}
               />
             </View>
           </View>
@@ -595,8 +572,10 @@ export default function PhotoCheckRoutineModal({
             Notes (optional)
           </Text>
           <TextInput
-            value={notes}
-            onChangeText={setNotes}
+            value={sharedSchedule.notes}
+            onChangeText={(value) =>
+              setSharedSchedule((prev) => ({ ...prev, notes: value }))
+            }
             placeholder="What to look for..."
             placeholderTextColor={C.mutedBrown}
             multiline
@@ -631,15 +610,16 @@ export default function PhotoCheckRoutineModal({
           </Text>
           {selectedBodyAreas.map((areaValue) => {
             const area = BODY_AREAS.find((a) => a.value === areaValue);
-            const schedule = customSchedules[areaValue] || {
-              frequency: area?.defaultFreq || ROUTINE_FREQUENCY.WEEKLY,
-              preferredDay: 6,
-              preferredTime: "10:00",
-              reminderEnabled: true,
-              timeSensitive: false,
-              notes: "",
-            };
+            const schedule =
+              customSchedules[areaValue] || newPhotoSchedule(area?.defaultFreq);
             const isExpanded = expandedAreas[areaValue];
+            const isDayCadence =
+              schedule.frequency === ROUTINE_FREQUENCY.WEEKLY ||
+              schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY;
+            const dayLabel =
+              isDayCadence && schedule.days?.length
+                ? ` · ${schedule.days.map((d) => DAY_CHIP_LABELS[d]).join(", ")}`
+                : "";
 
             return (
               <View
@@ -683,11 +663,7 @@ export default function PhotoCheckRoutineModal({
                       </Text>
                       <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                         {CADENCE_LABELS[schedule.frequency] || "Monthly"}
-                        {schedule.frequency === ROUTINE_FREQUENCY.WEEKLY ||
-                        schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY
-                          ? ` · ${DAY_CHIP_LABELS[schedule.preferredDay]}`
-                          : ""}{" "}
-                        at {schedule.preferredTime}
+                        {dayLabel} at {schedule.preferredTime}
                       </Text>
                     </View>
                   </View>
@@ -707,82 +683,17 @@ export default function PhotoCheckRoutineModal({
                       borderTopColor: C.peach,
                     }}
                   >
-                    {/* Frequency */}
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Frequency
-                    </Text>
-                    <CadenceFrequencySelector
-                      value={schedule.frequency}
-                      onChange={(value) =>
-                        updateCustomSchedule(areaValue, "frequency", value)
+                    {/* Schedule — date, time, frequency (full cadence list),
+                        conditional sub-controls, and early reminder */}
+                    <ScheduleBlock
+                      value={scheduleFromItem(schedule)}
+                      onChange={(next) =>
+                        handleCustomScheduleChange(areaValue, next)
                       }
-                      recommended={area?.defaultFreq}
-                      color="#4DB8E8"
+                      color={ACCENT}
                       style={{ marginBottom: 12 }}
+                      testID={`schedule-${areaValue}`}
                     />
-
-                    {/* Day */}
-                    {(schedule.frequency === ROUTINE_FREQUENCY.WEEKLY ||
-                      schedule.frequency === ROUTINE_FREQUENCY.BIWEEKLY) && (
-                      <>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          Preferred Day
-                        </Text>
-                        <DayChips
-                          value={[schedule.preferredDay]}
-                          onChange={(days) =>
-                            updateCustomSchedule(
-                              areaValue,
-                              "preferredDay",
-                              days[0],
-                            )
-                          }
-                          multiSelect={false}
-                          color="#4DB8E8"
-                          style={{ marginBottom: 12 }}
-                        />
-                      </>
-                    )}
-
-                    {/* Time */}
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Preferred Time
-                    </Text>
-                    <View style={{ marginBottom: 12 }}>
-                      <TimeField
-                        value={schedule.preferredTime}
-                        onChange={(time) =>
-                          updateCustomSchedule(areaValue, "preferredTime", time)
-                        }
-                        fieldStyle={{
-                          backgroundColor: C.sand,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                        textStyle={{ fontSize: 14 }}
-                      />
-                    </View>
 
                     {/* Toggles */}
                     <View
@@ -805,7 +716,7 @@ export default function PhotoCheckRoutineModal({
                       <Switch
                         value={schedule.reminderEnabled}
                         onValueChange={(val) =>
-                          updateCustomSchedule(
+                          updateCustomScheduleField(
                             areaValue,
                             "reminderEnabled",
                             val,
@@ -835,7 +746,11 @@ export default function PhotoCheckRoutineModal({
                       <Switch
                         value={schedule.timeSensitive}
                         onValueChange={(val) =>
-                          updateCustomSchedule(areaValue, "timeSensitive", val)
+                          updateCustomScheduleField(
+                            areaValue,
+                            "timeSensitive",
+                            val,
+                          )
                         }
                         trackColor={{ false: C.sand, true: C.coral + "60" }}
                         thumbColor={schedule.timeSensitive ? C.coral : C.peach}
@@ -856,7 +771,7 @@ export default function PhotoCheckRoutineModal({
                     <TextInput
                       value={schedule.notes}
                       onChangeText={(val) =>
-                        updateCustomSchedule(areaValue, "notes", val)
+                        updateCustomScheduleField(areaValue, "notes", val)
                       }
                       placeholder="What to look for..."
                       placeholderTextColor={C.mutedBrown}
