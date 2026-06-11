@@ -153,49 +153,105 @@ function generateFeedingReminders(
       return;
     }
 
-    // Get active days for this specific meal
+    const mealId = meal.id || `${routine.id}_meal_${mealIndex}`;
+    const [hours, minutes] = meal.time.split(":");
+    const frequency = meal.frequency || ROUTINE_FREQUENCY.DAILY;
+
+    const pushMeal = (scheduledTime, id) => {
+      reminders.push({
+        id,
+        routineId: routine.id,
+        mealId: mealId,
+        petId: routine.petId,
+        type: "feeding",
+        title: meal.name || "Meal",
+        description:
+          meal.notes || `Time for ${(meal.name || "meal").toLowerCase()}`,
+        scheduledAt: scheduledTime.toISOString(),
+        nextTriggerAt: scheduledTime.toISOString(),
+        status: REMINDER_STATUS.UPCOMING,
+        priority: "medium",
+        timeSensitive: meal.timeSensitive ?? true,
+        notificationEnabled: meal.reminderEnabled ?? true,
+        relatedTracker: relatedTracker,
+        primaryAction,
+        notes: meal.notes || "",
+        completedAt: null,
+        snoozedUntil: null,
+      });
+    };
+
+    // HOURLY: intra-day interval series — same machinery as the other paths.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(meal, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        meal,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        pushMeal(
+          occ,
+          `reminder_${routine.id}_${mealId}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+        );
+      });
+      return;
+    }
+
+    // Day-pattern set (DAILY/WEEKDAYS/WEEKENDS/CUSTOM), anchored date set
+    // (month-multiple/once), and weekly/biweekly preferred-day matching.
     const mealDays = getMealActiveDays(meal);
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      meal,
+      frequency,
+      endDate,
+      now,
+    );
+    const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
+    const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
+    const preferredDay = meal.preferredDay ?? 6;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
 
     while (currentDate <= endDate) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
+      let shouldSchedule;
+      if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
+      } else if (isWeekly || isBiweekly) {
+        shouldSchedule = dayOfWeek === preferredDay;
+      } else {
+        // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
+        shouldSchedule = mealDays.includes(dayOfWeek);
+      }
 
-      if (mealDays.includes(dayOfWeek)) {
-        const [hours, minutes] = meal.time.split(":");
+      if (shouldSchedule) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime >= now) {
-          const mealId = meal.id || `${routine.id}_meal_${mealIndex}`;
           const dateStr = currentDate.toISOString().split("T")[0];
-
-          reminders.push({
-            id: `reminder_${routine.id}_${mealId}_${dateStr}`,
-            routineId: routine.id,
-            mealId: mealId,
-            petId: routine.petId,
-            type: "feeding",
-            title: meal.name || "Meal",
-            description:
-              meal.notes || `Time for ${(meal.name || "meal").toLowerCase()}`,
-            scheduledAt: scheduledTime.toISOString(),
-            nextTriggerAt: scheduledTime.toISOString(),
-            status: REMINDER_STATUS.UPCOMING,
-            priority: "medium",
-            timeSensitive: meal.timeSensitive ?? true,
-            notificationEnabled: meal.reminderEnabled ?? true,
-            relatedTracker: relatedTracker,
-            primaryAction,
-            notes: meal.notes || "",
-            completedAt: null,
-            snoozedUntil: null,
-          });
+          pushMeal(scheduledTime, `reminder_${routine.id}_${mealId}_${dateStr}`);
         }
-      }
 
-      currentDate.setDate(currentDate.getDate() + 1);
+        if (isWeekly) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (isBiweekly) {
+          currentDate.setDate(currentDate.getDate() + 14);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
     }
   });
 
