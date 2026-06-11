@@ -414,14 +414,19 @@ const useRoutinesStore = create((set, get) => ({
         loading: false,
       }));
 
-      // Regenerate future reminders
+      // Regenerate future reminders. AWAIT the removal first: it cancels the old
+      // (no-lead) OS notifications and clears the upcoming instances in a set()
+      // that lives past an `await cancelNotification` loop. Without the await,
+      // addReminderFromRoutine's id-based dedup runs against the not-yet-removed
+      // state, early-returns on every still-present instance, and the new
+      // lead-time is never scheduled — the edit-Early-reminder repro.
       const remindersStore = useRemindersStore.getState();
-      remindersStore.removeFutureRemindersByRoutine(id);
+      await remindersStore.removeFutureRemindersByRoutine(id);
 
       const reminders = generateRemindersFromRoutine(transformedRoutine);
-      reminders.forEach((reminder) => {
-        remindersStore.addReminderFromRoutine(reminder);
-      });
+      for (const reminder of reminders) {
+        await remindersStore.addReminderFromRoutine(reminder);
+      }
 
       return transformedRoutine;
     } catch (error) {
@@ -506,13 +511,15 @@ const useRoutinesStore = create((set, get) => ({
       const remindersStore = useRemindersStore.getState();
 
       if (newIsActive) {
-        // Re-enable: regenerate reminders
-        remindersStore.removeFutureRemindersByRoutine(id);
+        // Re-enable: regenerate reminders. Await the removal first for the same
+        // ordering reason as updateRoutine — otherwise the dedup runs against
+        // not-yet-removed instances and skips rescheduling (incl. lead-time).
+        await remindersStore.removeFutureRemindersByRoutine(id);
         const updatedRoutine = { ...routine, isActive: true };
         const reminders = generateRemindersFromRoutine(updatedRoutine);
-        reminders.forEach((reminder) => {
-          remindersStore.addReminderFromRoutine(reminder);
-        });
+        for (const reminder of reminders) {
+          await remindersStore.addReminderFromRoutine(reminder);
+        }
       } else {
         // Disable: disable future reminders
         remindersStore.disableFutureRemindersByRoutine(id);
