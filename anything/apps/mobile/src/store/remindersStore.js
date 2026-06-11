@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import { getReminderStatus, REMINDER_STATUS } from "@/data/remindersData";
 import useSocialPetStore from "./socialPetStore";
+import useRoutinesStore from "./routinesStore";
 import {
   scheduleReminderNotification,
   cancelNotification,
+  resolveReminderTiming,
 } from "@/utils/notifications";
 
 const useRemindersStore = create((set, get) => ({
@@ -46,9 +48,18 @@ const useRemindersStore = create((set, get) => ({
 
   // Add reminder from routine (without notification creation)
   addReminderFromRoutine: async (reminder) => {
-    // Check for duplicates
+    // Check for duplicates — id-based de-dup keeps refetch/sync from
+    // double-scheduling the (early) notification.
     const existing = get().reminders.find((r) => r.id === reminder.id);
     if (existing) return;
+
+    // Resolve the early-reminder lead-time off the source routine (the instance
+    // doesn't carry it), then let scheduleReminderNotification fire the OS alert
+    // at (event − leadTime). The stored instance stays pinned to the event time.
+    const routine = useRoutinesStore
+      .getState()
+      .routines.find((r) => r.id === reminder.routineId);
+    const reminderTiming = resolveReminderTiming(reminder, routine);
 
     // Schedule notification if enabled
     let scheduledNotificationId = null;
@@ -56,7 +67,10 @@ const useRemindersStore = create((set, get) => ({
       reminder.notificationEnabled &&
       reminder.status !== REMINDER_STATUS.DISABLED
     ) {
-      scheduledNotificationId = await scheduleReminderNotification(reminder);
+      scheduledNotificationId = await scheduleReminderNotification(
+        reminder,
+        reminderTiming,
+      );
     }
 
     const newReminder = {

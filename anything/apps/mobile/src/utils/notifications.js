@@ -5,6 +5,7 @@
 
 import * as Notifications from "expo-notifications";
 import { Platform, Alert } from "react-native";
+import { ROUTINE_TYPES } from "@/data/routinesData";
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -58,12 +59,83 @@ export async function requestNotificationPermissions() {
   }
 }
 
+// =========================================================================
+// Early-reminder lead-time (OS-notification only)
+//
+// ScheduleBlock's "Early reminder" picker writes a `reminderTiming` lead-time
+// onto the routine item. We honor it by scheduling the OS notification at
+// (event − leadTime) WITHOUT moving the stored instance: nextTriggerAt /
+// scheduledAt / id stay pinned to the event time, so Today, overdue, and the
+// dismissal-resolution key are all unchanged. Only the heads-up alert moves
+// earlier — the iOS-faithful behavior.
+//
+// `LEAD_TIME_MS` mirrors ScheduleBlock's EARLY_REMINDER_OPTIONS values verbatim
+// (on_time / 5m / 15m / 30m / 1h / 1d / 1w). Keep the two in sync; do not invent
+// new option values here.
+// =========================================================================
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+export const LEAD_TIME_MS = {
+  on_time: 0,
+  "5m": 5 * MINUTE_MS,
+  "15m": 15 * MINUTE_MS,
+  "30m": 30 * MINUTE_MS,
+  "1h": HOUR_MS,
+  "1d": DAY_MS,
+  "1w": 7 * DAY_MS,
+};
+
+/**
+ * Resolve a reminderTiming option to a millisecond lead-time. Absent, "on_time",
+ * and unknown values all map to 0 (no shift ⇒ current at-event behavior).
+ */
+export function resolveLeadTimeMs(reminderTiming) {
+  if (!reminderTiming) return 0;
+  return LEAD_TIME_MS[reminderTiming] ?? 0;
+}
+
+/**
+ * Resolve the item-level reminderTiming for a generated reminder instance,
+ * dispatched by routine TYPE. The generator does not carry reminderTiming onto
+ * instances, so we read it back off the source routine (passed in from the
+ * store, where the routine is in scope).
+ *
+ * Returns null for every path that already applies its own offset elsewhere —
+ * vet appointments (useVetAppointmentReminders) and medical-care vaccine items
+ * (reminderGenerator) — so they are never double-offset. P3 adds a branch per
+ * routine type as each modal adopts ScheduleBlock.
+ */
+export function resolveReminderTiming(reminder, routine) {
+  if (!reminder || !routine) return null;
+
+  switch (reminder.type) {
+    case ROUTINE_TYPES.WELLNESS_CHECK: {
+      const items = Array.isArray(routine.wellnessCheckItems)
+        ? routine.wellnessCheckItems
+        : [];
+      const item = items[reminder.wellnessCheckItemIndex];
+      return item?.reminderTiming ?? null;
+    }
+    // P3 extension point: feeding / walk / photo_check / general_check /
+    // weight_check / preventive get a branch here as their modals adopt
+    // ScheduleBlock. vet_appointment + medical-care vaccine stay absent (they
+    // own their offset already).
+    default:
+      return null;
+  }
+}
+
 /**
  * Schedule a local notification for a reminder
  * @param {Object} reminder - The reminder object
+ * @param {string} [reminderTiming] - Early-reminder lead-time option (e.g. "1h").
+ *   When set, the OS notification fires at (nextTriggerAt − leadTime); the
+ *   reminder instance itself is NOT modified. Absent/"on_time" ⇒ fire at event.
  * @returns {Promise<string|null>} - The notification ID or null if failed
  */
-export async function scheduleReminderNotification(reminder) {
+export async function scheduleReminderNotification(reminder, reminderTiming) {
   try {
     const hasPermission = await requestNotificationPermissions();
     if (!hasPermission) {
@@ -71,10 +143,16 @@ export async function scheduleReminderNotification(reminder) {
       return null;
     }
 
-    const triggerTime = new Date(reminder.nextTriggerAt);
+    const eventTime = new Date(reminder.nextTriggerAt);
+    const leadMs = resolveLeadTimeMs(reminderTiming);
+    // Fire the heads-up early; the stored instance stays at the event time.
+    const triggerTime =
+      leadMs > 0 ? new Date(eventTime.getTime() - leadMs) : eventTime;
     const now = new Date();
 
-    // Don't schedule if trigger time is in the past
+    // Don't schedule if the (possibly lead-shifted) trigger is in the past. With
+    // a lead-time this can skip an alert whose event is still upcoming — that's
+    // intentional: we never schedule a past trigger.
     if (triggerTime < now) {
       console.log("Trigger time is in the past, skipping notification");
       return null;
