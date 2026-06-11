@@ -23,6 +23,12 @@
 // live in the store, so a field on the reminder object can't hold their snooze.
 // The per-reminder snoozedUntil field is still honored as a fallback.
 //
+// `headsUpIds` (active early-reminder heads-up instances, headsUpReminders.js)
+// are homed exclusively in the "Upcoming" heads-up section while their early
+// window is open, so they are excluded here — a heads-up instance is future
+// (now < eventTime) and would otherwise land in Due Soon / Next Up. Once its
+// event time arrives it is no longer a heads-up and sections normally.
+//
 // `dismissedKeys` (durable skips from reminder_dismissals) excludes an instance
 // from EVERY section — same rule the Overdue selector applies — so a transient
 // instance skipped from Snoozed can't reappear in Due Soon when its snooze ends.
@@ -41,6 +47,7 @@ export const NEXT_UP_WINDOW_MS = 6 * 60 * 60 * 1000;
 export function sectionTodayReminders({
   reminders = [],
   overdueIds = new Set(),
+  headsUpIds = new Set(),
   now = new Date(),
   snoozes = {},
   dismissedKeys = new Set(),
@@ -70,6 +77,7 @@ export function sectionTodayReminders({
     }
 
     if (overdueIds.has(reminder.id)) continue; // homed in Overdue
+    if (headsUpIds.has(reminder.id)) continue; // homed in the heads-up section
 
     const t = new Date(
       reminder.scheduledAt ?? reminder.nextTriggerAt,

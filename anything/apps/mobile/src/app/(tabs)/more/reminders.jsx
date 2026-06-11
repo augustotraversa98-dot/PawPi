@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Repeat, Settings } from "lucide-react-native";
 
 // Import only Routines and Settings tabs
@@ -28,6 +28,9 @@ const TABS = {
 export default function RemindersRoutinesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // Optional deep-link from Health → Today's heads-up "Edit": open this routine
+  // for editing once the Routines tab has loaded it.
+  const { editRoutineId } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(TABS.ROUTINES);
 
   const TabButton = ({ tab, label, icon: Icon }) => {
@@ -126,7 +129,9 @@ export default function RemindersRoutinesScreen() {
       </View>
 
       {/* Tab Content */}
-      {activeTab === TABS.ROUTINES && <RoutinesTab />}
+      {activeTab === TABS.ROUTINES && (
+        <RoutinesTab editRoutineId={editRoutineId} />
+      )}
       {activeTab === TABS.SETTINGS && <SettingsTab />}
     </View>
   );
