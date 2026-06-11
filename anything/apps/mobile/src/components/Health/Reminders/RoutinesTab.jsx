@@ -199,18 +199,16 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   const handleDelete = async (routineId) => {
     console.log("[RoutinesTab] handleDelete called", { routineId });
     try {
-      console.log("[RoutinesTab] Calling deleteRoutine from store");
+      // The store soft-deletes, clears future reminders + `::early` acks, and
+      // refetches (awaited in that order) — so no extra refetch is needed here.
       await deleteRoutine(routineId);
-      console.log("[RoutinesTab] deleteRoutine completed, refetching...");
-
-      // Refetch to ensure UI is updated
-      if (currentPet?.id) {
-        await loadRoutines(currentPet.id);
-        console.log("[RoutinesTab] Routines refetched successfully");
-      }
+      // The early-ack clear happened server-side; refresh the dismissals query so
+      // Health → Today re-derives without the now-deleted routine's stale keys.
+      invalidateDismissals();
+      Alert.alert("Routine deleted");
     } catch (error) {
       console.error("[RoutinesTab] Error deleting routine:", error);
-      throw error;
+      Alert.alert("Could not delete routine. Please try again.");
     }
   };
 
@@ -270,6 +268,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 routine={routine}
                 onEdit={handleEdit}
                 onToggle={handleToggle}
+                onDelete={handleDelete}
               />
             ))}
           </View>

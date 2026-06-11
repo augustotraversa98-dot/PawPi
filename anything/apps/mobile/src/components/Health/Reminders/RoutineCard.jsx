@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Switch } from "react-native";
+import { View, Text, TouchableOpacity, Switch, Alert } from "react-native";
 import {
   Edit3,
   ChevronRight,
   Calendar as CalendarIcon,
+  Trash2,
 } from "lucide-react-native";
 import {
   ROUTINE_TYPE_CONFIG,
@@ -24,8 +25,27 @@ const C = {
   sand: "#F5EDE4",
 };
 
-export default function RoutineCard({ routine, onEdit, onToggle }) {
+export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
   const config = ROUTINE_TYPE_CONFIG[routine.type];
+
+  // Delete is a SOFT delete (handled by the store): the routine leaves every
+  // listing and its future reminders/heads-up acks are cleared, but past health
+  // logs stay. Distinct from the Active/Inactive switch above, which only
+  // pauses. Confirm first; the success/error toast is owned by the parent.
+  const handleDeletePress = () => {
+    Alert.alert(
+      "Delete this routine?",
+      "This removes it and its future reminders. Past logs and history are kept.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDelete?.(routine.id),
+        },
+      ],
+    );
+  };
   const scheduleSummary = getScheduleSummary(routine);
   const nextReminder = getNextReminderPreview(routine);
 
@@ -433,6 +453,28 @@ export default function RoutineCard({ routine, onEdit, onToggle }) {
           Edit Routine
         </Text>
         <ChevronRight size={14} color={C.mutedBrown} />
+      </TouchableOpacity>
+
+      {/* Delete Button — consistent across every routine type */}
+      <TouchableOpacity
+        onPress={handleDeletePress}
+        style={{
+          marginTop: 8,
+          backgroundColor: C.card,
+          borderRadius: 12,
+          paddingVertical: 10,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          borderWidth: 1,
+          borderColor: C.coral + "40",
+        }}
+      >
+        <Trash2 size={14} color={C.coral} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: C.coral }}>
+          Delete Routine
+        </Text>
       </TouchableOpacity>
     </View>
   );
