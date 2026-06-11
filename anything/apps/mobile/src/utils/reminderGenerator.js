@@ -1,11 +1,71 @@
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { REMINDER_STATUS } from "@/data/remindersData";
 
+// =========================================================================
+// Dev-time cadence guard
+//
+// Every cadence-driven routine type now resolves its schedule through the shared
+// cadence layer, so the redesigned ScheduleBlock can offer any cadence on any of
+// these types and it will actually fire. This guard makes that contract explicit:
+// if a routine ever carries a cadence its generator path cannot honor, fail
+// LOUDLY in development instead of silently emitting nothing. No-op in production.
+//
+// "ALL" = every value in ROUTINE_FREQUENCY is honored (forward and, for the
+// persistent types, overdue). A Set lists the only honored cadences. A type
+// absent from the map is not driven by this layer and is left unchecked (the
+// legacy single-purpose types — medication/general-check/weight-check/preventive/
+// vaccine — keep their own narrower handling and are out of the redesign's
+// ScheduleBlock scope).
+// =========================================================================
+const CADENCE_SUPPORT = {
+  [ROUTINE_TYPES.WELLNESS_CHECK]: "ALL",
+  [ROUTINE_TYPES.PHOTO_CHECK]: "ALL",
+  [ROUTINE_TYPES.FEEDING]: "ALL",
+  [ROUTINE_TYPES.WALK]: "ALL",
+  [ROUTINE_TYPES.MEDICAL_CARE]: "ALL",
+  // A vet appointment is a single dated event — recurring/hourly cadences are
+  // genuinely N/A and must never be offered for it.
+  [ROUTINE_TYPES.VET_APPOINTMENT]: new Set([ROUTINE_FREQUENCY.ONCE]),
+};
+
+// The cadences a routine actually carries. Most types hold one per schedule item;
+// the legacy date-set types carry a single routine-level frequency.
+function collectRoutineCadences(routine) {
+  const itemLists = {
+    [ROUTINE_TYPES.WELLNESS_CHECK]: routine.wellnessCheckItems,
+    [ROUTINE_TYPES.PHOTO_CHECK]: routine.photoCheckSchedule,
+    [ROUTINE_TYPES.FEEDING]: routine.meals,
+    [ROUTINE_TYPES.WALK]: routine.walks,
+    [ROUTINE_TYPES.MEDICAL_CARE]: routine.medicalCareItems,
+  };
+  const items = itemLists[routine.type];
+  if (Array.isArray(items)) {
+    return items.map((i) => i?.frequency).filter(Boolean);
+  }
+  return routine.frequency ? [routine.frequency] : [];
+}
+
+function assertCadenceHonored(routine) {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  if (!routine) return;
+  const support = CADENCE_SUPPORT[routine.type];
+  if (!support || support === "ALL") return;
+  for (const frequency of collectRoutineCadences(routine)) {
+    if (!support.has(frequency)) {
+      throw new Error(
+        `[reminderGenerator] ${routine.type} cannot honor cadence "${frequency}" — ` +
+          `the schedule would silently never fire. Supported: ${[...support].join(", ")}.`,
+      );
+    }
+  }
+}
+
 /**
  * Generate reminders from a routine
  * Creates reminders for the next 7-14 days based on routine schedule
  */
 export function generateRemindersFromRoutine(routine, daysAhead = 14) {
+  assertCadenceHonored(routine);
   if (!routine.isActive || !routine.notificationEnabled) {
     return [];
   }
@@ -153,49 +213,105 @@ function generateFeedingReminders(
       return;
     }
 
-    // Get active days for this specific meal
+    const mealId = meal.id || `${routine.id}_meal_${mealIndex}`;
+    const [hours, minutes] = meal.time.split(":");
+    const frequency = meal.frequency || ROUTINE_FREQUENCY.DAILY;
+
+    const pushMeal = (scheduledTime, id) => {
+      reminders.push({
+        id,
+        routineId: routine.id,
+        mealId: mealId,
+        petId: routine.petId,
+        type: "feeding",
+        title: meal.name || "Meal",
+        description:
+          meal.notes || `Time for ${(meal.name || "meal").toLowerCase()}`,
+        scheduledAt: scheduledTime.toISOString(),
+        nextTriggerAt: scheduledTime.toISOString(),
+        status: REMINDER_STATUS.UPCOMING,
+        priority: "medium",
+        timeSensitive: meal.timeSensitive ?? true,
+        notificationEnabled: meal.reminderEnabled ?? true,
+        relatedTracker: relatedTracker,
+        primaryAction,
+        notes: meal.notes || "",
+        completedAt: null,
+        snoozedUntil: null,
+      });
+    };
+
+    // HOURLY: intra-day interval series — same machinery as the other paths.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(meal, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        meal,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        pushMeal(
+          occ,
+          `reminder_${routine.id}_${mealId}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+        );
+      });
+      return;
+    }
+
+    // Day-pattern set (DAILY/WEEKDAYS/WEEKENDS/CUSTOM), anchored date set
+    // (month-multiple/once), and weekly/biweekly preferred-day matching.
     const mealDays = getMealActiveDays(meal);
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      meal,
+      frequency,
+      endDate,
+      now,
+    );
+    const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
+    const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
+    const preferredDay = meal.preferredDay ?? 6;
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
 
     while (currentDate <= endDate) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
+      let shouldSchedule;
+      if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
+      } else if (isWeekly || isBiweekly) {
+        shouldSchedule = dayOfWeek === preferredDay;
+      } else {
+        // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
+        shouldSchedule = mealDays.includes(dayOfWeek);
+      }
 
-      if (mealDays.includes(dayOfWeek)) {
-        const [hours, minutes] = meal.time.split(":");
+      if (shouldSchedule) {
         const scheduledTime = new Date(currentDate);
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime >= now) {
-          const mealId = meal.id || `${routine.id}_meal_${mealIndex}`;
           const dateStr = currentDate.toISOString().split("T")[0];
-
-          reminders.push({
-            id: `reminder_${routine.id}_${mealId}_${dateStr}`,
-            routineId: routine.id,
-            mealId: mealId,
-            petId: routine.petId,
-            type: "feeding",
-            title: meal.name || "Meal",
-            description:
-              meal.notes || `Time for ${(meal.name || "meal").toLowerCase()}`,
-            scheduledAt: scheduledTime.toISOString(),
-            nextTriggerAt: scheduledTime.toISOString(),
-            status: REMINDER_STATUS.UPCOMING,
-            priority: "medium",
-            timeSensitive: meal.timeSensitive ?? true,
-            notificationEnabled: meal.reminderEnabled ?? true,
-            relatedTracker: relatedTracker,
-            primaryAction,
-            notes: meal.notes || "",
-            completedAt: null,
-            snoozedUntil: null,
-          });
+          pushMeal(scheduledTime, `reminder_${routine.id}_${mealId}_${dateStr}`);
         }
-      }
 
-      currentDate.setDate(currentDate.getDate() + 1);
+        if (isWeekly) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (isBiweekly) {
+          currentDate.setDate(currentDate.getDate() + 14);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
     }
   });
 
@@ -212,60 +328,115 @@ function generateWalkReminders(
   const reminders = [];
   const walks = Array.isArray(routine.walks) ? routine.walks : [];
 
-  let currentDate = new Date(now);
-  currentDate.setHours(0, 0, 0, 0);
+  walks.forEach((walk, index) => {
+    const [hours, minutes] = walk.time.split(":");
+    const frequency = walk.frequency || ROUTINE_FREQUENCY.DAILY;
 
-  while (currentDate <= endDate) {
-    const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
-
-    walks.forEach((walk, index) => {
-      // Get walk-specific schedule
-      const walkDays = getWalkActiveDays(walk);
-
-      // Check if this walk is scheduled for this day
-      if (!walkDays.includes(dayOfWeek)) return;
-
-      const [hours, minutes] = walk.time.split(":");
-      const scheduledTime = new Date(currentDate);
-      scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-      if (scheduledTime >= now) {
-        reminders.push({
-          id: `reminder_${routine.id}_${
-            currentDate.toISOString().split("T")[0]
-          }_${index}`,
-          routineId: routine.id,
-          petId: routine.petId,
-          type: "walk",
-          title: walk.name,
-          description: `Time for ${walk.name.toLowerCase()}`,
-          scheduledAt: scheduledTime.toISOString(),
-          nextTriggerAt: scheduledTime.toISOString(),
-          status: REMINDER_STATUS.UPCOMING,
-          priority: "medium",
-          timeSensitive: walk.timeSensitive ?? routine.timeSensitive ?? true,
-          notificationEnabled:
-            walk.reminderEnabled ?? routine.notificationEnabled ?? true,
-          relatedTracker: relatedTracker,
-          primaryAction,
-          // Walk-specific data for countdown card and start walk flow
-          relatedWalk: {
-            name: walk.name,
-            durationMinutes: walk.durationMinutes || 30,
-            pace: walk.pace || "normal",
-            notes: walk.notes || "",
-          },
-          walkDuration: walk.durationMinutes || 30,
-          walkPace: walk.pace || "normal",
+    const pushWalk = (scheduledTime, id) => {
+      reminders.push({
+        id,
+        routineId: routine.id,
+        petId: routine.petId,
+        type: "walk",
+        title: walk.name,
+        description: `Time for ${walk.name.toLowerCase()}`,
+        scheduledAt: scheduledTime.toISOString(),
+        nextTriggerAt: scheduledTime.toISOString(),
+        status: REMINDER_STATUS.UPCOMING,
+        priority: "medium",
+        timeSensitive: walk.timeSensitive ?? routine.timeSensitive ?? true,
+        notificationEnabled:
+          walk.reminderEnabled ?? routine.notificationEnabled ?? true,
+        relatedTracker: relatedTracker,
+        primaryAction,
+        // Walk-specific data for countdown card and start walk flow
+        relatedWalk: {
+          name: walk.name,
+          durationMinutes: walk.durationMinutes || 30,
+          pace: walk.pace || "normal",
           notes: walk.notes || "",
-          completedAt: null,
-          snoozedUntil: null,
-        });
-      }
-    });
+        },
+        walkDuration: walk.durationMinutes || 30,
+        walkPace: walk.pace || "normal",
+        notes: walk.notes || "",
+        completedAt: null,
+        snoozedUntil: null,
+      });
+    };
 
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
+    // HOURLY: intra-day interval series — same machinery as the other paths.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(walk, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        walk,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        pushWalk(
+          occ,
+          `reminder_${routine.id}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${index}_${hourlyIdSuffix(occ)}`,
+        );
+      });
+      return;
+    }
+
+    // Day-pattern set (DAILY/WEEKDAYS/WEEKENDS/CUSTOM), anchored date set
+    // (month-multiple/once), and weekly/biweekly preferred-day matching.
+    const walkDays = getWalkActiveDays(walk);
+    const cadenceDates = buildCadenceDateSet(
+      routine,
+      walk,
+      frequency,
+      endDate,
+      now,
+    );
+    const isWeekly = frequency === ROUTINE_FREQUENCY.WEEKLY;
+    const isBiweekly = frequency === ROUTINE_FREQUENCY.BIWEEKLY;
+    const preferredDay = walk.preferredDay ?? 6;
+
+    let currentDate = new Date(now);
+    currentDate.setHours(0, 0, 0, 0);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = (currentDate.getDay() + 6) % 7; // Convert to Monday=0
+      let shouldSchedule;
+      if (cadenceDates) {
+        shouldSchedule = cadenceDates.has(currentDate.getTime());
+      } else if (isWeekly || isBiweekly) {
+        shouldSchedule = dayOfWeek === preferredDay;
+      } else {
+        // DAILY / WEEKDAYS / WEEKENDS / CUSTOM
+        shouldSchedule = walkDays.includes(dayOfWeek);
+      }
+
+      if (shouldSchedule) {
+        const scheduledTime = new Date(currentDate);
+        scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (scheduledTime >= now) {
+          const dateStr = currentDate.toISOString().split("T")[0];
+          pushWalk(scheduledTime, `reminder_${routine.id}_${dateStr}_${index}`);
+        }
+
+        if (isWeekly) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (isBiweekly) {
+          currentDate.setDate(currentDate.getDate() + 14);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  });
 
   return reminders;
 }
@@ -364,6 +535,51 @@ function generatePhotoCheckReminders(
     const preferredDay = schedule.preferredDay ?? 6; // Sunday
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+
+    // HOURLY: intra-day interval series — the same machinery as the wellness /
+    // medical-care hourly cadence. Replaces the once-per-day weekday walk.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(schedule, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        schedule,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        reminders.push({
+          id: `reminder_${routine.id}_${schedule.bodyArea}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+          routineId: routine.id,
+          photoCheckScheduleIndex: scheduleIndex,
+          petId: routine.petId,
+          type: "photo_check",
+          title: `${bodyAreaLabel} Check`,
+          description: `Take photo of ${
+            schedule.bodyArea?.replace("_", " ") || "body area"
+          }`,
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.UPCOMING,
+          priority: "medium",
+          timeSensitive: schedule.timeSensitive ?? false,
+          notificationEnabled: schedule.reminderEnabled ?? true,
+          relatedTracker: relatedTracker,
+          relatedBodyArea: schedule.bodyArea,
+          primaryAction,
+          notes: schedule.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Daily photo checks fire every day, ignoring preferredDay (same rule as
     // daily wellness checks).
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
@@ -375,6 +591,8 @@ function generatePhotoCheckReminders(
       endDate,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(schedule, frequency);
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -384,7 +602,9 @@ function generatePhotoCheckReminders(
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
       const matchesDay = cadenceDates
         ? cadenceDates.has(currentDate.getTime())
-        : isDaily || dayOfWeek === preferredDay;
+        : activeDays
+          ? activeDays.includes(dayOfWeek)
+          : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -420,9 +640,9 @@ function generatePhotoCheckReminders(
           });
         }
 
-        // Move to next occurrence based on frequency (date-set cadences walk
-        // day-by-day; the anchored date set governs matching)
-        if (isDaily || cadenceDates) {
+        // Move to next occurrence based on frequency (date-set and day-pattern
+        // cadences walk day-by-day; their predicate governs matching)
+        if (isDaily || cadenceDates || activeDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
@@ -770,23 +990,50 @@ function generateMedicalCareReminders(routine, now, endDate) {
       snoozedUntil: null,
     };
 
-    // --- Daily-schedule items: medication, supplement ---
+    const frequency = item.frequency;
+
+    // --- HOURLY (every N hours): an intra-day interval series — the same machinery
+    // as the wellness hourly cadence. Replaces the per-day dose / once logic. ---
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const [h, m] = medicalCareHourlyAnchorTime(item).split(":");
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(h),
+        parseInt(m),
+        now,
+      );
+      hourlyOccurrences(anchor, intervalHours, now, endDate, {
+        includeEnd: true,
+      }).forEach((occ) => {
+        reminders.push({
+          ...baseFields,
+          id: medicalCareHourlyInstanceId(routine.id, item.id, occ),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+        });
+      });
+      return;
+    }
+
+    // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
       const startDate = item.startDate ? new Date(item.startDate) : new Date();
       const itemEndDate = item.endDate ? new Date(item.endDate) : endDate;
 
-      let currentDate = new Date(Math.max(now.getTime(), startDate.getTime()));
-      currentDate.setHours(0, 0, 0, 0);
-
-      while (currentDate <= endDate && currentDate <= itemEndDate) {
+      // Emit every dose of one cadence day (>= now). Shared by the back-compat
+      // daily walk and the recurring-cadence path so the id (a durable dismissal
+      // key) is derived identically in both.
+      const emitDoseDay = (dayDate) => {
         times.forEach((time, timeIdx) => {
           const [hours, minutes] = time.split(":");
-          const scheduledTime = new Date(currentDate);
+          const scheduledTime = new Date(dayDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
           if (scheduledTime >= now) {
-            const dateStr = currentDate.toISOString().split("T")[0];
+            const dateStr = dayDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,
               id: `reminder_${routine.id}_${item.id}_${dateStr}_${timeIdx}`,
@@ -795,8 +1042,33 @@ function generateMedicalCareReminders(routine, now, endDate) {
             });
           }
         });
-        currentDate.setDate(currentDate.getDate() + 1);
+      };
+
+      // Back-compat / DAILY: a dose every day across the course window. Kept
+      // BYTE-FOR-BYTE (same currentDate walk and bounds as before).
+      if (!frequency || frequency === ROUTINE_FREQUENCY.DAILY) {
+        let currentDate = new Date(Math.max(now.getTime(), startDate.getTime()));
+        currentDate.setHours(0, 0, 0, 0);
+
+        while (currentDate <= endDate && currentDate <= itemEndDate) {
+          emitDoseDay(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return;
       }
+
+      // Recurring cadence: gate the dose days by the shared schedule, anchored on
+      // the course start, never past the course end or the horizon.
+      const anchor = getScheduleAnchor(routine, item, now);
+      const rangeStart = new Date(Math.max(now.getTime(), startDate.getTime()));
+      const horizonEnd = itemEndDate < endDate ? itemEndDate : endDate;
+      medicalCareOccurrences(
+        item,
+        frequency,
+        anchor,
+        rangeStart,
+        horizonEnd,
+      ).forEach((day) => emitDoseDay(day));
       return;
     }
 
@@ -807,30 +1079,70 @@ function generateMedicalCareReminders(routine, now, endDate) {
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
 
-    // Vaccine reminder timing offset
-    let triggerTime = new Date(nextDue);
-    if (careType === "vaccine" && item.reminderTiming) {
-      const offsetDays = {
-        on_due: 0,
-        "1w": -7,
-        "2w": -14,
-        "1m": -30,
-      };
-      const days = offsetDays[item.reminderTiming] ?? 0;
-      triggerTime.setDate(triggerTime.getDate() + days);
-    }
-    // Default scheduled time of day for date-based items
-    triggerTime.setHours(9, 0, 0, 0);
+    // Back-compat / ONCE: a single occurrence at nextDue. Kept BYTE-FOR-BYTE
+    // (including the legacy UTC-parsed nextDue) — this id is a durable dismissal
+    // key, so the no-cadence path must not shift.
+    if (!frequency || isOnceFrequency(frequency)) {
+      // Vaccine reminder timing offset
+      let triggerTime = new Date(nextDue);
+      if (careType === "vaccine" && item.reminderTiming) {
+        const offsetDays = {
+          on_due: 0,
+          "1w": -7,
+          "2w": -14,
+          "1m": -30,
+        };
+        const days = offsetDays[item.reminderTiming] ?? 0;
+        triggerTime.setDate(triggerTime.getDate() + days);
+      }
+      // Default scheduled time of day for date-based items
+      triggerTime.setHours(9, 0, 0, 0);
 
-    if (triggerTime >= now && triggerTime <= endDate) {
-      const dateStr = triggerTime.toISOString().split("T")[0];
-      reminders.push({
-        ...baseFields,
-        id: `reminder_${routine.id}_${item.id}_${dateStr}`,
-        scheduledAt: triggerTime.toISOString(),
-        nextTriggerAt: triggerTime.toISOString(),
-      });
+      if (triggerTime >= now && triggerTime <= endDate) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+      return;
     }
+
+    // Recurring cadence (daily / weekly / biweekly / month-multiple / weekday /
+    // weekend / custom): occurrences are phase-anchored on nextDue and parsed as a
+    // LOCAL date so the schedule is timezone-robust. The vaccine reminder-timing
+    // offset shifts each occurrence's trigger off its due date.
+    const anchor = parseLocalDate(nextDueStr) || nextDue;
+    const offsetDays = dateBasedReminderOffsetDays(item);
+    // A "remind N days before due" offset can pull an occurrence just past the
+    // horizon into range, so widen the occurrence horizon by that offset and let
+    // the emit-time bounds do the precise cut.
+    const occHorizon = new Date(endDate);
+    occHorizon.setDate(occHorizon.getDate() + Math.max(0, -offsetDays));
+
+    medicalCareOccurrences(
+      item,
+      frequency,
+      anchor,
+      startOfDay(now),
+      occHorizon,
+    ).forEach((due) => {
+      const triggerTime = new Date(due);
+      triggerTime.setDate(triggerTime.getDate() + offsetDays);
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime >= now && triggerTime <= endDate) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+    });
   });
 
   return reminders;
@@ -915,6 +1227,8 @@ function generateWellnessCheckReminders(
       endDate,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(item, frequency);
 
     let currentDate = new Date(now);
     currentDate.setHours(0, 0, 0, 0);
@@ -931,6 +1245,8 @@ function generateWellnessCheckReminders(
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
+      } else if (activeDays) {
+        shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
@@ -1267,6 +1583,110 @@ function buildCadenceDateSet(routine, item, frequency, rangeEnd, fallback) {
   return null;
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Weekday set (Mon=0) for a day-pattern cadence; null means the cadence is not a
+// day pattern (the caller matches it another way — e.g. DAILY every day, or a
+// weekday/date-set match). Mirrors getMealActiveDays so the patterns match the
+// rest of the app. Shared by every item-driven generator path.
+function dayPatternActiveDays(item, frequency) {
+  if (frequency === ROUTINE_FREQUENCY.WEEKDAYS) return [0, 1, 2, 3, 4];
+  if (frequency === ROUTINE_FREQUENCY.WEEKENDS) return [5, 6];
+  if (frequency === ROUTINE_FREQUENCY.CUSTOM) {
+    return Array.isArray(item.days) ? item.days : [0, 1, 2, 3, 4, 5, 6];
+  }
+  return null;
+}
+
+// Occurrence dates (local midnight) of a recurring medical-care schedule within
+// [rangeStart, rangeEnd] inclusive, phase-anchored at `anchor` (the item's due
+// date). One generator serves both the forward and overdue paths so they
+// enumerate the identical schedule. Month-multiple cadences step off the anchor's
+// day-of-month (clamped to short months); weekly/biweekly hold the anchor's
+// weekday + week phase; the day patterns (daily/weekday/weekend/custom) match by
+// weekday across the range. The anchor may sit in the future (a not-yet-due
+// item), so month cadences walk their index backward to reach rangeStart.
+function medicalCareOccurrences(item, frequency, anchor, rangeStart, rangeEnd) {
+  const out = [];
+  const start = startOfDay(rangeStart);
+  if (rangeEnd < start) return out;
+  const anchorDay = startOfDay(anchor);
+
+  if (isMonthCadenceFrequency(frequency)) {
+    const step = MONTH_CADENCE_STEPS[frequency];
+    let n = 0;
+    while (monthCadenceOccurrence(anchorDay, step, n - 1) >= start) n--;
+    while (monthCadenceOccurrence(anchorDay, step, n) < start) n++;
+    for (; ; n++) {
+      const occ = monthCadenceOccurrence(anchorDay, step, n);
+      if (occ > rangeEnd) break;
+      out.push(occ);
+    }
+    return out;
+  }
+
+  const stepDays =
+    frequency === ROUTINE_FREQUENCY.WEEKLY
+      ? 7
+      : frequency === ROUTINE_FREQUENCY.BIWEEKLY
+        ? 14
+        : 0;
+  const activeDays = stepDays ? null : dayPatternActiveDays(item, frequency);
+
+  for (
+    let cur = new Date(start);
+    cur <= rangeEnd;
+    cur.setDate(cur.getDate() + 1)
+  ) {
+    let match;
+    if (stepDays) {
+      // Whole-day delta from the anchor (Math.round absorbs any DST hour); a
+      // multiple of the step lands on the anchor's weekday and week phase.
+      const diff = Math.round((cur.getTime() - anchorDay.getTime()) / MS_PER_DAY);
+      match = diff % stepDays === 0;
+    } else {
+      const dow = (cur.getDay() + 6) % 7;
+      match = !activeDays || activeDays.includes(dow);
+    }
+    if (match) out.push(new Date(cur));
+  }
+  return out;
+}
+
+// Vaccine "remind me before due" offset in days (≤ 0). Date-based medical items
+// fire at this offset from the due date; everything else fires on the due date.
+const VACCINE_REMINDER_OFFSETS = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
+
+function dateBasedReminderOffsetDays(item) {
+  if (item.type === "vaccine" && item.reminderTiming) {
+    return VACCINE_REMINDER_OFFSETS[item.reminderTiming] ?? 0;
+  }
+  return 0;
+}
+
+// Time-of-day anchor for an hourly medical-care item: an explicit preferredTime,
+// else the first scheduled dose time, else the date-based default (09:00).
+function medicalCareHourlyAnchorTime(item) {
+  if (item.preferredTime) return item.preferredTime;
+  if (Array.isArray(item.times) && item.times[0]) return item.times[0];
+  return "09:00";
+}
+
+// The `HHMM` local-time fragment appended to a date-only base id for HOURLY
+// occurrences (the only cadence with sibling occurrences within a day).
+function hourlyIdSuffix(occurrence) {
+  const hh = String(occurrence.getHours()).padStart(2, "0");
+  const mm = String(occurrence.getMinutes()).padStart(2, "0");
+  return `${hh}${mm}`;
+}
+
+// Hourly medical-care instance id — the locked `_HHMM` intra-day suffix, keyed on
+// the item id like every other medical-care id.
+function medicalCareHourlyInstanceId(routineId, itemId, occurrence) {
+  const dateStr = startOfDay(occurrence).toISOString().split("T")[0];
+  return `reminder_${routineId}_${itemId}_${dateStr}_${hourlyIdSuffix(occurrence)}`;
+}
+
 // =========================================================================
 // Intra-day interval cadence — HOURLY fires every `intervalHours` hours from
 // the schedule's start anchor datetime (anchor day-of-month at the preferred
@@ -1428,6 +1848,7 @@ export function generateOverdueInstances(
   routine,
   { lookbackDays = 30, now = new Date() } = {},
 ) {
+  assertCadenceHonored(routine);
   if (!routine || !routine.isActive || !routine.notificationEnabled) {
     return [];
   }
@@ -1550,6 +1971,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
       now,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(item, frequency);
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1565,6 +1988,8 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
         frequency === ROUTINE_FREQUENCY.BIWEEKLY
       ) {
         shouldSchedule = dayOfWeek === preferredDay;
+      } else if (activeDays) {
+        shouldSchedule = activeDays.includes(dayOfWeek);
       } else if (cadenceDates) {
         shouldSchedule = cadenceDates.has(currentDate.getTime());
       }
@@ -1643,19 +2068,48 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
       snoozedUntil: null,
     };
 
-    // --- Daily-schedule items: medication, supplement ---
+    const frequency = item.frequency;
+
+    // --- HOURLY (every N hours): overdue is capped to TODAY only (never the
+    // lookback window) — a dose missed earlier today is actionable, one missed
+    // weeks ago would flood the list. Same machinery as wellness hourly overdue. ---
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(item, routine);
+      const [h, m] = medicalCareHourlyAnchorTime(item).split(":");
+      const anchor = getHourlyAnchor(
+        routine,
+        item,
+        parseInt(h),
+        parseInt(m),
+        now,
+      );
+      const hourlyStart = clampOverdueStart(startOfDay(now), routine, item);
+      hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
+        includeEnd: false,
+      }).forEach((occ) => {
+        reminders.push({
+          ...baseFields,
+          id: medicalCareHourlyInstanceId(routine.id, item.id, occ),
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+        });
+      });
+      return;
+    }
+
+    // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
       const effectiveStart = clampOverdueStart(windowStart, routine, item);
       // Parity with the future generator: don't emit doses after the course ended.
       const itemEnd = item.endDate ? new Date(item.endDate) : null;
       const itemEndValid = itemEnd && !isNaN(itemEnd.getTime());
-      let currentDate = startOfDay(effectiveStart);
 
-      while (currentDate < now) {
+      // Emit every past, in-window, pre-course-end dose of one cadence day.
+      const emitOverdueDoseDay = (dayDate) => {
         times.forEach((time, timeIdx) => {
           const [hours, minutes] = time.split(":");
-          const scheduledTime = new Date(currentDate);
+          const scheduledTime = new Date(dayDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
           if (
@@ -1663,7 +2117,7 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
             scheduledTime >= effectiveStart &&
             (!itemEndValid || scheduledTime <= itemEnd)
           ) {
-            const dateStr = currentDate.toISOString().split("T")[0];
+            const dateStr = dayDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,
               id: `reminder_${routine.id}_${item.id}_${dateStr}_${timeIdx}`,
@@ -1672,8 +2126,28 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
             });
           }
         });
-        currentDate.setDate(currentDate.getDate() + 1);
+      };
+
+      // Back-compat / DAILY — a missed dose every day in the window. BYTE-FOR-BYTE.
+      if (!frequency || frequency === ROUTINE_FREQUENCY.DAILY) {
+        let currentDate = startOfDay(effectiveStart);
+        while (currentDate < now) {
+          emitOverdueDoseDay(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return;
       }
+
+      // Recurring cadence — same anchored schedule as the forward path, enumerated
+      // backward across the lookback window.
+      const anchor = getScheduleAnchor(routine, item, now);
+      medicalCareOccurrences(
+        item,
+        frequency,
+        anchor,
+        effectiveStart,
+        now,
+      ).forEach((day) => emitOverdueDoseDay(day));
       return;
     }
 
@@ -1684,24 +2158,60 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
     const nextDue = new Date(nextDueStr);
     if (isNaN(nextDue.getTime())) return;
 
-    let triggerTime = new Date(nextDue);
-    if (careType === "vaccine" && item.reminderTiming) {
-      const offsetDays = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
-      const days = offsetDays[item.reminderTiming] ?? 0;
-      triggerTime.setDate(triggerTime.getDate() + days);
-    }
-    triggerTime.setHours(9, 0, 0, 0);
-
     const effectiveStart = clampOverdueStart(windowStart, routine, item);
-    if (triggerTime < now && triggerTime >= effectiveStart) {
-      const dateStr = triggerTime.toISOString().split("T")[0];
-      reminders.push({
-        ...baseFields,
-        id: `reminder_${routine.id}_${item.id}_${dateStr}`,
-        scheduledAt: triggerTime.toISOString(),
-        nextTriggerAt: triggerTime.toISOString(),
-      });
+
+    // Back-compat / ONCE — single past occurrence, byte-for-byte legacy behavior.
+    if (!frequency || isOnceFrequency(frequency)) {
+      let triggerTime = new Date(nextDue);
+      if (careType === "vaccine" && item.reminderTiming) {
+        const offsetDays = { on_due: 0, "1w": -7, "2w": -14, "1m": -30 };
+        const days = offsetDays[item.reminderTiming] ?? 0;
+        triggerTime.setDate(triggerTime.getDate() + days);
+      }
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime < now && triggerTime >= effectiveStart) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+      return;
     }
+
+    // Recurring cadence — same anchored schedule as the forward path, enumerated
+    // backward across the lookback window.
+    const anchor = parseLocalDate(nextDueStr) || nextDue;
+    const offsetDays = dateBasedReminderOffsetDays(item);
+    // A "remind N days before due" offset can put a still-future occurrence's
+    // trigger in the past, so widen the search past `now` by that offset.
+    const occEnd = new Date(now);
+    occEnd.setDate(occEnd.getDate() + Math.max(0, -offsetDays));
+
+    medicalCareOccurrences(
+      item,
+      frequency,
+      anchor,
+      effectiveStart,
+      occEnd,
+    ).forEach((due) => {
+      const triggerTime = new Date(due);
+      triggerTime.setDate(triggerTime.getDate() + offsetDays);
+      triggerTime.setHours(9, 0, 0, 0);
+
+      if (triggerTime < now && triggerTime >= effectiveStart) {
+        const dateStr = triggerTime.toISOString().split("T")[0];
+        reminders.push({
+          ...baseFields,
+          id: `reminder_${routine.id}_${item.id}_${dateStr}`,
+          scheduledAt: triggerTime.toISOString(),
+          nextTriggerAt: triggerTime.toISOString(),
+        });
+      }
+    });
   });
 
   return reminders;
@@ -1733,6 +2243,52 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
     const preferredDay = schedule.preferredDay ?? 6;
     const [hours, minutes] = (schedule.preferredTime || "10:00").split(":");
     const frequency = schedule.frequency || ROUTINE_FREQUENCY.WEEKLY;
+
+    // HOURLY: overdue capped to TODAY only (same as wellness / medical-care
+    // hourly overdue), clamped to the routine/schedule start.
+    if (isHourlyFrequency(frequency)) {
+      const intervalHours = resolveIntervalHours(schedule, routine);
+      const anchor = getHourlyAnchor(
+        routine,
+        schedule,
+        parseInt(hours),
+        parseInt(minutes),
+        now,
+      );
+      const hourlyStart = clampOverdueStart(startOfDay(now), routine, schedule);
+      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
+      hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
+        includeEnd: false,
+      }).forEach((occ) => {
+        reminders.push({
+          id: `reminder_${routine.id}_${schedule.bodyArea}_${
+            startOfDay(occ).toISOString().split("T")[0]
+          }_${hourlyIdSuffix(occ)}`,
+          routineId: routine.id,
+          photoCheckScheduleIndex: scheduleIndex,
+          petId: routine.petId,
+          type: "photo_check",
+          title: `${bodyAreaLabel} Check`,
+          description: `Take photo of ${
+            schedule.bodyArea?.replace("_", " ") || "body area"
+          }`,
+          scheduledAt: occ.toISOString(),
+          nextTriggerAt: occ.toISOString(),
+          status: REMINDER_STATUS.OVERDUE,
+          priority: "medium",
+          timeSensitive: schedule.timeSensitive ?? false,
+          notificationEnabled: schedule.reminderEnabled ?? true,
+          relatedTracker: "photo_check",
+          relatedBodyArea: schedule.bodyArea,
+          primaryAction: "Take photo",
+          notes: schedule.notes || "",
+          completedAt: null,
+          snoozedUntil: null,
+        });
+      });
+      return;
+    }
+
     // Same rule as the upcoming generator: daily ignores preferredDay.
     const isDaily = frequency === ROUTINE_FREQUENCY.DAILY;
     // Month-multiple and ONCE cadences match by an anchored date set (same set as
@@ -1744,6 +2300,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
       now,
       now,
     );
+    // weekday / weekend / custom cadences match by a weekday set (null otherwise).
+    const activeDays = dayPatternActiveDays(schedule, frequency);
 
     const effectiveStart = clampOverdueStart(windowStart, routine);
     let currentDate = startOfDay(effectiveStart);
@@ -1752,7 +2310,9 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
       const dayOfWeek = (currentDate.getDay() + 6) % 7;
       const matchesDay = cadenceDates
         ? cadenceDates.has(currentDate.getTime())
-        : isDaily || dayOfWeek === preferredDay;
+        : activeDays
+          ? activeDays.includes(dayOfWeek)
+          : isDaily || dayOfWeek === preferredDay;
 
       if (matchesDay) {
         const scheduledTime = new Date(currentDate);
@@ -1787,7 +2347,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           });
         }
 
-        if (isDaily || cadenceDates) {
+        if (isDaily || cadenceDates || activeDays) {
           currentDate.setDate(currentDate.getDate() + 1);
         } else if (frequency === ROUTINE_FREQUENCY.WEEKLY) {
           currentDate.setDate(currentDate.getDate() + 7);
