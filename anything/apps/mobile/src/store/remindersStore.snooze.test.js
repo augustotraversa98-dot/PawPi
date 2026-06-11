@@ -8,6 +8,7 @@
 jest.mock("@/utils/notifications", () => ({
   scheduleReminderNotification: jest.fn(async () => "notif-1"),
   cancelNotification: jest.fn(async () => {}),
+  resolveReminderTiming: jest.fn(() => null),
 }));
 jest.mock("./socialPetStore", () => ({
   __esModule: true,
