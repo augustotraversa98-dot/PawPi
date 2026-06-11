@@ -2056,7 +2056,7 @@ function generateOverdueWellnessChecks(routine, now, windowStart) {
     const multiDays = weeklyMultiDays(item, frequency);
     const biweeklyAnchor = multiDays ? getScheduleAnchor(routine, item, now) : null;
 
-    const effectiveStart = clampOverdueStart(windowStart, routine);
+    const effectiveStart = clampOverdueStart(windowStart, routine, item);
     let currentDate = startOfDay(effectiveStart);
 
     while (currentDate < now) {
@@ -2399,7 +2399,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
       ? getScheduleAnchor(routine, schedule, now)
       : null;
 
-    const effectiveStart = clampOverdueStart(windowStart, routine);
+    const effectiveStart = clampOverdueStart(windowStart, routine, schedule);
     let currentDate = startOfDay(effectiveStart);
 
     while (currentDate < now) {

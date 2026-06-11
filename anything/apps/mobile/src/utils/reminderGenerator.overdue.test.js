@@ -314,3 +314,180 @@ describe("generateOverdueInstances — photo check", () => {
     expect(allIdsUnique(reminders)).toBe(true);
   });
 });
+
+// Regression for the #51/#55 early-reminder seam: the two NON-HOURLY overdue
+// paths (photo + wellness) now clamp the backward enumeration to the
+// item/schedule startDate, exactly like medical-care and every hourly path
+// already did. A future-dated item must invent ZERO pre-start overdue
+// occurrences; a past startDate still surfaces its missed slots; an item with
+// NO startDate is byte-for-byte unchanged.
+describe("generateOverdueInstances — non-hourly clamp to schedule/item startDate", () => {
+  const daysAgo = (n) => {
+    const d = new Date(NOW);
+    d.setDate(d.getDate() - n);
+    return d.toISOString();
+  };
+  const dateOnly = (y, m, d) => new Date(y, m, d).toISOString().split("T")[0];
+
+  // (a) Device repro: created TODAY, item.startDate = tomorrow evening, Daily
+  // cadence, evening time, clock advanced PAST tonight. Before the clamp the
+  // backward walk invented an OVERDUE for TODAY's evening slot (which is before
+  // the real start). It must now be empty.
+  describe("(a) future-dated startDate yields no pre-start phantom", () => {
+    const TONIGHT = new Date(2026, 5, 10, 21, 0, 0); // Wed 06-10 21:00, past 20:00
+    const createdToday = new Date(2026, 5, 10, 7, 0, 0).toISOString();
+    const tomorrowEvening = new Date(2026, 5, 11, 20, 0, 0).toISOString();
+
+    beforeAll(() => jest.setSystemTime(TONIGHT));
+    afterAll(() => jest.setSystemTime(NOW));
+
+    it("photo check ⇒ empty overdue (no phantom TODAY)", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.PHOTO_CHECK,
+        createdAt: createdToday,
+        photoCheckSchedule: [
+          {
+            bodyArea: "paws",
+            frequency: ROUTINE_FREQUENCY.DAILY,
+            preferredTime: "20:00",
+            startDate: tomorrowEvening,
+          },
+        ],
+      });
+      expect(generateOverdueInstances(routine)).toEqual([]);
+    });
+
+    it("wellness check ⇒ empty overdue (no phantom TODAY)", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.WELLNESS_CHECK,
+        createdAt: createdToday,
+        wellnessCheckItems: [
+          {
+            checkType: "general",
+            frequency: ROUTINE_FREQUENCY.DAILY,
+            preferredTime: "20:00",
+            startDate: tomorrowEvening,
+          },
+        ],
+      });
+      expect(generateOverdueInstances(routine)).toEqual([]);
+    });
+  });
+
+  // (b) A startDate in the PAST with unresolved past occurrences still surfaces
+  // every missed slot — no over-suppression. Routine is old; the item/schedule
+  // started 3 days ago at 10:00, so 06-07/06-08/06-09 are overdue (06-10 10:00
+  // is still ahead of the 08:00 NOW).
+  describe("(b) past startDate still surfaces missed occurrences", () => {
+    it("photo check enumerates post-start missed days", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.PHOTO_CHECK,
+        createdAt: daysAgo(20),
+        photoCheckSchedule: [
+          {
+            bodyArea: "paws",
+            frequency: ROUTINE_FREQUENCY.DAILY,
+            preferredTime: "10:00",
+            startDate: new Date(2026, 5, 7, 10, 0, 0).toISOString(),
+          },
+        ],
+      });
+
+      const reminders = generateOverdueInstances(routine);
+      expect(reminders.map((r) => r.scheduledAt)).toEqual(
+        [
+          new Date(2026, 5, 7, 10, 0, 0),
+          new Date(2026, 5, 8, 10, 0, 0),
+          new Date(2026, 5, 9, 10, 0, 0),
+        ].map((d) => d.toISOString()),
+      );
+      expect(
+        reminders.every(
+          (r) => new Date(r.scheduledAt) >= new Date(2026, 5, 7, 10, 0, 0),
+        ),
+      ).toBe(true);
+    });
+
+    it("wellness check enumerates post-start missed days", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.WELLNESS_CHECK,
+        createdAt: daysAgo(20),
+        wellnessCheckItems: [
+          {
+            checkType: "general",
+            frequency: ROUTINE_FREQUENCY.DAILY,
+            preferredTime: "10:00",
+            startDate: new Date(2026, 5, 7, 10, 0, 0).toISOString(),
+          },
+        ],
+      });
+
+      const reminders = generateOverdueInstances(routine);
+      expect(reminders.map((r) => r.scheduledAt)).toEqual(
+        [
+          new Date(2026, 5, 7, 10, 0, 0),
+          new Date(2026, 5, 8, 10, 0, 0),
+          new Date(2026, 5, 9, 10, 0, 0),
+        ].map((d) => d.toISOString()),
+      );
+      expect(
+        reminders.every(
+          (r) => new Date(r.scheduledAt) >= new Date(2026, 5, 7, 10, 0, 0),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  // (c) An item with NO startDate behaves byte-for-byte as before (clamp falls
+  // back to createdAt). Pin exact ids + scheduledAt so the dismissal-key scheme
+  // is provably untouched.
+  describe("(c) no startDate ⇒ output identical to before (pinned ids)", () => {
+    it("photo check pins ids/scheduledAt off createdAt", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.PHOTO_CHECK,
+        createdAt: daysAgo(3), // 06-07 08:00
+        photoCheckSchedule: [
+          { bodyArea: "paws", frequency: ROUTINE_FREQUENCY.DAILY, preferredTime: "10:00" },
+        ],
+      });
+
+      const reminders = generateOverdueInstances(routine);
+      expect(reminders.map((r) => r.id)).toEqual([
+        `reminder_100_paws_${dateOnly(2026, 5, 7)}`,
+        `reminder_100_paws_${dateOnly(2026, 5, 8)}`,
+        `reminder_100_paws_${dateOnly(2026, 5, 9)}`,
+      ]);
+      expect(reminders.map((r) => r.scheduledAt)).toEqual(
+        [
+          new Date(2026, 5, 7, 10, 0, 0),
+          new Date(2026, 5, 8, 10, 0, 0),
+          new Date(2026, 5, 9, 10, 0, 0),
+        ].map((d) => d.toISOString()),
+      );
+    });
+
+    it("wellness check pins ids/scheduledAt off createdAt", () => {
+      const routine = makeRoutine({
+        type: ROUTINE_TYPES.WELLNESS_CHECK,
+        createdAt: daysAgo(3), // 06-07 08:00
+        wellnessCheckItems: [
+          { checkType: "general", frequency: ROUTINE_FREQUENCY.DAILY, preferredTime: "10:00" },
+        ],
+      });
+
+      const reminders = generateOverdueInstances(routine);
+      expect(reminders.map((r) => r.id)).toEqual([
+        `reminder_100_general_0_${dateOnly(2026, 5, 7)}`,
+        `reminder_100_general_0_${dateOnly(2026, 5, 8)}`,
+        `reminder_100_general_0_${dateOnly(2026, 5, 9)}`,
+      ]);
+      expect(reminders.map((r) => r.scheduledAt)).toEqual(
+        [
+          new Date(2026, 5, 7, 10, 0, 0),
+          new Date(2026, 5, 8, 10, 0, 0),
+          new Date(2026, 5, 9, 10, 0, 0),
+        ].map((d) => d.toISOString()),
+      );
+    });
+  });
+});
