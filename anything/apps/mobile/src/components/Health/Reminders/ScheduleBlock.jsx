@@ -6,6 +6,7 @@ import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import CadenceFrequencySelector, {
   CADENCE_OPTIONS_FULL,
+  CADENCE_LABELS,
 } from "./CadenceFrequencySelector";
 import DayChips from "./DayChips";
 
@@ -195,7 +196,17 @@ export default function ScheduleBlock({
   const schedule = value || defaultSchedule();
   const { frequency } = schedule;
 
+  // Local UI-only state: the Frequency list starts collapsed (a value is always
+  // set) and shows just the header + current label, iOS-Reminders style. This
+  // never touches the emitted schedule object.
+  const [freqExpanded, setFreqExpanded] = React.useState(false);
+
   const set = (patch) => onChange({ ...schedule, ...patch });
+
+  const selectFrequency = (freq) => {
+    onChange(applyFrequencyChange(schedule, freq));
+    setFreqExpanded(false); // collapse back to the header after picking
+  };
 
   return (
     <View style={style}>
@@ -220,16 +231,45 @@ export default function ScheduleBlock({
         />
       </View>
 
-      {/* Frequency */}
-      <SectionLabel>Frequency</SectionLabel>
-      <CadenceFrequencySelector
-        value={frequency}
-        onChange={(freq) => onChange(applyFrequencyChange(schedule, freq))}
-        options={CADENCE_OPTIONS_FULL}
-        color={color}
-        style={{ marginBottom: 16 }}
-        testID={`${testID}-frequency`}
-      />
+      {/* Frequency (collapsible, iOS-Reminders style) — a tappable header shows
+          the current selection's label; tapping toggles the full list. */}
+      <TouchableOpacity
+        testID={`${testID}-frequency-toggle`}
+        onPress={() => setFreqExpanded((e) => !e)}
+        accessibilityRole="button"
+        activeOpacity={0.7}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: freqExpanded ? 8 : 16,
+        }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>
+          Frequency
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text
+            testID={`${testID}-frequency-value`}
+            style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
+          >
+            {CADENCE_LABELS[frequency] ?? frequency}
+          </Text>
+          <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+            {freqExpanded ? "▲" : "▼"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+      {freqExpanded && (
+        <CadenceFrequencySelector
+          value={frequency}
+          onChange={selectFrequency}
+          options={CADENCE_OPTIONS_FULL}
+          color={color}
+          style={{ marginBottom: 16 }}
+          testID={`${testID}-frequency`}
+        />
+      )}
 
       {/* Hourly → interval presets */}
       {frequency === ROUTINE_FREQUENCY.HOURLY && (
