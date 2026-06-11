@@ -50,6 +50,8 @@ export const ROUTINE_FREQUENCY = {
   EVERY_6_MONTHS: "every_6_months",
   YEARLY: "yearly",
   CUSTOM: "custom",
+  // Non-repeating — fires exactly once and never recurs (iOS "Never").
+  ONCE: "once",
 };
 
 export const DAYS_OF_WEEK = {
