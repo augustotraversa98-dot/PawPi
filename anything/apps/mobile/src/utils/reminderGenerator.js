@@ -770,23 +770,24 @@ function generateMedicalCareReminders(routine, now, endDate) {
       snoozedUntil: null,
     };
 
-    // --- Daily-schedule items: medication, supplement ---
+    // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
       const startDate = item.startDate ? new Date(item.startDate) : new Date();
       const itemEndDate = item.endDate ? new Date(item.endDate) : endDate;
+      const frequency = item.frequency;
 
-      let currentDate = new Date(Math.max(now.getTime(), startDate.getTime()));
-      currentDate.setHours(0, 0, 0, 0);
-
-      while (currentDate <= endDate && currentDate <= itemEndDate) {
+      // Emit every dose of one cadence day (>= now). Shared by the back-compat
+      // daily walk and the recurring-cadence path so the id (a durable dismissal
+      // key) is derived identically in both.
+      const emitDoseDay = (dayDate) => {
         times.forEach((time, timeIdx) => {
           const [hours, minutes] = time.split(":");
-          const scheduledTime = new Date(currentDate);
+          const scheduledTime = new Date(dayDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
           if (scheduledTime >= now) {
-            const dateStr = currentDate.toISOString().split("T")[0];
+            const dateStr = dayDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,
               id: `reminder_${routine.id}_${item.id}_${dateStr}_${timeIdx}`,
@@ -795,8 +796,33 @@ function generateMedicalCareReminders(routine, now, endDate) {
             });
           }
         });
-        currentDate.setDate(currentDate.getDate() + 1);
+      };
+
+      // Back-compat / DAILY: a dose every day across the course window. Kept
+      // BYTE-FOR-BYTE (same currentDate walk and bounds as before).
+      if (!frequency || frequency === ROUTINE_FREQUENCY.DAILY) {
+        let currentDate = new Date(Math.max(now.getTime(), startDate.getTime()));
+        currentDate.setHours(0, 0, 0, 0);
+
+        while (currentDate <= endDate && currentDate <= itemEndDate) {
+          emitDoseDay(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return;
       }
+
+      // Recurring cadence: gate the dose days by the shared schedule, anchored on
+      // the course start, never past the course end or the horizon.
+      const anchor = getScheduleAnchor(routine, item, now);
+      const rangeStart = new Date(Math.max(now.getTime(), startDate.getTime()));
+      const horizonEnd = itemEndDate < endDate ? itemEndDate : endDate;
+      medicalCareOccurrences(
+        item,
+        frequency,
+        anchor,
+        rangeStart,
+        horizonEnd,
+      ).forEach((day) => emitDoseDay(day));
       return;
     }
 
@@ -1765,19 +1791,20 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
       snoozedUntil: null,
     };
 
-    // --- Daily-schedule items: medication, supplement ---
+    // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
+      const frequency = item.frequency;
       const effectiveStart = clampOverdueStart(windowStart, routine, item);
       // Parity with the future generator: don't emit doses after the course ended.
       const itemEnd = item.endDate ? new Date(item.endDate) : null;
       const itemEndValid = itemEnd && !isNaN(itemEnd.getTime());
-      let currentDate = startOfDay(effectiveStart);
 
-      while (currentDate < now) {
+      // Emit every past, in-window, pre-course-end dose of one cadence day.
+      const emitOverdueDoseDay = (dayDate) => {
         times.forEach((time, timeIdx) => {
           const [hours, minutes] = time.split(":");
-          const scheduledTime = new Date(currentDate);
+          const scheduledTime = new Date(dayDate);
           scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
           if (
@@ -1785,7 +1812,7 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
             scheduledTime >= effectiveStart &&
             (!itemEndValid || scheduledTime <= itemEnd)
           ) {
-            const dateStr = currentDate.toISOString().split("T")[0];
+            const dateStr = dayDate.toISOString().split("T")[0];
             reminders.push({
               ...baseFields,
               id: `reminder_${routine.id}_${item.id}_${dateStr}_${timeIdx}`,
@@ -1794,8 +1821,28 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
             });
           }
         });
-        currentDate.setDate(currentDate.getDate() + 1);
+      };
+
+      // Back-compat / DAILY — a missed dose every day in the window. BYTE-FOR-BYTE.
+      if (!frequency || frequency === ROUTINE_FREQUENCY.DAILY) {
+        let currentDate = startOfDay(effectiveStart);
+        while (currentDate < now) {
+          emitOverdueDoseDay(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return;
       }
+
+      // Recurring cadence — same anchored schedule as the forward path, enumerated
+      // backward across the lookback window.
+      const anchor = getScheduleAnchor(routine, item, now);
+      medicalCareOccurrences(
+        item,
+        frequency,
+        anchor,
+        effectiveStart,
+        now,
+      ).forEach((day) => emitOverdueDoseDay(day));
       return;
     }
 
