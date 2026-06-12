@@ -173,6 +173,19 @@ export function resolveReminderTiming(reminder, routine) {
       const schedule = schedules[reminder.photoCheckScheduleIndex];
       return schedule?.reminderTiming ?? null;
     }
+    case ROUTINE_TYPES.MEDICAL_CARE: {
+      const items = Array.isArray(routine.medicalCareItems)
+        ? routine.medicalCareItems
+        : [];
+      const item = items.find((i) => i.id === reminder.medicalCareItemId);
+      // Only the dose-course subtypes drive ScheduleBlock and carry a lead-time.
+      // Vaccine owns its due-offset (applied in the generator) and the other
+      // preventives have no lead-time — they must never be offset here.
+      if (item && (item.type === "medication" || item.type === "supplement")) {
+        return item.reminderTiming ?? null;
+      }
+      return null;
+    }
     // P3 extension point: feeding / walk / general_check / weight_check /
     // preventive get a branch here as their modals adopt ScheduleBlock.
     // vet_appointment + medical-care vaccine stay absent (they own their offset

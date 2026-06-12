@@ -191,6 +191,8 @@ export default function ScheduleBlock({
   onChange,
   color = "#F4A460",
   style,
+  hideTime = false,
+  cadenceOptions = CADENCE_OPTIONS_FULL,
   testID = "schedule-block",
 }) {
   const schedule = value || defaultSchedule();
@@ -221,15 +223,20 @@ export default function ScheduleBlock({
         />
       </View>
 
-      {/* Time */}
-      <SectionLabel>Time</SectionLabel>
-      <View style={{ marginBottom: 16 }}>
-        <TimeField
-          value={schedule.preferredTime}
-          onChange={(preferredTime) => set({ preferredTime })}
-          testID={`${testID}-time`}
-        />
-      </View>
+      {/* Time — omitted when the host modal owns the time-of-day control
+          (e.g. MedicalCare keeps dose times in its own multi-add Time(s) field). */}
+      {!hideTime && (
+        <>
+          <SectionLabel>Time</SectionLabel>
+          <View style={{ marginBottom: 16 }}>
+            <TimeField
+              value={schedule.preferredTime}
+              onChange={(preferredTime) => set({ preferredTime })}
+              testID={`${testID}-time`}
+            />
+          </View>
+        </>
+      )}
 
       {/* Frequency (collapsible, iOS-Reminders style) — a tappable header shows
           the current selection's label; tapping toggles the full list. */}
@@ -269,7 +276,7 @@ export default function ScheduleBlock({
         <CadenceFrequencySelector
           value={frequency}
           onChange={selectFrequency}
-          options={CADENCE_OPTIONS_FULL}
+          options={cadenceOptions}
           color={color}
           style={{ marginBottom: 16 }}
           testID={`${testID}-frequency`}
