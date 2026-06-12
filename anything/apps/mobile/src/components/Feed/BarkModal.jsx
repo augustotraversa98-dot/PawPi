@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Megaphone, Send } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { usePostBarks, useCreateBark } from "@/hooks/useFeedPosts";
+import { PetAvatar } from "@/components/Pets/PetAvatar";
 
 export const BarkModal = memo(function BarkModal({
   visible,
@@ -55,7 +56,7 @@ export const BarkModal = memo(function BarkModal({
       if (onBarkAdded) onBarkAdded(post.id, barks.length + 1);
     } catch (error) {
       console.error("Error creating bark:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert("Error", error?.message || "Could not save. Please try again.");
     }
   }, [text, post, createBarkMutation, barks.length, onBarkAdded]);
 
@@ -202,17 +203,7 @@ export const BarkModal = memo(function BarkModal({
                     gap: 10,
                   }}
                 >
-                  <Image
-                    source={{
-                      uri: bark.avatar_url || "https://i.pravatar.cc/150",
-                    }}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      flexShrink: 0,
-                    }}
-                  />
+                  <PetAvatar uri={bark.pet_avatar_url} size={34} />
                   <View
                     style={{
                       flex: 1,
@@ -237,7 +228,7 @@ export const BarkModal = memo(function BarkModal({
                           color: COLORS.coral,
                         }}
                       >
-                        {bark.username}
+                        {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
                       </Text>
                       <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
                         {new Date(bark.created_at).toLocaleDateString()}
