@@ -7,12 +7,16 @@ export async function GET(request, { params }) {
     const postId = params.id;
 
     const barks = await sql`
-      SELECT 
+      SELECT
         pb.*,
         up.username,
-        up.avatar_url
+        up.avatar_url,
+        p.handle AS pet_handle,
+        p.name AS pet_name,
+        p.avatar_url AS pet_avatar_url
       FROM post_barks pb
       INNER JOIN user_profiles up ON pb.user_id = up.id
+      LEFT JOIN pets p ON pb.pet_id = p.id
       WHERE pb.post_id = ${postId}
       ORDER BY pb.created_at ASC
     `;
@@ -52,10 +56,28 @@ export async function POST(request, { params }) {
     const userId = userProfile[0].id;
 
     const body = await request.json();
-    const { text } = body;
+    const { text, petId } = body;
 
     if (!text || text.trim() === "") {
       return Response.json({ error: "Bark text is required" }, { status: 400 });
+    }
+
+    if (!petId) {
+      return Response.json({ error: "petId is required" }, { status: 400 });
+    }
+
+    // The bark is posted AS a pet; that pet must exist and be owned by the caller.
+    const ownedPet = await sql`
+      SELECT id FROM pets
+      WHERE id = ${petId} AND owner_user_id = ${userId}
+      LIMIT 1
+    `;
+
+    if (ownedPet.length === 0) {
+      return Response.json(
+        { error: "Pet not found or not owned by caller" },
+        { status: 400 },
+      );
     }
 
     // Check if post exists
@@ -69,19 +91,23 @@ export async function POST(request, { params }) {
 
     // Create bark
     const bark = await sql`
-      INSERT INTO post_barks (post_id, user_id, text)
-      VALUES (${postId}, ${userId}, ${text})
+      INSERT INTO post_barks (post_id, user_id, pet_id, text)
+      VALUES (${postId}, ${userId}, ${petId}, ${text})
       RETURNING *
     `;
 
-    // Get user info for response
+    // Get enriched info for response (same shape GET returns)
     const barkWithUser = await sql`
-      SELECT 
+      SELECT
         pb.*,
         up.username,
-        up.avatar_url
+        up.avatar_url,
+        p.handle AS pet_handle,
+        p.name AS pet_name,
+        p.avatar_url AS pet_avatar_url
       FROM post_barks pb
       INNER JOIN user_profiles up ON pb.user_id = up.id
+      LEFT JOIN pets p ON pb.pet_id = p.id
       WHERE pb.id = ${bark[0].id}
       LIMIT 1
     `;
