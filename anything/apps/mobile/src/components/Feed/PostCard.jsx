@@ -126,9 +126,10 @@ export const PostCard = memo(function PostCard({
         </View>
       </TouchableOpacity>
 
-      {/* Photo */}
+      {/* Photo — tapping the pet's photo opens that pet's profile */}
       <TouchableOpacity
-        onPress={locked ? undefined : onOpenDetail}
+        testID="feed-post-photo"
+        onPress={locked ? undefined : onOpenProfile}
         activeOpacity={locked ? 1 : 0.95}
       >
         <Image
@@ -142,6 +143,7 @@ export const PostCard = memo(function PostCard({
       <View style={{ padding: 14 }}>
         {post.caption && (
           <TouchableOpacity
+            testID="feed-post-caption"
             onPress={locked ? undefined : onOpenDetail}
             activeOpacity={locked ? 1 : 0.8}
           >

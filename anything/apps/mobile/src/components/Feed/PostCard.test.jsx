@@ -54,3 +54,44 @@ describe("PostCard — pet @handle line", () => {
     expect(onOpenProfile).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PostCard — photo/caption tap targets", () => {
+  it("tapping the photo opens the pet's profile, not the post detail", () => {
+    const onOpenProfile = jest.fn();
+    const onOpenDetail = jest.fn();
+    const { getByTestId } = render(
+      <PostCard
+        post={basePost}
+        onOpenProfile={onOpenProfile}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+    fireEvent.press(getByTestId("feed-post-photo"));
+    expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
+  });
+
+  it("tapping the caption still opens the post detail", () => {
+    const onOpenProfile = jest.fn();
+    const onOpenDetail = jest.fn();
+    const { getByTestId } = render(
+      <PostCard
+        post={basePost}
+        onOpenProfile={onOpenProfile}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+    fireEvent.press(getByTestId("feed-post-caption"));
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+
+  it("locked card has no photo tap handler (no profile open)", () => {
+    const onOpenProfile = jest.fn();
+    const { getByTestId } = render(
+      <PostCard post={basePost} locked onOpenProfile={onOpenProfile} />,
+    );
+    fireEvent.press(getByTestId("feed-post-photo"));
+    expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+});
