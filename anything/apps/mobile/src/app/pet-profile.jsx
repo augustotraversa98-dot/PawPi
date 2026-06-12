@@ -1,24 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import {
-  ChevronLeft,
-  PawPrint,
-  Megaphone,
-  MapPin,
-  Heart,
-  Users,
-  Grid3X3,
-} from "lucide-react-native";
+import { ChevronLeft, PawPrint, Grid3X3 } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { BarkModal } from "@/components/Feed/BarkModal";
+import { PostDetailModal } from "@/components/Feed/PostDetailModal";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useTogglePaw } from "@/hooks/useFeedPosts";
+import {
+  usePetSocialProfile,
+  useToggleFollow,
+} from "@/hooks/usePetSocialProfile";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
@@ -38,39 +39,97 @@ const C = {
   mutedBrown: "#7A6254",
 };
 
+// Friendly age from the structured age_years / age_months columns.
+function formatAge(years, months) {
+  const y = Number(years) || 0;
+  const m = Number(months) || 0;
+  const parts = [];
+  if (y > 0) parts.push(`${y} ${y === 1 ? "yr" : "yrs"}`);
+  if (m > 0) parts.push(`${m} ${m === 1 ? "mo" : "mos"}`);
+  return parts.join(" ");
+}
+
 export default function PetProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [isFollowing, setIsFollowing] = useState(false);
 
-  const {
-    // Real identity of this dog. The stats/daily-moments data fetch keyed on
-    // these is a separate Dog Social Profile ticket; passed through here so the
-    // tap target carries the real pet_id/handle.
-    petId = "",
-    petHandle = "",
-    dogName = "Buddy",
-    ownerName = "Alice",
-    avatar = "",
-    breed = "Mixed Breed",
-    age = "",
-    bio = "",
-    location = "",
-    totalPosts = "0",
-    totalPaws = "0",
-    totalBarks = "0",
-    friends = "0",
-  } = params;
+  // The real pet whose profile this is, plus the viewer's active pet (drives
+  // isFollowing and gates the follow button).
+  const petId = params.petId || "";
+  const { data: currentPet } = useCurrentPet();
+  const viewerPetId = currentPet?.id;
 
-  // Real daily moments only — no stock/placeholder images. Until the data-fetch
-  // ticket lands, none are passed and the empty state below is shown.
-  let gridPosts = [];
-  try {
-    gridPosts = params.pastPosts ? JSON.parse(params.pastPosts) : [];
-  } catch (e) {
-    gridPosts = [];
-  }
+  const { data: profile, isLoading, refetch } = usePetSocialProfile(
+    petId,
+    viewerPetId,
+  );
+  const toggleFollow = useToggleFollow(petId);
+
+  // Identity params are instant placeholders only while the fetch is in flight;
+  // once data arrives we render entirely from the server. No fake defaults.
+  const pet = profile?.pet;
+  const owner = profile?.owner;
+  const stats = profile?.stats;
+
+  const name = pet?.name || params.dogName || "";
+  const handle = pet?.handle || params.petHandle || "";
+  const avatarUrl = pet?.avatar_url || params.avatar || "";
+  const ownerName = pet
+    ? owner?.full_name || owner?.username || ""
+    : params.ownerName || "";
+  const breed = pet?.breed ?? params.breed ?? "";
+  const ageText = pet ? formatAge(pet.age_years, pet.age_months) : params.age || "";
+
+  const posts = profile?.posts || [];
+  const isFollowing = !!profile?.isFollowing;
+
+  // You can't follow your own pet (the server rejects it too), and there's
+  // nothing to follow with when you have no active pet.
+  const canFollow = !!viewerPetId && String(viewerPetId) !== String(petId);
+
+  // ── Post detail / bark modals (mirror the feed) ──
+  const [detailPost, setDetailPost] = useState(null);
+  const [barkPost, setBarkPost] = useState(null);
+  const [likedPosts, setLikedPosts] = useState({});
+  const togglePaw = useTogglePaw(detailPost?.id);
+
+  // Compose the post object the modal expects from a grid item + this pet's
+  // fetched identity.
+  const openMoment = useCallback(
+    (post) => {
+      setDetailPost({
+        ...post,
+        pet_name: pet?.name,
+        pet_handle: pet?.handle,
+        pet_avatar: pet?.avatar_url,
+        username: owner?.username,
+      });
+    },
+    [pet, owner],
+  );
+
+  const handleToggleLike = useCallback(() => {
+    if (!detailPost) return;
+    const isPawed = !!likedPosts[detailPost.id];
+    togglePaw.mutate({ isPawed });
+    setLikedPosts((m) => ({ ...m, [detailPost.id]: !isPawed }));
+    setDetailPost((prev) =>
+      prev
+        ? {
+            ...prev,
+            paw_count: isPawed
+              ? Math.max(0, (prev.paw_count ?? 0) - 1)
+              : (prev.paw_count ?? 0) + 1,
+          }
+        : prev,
+    );
+  }, [detailPost, likedPosts, togglePaw]);
+
+  const handleToggleFollow = useCallback(() => {
+    if (!canFollow) return;
+    toggleFollow.mutate({ isFollowing, viewerPetId });
+  }, [canFollow, isFollowing, viewerPetId, toggleFollow]);
 
   const StatPill = ({ value, label, color }) => (
     <View style={{ alignItems: "center", flex: 1 }}>
@@ -133,7 +192,8 @@ export default function PetProfileScreen() {
         <View style={{ width: 70 }} />
       </View>
 
-      <ScrollView
+      <RefreshableScrollView
+        refetch={refetch}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
       >
@@ -163,127 +223,114 @@ export default function PetProfileScreen() {
               shadowRadius: 12,
             }}
           >
-            <PetAvatar uri={avatar || undefined} size={110} />
+            <PetAvatar uri={avatarUrl || undefined} size={110} />
           </View>
 
-          {/* Name + breed */}
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: "800",
-              color: C.warmBrown,
-              letterSpacing: -0.5,
-            }}
-          >
-            {dogName}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 4,
-            }}
-          >
-            <Text style={{ fontSize: 15, color: C.coral, fontWeight: "600" }}>
-              {breed}
+          {/* Name */}
+          {!!name && (
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: "800",
+                color: C.warmBrown,
+                letterSpacing: -0.5,
+              }}
+            >
+              {name}
             </Text>
-            {age ? (
-              <>
-                <Text style={{ color: C.peach }}>·</Text>
-                <Text style={{ fontSize: 14, color: C.mutedBrown }}>{age}</Text>
-              </>
-            ) : null}
-          </View>
+          )}
 
-          {/* Owner */}
-          <Text
-            style={{
-              fontSize: 13,
-              color: C.mutedBrown,
-              marginTop: 4,
-              fontWeight: "600",
-            }}
-          >
-            with {ownerName}
-          </Text>
+          {/* Handle */}
+          {!!handle && (
+            <Text
+              style={{
+                fontSize: 14,
+                color: C.coral,
+                fontWeight: "700",
+                marginTop: 2,
+              }}
+            >
+              @{handle}
+            </Text>
+          )}
 
-          {/* Location */}
-          {!!location && (
+          {/* Breed + age */}
+          {(!!breed || !!ageText) && (
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 5,
-                marginTop: 8,
+                gap: 6,
+                marginTop: 4,
               }}
             >
-              <MapPin size={13} color={C.mutedBrown} />
-              <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                {location}
-              </Text>
+              {!!breed && (
+                <Text
+                  style={{ fontSize: 15, color: C.coral, fontWeight: "600" }}
+                >
+                  {breed}
+                </Text>
+              )}
+              {!!breed && !!ageText && <Text style={{ color: C.peach }}>·</Text>}
+              {!!ageText && (
+                <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                  {ageText}
+                </Text>
+              )}
             </View>
           )}
 
-          {/* Bio */}
-          {!!bio && (
-            <View
-              style={{
-                backgroundColor: C.sand,
-                borderRadius: 16,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                marginTop: 14,
-                width: "100%",
-                borderWidth: 1,
-                borderColor: C.peach,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: C.warmBrown,
-                  textAlign: "center",
-                  lineHeight: 21,
-                  fontStyle: "italic",
-                }}
-              >
-                "{bio}"
-              </Text>
-            </View>
-          )}
-
-          {/* Follow button */}
-          <TouchableOpacity
-            onPress={() => setIsFollowing((f) => !f)}
-            style={{
-              marginTop: 18,
-              paddingVertical: 13,
-              paddingHorizontal: 36,
-              borderRadius: 18,
-              backgroundColor: isFollowing ? C.sand : C.coral,
-              borderWidth: isFollowing ? 1.5 : 0,
-              borderColor: C.peach,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              shadowColor: isFollowing ? "transparent" : C.coral,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-            }}
-          >
-            <PawPrint size={18} color={isFollowing ? C.mutedBrown : "#FFF"} />
+          {/* Owner */}
+          {!!ownerName && (
             <Text
               style={{
-                fontWeight: "800",
-                fontSize: 15,
-                color: isFollowing ? C.mutedBrown : "#FFF",
+                fontSize: 13,
+                color: C.mutedBrown,
+                marginTop: 4,
+                fontWeight: "600",
               }}
             >
-              {isFollowing ? "Pet friend ✓" : "Pet friend +"}
+              with {ownerName}
             </Text>
-          </TouchableOpacity>
+          )}
+
+          {/* Follow button — hidden on your own pet and when you have no
+              active pet (the server rejects both too). */}
+          {canFollow && (
+            <TouchableOpacity
+              onPress={handleToggleFollow}
+              style={{
+                marginTop: 18,
+                paddingVertical: 13,
+                paddingHorizontal: 36,
+                borderRadius: 18,
+                backgroundColor: isFollowing ? C.sand : C.coral,
+                borderWidth: isFollowing ? 1.5 : 0,
+                borderColor: C.peach,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                shadowColor: isFollowing ? "transparent" : C.coral,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              }}
+            >
+              <PawPrint
+                size={18}
+                color={isFollowing ? C.mutedBrown : "#FFF"}
+              />
+              <Text
+                style={{
+                  fontWeight: "800",
+                  fontSize: 15,
+                  color: isFollowing ? C.mutedBrown : "#FFF",
+                }}
+              >
+                {isFollowing ? "Following ✓" : "Follow +"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Stats strip ── */}
@@ -298,13 +345,23 @@ export default function PetProfileScreen() {
             gap: 0,
           }}
         >
-          <StatPill value={totalPosts} label="Daily posts" />
+          <StatPill value={stats?.totalPosts ?? 0} label="Daily posts" />
           <View style={{ width: 1, backgroundColor: C.peach }} />
-          <StatPill value={totalPaws} label="Paws" color={C.coral} />
+          <StatPill
+            value={stats?.totalPaws ?? 0}
+            label="Paws"
+            color={C.coral}
+          />
           <View style={{ width: 1, backgroundColor: C.peach }} />
-          <StatPill value={totalBarks} label="Barks" />
+          <StatPill value={stats?.totalBarks ?? 0} label="Barks" />
           <View style={{ width: 1, backgroundColor: C.peach }} />
-          <StatPill value={friends} label="Pet friends" color={C.sageDark} />
+          <StatPill
+            value={stats?.followers ?? 0}
+            label="Followers"
+            color={C.sageDark}
+          />
+          <View style={{ width: 1, backgroundColor: C.peach }} />
+          <StatPill value={stats?.following ?? 0} label="Following" />
         </View>
 
         {/* ── Daily posts grid ── */}
@@ -330,7 +387,11 @@ export default function PetProfileScreen() {
             </Text>
           </View>
 
-          {gridPosts.length > 0 ? (
+          {isLoading && posts.length === 0 ? (
+            <View style={{ alignItems: "center", paddingVertical: 40 }}>
+              <ActivityIndicator size="large" color={C.coral} />
+            </View>
+          ) : posts.length > 0 ? (
             <View
               style={{
                 flexDirection: "row",
@@ -338,14 +399,15 @@ export default function PetProfileScreen() {
                 gap: 4,
               }}
             >
-              {gridPosts.map((p) => (
+              {posts.map((p) => (
                 <TouchableOpacity
                   key={p.id}
                   activeOpacity={0.88}
+                  onPress={() => openMoment(p)}
                   style={{ position: "relative" }}
                 >
                   <Image
-                    source={{ uri: p.photo }}
+                    source={{ uri: p.image_url }}
                     style={{
                       width: IMG_SIZE,
                       height: IMG_SIZE,
@@ -373,7 +435,7 @@ export default function PetProfileScreen() {
                     <Text
                       style={{ fontSize: 11, color: "#FFF", fontWeight: "700" }}
                     >
-                      {p.paws}
+                      {p.paw_count}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -411,7 +473,7 @@ export default function PetProfileScreen() {
                   paddingHorizontal: 20,
                 }}
               >
-                {dogName}'s daily moments will appear here.
+                {name ? `${name}'s` : "These"} daily moments will appear here.
               </Text>
             </View>
           )}
@@ -441,13 +503,12 @@ export default function PetProfileScreen() {
               marginBottom: 14,
             }}
           >
-            About {dogName}
+            About {name}
           </Text>
           {[
-            { label: "Breed", value: breed || "Unknown" },
-            { label: "Age", value: age || "Unknown" },
-            { label: "Owner", value: ownerName },
-            location ? { label: "Location", value: location } : null,
+            breed ? { label: "Breed", value: breed } : null,
+            ageText ? { label: "Age", value: ageText } : null,
+            ownerName ? { label: "Owner", value: ownerName } : null,
           ]
             .filter(Boolean)
             .map((row) => (
@@ -482,7 +543,29 @@ export default function PetProfileScreen() {
               </View>
             ))}
         </View>
-      </ScrollView>
+      </RefreshableScrollView>
+
+      {/* ── POST DETAIL MODAL ── */}
+      <PostDetailModal
+        visible={!!detailPost}
+        post={detailPost}
+        liked={detailPost ? !!likedPosts[detailPost.id] : false}
+        onClose={() => setDetailPost(null)}
+        onToggleLike={handleToggleLike}
+        onOpenBarks={() => {
+          setBarkPost(detailPost);
+          setDetailPost(null);
+        }}
+        onOpenProfile={() => setDetailPost(null)}
+      />
+
+      {/* ── BARK MODAL ── */}
+      <BarkModal
+        visible={!!barkPost}
+        post={barkPost}
+        onClose={() => setBarkPost(null)}
+        onBarkAdded={() => refetch()}
+      />
     </View>
   );
 }
