@@ -35,6 +35,7 @@ export const PostCard = memo(function PostCard({
 
   // Use database fields with fallback to old fields for compatibility
   const dogName = post.pet_name || post.dogName;
+  const petHandle = post.pet_handle;
   const ownerName = post.username || post.ownerName;
   const avatar = post.pet_avatar || post.avatar;
   const photo = post.image_url || post.photo;
@@ -94,6 +95,11 @@ export const PostCard = memo(function PostCard({
             >
               {dogName}
             </Text>
+            {petHandle ? (
+              <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+                @{petHandle}
+              </Text>
+            ) : null}
             <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
               by {ownerName}
             </Text>

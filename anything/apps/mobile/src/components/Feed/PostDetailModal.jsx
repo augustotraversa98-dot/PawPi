@@ -37,6 +37,7 @@ export const PostDetailModal = memo(function PostDetailModal({
   // feed card exactly (same paw/bark counts). Old denormalized names are kept
   // only as a compatibility fallback — no mock store, no placeholder images.
   const dogName = post.pet_name || post.dogName;
+  const petHandle = post.pet_handle;
   const ownerName = post.username || post.ownerName;
   const avatar = post.pet_avatar || post.avatar;
   const photo = post.image_url || post.photo;
@@ -122,6 +123,11 @@ export const PostDetailModal = memo(function PostDetailModal({
                 >
                   {dogName}
                 </Text>
+                {petHandle ? (
+                  <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+                    @{petHandle}
+                  </Text>
+                ) : null}
                 <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
                   by {ownerName} · {timestamp}
                 </Text>
