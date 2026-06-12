@@ -251,3 +251,80 @@ describe("dose-course — overdue recurring cadences", () => {
     expect(overdue.every((r) => !futureIds.has(r.id))).toBe(true);
   });
 });
+
+// Multi-day weekly/biweekly opt-in for the dose course: a non-empty days[] makes
+// the item fire on EVERY selected weekday (vs. the single start-weekday). Mirrors
+// the date-based recurring path; gated on days[] so single-day stays byte-for-byte.
+describe("dose-course — multi-day weekly/biweekly (days[])", () => {
+  it("multi-day WEEKLY fires every selected weekday, keeping every dose time", () => {
+    const routine = doseRoutine({
+      id: "med1",
+      type: "medication",
+      times: ["09:00", "21:00"],
+      startDate: "2026-06-10", // Wed → anchor
+      frequency: ROUTINE_FREQUENCY.WEEKLY,
+      days: [2, 4], // Wed, Fri
+    });
+
+    const reminders = generateRemindersFromRoutine(routine, 14); // ends 06-24
+
+    // Wed/Fri across the window: 06-10, 06-12, 06-17, 06-19, 06-24 — two doses each.
+    expect(reminders.map((r) => r.scheduledAt)).toEqual([
+      at(2026, 6, 10, 9),
+      at(2026, 6, 10, 21),
+      at(2026, 6, 12, 9),
+      at(2026, 6, 12, 21),
+      at(2026, 6, 17, 9),
+      at(2026, 6, 17, 21),
+      at(2026, 6, 19, 9),
+      at(2026, 6, 19, 21),
+      at(2026, 6, 24, 9),
+      at(2026, 6, 24, 21),
+    ]);
+    expect(
+      reminders.every((r) => [2, 4].includes(monday0(r.scheduledAt))),
+    ).toBe(true);
+    expect(allIdsUnique(reminders)).toBe(true);
+  });
+
+  it("multi-day BIWEEKLY fires selected weekdays in on-weeks only (parity on startDate)", () => {
+    const routine = doseRoutine({
+      id: "med1",
+      type: "medication",
+      times: ["09:00"],
+      startDate: "2026-06-10", // Wed → startDate week is "on"
+      frequency: ROUTINE_FREQUENCY.BIWEEKLY,
+      days: [2, 4], // Wed, Fri
+    });
+
+    const reminders = generateRemindersFromRoutine(routine, 21); // ends 07-01
+
+    // On-weeks: week of 06-08 (06-10, 06-12) and week of 06-22 (06-24, 06-26).
+    // The 06-15 off-week (06-17, 06-19) is skipped.
+    expect(reminders.map((r) => r.scheduledAt)).toEqual([
+      at(2026, 6, 10, 9),
+      at(2026, 6, 12, 9),
+      at(2026, 6, 24, 9),
+      at(2026, 6, 26, 9),
+    ]);
+    expect(allIdsUnique(reminders)).toBe(true);
+  });
+
+  it("empty days[] keeps the single start-weekday path byte-for-byte", () => {
+    const base = {
+      id: "med1",
+      type: "medication",
+      times: ["08:00", "20:00"],
+      startDate: "2026-06-08", // Monday
+      frequency: ROUTINE_FREQUENCY.WEEKLY,
+    };
+    const withEmpty = generateRemindersFromRoutine(
+      doseRoutine({ ...base, days: [] }),
+      14,
+    );
+    const without = generateRemindersFromRoutine(doseRoutine(base), 14);
+    expect(withEmpty.map((r) => r.id)).toEqual(without.map((r) => r.id));
+    // Still only Mondays — multi-day did not leak in.
+    expect(withEmpty.every((r) => monday0(r.scheduledAt) === 0)).toBe(true);
+  });
+});

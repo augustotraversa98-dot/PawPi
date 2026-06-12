@@ -19,6 +19,17 @@ import {
 } from "@/data/routinesData";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
+import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
+import { CADENCE_OPTIONS_FULL } from "./CadenceFrequencySelector";
+import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
+
+// Dose-course (medication / supplement) cadence list = the full ScheduleBlock
+// set MINUS Once: the dose-course generator branch has no Once handling (Once
+// would fall through to the day-pattern path and fire daily), so it is not
+// offered for these two subtypes. Every other subtype keeps its own UI.
+export const MED_CADENCE_OPTIONS = CADENCE_OPTIONS_FULL.filter(
+  (f) => f !== ROUTINE_FREQUENCY.ONCE,
+);
 
 const C = {
   cream: "#FFF7EF",
@@ -71,37 +82,55 @@ const getSubtypeIcon = (type) =>
 const makeItemId = () =>
   `mc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-const defaultItemFor = (subtype) => ({
-  id: makeItemId(),
-  type: subtype,
-  name: "",
-  dose: "",
-  frequency: ROUTINE_FREQUENCY.DAILY,
-  times: ["09:00"],
-  startDate: new Date().toISOString().split("T")[0],
-  endDate: "",
-  instructions: "",
-  reminderEnabled: true,
-  timeSensitive: true,
-  notes: "",
-  lastGiven: "",
-  nextDue: "",
-  vetClinic: "",
-  productName: "",
-  repeatInterval: "monthly",
-  // Medication: "Every X hours"
-  customHours: 12,
-  // Medication / "Specific days": Mon=0 .. Sun=6
-  customDays: [],
-  // Vaccine reminder lead time: "on_due" | "1w" | "2w" | "1m"
-  reminderTiming: "1w",
-  // Supplement timing mode: "time" | "linked"
-  timingMode: "time",
-  // Supplement linked meal: "breakfast" | "dinner" | "meal" | "custom"
-  linkedMeal: "breakfast",
-  // Other: free description
-  description: "",
-});
+const isDoseCourse = (subtype) =>
+  subtype === MEDICAL_CARE_SUBTYPES.MEDICATION ||
+  subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT;
+
+export const defaultItemFor = (subtype) => {
+  const base = {
+    id: makeItemId(),
+    type: subtype,
+    name: "",
+    dose: "",
+    frequency: ROUTINE_FREQUENCY.DAILY,
+    times: ["09:00"],
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: "",
+    instructions: "",
+    reminderEnabled: true,
+    timeSensitive: true,
+    notes: "",
+    lastGiven: "",
+    nextDue: "",
+    vetClinic: "",
+    productName: "",
+    repeatInterval: "monthly",
+    // Vaccine reminder lead time: "on_due" | "1w" | "2w" | "1m"
+    reminderTiming: "1w",
+    // Supplement timing mode: "time" | "linked"
+    timingMode: "time",
+    // Supplement linked meal: "breakfast" | "dinner" | "meal" | "custom"
+    linkedMeal: "breakfast",
+    // Other: free description
+    description: "",
+  };
+
+  // Medication / supplement drive the shared ScheduleBlock, so they seed the
+  // canonical schedule fields (mirrors defaultSchedule): daily today, empty day
+  // chips, 4h interval, on-time lead. Dose times stay in times[]. Other subtypes
+  // keep their due-date UIs and the legacy "1w" vaccine lead unchanged.
+  if (isDoseCourse(subtype)) {
+    return {
+      ...base,
+      frequency: ROUTINE_FREQUENCY.DAILY,
+      startDate: canonicalizeDateValue(new Date()),
+      days: [],
+      intervalHours: 4,
+      reminderTiming: "on_time",
+    };
+  }
+  return base;
+};
 
 // Migrate legacy single-item medical care routine into items array
 const itemsFromRoutine = (routine) => {
@@ -696,79 +725,22 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   placeholder="e.g., 1 tablet"
                 />
 
-                <Label>Frequency</Label>
-                <View style={{ gap: 8, marginBottom: 20 }}>
-                  {[
-                    { value: ROUTINE_FREQUENCY.DAILY, label: "Once daily" },
-                    { value: "twice_daily", label: "Twice daily" },
-                    { value: "every_x_hours", label: "Every X hours" },
-                    { value: "specific_days", label: "Specific days" },
-                    { value: ROUTINE_FREQUENCY.CUSTOM, label: "Custom" },
-                  ].map((option) => (
-                    <ChoiceRow
-                      key={option.value}
-                      selected={draft.frequency === option.value}
-                      label={option.label}
-                      onPress={() => {
-                        const patch = { frequency: option.value };
-                        if (option.value === "twice_daily")
-                          patch.times = ["09:00", "21:00"];
-                        else if (option.value === ROUTINE_FREQUENCY.DAILY)
-                          patch.times = ["09:00"];
-                        set(patch);
-                      }}
-                    />
-                  ))}
-                </View>
+                {/* Schedule — shared ScheduleBlock owns Date / Frequency / day
+                    chips / interval / Early reminder. hideTime: dose times stay
+                    in the multi-add Time(s) field below (DoseTimes). */}
+                <ScheduleBlock
+                  value={scheduleFromItem(draft)}
+                  onChange={(schedule) => set(schedule)}
+                  hideTime
+                  cadenceOptions={MED_CADENCE_OPTIONS}
+                  color={C.terracotta}
+                  style={{ marginBottom: 16 }}
+                />
 
-                {/* Every X hours → number input */}
-                {draft.frequency === "every_x_hours" && (
-                  <>
-                    <Label small>Hours between doses</Label>
-                    <Input
-                      value={String(draft.customHours ?? "")}
-                      onChangeText={(v) =>
-                        set({ customHours: v.replace(/[^0-9]/g, "") })
-                      }
-                      placeholder="e.g., 8"
-                      keyboardType="number-pad"
-                    />
-                  </>
-                )}
+                <DoseTimes draft={draft} set={set} />
 
-                {/* Specific days → day chips */}
-                {draft.frequency === "specific_days" && (
-                  <>
-                    <Label small>Days of the week</Label>
-                    <DayChips
-                      selected={draft.customDays || []}
-                      onChange={(days) => set({ customDays: days })}
-                    />
-                  </>
-                )}
-
-                <Label>Time(s)</Label>
-                {(draft.times || []).map((time, index) => (
-                  <View key={index} style={{ marginBottom: 10 }}>
-                    <TimeField
-                      value={time}
-                      onChange={(next) => {
-                        const updated = [...draft.times];
-                        updated[index] = next;
-                        set({ times: updated });
-                      }}
-                    />
-                  </View>
-                ))}
-
-                {/* Stacked (not Row/Half) so the inline calendar has full width */}
-                <Label small>Start date</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.startDate}
-                    onChange={(v) => set({ startDate: v })}
-                  />
-                </View>
+                {/* Stacked (not Row/Half) so the inline calendar has full width.
+                    Dose-course honors item.endDate to bound the course. */}
                 <Label small>End date (optional)</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
@@ -883,28 +855,16 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   placeholder="e.g., 1 chew"
                 />
 
-                <Label>Frequency</Label>
-                <View style={{ gap: 8, marginBottom: 20 }}>
-                  {[
-                    { value: ROUTINE_FREQUENCY.DAILY, label: "Once daily" },
-                    { value: "twice_daily", label: "Twice daily" },
-                    { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-                    { value: ROUTINE_FREQUENCY.CUSTOM, label: "Custom" },
-                  ].map((option) => (
-                    <ChoiceRow
-                      key={option.value}
-                      selected={draft.frequency === option.value}
-                      label={option.label}
-                      onPress={() => {
-                        const patch = { frequency: option.value };
-                        if (option.value === "twice_daily")
-                          patch.times = ["08:00", "20:00"];
-                        else patch.times = ["08:00"];
-                        set(patch);
-                      }}
-                    />
-                  ))}
-                </View>
+                {/* Schedule — shared ScheduleBlock (hideTime); dose times stay in
+                    the When-to-give controls below. */}
+                <ScheduleBlock
+                  value={scheduleFromItem(draft)}
+                  onChange={(schedule) => set(schedule)}
+                  hideTime
+                  cadenceOptions={MED_CADENCE_OPTIONS}
+                  color={C.terracotta}
+                  style={{ marginBottom: 16 }}
+                />
 
                 <Label>When to give</Label>
                 <View
@@ -948,21 +908,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                     ))}
                   </View>
                 ) : (
-                  <>
-                    <Label small>Time(s)</Label>
-                    {(draft.times || []).map((time, index) => (
-                      <View key={index} style={{ marginBottom: 10 }}>
-                        <TimeField
-                          value={time}
-                          onChange={(next) => {
-                            const updated = [...draft.times];
-                            updated[index] = next;
-                            set({ times: updated });
-                          }}
-                        />
-                      </View>
-                    ))}
-                  </>
+                  <DoseTimes draft={draft} set={set} />
                 )}
 
                 <Label>Instructions (optional)</Label>
@@ -1215,43 +1161,89 @@ function SegmentBtn({ selected, label, onPress }) {
   );
 }
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-function DayChips({ selected, onChange }) {
-  const toggle = (idx) => {
-    if (selected.includes(idx)) onChange(selected.filter((d) => d !== idx));
-    else onChange([...selected, idx].sort((a, b) => a - b));
-  };
+// Dose-time editor for medication / supplement. The generator's emitDoseDay
+// iterates times[] per cadence day, so each entry is a separate daily dose.
+// HOURLY collapses to a SINGLE start-time anchor (multi-dose is meaningless when
+// firing every N hours) — its value feeds medicalCareHourlyAnchorTime via
+// preferredTime; every other cadence offers an add/remove list.
+function DoseTimes({ draft, set }) {
+  if (draft.frequency === ROUTINE_FREQUENCY.HOURLY) {
+    const anchor = draft.preferredTime || draft.times?.[0] || "09:00";
+    return (
+      <>
+        <Label>Start time</Label>
+        <View style={{ marginBottom: 16 }}>
+          <TimeField
+            value={anchor}
+            onChange={(v) => set({ preferredTime: v, times: [v] })}
+          />
+        </View>
+      </>
+    );
+  }
+
+  const times = Array.isArray(draft.times) ? draft.times : [];
   return (
-    <View style={{ flexDirection: "row", gap: 6, marginBottom: 20 }}>
-      {DAY_LABELS.map((label, idx) => {
-        const isOn = selected.includes(idx);
-        return (
-          <TouchableOpacity
-            key={label}
-            onPress={() => toggle(idx)}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 10,
-              alignItems: "center",
-              backgroundColor: isOn ? C.terracotta : C.card,
-              borderWidth: 1.5,
-              borderColor: isOn ? C.terracotta : C.peach,
-            }}
-          >
-            <Text
+    <>
+      <Label>Time(s)</Label>
+      {times.map((time, index) => (
+        <View
+          key={index}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 10,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <TimeField
+              value={time}
+              onChange={(next) => {
+                const updated = [...times];
+                updated[index] = next;
+                set({ times: updated });
+              }}
+            />
+          </View>
+          {times.length > 1 && (
+            <TouchableOpacity
+              onPress={() => set({ times: times.filter((_, i) => i !== index) })}
               style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: isOn ? "#FFF" : C.warmBrown,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+              <Trash2 size={16} color={C.coral} />
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+      <TouchableOpacity
+        onPress={() => set({ times: [...times, "12:00"] })}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          paddingVertical: 12,
+          marginBottom: 10,
+          borderRadius: 12,
+          borderWidth: 1.5,
+          borderColor: C.terracotta,
+          borderStyle: "dashed",
+        }}
+      >
+        <Plus size={16} color={C.terracotta} />
+        <Text style={{ fontSize: 14, fontWeight: "700", color: C.terracotta }}>
+          Add another time
+        </Text>
+      </TouchableOpacity>
+    </>
   );
 }
 

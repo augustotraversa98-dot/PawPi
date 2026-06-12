@@ -1723,6 +1723,11 @@ function medicalCareOccurrences(item, frequency, anchor, rangeStart, rangeEnd) {
     return out;
   }
 
+  // Multi-day weekly/biweekly opt-in: a non-empty days[] (Mon=0) makes the item
+  // fire on EVERY selected weekday rather than the single anchor weekday. Gated
+  // on weeklyMultiDays so the legacy single-preferredDay path stays byte-for-byte
+  // when days[] is absent/empty — same contract as the date-based recurring path.
+  const multiDays = weeklyMultiDays(item, frequency);
   const stepDays =
     frequency === ROUTINE_FREQUENCY.WEEKLY
       ? 7
@@ -1737,7 +1742,15 @@ function medicalCareOccurrences(item, frequency, anchor, rangeStart, rangeEnd) {
     cur.setDate(cur.getDate() + 1)
   ) {
     let match;
-    if (stepDays) {
+    if (multiDays) {
+      // Fire on each selected weekday; biweekly restricts to "on" weeks whose
+      // parity is anchored on the schedule's start (isBiweeklyOnWeek).
+      const dow = (cur.getDay() + 6) % 7;
+      match =
+        multiDays.includes(dow) &&
+        (frequency === ROUTINE_FREQUENCY.WEEKLY ||
+          isBiweeklyOnWeek(cur, anchorDay));
+    } else if (stepDays) {
       // Whole-day delta from the anchor (Math.round absorbs any DST hour); a
       // multiple of the step lands on the anchor's weekday and week phase.
       const diff = Math.round((cur.getTime() - anchorDay.getTime()) / MS_PER_DAY);
