@@ -1,6 +1,26 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 
+// Following-first, then Suggested. `following` and `suggested` are each already
+// ordered newest-first by SQL and are disjoint by construction (Suggested
+// excludes followed pets), so we just concatenate Following ahead of Suggested,
+// de-dupe by post id as a guarantee, and slice the requested page window.
+//
+// Each group is fetched with `LIMIT (offset + limit)`, so concatenating the two
+// fetched prefixes yields the correct global window for any offset/limit: if
+// Following has >= offset+limit rows the page is pure Following; otherwise
+// Following is exhausted and Suggested backfills the remainder.
+export function mergeFeed(following, suggested, { limit, offset }) {
+  const seen = new Set();
+  const ordered = [];
+  for (const post of [...following, ...suggested]) {
+    if (seen.has(post.id)) continue;
+    seen.add(post.id);
+    ordered.push(post);
+  }
+  return ordered.slice(offset, offset + limit);
+}
+
 // Get feed posts
 export async function GET(request) {
   try {
@@ -10,14 +30,63 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const rawViewerPetId = searchParams.get("viewerPetId");
+    const parsedViewerPetId = parseInt(rawViewerPetId ?? "", 10);
+    // The active pet drives Following-first ordering. Absent/invalid => no
+    // following set, so the whole feed is Suggested (the no-empty guarantee).
+    const viewerPetId = Number.isInteger(parsedViewerPetId)
+      ? parsedViewerPetId
+      : null;
 
     console.log("[GET /api/posts] Query params:");
     console.log("[GET /api/posts]   - limit:", limit);
     console.log("[GET /api/posts]   - offset:", offset);
+    console.log("[GET /api/posts]   - viewerPetId:", viewerPetId);
 
-    // Get posts with user and pet info, paw count, and bark count
-    const posts = await sql`
-      SELECT 
+    // Cap each group's fetch at the far edge of the requested page so we never
+    // pull the whole table; mergeFeed then slices the exact window.
+    const groupLimit = offset + limit;
+
+    // 1) Following: posts from pets that viewerPetId follows (newest first).
+    //    Empty when there's no active pet — Suggested carries the feed.
+    const following = viewerPetId
+      ? await sql`
+          SELECT
+            p.*,
+            up.username,
+            up.avatar_url as user_avatar,
+            pet.name as pet_name,
+            pet.handle as pet_handle,
+            pet.avatar_url as pet_avatar,
+            COALESCE(paw_count.count, 0)::int as paw_count,
+            COALESCE(bark_count.count, 0)::int as bark_count
+          FROM posts p
+          INNER JOIN user_profiles up ON p.user_id = up.id
+          INNER JOIN pets pet ON p.pet_id = pet.id
+          LEFT JOIN (
+            SELECT post_id, COUNT(*) as count
+            FROM post_paws
+            GROUP BY post_id
+          ) paw_count ON p.id = paw_count.post_id
+          LEFT JOIN (
+            SELECT post_id, COUNT(*) as count
+            FROM post_barks
+            GROUP BY post_id
+          ) bark_count ON p.id = bark_count.post_id
+          WHERE p.pet_id IN (
+            SELECT followed_pet_id FROM pet_follows
+            WHERE follower_pet_id = ${viewerPetId}
+          )
+          ORDER BY p.created_at DESC
+          LIMIT ${groupLimit}
+        `
+      : [];
+
+    // 2) Suggested: public pets globally, excluding pets the viewer already
+    //    follows and the viewer's own pet (newest first). When there's no active
+    //    pet the guards are no-ops and this returns the full global feed.
+    const suggested = await sql`
+      SELECT
         p.*,
         up.username,
         up.avatar_url as user_avatar,
@@ -39,12 +108,30 @@ export async function GET(request) {
         FROM post_barks
         GROUP BY post_id
       ) bark_count ON p.id = bark_count.post_id
+      WHERE (
+        ${viewerPetId}::int IS NULL
+        OR (
+          p.pet_id <> ${viewerPetId}
+          AND p.pet_id NOT IN (
+            SELECT followed_pet_id FROM pet_follows
+            WHERE follower_pet_id = ${viewerPetId}
+          )
+        )
+      )
       ORDER BY p.created_at DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
+      LIMIT ${groupLimit}
     `;
 
-    console.log("[GET /api/posts] Query returned", posts.length, "posts");
+    const posts = mergeFeed(following, suggested, { limit, offset });
+
+    console.log(
+      "[GET /api/posts] Following:",
+      following.length,
+      "Suggested:",
+      suggested.length,
+      "-> page:",
+      posts.length,
+    );
 
     // Check if current user has pawed each post
     const session = await auth();
