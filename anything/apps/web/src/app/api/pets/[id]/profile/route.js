@@ -2,8 +2,9 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 
 // Public-within-the-app pet profile: any authed user may read any pet's
-// profile (it's social — no owner restriction). Optional ?viewerPetId=NN drives
-// the isFollowing flag for the viewer's own pet.
+// profile (it's social — no owner restriction). The [id] segment is a real
+// pet_id OR a pet handle. Optional ?viewerPetId=NN drives the isFollowing flag
+// for the viewer's own pet; ?limit / ?offset paginate the daily-moments grid.
 export async function GET(request, { params }) {
   try {
     const session = await auth();
@@ -11,25 +12,49 @@ export async function GET(request, { params }) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const petId = params.id;
     const { searchParams } = new URL(request.url);
     const viewerPetId = searchParams.get("viewerPetId");
 
+    // Daily-moments page window. Mirrors /api/posts limit/offset; clamped so a
+    // bad/absent value falls back to a grid-sized page rather than NaN.
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("limit") || "24", 10) || 24, 1),
+      60,
+    );
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10) || 0, 0);
+
+    // Resolve the target pet by id OR handle. A purely-numeric segment is a
+    // pet_id; anything else is a handle (a leading '@' is tolerated — clients
+    // pass @rex). Every stat/moment below scopes by the RESOLVED numeric id, so
+    // a handle never reaches the aggregate queries and cross-pet isolation holds.
+    const idParam = String(params.id ?? "");
+    const isNumericId = /^\d+$/.test(idParam);
+    const handle = idParam.replace(/^@/, "");
+
     // Pet identity. notes is deliberately NOT selected (private). No bio/location
     // columns exist in the schema, so they are omitted.
-    const petRows = await sql`
-      SELECT id, name, handle, avatar_url, species, breed,
-             age_years, age_months, gender, owner_user_id
-      FROM pets
-      WHERE id = ${petId}
-      LIMIT 1
-    `;
+    const petRows = isNumericId
+      ? await sql`
+          SELECT id, name, handle, avatar_url, species, breed,
+                 age_years, age_months, gender, owner_user_id
+          FROM pets
+          WHERE id = ${idParam}
+          LIMIT 1
+        `
+      : await sql`
+          SELECT id, name, handle, avatar_url, species, breed,
+                 age_years, age_months, gender, owner_user_id
+          FROM pets
+          WHERE handle = ${handle}
+          LIMIT 1
+        `;
 
     if (petRows.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
     const { owner_user_id, ...pet } = petRows[0];
+    const petId = pet.id;
 
     // Owner (via pets.owner_user_id = user_profiles.id).
     const ownerRows = await sql`
@@ -93,6 +118,7 @@ export async function GET(request, { params }) {
       ) bark ON p.id = bark.post_id
       WHERE p.pet_id = ${petId}
       ORDER BY p.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
     return Response.json({ pet, owner, stats, isFollowing, posts });
