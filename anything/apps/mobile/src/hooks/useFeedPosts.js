@@ -2,16 +2,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 
 export function useFeedPosts(limit = 20, offset = 0) {
+  // Scope the feed to the active pet so the backend can order it
+  // Following-first then Suggested (web Prompt 4). With no active pet we omit
+  // viewerPetId entirely and the backend serves its global fallback.
+  const { data: currentPet } = useCurrentPet();
+  const viewerPetId = currentPet?.id ?? null;
+
   return useQuery({
-    queryKey: ["posts", "feed", limit, offset],
+    // viewerPetId is part of the key so switching pets refetches + re-scopes,
+    // same as the other pet-scoped reads.
+    queryKey: ["posts", "feed", limit, offset, viewerPetId],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/posts?limit=${limit}&offset=${offset}`,
-      );
+      const params = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+      });
+      if (viewerPetId != null) {
+        params.set("viewerPetId", String(viewerPetId));
+      }
+      const response = await fetch(`/api/posts?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch posts");
       }
       const data = await response.json();
+      // Return in the order the endpoint sends (Following first, then
+      // Suggested) — do NOT re-sort client-side.
       return data.posts;
     },
     staleTime: 0, // Always fetch fresh data to catch newly created posts
