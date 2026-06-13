@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 
 export function useFeedPosts(limit = 20, offset = 0) {
   return useQuery({
@@ -137,13 +138,24 @@ export function usePostBarks(postId) {
 
 export function useCreateBark(postId) {
   const queryClient = useQueryClient();
+  // Barks are posted AS the active pet — the API now requires a petId and
+  // rejects a missing/non-owned pet with 400. Read it here so the call site
+  // stays mutateAsync(text).
+  const { data: currentPet } = useCurrentPet();
 
   return useMutation({
     mutationFn: async (text) => {
+      const petId = currentPet?.id;
+      if (!petId) {
+        // No active pet — surface a friendly error instead of sending a null
+        // pet into a guaranteed 400.
+        throw new Error("Pick a pet before barking.");
+      }
+
       const response = await fetch(`/api/posts/${postId}/barks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, petId }),
       });
 
       if (!response.ok) {

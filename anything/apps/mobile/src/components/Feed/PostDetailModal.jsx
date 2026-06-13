@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PawPrint, Megaphone, Share2, X } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { usePostBarks } from "@/hooks/useFeedPosts";
+import { PetAvatar } from "@/components/Pets/PetAvatar";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -271,15 +272,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     alignItems: "flex-start",
                   }}
                 >
-                  <Image
-                    source={{ uri: bark.avatar_url }}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      flexShrink: 0,
-                    }}
-                  />
+                  <PetAvatar uri={bark.pet_avatar_url} size={32} />
                   <View
                     style={{
                       flex: 1,
@@ -298,7 +291,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                         marginBottom: 3,
                       }}
                     >
-                      {bark.username}
+                      {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
                     </Text>
                     <Text
                       style={{
