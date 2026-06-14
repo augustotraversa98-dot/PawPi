@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { invalidLocationFields } from "@/app/api/utils/providerValidation";
 
 // One provider location — update and hard delete (owner|admin). Ticket 4b.
 //
@@ -11,33 +13,6 @@ import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 // A could otherwise edit provider B's location by passing A as :id and B's
 // locationId. A child id that doesn't belong to :id matches no row -> 404.
 // hours_json is jsonb: written with sql.json(...) (SCHEMA_NOTES jsonb gotcha).
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
-
-// Validate optional geo coordinates. Returns an error message or null.
-function invalidLocationFields(body) {
-  const { lat, lng } = body;
-  if (
-    lat !== undefined &&
-    lat !== null &&
-    (typeof lat !== "number" || lat < -90 || lat > 90)
-  ) {
-    return "lat must be a number between -90 and 90";
-  }
-  if (
-    lng !== undefined &&
-    lng !== null &&
-    (typeof lng !== "number" || lng < -180 || lng > 180)
-  ) {
-    return "lng must be a number between -180 and 180";
-  }
-  return null;
-}
 
 // Update a location — owner|admin only. Partial: omitted fields are preserved
 // via COALESCE (the routines route convention).

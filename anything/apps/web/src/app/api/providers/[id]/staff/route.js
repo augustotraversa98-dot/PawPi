@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // Provider staff — invite an existing user (owner|admin). Ticket 4c
 // (docs/provider-design.md §4 item 4, the staff half). Identity resolves
@@ -15,13 +16,6 @@ import { requireProviderRole } from "@/app/api/utils/providerAuth";
 // 'owner' is set only at provider creation (4a) and is never invitable — there is
 // no ownership transfer in the MVP. An invite may only grant admin/staff/vet.
 const INVITABLE_ROLES = ["admin", "staff", "vet"];
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
 
 // Invite an existing user to this provider — owner|admin only.
 export async function POST(request, { params }) {

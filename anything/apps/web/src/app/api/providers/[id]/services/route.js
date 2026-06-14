@@ -4,48 +4,14 @@ import {
   requireProviderRole,
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { invalidServiceFields } from "@/app/api/utils/providerValidation";
 
 // Provider services — list (any active staff) and create (owner|admin).
 // Ticket 4b (docs/provider-design.md §4 item 4). The list returns ALL of the
 // provider's services (active AND inactive) — discovery-time filtering is ticket
 // 5. Identity resolves auth_users.id -> user_profiles.id like the 4a routes;
 // authorization is by provider_staff membership via requireProviderRole.
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
-
-// Validate optional money/duration fields. Returns an error message or null.
-// price_cents/deposit_cents: non-negative integers; duration_min: positive
-// integer. Absent (undefined/null) values are allowed.
-function invalidServiceFields(body) {
-  const { duration_min, price_cents, deposit_cents } = body;
-  if (
-    price_cents !== undefined &&
-    price_cents !== null &&
-    (!Number.isInteger(price_cents) || price_cents < 0)
-  ) {
-    return "price_cents must be a non-negative integer";
-  }
-  if (
-    deposit_cents !== undefined &&
-    deposit_cents !== null &&
-    (!Number.isInteger(deposit_cents) || deposit_cents < 0)
-  ) {
-    return "deposit_cents must be a non-negative integer";
-  }
-  if (
-    duration_min !== undefined &&
-    duration_min !== null &&
-    (!Number.isInteger(duration_min) || duration_min <= 0)
-  ) {
-    return "duration_min must be a positive integer";
-  }
-  return null;
-}
 
 // List ALL of this provider's services (active + inactive) — any active staff.
 export async function GET(request, { params }) {

@@ -1,6 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { invalidServiceFields } from "@/app/api/utils/providerValidation";
 
 // One provider service — update and SOFT delete (owner|admin). Ticket 4b.
 //
@@ -12,40 +14,6 @@ import { requireProviderRole } from "@/app/api/utils/providerAuth";
 // DELETE is a SOFT delete (active=false), NOT a row delete: vet_appointments
 // .service_id references this row and past bookings must keep their service.
 // Reactivation is PATCH active=true.
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
-
-// Validate optional money/duration fields. Returns an error message or null.
-function invalidServiceFields(body) {
-  const { duration_min, price_cents, deposit_cents } = body;
-  if (
-    price_cents !== undefined &&
-    price_cents !== null &&
-    (!Number.isInteger(price_cents) || price_cents < 0)
-  ) {
-    return "price_cents must be a non-negative integer";
-  }
-  if (
-    deposit_cents !== undefined &&
-    deposit_cents !== null &&
-    (!Number.isInteger(deposit_cents) || deposit_cents < 0)
-  ) {
-    return "deposit_cents must be a non-negative integer";
-  }
-  if (
-    duration_min !== undefined &&
-    duration_min !== null &&
-    (!Number.isInteger(duration_min) || duration_min <= 0)
-  ) {
-    return "duration_min must be a positive integer";
-  }
-  return null;
-}
 
 // Update a service — owner|admin only. Partial via COALESCE; `active` toggles
 // here too (PATCH active=true reactivates a soft-deleted service). Omitted fields

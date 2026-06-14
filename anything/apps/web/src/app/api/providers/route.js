@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // Provider onboarding backend (docs/provider-design.md §4 item 4 / ticket 4a).
 // An existing logged-in user creates a provider (becoming its owner) and lists
@@ -27,15 +28,10 @@ export async function POST(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUserId = session.user.id;
-
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-    `;
-    if (userProfile.length === 0) {
+    const userId = await resolveUserId(session.user.id);
+    if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
-    const userId = userProfile[0].id;
 
     const body = await request.json();
     const { name, provider_type, bio, logo_url, slug } = body ?? {};
@@ -95,15 +91,10 @@ export async function GET(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUserId = session.user.id;
-
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-    `;
-    if (userProfile.length === 0) {
+    const userId = await resolveUserId(session.user.id);
+    if (userId === null) {
       return Response.json({ providers: [] });
     }
-    const userId = userProfile[0].id;
 
     const providers = await sql`
       SELECT p.*
