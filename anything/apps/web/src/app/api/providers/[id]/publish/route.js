@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // Publish / unpublish a provider — owner|admin only. Dedicated endpoint so the
 // profile PATCH (../route.js) never touches status. The value is validated
@@ -17,13 +18,10 @@ export async function POST(request, { params }) {
 
     const providerId = params.id;
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id} LIMIT 1
-    `;
-    if (userProfile.length === 0) {
+    const userId = await resolveUserId(session.user.id);
+    if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
-    const userId = userProfile[0].id;
 
     // owner|admin only (requireProviderRole default), scoped to this provider.
     await requireProviderRole(providerId, userId);

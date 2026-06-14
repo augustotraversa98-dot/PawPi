@@ -5,6 +5,8 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { invalidLocationFields } from "@/app/api/utils/providerValidation";
 
 // Provider locations — list (any active staff) and create (owner|admin).
 // Ticket 4b (docs/provider-design.md §4 item 4). Identity resolves
@@ -12,34 +14,6 @@ import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 // by provider_staff membership via requireProviderRole, scoped to the path :id.
 // hours_json is jsonb: written with sql.json(...) so the driver encodes it once
 // (SCHEMA_NOTES jsonb gotcha) — never JSON.stringify.
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
-
-// Validate optional geo coordinates. Returns an error message or null. Absent
-// (undefined/null) coordinates are allowed; present ones must be in range.
-function invalidLocationFields(body) {
-  const { lat, lng } = body;
-  if (
-    lat !== undefined &&
-    lat !== null &&
-    (typeof lat !== "number" || lat < -90 || lat > 90)
-  ) {
-    return "lat must be a number between -90 and 90";
-  }
-  if (
-    lng !== undefined &&
-    lng !== null &&
-    (typeof lng !== "number" || lng < -180 || lng > 180)
-  ) {
-    return "lng must be a number between -180 and 180";
-  }
-  return null;
-}
 
 // List this provider's locations — any active staff member.
 export async function GET(request, { params }) {

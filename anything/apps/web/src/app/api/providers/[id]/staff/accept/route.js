@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // Provider staff — the INVITEE accepts (or declines) their own invite. Ticket 4c.
 //
@@ -9,13 +10,6 @@ import { auth } from "@/auth";
 // whose user_profile_id equals the CALLER's own user_profiles.id AND whose status
 // is still 'invited'. A different user accepting someone else's invite, or a
 // caller with no pending invite for this provider, matches no row -> 404.
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
 
 export async function POST(request, { params }) {
   try {

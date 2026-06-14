@@ -4,6 +4,7 @@ import {
   requireProviderRole,
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // One provider: read (any active staff) and profile update (owner|admin).
 // Every path resolves identity -> user_profiles.id then authorizes via
@@ -16,13 +17,6 @@ import {
 // deliberately absent — ownership is immutable here and status flips only through
 // the publish route.
 const PROFILE_FIELDS = ["name", "provider_type", "bio", "logo_url", "slug"];
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
 
 // Get one provider — requires active staff membership (any role) or 403.
 export async function GET(request, { params }) {

@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // One provider staff member — remove (soft) and change role (owner|admin).
 // Ticket 4c.
@@ -18,13 +19,6 @@ import { requireProviderRole } from "@/app/api/utils/providerAuth";
 // New role on a PATCH may only be admin/staff/vet — 'owner' is set only at
 // provider creation (4a) and is never assignable here.
 const ASSIGNABLE_ROLES = ["admin", "staff", "vet"];
-
-async function resolveUserId(authUserId) {
-  const userProfile = await sql`
-    SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
-  `;
-  return userProfile.length === 0 ? null : userProfile[0].id;
-}
 
 // Look up the target membership scoped to the path provider + the member id.
 // Returns the row or null (null => not a member of THIS provider -> 404).
