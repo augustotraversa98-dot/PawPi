@@ -49,6 +49,12 @@ export async function GET(request) {
         add_to_calendar,
         calendar_event_id,
         status,
+        provider_id,
+        provider_location_id,
+        service_id,
+        staff_user_id,
+        booking_status,
+        source,
         created_at,
         updated_at
       FROM vet_appointments

@@ -2984,3 +2984,32 @@ CREATE INDEX IF NOT EXISTS idx_vet_appointments_provider_id
     ON public.vet_appointments (provider_id);
 
 
+-- 0017_booking_status_check.sql (Provider/Business side, ticket 6a owner booking).
+-- Lock the two free-text booking columns 0016 added with CHECK constraints:
+--   booking_status  requested|confirmed|declined|cancelled  (NULL allowed; the
+--                   provider-workflow field, DISTINCT from the existing status
+--                   column scheduled|completed|cancelled|missed)
+--   source          owner|provider                          (NULL allowed)
+-- Existing rows pass (booking_status NULL, source 'owner' default). Idempotent:
+-- drop-if-exists then add (no ADD CONSTRAINT IF NOT EXISTS in Postgres). Schema
+-- only — no data change, reminder engine unaffected.
+
+ALTER TABLE public.vet_appointments
+    DROP CONSTRAINT IF EXISTS vet_appointments_booking_status_check;
+ALTER TABLE public.vet_appointments
+    ADD CONSTRAINT vet_appointments_booking_status_check
+    CHECK (
+        booking_status IS NULL
+        OR booking_status = ANY (ARRAY['requested', 'confirmed', 'declined', 'cancelled'])
+    );
+
+ALTER TABLE public.vet_appointments
+    DROP CONSTRAINT IF EXISTS vet_appointments_source_check;
+ALTER TABLE public.vet_appointments
+    ADD CONSTRAINT vet_appointments_source_check
+    CHECK (
+        source IS NULL
+        OR source = ANY (ARRAY['owner', 'provider'])
+    );
+
+
