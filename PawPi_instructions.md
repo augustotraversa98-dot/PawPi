@@ -809,6 +809,7 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
   - Pet-profile stats + daily moments (web): DONE & squash-merged (PR #74). Endpoint already existed (PR #68) — extended /api/pets/[id]/profile rather than duplicating: now accepts pet_id OR handle (numeric segment → pet_id; else resolve handle, leading @ tolerated, handles stored bare; resolved to numeric pet.id BEFORE aggregates so cross-pet isolation is structural) + paginates daily moments (?limit/?offset, clamped [1,60], default 24, mirrors /api/posts). Five real pet-scoped stats confirmed (daily posts, paws, barks, followers, following — NO retired "pet friends" mutual stat). +6 vitest (per-stat source/scope, handle resolution, @-strip, cross-pet isolation, pagination, default window). web 53 → 59. No migration. Header identity fields untouched.
     NOTE for mobile wiring: mobile/src/app/pet-profile.test.jsx already expects real handle/owner/five stats to render → screen may already be partly wired to this contract; mobile prompt likely small (point screen at endpoint + drop mock data). Have CC read that test's expectations first to scope.
   STANDING DECISIONS: follows are one-way (pet_follows, migration 0012; profile shows Followers + Following; private/approval profiles = future); feed scope = followed pets first, then "Suggested" (public, global) so new users never see an empty feed; feed photo tap opens pet PROFILE (not post detail); BeReal daily-lock preserved throughout.
+  FUTURE — PRIVATE PROFILES (confirmed wanted by Tats, NOT urgent; defer until after the #2 services push): opt-in private profile so only friends/approved followers see your posts. Needs (a) a pets.visibility column, (b) an APPROVAL-based follow/friend model (today pet_follows is instant + one-way, no approval), (c) UI. NO lock-in from RLS: when built, this feature's ticket updates TWO places — the feed query (see Prompt 4 note: "pets has NO visibility column yet … this query is where it changes") AND the RLS R2b social read policy (posts/pets currently "any authenticated user can read" → change to "public OR viewer is an approved follower/friend"). Both are single-predicate swaps; nothing in current RLS blocks it.
   - Prompt 3 (comments carry pet identity): DONE & MERGED. PR #70 (web) migration 0013 adds post_barks.pet_id (nullable, on delete set null) + idx_post_barks_pet (APPLIED to Supabase & verified); barks GET/POST return pet_id/handle/name/avatar via LEFT JOIN pets (legacy null-pet rows safe); POST requires petId, 400s on missing/non-owned. PR #71 (mobile) useCreateBark sends active pet's petId (no pet → friendly block, no POST); BarkModal + PostDetailModal bark rows use <PetAvatar> neutral fallback + @handle (owner-username fallback for legacy rows); pravatar removed.
   - Prompt 4 (Following + Suggested feed, web): DONE & squash-merged. /api/posts GET now drives Following-first (posts from pets viewerPetId follows via pet_follows.follower_pet_id→followed_pet_id) then Suggested (all pets minus followed + own pet — NOTE: "public" = all pets, since pets has NO visibility column yet; true private/public scoping = future schema ticket, this query is where it changes). Small exported mergeFeed() concats Following ahead of Suggested, de-dupes by post id, slices the page window; each group fetched LIMIT (offset+limit) so pagination stays correct. No viewerPetId → original global feed (preserves no-empty-feed for logged-out/pet-less). Enriched row shape + BeReal POST untouched. +7 vitest (followed-first order, suggested-excludes-followed+own, no-follows-still-non-empty, no-dup-ids, pagination, global path). web 46 → 53. No migration. Resolves the old "global vs friend-scoped" question below.
   - Prompt 4 mobile wiring: DONE & squash-merged (PR #73). useFeedPosts reads active pet via useCurrentPet (usePetProfile), sends viewerPetId query param when a pet is active, omits it when pet-less/loading (→ backend global fallback); viewerPetId added to React Query key so pet-switch refetches + re-scopes; posts returned in endpoint order (no client re-sort). Existing ["posts","feed"]/["posts"] cache mutations are prefix matches → optimistic paw toggles + create-post insertion + BeReal lock untouched; per-post rendering intact. +3 jest. mobile 586 → 589.
@@ -1048,12 +1049,25 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             current_app_user_id()/app_provider_has_grant/app_provider_has_booking, SECURITY DEFINER +
             pinned search_path) + 0020 (pets ENABLE/FORCE RLS, pets_owner_all + pets_provider_read).
             HARNESS-ONLY (NOT applied to Supabase). Proven as pawpi_app in pets-rls.integration.test.ts
-            (integration 15 → 29; unit gate 391 unchanged). KNOWN GAP doc'd: public/social pet-profile
-            read (GET /api/pets/[id]/profile + feed JOIN pets) is broader than these 3 predicates →
-            R2/R3 follow-up (row-level RLS can't express its column subset). R2b… = remaining
-            groups (health_* logs; vet records pet_medical_profiles/vet_notes/pet_vaccinations; social
-            posts/barks/follows; routines/reminder_dismissals; provider tables + care_access_grants/audit
-            — mind helper recursion).
+            (integration 15 → 29; unit gate 391 unchanged). R2a KNOWN GAP (public/social pet-profile
+            read broader than the 3 predicates) → CLOSED by R2b (below).
+         R2b (SOCIAL / public-read group: posts, post_paws, post_barks, pet_follows, pet_friendships)
+            = DONE (branch ticket/rls-r2b-social). Migration 0021. The framework: PawPi is social →
+            these tables are READ by ANY authenticated user (current_app_user_id() IS NOT NULL) but
+            WRITTEN only by the actor (user_id = me). Also CORRECTS the R2a pets read rule: DROP
+            pets_provider_read (subsumed) + add pets_authed_read (any authed) → pets read = any authed,
+            write = owner only (closes the R2a gap; feed JOIN pets + profile reads survive FORCE RLS).
+            pet_follows write = owner-of-follower (EXISTS pets, no SECURITY DEFINER — own pet visible
+            via pets_owner_all). pet_friendships = participant-scoped read+write (no write route today;
+            safe default). grant/booking helpers UNTOUCHED (they gate the MEDICAL tables in R2c).
+            HARNESS-ONLY (NOT applied to Supabase). Proven as pawpi_app in social-rls.integration.test.ts
+            + updated pets-rls (integration 29 → 49; unit gate 391 unchanged).
+         R2c… = remaining groups: R2c PRIVATE/medical (health_* logs; pet_medical_profiles/vet_notes/
+            pet_vaccinations/allergies/conditions/lab_results/surgeries; vet_documents; vet_appointments;
+            routines; reminder_dismissals — STRICT owner OR provider-with-scope-grant; mind which tables
+            providers may write). R2d PROVIDER/business (providers, provider_staff, provider_services/
+            locations/reviews, care_access_grants, care_access_audit — provider_staff/owner scoped; mind
+            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants).
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
             mechanical, not started.
          R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
