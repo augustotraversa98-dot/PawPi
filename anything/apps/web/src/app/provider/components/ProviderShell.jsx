@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import {
   CalendarCheck,
   Building2,
@@ -18,13 +18,27 @@ import { getProviderQueryClient } from "../lib/queryClient";
 import { COLORS } from "../lib/colors";
 import { useProviders } from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
+import CreateProviderForm from "./CreateProviderForm";
 
-// Dashboard sections. Only "bookings" is wired this ticket (c1); the rest are
-// clearly-disabled "coming soon" stubs (Profile/Services/Staff → c2, Clinical →
-// c3, Sales/Chats → future layers with no backend yet). They never dead-end.
+// Dashboard sections. Bookings (c1) + Profile (c2a) are wired and navigate to
+// their routes; the rest are clearly-disabled "coming soon" stubs (Services/
+// Staff → c2b, Clinical → c3, Sales/Chats → future layers with no backend yet).
+// They never dead-end.
 const NAV_ITEMS = [
-  { key: "bookings", label: "Bookings", Icon: CalendarCheck, enabled: true },
-  { key: "profile", label: "Profile", Icon: Building2, enabled: false },
+  {
+    key: "bookings",
+    label: "Bookings",
+    Icon: CalendarCheck,
+    enabled: true,
+    href: "/provider/bookings",
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    Icon: Building2,
+    enabled: true,
+    href: "/provider/profile",
+  },
   { key: "services", label: "Services", Icon: Tag, enabled: false },
   { key: "staff", label: "Staff", Icon: Users, enabled: false },
   { key: "clinical", label: "Clinical", Icon: Stethoscope, enabled: false },
@@ -49,39 +63,6 @@ function Spinner({ label }) {
       <div className="flex flex-col items-center gap-3 text-[#3B241B]">
         <Loader2 className="h-7 w-7 animate-spin" style={{ color: COLORS.coral }} />
         <p className="text-sm text-[#7A6254]">{label}</p>
-      </div>
-    </FullScreen>
-  );
-}
-
-// Friendly state for a logged-in user who is not staff of any provider. Stubs
-// toward onboarding (c2) without navigating anywhere broken.
-function NoProviderState() {
-  return (
-    <FullScreen>
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-lg">
-        <div
-          className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: COLORS.peach }}
-        >
-          <PawPrint className="h-7 w-7" style={{ color: COLORS.terracotta }} />
-        </div>
-        <h1 className="mb-2 text-2xl font-bold text-[#3B241B]">
-          You don't have a provider account yet
-        </h1>
-        <p className="mb-6 text-sm text-[#7A6254]">
-          Provider accounts let pet businesses manage bookings, staff, and client
-          care. Onboarding is coming soon — you'll be able to set up your business
-          profile right here.
-        </p>
-        <button
-          type="button"
-          disabled
-          className="w-full cursor-not-allowed rounded-xl px-4 py-3 text-base font-bold text-white opacity-60"
-          style={{ backgroundColor: COLORS.coral }}
-        >
-          Create a provider account (coming soon)
-        </button>
       </div>
     </FullScreen>
   );
@@ -147,22 +128,18 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map(({ key, label, Icon, enabled }) => {
+        {NAV_ITEMS.map(({ key, label, Icon, enabled, href }) => {
           const isActive = enabled && key === active;
-          return (
-            <div
-              key={key}
-              aria-current={isActive ? "page" : undefined}
-              aria-disabled={!enabled}
-              className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold ${
-                isActive
-                  ? "text-white"
-                  : enabled
-                    ? "text-[#3B241B] hover:bg-[#FFF7EF]"
-                    : "cursor-not-allowed text-[#B8A99D]"
-              }`}
-              style={isActive ? { backgroundColor: COLORS.coral } : undefined}
-            >
+          const className = `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold ${
+            isActive
+              ? "text-white"
+              : enabled
+                ? "text-[#3B241B] hover:bg-[#FFF7EF]"
+                : "cursor-not-allowed text-[#B8A99D]"
+          }`;
+          const style = isActive ? { backgroundColor: COLORS.coral } : undefined;
+          const inner = (
+            <>
               <span className="flex items-center gap-3">
                 <Icon className="h-4 w-4" />
                 {label}
@@ -172,6 +149,23 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
                   Soon
                 </span>
               )}
+            </>
+          );
+          // Enabled items are real links to their route; disabled stubs stay
+          // inert divs so they never dead-end.
+          return enabled ? (
+            <Link
+              key={key}
+              to={href}
+              aria-current={isActive ? "page" : undefined}
+              className={className}
+              style={style}
+            >
+              {inner}
+            </Link>
+          ) : (
+            <div key={key} aria-disabled className={className}>
+              {inner}
             </div>
           );
         })}
@@ -230,7 +224,7 @@ function ProviderShellInner({ active, children }) {
     );
   }
   if (!providers || providers.length === 0) {
-    return <NoProviderState />;
+    return <CreateProviderForm />;
   }
 
   const content =
