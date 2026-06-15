@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // user_profile_id) branches (already-member 409 vs removed re-invite) are driven
 // by what the existing-membership SELECT mock resolves to.
 
-import { POST } from './route';
+import { GET, POST } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 import { requireProviderRole } from '@/app/api/utils/providerAuth';
@@ -42,6 +42,81 @@ const inviteReq = (body) =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+describe('GET /api/providers/[id]/staff — list with names', () => {
+  it('anonymous → 401, never touches the DB', async () => {
+    auth.mockResolvedValue(undefined);
+    const res = await GET(
+      new Request('http://localhost/api/providers/100/staff'),
+      PARAMS,
+    );
+    expect(res.status).toBe(401);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('non-member → 403, checked with the read-all role set', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    requireProviderRole.mockRejectedValue(forbidden());
+
+    const res = await GET(
+      new Request('http://localhost/api/providers/100/staff'),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(403);
+    // Any active staff may read — checked against ALL_PROVIDER_ROLES.
+    expect(requireProviderRole).toHaveBeenCalledWith('100', 7, [
+      'owner',
+      'admin',
+      'staff',
+      'vet',
+    ]);
+  });
+
+  it('active staff → returns provider_staff rows JOINED to user_profiles names', async () => {
+    auth.mockResolvedValue(SESSION);
+    const STAFF = [
+      {
+        id: 1,
+        provider_id: 100,
+        user_profile_id: 7,
+        role: 'owner',
+        status: 'active',
+        username: 'doc',
+        full_name: 'Dr Vet',
+        avatar_url: null,
+      },
+      {
+        id: 2,
+        provider_id: 100,
+        user_profile_id: 8,
+        role: 'staff',
+        status: 'invited',
+        username: 'frontdesk',
+        full_name: null,
+        avatar_url: null,
+      },
+    ];
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
+      .mockResolvedValueOnce(STAFF); // staff list (joined)
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'vet' });
+
+    const res = await GET(
+      new Request('http://localhost/api/providers/100/staff'),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ staff: STAFF });
+    // The list query LEFT JOINs user_profiles for names and is scoped to provider 100.
+    const text = queryTextOf(1);
+    expect(text).toContain('LEFT JOIN user_profiles');
+    expect(text).toContain('full_name');
+    expect(valuesOf(1)).toContain('100');
+  });
 });
 
 describe('POST /api/providers/[id]/staff — invite', () => {

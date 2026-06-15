@@ -7,8 +7,18 @@ import {
 } from "@tanstack/react-table";
 import { Check, X, Ban, UserPlus, Calendar, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useProviderBookings, useBookingAction } from "../hooks/useProviders";
+import {
+  useProviderBookings,
+  useBookingAction,
+  useProviderStaff,
+} from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+
+// Display name for a staff member, falling back to username then a raw id.
+function staffName(member, fallbackId) {
+  if (!member) return `Staff #${fallbackId}`;
+  return member.full_name || member.username || `Staff #${fallbackId}`;
+}
 
 // booking_status filter options. "all" sends no ?booking_status (full inbox).
 const STATUS_FILTERS = [
@@ -60,6 +70,23 @@ export default function BookingsInbox({ providerId }) {
 
   const { mutate, isPending, variables } = useBookingAction(providerId);
 
+  // Staff (c2c) powers the Assign-by-name picker and maps a booking's
+  // staff_user_id (a provider_staff.user_profile_id) to a display name. Only
+  // ACTIVE members can be assigned (the backend rejects non-active ids).
+  const { data: staff } = useProviderStaff(providerId);
+  const staffById = useMemo(() => {
+    const map = new Map();
+    for (const m of staff ?? []) map.set(String(m.user_profile_id), m);
+    return map;
+  }, [staff]);
+  const activeStaff = useMemo(
+    () => (staff ?? []).filter((m) => m.status === "active"),
+    [staff],
+  );
+
+  // The booking currently being assigned (opens the staff picker), or null.
+  const [assigning, setAssigning] = useState(null);
+
   // Run an action and toast the outcome. The hook invalidates on success;
   // backend 400/404/409 messages surface verbatim so the user sees e.g.
   // "Only a requested booking can be confirmed".
@@ -94,20 +121,13 @@ export default function BookingsInbox({ providerId }) {
       runAction(b.id, "cancel");
     }
   };
-  const onAssign = (b) => {
-    // Minimal staff picker (a full picker waits for the Staff c-ticket): prompt
-    // for a staff user id. Must be a number — the backend rejects non-active ids.
-    const raw = window.prompt(
-      "Assign to staff — enter the staff member's user id:",
-      b.staff_user_id != null ? String(b.staff_user_id) : "",
-    );
-    if (raw == null) return; // cancelled
-    const staffUserId = Number(raw.trim());
-    if (!raw.trim() || Number.isNaN(staffUserId)) {
-      toast.error("Enter a valid staff user id");
-      return;
-    }
-    runAction(b.id, "assign", staffUserId);
+  // Open the staff picker for this booking; the actual assign fires when a member
+  // is chosen (see AssignModal → onPick).
+  const onAssign = (b) => setAssigning(b);
+  const onPickStaff = (member) => {
+    const booking = assigning;
+    setAssigning(null);
+    if (booking) runAction(booking.id, "assign", member.user_profile_id);
   };
 
   const columns = useMemo(
@@ -141,10 +161,12 @@ export default function BookingsInbox({ providerId }) {
         header: "Assigned",
         cell: (info) => {
           const v = info.getValue();
-          return v != null ? (
-            <span className="text-[#3B241B]">Staff #{v}</span>
-          ) : (
-            <span className="text-[#B8A99D]">Unassigned</span>
+          if (v == null)
+            return <span className="text-[#B8A99D]">Unassigned</span>;
+          return (
+            <span className="text-[#3B241B]">
+              {staffName(staffById.get(String(v)), v)}
+            </span>
           );
         },
       }),
@@ -206,8 +228,9 @@ export default function BookingsInbox({ providerId }) {
       }),
     ],
     // handlers are stable enough for this screen; rebuild on pending change so
-    // the busy state reflects in the cells.
-    [isPending, variables],
+    // the busy state reflects in the cells, and on staff load so the assigned
+    // column resolves names.
+    [isPending, variables, staffById],
   );
 
   const table = useReactTable({
@@ -315,6 +338,88 @@ export default function BookingsInbox({ providerId }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {assigning && (
+        <AssignModal
+          booking={assigning}
+          staff={activeStaff}
+          currentStaffId={assigning.staff_user_id}
+          onPick={onPickStaff}
+          onClose={() => setAssigning(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Picker of ACTIVE staff to assign a booking to. Choosing a member fires the
+// assign mutation with that member's user_profile_id; if there are no active
+// staff, it points the user at the Staff screen instead of dead-ending.
+function AssignModal({ booking, staff, currentStaffId, onPick, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Assign staff"
+    >
+      <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-[#3B241B]">
+            Assign {booking.pet_name || "booking"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {staff.length === 0 ? (
+          <p className="py-6 text-center text-sm text-[#7A6254]">
+            No active staff to assign yet. Add a teammate from the Staff screen.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {staff.map((m) => {
+              const isCurrent =
+                currentStaffId != null &&
+                String(currentStaffId) === String(m.user_profile_id);
+              return (
+                <li key={m.user_profile_id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(m)}
+                    className="flex w-full items-center justify-between rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-left text-sm font-semibold text-[#3B241B] transition-colors hover:border-[#FF6F61]"
+                  >
+                    <span>
+                      {staffName(m, m.user_profile_id)}
+                      {m.username && (
+                        <span className="ml-2 text-xs font-normal text-[#7A6254]">
+                          @{m.username}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs font-normal capitalize text-[#B8A99D]">
+                        {m.role}
+                      </span>
+                      {isCurrent && (
+                        <span className="rounded-full bg-[#E5F4EC] px-2 py-0.5 text-[10px] font-semibold text-[#1F7A4D]">
+                          Current
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

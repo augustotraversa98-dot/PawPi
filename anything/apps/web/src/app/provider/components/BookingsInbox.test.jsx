@@ -1,18 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 // The screen's data + mutation hooks are mocked so this test isolates rendering,
 // the per-status action gating, and the filter wiring (no DB / react-query).
 vi.mock("../hooks/useProviders", () => ({
   useProviderBookings: vi.fn(),
   useBookingAction: vi.fn(),
+  useProviderStaff: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { useProviderBookings, useBookingAction } from "../hooks/useProviders";
+import {
+  useProviderBookings,
+  useBookingAction,
+  useProviderStaff,
+} from "../hooks/useProviders";
 import BookingsInbox from "./BookingsInbox";
+
+const STAFF = [
+  {
+    id: 1,
+    user_profile_id: 7,
+    role: "owner",
+    status: "active",
+    username: "doc",
+    full_name: "Dr Vet",
+  },
+  {
+    id: 2,
+    user_profile_id: 42,
+    role: "staff",
+    status: "active",
+    username: "frontdesk",
+    full_name: "Front Desk",
+  },
+  {
+    id: 3,
+    user_profile_id: 9,
+    role: "vet",
+    status: "removed",
+    username: "gone",
+    full_name: "Ex Vet",
+  },
+];
 
 const REQUESTED = {
   id: 1,
@@ -54,6 +86,12 @@ beforeEach(() => {
     mutate: mutateMock,
     isPending: false,
     variables: undefined,
+  });
+  useProviderStaff.mockReturnValue({
+    data: STAFF,
+    isLoading: false,
+    isError: false,
+    error: null,
   });
   setBookings([REQUESTED, CONFIRMED]);
 });
@@ -125,5 +163,36 @@ describe("BookingsInbox", () => {
       target: { value: "confirmed" },
     });
     expect(useProviderBookings).toHaveBeenLastCalledWith(3, "confirmed");
+  });
+
+  it("maps a booking's staff_user_id to the staff member's name", () => {
+    render(<BookingsInbox providerId={3} />);
+    // CONFIRMED.staff_user_id 42 → 'Front Desk' (not the raw "Staff #42").
+    expect(screen.getByText("Front Desk")).toBeInTheDocument();
+    expect(screen.queryByText("Staff #42")).not.toBeInTheDocument();
+    // The requested (unassigned) booking still reads Unassigned.
+    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+  });
+
+  it("Assign opens a picker of ACTIVE staff by name (removed members excluded)", () => {
+    render(<BookingsInbox providerId={3} />);
+    // Open the picker on the first booking offering Assign.
+    fireEvent.click(screen.getAllByText("Assign")[0]);
+    const dialog = screen.getByRole("dialog");
+    // Both active members are pickable; the removed one is not offered.
+    expect(within(dialog).getByText("Dr Vet")).toBeInTheDocument();
+    expect(within(dialog).getByText("Front Desk")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Ex Vet")).not.toBeInTheDocument();
+  });
+
+  it("picking a staff member assigns with that member's user_profile_id", () => {
+    render(<BookingsInbox providerId={3} />);
+    fireEvent.click(screen.getAllByText("Assign")[0]);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Front Desk"));
+    expect(mutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "assign", staffUserId: 42 }),
+      expect.any(Object),
+    );
   });
 });

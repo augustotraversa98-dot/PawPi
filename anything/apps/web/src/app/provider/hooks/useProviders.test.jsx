@@ -13,6 +13,9 @@ import {
   locationsKey,
   locationsUrl,
   locationUrl,
+  staffKey,
+  staffUrl,
+  staffMemberUrl,
   useProviders,
   useProviderBookings,
   useBookingAction,
@@ -28,6 +31,10 @@ import {
   useCreateLocation,
   useUpdateLocation,
   useDeleteLocation,
+  useProviderStaff,
+  useInviteStaff,
+  useUpdateStaffRole,
+  useRemoveStaff,
 } from "./useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 
@@ -98,6 +105,13 @@ describe("query key + url builders", () => {
     expect(locationsKey()).toEqual(["provider-locations", ""]);
     expect(locationsUrl(7)).toBe("/api/providers/7/locations");
     expect(locationUrl(7, 5)).toBe("/api/providers/7/locations/5");
+  });
+
+  it("staff key + urls are scoped to the provider", () => {
+    expect(staffKey(7)).toEqual(["provider-staff", "7"]);
+    expect(staffKey()).toEqual(["provider-staff", ""]);
+    expect(staffUrl(7)).toBe("/api/providers/7/staff");
+    expect(staffMemberUrl(7, 99)).toBe("/api/providers/7/staff/99");
   });
 });
 
@@ -311,6 +325,149 @@ describe("useDeleteLocation", () => {
     expect(spy).toHaveBeenCalledWith({
       queryKey: ["provider-locations", "3"],
     });
+  });
+});
+
+describe("useProviderStaff", () => {
+  it("GETs the staff url and returns the staff array (with names)", async () => {
+    mockFetch({
+      staff: [{ id: 1, user_profile_id: 7, role: "owner", username: "doc" }],
+    });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useProviderStaff(7), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith("/api/providers/7/staff", undefined);
+    expect(result.current.data).toEqual([
+      { id: 1, user_profile_id: 7, role: "owner", username: "doc" },
+    ]);
+  });
+
+  it("is disabled (does not fetch) without a provider id", () => {
+    mockFetch({ staff: [] });
+    const { wrapper } = makeWrapper();
+    renderHook(() => useProviderStaff(null), { wrapper });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useInviteStaff", () => {
+  it("POSTs { username, role } and invalidates ['provider-staff', id]", async () => {
+    mockFetch(
+      { staff: { id: 5, user_profile_id: 99, role: "staff", status: "invited" } },
+      { status: 201 },
+    );
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useInviteStaff(3), { wrapper });
+
+    result.current.mutate({ username: "bob", role: "staff" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/staff",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ username: "bob", role: "staff" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider-staff", "3"] });
+  });
+
+  it("surfaces the 404 'Invitee not found' message", async () => {
+    mockFetch({ error: "Invitee not found" }, { ok: false, status: 404 });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useInviteStaff(3), { wrapper });
+
+    result.current.mutate({ username: "ghost", role: "staff" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe("Invitee not found");
+  });
+
+  it("surfaces the 409 'already a member or invited' message", async () => {
+    mockFetch(
+      { error: "User is already a member or invited" },
+      { ok: false, status: 409 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useInviteStaff(3), { wrapper });
+
+    result.current.mutate({ username: "bob", role: "staff" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe(
+      "User is already a member or invited",
+    );
+  });
+});
+
+describe("useUpdateStaffRole", () => {
+  it("PATCHes the member url with { role } and invalidates the list", async () => {
+    mockFetch({ staff: { id: 5, role: "admin" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateStaffRole(3), { wrapper });
+
+    result.current.mutate({ userProfileId: 99, role: "admin" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/staff/99",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ role: "admin" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider-staff", "3"] });
+  });
+
+  it("surfaces the 400 owner-immutable message", async () => {
+    mockFetch(
+      { error: "The owner's role cannot be changed" },
+      { ok: false, status: 400 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useUpdateStaffRole(3), { wrapper });
+
+    result.current.mutate({ userProfileId: 7, role: "admin" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe(
+      "The owner's role cannot be changed",
+    );
+  });
+});
+
+describe("useRemoveStaff", () => {
+  it("DELETEs the member url and invalidates the list", async () => {
+    mockFetch({ staff: { id: 5, status: "removed" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useRemoveStaff(3), { wrapper });
+
+    result.current.mutate(99);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/staff/99",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider-staff", "3"] });
+  });
+
+  it("surfaces the 403 owner-protected message", async () => {
+    mockFetch(
+      { error: "The owner cannot be removed" },
+      { ok: false, status: 403 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useRemoveStaff(3), { wrapper });
+
+    result.current.mutate(7);
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe("The owner cannot be removed");
   });
 });
 

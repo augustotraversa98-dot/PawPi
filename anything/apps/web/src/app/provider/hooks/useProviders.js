@@ -64,6 +64,18 @@ export const locationsUrl = (providerId) =>
 export const locationUrl = (providerId, locationId) =>
   `/api/providers/${providerId}/locations/${locationId}`;
 
+// Staff (c2c). One cache entry per provider; invite/role/remove invalidate it so
+// the staff screen + the bookings Assign-by-name picker refetch the named list.
+export const staffKey = (providerId) => [
+  "provider-staff",
+  String(providerId ?? ""),
+];
+
+export const staffUrl = (providerId) => `/api/providers/${providerId}/staff`;
+
+export const staffMemberUrl = (providerId, userProfileId) =>
+  `/api/providers/${providerId}/staff/${userProfileId}`;
+
 // --- fetch helpers ----------------------------------------------------------
 
 // Read JSON and surface the backend's { error } message on a non-2xx so the UI
@@ -343,6 +355,81 @@ export function useDeleteLocation(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: locationsKey(providerId) });
+    },
+  });
+}
+
+// --- staff (c2c) ------------------------------------------------------------
+
+// This provider's staff, JOINED to user_profiles for display names (the new
+// dedicated GET — NOT useProvider's nameless staff array). Returns every row
+// (active/invited/removed); the screen groups them. Disabled until a providerId.
+export function useProviderStaff(providerId) {
+  return useQuery({
+    queryKey: staffKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(staffUrl(providerId));
+      return data.staff ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Invite an existing user by username (owner|admin). body { username, role } with
+// role ∈ {admin, staff, vet}. 404 "Invitee not found", 409 "already a member or
+// invited" surface verbatim; re-inviting a removed user is just inviting them
+// again (the backend flips removed→invited in place).
+export function useInviteStaff(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ username, role }) => {
+      const data = await getJson(staffUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, role }),
+      });
+      return data.staff;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKey(providerId) });
+    },
+  });
+}
+
+// Change a member's role (owner|admin). { userProfileId, role } where role ∈
+// {admin, staff, vet}. The owner's role is immutable (400). 404 if not a member
+// of this provider — all surface verbatim.
+export function useUpdateStaffRole(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userProfileId, role }) => {
+      const data = await getJson(staffMemberUrl(providerId, userProfileId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      return data.staff;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKey(providerId) });
+    },
+  });
+}
+
+// Remove a member (owner|admin) — SOFT remove (status='removed', kept for history
+// + re-invite). The owner cannot be removed (403). 404 if not this provider's
+// member — both surface verbatim.
+export function useRemoveStaff(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userProfileId) => {
+      const data = await getJson(staffMemberUrl(providerId, userProfileId), {
+        method: "DELETE",
+      });
+      return data.staff;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffKey(providerId) });
     },
   });
 }

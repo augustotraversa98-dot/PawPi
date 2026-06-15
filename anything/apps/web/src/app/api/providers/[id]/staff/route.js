@@ -1,6 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { requireProviderRole } from "@/app/api/utils/providerAuth";
+import {
+  requireProviderRole,
+  ALL_PROVIDER_ROLES,
+} from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 
 // Provider staff — invite an existing user (owner|admin). Ticket 4c
@@ -16,6 +19,49 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 // 'owner' is set only at provider creation (4a) and is never invitable — there is
 // no ownership transfer in the MVP. An invite may only grant admin/staff/vet.
 const INVITABLE_ROLES = ["admin", "staff", "vet"];
+
+// List this provider's staff JOINED to user_profiles for display — any active
+// staff may read (mirrors the 4b services/locations GET auth). Unlike GET
+// /api/providers/[id], which returns raw provider_staff rows with no names, this
+// LEFT JOINs user_profiles so the staff screen and the Assign-by-name picker have
+// usernames + display names to show. Returns every row (active/invited/removed) —
+// the UI groups and dims them; discovery-style filtering is not this route's job.
+export async function GET(request, { params }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const providerId = params.id;
+    const userId = await resolveUserId(session.user.id);
+    if (userId === null) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
+
+    const staff = await sql`
+      SELECT
+        ps.*,
+        up.username,
+        up.full_name,
+        up.avatar_url
+      FROM provider_staff ps
+      LEFT JOIN user_profiles up ON up.id = ps.user_profile_id
+      WHERE ps.provider_id = ${providerId}
+      ORDER BY ps.created_at ASC
+    `;
+
+    return Response.json({ staff });
+  } catch (error) {
+    if (error.status === 403) {
+      return Response.json({ error: error.message }, { status: 403 });
+    }
+    console.error("[GET /api/providers/[id]/staff] Error:", error.message);
+    return Response.json({ error: "Failed to fetch staff" }, { status: 500 });
+  }
+}
 
 // Invite an existing user to this provider — owner|admin only.
 export async function POST(request, { params }) {
