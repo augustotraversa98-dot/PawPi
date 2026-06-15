@@ -6,7 +6,8 @@
 		"dev": "react-router dev",
 		"typecheck": "react-router typegen && tsc --noEmit",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"test:integration": "vitest run --config vitest.integration.config.ts"
 	},
 	"dependencies": {
 		"@auth/core": "^0.37.2",
@@ -86,6 +87,7 @@
 		"@types/ws": "^8.18.1",
 		"autoprefixer": "^10.4.21",
 		"babel-plugin-react-require": "^4.0.3",
+		"embedded-postgres": "18.4.0-beta.17",
 		"fast-glob": "^3.3.3",
 		"jsdom": "^26.1.0",
 		"micromatch": "^4.0.8",
@@ -99,5 +101,11 @@
 	},
 	"overrides": {
 		"next-themes": "^0.3.0"
-	}
+	},
+	"trustedDependencies": [
+		"@embedded-postgres/darwin-arm64",
+		"@embedded-postgres/darwin-x64",
+		"@embedded-postgres/linux-x64",
+		"@embedded-postgres/linux-arm64"
+	]
 }
