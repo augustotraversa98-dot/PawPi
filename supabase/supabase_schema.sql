@@ -3013,3 +3013,29 @@ ALTER TABLE public.vet_appointments
     );
 
 
+-- 0018_vaccination_reconciliation.sql (Provider/Business side — vaccination SSOT).
+-- Make pet_vaccinations the single source of truth for vaccination history without
+-- touching the reminder engine. Adds provenance columns so owner vaccine
+-- completions can WRITE THROUGH from health_medical_care_logs into pet_vaccinations
+-- (and so existing owner-logged vaccines can be backfilled) without ever creating
+-- duplicates:
+--   source                      'owner' | 'provider' (free-text; backfilled by
+--                               administered_by_provider_id IS NOT NULL)
+--   source_medical_care_log_id  links a row to the medical-care log that produced
+--                               it; ON DELETE SET NULL (a deleted log unlinks, not
+--                               deletes, the vaccination history)
+-- Plus a UNIQUE partial index so a given log maps to AT MOST one vaccination row.
+-- The migration also backfills source for existing rows and inserts one
+-- pet_vaccinations row per administered owner vaccine log (status in
+-- ('given','completed')). Idempotent / re-runnable.
+
+ALTER TABLE public.pet_vaccinations
+    ADD COLUMN IF NOT EXISTS source text,
+    ADD COLUMN IF NOT EXISTS source_medical_care_log_id integer
+        REFERENCES public.health_medical_care_logs(id) ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_pet_vaccinations_source_log
+    ON public.pet_vaccinations (source_medical_care_log_id)
+    WHERE source_medical_care_log_id IS NOT NULL;
+
+

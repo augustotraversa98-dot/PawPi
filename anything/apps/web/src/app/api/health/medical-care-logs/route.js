@@ -52,33 +52,71 @@ export async function POST(request) {
       );
     }
 
+    // Write-through to pet_vaccinations (the vaccination-history SSOT) is part of
+    // the SAME statement as the medical-care log, so the two can never diverge: a
+    // single CTE inserts the log, then — ONLY when that log is an ADMINISTERED
+    // vaccine — inserts the matching vaccination row linked by
+    // source_medical_care_log_id. The log row is still returned unchanged, so the
+    // reminder engine (which resolves off health_medical_care_logs) is untouched.
+    //
+    // Administered set = status in ('given','completed'): the vaccine routine flow
+    // emits 'completed' (mobile reminderLogFlow.js vaccine branch — both
+    // "add vet record" and "Mark completed"); 'given' is the generic medical-care
+    // administered status. A skipped / 'issue_reported' completion is NOT
+    // administered → the WHERE filters it out and no vaccination row is written
+    // (any reaction stays on the medical-care log). For a non-vaccine log the
+    // SELECT matches nothing, so only the log is inserted. given_at::date→date_given
+    // (given_at is intentionally backdated to the scheduled day — kept as-is);
+    // expires_on/lot/administered_by_provider_id stay null (not captured by the
+    // routine flow). ON CONFLICT DO NOTHING keeps the write-through idempotent on
+    // the source-log link.
     const result = await sql`
-      INSERT INTO health_medical_care_logs (
-        pet_id,
-        owner_user_id,
-        routine_id,
-        medical_care_item_id,
-        care_type,
-        name,
-        dose,
-        given_at,
-        status,
-        notes,
-        reaction_or_issue
-      ) VALUES (
-        ${petId},
-        ${ownerUserId},
-        ${routineId || null},
-        ${medicalCareItemId || null},
-        ${careType || null},
-        ${name || null},
-        ${dose || null},
-        ${givenAt || new Date().toISOString()},
-        ${status},
-        ${notes || null},
-        ${reactionOrIssue ? sql.json(jsonbWriteValue(reactionOrIssue)) : null}
+      WITH new_log AS (
+        INSERT INTO health_medical_care_logs (
+          pet_id,
+          owner_user_id,
+          routine_id,
+          medical_care_item_id,
+          care_type,
+          name,
+          dose,
+          given_at,
+          status,
+          notes,
+          reaction_or_issue
+        ) VALUES (
+          ${petId},
+          ${ownerUserId},
+          ${routineId || null},
+          ${medicalCareItemId || null},
+          ${careType || null},
+          ${name || null},
+          ${dose || null},
+          ${givenAt || new Date().toISOString()},
+          ${status},
+          ${notes || null},
+          ${reactionOrIssue ? sql.json(jsonbWriteValue(reactionOrIssue)) : null}
+        )
+        RETURNING *
+      ), new_vaccination AS (
+        INSERT INTO pet_vaccinations (
+          pet_id, owner_user_id, name, date_given, source, source_medical_care_log_id
+        )
+        SELECT
+          pet_id,
+          owner_user_id,
+          COALESCE(name, 'Vaccine'),
+          given_at::date,
+          'owner',
+          id
+        FROM new_log
+        WHERE care_type = 'vaccine' AND status IN ('given', 'completed')
+        ON CONFLICT (source_medical_care_log_id)
+          WHERE source_medical_care_log_id IS NOT NULL
+          DO NOTHING
+        RETURNING id
       )
-      RETURNING *
+      SELECT * FROM new_log
     `;
 
     return Response.json({ log: result[0] }, { status: 201 });

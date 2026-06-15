@@ -74,13 +74,17 @@ export async function GET(request) {
           AND care_type = 'medication'
           AND given_at >= NOW() - INTERVAL '30 days'
       `,
-      // Vaccines (from medical care logs where care_type = vaccine)
+      // Vaccines — "Vaccination History" reads pet_vaccinations, the vaccination
+      // SSOT (0018). This counts vaccination EVENTS/records (provider-administered +
+      // owner write-through + backfill), NOT distinct vaccine routine items as the
+      // old health_medical_care_logs query did — so a dog vaccinated 3x reads 3, not
+      // 1. Intentional semantics change (see PR body), not a regression.
       sql`
-        SELECT COUNT(DISTINCT medical_care_item_id)::int as count
-        FROM health_medical_care_logs
-        WHERE pet_id = ${petId} 
+        SELECT COUNT(*)::int as count
+        FROM pet_vaccinations
+        WHERE pet_id = ${petId}
           AND owner_user_id = ${ownerUserId}
-          AND care_type = 'vaccine'
+          AND deleted_at IS NULL
       `,
       // Upcoming Appointments
       sql`
