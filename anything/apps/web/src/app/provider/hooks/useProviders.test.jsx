@@ -16,6 +16,9 @@ import {
   staffKey,
   staffUrl,
   staffMemberUrl,
+  providerInvitesKey,
+  providerInvitesUrl,
+  staffAcceptUrl,
   petRecordKey,
   petRecordUrl,
   accessRequestsUrl,
@@ -40,6 +43,8 @@ import {
   useInviteStaff,
   useUpdateStaffRole,
   useRemoveStaff,
+  useMyProviderInvites,
+  useRespondToInvite,
   usePetRecord,
   useRequestAccess,
   useAddVetNote,
@@ -121,6 +126,12 @@ describe("query key + url builders", () => {
     expect(staffKey()).toEqual(["provider-staff", ""]);
     expect(staffUrl(7)).toBe("/api/providers/7/staff");
     expect(staffMemberUrl(7, 99)).toBe("/api/providers/7/staff/99");
+  });
+
+  it("invite key + urls (the staff-accept surface)", () => {
+    expect(providerInvitesKey()).toEqual(["provider-invites"]);
+    expect(providerInvitesUrl()).toBe("/api/provider-invites");
+    expect(staffAcceptUrl(7)).toBe("/api/providers/7/staff/accept");
   });
 
   it("clinical key + urls are scoped to the provider + pet", () => {
@@ -488,6 +499,80 @@ describe("useRemoveStaff", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error.message).toBe("The owner cannot be removed");
+  });
+});
+
+describe("useMyProviderInvites", () => {
+  it("GETs /api/provider-invites and returns the invites array", async () => {
+    mockFetch({
+      invites: [
+        { id: 5, provider_id: 100, role: "vet", provider_name: "Happy Paws" },
+      ],
+    });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useMyProviderInvites(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith("/api/provider-invites", undefined);
+    expect(result.current.data).toEqual([
+      { id: 5, provider_id: 100, role: "vet", provider_name: "Happy Paws" },
+    ]);
+  });
+});
+
+describe("useRespondToInvite", () => {
+  it("ACCEPT posts an empty body to the provider's accept route + invalidates invites AND providers", async () => {
+    mockFetch({ staff: { id: 5, status: "active" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useRespondToInvite(), { wrapper });
+
+    result.current.mutate({ providerId: 100 });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/100/staff/accept",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider-invites"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["providers"] });
+  });
+
+  it("DECLINE posts { action: 'decline' } to the same route", async () => {
+    mockFetch({ staff: { id: 5, status: "removed" } });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useRespondToInvite(), { wrapper });
+
+    result.current.mutate({ providerId: 100, action: "decline" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/100/staff/accept",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ action: "decline" }),
+      }),
+    );
+  });
+
+  it("surfaces the 404 'no pending invite' message", async () => {
+    mockFetch(
+      { error: "No pending invite for this provider" },
+      { ok: false, status: 404 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useRespondToInvite(), { wrapper });
+
+    result.current.mutate({ providerId: 100 });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe(
+      "No pending invite for this provider",
+    );
+    expect(result.current.error.status).toBe(404);
   });
 });
 

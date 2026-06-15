@@ -13,11 +13,12 @@ import {
   ChevronDown,
   PawPrint,
   Loader2,
+  MailCheck,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
 import { COLORS } from "../lib/colors";
-import { useProviders } from "../hooks/useProviders";
+import { useProviders, useMyProviderInvites } from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 import CreateProviderForm from "./CreateProviderForm";
 
@@ -200,6 +201,51 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
   );
 }
 
+// Shown when the user is active staff of no provider. The create-your-provider
+// onboarding is always offered; if they ALSO have ≥1 pending invitation, a banner
+// points them to the accept surface — this is how an invited (not-yet-active) user
+// discovers their invites, since they don't appear in the active-only providers
+// list. Invites load quietly; the banner only appears once ≥1 is known.
+function NoProviderState() {
+  const { data: invites } = useMyProviderInvites();
+  const count = invites?.length ?? 0;
+
+  return (
+    <div className="min-h-screen w-full" style={{ backgroundColor: COLORS.cream }}>
+      {count > 0 && (
+        <div className="flex justify-center px-6 pt-6">
+          <Link
+            to="/provider/invites"
+            className="flex w-full max-w-lg items-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-5 py-4 shadow-sm transition-colors hover:bg-[#FFFBF6]"
+          >
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: COLORS.peach }}
+            >
+              <MailCheck className="h-5 w-5" style={{ color: COLORS.terracotta }} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-[#3B241B]">
+                You have {count} pending invitation{count === 1 ? "" : "s"}
+              </p>
+              <p className="text-sm text-[#7A6254]">
+                Review and accept to join a provider's team.
+              </p>
+            </div>
+            <span
+              className="rounded-xl px-3 py-2 text-sm font-bold text-white"
+              style={{ backgroundColor: COLORS.coral }}
+            >
+              View
+            </span>
+          </Link>
+        </div>
+      )}
+      <CreateProviderForm />
+    </div>
+  );
+}
+
 // Inner shell — runs INSIDE the QueryClientProvider so it can read useProviders.
 function ProviderShellInner({ active, children }) {
   const navigate = useNavigate();
@@ -250,7 +296,7 @@ function ProviderShellInner({ active, children }) {
     );
   }
   if (!providers || providers.length === 0) {
-    return <CreateProviderForm />;
+    return <NoProviderState />;
   }
 
   const content =
