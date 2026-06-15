@@ -16,42 +16,60 @@ with "Could not connect to the server" and photo uploads fail with "Network requ
 
 **Prerequisite:** the iPhone and the Mac must be on the **same Wi-Fi network.**
 
-1. **Find your Mac's LAN IP.** In a terminal:
-   ```bash
-   ipconfig getifaddr en0
-   ```
-   (If that prints nothing, try `en1`, or read it from  System Settings → Wi-Fi → Details → IP address.)
-   It looks like `192.168.x.x`. Example used below: `192.168.178.80`.
+### Quick start (one command)
 
-2. **Point the mobile app at that IP.** Edit `anything/apps/mobile/.env` and set all three
-   to `http://<YOUR_MAC_IP>:4000` (host without the scheme):
-   ```
-   EXPO_PUBLIC_BASE_URL=http://192.168.178.80:4000
-   EXPO_PUBLIC_PROXY_BASE_URL=http://192.168.178.80:4000
-   EXPO_PUBLIC_HOST=192.168.178.80:4000
-   ```
-   `EXPO_PUBLIC_API_URL` in that file is just a reminder of the canonical IP — keep it in sync.
-   > These are device/network-specific, and `.env` is gitignored — update them whenever your
-   > Wi-Fi network (and thus your IP) changes.
+The mobile `.env` must point at your Mac's LAN IP (not `localhost`), and that IP
+changes whenever you switch Wi-Fi networks. **You no longer edit `.env` by hand** —
+the scripts auto-detect the current IP and rewrite it for you.
 
-3. **Start the backend** (binds `0.0.0.0:4000` so the phone can reach it). One command from the repo root:
-   ```bash
-   ./scripts/dev-backend.sh
-   ```
-   It prints your LAN IP, frees port 4000 if it's already in use, and starts the web app.
-   (Equivalent manual steps: `cd anything/apps/web && bun run dev` — the bind is configured in
-   `apps/web/vite.config.ts` → `server.host: '0.0.0.0'`, `server.port: 4000`.)
+**Easiest:** double-click **`Start PawPi.command`** in Finder (first run: approve the
+one-time macOS "Automation" prompt). It stops any old servers and opens the backend +
+Metro in their own windows. Equivalent from a terminal at the repo root:
 
-4. **Confirm the backend is reachable from the phone.** In Safari **on the iPhone**, open:
-   ```
-   http://192.168.178.80:4000
-   ```
-   If the app loads, the network path works. (If it times out: same Wi-Fi? macOS firewall
-   blocking incoming connections? Correct IP?)
+```bash
+./scripts/dev.sh
+```
 
-5. **Start Metro and reload the app.** Because `EXPO_PUBLIC_*` values are inlined at build
-   time, restart Expo with a cleared cache after editing `.env`:
-   ```bash
-   cd anything/apps/mobile && npx expo start -c
-   ```
-   Then reload the app in Expo Go. The EntryPoint pet check and photo uploads should now work.
+Then open the project in **Expo Go** on your iPhone using the `exp://…` URL shown in
+the Metro window. **Run this same command after every Wi-Fi / network change.**
+
+#### Or start the two sides manually
+
+**Terminal 1 — backend** (web app + `/api`, binds `0.0.0.0:4000`):
+```bash
+./scripts/dev-backend.sh
+```
+
+**Terminal 2 — mobile** (syncs the IP, then starts Metro with a cleared cache):
+```bash
+./scripts/dev-mobile.sh
+```
+
+> Why the cache clear? `EXPO_PUBLIC_*` values are inlined at build time, so Metro
+> must restart with `-c` after the IP changes — `dev-mobile.sh` does this for you.
+
+### What the scripts do
+
+- **`Start PawPi.command`** / **`scripts/dev.sh`** — stops old servers and opens both
+  `dev-backend.sh` and `dev-mobile.sh` in their own Terminal windows. The one-command launcher.
+- **`scripts/sync-mobile-ip.sh`** — detects your LAN IP (`en0`/`en1`) and rewrites the four
+  IP-dependent keys in `anything/apps/mobile/.env` (`EXPO_PUBLIC_BASE_URL`,
+  `_PROXY_BASE_URL`, `_HOST`, `_API_URL`). Idempotent; leaves the rest of the file untouched.
+- **`scripts/dev-backend.sh`** — runs the IP sync, frees port 4000 if it's in use, and starts
+  the web backend. (Manual equivalent: `cd anything/apps/web && bun run dev` — the
+  `0.0.0.0:4000` bind lives in `apps/web/vite.config.ts`.)
+- **`scripts/dev-mobile.sh`** — runs the IP sync, then `cd anything/apps/mobile && npx expo start -c`.
+
+`.env` is gitignored, so these edits stay local to your machine.
+
+### Troubleshooting
+
+If the EntryPoint pet check fails with "Could not connect to the server" or photo uploads
+fail with "Network request failed", the phone can't reach the backend:
+
+1. **Same Wi-Fi?** The iPhone and Mac must be on the same network.
+2. **Confirm reachability** — in Safari **on the iPhone**, open `http://<YOUR_MAC_IP>:4000`
+   (the scripts print the detected IP). If it loads, the network path works.
+3. If it times out: check the macOS firewall isn't blocking incoming connections, and that
+   `./scripts/dev-mobile.sh` was restarted after the network change (stale Metro cache = old IP).
+4. **Manual IP lookup**, if ever needed: `ipconfig getifaddr en0` (or `en1`).

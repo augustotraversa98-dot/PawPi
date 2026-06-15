@@ -14,10 +14,8 @@ if [ -z "$LAN_IP" ]; then
   echo "⚠️  Could not detect a LAN IP (are you on Wi-Fi?). Find it in System Settings → Wi-Fi → Details."
 else
   echo "📡 Mac LAN IP: $LAN_IP"
-  echo "   Set these in anything/apps/mobile/.env (then restart Metro with cache clear):"
-  echo "     EXPO_PUBLIC_BASE_URL=http://$LAN_IP:$PORT"
-  echo "     EXPO_PUBLIC_PROXY_BASE_URL=http://$LAN_IP:$PORT"
-  echo "     EXPO_PUBLIC_HOST=$LAN_IP:$PORT"
+  # Auto-sync the mobile .env to this IP so you never hand-edit it.
+  "$REPO_ROOT/scripts/sync-mobile-ip.sh" || true
 fi
 
 # Free the port if a previous run is still holding it.
