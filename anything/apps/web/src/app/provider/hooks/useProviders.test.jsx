@@ -16,6 +16,11 @@ import {
   staffKey,
   staffUrl,
   staffMemberUrl,
+  petRecordKey,
+  petRecordUrl,
+  accessRequestsUrl,
+  petNotesUrl,
+  petVaccinationsUrl,
   useProviders,
   useProviderBookings,
   useBookingAction,
@@ -35,6 +40,10 @@ import {
   useInviteStaff,
   useUpdateStaffRole,
   useRemoveStaff,
+  usePetRecord,
+  useRequestAccess,
+  useAddVetNote,
+  useAddVaccination,
 } from "./useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 
@@ -112,6 +121,17 @@ describe("query key + url builders", () => {
     expect(staffKey()).toEqual(["provider-staff", ""]);
     expect(staffUrl(7)).toBe("/api/providers/7/staff");
     expect(staffMemberUrl(7, 99)).toBe("/api/providers/7/staff/99");
+  });
+
+  it("clinical key + urls are scoped to the provider + pet", () => {
+    expect(petRecordKey(7, 55)).toEqual(["pet-record", "7", "55"]);
+    expect(petRecordKey()).toEqual(["pet-record", "", ""]);
+    expect(petRecordUrl(7, 55)).toBe("/api/providers/7/pets/55/record");
+    expect(accessRequestsUrl(7)).toBe("/api/providers/7/access-requests");
+    expect(petNotesUrl(7, 55)).toBe("/api/providers/7/pets/55/notes");
+    expect(petVaccinationsUrl(7, 55)).toBe(
+      "/api/providers/7/pets/55/vaccinations",
+    );
   });
 });
 
@@ -468,6 +488,170 @@ describe("useRemoveStaff", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error.message).toBe("The owner cannot be removed");
+  });
+});
+
+// A QueryClient that lets per-query retry policies run (no global retry:false),
+// with zero retry delay so the non-403 retry path resolves fast. Used to PROVE
+// usePetRecord does not retry a 403 but does retry other errors.
+function makeRetryWrapper() {
+  const qc = new QueryClient({
+    defaultOptions: {
+      queries: { retryDelay: 0 },
+      mutations: { retry: false },
+    },
+  });
+  const wrapper = ({ children }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+  return { qc, wrapper };
+}
+
+describe("usePetRecord", () => {
+  it("GETs the record url and returns the { medical_profile, notes, vaccinations } payload", async () => {
+    mockFetch({ medical_profile: null, notes: [], vaccinations: [] });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => usePetRecord(3, 55), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/pets/55/record",
+      undefined,
+    );
+    expect(result.current.data).toEqual({
+      medical_profile: null,
+      notes: [],
+      vaccinations: [],
+    });
+  });
+
+  it("is disabled (does not fetch) without both ids", () => {
+    mockFetch({ notes: [] });
+    const { wrapper } = makeWrapper();
+    renderHook(() => usePetRecord(3, null), { wrapper });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a 403 as a distinct status and does NOT retry it", async () => {
+    mockFetch({ error: "Not authorized" }, { ok: false, status: 403 });
+    const { wrapper } = makeRetryWrapper();
+    const { result } = renderHook(() => usePetRecord(3, 55), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.status).toBe(403);
+    // No retry on a consent denial — fetched exactly once.
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("DOES retry a non-403 error (proving the 403 carve-out)", async () => {
+    mockFetch({ error: "boom" }, { ok: false, status: 500 });
+    const { wrapper } = makeRetryWrapper();
+    const { result } = renderHook(() => usePetRecord(3, 55), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), {
+      timeout: 3000,
+    });
+    // One retry (failureCount < 1) → two attempts total.
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("useRequestAccess", () => {
+  it("POSTs { petId, scopes, bookingId } and invalidates the record query", async () => {
+    mockFetch({ grant: { id: 1, status: "pending" } }, { status: 201 });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useRequestAccess(3), { wrapper });
+
+    result.current.mutate({
+      petId: 55,
+      scopes: ["medical_read", "medical_write", "vaccinations_write"],
+      bookingId: 9,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/access-requests",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          petId: 55,
+          scopes: ["medical_read", "medical_write", "vaccinations_write"],
+          bookingId: 9,
+        }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["pet-record", "3", "55"] });
+  });
+
+  it("surfaces the 409 already-pending status to the caller", async () => {
+    mockFetch(
+      { error: "An active or pending access request already exists" },
+      { ok: false, status: 409 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useRequestAccess(3), { wrapper });
+
+    result.current.mutate({ petId: 55, scopes: ["medical_read"], bookingId: 9 });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.status).toBe(409);
+    expect(result.current.error.message).toBe(
+      "An active or pending access request already exists",
+    );
+  });
+});
+
+describe("useAddVetNote", () => {
+  it("POSTs the note body and invalidates the record query", async () => {
+    mockFetch({ note: { id: 1, note: "Looks healthy" } }, { status: 201 });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useAddVetNote(3, 55), { wrapper });
+
+    result.current.mutate({ note: "Looks healthy", note_date: "2026-06-15" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/pets/55/notes",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ note: "Looks healthy", note_date: "2026-06-15" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["pet-record", "3", "55"] });
+  });
+
+  it("surfaces a 403 (revoked grant) to the caller", async () => {
+    mockFetch({ error: "Not authorized" }, { ok: false, status: 403 });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useAddVetNote(3, 55), { wrapper });
+
+    result.current.mutate({ note: "x" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.status).toBe(403);
+  });
+});
+
+describe("useAddVaccination", () => {
+  it("POSTs the vaccination body and invalidates the record query", async () => {
+    mockFetch({ vaccination: { id: 1, name: "Rabies" } }, { status: 201 });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useAddVaccination(3, 55), { wrapper });
+
+    result.current.mutate({ name: "Rabies", date_given: "2026-06-15" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/pets/55/vaccinations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name: "Rabies", date_given: "2026-06-15" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["pet-record", "3", "55"] });
   });
 });
 

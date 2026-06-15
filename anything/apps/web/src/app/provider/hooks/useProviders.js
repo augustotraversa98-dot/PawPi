@@ -76,6 +76,27 @@ export const staffUrl = (providerId) => `/api/providers/${providerId}/staff`;
 export const staffMemberUrl = (providerId, userProfileId) =>
   `/api/providers/${providerId}/staff/${userProfileId}`;
 
+// Clinical (c3). The pet record is the consent-gated medical surface; its cache
+// entry is keyed by (provider, pet) and invalidated after a successful access
+// request or a note/vaccination write so the gate + record re-evaluate.
+export const petRecordKey = (providerId, petId) => [
+  "pet-record",
+  String(providerId ?? ""),
+  String(petId ?? ""),
+];
+
+export const petRecordUrl = (providerId, petId) =>
+  `/api/providers/${providerId}/pets/${petId}/record`;
+
+export const accessRequestsUrl = (providerId) =>
+  `/api/providers/${providerId}/access-requests`;
+
+export const petNotesUrl = (providerId, petId) =>
+  `/api/providers/${providerId}/pets/${petId}/notes`;
+
+export const petVaccinationsUrl = (providerId, petId) =>
+  `/api/providers/${providerId}/pets/${petId}/vaccinations`;
+
 // --- fetch helpers ----------------------------------------------------------
 
 // Read JSON and surface the backend's { error } message on a non-2xx so the UI
@@ -89,7 +110,12 @@ async function getJson(url, init) {
     data = {};
   }
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`);
+    const err = new Error(data?.error || `Request failed (${res.status})`);
+    // Attach the HTTP status so callers can branch — the clinical record query
+    // treats 403 (no/expired/revoked grant or missing scope) as a first-class UI
+    // state and must not auto-retry it.
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
@@ -430,6 +456,99 @@ export function useRemoveStaff(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffKey(providerId) });
+    },
+  });
+}
+
+// --- clinical (c3) ----------------------------------------------------------
+
+// Read a pet's shared medical record (assertCareAccess 'medical_read'). A 403
+// (no/expired/revoked grant or missing scope) is a FIRST-CLASS state, not an
+// error to retry: retry is disabled for 403 so the screen branches to the
+// request/revoked panel immediately. Enabled only when both ids are present.
+// The query is mounted even on 403, so a successful re-request + refetch flips it
+// to the record without remounting. Read NOTHING about the pet any other way.
+export function usePetRecord(providerId, petId) {
+  return useQuery({
+    queryKey: petRecordKey(providerId, petId),
+    queryFn: () => getJson(petRecordUrl(providerId, petId)),
+    enabled:
+      providerId != null &&
+      providerId !== "" &&
+      petId != null &&
+      petId !== "",
+    // Never auto-retry a 403 — it's a deliberate consent denial, not a blip.
+    retry: (failureCount, error) =>
+      error?.status !== 403 && failureCount < 1,
+  });
+}
+
+// Request scoped access to a pet's record (any active staff). body { petId,
+// scopes, bookingId? } → creates a PENDING grant the owner approves in their app.
+// 409 ("already pending/active") is an informative state, not a hard failure —
+// the caller surfaces it as "already requested". On success/409 we invalidate the
+// record query so a refetch reflects the new state.
+export function useRequestAccess(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, scopes, bookingId }) => {
+      const data = await getJson(accessRequestsUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ petId, scopes, bookingId }),
+      });
+      return data.grant;
+    },
+    onSuccess: (_grant, { petId }) => {
+      queryClient.invalidateQueries({
+        queryKey: petRecordKey(providerId, petId),
+      });
+    },
+  });
+}
+
+// Write a vet note back to the pet's record (assertCareAccess 'medical_write').
+// body { note*, note_date?, vet_name?, appointment_id? }. 400 if note missing;
+// 403 if the grant doesn't cover medical_write — both surface verbatim. Refetches
+// the record on success so the new note appears.
+export function useAddVetNote(providerId, petId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(petNotesUrl(providerId, petId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.note;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: petRecordKey(providerId, petId),
+      });
+    },
+  });
+}
+
+// Write a vaccination back to the pet's record (assertCareAccess
+// 'vaccinations_write'). body { name*, date_given?, expires_on?, lot? }. This is
+// the SAME pet_vaccinations the owner app reads — the row shows in their Vet
+// Record. 400 if name missing; 403 if the grant lacks vaccinations_write.
+export function useAddVaccination(providerId, petId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(petVaccinationsUrl(providerId, petId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.vaccination;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: petRecordKey(providerId, petId),
+      });
     },
   });
 }
