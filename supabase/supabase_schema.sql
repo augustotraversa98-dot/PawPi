@@ -3123,3 +3123,106 @@ CREATE POLICY pets_provider_read ON public.pets
   USING (app_provider_has_grant(id) OR app_provider_has_booking(id));
 
 
+-- 0021_rls_social.sql (RLS hardening R2b — docs/rls-hardening.md §R2b). The SOCIAL /
+-- PUBLIC-READ table group: any authenticated user READS (global feed + social
+-- profiles); only the ACTOR WRITES their own rows. Opposite shape from the private/
+-- medical group (R2c). "any authed" = current_app_user_id() IS NOT NULL.
+-- ⚠️ HARNESS-ONLY — NOT applied to Supabase yet (R3 applies the whole R2 set at the
+-- DATABASE_URL cutover). DML/sequence grants come from 0019's blanket grants.
+
+-- pets: CORRECT the R2a read rule. R2a scoped pets reads to owner + provider grant/
+-- booking, but the social profile read + feed JOIN expose ANY pet to ANY signed-in
+-- user. Drop the provider-read policy (subsumed) and add an any-authed SELECT policy.
+-- pets_owner_all (above) is untouched → writes stay owner-only; permissive SELECT
+-- policies OR together → read = any authed. (The provider helpers stay; they gate
+-- the medical tables in R2c, not pets.)
+DROP POLICY IF EXISTS pets_provider_read ON public.pets;
+DROP POLICY IF EXISTS pets_authed_read ON public.pets;
+CREATE POLICY pets_authed_read ON public.pets
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+
+-- posts: read any authed (feed + profile grids); write the author (user_id = me).
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS posts_authed_read ON public.posts;
+CREATE POLICY posts_authed_read ON public.posts
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+DROP POLICY IF EXISTS posts_author_all ON public.posts;
+CREATE POLICY posts_author_all ON public.posts
+  FOR ALL
+  USING (user_id = current_app_user_id())
+  WITH CHECK (user_id = current_app_user_id());
+
+-- post_paws: read any authed (counts + user_has_pawed); write the actor (user_id = me).
+ALTER TABLE public.post_paws ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_paws FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS post_paws_authed_read ON public.post_paws;
+CREATE POLICY post_paws_authed_read ON public.post_paws
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+DROP POLICY IF EXISTS post_paws_author_all ON public.post_paws;
+CREATE POLICY post_paws_author_all ON public.post_paws
+  FOR ALL
+  USING (user_id = current_app_user_id())
+  WITH CHECK (user_id = current_app_user_id());
+
+-- post_barks: read any authed (comments + counts); write the author (user_id = me).
+-- pet_id is nullable/legacy (commenting pet) — NOT gated on.
+ALTER TABLE public.post_barks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_barks FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS post_barks_authed_read ON public.post_barks;
+CREATE POLICY post_barks_authed_read ON public.post_barks
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+DROP POLICY IF EXISTS post_barks_author_all ON public.post_barks;
+CREATE POLICY post_barks_author_all ON public.post_barks
+  FOR ALL
+  USING (user_id = current_app_user_id())
+  WITH CHECK (user_id = current_app_user_id());
+
+-- pet_follows: read any authed (counts, isFollowing, feed subqueries); write
+-- (INSERT/DELETE) the caller must OWN the FOLLOWER pet. The EXISTS on pets is
+-- evaluated under pets' RLS as pawpi_app — the follower is the caller's OWN pet, so
+-- pets_owner_all makes it visible (no SECURITY DEFINER needed).
+ALTER TABLE public.pet_follows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pet_follows FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pet_follows_authed_read ON public.pet_follows;
+CREATE POLICY pet_follows_authed_read ON public.pet_follows
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+DROP POLICY IF EXISTS pet_follows_owner_write ON public.pet_follows;
+CREATE POLICY pet_follows_owner_write ON public.pet_follows
+  FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM public.pets p
+    WHERE p.id = pet_follows.follower_pet_id
+      AND p.owner_user_id = current_app_user_id()
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.pets p
+    WHERE p.id = pet_follows.follower_pet_id
+      AND p.owner_user_id = current_app_user_id()
+  ));
+
+-- pet_friendships: PARTICIPANT-scoped read AND write (NOT public). The only app
+-- usage (social-walks GET) reads friendships where one of the caller's pets
+-- participates → caller is requester_user_id OR receiver_user_id. No friendship
+-- write route exists today; this safe-default participant scope avoids leaving the
+-- table un-policied once FORCE RLS is on.
+ALTER TABLE public.pet_friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pet_friendships FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pet_friendships_participant ON public.pet_friendships;
+CREATE POLICY pet_friendships_participant ON public.pet_friendships
+  FOR ALL
+  USING (
+    requester_user_id = current_app_user_id()
+    OR receiver_user_id = current_app_user_id()
+  )
+  WITH CHECK (
+    requester_user_id = current_app_user_id()
+    OR receiver_user_id = current_app_user_id()
+  );
+
+

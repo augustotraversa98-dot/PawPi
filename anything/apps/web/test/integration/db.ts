@@ -165,6 +165,88 @@ export async function seedGrant(
 }
 
 /**
+ * Seed a post authored by `userId` for `petId` (the social-feed unit). Explicit
+ * id keeps assertions readable; caption defaults to the id for easy spotting.
+ */
+export async function seedPost(
+  sql: Sql,
+  opts: { postId: number; userId: number; petId: number; caption?: string },
+): Promise<{ postId: number }> {
+  const { postId, userId, petId, caption } = opts;
+  await sql`
+    insert into posts (id, user_id, pet_id, caption)
+    values (${postId}, ${userId}, ${petId}, ${caption ?? `post-${postId}`})
+  `;
+  return { postId };
+}
+
+/** Seed a paw by `userId` on `postId` (post_paws is one row per (post,user)). */
+export async function seedPaw(
+  sql: Sql,
+  opts: { postId: number; userId: number },
+): Promise<void> {
+  const { postId, userId } = opts;
+  await sql`insert into post_paws (post_id, user_id) values (${postId}, ${userId})`;
+}
+
+/**
+ * Seed a bark (comment) by `userId` on `postId`, posted AS `petId` (nullable —
+ * legacy rows leave it null; the bark RLS does NOT gate on pet_id).
+ */
+export async function seedBark(
+  sql: Sql,
+  opts: { barkId: number; postId: number; userId: number; petId?: number | null; text?: string },
+): Promise<{ barkId: number }> {
+  const { barkId, postId, userId, petId = null, text } = opts;
+  await sql`
+    insert into post_barks (id, post_id, user_id, pet_id, text)
+    values (${barkId}, ${postId}, ${userId}, ${petId}, ${text ?? `bark-${barkId}`})
+  `;
+  return { barkId };
+}
+
+/** Seed a one-directional pet follow (follower_pet_id -> followed_pet_id). */
+export async function seedFollow(
+  sql: Sql,
+  opts: { followerPetId: number; followedPetId: number },
+): Promise<void> {
+  const { followerPetId, followedPetId } = opts;
+  await sql`
+    insert into pet_follows (follower_pet_id, followed_pet_id)
+    values (${followerPetId}, ${followedPetId})
+  `;
+}
+
+/**
+ * Seed a pet_friendship between two (user, pet) participants. status defaults to
+ * 'accepted' (the state social-walks reads). The participant RLS keys off the
+ * requester/receiver USER ids.
+ */
+export async function seedFriendship(
+  sql: Sql,
+  opts: {
+    requesterUserId: number;
+    receiverUserId: number;
+    requesterPetId: number;
+    receiverPetId: number;
+    status?: 'pending' | 'accepted' | 'blocked';
+  },
+): Promise<void> {
+  const {
+    requesterUserId,
+    receiverUserId,
+    requesterPetId,
+    receiverPetId,
+    status = 'accepted',
+  } = opts;
+  await sql`
+    insert into pet_friendships
+      (requester_user_id, receiver_user_id, requester_pet_id, receiver_pet_id, status)
+    values (${requesterUserId}, ${receiverUserId}, ${requesterPetId}, ${receiverPetId}, ${status})
+  `;
+}
+
+/**
  * Seed a vet_appointments booking linking a provider to a pet (the inbox path).
  * deleted defaults false; pass deleted:true to prove a soft-deleted booking grants
  * no visibility.

@@ -177,3 +177,87 @@ soft-deleted / unrelated provider); owner write allowed, provider write/delete b
 cross-owner insert rejected by `WITH CHECK`. The harness's owner role is a **superuser**, so
 `FORCE RLS` constrains only `pawpi_app` — the other integration suites (which connect as the
 owner) are unaffected.
+
+> Updated by **R2b** (below): the provider-read tests were removed and the read tests
+> rewritten to the corrected any-authed rule. This file now proves pets **read = any authed,
+> write = owner only**.
+
+## R2b — social / public-read tables (`posts`, `post_paws`, `post_barks`, `pet_follows`, `pet_friendships`)
+
+**The framework — social vs private.** PawPi is a social app. Two opposite access shapes run
+through it, and R2 handles them as distinct table groups:
+
+- **Social / public-read** (this ticket): any **logged-in** user may *read* the data — they
+  view other pets' profiles and see other pets' posts in the global "Suggested" feed — but
+  only the **actor** may *write* their own rows. Read predicate is simply
+  `current_app_user_id() IS NOT NULL` ("any authenticated user"); `NULL` (no identity) → deny.
+- **Private / medical** (R2c, later): strict **owner**, or a provider with an active
+  scope-covering **grant**. The real leak-protection group.
+
+Mirroring this is the whole point of R2 — the policies must match what the routes already do,
+no wider. The route SQL was read directly (`/api/posts`, `/api/posts/[id]/paw`,
+`/api/posts/[id]/barks`, `/api/pets/[id]/follow`, `/api/pets/[id]/profile`,
+`/api/social-walks`) to pin each predicate.
+
+### The `pets` read-rule CORRECTION (closing the R2a gap)
+
+R2a flagged it explicitly: `GET /api/pets/[id]/profile` (by id **or** handle) and the feed's
+`JOIN pets` expose any pet to **any signed-in user** — broader than owner + grant + booking.
+Under R2a's `pets_provider_read` those reads would return **zero rows** at the R3 cutover (an
+outage of the social surface). R2b fixes it: **drop** `pets_provider_read` (subsumed) and add
+
+```
+pets_authed_read  FOR SELECT  USING (current_app_user_id() IS NOT NULL)
+```
+
+`pets_owner_all` (the `FOR ALL` owner policy) is **untouched**, so writes stay owner-only;
+permissive `SELECT` policies OR together, so the effective access becomes **read = any authed,
+insert/update/delete = owner only**. The `app_provider_has_grant` / `app_provider_has_booking`
+helpers **remain defined** — no pets policy uses them now; they gate the **medical** tables in
+R2c.
+
+### The per-table model (`0021_rls_social.sql`)
+
+Each table gets `ENABLE` + `FORCE ROW LEVEL SECURITY`. DML + sequence grants are already
+provided by `0019`'s blanket `GRANT … ON ALL TABLES` + `GRANT USAGE ON ALL SEQUENCES` (these
+tables predate `0019`), exactly as `pets` (`0020`) relied on — no per-table re-grant; the
+as-`pawpi_app` test is the proof the grants suffice.
+
+| Table | Read | Write |
+|---|---|---|
+| `posts` | any authed (global feed + profile grids) | author — `user_id = current_app_user_id()` |
+| `post_paws` | any authed (counts / `user_has_pawed`) | actor — `user_id = current_app_user_id()` (INSERT/DELETE) |
+| `post_barks` | any authed (comments + counts) | author — `user_id = current_app_user_id()` (`pet_id` is nullable/legacy, **not** gated) |
+| `pet_follows` | any authed (follower/following counts, `isFollowing`, feed subqueries) | owner of the **follower** pet — `EXISTS (pets WHERE id = follower_pet_id AND owner_user_id = me)` (INSERT/DELETE) |
+| `pet_friendships` | **participant only** — `requester_user_id = me OR receiver_user_id = me` | same participant predicate (`WITH CHECK`) |
+
+The author/actor tables use the same two-policy shape as `pets`: a broad `FOR SELECT`
+any-authed read policy + a `FOR ALL` actor policy (`USING`/`WITH CHECK user_id = me`). Because
+the read policy is `SELECT`-only, `INSERT`/`UPDATE`/`DELETE` are governed solely by the actor
+policy → writes stay actor-scoped while reads are public-within-the-app.
+
+`pet_follows` is the one table whose write predicate reaches another table: it `EXISTS`-checks
+`pets` for ownership of the **follower** pet. That subquery runs under `pets`' RLS as
+`pawpi_app`, but the follower pet is always the caller's **own** pet → visible via
+`pets_owner_all`, so **no `SECURITY DEFINER` helper is needed** (unlike the provider helpers,
+which must see *other* owners' grant rows).
+
+`pet_friendships` is **not** public: the only app usage (`social-walks` GET, `friends_only`)
+reads friendships where one of the caller's pets participates. There is **no friendship write
+route** today, so the policy is a single participant-scoped `FOR ALL` (the safe default — once
+`FORCE RLS` is on, the table must not be left un-policied). A non-participant reads and writes
+zero.
+
+### Tests (`test/integration/social-rls.integration.test.ts` + updated `pets-rls`)
+
+`social-rls` connects as `pawpi_app` and proves, per table: any authed user reads any row;
+the author/actor (and only them) writes/edits/deletes their own; a forged-`user_id` write is
+rejected by `WITH CHECK`; no identity → zero. `pet_follows`: the follower pet's owner can
+follow/unfollow, a non-owner of the follower pet cannot; `pet_friendships`: participant access
+only, a non-participant sees/writes zero. The headline pets gap-closed proof (non-owner reads
+any pet; writes stay owner-only) lives here; the exhaustive pets matrix lives in the updated
+`pets-rls.integration.test.ts`.
+
+> ⚠️ **`0021` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
+> `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
