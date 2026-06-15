@@ -5,6 +5,7 @@ export default function MoreLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="vet" />
+      <Stack.Screen name="provider" />
       <Stack.Screen name="adopt" />
       <Stack.Screen name="shop" />
       <Stack.Screen name="profile" />
