@@ -3,13 +3,19 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   providersKey,
+  providerKey,
   bookingsKey,
   bookingsPrefixKey,
   bookingsUrl,
   useProviders,
   useProviderBookings,
   useBookingAction,
+  useCreateProvider,
+  useProvider,
+  useUpdateProviderProfile,
+  useSetProviderStatus,
 } from "./useProviders";
+import { useProviderSelection } from "../store/providerSelection";
 
 // Hooks talk to the already-built backend over the global relative-fetch
 // override. Here fetch is mocked at the global boundary — no live DB / network.
@@ -59,6 +65,11 @@ describe("query key + url builders", () => {
     expect(bookingsUrl(7, "confirmed")).toBe(
       "/api/providers/7/bookings?booking_status=confirmed",
     );
+  });
+
+  it("provider key includes the id as a string", () => {
+    expect(providerKey(7)).toEqual(["provider", "7"]);
+    expect(providerKey()).toEqual(["provider", ""]);
   });
 });
 
@@ -175,5 +186,115 @@ describe("useBookingAction", () => {
     expect(result.current.error.message).toBe(
       "Only a requested booking can be confirmed",
     );
+  });
+});
+
+describe("useCreateProvider", () => {
+  beforeEach(() => {
+    useProviderSelection.setState({ selectedProviderId: null });
+  });
+
+  it("POSTs the entered fields, invalidates ['providers'], and selects the new provider", async () => {
+    mockFetch({ provider: { id: 99, name: "New Vet", status: "draft" } }, {
+      status: 201,
+    });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useCreateProvider(), { wrapper });
+
+    result.current.mutate({ name: "New Vet", provider_type: "vet" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "New Vet",
+          provider_type: "vet",
+          bio: undefined,
+          logo_url: undefined,
+        }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["providers"] });
+    expect(useProviderSelection.getState().selectedProviderId).toBe(99);
+  });
+});
+
+describe("useProvider", () => {
+  it("GETs /api/providers/[id] and returns the { provider, staff } payload", async () => {
+    mockFetch({ provider: { id: 3, name: "Happy Paws" }, staff: [] });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useProvider(3), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith("/api/providers/3", undefined);
+    expect(result.current.data).toEqual({
+      provider: { id: 3, name: "Happy Paws" },
+      staff: [],
+    });
+  });
+
+  it("is disabled (does not fetch) without a provider id", () => {
+    mockFetch({ provider: {} });
+    const { wrapper } = makeWrapper();
+    renderHook(() => useProvider(null), { wrapper });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useUpdateProviderProfile", () => {
+  it("PATCHes only the changed fields and invalidates the list + this provider", async () => {
+    mockFetch({ provider: { id: 3, name: "Renamed" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateProviderProfile(3), { wrapper });
+
+    result.current.mutate({ name: "Renamed" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Renamed" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["providers"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider", "3"] });
+  });
+
+  it("surfaces the 409 slug-in-use message", async () => {
+    mockFetch({ error: "slug already in use" }, { ok: false, status: 409 });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useUpdateProviderProfile(3), { wrapper });
+
+    result.current.mutate({ slug: "taken" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe("slug already in use");
+  });
+});
+
+describe("useSetProviderStatus", () => {
+  it("POSTs { status } to the publish route and invalidates the caches", async () => {
+    mockFetch({ provider: { id: 3, status: "published" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useSetProviderStatus(3), { wrapper });
+
+    result.current.mutate("published");
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/publish",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ status: "published" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["providers"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["provider", "3"] });
   });
 });

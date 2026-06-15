@@ -3,6 +3,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useProviderSelection } from "../store/providerSelection";
 
 // Data hooks for the provider web dashboard. Every hook talks to the already-built
 // backend over the global relative-fetch override (root.tsx) — no backend changes.
@@ -31,6 +32,14 @@ export const bookingsUrl = (providerId, bookingStatus) =>
         bookingStatus,
       )}`
     : `/api/providers/${providerId}/bookings`;
+
+// One provider's cache entry — the profile screen reads/invalidates this. The
+// shared ["providers"] list is invalidated alongside it so the switcher/shell
+// reflect renames + status changes.
+export const providerKey = (providerId) => [
+  "provider",
+  String(providerId ?? ""),
+];
 
 // --- fetch helpers ----------------------------------------------------------
 
@@ -94,6 +103,84 @@ export function useBookingAction(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingsPrefixKey(providerId) });
+    },
+  });
+}
+
+// Create a provider (onboarding). The caller becomes its 'owner' active staff
+// server-side; the row comes back status='draft'. On success we refresh the
+// providers list AND select the new provider in the selection store so the shell
+// immediately resolves it and lands on the dashboard.
+export function useCreateProvider() {
+  const queryClient = useQueryClient();
+  const setSelectedProviderId = useProviderSelection(
+    (s) => s.setSelectedProviderId,
+  );
+  return useMutation({
+    mutationFn: async ({ name, provider_type, bio, logo_url }) => {
+      const data = await getJson("/api/providers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, provider_type, bio, logo_url }),
+      });
+      return data.provider;
+    },
+    onSuccess: (provider) => {
+      if (provider?.id != null) setSelectedProviderId(provider.id);
+      queryClient.invalidateQueries({ queryKey: providersKey() });
+    },
+  });
+}
+
+// One provider with its staff (GET /api/providers/[id]). Disabled until a
+// providerId is known. Returns the raw { provider, staff } payload.
+export function useProvider(providerId) {
+  return useQuery({
+    queryKey: providerKey(providerId),
+    queryFn: () => getJson(`/api/providers/${providerId}`),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// PATCH provider profile fields. Callers send ONLY the changed fields (the
+// backend whitelists name/provider_type/bio/logo_url/slug; 400 if none, 409 if
+// the slug is taken — both surface verbatim via getJson). On success refresh the
+// list + this provider's cache.
+export function useUpdateProviderProfile(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (changes) => {
+      const data = await getJson(`/api/providers/${providerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      return data.provider;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providersKey() });
+      queryClient.invalidateQueries({ queryKey: providerKey(providerId) });
+    },
+  });
+}
+
+// Publish / unpublish — the single status toggle (POST .../publish {status}).
+// status is 'draft' | 'published'. On success refresh the same caches so the
+// shell + profile reflect the new state.
+export function useSetProviderStatus(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (status) => {
+      const data = await getJson(`/api/providers/${providerId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      return data.provider;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providersKey() });
+      queryClient.invalidateQueries({ queryKey: providerKey(providerId) });
     },
   });
 }

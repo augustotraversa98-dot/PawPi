@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("ProviderShell foundation", () => {
-  it("renders the friendly no-provider state when the user is staff of none", async () => {
+  it("renders the onboarding create form when the user is staff of none", async () => {
     mockProviders([]);
     render(
       <MemoryRouter>
@@ -36,7 +36,7 @@ describe("ProviderShell foundation", () => {
       </MemoryRouter>,
     );
     expect(
-      await screen.findByText("You don't have a provider account yet"),
+      await screen.findByText("Create your provider"),
     ).toBeInTheDocument();
   });
 
