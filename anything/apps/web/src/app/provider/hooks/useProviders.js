@@ -41,6 +41,29 @@ export const providerKey = (providerId) => [
   String(providerId ?? ""),
 ];
 
+// Services + locations (c2b). One cache entry per provider; the create/update/
+// delete mutations invalidate the matching key so the management screens refetch.
+export const servicesKey = (providerId) => [
+  "provider-services",
+  String(providerId ?? ""),
+];
+
+export const servicesUrl = (providerId) => `/api/providers/${providerId}/services`;
+
+export const serviceUrl = (providerId, serviceId) =>
+  `/api/providers/${providerId}/services/${serviceId}`;
+
+export const locationsKey = (providerId) => [
+  "provider-locations",
+  String(providerId ?? ""),
+];
+
+export const locationsUrl = (providerId) =>
+  `/api/providers/${providerId}/locations`;
+
+export const locationUrl = (providerId, locationId) =>
+  `/api/providers/${providerId}/locations/${locationId}`;
+
 // --- fetch helpers ----------------------------------------------------------
 
 // Read JSON and surface the backend's { error } message on a non-2xx so the UI
@@ -181,6 +204,145 @@ export function useSetProviderStatus(providerId) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: providersKey() });
       queryClient.invalidateQueries({ queryKey: providerKey(providerId) });
+    },
+  });
+}
+
+// --- services (c2b) ---------------------------------------------------------
+
+// All of a provider's services — active AND inactive (the dashboard manages
+// both; discovery filters elsewhere). Disabled until a providerId is known.
+export function useProviderServices(providerId) {
+  return useQuery({
+    queryKey: servicesKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(servicesUrl(providerId));
+      return data.services ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Create a service (owner|admin). body { name*, description?, duration_min?,
+// price_cents?, deposit_cents?, active? }. Numeric fields are cents/minutes
+// integers — the caller converts before passing them in. 400 surfaces verbatim.
+export function useCreateService(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(servicesUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.service;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
+  });
+}
+
+// Update a service (owner|admin). { serviceId, ...changes } — partial PATCH via
+// COALESCE server-side. Also the reactivation path: pass { active: true } to
+// reactivate a soft-deleted service. 400/404 surface verbatim.
+export function useUpdateService(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ serviceId, ...changes }) => {
+      const data = await getJson(serviceUrl(providerId, serviceId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      return data.service;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
+  });
+}
+
+// Deactivate a service (owner|admin) — DELETE is a SOFT delete (sets
+// active=false; the row stays so past appointments keep their service link).
+// Reactivate via useUpdateService({ active: true }).
+export function useDeactivateService(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (serviceId) => {
+      const data = await getJson(serviceUrl(providerId, serviceId), {
+        method: "DELETE",
+      });
+      return data.service;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
+  });
+}
+
+// --- locations (c2b) --------------------------------------------------------
+
+// A provider's locations. Disabled until a providerId is known.
+export function useProviderLocations(providerId) {
+  return useQuery({
+    queryKey: locationsKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(locationsUrl(providerId));
+      return data.locations ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Create a location (owner|admin). body { name?, address?, lat?, lng?,
+// hours_json?, phone? }. lat/lng are numbers; hours_json is a free-form object.
+export function useCreateLocation(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(locationsUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.location;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: locationsKey(providerId) });
+    },
+  });
+}
+
+// Update a location (owner|admin). { locationId, ...changes } — partial PATCH.
+export function useUpdateLocation(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ locationId, ...changes }) => {
+      const data = await getJson(locationUrl(providerId, locationId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      return data.location;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: locationsKey(providerId) });
+    },
+  });
+}
+
+// Delete a location (owner|admin) — HARD delete (the row is removed). The FK on
+// vet_appointments.provider_location_id is ON DELETE SET NULL, so past
+// appointments are only unlinked, but the location itself is gone for good.
+export function useDeleteLocation(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (locationId) => {
+      return getJson(locationUrl(providerId, locationId), { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: locationsKey(providerId) });
     },
   });
 }
