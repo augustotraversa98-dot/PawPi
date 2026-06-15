@@ -3039,3 +3039,87 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_pet_vaccinations_source_log
     WHERE source_medical_care_log_id IS NOT NULL;
 
 
+-- 0019_rls_role_helpers.sql (RLS hardening R2a — docs/rls-hardening.md §R2a).
+-- The non-owner application role + reusable identity / provider-access helpers that
+-- every table's RLS policies build on. No policies on real tables here (pets is 0020).
+-- ⚠️ HARNESS-ONLY: proven in the integration harness; NOT applied to Supabase yet —
+-- R3 applies the whole R2 set at the DATABASE_URL cutover to pawpi_app.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pawpi_app') THEN
+    CREATE ROLE pawpi_app LOGIN PASSWORD 'pawpi_app' NOBYPASSRLS;
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA public TO pawpi_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pawpi_app;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO pawpi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pawpi_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE ON SEQUENCES TO pawpi_app;
+
+CREATE OR REPLACE FUNCTION public.current_app_user_id()
+RETURNS integer LANGUAGE sql STABLE AS $$
+  SELECT NULLIF(current_setting('app.current_user_id', true), '')::int
+$$;
+
+-- SECURITY DEFINER (owned by the privileged role) + pinned search_path: the
+-- membership/grant lookup is NOT re-filtered by the future RLS of provider_staff /
+-- care_access_grants / vet_appointments (avoids under-counting + policy recursion).
+CREATE OR REPLACE FUNCTION public.app_provider_has_grant(p_pet_id integer, p_scope text DEFAULT NULL)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM provider_staff ps
+    JOIN care_access_grants g ON g.provider_id = ps.provider_id
+    WHERE ps.user_profile_id = current_app_user_id()
+      AND ps.status = 'active'
+      AND g.pet_id = p_pet_id
+      AND g.status = 'active'
+      AND (g.expires_at IS NULL OR g.expires_at > now())
+      AND (p_scope IS NULL OR p_scope = ANY (g.scopes))
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.app_provider_has_booking(p_pet_id integer)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM provider_staff ps
+    JOIN vet_appointments va ON va.provider_id = ps.provider_id
+    WHERE ps.user_profile_id = current_app_user_id()
+      AND ps.status = 'active'
+      AND va.pet_id = p_pet_id
+      AND va.deleted_at IS NULL
+  )
+$$;
+
+GRANT EXECUTE ON FUNCTION public.current_app_user_id() TO pawpi_app;
+GRANT EXECUTE ON FUNCTION public.app_provider_has_grant(integer, text) TO pawpi_app;
+GRANT EXECUTE ON FUNCTION public.app_provider_has_booking(integer) TO pawpi_app;
+
+
+-- 0020_rls_pets.sql (RLS hardening R2a). ENABLE + FORCE ROW LEVEL SECURITY on `pets`
+-- only, mirroring the app's current access: owner reads/writes their pets; a provider
+-- with an active grant OR a non-deleted booking READS the pet (no provider writes).
+-- ⚠️ HARNESS-ONLY — NOT applied to Supabase yet (R3). See docs/rls-hardening.md §R2a
+-- for the social/public pet-profile read follow-up (broader than these predicates).
+
+ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pets FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pets_owner_all ON public.pets;
+CREATE POLICY pets_owner_all ON public.pets
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+
+DROP POLICY IF EXISTS pets_provider_read ON public.pets;
+CREATE POLICY pets_provider_read ON public.pets
+  FOR SELECT
+  USING (app_provider_has_grant(id) OR app_provider_has_booking(id));
+
+

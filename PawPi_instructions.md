@@ -1023,14 +1023,61 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
        book → (provider) confirm → request consent → (owner) approve → audited, revocable clinical
        read/write; invited staff can now discover + accept their invites. CURRENT BASELINES: web 391,
        mobile 620. (Web UI is vitest-green; device pass DEFERRED by decision.)
-     • REMAINING FUTURE LAYERS (each its own backend-first effort, none started): payments/Stripe
-       Connect → provider Sales screen; messaging → provider+owner Chats; reviews surfacing;
-       telehealth; OTHER provider types (walker/daycare/shop/groomer on the same spine); the
-       vaccination-reconciliation MOBILE follow-ups
-       (HealthVetRecord "Vaccination History" → LIST GET /api/pet-vaccinations; timeline source
-       decision; expires_on/lot capture — see the reconciliation entry above); RLS HARDENING
-       (pre-launch, BEFORE real medical data — docs/provider-design.md §5: dedicated non-owner role +
-       SET LOCAL + FORCE RLS, proven by an as-the-app-role zero-rows test).
+     • RLS HARDENING (pre-launch, BEFORE real medical data — docs/provider-design.md §5 +
+       docs/rls-hardening.md) — IN PROGRESS, a 4-phase arc (dedicated non-owner role + SET LOCAL
+       identity + FORCE RLS, proven by as-the-app-role zero-rows tests). NOT a vitest-mock change — it
+       needs a real Postgres, so it brought its own harness. TWO-SUITE CANARY now: `npm test` (mocked
+       unit) = the PR gate (391); `npm run test:integration` (real embedded-postgres) = the RLS proofs
+       (grows separately). Phases:
+         R0 real-Postgres integration harness — DONE & MERGED (#97). embedded-postgres (PG18, real
+            binary, NO Docker — NOTE prod Supabase is PG15; version gap is benign for schema/RLS but
+            watch it), applies all migrations, real `sql`, separate CI job; first tests = owner-scoping
+            round-trip + jsonb double-encode catch. (= the long-deferred TESTING_AND_CI_PLAN Phase C.)
+         R1 per-request identity, NO enforcement — DONE & MERGED (#98). withRequestContext opens a txn
+            + set_config('app.current_user_id', id, true) (txn-local → auto-resets, no cross-request
+            leak, proven); exported `sql` is a Proxy delegating to the active request txn (ALS) else the
+            global pool (untouched routes byte-identical). Applied to a PILOT only (pets GET/POST/PATCH
+            + providers GET/POST). Anti-leak + proxy-fidelity + a throwaway-table FORCE-RLS zero-rows
+            capability smoke all green. STILL privileged role, NO real-table policies.
+         R2 the actual policies + the pawpi_app non-owner role — IN PROGRESS, SPLIT BY TABLE-GROUP, each
+            harness-proven. ⚠️ R2 migrations are HARNESS-ONLY — NOT hand-applied to Supabase. FORCE RLS
+            in prod before the R3 cutover would lock out the (still privileged-role) non-identity routes
+            = outage. R3 applies them all WITH the role switch. R2a (pawpi_app role + current_app_user_id()
+            + SECURITY-DEFINER grant/booking helpers + pets policies: owner OR provider-with-active-grant
+            OR provider-with-booking) = DONE (branch ticket/rls-r2a-pets). Migrations 0019 (role +
+            current_app_user_id()/app_provider_has_grant/app_provider_has_booking, SECURITY DEFINER +
+            pinned search_path) + 0020 (pets ENABLE/FORCE RLS, pets_owner_all + pets_provider_read).
+            HARNESS-ONLY (NOT applied to Supabase). Proven as pawpi_app in pets-rls.integration.test.ts
+            (integration 15 → 29; unit gate 391 unchanged). KNOWN GAP doc'd: public/social pet-profile
+            read (GET /api/pets/[id]/profile + feed JOIN pets) is broader than these 3 predicates →
+            R2/R3 follow-up (row-level RLS can't express its column subset). R2b… = remaining
+            groups (health_* logs; vet records pet_medical_profiles/vet_notes/pet_vaccinations; social
+            posts/barks/follows; routines/reminder_dismissals; provider tables + care_access_grants/audit
+            — mind helper recursion).
+         R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
+            mechanical, not started.
+         R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
+            DATABASE_URL to pawpi_app + full cross-boundary sweep. Not started.
+     • OTHER REMAINING FUTURE LAYERS (each its own backend-first effort, none started): payments/Stripe
+       Connect → provider Sales screen; messaging → provider+owner Chats; reviews surfacing; telehealth;
+       OTHER provider types (walker/daycare/shop/groomer on the same spine); vaccination-reconciliation
+       residue (QW1 #96 DID the HealthVetRecord "Vaccination History" LIST; STILL OPEN: health/timeline
+       vaccine source decision + expires_on/lot capture in the owner routine flow).
+     • FUTURE — OWNER-FACING DISCOVERY SURFACING / NAV (idea from Tats, Jun 2026; LOW PRIORITY, after
+       current dev): make the provider/business "Pet Services" prominent for owners instead of buried
+       under More → Pet Services. STATE TODAY: Veterinary is REAL post-d1 (discover/book real providers);
+       Adoption + Pet Shop are still MOCK because only the VET provider_type is built end-to-end. IDEA:
+       promote Services to a quick-access section on the main nav/buttons, possibly move Community into
+       More to make room; AND surface businesses in the FEED (needs its own design+build). SEQUENCING:
+       keep prominent entries pointing at provider types that are actually live (Vet now; others as the
+       "other provider types" layer ships) so we don't feature mock sections.
+     • FUTURE — ANONYMIZED ANALYTICS / PREDICTIONS (idea from Tats, Jun 2026; LOW PRIORITY): aggregate
+       data across pets/owners/vets for predictions + enhanced suggestions (owners + vets). RLS does NOT
+       block this — it only governs the per-user request path. Build as a SEPARATE path: a distinct
+       read-only analytics role / read-replica / warehouse (NOT the per-user pawpi_app path, which would
+       limit to one user) + an ETL that TRULY anonymizes (de-identify/aggregate; pseudonymized = IDs
+       kept = still personal/health data legally) + an EXPLICIT opt-in consent DISTINCT from
+       care_access_grants + a privacy-policy basis. Its own layer when we get there.
 
   WATCH-ITEM — RESOLVED (PR #87; migration 0018 applied Jun 15 2026; see POST-FOUNDATION PROGRESS
   above): reconcile pet_vaccinations with the EXISTING medical-care
