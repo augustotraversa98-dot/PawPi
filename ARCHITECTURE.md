@@ -2,6 +2,8 @@
 
 > Read-only inventory of the codebase as exported from "Anything." Describes **what exists** as of this commit. No changes proposed. All paths are relative to the repo root unless noted; line numbers reference the current files.
 
+> **Standing convention:** `docs/*.md` specs and `PawPi_instructions.md` are version-controlled — when you edit one, commit it in the same change so the remote stays current.
+
 ---
 
 ## 1. Repo Layout
