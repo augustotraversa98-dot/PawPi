@@ -7,6 +7,12 @@ import {
   bookingsKey,
   bookingsPrefixKey,
   bookingsUrl,
+  servicesKey,
+  servicesUrl,
+  serviceUrl,
+  locationsKey,
+  locationsUrl,
+  locationUrl,
   useProviders,
   useProviderBookings,
   useBookingAction,
@@ -14,6 +20,14 @@ import {
   useProvider,
   useUpdateProviderProfile,
   useSetProviderStatus,
+  useProviderServices,
+  useCreateService,
+  useUpdateService,
+  useDeactivateService,
+  useProviderLocations,
+  useCreateLocation,
+  useUpdateLocation,
+  useDeleteLocation,
 } from "./useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 
@@ -70,6 +84,233 @@ describe("query key + url builders", () => {
   it("provider key includes the id as a string", () => {
     expect(providerKey(7)).toEqual(["provider", "7"]);
     expect(providerKey()).toEqual(["provider", ""]);
+  });
+
+  it("services key + urls are scoped to the provider", () => {
+    expect(servicesKey(7)).toEqual(["provider-services", "7"]);
+    expect(servicesKey()).toEqual(["provider-services", ""]);
+    expect(servicesUrl(7)).toBe("/api/providers/7/services");
+    expect(serviceUrl(7, 12)).toBe("/api/providers/7/services/12");
+  });
+
+  it("locations key + urls are scoped to the provider", () => {
+    expect(locationsKey(7)).toEqual(["provider-locations", "7"]);
+    expect(locationsKey()).toEqual(["provider-locations", ""]);
+    expect(locationsUrl(7)).toBe("/api/providers/7/locations");
+    expect(locationUrl(7, 5)).toBe("/api/providers/7/locations/5");
+  });
+});
+
+describe("useProviderServices", () => {
+  it("GETs the services url and returns the services array", async () => {
+    mockFetch({ services: [{ id: 1, name: "Checkup", active: true }] });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useProviderServices(7), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/7/services",
+      undefined,
+    );
+    expect(result.current.data).toEqual([
+      { id: 1, name: "Checkup", active: true },
+    ]);
+  });
+
+  it("is disabled (does not fetch) without a provider id", () => {
+    mockFetch({ services: [] });
+    const { wrapper } = makeWrapper();
+    renderHook(() => useProviderServices(null), { wrapper });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCreateService", () => {
+  it("POSTs the body and invalidates ['provider-services', id]", async () => {
+    mockFetch({ service: { id: 9, name: "Grooming" } }, { status: 201 });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useCreateService(3), { wrapper });
+
+    result.current.mutate({ name: "Grooming", price_cents: 5000 });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/services",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name: "Grooming", price_cents: 5000 }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["provider-services", "3"],
+    });
+  });
+
+  it("surfaces a 400 validation message", async () => {
+    mockFetch(
+      { error: "price_cents must be a non-negative integer" },
+      { ok: false, status: 400 },
+    );
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useCreateService(3), { wrapper });
+
+    result.current.mutate({ name: "Bad", price_cents: -1 });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toBe(
+      "price_cents must be a non-negative integer",
+    );
+  });
+});
+
+describe("useUpdateService", () => {
+  it("PATCHes the serviceId with the remaining changes", async () => {
+    mockFetch({ service: { id: 9, name: "Renamed" } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateService(3), { wrapper });
+
+    result.current.mutate({ serviceId: 9, name: "Renamed" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/services/9",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Renamed" }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["provider-services", "3"],
+    });
+  });
+
+  it("reactivates a service via PATCH { active: true }", async () => {
+    mockFetch({ service: { id: 9, active: true } });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useUpdateService(3), { wrapper });
+
+    result.current.mutate({ serviceId: 9, active: true });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/services/9",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ active: true }),
+      }),
+    );
+  });
+});
+
+describe("useDeactivateService", () => {
+  it("DELETEs the service (soft delete) and invalidates the list", async () => {
+    mockFetch({ service: { id: 9, active: false } });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useDeactivateService(3), { wrapper });
+
+    result.current.mutate(9);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/services/9",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["provider-services", "3"],
+    });
+  });
+});
+
+describe("useProviderLocations", () => {
+  it("GETs the locations url and returns the locations array", async () => {
+    mockFetch({ locations: [{ id: 1, name: "Main clinic" }] });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useProviderLocations(7), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/7/locations",
+      undefined,
+    );
+    expect(result.current.data).toEqual([{ id: 1, name: "Main clinic" }]);
+  });
+
+  it("is disabled (does not fetch) without a provider id", () => {
+    mockFetch({ locations: [] });
+    const { wrapper } = makeWrapper();
+    renderHook(() => useProviderLocations(null), { wrapper });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCreateLocation", () => {
+  it("POSTs the body and invalidates ['provider-locations', id]", async () => {
+    mockFetch({ location: { id: 5, name: "Branch" } }, { status: 201 });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useCreateLocation(3), { wrapper });
+
+    result.current.mutate({
+      name: "Branch",
+      hours_json: { mon: { open: "09:00", close: "17:00" } },
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/locations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Branch",
+          hours_json: { mon: { open: "09:00", close: "17:00" } },
+        }),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["provider-locations", "3"],
+    });
+  });
+});
+
+describe("useUpdateLocation", () => {
+  it("PATCHes the locationId with the remaining changes", async () => {
+    mockFetch({ location: { id: 5, name: "Renamed" } });
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useUpdateLocation(3), { wrapper });
+
+    result.current.mutate({ locationId: 5, name: "Renamed" });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/locations/5",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Renamed" }),
+      }),
+    );
+  });
+});
+
+describe("useDeleteLocation", () => {
+  it("DELETEs the location (hard delete) and invalidates the list", async () => {
+    mockFetch({ success: true });
+    const { qc, wrapper } = makeWrapper();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useDeleteLocation(3), { wrapper });
+
+    result.current.mutate(5);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/3/locations/5",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["provider-locations", "3"],
+    });
   });
 });
 

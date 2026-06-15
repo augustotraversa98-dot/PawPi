@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   Building2,
   Tag,
+  MapPin,
   Users,
   Stethoscope,
   DollarSign,
@@ -20,10 +21,10 @@ import { useProviders } from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 import CreateProviderForm from "./CreateProviderForm";
 
-// Dashboard sections. Bookings (c1) + Profile (c2a) are wired and navigate to
-// their routes; the rest are clearly-disabled "coming soon" stubs (Services/
-// Staff → c2b, Clinical → c3, Sales/Chats → future layers with no backend yet).
-// They never dead-end.
+// Dashboard sections. Bookings (c1), Profile (c2a), Services + Locations (c2b)
+// are wired and navigate to their routes; the rest are clearly-disabled "coming
+// soon" stubs (Staff → c2c, Clinical → c3, Sales/Chats → future layers with no
+// backend yet). They never dead-end.
 const NAV_ITEMS = [
   {
     key: "bookings",
@@ -39,7 +40,20 @@ const NAV_ITEMS = [
     enabled: true,
     href: "/provider/profile",
   },
-  { key: "services", label: "Services", Icon: Tag, enabled: false },
+  {
+    key: "services",
+    label: "Services",
+    Icon: Tag,
+    enabled: true,
+    href: "/provider/services",
+  },
+  {
+    key: "locations",
+    label: "Locations",
+    Icon: MapPin,
+    enabled: true,
+    href: "/provider/locations",
+  },
   { key: "staff", label: "Staff", Icon: Users, enabled: false },
   { key: "clinical", label: "Clinical", Icon: Stethoscope, enabled: false },
   { key: "sales", label: "Sales", Icon: DollarSign, enabled: false },
