@@ -1,8 +1,13 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
+
+// RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
+// so their DB work runs in a transaction carrying the caller's identity. The
+// handler bodies (auth + owner-scoped WHERE clauses) are unchanged.
 
 // Get all pets for the current user
-export async function GET(request) {
+async function GET(request) {
   try {
     console.log("[GET /api/pets] ========================================");
     console.log("[GET /api/pets] Fetching pets for current user");
@@ -113,7 +118,7 @@ export async function GET(request) {
 }
 
 // Create a new pet
-export async function POST(request) {
+async function POST(request) {
   try {
     console.log("[POST /api/pets] ========================================");
     console.log("[POST /api/pets] Creating new pet");
@@ -287,7 +292,7 @@ export async function POST(request) {
 }
 
 // Repair pet ownership data (fix pets with wrong owner_user_id)
-export async function PATCH(request) {
+async function PATCH(request) {
   try {
     console.log("[PATCH /api/pets] ========================================");
     console.log("[PATCH /api/pets] REPAIRING PET OWNERSHIP DATA");
@@ -557,3 +562,9 @@ export async function PATCH(request) {
     return Response.json({ error: "Failed to repair pets" }, { status: 500 });
   }
 }
+
+// RLS R1: export the identity-scoped wrappers under the public method names.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedGET as GET, wrappedPOST as POST, wrappedPATCH as PATCH };

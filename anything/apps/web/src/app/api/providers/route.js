@@ -1,6 +1,10 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
+
+// RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
+// (DB work runs in a transaction carrying the caller's identity). Bodies unchanged.
 
 // Provider onboarding backend (docs/provider-design.md §4 item 4 / ticket 4a).
 // An existing logged-in user creates a provider (becoming its owner) and lists
@@ -21,7 +25,7 @@ function slugify(text) {
 }
 
 // Create a provider — the caller becomes its active 'owner'.
-export async function POST(request) {
+async function POST(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -84,7 +88,7 @@ export async function POST(request) {
 }
 
 // List the providers the current user is ACTIVE staff of — never others'.
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -111,3 +115,8 @@ export async function GET(request) {
     return Response.json({ error: "Failed to list providers" }, { status: 500 });
   }
 }
+
+// RLS R1: export the identity-scoped wrappers under the public method names.
+const wrappedPOST = withRequestContext(POST);
+const wrappedGET = withRequestContext(GET);
+export { wrappedPOST as POST, wrappedGET as GET };
