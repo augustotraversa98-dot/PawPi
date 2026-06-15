@@ -5,7 +5,16 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { Check, X, Ban, UserPlus, Calendar, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router";
+import {
+  Check,
+  X,
+  Ban,
+  UserPlus,
+  Calendar,
+  Loader2,
+  Stethoscope,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useProviderBookings,
@@ -58,6 +67,7 @@ function formatWhen(date, time) {
 const columnHelper = createColumnHelper();
 
 export default function BookingsInbox({ providerId }) {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
   const bookingStatus = statusFilter === "all" ? undefined : statusFilter;
 
@@ -130,6 +140,17 @@ export default function BookingsInbox({ providerId }) {
     if (booking) runAction(booking.id, "assign", member.user_profile_id);
   };
 
+  // Open the booked pet's clinical record (c3). Carry the pet name + booking id so
+  // the record screen can label itself and tie an access request to this booking.
+  // The record itself is consent-gated server-side — this only navigates.
+  const onOpenRecord = (b) => {
+    const params = new URLSearchParams();
+    if (b.pet_name) params.set("petName", b.pet_name);
+    if (b.id != null) params.set("bookingId", String(b.id));
+    const qs = params.toString();
+    navigate(`/provider/pets/${b.pet_id}/record${qs ? `?${qs}` : ""}`);
+  };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor((row) => formatWhen(row.appointment_date, row.appointment_time), {
@@ -180,9 +201,18 @@ export default function BookingsInbox({ providerId }) {
           const canDecline = status === "requested";
           const canCancel = status === "requested" || status === "confirmed";
           const canAssign = status === "requested" || status === "confirmed";
+          const canOpenRecord = b.pet_id != null;
           const busy = isPending && variables?.appointmentId === b.id;
           return (
             <div className="flex flex-wrap items-center gap-2">
+              {canOpenRecord && (
+                <ActionButton
+                  label="Open record"
+                  Icon={Stethoscope}
+                  onClick={() => onOpenRecord(b)}
+                  variant="muted"
+                />
+              )}
               {canConfirm && (
                 <ActionButton
                   label="Confirm"
@@ -219,9 +249,13 @@ export default function BookingsInbox({ providerId }) {
                   variant="muted"
                 />
               )}
-              {!canConfirm && !canDecline && !canCancel && !canAssign && (
-                <span className="text-xs text-[#B8A99D]">No actions</span>
-              )}
+              {!canConfirm &&
+                !canDecline &&
+                !canCancel &&
+                !canAssign &&
+                !canOpenRecord && (
+                  <span className="text-xs text-[#B8A99D]">No actions</span>
+                )}
             </div>
           );
         },

@@ -3,6 +3,10 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 
 // The screen's data + mutation hooks are mocked so this test isolates rendering,
 // the per-status action gating, and the filter wiring (no DB / react-query).
+const navigateMock = vi.fn();
+vi.mock("react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
 vi.mock("../hooks/useProviders", () => ({
   useProviderBookings: vi.fn(),
   useBookingAction: vi.fn(),
@@ -48,6 +52,7 @@ const STAFF = [
 
 const REQUESTED = {
   id: 1,
+  pet_id: 55,
   appointment_date: "2026-07-01",
   appointment_time: "09:00",
   pet_name: "Rex",
@@ -58,6 +63,7 @@ const REQUESTED = {
 };
 const CONFIRMED = {
   id: 2,
+  pet_id: 77,
   appointment_date: "2026-07-02",
   appointment_time: "14:30",
   pet_name: "Milo",
@@ -194,5 +200,16 @@ describe("BookingsInbox", () => {
       expect.objectContaining({ action: "assign", staffUserId: 42 }),
       expect.any(Object),
     );
+  });
+
+  it("Open record navigates to the booking's pet clinical record", () => {
+    render(<BookingsInbox providerId={3} />);
+    // Every booking with a pet exposes Open record; click the first (Rex, pet 55).
+    fireEvent.click(screen.getAllByText("Open record")[0]);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const dest = navigateMock.mock.calls[0][0];
+    expect(dest).toContain("/provider/pets/55/record");
+    expect(dest).toContain("petName=Rex");
+    expect(dest).toContain("bookingId=1");
   });
 });
