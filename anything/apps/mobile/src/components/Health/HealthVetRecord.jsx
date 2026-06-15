@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -52,6 +53,7 @@ const C = {
 
 export default function HealthVetRecord() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
 
@@ -235,12 +237,11 @@ export default function HealthVetRecord() {
     }));
   };
 
+  // Open the owner's trust screen for the active pet: who has (or has requested)
+  // access to this pet's record, where the owner approves / denies / revokes.
+  // The screen derives the same active pet via useCurrentPet, so no params.
   const handleShare = () => {
-    Alert.alert(
-      "Coming Soon",
-      "Vet sharing is coming next. Once your records are connected, you'll be able to choose what to share.",
-      [{ text: "OK" }],
-    );
+    router.push("/(tabs)/more/data-access");
   };
 
   const handleAddRecord = () => {
