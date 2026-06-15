@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { usePetVaccinations } from "@/hooks/usePetVaccinations";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
@@ -73,6 +74,7 @@ export default function HealthVetRecord() {
         "vet-record-documents",
         "vet-record-notes",
         "vet-appointments",
+        "pet-vaccinations",
       ].map((key) =>
         queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
       ),
@@ -229,6 +231,14 @@ export default function HealthVetRecord() {
     },
     enabled: !!currentPet?.id && expandedSections.upcoming,
   });
+
+  // Fetch vaccinations — pet_vaccinations is the source of truth post-#87.
+  // Owner-scoped; the list length drives the section's count badge.
+  const {
+    data: vaccinations = [],
+    isLoading: vaccinationsLoading,
+    error: vaccinationsError,
+  } = usePetVaccinations(currentPet?.id);
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -1161,19 +1171,114 @@ export default function HealthVetRecord() {
           />
         )}
 
-        {/* Vaccination History */}
+        {/* Vaccination History — driven by pet_vaccinations (source of truth) */}
         <SectionHeader
           title="Vaccination History"
           icon={Syringe}
           section="vaccines"
-          count={summary?.vaccinesCount || 0}
+          count={vaccinations.length}
         />
         {expandedSections.vaccines && (
-          <EmptyState
-            icon={Syringe}
-            title="No vaccinations yet"
-            description="Add vaccine records to keep your dog's medical history complete."
-          />
+          <View style={{ marginBottom: 16 }}>
+            {vaccinationsLoading ? (
+              <View
+                style={{
+                  backgroundColor: C.card,
+                  borderRadius: 16,
+                  padding: 24,
+                  borderWidth: 1.5,
+                  borderColor: C.peach,
+                  alignItems: "center",
+                }}
+              >
+                <ActivityIndicator size="small" color={C.sage} />
+              </View>
+            ) : vaccinationsError ? (
+              <View
+                style={{
+                  backgroundColor: C.card,
+                  borderRadius: 16,
+                  padding: 24,
+                  borderWidth: 1.5,
+                  borderColor: C.peach,
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: C.mutedBrown,
+                    textAlign: "center",
+                  }}
+                >
+                  Couldn't load vaccinations. Pull to refresh.
+                </Text>
+              </View>
+            ) : vaccinations.length === 0 ? (
+              <EmptyState
+                icon={Syringe}
+                title="No vaccinations yet"
+                description="Add vaccine records to keep your dog's medical history complete."
+              />
+            ) : (
+              vaccinations.map((vaccine) => (
+                <View
+                  key={vaccine.id}
+                  style={{
+                    backgroundColor: C.card,
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 12,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: C.warmBrown,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {vaccine.name}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: C.mutedBrown,
+                      marginBottom: vaccine.expires_on || vaccine.lot ? 4 : 0,
+                    }}
+                  >
+                    {vaccine.date_given
+                      ? formatDate(vaccine.date_given)
+                      : "Date not recorded"}
+                  </Text>
+                  {vaccine.expires_on && (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: C.mutedBrown,
+                        marginBottom: vaccine.lot ? 4 : 0,
+                      }}
+                    >
+                      Expires {formatDate(vaccine.expires_on)}
+                    </Text>
+                  )}
+                  {vaccine.lot && (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: C.mutedBrown,
+                      }}
+                    >
+                      Lot {vaccine.lot}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
+          </View>
         )}
 
         {/* Vet Visit History */}
