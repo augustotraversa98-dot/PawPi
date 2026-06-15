@@ -76,6 +76,16 @@ export const staffUrl = (providerId) => `/api/providers/${providerId}/staff`;
 export const staffMemberUrl = (providerId, userProfileId) =>
   `/api/providers/${providerId}/staff/${userProfileId}`;
 
+// The caller's own pending provider invitations (the "my invites" read that lets
+// an invited user DISCOVER + accept/decline before they are active staff). One
+// shared cache entry; accepting/declining invalidates it AND ["providers"].
+export const providerInvitesKey = () => ["provider-invites"];
+
+export const providerInvitesUrl = () => `/api/provider-invites`;
+
+export const staffAcceptUrl = (providerId) =>
+  `/api/providers/${providerId}/staff/accept`;
+
 // Clinical (c3). The pet record is the consent-gated medical surface; its cache
 // entry is keyed by (provider, pet) and invalidated after a successful access
 // request or a note/vaccination write so the gate + record re-evaluate.
@@ -456,6 +466,46 @@ export function useRemoveStaff(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: staffKey(providerId) });
+    },
+  });
+}
+
+// --- invites (staff-accept) -------------------------------------------------
+
+// The caller's own pending invitations (GET /api/provider-invites). Self-scoped
+// server-side; needs only a logged-in session (the invitee is NOT active staff
+// yet), so this hook is safe to use OUTSIDE the active-provider gate.
+export function useMyProviderInvites() {
+  return useQuery({
+    queryKey: providerInvitesKey(),
+    queryFn: async () => {
+      const data = await getJson(providerInvitesUrl());
+      return data.invites ?? [];
+    },
+  });
+}
+
+// Accept or decline one of the caller's own invites (POST .../staff/accept).
+// Default accepts (flips the invited row to 'active'); pass { action: 'decline' }
+// to soft-remove it. 404 "No pending invite for this provider" surfaces verbatim.
+// On success we invalidate the invites list AND ["providers"] — accepting makes
+// the caller active staff, so the shell's provider list must refetch to resolve
+// the now-accessible provider.
+export function useRespondToInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ providerId, action }) => {
+      const body = action === "decline" ? { action: "decline" } : {};
+      const data = await getJson(staffAcceptUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.staff;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providerInvitesKey() });
+      queryClient.invalidateQueries({ queryKey: providersKey() });
     },
   });
 }

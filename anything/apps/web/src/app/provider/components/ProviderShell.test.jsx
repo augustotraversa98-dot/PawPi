@@ -40,6 +40,40 @@ describe("ProviderShell foundation", () => {
     ).toBeInTheDocument();
   });
 
+  it("in the no-provider state, shows the pending-invites pointer when the user has invites", async () => {
+    // URL-aware: the providers list is empty (staff of none) but the invites
+    // read returns one pending invite — the discovery banner must appear.
+    global.fetch = vi.fn().mockImplementation((url) => {
+      const body = url.includes("/api/provider-invites")
+        ? { invites: [{ id: 5, provider_id: 100, provider_name: "Happy Paws" }] }
+        : { providers: [] };
+      return Promise.resolve({ ok: true, status: 200, json: async () => body });
+    });
+
+    render(
+      <MemoryRouter>
+        <ProviderShell active="bookings">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText("You have 1 pending invitation"),
+    ).toBeInTheDocument();
+    // The create-your-provider onboarding is still offered alongside it.
+    expect(screen.getByText("Create your provider")).toBeInTheDocument();
+  });
+
+  it("in the no-provider state, shows NO invites pointer when there are none", async () => {
+    mockProviders([]); // every fetch returns { providers: [] } → invites read = []
+    render(
+      <MemoryRouter>
+        <ProviderShell active="bookings">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Create your provider")).toBeInTheDocument();
+    expect(screen.queryByText(/pending invitation/i)).not.toBeInTheDocument();
+  });
+
   it("renders the shell, nav, and provider name for one provider, passing the id to children", async () => {
     mockProviders([{ id: 1, name: "Happy Paws", provider_type: "vet" }]);
     render(
