@@ -97,4 +97,27 @@ describe('GET /api/providers/discover', () => {
 
     expect(allQueryText()).not.toContain('care_access');
   });
+
+  it('ticket 2.2: aggregates avg_rating + review_count over provider_reviews', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+
+    await GET(req());
+
+    const text = allQueryText();
+    expect(text).toContain('avg_rating');
+    expect(text).toContain('review_count');
+    expect(text).toContain('provider_reviews');
+  });
+
+  it('ticket 2.2: aggregates also present on the ?type filtered query', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+
+    await GET(req('http://localhost/api/providers/discover?type=vet'));
+
+    const text = allQueryText();
+    expect(text).toContain('avg_rating');
+    expect(text).toContain('review_count');
+  });
 });

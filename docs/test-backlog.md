@@ -22,6 +22,16 @@ What shipped: the bottom bar is now **Feed · Health · Training · Services · 
 5. Nothing else broke — Feed, Health, Training, rest of More all open normally.
 6. (2.0 follow-up, PR #113) The Services screen is a full grid: Veterinary live (tappable → vet), and Grooming/Walking/Daycare/Sitting/Training/Shop/Adoption show as dimmed **"Coming soon"** cards that do **nothing** when tapped. More no longer has leftover Adoption/Pet Shop entries.
 
+### [ ] 2.2 — Reviews & ratings surfacing  ·  ticket/reviews-surfacing (2026-06-17)
+What shipped: pet parents can leave a star rating + written review **only after a completed appointment** with a provider, and those ratings now show up where you browse vets. Each completed appointment can be reviewed once; providers can never write, edit, or delete a review.
+- ⚙️ **ACTION FOR YOU/COWORK — apply migration to Supabase:** `supabase/migrations/0028_rls_provider_reviews_surfacing.sql` (opens the public-read window on a published provider's reviews, keeps writes owner-only, and adds the one-review-per-completed-booking guard column + index). Hand-apply it after merge; until then reviews run only in the test harness, not on live data.
+1. Open **Services → Veterinary**: each vet card shows a star rating + count, or a muted **"New"** when a clinic has no reviews yet (no fake numbers).
+2. Tap a clinic → its profile shows the same rating up top and a **Reviews** section (real reviews, or a "No reviews yet" empty state).
+3. Book a vet, then open that appointment and **Mark as completed**. Re-open the completed appointment → a **Write a review** button now appears.
+4. Tap **Write a review**, pick 1–5 stars, optionally add a note, **Submit** → it posts; the new rating shows on the clinic profile + the vet card.
+5. Try to review the **same completed appointment twice** → it won't let you (one review per visit).
+6. An appointment that is **not** completed (or one you typed in manually with no provider) shows **no** Write-a-review button — you can't review without a real completed booking.
+
 ### [ ] 2.1 — Provider capabilities (backend only)  ·  PR #114 (merged 2026-06-17)
 No phone UI — backend foundation so one business can offer many services. Nothing to tap-test.
 - ⚙️ **ACTION FOR YOU/COWORK — apply migration to Supabase:** `supabase/migrations/0027_provider_capabilities.sql` (creates the `provider_capabilities` table + backfills from each provider's current type). Hand-apply it after merge; until then the new capability features run only in the test harness, not on live data.

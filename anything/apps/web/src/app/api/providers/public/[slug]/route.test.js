@@ -114,4 +114,22 @@ describe('GET /api/providers/public/[slug]', () => {
 
     expect(allQueryText()).not.toContain('care_access');
   });
+
+  it('ticket 2.2: the provider lookup aggregates avg_rating + review_count', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await GET(req(), PARAMS);
+
+    // The FIRST query (the provider lookup) carries the rating aggregate subqueries.
+    const [strings] = sql.mock.calls[0];
+    const text = strings.join(' ');
+    expect(text).toContain('avg_rating');
+    expect(text).toContain('review_count');
+    expect(text).toContain('provider_reviews');
+  });
 });

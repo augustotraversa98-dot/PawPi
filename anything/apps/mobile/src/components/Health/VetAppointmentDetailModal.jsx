@@ -11,8 +11,9 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
-import { X, CheckCircle, Edit, Trash2, FileText } from "lucide-react-native";
+import { X, CheckCircle, Edit, Trash2, FileText, Star } from "lucide-react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 
 const C = {
   cream: "#FFF7EF",
@@ -35,8 +36,15 @@ export default function VetAppointmentDetailModal({
   const queryClient = useQueryClient();
   const [visitNotes, setVisitNotes] = useState("");
   const [showNotesInput, setShowNotesInput] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
   if (!appointment) return null;
+
+  // A review can only be written after a COMPLETED appointment that was booked with a
+  // provider (provider_id set). The backend re-checks (completed booking + one-per-booking),
+  // so this is just the entry point — shown only when both conditions hold.
+  const canReview =
+    appointment.status === "completed" && appointment.provider_id != null;
 
   // Mark as completed mutation
   const completeMutation = useMutation({
@@ -328,36 +336,61 @@ export default function VetAppointmentDetailModal({
             backgroundColor: C.cream,
           }}
         >
-          {/* Mark Completed */}
-          <TouchableOpacity
-            onPress={handleMarkCompleted}
-            disabled={isPending}
-            style={{
-              backgroundColor: isPending ? C.mutedBrown : C.sage,
-              borderRadius: 14,
-              paddingVertical: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              marginBottom: 10,
-            }}
-          >
-            {completeMutation.isPending ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <CheckCircle size={18} color="#FFF" />
-                <Text
-                  style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}
-                >
-                  {showNotesInput
-                    ? "Confirm & mark completed"
-                    : "Mark as completed"}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* Write a review — shown ONLY after a completed provider appointment */}
+          {canReview && !showNotesInput && (
+            <TouchableOpacity
+              onPress={() => setShowReview(true)}
+              disabled={isPending}
+              style={{
+                backgroundColor: C.coral,
+                borderRadius: 14,
+                paddingVertical: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              <Star size={18} color="#FFF" fill="#FFF" />
+              <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}>
+                Write a review
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Mark Completed — hidden once already completed */}
+          {appointment.status !== "completed" && (
+            <TouchableOpacity
+              onPress={handleMarkCompleted}
+              disabled={isPending}
+              style={{
+                backgroundColor: isPending ? C.mutedBrown : C.sage,
+                borderRadius: 14,
+                paddingVertical: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              {completeMutation.isPending ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <CheckCircle size={18} color="#FFF" />
+                  <Text
+                    style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}
+                  >
+                    {showNotesInput
+                      ? "Confirm & mark completed"
+                      : "Mark as completed"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Delete */}
           {!showNotesInput && (
@@ -416,6 +449,14 @@ export default function VetAppointmentDetailModal({
             </TouchableOpacity>
           )}
         </View>
+
+        <WriteReviewModal
+          visible={showReview}
+          onClose={() => setShowReview(false)}
+          providerId={appointment.provider_id}
+          providerName={appointment.title}
+          petId={appointment.pet_id}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );

@@ -10,6 +10,7 @@ import {
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useDiscoverProviders } from "@/hooks/useProviders";
+import RatingBadge from "@/components/Providers/RatingBadge";
 
 // Veterinary discovery — browse PUBLISHED vet providers (real data, no mocks).
 // Tapping a card opens the provider's public profile (provider.jsx) by slug.
@@ -146,19 +147,31 @@ function ProviderCard({ provider, onPress }) {
         >
           {provider.name}
         </Text>
-        {provider.provider_type ? (
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: "700",
-              color: COLORS.coral,
-              marginTop: 1,
-              textTransform: "capitalize",
-            }}
-          >
-            {provider.provider_type}
-          </Text>
-        ) : null}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 2,
+          }}
+        >
+          {provider.provider_type ? (
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: COLORS.coral,
+                textTransform: "capitalize",
+              }}
+            >
+              {provider.provider_type}
+            </Text>
+          ) : null}
+          <RatingBadge
+            avgRating={provider.avg_rating}
+            reviewCount={provider.review_count}
+          />
+        </View>
         {provider.bio ? (
           <Text
             style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}

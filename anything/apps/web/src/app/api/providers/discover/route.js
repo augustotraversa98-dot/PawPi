@@ -31,21 +31,33 @@ async function GET(request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
+    // Aggregate rating (ticket 2.2): avg_rating + review_count come from a correlated
+    // subquery over provider_reviews — always-correct, no cached column to keep in sync.
+    // ROUND(...,1) gives a one-decimal average; a provider with no reviews returns
+    // avg_rating NULL + review_count 0 (the mobile cards show "New" / no badge then).
+    //
     // Two tagged-template variants (never sql(string, array)) — published-only in both;
-    // the filtered form JOINs provider_capabilities and binds ${type} (DISTINCT so a
+    // the filtered form JOINs provider_capabilities and binds ${type} (DISTINCT ON so a
     // provider holding the capability appears once). See SCHEMA_NOTES "neon→porsager".
     const providers = type
       ? await sql`
-          SELECT DISTINCT p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url
+          SELECT DISTINCT
+            p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+            (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+            (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
           FROM providers p
           JOIN provider_capabilities pc ON pc.provider_id = p.id
           WHERE p.status = 'published' AND pc.capability = ${type}
           ORDER BY p.name ASC
         `
       : await sql`
-          SELECT id, slug, name, provider_type, bio, logo_url FROM providers
-          WHERE status = 'published'
-          ORDER BY name ASC
+          SELECT
+            p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+            (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+            (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
+          FROM providers p
+          WHERE p.status = 'published'
+          ORDER BY p.name ASC
         `;
 
     return Response.json({ providers });

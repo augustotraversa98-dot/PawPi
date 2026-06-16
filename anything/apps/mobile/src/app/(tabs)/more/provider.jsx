@@ -15,11 +15,13 @@ import {
   Phone,
   Clock,
   Calendar,
+  Star,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import { useProviderProfile } from "@/hooks/useProviders";
+import { useProviderProfile, useProviderReviews } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
+import RatingBadge from "@/components/Providers/RatingBadge";
 
 function formatPrice(cents) {
   if (cents == null) return null;
@@ -41,6 +43,10 @@ export default function ProviderScreen() {
   const provider = data?.provider;
   const locations = data?.locations ?? [];
   const services = data?.services ?? [];
+
+  // Reviews for this provider (ticket 2.2). Keyed by id once the profile resolves.
+  const { data: reviews } = useProviderReviews(provider?.id);
+  const reviewList = reviews ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -157,6 +163,13 @@ export default function ProviderScreen() {
                   {provider.provider_type}
                 </Text>
               ) : null}
+              <View style={{ marginTop: 6 }}>
+                <RatingBadge
+                  avgRating={provider.avg_rating}
+                  reviewCount={provider.review_count}
+                  size="lg"
+                />
+              </View>
             </View>
           </View>
 
@@ -262,6 +275,28 @@ export default function ProviderScreen() {
               ))}
             </Section>
           )}
+
+          {/* Reviews (ticket 2.2) — real data; empty state when none. */}
+          <Section title="Reviews">
+            {reviewList.length === 0 ? (
+              <View
+                style={{
+                  backgroundColor: COLORS.card,
+                  borderRadius: 16,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: COLORS.peach,
+                }}
+              >
+                <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+                  No reviews yet. After a completed appointment you can be the
+                  first to leave one.
+                </Text>
+              </View>
+            ) : (
+              reviewList.map((rv) => <ReviewCard key={rv.id} review={rv} />)
+            )}
+          </Section>
         </RefreshableScrollView>
       )}
 
@@ -322,6 +357,64 @@ function Section({ title, children }) {
         {title.toUpperCase()}
       </Text>
       {children}
+    </View>
+  );
+}
+
+function ReviewCard({ review }) {
+  const date = review.created_at
+    ? new Date(review.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+  return (
+    <View
+      style={{
+        backgroundColor: COLORS.card,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: COLORS.peach,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Text
+          style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }}
+          numberOfLines={1}
+        >
+          {review.reviewer_name || "Pet parent"}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+          <Star size={13} color={COLORS.coral} fill={COLORS.coral} />
+          <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.warmBrown }}>
+            {review.rating}
+          </Text>
+        </View>
+      </View>
+      {review.pet_name ? (
+        <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700", marginTop: 2 }}>
+          with {review.pet_name}
+        </Text>
+      ) : null}
+      {review.body ? (
+        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 6, lineHeight: 19 }}>
+          {review.body}
+        </Text>
+      ) : null}
+      {date ? (
+        <Text style={{ fontSize: 11, color: COLORS.mutedBrown, marginTop: 6 }}>
+          {date}
+        </Text>
+      ) : null}
     </View>
   );
 }
