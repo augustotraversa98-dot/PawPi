@@ -3276,4 +3276,100 @@ BEGIN
 END
 $$;
 
+-- 0023_rls_provider_records.sql (RLS hardening R2d — docs/rls-hardening.md §R2d). The
+-- PROVIDER-ACCESSIBLE MEDICAL records + the bookings table. Unlike R2b (public read) and
+-- R2c (owner-only), provider access is REAL here, so READ vs WRITE scopes DIFFER and the
+-- policies are split per command: a FOR ALL owner policy (owner always allowed) + narrow
+-- provider command policies. Mirrors the routes EXACTLY —
+--   pet_medical_profiles: SELECT owner OR grant(medical_read); writes owner only.
+--   vet_notes: SELECT owner OR grant(medical_read); INSERT owner OR grant(medical_write);
+--     UPDATE/DELETE owner only (notes route is INSERT-only for providers).
+--   pet_vaccinations: SELECT owner OR grant(medical_read); INSERT owner OR
+--     grant(vaccinations_write); UPDATE/DELETE owner only. (Owner write-through stays the
+--     owner INSERT branch.)
+--   vet_appointments: HYBRID by STAFF MEMBERSHIP (not a grant) — SELECT/UPDATE owner OR
+--     active-staff-of(provider_id) (booking inbox/actions); INSERT/DELETE owner only.
+-- New helper app_is_active_staff_of(provider_id): SECURITY DEFINER + pinned search_path +
+-- STABLE (the booking analogue of 0019's app_provider_has_grant; reads provider_staff,
+-- which gets RLS in R2e — DEFINER avoids re-filter/recursion). DML/sequence grants come
+-- from 0019's blanket grants (all four tables predate 0019). ⚠️ HARNESS-ONLY — NOT applied
+-- to Supabase yet (R3 applies the whole R2 set at the DATABASE_URL cutover to pawpi_app).
+CREATE OR REPLACE FUNCTION public.app_is_active_staff_of(p_provider_id integer)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM provider_staff ps
+    WHERE ps.provider_id = p_provider_id
+      AND ps.user_profile_id = current_app_user_id()
+      AND ps.status = 'active'
+  )
+$$;
+
+GRANT EXECUTE ON FUNCTION public.app_is_active_staff_of(integer) TO pawpi_app;
+
+ALTER TABLE public.pet_medical_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pet_medical_profiles FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pet_medical_profiles_owner_all ON public.pet_medical_profiles;
+CREATE POLICY pet_medical_profiles_owner_all ON public.pet_medical_profiles
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+DROP POLICY IF EXISTS pet_medical_profiles_provider_read ON public.pet_medical_profiles;
+CREATE POLICY pet_medical_profiles_provider_read ON public.pet_medical_profiles
+  FOR SELECT
+  USING (app_provider_has_grant(pet_id, 'medical_read'));
+
+ALTER TABLE public.vet_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vet_notes FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS vet_notes_owner_all ON public.vet_notes;
+CREATE POLICY vet_notes_owner_all ON public.vet_notes
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+DROP POLICY IF EXISTS vet_notes_provider_read ON public.vet_notes;
+CREATE POLICY vet_notes_provider_read ON public.vet_notes
+  FOR SELECT
+  USING (app_provider_has_grant(pet_id, 'medical_read'));
+DROP POLICY IF EXISTS vet_notes_provider_insert ON public.vet_notes;
+CREATE POLICY vet_notes_provider_insert ON public.vet_notes
+  FOR INSERT
+  WITH CHECK (app_provider_has_grant(pet_id, 'medical_write'));
+
+ALTER TABLE public.pet_vaccinations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pet_vaccinations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pet_vaccinations_owner_all ON public.pet_vaccinations;
+CREATE POLICY pet_vaccinations_owner_all ON public.pet_vaccinations
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+DROP POLICY IF EXISTS pet_vaccinations_provider_read ON public.pet_vaccinations;
+CREATE POLICY pet_vaccinations_provider_read ON public.pet_vaccinations
+  FOR SELECT
+  USING (app_provider_has_grant(pet_id, 'medical_read'));
+DROP POLICY IF EXISTS pet_vaccinations_provider_insert ON public.pet_vaccinations;
+CREATE POLICY pet_vaccinations_provider_insert ON public.pet_vaccinations
+  FOR INSERT
+  WITH CHECK (app_provider_has_grant(pet_id, 'vaccinations_write'));
+
+ALTER TABLE public.vet_appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vet_appointments FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS vet_appointments_owner_all ON public.vet_appointments;
+CREATE POLICY vet_appointments_owner_all ON public.vet_appointments
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+DROP POLICY IF EXISTS vet_appointments_provider_read ON public.vet_appointments;
+CREATE POLICY vet_appointments_provider_read ON public.vet_appointments
+  FOR SELECT
+  USING (app_is_active_staff_of(provider_id));
+DROP POLICY IF EXISTS vet_appointments_provider_update ON public.vet_appointments;
+CREATE POLICY vet_appointments_provider_update ON public.vet_appointments
+  FOR UPDATE
+  USING (app_is_active_staff_of(provider_id));
+
 

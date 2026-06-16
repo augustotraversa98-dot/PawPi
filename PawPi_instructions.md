@@ -1074,38 +1074,53 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             owner-only NOW (that feature's ticket adds the branch). HARNESS-ONLY (NOT applied to Supabase).
             Proven as pawpi_app in owner-private-rls.integration.test.ts incl. a catalog check (every table
             ENABLE+FORCE RLS + owner policy present) (integration 49 → 58; unit gate 391 unchanged).
-         R2d… = remaining groups: R2d PROVIDER-ACCESSIBLE records (pet_medical_profiles = owner + provider
-            read via medical_read; vet_notes = owner + provider read medical_read/write medical_write;
-            pet_vaccinations = owner + provider read medical_read/write vaccinations_write — via
-            app_provider_has_grant(pet_id, scope); PLUS vet_appointments HYBRID = owner OR active-staff-of-
-            the-row's-provider_id, needs a new SECURITY DEFINER helper app_is_active_staff_of(provider_id);
-            mind read-vs-write scope). R2e PROVIDER/business (providers, provider_staff, provider_services/
+         R2d (PROVIDER-ACCESSIBLE records: pet_medical_profiles, vet_notes, pet_vaccinations, vet_appointments)
+            = DONE (branch ticket/rls-r2d-medical). Migration 0023. The group where provider access is REAL,
+            so READ vs WRITE scopes DIFFER → PER-COMMAND policies (owner FOR ALL + narrow provider command
+            policies), NOT R2c's single FOR ALL. Mirrors the routes EXACTLY: pet_medical_profiles SELECT owner
+            OR grant(medical_read), writes owner only; vet_notes SELECT medical_read + INSERT medical_write,
+            UPDATE/DELETE owner only; pet_vaccinations SELECT medical_read + INSERT vaccinations_write (owner
+            write-through INSERT preserved), UPDATE/DELETE owner only — all via app_provider_has_grant(pet_id,
+            scope). vet_appointments HYBRID = SELECT/UPDATE owner OR active-staff-of-the-row's-provider_id
+            (booking inbox/actions, by STAFF MEMBERSHIP not a grant), INSERT/DELETE owner only; NEW SECURITY
+            DEFINER helper app_is_active_staff_of(provider_id) (pinned search_path, reused-pattern from 0019;
+            DEFINER so R2e's provider_staff RLS won't re-filter/recurse). HARNESS-ONLY (NOT applied to
+            Supabase). Proven as pawpi_app in provider-records-rls.integration.test.ts incl. grant lifecycle
+            (revoke/expire/inactive-staff → zero), grant-vs-membership distinction, + a catalog check
+            (integration 58 → 81; unit gate 391 unchanged).
+         R2e… = remaining group: R2e PROVIDER/business (providers, provider_staff, provider_services/
             locations/reviews, care_access_grants, care_access_audit — provider_staff/owner scoped; mind
-            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants).
+            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants, so
+            re-verify they still work once those tables are FORCE-RLS'd).
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
             mechanical, not started.
          R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
             DATABASE_URL to pawpi_app + full cross-boundary sweep. Not started.
-     • OTHER REMAINING FUTURE LAYERS (each its own backend-first effort, none started): payments/Stripe
-       Connect → provider Sales screen; messaging → provider+owner Chats; reviews surfacing; telehealth;
-       OTHER provider types (walker/daycare/shop/groomer on the same spine); vaccination-reconciliation
-       residue (QW1 #96 DID the HealthVetRecord "Vaccination History" LIST; STILL OPEN: health/timeline
-       vaccine source decision + expires_on/lot capture in the owner routine flow).
-     • FUTURE — OWNER-FACING DISCOVERY SURFACING / NAV (idea from Tats, Jun 2026; LOW PRIORITY, after
-       current dev): make the provider/business "Pet Services" prominent for owners instead of buried
-       under More → Pet Services. STATE TODAY: Veterinary is REAL post-d1 (discover/book real providers);
-       Adoption + Pet Shop are still MOCK because only the VET provider_type is built end-to-end. IDEA:
-       promote Services to a quick-access section on the main nav/buttons, possibly move Community into
-       More to make room; AND surface businesses in the FEED (needs its own design+build). SEQUENCING:
-       keep prominent entries pointing at provider types that are actually live (Vet now; others as the
-       "other provider types" layer ships) so we don't feature mock sections.
-     • FUTURE — ANONYMIZED ANALYTICS / PREDICTIONS (idea from Tats, Jun 2026; LOW PRIORITY): aggregate
-       data across pets/owners/vets for predictions + enhanced suggestions (owners + vets). RLS does NOT
-       block this — it only governs the per-user request path. Build as a SEPARATE path: a distinct
-       read-only analytics role / read-replica / warehouse (NOT the per-user pawpi_app path, which would
-       limit to one user) + an ETL that TRULY anonymizes (de-identify/aggregate; pseudonymized = IDs
-       kept = still personal/health data legally) + an EXPLICIT opt-in consent DISTINCT from
-       care_access_grants + a privacy-policy basis. Its own layer when we get there.
+     ── PRIORITY ORDER (Tats, Jun 2026): (1) FINISH RLS (above, IN PROGRESS) → (2) SERVICES END-TO-END
+        + DISCOVERY/NAV/FEED (TOP priority, below) → then the unranked LATER layers → anonymized
+        analytics is LOW/future (no real data yet — not a now-problem).
+     • ★ PRIORITY #2 (TOP, right after RLS) — ALL PROVIDER TYPES END-TO-END + OWNER-FACING SURFACING:
+       (a) BUILD every business type fully on the same provider spine — VET is done end-to-end; build
+       WALKER, DAYCARE/BOARDING, SHOP, GROOMER (provider_type drives type-specific modules; reuse
+       onboarding/profile/services/locations/staff + discovery/booking/grants; add the type-specific
+       bits per docs/provider-design.md "TYPE-SPECIFIC"). (b) OWNER-FACING SURFACING/NAV: today services
+       are buried under More → Pet Services (Veterinary REAL post-d1; Adoption + Pet Shop still MOCK
+       until their types ship). Promote "Pet Services" to a quick-access section on the main nav/buttons,
+       likely move Community into More to make room. (c) FEED: surface businesses/services in the feed
+       (own design+build). SEQUENCING: prominent entries should point ONLY at provider types that are
+       actually live — build the type, then surface it (no featuring mock sections). This is the big
+       push after RLS.
+     • LATER (unranked, each its own backend-first effort, none started): payments/Stripe Connect →
+       provider Sales screen; messaging → provider+owner Chats; reviews surfacing; telehealth;
+       vaccination-reconciliation residue (QW1 #96 did the Vaccination-History LIST; STILL OPEN:
+       health/timeline vaccine source decision + expires_on/lot capture in the owner routine flow).
+     • LOW / FUTURE (NOT a now-problem — there is NO real data yet) — ANONYMIZED ANALYTICS / PREDICTIONS:
+       aggregate data across pets/owners/vets for predictions + enhanced suggestions (owners + vets).
+       RLS does NOT block this — it only governs the per-user request path. When we get there, build as
+       a SEPARATE path: a distinct read-only analytics role / read-replica / warehouse (NOT the per-user
+       pawpi_app path, which would limit to one user) + an ETL that TRULY anonymizes (de-identify/
+       aggregate; pseudonymized = IDs kept = still personal/health data legally) + an EXPLICIT opt-in
+       consent DISTINCT from care_access_grants + a privacy-policy basis.
 
   WATCH-ITEM — RESOLVED (PR #87; migration 0018 applied Jun 15 2026; see POST-FOUNDATION PROGRESS
   above): reconcile pet_vaccinations with the EXISTING medical-care
