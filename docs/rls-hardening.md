@@ -65,7 +65,7 @@ everything else untouched (the proxy's pool fallback keeps them identical):
 - `GET/POST/PATCH /api/pets` — owner reads + writes.
 - `GET/POST /api/providers` — provider routes resolving identity via `resolveUserId`.
 
-### Rollout plan (follow-up: R1-rollout)
+### Rollout plan (follow-up: R1-rollout) — ✅ DONE
 
 Applying the wrapper to a route is mechanical and per-file:
 
@@ -73,8 +73,18 @@ Applying the wrapper to a route is mechanical and per-file:
 2. `import { withRequestContext } from "@/app/api/utils/requestContext";`
 3. Re-export wrapped: `export { withRequestContext(GET) as GET, … }`.
 
-Do this across the remaining routes in batches, keeping `npm test` green each batch. The
-duplicate identity resolution (wrapper + handler both call `auth()`/`resolveUserId`) is
+**Completed** (R1-rollout ticket): all 57 remaining DB-touching `route.js` files were converted
+this way, joining the 2 pilots (`pets`, `providers`) — **59 routes total** now set identity. 5
+routes that issue no `sql` query are intentionally left unwrapped (auth bridges `auth/token` +
+`auth/expo-web-success`, the Storage proxy `upload`, and the `__create/*` diagnostics); wrapping
+a DB-less route would be pure overhead, and the auth bridges must run outside the identity txn.
+
+A static completeness guard — `src/app/api/rls-rollout-completeness.test.js` — scans every
+`route.js` and FAILS if any non-allowlisted file still exports a bare
+`(GET|POST|PUT|PATCH|DELETE)` handler, so a future un-wrapped route can't silently regress the
+rollout before R3. The allowlist there is also enforced to genuinely import no `sql`.
+
+The duplicate identity resolution (wrapper + handler both call `auth()`/`resolveUserId`) is
 acceptable at this scale; a later cleanup can fold identity-setting into `resolveUserId`
 itself. Alternatively, once the mechanism is proven in production, the wrapper can be promoted
 to a single `route-builder` middleware — but that decision belongs to its own ticket, not the
@@ -614,11 +624,12 @@ policies — asserting the deliberate absence of any audit SELECT/UPDATE/DELETE 
 > Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to `pawpi_app`.
 > (Same rule as R2a; see the warning under §R2a.)
 
-### R2 policy work is COMPLETE — only the rollout + cutover remain
+### R2 policy work is COMPLETE — R1-rollout DONE — only the R3 cutover remains
 
-- **R1-rollout** — apply `withRequestContext` (R1) to all ~93 remaining routes so EVERY request sets
-  `app.current_user_id`. Mechanical but broad; prerequisite for R3 (a non-identity route hits `FORCE`
-  RLS with no GUC → zero rows). Best done in batches by route area, each keeping `npm test` green.
+- **R1-rollout** — ✅ DONE. `withRequestContext` (R1) is now applied to every DB-touching route
+  (59 total: 2 pilots + 57 rolled out), so EVERY request sets `app.current_user_id`. 5 `sql`-free
+  routes are intentionally unwrapped (documented allowlist). A static completeness meta-test
+  (`src/app/api/rls-rollout-completeness.test.js`) keeps it from regressing. See §"Rollout plan".
 - **R3 cutover** (the only step that touches prod) — apply ALL R2 migrations (`0019`–`0025`) to
   Supabase in order, create the `pawpi_app` role there, switch `DATABASE_URL` to `pawpi_app`, then a
   full cross-boundary sweep AS `pawpi_app` (owner isolation + provider consent + revoke-instant) on

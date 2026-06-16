@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 /**
  * GET /api/posts/owner-posted-today
@@ -17,7 +18,7 @@ import { auth } from "@/auth";
  * - hasPostedToday: Boolean — true if any owned pet has today's daily update
  * - todayDate: The date string being checked (YYYY-MM-DD)
  */
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
 
@@ -67,3 +68,8 @@ export async function GET(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

@@ -1,9 +1,10 @@
 import sql from "@/app/api/utils/sql";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // POST - Save a medical care log entry (mark as given / completed / issue reported)
-export async function POST(request) {
+async function POST(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -130,7 +131,7 @@ export async function POST(request) {
 }
 
 // GET - Fetch medical care logs for a pet (history)
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -178,3 +179,9 @@ export async function GET(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+const wrappedGET = withRequestContext(GET);
+export { wrappedPOST as POST, wrappedGET as GET };

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/providers/[id]/pets/[petId]/record — provider staff read a pet's
 // shared medical record. Ticket 8 (docs/provider-design.md §4 item 8).
@@ -17,7 +18,7 @@ import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
 // Returns the MEDICAL record only (profile + vet notes + vaccinations) — no
 // social/feed data. DB is porsager's tagged-template `sql` (SCHEMA_NOTES
 // "neon→porsager"): every query is a tagged template; params bind via `${}`.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -77,3 +78,8 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

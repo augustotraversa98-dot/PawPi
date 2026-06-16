@@ -6,6 +6,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { invalidServiceFields } from "@/app/api/utils/providerValidation";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Provider services — list (any active staff) and create (owner|admin).
 // Ticket 4b (docs/provider-design.md §4 item 4). The list returns ALL of the
@@ -14,7 +15,7 @@ import { invalidServiceFields } from "@/app/api/utils/providerValidation";
 // authorization is by provider_staff membership via requireProviderRole.
 
 // List ALL of this provider's services (active + inactive) — any active staff.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -47,7 +48,7 @@ export async function GET(request, { params }) {
 
 // Create a service for this provider — owner|admin only. name required; active
 // defaults true.
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -103,3 +104,9 @@ export async function POST(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

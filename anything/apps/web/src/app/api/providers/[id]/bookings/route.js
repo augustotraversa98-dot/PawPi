@@ -5,6 +5,7 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/providers/[id]/bookings — this provider's booking INBOX.
 // Ticket 6b (docs/provider-design.md §4 item 6, provider half; 6a is the owner
@@ -27,7 +28,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`. The optional ?booking_status=
 // filter uses two tagged-template variants (never sql(string, array)).
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -125,3 +126,8 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

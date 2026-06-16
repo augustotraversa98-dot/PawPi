@@ -1,11 +1,12 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Durable skip/dismiss for overdue reminder instances (Ticket 8). Reconciled on
 // load alongside the log-derived "resolved" set so a skipped overdue item does not
 // reappear after an app restart. Scoped by owner_user_id (= user_profiles.id) + pet_id.
 
-export async function GET(request) {
+async function GET(request) {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,7 +46,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function POST(request) {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -119,7 +120,7 @@ export async function POST(request) {
 // owner + pet + routine, and ONLY to the `${id}::early` keys: real skip dismissals
 // (no `::early` suffix) and every health log/history are left untouched. Hard
 // delete is fine — this is an ack table, not health history.
-export async function DELETE(request) {
+async function DELETE(request) {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -163,3 +164,10 @@ export async function DELETE(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedGET as GET, wrappedPOST as POST, wrappedDELETE as DELETE };

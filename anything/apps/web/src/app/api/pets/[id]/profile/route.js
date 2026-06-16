@@ -1,11 +1,12 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Public-within-the-app pet profile: any authed user may read any pet's
 // profile (it's social — no owner restriction). The [id] segment is a real
 // pet_id OR a pet handle. Optional ?viewerPetId=NN drives the isFollowing flag
 // for the viewer's own pet; ?limit / ?offset paginate the daily-moments grid.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -130,3 +131,8 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

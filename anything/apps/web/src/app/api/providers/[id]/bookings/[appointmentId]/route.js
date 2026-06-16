@@ -5,6 +5,7 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // PATCH /api/providers/[id]/bookings/[appointmentId] — act on ONE booking.
 // Ticket 6b (docs/provider-design.md §4 item 6, provider half). The provider's
@@ -29,7 +30,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 
 const VALID_ACTIONS = ["confirm", "decline", "cancel", "assign"];
 
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -200,3 +201,8 @@ export async function PATCH(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedPATCH as PATCH };

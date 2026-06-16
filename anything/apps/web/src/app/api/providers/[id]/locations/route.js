@@ -7,6 +7,7 @@ import {
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { invalidLocationFields } from "@/app/api/utils/providerValidation";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Provider locations — list (any active staff) and create (owner|admin).
 // Ticket 4b (docs/provider-design.md §4 item 4). Identity resolves
@@ -16,7 +17,7 @@ import { invalidLocationFields } from "@/app/api/utils/providerValidation";
 // (SCHEMA_NOTES jsonb gotcha) — never JSON.stringify.
 
 // List this provider's locations — any active staff member.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -51,7 +52,7 @@ export async function GET(request, { params }) {
 }
 
 // Create a location for this provider — owner|admin only.
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -102,3 +103,9 @@ export async function POST(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

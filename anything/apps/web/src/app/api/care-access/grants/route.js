@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/care-access/grants — the OWNER's trust view: who has (or requested)
 // access to which of my pets. Ticket 7 (docs/provider-design.md §2 + §4 item 7).
@@ -17,7 +18,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`. The optional filters are
 // expressed as tagged-template booleans (never sql(string, array)).
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -71,3 +72,8 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Owner-facing provider discovery (docs/provider-design.md §4 item 5).
 // The PUBLIC read view: any logged-in owner can browse PUBLISHED providers.
@@ -16,7 +17,7 @@ import { auth } from "@/auth";
 // Returns ONLY status='published' providers; draft providers are invisible.
 // Public business fields only — never owner identity (owner_user_profile_id),
 // staff, or pet data.
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -50,3 +51,8 @@ export async function GET(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

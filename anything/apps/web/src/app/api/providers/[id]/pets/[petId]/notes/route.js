@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // POST /api/providers/[id]/pets/[petId]/notes — provider staff write a vet note
 // back to the pet's record. Ticket 8 (docs/provider-design.md §4 item 8).
@@ -13,7 +14,7 @@ import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -90,3 +91,8 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Failed to create note" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+export { wrappedPOST as POST };

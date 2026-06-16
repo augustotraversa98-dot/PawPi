@@ -1,8 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Add a paw to a post
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -72,7 +73,7 @@ export async function POST(request, { params }) {
 }
 
 // Remove a paw from a post
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -120,3 +121,9 @@ export async function DELETE(request, { params }) {
     return Response.json({ error: "Failed to remove paw" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedPOST as POST, wrappedDELETE as DELETE };

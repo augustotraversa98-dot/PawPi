@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // PATCH /api/care-access/grants/[grantId] — the OWNER approves / denies / revokes
 // a care-access grant. Ticket 7 (docs/provider-design.md §2 Consent + §4 item 7).
@@ -27,7 +28,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 
 const VALID_ACTIONS = ["approve", "deny", "revoke"];
 
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -127,3 +128,8 @@ export async function PATCH(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedPATCH as PATCH };

@@ -4,6 +4,7 @@ import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { invalidLocationFields } from "@/app/api/utils/providerValidation";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One provider location — update and hard delete (owner|admin). Ticket 4b.
 //
@@ -16,7 +17,7 @@ import { invalidLocationFields } from "@/app/api/utils/providerValidation";
 
 // Update a location — owner|admin only. Partial: omitted fields are preserved
 // via COALESCE (the routines route convention).
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -80,7 +81,7 @@ export async function PATCH(request, { params }) {
 // Hard delete a location — owner|admin only. vet_appointments.provider_location_id
 // is ON DELETE SET NULL, so this only unlinks past appointments. Scoped by id AND
 // provider_id; a location belonging to another provider matches no row -> 404.
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -121,3 +122,9 @@ export async function DELETE(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPATCH = withRequestContext(PATCH);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedPATCH as PATCH, wrappedDELETE as DELETE };

@@ -5,6 +5,7 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Provider staff — invite an existing user (owner|admin). Ticket 4c
 // (docs/provider-design.md §4 item 4, the staff half). Identity resolves
@@ -26,7 +27,7 @@ const INVITABLE_ROLES = ["admin", "staff", "vet"];
 // LEFT JOINs user_profiles so the staff screen and the Assign-by-name picker have
 // usernames + display names to show. Returns every row (active/invited/removed) —
 // the UI groups and dims them; discovery-style filtering is not this route's job.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -64,7 +65,7 @@ export async function GET(request, { params }) {
 }
 
 // Invite an existing user to this provider — owner|admin only.
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -144,3 +145,9 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Failed to invite staff" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

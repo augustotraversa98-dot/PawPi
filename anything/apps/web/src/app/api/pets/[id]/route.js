@@ -1,8 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Update a specific pet
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     console.log(
       "[PATCH /api/pets/[id]] ========================================",
@@ -205,7 +206,7 @@ export async function PATCH(request, { params }) {
 }
 
 // Get a specific pet
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     console.log(
       "[GET /api/pets/[id]] ========================================",
@@ -261,3 +262,9 @@ export async function GET(request, { params }) {
     return Response.json({ error: "Failed to fetch pet" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPATCH = withRequestContext(PATCH);
+const wrappedGET = withRequestContext(GET);
+export { wrappedPATCH as PATCH, wrappedGET as GET };
