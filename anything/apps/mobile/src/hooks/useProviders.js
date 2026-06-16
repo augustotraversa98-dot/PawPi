@@ -42,6 +42,57 @@ export function useProviderProfile(slug) {
   });
 }
 
+// List a provider's reviews (ticket 2.2). Any authed user; returns the reviewer
+// display name + pet + rating + body + date for a PUBLISHED provider. Keyed by
+// provider id; disabled until an id is known.
+export function useProviderReviews(providerId) {
+  return useQuery({
+    queryKey: ["providers", "reviews", providerId],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(`/api/providers/${providerId}/reviews`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch reviews");
+      }
+      const data = await response.json();
+      return data.reviews ?? [];
+    },
+  });
+}
+
+// Write a review for a provider after a COMPLETED appointment (ticket 2.2). The
+// backend gates on the caller having a completed booking with this provider and
+// dedups one-per-booking, so the surface only OFFERS this after completion. On
+// success we invalidate the provider's reviews + the discovery/profile aggregates
+// so the new rating shows immediately.
+export function useWriteReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // mutateAsync({ providerId, rating, body?, pet_id? })
+    mutationFn: async ({ providerId, ...body }) => {
+      const response = await fetch(`/api/providers/${providerId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to submit review");
+      }
+      return response.json(); // { review }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["providers", "reviews", variables?.providerId],
+      });
+      // Aggregate rating shows on discovery cards + the provider profile.
+      queryClient.invalidateQueries({ queryKey: ["providers", "discover"] });
+      queryClient.invalidateQueries({ queryKey: ["providers", "public"] });
+    },
+  });
+}
+
 // Book an appointment with a provider for the active pet. The booking lands as a
 // vet_appointments row (source='owner', booking_status='requested'), so on success
 // we invalidate the two pet-scoped keys the appointment surfaces flow through

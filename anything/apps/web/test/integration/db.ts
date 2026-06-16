@@ -215,7 +215,11 @@ export async function seedLocation(
   return { locationId };
 }
 
-/** Seed a provider_review by reviewer `ownerUserId` for `petId` (R2e). rating defaults 5. */
+/**
+ * Seed a provider_review by reviewer `ownerUserId` for `petId` (R2e / ticket 2.2). rating
+ * defaults 5. appointmentId is optional — pass it to tie the review to a completed booking
+ * (the 2.2 dedup column, added in 0028); omit for legacy-shape rows.
+ */
 export async function seedReview(
   sql: Sql,
   opts: {
@@ -224,12 +228,13 @@ export async function seedReview(
     ownerUserId: number;
     petId: number;
     rating?: number;
+    appointmentId?: number | null;
   },
 ): Promise<{ reviewId: number }> {
-  const { reviewId, providerId, ownerUserId, petId, rating = 5 } = opts;
+  const { reviewId, providerId, ownerUserId, petId, rating = 5, appointmentId = null } = opts;
   await sql`
-    insert into provider_reviews (id, provider_id, owner_user_id, pet_id, rating, body)
-    values (${reviewId}, ${providerId}, ${ownerUserId}, ${petId}, ${rating}, ${`review-${reviewId}`})
+    insert into provider_reviews (id, provider_id, owner_user_id, pet_id, rating, body, appointment_id)
+    values (${reviewId}, ${providerId}, ${ownerUserId}, ${petId}, ${rating}, ${`review-${reviewId}`}, ${appointmentId})
   `;
   return { reviewId };
 }

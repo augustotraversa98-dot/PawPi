@@ -427,16 +427,18 @@ describe('RLS R2e — provider_locations (as pawpi_app)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 5. provider_reviews — owner(reviewer)-scoped FOR ALL. Provider staff get ZERO
-//    (reviews-surfacing deferred).
-describe('RLS R2e — provider_reviews (as pawpi_app)', () => {
+// 5. provider_reviews — owner(reviewer)-scoped writes + own-row read while the provider is
+//    DRAFT (the public-read window opens only once published — ticket 2.2 / 0028; the
+//    published-read proofs live in provider-reviews-surfacing.integration.test.ts). P1 is
+//    draft here, so a non-reviewer still sees ZERO — the same shape R2e originally proved.
+describe('RLS R2e — provider_reviews (as pawpi_app, draft provider)', () => {
   beforeEach(async () => {
     await seedReview(raw, { reviewId: 300, providerId: P1, ownerUserId: A.profileId, petId: A.petId });
     await seedReview(raw, { reviewId: 301, providerId: P1, ownerUserId: B.profileId, petId: B.petId });
     await raw`select setval(pg_get_serial_sequence('provider_reviews','id'), (select max(id) from provider_reviews))`;
   });
 
-  it('the reviewer reads/writes ONLY their own review; another owner cannot read it', async () => {
+  it('the reviewer reads/writes ONLY their own review; another owner cannot read it (draft provider)', async () => {
     await asApp(A.profileId, async (tx) => {
       expect(ids(await tx`select id from provider_reviews`)).toEqual([300]);
       expect(await tx`update provider_reviews set body = 'edited' where id = 300 returning id`).toHaveLength(1);
@@ -452,7 +454,7 @@ describe('RLS R2e — provider_reviews (as pawpi_app)', () => {
     });
   });
 
-  it('provider staff (owner|admin|staff) get ZERO — no provider read of reviews today', async () => {
+  it('provider staff (owner|admin|staff) get ZERO on a DRAFT provider (public read needs published)', async () => {
     for (const u of [OWNER, ADMIN, STAFF]) {
       await asApp(u.profileId, async (tx) => {
         expect(await tx`select id from provider_reviews`).toHaveLength(0);
@@ -518,7 +520,13 @@ describe('RLS R2e — catalog: provider-business tables are FORCE-RLS + policied
     provider_staff: ['provider_staff_select', 'provider_staff_insert', 'provider_staff_update'],
     provider_services: ['provider_services_admin_all', 'provider_services_read'],
     provider_locations: ['provider_locations_admin_all', 'provider_locations_read'],
-    provider_reviews: ['provider_reviews_owner_all'],
+    // ticket 2.2 / 0028 replaced the R2e FOR ALL placeholder with the per-command set.
+    provider_reviews: [
+      'provider_reviews_select',
+      'provider_reviews_insert',
+      'provider_reviews_update',
+      'provider_reviews_delete',
+    ],
   };
 
   it('rowsecurity + forcerowsecurity = true and the expected policies exist', async () => {

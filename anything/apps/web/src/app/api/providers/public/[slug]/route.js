@@ -23,10 +23,16 @@ async function GET(request, { params }) {
     const slug = params.slug;
 
     // Public business fields only — owner_user_profile_id and status are excluded
-    // from the projection. A draft (or non-existent) slug never matches.
+    // from the projection. A draft (or non-existent) slug never matches. avg_rating +
+    // review_count (ticket 2.2) come from correlated subqueries over provider_reviews —
+    // always-correct, no cached column. No reviews → avg_rating NULL + review_count 0.
     const providers = await sql`
-      SELECT id, slug, name, provider_type, bio, logo_url FROM providers
-      WHERE slug = ${slug} AND status = 'published'
+      SELECT
+        p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+        (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+        (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
+      FROM providers p
+      WHERE p.slug = ${slug} AND p.status = 'published'
       LIMIT 1
     `;
     if (providers.length === 0) {
