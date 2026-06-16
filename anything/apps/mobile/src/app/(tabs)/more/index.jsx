@@ -3,9 +3,6 @@ import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Stethoscope,
-  Heart,
-  ShoppingBag,
   Settings,
   User,
   ChevronRight,
@@ -213,25 +210,13 @@ export default function MoreScreen() {
             letterSpacing: 0.8,
           }}
         >
-          PET SERVICES
+          COMMUNITY
         </Text>
         <MenuItem
-          title="Veterinary"
-          emoji="🏥"
-          color={C.coral}
-          onPress={() => router.push("/(tabs)/more/vet")}
-        />
-        <MenuItem
-          title="Adoption"
-          emoji="🐶"
-          color="#FF4081"
-          onPress={() => router.push("/(tabs)/more/adopt")}
-        />
-        <MenuItem
-          title="Pet Shop"
-          emoji="🛍️"
+          title="Community"
+          emoji="🐕"
           color={C.sageDark}
-          onPress={() => router.push("/(tabs)/more/shop")}
+          onPress={() => router.push("/(tabs)/more/community")}
         />
 
         <Text
