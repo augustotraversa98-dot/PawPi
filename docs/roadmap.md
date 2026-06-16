@@ -2,8 +2,11 @@
 
 **This is a derived view, not the strategy.** The strategy lives in
 [`docs/phase2-superapp-master-plan.md`](phase2-superapp-master-plan.md) (Cowork + Tats own it) and
-the priority order in `PawPi_instructions.md`. This file is the thin, current **ticket queue** the
-build pipeline reads. See [`docs/dev-pipeline.md`](dev-pipeline.md) for how items flow + the gates.
+the priority order in `PawPi_instructions.md`. **The authoritative build queue is Cowork's
+paste-ready tickets in [`docs/phase2-tickets/`](phase2-tickets/00-README.md)** (2.0 → 2.14, with build
+order + shared conventions in its README). Build those in order; this file is the status mirror.
+Phone-checkable items land in [`docs/test-backlog.md`](test-backlog.md). See
+[`docs/dev-pipeline.md`](dev-pipeline.md) for the loop.
 
 **The bridge:** Cowork writes strategy/priorities into the master plan + instructions → Code (me)
 derives this queue, builds, and writes status back here + into the instructions status block, then
