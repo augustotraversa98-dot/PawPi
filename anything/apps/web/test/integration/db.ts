@@ -383,6 +383,64 @@ export async function seedAllergy(
 }
 
 /**
+ * Seed a social_walk owned by `ownerUserId` for `petId` (R2g social-walk group).
+ * visibility/status default to the discoverable/scheduled happy path; walk_name +
+ * scheduled_at carry the id for readable assertions.
+ */
+export async function seedSocialWalk(
+  sql: Sql,
+  opts: {
+    walkId: number;
+    petId: number;
+    ownerUserId: number;
+    visibility?: 'private' | 'friends_only' | 'nearby_pets';
+    status?: 'scheduled' | 'cancelled' | 'completed';
+    maxPets?: number;
+  },
+): Promise<{ walkId: number }> {
+  const {
+    walkId,
+    petId,
+    ownerUserId,
+    visibility = 'nearby_pets',
+    status = 'scheduled',
+    maxPets = 4,
+  } = opts;
+  await sql`
+    insert into social_walks
+      (id, pet_id, owner_user_id, walk_name, scheduled_at, visibility, status, max_pets)
+    values (
+      ${walkId}, ${petId}, ${ownerUserId}, ${`walk-${walkId}`},
+      '2026-08-01T09:00:00Z', ${visibility}, ${status}, ${maxPets}
+    )
+  `;
+  return { walkId };
+}
+
+/**
+ * Seed a social_walk_join_request by requester (`requesterUserId`/`requesterPetId`)
+ * against `walkId` (R2g). status defaults to 'pending'.
+ */
+export async function seedJoinRequest(
+  sql: Sql,
+  opts: {
+    requestId: number;
+    walkId: number;
+    requesterUserId: number;
+    requesterPetId: number;
+    status?: 'pending' | 'approved' | 'declined' | 'cancelled';
+  },
+): Promise<{ requestId: number }> {
+  const { requestId, walkId, requesterUserId, requesterPetId, status = 'pending' } = opts;
+  await sql`
+    insert into social_walk_join_requests
+      (id, social_walk_id, requester_user_id, requester_pet_id, status)
+    values (${requestId}, ${walkId}, ${requesterUserId}, ${requesterPetId}, ${status})
+  `;
+  return { requestId };
+}
+
+/**
  * Seed a vet_appointments booking linking a provider to a pet (the inbox path).
  * deleted defaults false; pass deleted:true to prove a soft-deleted booking grants
  * no visibility.

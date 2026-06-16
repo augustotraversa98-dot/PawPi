@@ -624,13 +624,99 @@ policies — asserting the deliberate absence of any audit SELECT/UPDATE/DELETE 
 > Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to `pawpi_app`.
 > (Same rule as R2a; see the warning under §R2a.)
 
+## R2g — the cutover GAP CLOSURE (`0026`)
+
+A mid-flight finding, not a planned group. The **R3 cutover began** — migrations `0019`–`0025`
+were applied to **live Supabase** — and a verification check there (count policies per
+RLS-enabled table) surfaced a **gap**: **7 public tables had RLS *enabled* but *zero* policies**.
+Under `FORCE`/`ENABLE` with no policy, the not-yet-active `pawpi_app` role reads **zero rows** from
+them — so at the `DATABASE_URL` flip those tables would be a silent outage. The 7 split into two
+kinds, closed two ways by `0026`.
+
+### Why the harness never caught it — the RLS-state nuance
+
+The 7 tables had RLS enabled **by Supabase's own setup**, not by our migrations. The
+embedded-Postgres harness applies only **our** migrations, which never enabled RLS on them — so in
+the harness those tables have RLS **OFF**. The harness therefore **cannot reproduce** the
+"RLS-on-no-policy" Supabase state for the auth/identity tables (the `0026` `DISABLE`s are no-ops
+there). What the harness **can and now does** prove: the new `social_walks` policies, that
+`pawpi_app` can read the identity tables, and — via the new completeness guard — that no harness
+table is ever RLS-enabled-without-a-policy again.
+
+### 1. Auth/identity infra — RLS-**EXEMPT** (5 tables): `DISABLE`, not policies
+
+`auth_users`, `auth_accounts`, `auth_sessions`, `auth_verification_token`, `user_profiles` sit
+**outside the RLS model by necessity**: the app reads them **before** `app.current_user_id` exists.
+`resolveUserId` (`utils/currentUser.js`) — and every route's inline
+`SELECT id FROM user_profiles WHERE auth_user_id = …` — reads `user_profiles` to **translate** the
+auth id into the `user_profiles.id` that `withRequestContext` (R1) then stamps into the GUC. The
+Auth.js adapter (`src/auth.js`) reads the `auth_*` tables during login/session, also pre-identity. A
+policy keyed on `current_app_user_id()` would **deny the very lookups that establish the identity** —
+an unbreakable chicken-and-egg lockout once `pawpi_app` connects. So `0026` `DISABLE`s RLS on all
+five; they are protected by the auth flow + `0019`'s least-privilege grants, not by row policies.
+(On Supabase the `DISABLE` flips RLS off so `pawpi_app` can bootstrap; in the harness it is a no-op.)
+
+### 2. Social-walk DATA (2 tables): `ENABLE` + `FORCE` + policies mirroring the routes
+
+The route SQL (`src/app/api/social-walks/**`) was read directly to pin each predicate — no wider:
+
+- **`social_walks`** — a social/discovery surface. **Read = any authed**
+  (`current_app_user_id() IS NOT NULL`): the GET route returns `nearby_pets` / `friends_only` walks
+  owned by **other** users, and the join-request POST reads **any scheduled walk by id** (no
+  visibility filter) so a prospective participant can see the walk it is joining. The route layer
+  does the visibility/friendship filtering in its `WHERE`s; RLS only needs to not block those reads
+  (same shape as `posts`, R2b). **Write = owner only** — a single `social_walks_owner_all` `FOR ALL`
+  (`USING`/`WITH CHECK owner_user_id = current_app_user_id()`) + the any-authed `FOR SELECT`. There
+  is no update/delete route today; the owner `FOR ALL` is the safe default for a `FORCE`-RLS'd table
+  (must not be left un-policied) and keeps every write owner-scoped.
+- **`social_walk_join_requests`** — per-command:
+  - **SELECT** — `requester_user_id = me` (own requests, any status) **OR**
+    `current_app_user_id() IS NOT NULL AND status = 'approved'` **OR** the walk owner
+    (`EXISTS social_walks WHERE id = social_walk_id AND owner_user_id = me`). The **approved** branch
+    is **required, not a convenience**: the discovery GET surfaces `approved_participants_count` via a
+    `COUNT` subquery to any authed reader, and the join-request POST lets a **non-owner** prospective
+    participant `COUNT` approved rows to enforce `max_pets`. A `COUNT` only sees RLS-visible rows, so
+    approved rows must be readable to any authed user or those guards would silently undercount — the
+    row-level equivalent of the count the app already exposes. A **pending** request stays private to
+    its requester + the walk owner.
+  - **INSERT** — the requester writes their own row (`WITH CHECK requester_user_id = me`); pet
+    ownership + walk availability are the route's app-layer checks.
+  - **UPDATE** — the walk owner only (approve/decline flips `status`). `social_walk_id` never
+    changes, so the owner `EXISTS` holds for the updated row (`WITH CHECK` defaults to `USING`) and
+    the route's `RETURNING *` reads it back (owner branch + the approved branch).
+  - **DELETE** — no policy: no delete route → `FORCE` denies it for everyone.
+
+  The owner `EXISTS` runs under `social_walks`' own (any-authed) SELECT RLS — the owner's walk is
+  visible there — so **no `SECURITY DEFINER` helper is needed** and there is **no recursion**
+  (`social_walks`' policies never reference `social_walk_join_requests`). Same self-referential-write
+  reasoning as `pet_follows` (R2b).
+
+### 3. The completeness guard (so this class of gap can't recur)
+
+`test/integration/rls-gap-closure.integration.test.ts` adds a catalog meta-test (the analog of the
+R1-rollout route-wrap guard `src/app/api/rls-rollout-completeness.test.js`): it enumerates **every
+base table in schema `public`** and asserts each is either **(a)** `ENABLE` + `FORCE` RLS with
+**≥1 policy**, or **(b)** in a documented `RLS_EXEMPT` allowlist (the 5 auth/identity tables). It
+**FAILs naming** any table that is RLS-enabled-without-a-policy, forced-without-a-policy, or covered
+by neither bucket — so a **new** table cannot silently regress the model and the R3 gap cannot recur
+in the harness. (It cannot reproduce Supabase's enabled-on-auth state, but it locks the harness
+invariant and forces any new table to be classified.)
+
+> ⚠️ **`0026` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. The user applies `0026` on Supabase **during the cutover**, then re-runs the
+> policy-count check (gap → zero), then flips `DATABASE_URL` to `pawpi_app`. (Same rule as R2a.)
+
 ### R2 policy work is COMPLETE — R1-rollout DONE — only the R3 cutover remains
 
 - **R1-rollout** — ✅ DONE. `withRequestContext` (R1) is now applied to every DB-touching route
   (59 total: 2 pilots + 57 rolled out), so EVERY request sets `app.current_user_id`. 5 `sql`-free
   routes are intentionally unwrapped (documented allowlist). A static completeness meta-test
   (`src/app/api/rls-rollout-completeness.test.js`) keeps it from regressing. See §"Rollout plan".
-- **R3 cutover** (the only step that touches prod) — apply ALL R2 migrations (`0019`–`0025`) to
-  Supabase in order, create the `pawpi_app` role there, switch `DATABASE_URL` to `pawpi_app`, then a
-  full cross-boundary sweep AS `pawpi_app` (owner isolation + provider consent + revoke-instant) on
-  live Supabase. This is where RLS actually turns on in production.
+- **R2g gap closure** — ✅ DONE (`0026`, harness-only). The 7 RLS-on-no-policy tables found on live
+  Supabase are now classified: 5 auth/identity tables `DISABLE`d (RLS-exempt), 2 social-walk tables
+  policied. A completeness guard locks the invariant.
+- **R3 cutover** (the only step that touches prod) — apply ALL R2 migrations (`0019`–`0026`) to
+  Supabase in order, create the `pawpi_app` role there, **re-run the policy-count check (the R2g gap
+  → zero)**, switch `DATABASE_URL` to `pawpi_app`, then a full cross-boundary sweep AS `pawpi_app`
+  (owner isolation + provider consent + revoke-instant) on live Supabase. This is where RLS actually
+  turns on in production.

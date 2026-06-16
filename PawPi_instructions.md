@@ -1117,11 +1117,25 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             care_access_grants → recursion RE-PROVEN: full R2a–R2e suite green + explicit helper-under-FORCE
             assertion + live revoke→zero cross-check. HARNESS-ONLY (NOT applied to Supabase). Proven in
             care-access-rls.integration.test.ts (integration 109 → 130; unit gate 391 unchanged). ⇒ R2 POLICY
-            WORK COMPLETE — every real table FORCE-RLS'd; only R1-rollout + R3 cutover remain.
-         R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
-            mechanical, not started.
-         R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
-            DATABASE_URL to pawpi_app + full cross-boundary sweep. Not started.
+            WORK COMPLETE — every real table FORCE-RLS'd.
+         R1-rollout = DONE (#106): withRequestContext on all DB-touching routes (59 total); static
+            completeness meta-test guards regressions; 5 sql-free routes intentionally unwrapped.
+         R2g (CUTOVER GAP CLOSURE: 0026, harness-only, branch ticket/rls-r2g-gap-closure) = DONE. R3 had
+            STARTED (0019–0025 applied to live Supabase); a policy-count check there found 7 tables RLS-
+            ENABLED-but-ZERO-POLICY (Supabase's own setup enabled RLS; our migrations never did — so the
+            embedded-postgres harness has them OFF and never reproduced it). 0026 closes the gap two ways:
+            (1) DISABLE RLS on the 5 auth/identity infra tables (auth_users/auth_accounts/auth_sessions/
+            auth_verification_token/user_profiles) — RLS-EXEMPT by necessity, the app reads them BEFORE
+            app.current_user_id exists (resolveUserId + Auth.js adapter), so they can't be gated on it;
+            (2) ENABLE+FORCE + policies on social_walks (read=any-authed discovery, write=owner) +
+            social_walk_join_requests (SELECT own-OR-approved-OR-walk-owner, INSERT requester, UPDATE walk
+            owner, DELETE none), mirroring src/app/api/social-walks/** routes. Plus a COMPLETENESS GUARD
+            (rls-gap-closure.integration.test.ts) asserting every public base table is ENABLE+FORCE+≥1 policy
+            OR in a documented RLS_EXEMPT allowlist — locks the invariant so the gap can't recur. HARNESS-ONLY
+            (NOT applied to Supabase). integration 130 → 148; unit gate 394 unchanged.
+         R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase (0019–0026) +
+            re-run the policy-count check (R2g gap → zero) + switch DATABASE_URL to pawpi_app + full
+            cross-boundary sweep. RESUMES once 0026 is applied to Supabase.
      ── PRIORITY ORDER (Tats, Jun 2026): (1) FINISH RLS (above, IN PROGRESS) → (2) SERVICES END-TO-END
         + DISCOVERY/NAV/FEED (TOP priority, below) → then the unranked LATER layers → anonymized
         analytics is LOW/future (no real data yet — not a now-problem).
