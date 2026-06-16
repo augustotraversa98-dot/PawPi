@@ -50,7 +50,15 @@ async function GET(request, { params }) {
       ORDER BY created_at ASC
     `;
 
-    return Response.json({ provider, locations, services });
+    // Capabilities (ticket 2.1) — the services this published provider offers, public.
+    const capabilityRows = await sql`
+      SELECT capability FROM provider_capabilities
+      WHERE provider_id = ${provider.id}
+      ORDER BY capability ASC
+    `;
+    const capabilities = capabilityRows.map((r) => r.capability);
+
+    return Response.json({ provider, locations, services, capabilities });
   } catch (error) {
     console.error("[GET /api/providers/public/[slug]] Error:", error.message);
     return Response.json(

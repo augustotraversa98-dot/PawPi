@@ -174,6 +174,21 @@ export async function seedStaff(
   `;
 }
 
+/**
+ * Seed a provider_capability row (ticket 2.1). One row per (provider, capability);
+ * capability must be in the allowed set (the table CHECK enforces it).
+ */
+export async function seedCapability(
+  sql: Sql,
+  opts: { providerId: number; capability: string },
+): Promise<void> {
+  const { providerId, capability } = opts;
+  await sql`
+    insert into provider_capabilities (provider_id, capability)
+    values (${providerId}, ${capability})
+  `;
+}
+
 /** Seed a provider_service (R2e). active defaults true; name carries the id. */
 export async function seedService(
   sql: Sql,

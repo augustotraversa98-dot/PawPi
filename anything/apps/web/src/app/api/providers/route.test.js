@@ -67,13 +67,18 @@ describe('POST /api/providers — create', () => {
     const res = await POST(jsonReq({ name: 'Happy Paws', provider_type: 'vet' }));
 
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ provider: CREATED });
+    // capabilities[] defaults to [provider_type] when none provided and provider_type
+    // is itself a valid capability (ticket 2.1) — so the provider surfaces in discovery.
+    expect(await res.json()).toEqual({
+      provider: { ...CREATED, capabilities: ['vet'] },
+    });
 
-    // The create is a single atomic CTE: both inserts in one statement, and the
-    // membership is fixed to role 'owner' / status 'active' in the SQL itself.
+    // The create is a single atomic CTE: provider + owner staff + capability rows in one
+    // statement; the membership is fixed to role 'owner' / status 'active' in the SQL.
     const insertText = queryTextOf(2);
     expect(insertText).toContain('INSERT INTO providers');
     expect(insertText).toContain('INSERT INTO provider_staff');
+    expect(insertText).toContain('INSERT INTO provider_capabilities');
     expect(insertText).toContain("'owner'");
     expect(insertText).toContain("'active'");
 
@@ -94,6 +99,56 @@ describe('POST /api/providers — create', () => {
     expect(res.status).toBe(201);
     // The de-duplicated slug is what gets inserted.
     expect(sql.mock.calls[2]).toEqual(expect.arrayContaining(['happy-paws-2']));
+  });
+
+  it('accepts a multi-select capabilities[] and binds the deduped array to the CTE', async () => {
+    auth.mockResolvedValue(SESSION);
+    const CREATED = { id: 102, name: 'Vet Shop', slug: 'vet-shop', provider_type: 'vet' };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
+      .mockResolvedValueOnce([]) // slug check
+      .mockResolvedValueOnce([CREATED]); // CTE insert
+
+    const res = await POST(
+      jsonReq({
+        name: 'Vet Shop',
+        provider_type: 'vet',
+        capabilities: ['vet', 'shop', 'vet'], // dup collapses
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({
+      provider: { ...CREATED, capabilities: ['shop', 'vet'] },
+    });
+    // The validated, deduped array is bound to the unnest in the CTE.
+    const boundArrays = sql.mock.calls[2].filter((v) => Array.isArray(v));
+    expect(boundArrays).toContainEqual(['vet', 'shop']);
+  });
+
+  it('rejects an invalid capability with 400 before any insert', async () => {
+    auth.mockResolvedValue(SESSION);
+    // Validation runs BEFORE the slug query, so only the profile lookup is consumed.
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+
+    const res = await POST(
+      jsonReq({ name: 'X', provider_type: 'vet', capabilities: ['vet', 'wizardry'] }),
+    );
+
+    expect(res.status).toBe(400);
+    // No slug check or CTE insert was issued (only the profile lookup ran).
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a non-array capabilities with 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+
+    const res = await POST(
+      jsonReq({ name: 'X', provider_type: 'vet', capabilities: 'vet' }),
+    );
+
+    expect(res.status).toBe(400);
   });
 });
 

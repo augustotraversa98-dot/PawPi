@@ -48,7 +48,15 @@ async function GET(request, { params }) {
       ORDER BY created_at ASC
     `;
 
-    return Response.json({ provider: providers[0], staff });
+    // Capabilities (ticket 2.1) — the services this provider offers. Returned as a flat
+    // string[] so callers gate modules on capability, not provider_type.
+    const capabilityRows = await sql`
+      SELECT capability FROM provider_capabilities WHERE provider_id = ${providerId}
+      ORDER BY capability ASC
+    `;
+    const capabilities = capabilityRows.map((r) => r.capability);
+
+    return Response.json({ provider: providers[0], staff, capabilities });
   } catch (error) {
     if (error.status === 403) {
       return Response.json({ error: error.message }, { status: 403 });

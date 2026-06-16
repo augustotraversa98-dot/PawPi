@@ -60,20 +60,25 @@ describe('GET /api/providers/[id]', () => {
     expect(requireProviderRole).toHaveBeenCalledWith('100', 7, ['owner', 'admin', 'staff', 'vet']);
   });
 
-  it('active staff → returns the provider and its staff list', async () => {
+  it('active staff → returns the provider, its staff list, and its capabilities[]', async () => {
     auth.mockResolvedValue(SESSION);
     const PROVIDER = { id: 100, name: 'Happy Paws', status: 'draft' };
     const STAFF = [{ id: 1, role: 'owner', status: 'active' }];
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
       .mockResolvedValueOnce([PROVIDER]) // provider row
-      .mockResolvedValueOnce(STAFF); // staff list
+      .mockResolvedValueOnce(STAFF) // staff list
+      .mockResolvedValueOnce([{ capability: 'shop' }, { capability: 'vet' }]); // capabilities
     requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
 
     const res = await GET(new Request('http://localhost/api/providers/100'), PARAMS);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ provider: PROVIDER, staff: STAFF });
+    expect(await res.json()).toEqual({
+      provider: PROVIDER,
+      staff: STAFF,
+      capabilities: ['shop', 'vet'],
+    });
   });
 });
 

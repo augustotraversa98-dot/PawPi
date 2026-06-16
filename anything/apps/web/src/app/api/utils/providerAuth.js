@@ -21,6 +21,24 @@ import sql from './sql';
 // active staff member (owner/admin/staff/vet) may view the provider.
 export const ALL_PROVIDER_ROLES = ['owner', 'admin', 'staff', 'vet'];
 
+// The allowed capability set (ticket 2.1) — the services a provider can offer. This
+// is the app-side mirror of the DB CHECK on provider_capabilities.capability; both are
+// kept in sync (the DB enforces it for hand-applied SQL, the route returns a clean 400
+// on a bad value instead of a 500). From 2.1 on, EVERY service module gates on a
+// CAPABILITY, never on providers.provider_type (which is now display-only).
+export const ALLOWED_CAPABILITIES = [
+  'vet',
+  'groomer',
+  'walker',
+  'daycare',
+  'sitter',
+  'trainer',
+  'shop',
+  'adoption',
+  'transport',
+  'pharmacy',
+];
+
 /**
  * 403-shaped error consistent with route error handling: carries a `.status` of
  * 403 and a human message. A calling route converts it, e.g.
@@ -67,4 +85,30 @@ export async function requireProviderRole(
     throw new ProviderAuthError('Not authorized for this provider');
   }
   return membership[0];
+}
+
+/**
+ * Assert that a provider HOLDS a given capability (ticket 2.1). The module-gating
+ * chokepoint for every later service route: e.g. the grooming routes call
+ * requireProviderCapability(providerId, 'groomer') so they 403 if the provider lacks
+ * that capability. Uses the provider_has_capability(provider_id, capability) DB helper
+ * (a single EXISTS), so it stays correct under provider_capabilities RLS.
+ *
+ * Capability ≠ data access — this only gates whether a service MODULE is unlocked for a
+ * provider; consent (assertCareAccess / care_access_grants) and the owner/medical RLS
+ * still gate pet data independently.
+ *
+ * @param {number} providerId
+ * @param {string} capability   one of ALLOWED_CAPABILITIES
+ * @throws {ProviderAuthError} 403 when the provider does not hold the capability
+ */
+export async function requireProviderCapability(providerId, capability) {
+  const rows = await sql`
+    SELECT provider_has_capability(${providerId}, ${capability}) AS has
+  `;
+  if (!rows?.[0]?.has) {
+    throw new ProviderAuthError(
+      `Provider does not have the '${capability}' capability`,
+    );
+  }
 }

@@ -64,7 +64,8 @@ describe('GET /api/providers/public/[slug]', () => {
     sql
       .mockResolvedValueOnce([PROVIDER]) // provider lookup
       .mockResolvedValueOnce(LOCATIONS) // locations
-      .mockResolvedValueOnce(SERVICES); // active services
+      .mockResolvedValueOnce(SERVICES) // active services
+      .mockResolvedValueOnce([{ capability: 'shop' }, { capability: 'vet' }]); // capabilities
 
     const res = await GET(req(), PARAMS);
 
@@ -73,6 +74,7 @@ describe('GET /api/providers/public/[slug]', () => {
       provider: PROVIDER,
       locations: LOCATIONS,
       services: SERVICES,
+      capabilities: ['shop', 'vet'],
     });
 
     // Services query is scoped to the resolved provider id and active=true only.
@@ -86,7 +88,8 @@ describe('GET /api/providers/public/[slug]', () => {
     sql
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws', name: 'Happy Paws' }])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]); // capabilities
 
     const res = await GET(req(), PARAMS);
     const body = await res.json();
@@ -104,7 +107,8 @@ describe('GET /api/providers/public/[slug]', () => {
     sql
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]); // capabilities
 
     await GET(req(), PARAMS);
 
