@@ -247,6 +247,54 @@ export async function seedFriendship(
 }
 
 /**
+ * Seed a health_food_log owned by `ownerUserId` for `petId` (R2c owner-private
+ * group). owner_user_id is the RLS key; the rest is minimal valid data.
+ */
+export async function seedFoodLog(
+  sql: Sql,
+  opts: { logId: number; petId: number; ownerUserId: number; foodName?: string },
+): Promise<{ logId: number }> {
+  const { logId, petId, ownerUserId, foodName } = opts;
+  await sql`
+    insert into health_food_logs (id, pet_id, owner_user_id, food_name)
+    values (${logId}, ${petId}, ${ownerUserId}, ${foodName ?? `food-${logId}`})
+  `;
+  return { logId };
+}
+
+/**
+ * Seed a routine owned by `ownerUserId` for `petId` (R2c owner-private group).
+ * routine_type is required; defaults to 'feeding'.
+ */
+export async function seedRoutine(
+  sql: Sql,
+  opts: { routineId: number; petId: number; ownerUserId: number; routineType?: string },
+): Promise<{ routineId: number }> {
+  const { routineId, petId, ownerUserId, routineType = 'feeding' } = opts;
+  await sql`
+    insert into routines (id, pet_id, owner_user_id, routine_type)
+    values (${routineId}, ${petId}, ${ownerUserId}, ${routineType})
+  `;
+  return { routineId };
+}
+
+/**
+ * Seed a pet_allergy owned by `ownerUserId` for `petId` (R2c owner-private group,
+ * vet-record extras — NOT a provider-readable medical record). allergen required.
+ */
+export async function seedAllergy(
+  sql: Sql,
+  opts: { allergyId: number; petId: number; ownerUserId: number; allergen?: string },
+): Promise<{ allergyId: number }> {
+  const { allergyId, petId, ownerUserId, allergen } = opts;
+  await sql`
+    insert into pet_allergies (id, pet_id, owner_user_id, allergen)
+    values (${allergyId}, ${petId}, ${ownerUserId}, ${allergen ?? `allergen-${allergyId}`})
+  `;
+  return { allergyId };
+}
+
+/**
  * Seed a vet_appointments booking linking a provider to a pet (the inbox path).
  * deleted defaults false; pass deleted:true to prove a soft-deleted booking grants
  * no visibility.

@@ -261,3 +261,85 @@ any pet; writes stay owner-only) lives here; the exhaustive pets matrix lives in
 > ⚠️ **`0021` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
 > Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
 > `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
+
+## R2c — owner-only PRIVATE tables (health logs, vet-record extras, scheduling)
+
+The other half of R2b's framework: the **PRIVATE** group. A pet's health and scheduling
+data is read **and** written **only by the owner** — there is **no** any-authed read and
+**no** provider access on **any** of these tables today. The predicate is **uniform** across
+the whole group:
+
+```
+<table>_owner_all  FOR ALL  USING / WITH CHECK  owner_user_id = current_app_user_id()
+```
+
+`current_app_user_id()` (0019) returns the caller's `user_profiles.id`, `NULL` when unset →
+the `int` comparison is `NULL`/false → **deny by default** (no identity reads/writes zero).
+This mirrors the routes exactly: every read/write of these tables is scoped
+`WHERE owner_user_id = me`, and no route exposes them to a provider or another user.
+
+### The tables (`0022_rls_owner_private.sql`)
+
+Nineteen tables, all with `owner_user_id integer NOT NULL → user_profiles(id)`:
+
+- **Health logs (0008)** — `health_food_logs`, `health_general_checks`,
+  `health_medical_care_logs`, `health_mobility_logs`, `health_pee_logs`,
+  `health_photo_checks`, `health_poo_logs`, `health_vomit_logs`, `health_walk_logs`,
+  `health_weight_logs`, `health_wellness_logs`, `health_timeline_events`.
+- **Vet-record extras (0005)** — `pet_allergies`, `pet_conditions`, `pet_lab_results`,
+  `pet_surgeries`, `vet_documents`. (These are **not** the provider-readable medical records;
+  `pet_medical_profiles` / `vet_notes` / `pet_vaccinations` are R2d.)
+- **Scheduling** — `routines` (0006), `reminder_dismissals` (0011).
+
+Because the policy is identical for every table, the migration applies it in a
+`DO $$ … FOREACH … EXECUTE format(...) … $$` loop over the table-name array — one source of
+truth for the predicate, impossible for one table to drift from another. DML + sequence
+grants come from 0019's blanket grants (these tables predate 0019); no per-table re-grant.
+
+### Provider exclusion is the point
+
+The provider record route reads **only** `pet_medical_profiles` / `vet_notes` /
+`pet_vaccinations` (R2d) — **none** of the tables above. So a provider, **even with an active
+care grant**, must get **zero rows** from these tables. The grant/booking helpers (0019) are
+deliberately **not** referenced here; they gate the R2d medical-record tables. The integration
+test proves this directly: a provider-staff user holding an active `medical_read` grant for
+A's pet (the helper returns `true`) still reads zero rows from the health/routine/allergy
+tables.
+
+### Future-provider note (do NOT build it here)
+
+The care-access scope set includes `health_logs_read` / `health_logs_write`, intended for a
+**future** provider type — e.g. a walker writing walk logs, a groomer writing coat notes. But
+**no route grants providers access to the `health_*` tables today**, so they are owner-only
+**now**. When such a route ships, **that feature's ticket** updates the relevant policy (e.g.
+adds an `app_provider_has_grant(pet_id, 'health_logs_read'/'…write')` branch). R2c does not
+pre-build it.
+
+### Tests (`test/integration/owner-private-rls.integration.test.ts`)
+
+Connects as `pawpi_app` and proves, using three representative tables (a health log, a
+routine, a vet-record extra): the owner reads/writes only their own rows; a non-owner sees
+zero and cannot update/delete/insert-as-owner (`WITH CHECK`); no identity → zero; and the
+headline **provider-with-grant exclusion** (active `medical_read` grant → still zero
+read **and** zero write). A **catalog check** then loops over the full 19-table list and
+asserts each has `relrowsecurity` + `relforcerowsecurity` true and a `<table>_owner_all`
+policy present — so no table is left un-policied under `FORCE` (which would silently deny all
+access) and the migration covered the whole list.
+
+> ⚠️ **`0022` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
+> `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
+
+### Remaining R2 groups (follow-ups)
+
+- **R2d — provider-accessible records.** `pet_medical_profiles` (owner + provider read via
+  `medical_read`), `vet_notes` (owner + provider read `medical_read` / write `medical_write`),
+  `pet_vaccinations` (owner + provider read `medical_read` / write `vaccinations_write`) via
+  `app_provider_has_grant(pet_id, scope)`. **Plus `vet_appointments` — HYBRID:** owner OR
+  active-staff-of-the-row's-`provider_id` (the booking inbox/actions), needing a new
+  `SECURITY DEFINER` helper `app_is_active_staff_of(provider_id)`. Mind read-vs-write scope.
+- **R2e — provider/business tables.** `providers`, `provider_staff`, services, locations,
+  reviews, `care_access_grants`, `care_access_audit` — membership/owner scoped; mind helper
+  recursion (the `SECURITY DEFINER` helpers read `provider_staff` / `care_access_grants`).
+- **R1-rollout** — apply `withRequestContext` to all ~93 remaining routes (prerequisite for R3).
+- **R3 cutover** — apply ALL R2 migrations to Supabase + switch `DATABASE_URL` to `pawpi_app`.
