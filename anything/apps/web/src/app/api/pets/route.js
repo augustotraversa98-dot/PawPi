@@ -1,10 +1,26 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  withRequestContext,
+  setCurrentUserId,
+} from "@/app/api/utils/requestContext";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
 // handler bodies (auth + owner-scoped WHERE clauses) are unchanged.
+
+// Append a short random suffix until `base` is free (bounded, with a timestamp
+// fallback that guarantees termination). `exists(candidate)` reports whether a
+// candidate username is already taken. Mirrors the pet-handle dedup below so a
+// taken username never throws a raw duplicate-key 23505 → 500.
+async function uniqueUsername(base, exists) {
+  if (!(await exists(base))) return base;
+  for (let i = 0; i < 5; i++) {
+    const candidate = `${base}_${Math.floor(Math.random() * 10000)}`;
+    if (!(await exists(candidate))) return candidate;
+  }
+  return `${base}_${Date.now()}`;
+}
 
 // Get all pets for the current user
 async function GET(request) {
@@ -150,11 +166,19 @@ async function POST(request) {
         "[POST /api/pets] No user profile found, creating new one...",
       );
 
-      // Generate username from email or name
-      const username =
+      // Generate username from email or name, then uniquify on conflict: an
+      // orphaned/duplicate profile (or two users sharing an email prefix) may
+      // already own this base, which would otherwise throw a raw 23505 → 500.
+      const baseUsername =
         session.user.email?.split("@")[0] ||
         session.user.name?.toLowerCase().replace(/\s+/g, "") ||
         `user_${Date.now()}`;
+      const username = await uniqueUsername(baseUsername, async (candidate) => {
+        const taken = await sql`
+          SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1
+        `;
+        return taken.length > 0;
+      });
 
       console.log("[POST /api/pets] Creating user profile:");
       console.log("[POST /api/pets]   - auth_user_id:", authUserId);
@@ -168,6 +192,13 @@ async function POST(request) {
       `;
 
       console.log("[POST /api/pets] ✅ User profile created:", userProfile[0]);
+
+      // RLS R3 fix: identity was resolved at request START, where this brand-new
+      // user had no profile yet, so app.current_user_id is unset. Stamp it now —
+      // BEFORE the same-request pet INSERT, whose WITH CHECK (owner_user_id =
+      // current_app_user_id()) would otherwise see NULL under pawpi_app + FORCE
+      // RLS and be DENIED. No-op safe outside a request context.
+      await setCurrentUserId(userProfile[0].id);
     } else {
       console.log("[POST /api/pets] ✅ User profile found");
     }
@@ -324,11 +355,19 @@ async function PATCH(request) {
         "[PATCH /api/pets] No user profile found, creating new one...",
       );
 
-      // Generate username from email or name
-      const username =
+      // Generate username from email or name, then uniquify on conflict: an
+      // orphaned/duplicate profile (or two users sharing an email prefix) may
+      // already own this base, which would otherwise throw a raw 23505 → 500.
+      const baseUsername =
         session.user.email?.split("@")[0] ||
         session.user.name?.toLowerCase().replace(/\s+/g, "") ||
         `user_${Date.now()}`;
+      const username = await uniqueUsername(baseUsername, async (candidate) => {
+        const taken = await sql`
+          SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1
+        `;
+        return taken.length > 0;
+      });
 
       console.log("[PATCH /api/pets] Creating user profile:");
       console.log("[PATCH /api/pets]   - auth_user_id:", authUserId);
@@ -342,6 +381,13 @@ async function PATCH(request) {
       `;
 
       console.log("[PATCH /api/pets] ✅ User profile created:", userProfile[0]);
+
+      // RLS R3 fix: identity was resolved at request START, where this brand-new
+      // user had no profile yet, so app.current_user_id is unset. Stamp it now —
+      // BEFORE any same-request owner-scoped pet write, whose RLS predicate
+      // (owner_user_id = current_app_user_id()) would otherwise see NULL under
+      // pawpi_app + FORCE RLS. No-op safe outside a request context.
+      await setCurrentUserId(userProfile[0].id);
     } else {
       console.log("[PATCH /api/pets] ✅ User profile found");
     }
