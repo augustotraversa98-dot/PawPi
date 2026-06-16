@@ -180,4 +180,91 @@ describe('POST /api/providers/[id]/book', () => {
     expect(res.status).toBe(201);
     expect(lastValues()).toContain('Appointment with Happy Vet');
   });
+
+  // ── Ticket 2.4: generalized booking (capability / slot / deposit) ──────────────
+  it('vet booking inserts capability "vet" and the generalized columns', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+
+    const res = await POST(bookReq(VALID), PARAMS);
+
+    expect(res.status).toBe(201);
+    const text = lastQueryText();
+    expect(text).toContain('capability');
+    expect(text).toContain('start_at');
+    expect(text).toContain('order_id');
+    expect(lastValues()).toContain('vet'); // default capability
+  });
+
+  it('invalid capability → 400, no insert', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup only
+    const res = await POST(bookReq({ ...VALID, capability: 'wizardry' }), PARAMS);
+    expect(res.status).toBe(400);
+  });
+
+  it('non-vet capability the provider does NOT hold → 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Vet only', status: 'published' }])
+      .mockResolvedValueOnce([]); // provider_capabilities: not held
+
+    const res = await POST(bookReq({ ...VALID, capability: 'groomer' }), PARAMS);
+    expect(res.status).toBe(400);
+  });
+
+  it('non-vet booking the provider holds: inserts that capability', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'Pet Spa', status: 'published' }])
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // capability held
+      .mockResolvedValueOnce([{ id: 9 }]); // insert
+
+    const res = await POST(bookReq({ ...VALID, capability: 'groomer' }), PARAMS);
+    expect(res.status).toBe(201);
+    expect(lastValues()).toContain('groomer');
+  });
+
+  it('double-book: a slot clash for the same staff → 409', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Spa', status: 'published' }])
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // capability held
+      .mockResolvedValueOnce([{ id: 11 }]) // staff active
+      .mockResolvedValueOnce([{ id: 77 }]); // clash found
+
+    const res = await POST(
+      bookReq({
+        ...VALID,
+        capability: 'groomer',
+        staff_user_id: 11,
+        start_at: '2026-07-01T09:00:00.000Z',
+        end_at: '2026-07-01T10:00:00.000Z',
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it('deposit order not owned by me / not for this provider → 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Vet', status: 'published' }])
+      .mockResolvedValueOnce([]); // order lookup: no row
+
+    const res = await POST(bookReq({ ...VALID, order_id: 999 }), PARAMS);
+    expect(res.status).toBe(400);
+  });
 });

@@ -651,6 +651,93 @@ export async function seedBooking(
 }
 
 /**
+ * Seed a provider_availability window (ticket 2.4 — generalized booking). Defaults to a
+ * Monday (weekday 0) 09:00–17:00 provider-wide window. staffUserId/capability NULL =
+ * provider-wide / all-capability. Used to exercise the availability RLS.
+ */
+export async function seedAvailability(
+  sql: Sql,
+  opts: {
+    availabilityId: number;
+    providerId: number;
+    staffUserId?: number | null;
+    capability?: string | null;
+    weekday?: number;
+    startTime?: string;
+    endTime?: string;
+    slotMinutes?: number;
+  },
+): Promise<{ availabilityId: number }> {
+  const {
+    availabilityId,
+    providerId,
+    staffUserId = null,
+    capability = null,
+    weekday = 0,
+    startTime = '09:00',
+    endTime = '17:00',
+    slotMinutes = 30,
+  } = opts;
+  await sql`
+    insert into provider_availability
+      (id, provider_id, staff_user_id, capability, weekday, start_time, end_time, slot_minutes)
+    values (
+      ${availabilityId}, ${providerId}, ${staffUserId}, ${capability},
+      ${weekday}, ${startTime}, ${endTime}, ${slotMinutes}
+    )
+  `;
+  return { availabilityId };
+}
+
+/**
+ * Seed a GENERALIZED (non-vet) booking on vet_appointments with a concrete slot
+ * (start_at/end_at) + capability + optional staff (ticket 2.4). Used to prove the
+ * generalized columns + RLS + double-book index. Defaults to a groomer booking.
+ */
+export async function seedGeneralBooking(
+  sql: Sql,
+  opts: {
+    apptId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    staffUserId?: number | null;
+    capability?: string;
+    startAt?: string;
+    endAt?: string;
+    bookingStatus?: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
+    orderId?: number | null;
+    recurrenceRule?: string | null;
+  },
+): Promise<{ apptId: number }> {
+  const {
+    apptId,
+    petId,
+    ownerUserId,
+    providerId,
+    staffUserId = null,
+    capability = 'groomer',
+    startAt = '2026-07-06T09:00:00Z', // a Monday
+    endAt = '2026-07-06T09:30:00Z',
+    bookingStatus = 'requested',
+    orderId = null,
+    recurrenceRule = null,
+  } = opts;
+  await sql`
+    insert into vet_appointments
+      (id, pet_id, owner_user_id, title, appointment_date, appointment_time,
+       provider_id, staff_user_id, capability, start_at, end_at, recurrence_rule,
+       order_id, booking_status, source, status)
+    values (
+      ${apptId}, ${petId}, ${ownerUserId}, 'Groom', '2026-07-06', '09:00',
+      ${providerId}, ${staffUserId}, ${capability}, ${startAt}, ${endAt}, ${recurrenceRule},
+      ${orderId}, ${bookingStatus}, 'owner', 'scheduled'
+    )
+  `;
+  return { apptId };
+}
+
+/**
  * Seed a pet_medical_profiles row for `petId` owned by `ownerUserId` (R2d
  * provider-accessible medical group). One row per pet (unique pet_id). microchip_id
  * carries the id for readable assertions.
