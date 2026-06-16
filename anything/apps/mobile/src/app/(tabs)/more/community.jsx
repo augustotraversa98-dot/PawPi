@@ -7,8 +7,9 @@ import {
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Search, Megaphone, Plus, Filter } from "lucide-react-native";
-import { COMMUNITY_POSTS } from "../../data/mockData";
+import { useRouter } from "expo-router";
+import { ArrowLeft, Search, Megaphone, Plus, Filter } from "lucide-react-native";
+import { COMMUNITY_POSTS } from "../../../data/mockData";
 
 const C = {
   coral: "#FF6F61",
@@ -35,6 +36,7 @@ const CATEGORY_COLORS = {
 
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
@@ -158,20 +160,30 @@ export default function CommunityScreen() {
             marginBottom: 14,
           }}
         >
-          <View>
-            <Text
-              style={{
-                fontSize: 26,
-                fontWeight: "800",
-                color: C.warmBrown,
-                letterSpacing: -0.5,
-              }}
+          <View
+            style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+          >
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ marginRight: 12 }}
             >
-              Community 🐕
-            </Text>
-            <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
-              Ask, share, and connect with pet parents.
-            </Text>
+              <ArrowLeft size={22} color={C.warmBrown} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 26,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  letterSpacing: -0.5,
+                }}
+              >
+                Community 🐕
+              </Text>
+              <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
+                Ask, share, and connect with pet parents.
+              </Text>
+            </View>
           </View>
           <TouchableOpacity
             style={{

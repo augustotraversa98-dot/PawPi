@@ -4,7 +4,7 @@ import {
   Home,
   HeartPulse,
   GraduationCap,
-  Users,
+  Stethoscope,
   MoreHorizontal,
 } from "lucide-react-native";
 import useRoutinesStore from "@/store/routinesStore";
@@ -89,10 +89,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="community"
+        name="services"
         options={{
-          title: "Community",
-          tabBarIcon: ({ color }) => <Users color={color} size={23} />,
+          title: "Services",
+          tabBarIcon: ({ color }) => <Stethoscope color={color} size={23} />,
         }}
       />
       <Tabs.Screen
