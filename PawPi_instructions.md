@@ -1025,7 +1025,7 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
        read/write; invited staff can now discover + accept their invites. CURRENT BASELINES: web 391,
        mobile 620. (Web UI is vitest-green; device pass DEFERRED by decision.)
      • RLS HARDENING (pre-launch, BEFORE real medical data — docs/provider-design.md §5 +
-       docs/rls-hardening.md) — IN PROGRESS, a 4-phase arc (dedicated non-owner role + SET LOCAL
+       docs/rls-hardening.md) — ✅ DONE — RLS LIVE IN SUPABASE (Jun 16 2026), a 4-phase arc (dedicated non-owner role + SET LOCAL
        identity + FORCE RLS, proven by as-the-app-role zero-rows tests). NOT a vitest-mock change — it
        needs a real Postgres, so it brought its own harness. TWO-SUITE CANARY now: `npm test` (mocked
        unit) = the PR gate (391); `npm run test:integration` (real embedded-postgres) = the RLS proofs
@@ -1133,12 +1133,40 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             (rls-gap-closure.integration.test.ts) asserting every public base table is ENABLE+FORCE+≥1 policy
             OR in a documented RLS_EXEMPT allowlist — locks the invariant so the gap can't recur. HARNESS-ONLY
             (NOT applied to Supabase). integration 130 → 148; unit gate 394 unchanged.
-         R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase (0019–0026) +
-            re-run the policy-count check (R2g gap → zero) + switch DATABASE_URL to pawpi_app + full
-            cross-boundary sweep. RESUMES once 0026 is applied to Supabase.
-     ── PRIORITY ORDER (Tats, Jun 2026): (1) FINISH RLS (above, IN PROGRESS) → (2) SERVICES END-TO-END
-        + DISCOVERY/NAV/FEED (TOP priority, below) → then the unranked LATER layers → anonymized
-        analytics is LOW/future (no real data yet — not a now-problem).
+         R3 CUTOVER = DONE — ✅ RLS IS LIVE IN SUPABASE (Jun 16 2026). Migrations 0019–0026 applied to
+            live Supabase in order; policy-count check confirmed ZERO RLS-on-without-policy tables;
+            verified AS pawpi_app on live data (deny-by-default with no identity; owner isolation on the
+            private tables; social public-read on pets; identity tables readable). DATABASE_URL in
+            anything/apps/web/.env switched to the pawpi_app role (NOBYPASSRLS); the old postgres line is
+            kept commented for instant rollback. NOTE: the Supabase postgres role has rolbypassrls=TRUE,
+            so applying the migrations never disturbed the running app until the role switch — clean cutover.
+            CUTOVER DETOUR (fixed): the first live smoke test failed on a create-pet/onboarding bug that
+            was NOT RLS (reproduced on the postgres connection). PR #108 (ticket/onboarding-rls-compat)
+            fixed two things in pets/route.js POST+PATCH: (1) RLS identity timing — setCurrentUserId(newId)
+            is now called immediately after the lazy user_profiles creation so a brand-new user's
+            same-request pet INSERT has app.current_user_id set (else FORCE RLS WITH CHECK denied it);
+            (2) username collision-safety — uniqueUsername() appends a suffix instead of throwing a raw
+            23505. +4 integration tests, integration 148→152, unit 394. After #108 + re-flip, onboarding
+            and the app work end-to-end on pawpi_app. ⇒ RLS ARC COMPLETE.
+     ── GO-LIVE (App Store / real users) CHECKLIST — pre-launch, NOT done yet:
+        • ⚠️ CHANGE THE pawpi_app PASSWORD. It is currently the PLACEHOLDER 'pawpi_app' (set in migration
+          0019 and in anything/apps/web/.env). BEFORE real users / App Store launch: run on Supabase
+          `ALTER ROLE pawpi_app PASSWORD '<strong secret>';` then update DATABASE_URL in .env (and any
+          hosted-backend env) to the new password. (Cowork/Tats: do this at go-live.)
+        • Point any HOSTED/prod backend's DATABASE_URL at the pawpi_app role too — this cutover only
+          covered the LOCAL dev backend that talks to Supabase.
+        • Optional hygiene: `revoke pawpi_app from postgres;` (undo the SET ROLE test grant); clean up
+          leftover duplicate test accounts (e.g. orphaned 'augusto' user_profiles rows from re-signups).
+        • PROFILE-CREATION follow-up (LOW PRIORITY — ideal hook NOT available, do NOT rush it): the
+          sturdy version would create user_profiles at SIGNUP, but src/auth.js is a LOCKED managed file
+          ("Anything's internal auth — do not edit"), so we cannot hook createUser there. #108 already
+          made the lazy-creation path (pets/route.js POST+PATCH) RLS-safe (setCurrentUserId after insert)
+          + collision-safe (uniqueUsername), so the app is robust as-is. OPTIONAL future cleanup:
+          centralize "ensure profile exists" into ONE early authenticated endpoint (e.g. user-profile
+          GET create-if-missing) instead of duplicated lazy-create — marginal value, not urgent.
+     ── PRIORITY ORDER (Tats, Jun 2026): (1) RLS — ✅ DONE / LIVE (above) → (2) SERVICES END-TO-END
+        + DISCOVERY/NAV/FEED (← NOW THE TOP ACTIVE PRIORITY, below) → then the unranked LATER layers →
+        anonymized analytics is LOW/future (no real data yet — not a now-problem).
      • ★ PRIORITY #2 (TOP, right after RLS) — ALL PROVIDER TYPES END-TO-END + OWNER-FACING SURFACING:
        (a) BUILD every business type fully on the same provider spine — VET is done end-to-end; build
        WALKER, DAYCARE/BOARDING, SHOP, GROOMER (provider_type drives type-specific modules; reuse
