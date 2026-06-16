@@ -1074,14 +1074,24 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             owner-only NOW (that feature's ticket adds the branch). HARNESS-ONLY (NOT applied to Supabase).
             Proven as pawpi_app in owner-private-rls.integration.test.ts incl. a catalog check (every table
             ENABLE+FORCE RLS + owner policy present) (integration 49 → 58; unit gate 391 unchanged).
-         R2d… = remaining groups: R2d PROVIDER-ACCESSIBLE records (pet_medical_profiles = owner + provider
-            read via medical_read; vet_notes = owner + provider read medical_read/write medical_write;
-            pet_vaccinations = owner + provider read medical_read/write vaccinations_write — via
-            app_provider_has_grant(pet_id, scope); PLUS vet_appointments HYBRID = owner OR active-staff-of-
-            the-row's-provider_id, needs a new SECURITY DEFINER helper app_is_active_staff_of(provider_id);
-            mind read-vs-write scope). R2e PROVIDER/business (providers, provider_staff, provider_services/
+         R2d (PROVIDER-ACCESSIBLE records: pet_medical_profiles, vet_notes, pet_vaccinations, vet_appointments)
+            = DONE (branch ticket/rls-r2d-medical). Migration 0023. The group where provider access is REAL,
+            so READ vs WRITE scopes DIFFER → PER-COMMAND policies (owner FOR ALL + narrow provider command
+            policies), NOT R2c's single FOR ALL. Mirrors the routes EXACTLY: pet_medical_profiles SELECT owner
+            OR grant(medical_read), writes owner only; vet_notes SELECT medical_read + INSERT medical_write,
+            UPDATE/DELETE owner only; pet_vaccinations SELECT medical_read + INSERT vaccinations_write (owner
+            write-through INSERT preserved), UPDATE/DELETE owner only — all via app_provider_has_grant(pet_id,
+            scope). vet_appointments HYBRID = SELECT/UPDATE owner OR active-staff-of-the-row's-provider_id
+            (booking inbox/actions, by STAFF MEMBERSHIP not a grant), INSERT/DELETE owner only; NEW SECURITY
+            DEFINER helper app_is_active_staff_of(provider_id) (pinned search_path, reused-pattern from 0019;
+            DEFINER so R2e's provider_staff RLS won't re-filter/recurse). HARNESS-ONLY (NOT applied to
+            Supabase). Proven as pawpi_app in provider-records-rls.integration.test.ts incl. grant lifecycle
+            (revoke/expire/inactive-staff → zero), grant-vs-membership distinction, + a catalog check
+            (integration 58 → 81; unit gate 391 unchanged).
+         R2e… = remaining group: R2e PROVIDER/business (providers, provider_staff, provider_services/
             locations/reviews, care_access_grants, care_access_audit — provider_staff/owner scoped; mind
-            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants).
+            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants, so
+            re-verify they still work once those tables are FORCE-RLS'd).
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
             mechanical, not started.
          R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch

@@ -302,20 +302,85 @@ export async function seedAllergy(
 export async function seedBooking(
   sql: Sql,
   opts: {
+    apptId?: number;
     petId: number;
     ownerUserId: number;
     providerId: number;
     deleted?: boolean;
   },
-): Promise<void> {
-  const { petId, ownerUserId, providerId, deleted = false } = opts;
+): Promise<{ apptId: number }> {
+  const { apptId, petId, ownerUserId, providerId, deleted = false } = opts;
+  const deletedAt = deleted ? '2026-06-01T00:00:00Z' : null;
+  const rows =
+    apptId != null
+      ? await sql<{ id: number }[]>`
+          insert into vet_appointments
+            (id, pet_id, owner_user_id, title, appointment_date, appointment_time,
+             provider_id, booking_status, source, deleted_at)
+          values (
+            ${apptId}, ${petId}, ${ownerUserId}, 'Checkup', '2026-07-01', '09:00',
+            ${providerId}, 'requested', 'owner', ${deletedAt}
+          )
+          returning id
+        `
+      : await sql<{ id: number }[]>`
+          insert into vet_appointments
+            (pet_id, owner_user_id, title, appointment_date, appointment_time,
+             provider_id, booking_status, source, deleted_at)
+          values (
+            ${petId}, ${ownerUserId}, 'Checkup', '2026-07-01', '09:00',
+            ${providerId}, 'requested', 'owner', ${deletedAt}
+          )
+          returning id
+        `;
+  return { apptId: rows[0].id };
+}
+
+/**
+ * Seed a pet_medical_profiles row for `petId` owned by `ownerUserId` (R2d
+ * provider-accessible medical group). One row per pet (unique pet_id). microchip_id
+ * carries the id for readable assertions.
+ */
+export async function seedMedicalProfile(
+  sql: Sql,
+  opts: { profileRowId: number; petId: number; ownerUserId: number },
+): Promise<{ profileRowId: number }> {
+  const { profileRowId, petId, ownerUserId } = opts;
   await sql`
-    insert into vet_appointments
-      (pet_id, owner_user_id, title, appointment_date, appointment_time,
-       provider_id, booking_status, source, deleted_at)
-    values (
-      ${petId}, ${ownerUserId}, 'Checkup', '2026-07-01', '09:00',
-      ${providerId}, 'requested', 'owner', ${deleted ? '2026-06-01T00:00:00Z' : null}
-    )
+    insert into pet_medical_profiles (id, pet_id, owner_user_id, microchip_id)
+    values (${profileRowId}, ${petId}, ${ownerUserId}, ${`chip-${profileRowId}`})
   `;
+  return { profileRowId };
+}
+
+/**
+ * Seed a vet_note for `petId` owned by `ownerUserId` (R2d). note + note_date are
+ * required; both default off the id for readable assertions.
+ */
+export async function seedVetNote(
+  sql: Sql,
+  opts: { noteId: number; petId: number; ownerUserId: number; note?: string },
+): Promise<{ noteId: number }> {
+  const { noteId, petId, ownerUserId, note } = opts;
+  await sql`
+    insert into vet_notes (id, pet_id, owner_user_id, note_date, note)
+    values (${noteId}, ${petId}, ${ownerUserId}, '2026-06-01', ${note ?? `note-${noteId}`})
+  `;
+  return { noteId };
+}
+
+/**
+ * Seed a pet_vaccination for `petId` owned by `ownerUserId` (R2d). name is required;
+ * defaults off the id.
+ */
+export async function seedVaccination(
+  sql: Sql,
+  opts: { vaxId: number; petId: number; ownerUserId: number; name?: string },
+): Promise<{ vaxId: number }> {
+  const { vaxId, petId, ownerUserId, name } = opts;
+  await sql`
+    insert into pet_vaccinations (id, pet_id, owner_user_id, name)
+    values (${vaxId}, ${petId}, ${ownerUserId}, ${name ?? `vax-${vaxId}`})
+  `;
+  return { vaxId };
 }

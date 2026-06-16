@@ -330,14 +330,86 @@ access) and the migration covered the whole list.
 > Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
 > `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
 
+## R2d — provider-accessible records (`pet_medical_profiles`, `vet_notes`, `pet_vaccinations`, `vet_appointments`)
+
+The third shape, distinct from R2b (public read) and R2c (owner-only): the group where a
+provider's access is **real**. Because a provider may **read** more than they may **write**
+(and on the bookings table not at all by grant), READ and WRITE scopes **differ per table**,
+so the policies are **split per command** rather than the single uniform `FOR ALL` of R2c.
+
+**The shape.** Every table keeps the owner's full access as one `FOR ALL` owner policy
+(`USING`/`WITH CHECK owner_user_id = current_app_user_id()`). Permissive policies OR together
+**per command**, so adding a provider `FOR SELECT` / `FOR INSERT` / `FOR UPDATE` policy widens
+**only that command** for the provider and leaves the rest owner-only. This is the same
+two-tier pattern as `pets` (R2a): one owner `FOR ALL` + narrow provider command policies.
+
+**Mirrors the routes exactly — no wider.** The route SQL was read directly to pin each
+predicate (`providers/[id]/pets/[petId]/record` → `medical_read` SELECTs profile + notes +
+vaccinations; `.../notes` → `medical_write` INSERTs `vet_notes`; `.../vaccinations` →
+`vaccinations_write` INSERTs `pet_vaccinations`; the bookings `inbox`/`[appointmentId]` →
+active staff SELECT/UPDATE of `vet_appointments WHERE provider_id`; owner `book` + owner
+`vet-appointments` routes → owner INSERT/UPDATE/(soft-)delete):
+
+| Table | SELECT | INSERT | UPDATE / DELETE |
+|---|---|---|---|
+| `pet_medical_profiles` | owner OR `grant(medical_read)` | owner only | owner only |
+| `vet_notes` | owner OR `grant(medical_read)` | owner OR `grant(medical_write)` | owner only |
+| `pet_vaccinations` | owner OR `grant(medical_read)` | owner OR `grant(vaccinations_write)` | owner only |
+| `vet_appointments` | owner OR `staff_of(provider_id)` | owner only | UPDATE: owner OR `staff_of(provider_id)`; DELETE: owner only |
+
+The medical three reuse the existing `app_provider_has_grant(pet_id, scope)` helper (0019),
+matching `assertCareAccess`'s per-scope check. No provider route writes `pet_medical_profiles`,
+so it has no provider write policy. The owner `pet_vaccinations` write-through path (the
+medical-care-logs reconciliation that inserts vaccinations in **owner** context) is the owner
+`INSERT` branch and is unaffected.
+
+### The new helper — `app_is_active_staff_of(provider_id)` (`0023`)
+
+`vet_appointments` is the **hybrid**: a provider reaches a booking by **active staff
+membership of the row's `provider_id`** — the booking inbox/actions authorize with
+`requireProviderRole`/`ALL_PROVIDER_ROLES` (active staff, **any** role), **not** a care grant.
+So the predicate is a new helper, the booking analogue of `app_provider_has_grant`:
+
+```
+app_is_active_staff_of(p_provider_id) → EXISTS provider_staff
+  WHERE provider_id = p_provider_id AND user_profile_id = current_app_user_id()
+    AND status = 'active'
+```
+
+`SECURITY DEFINER` + pinned `search_path = public, pg_temp` + `STABLE`, exactly like 0019's
+provider helpers and for the same reason: it reads `provider_staff`, which gets its own RLS in
+**R2e**, so running it as the table owner keeps it from being re-filtered by that future policy
+(under-count) and avoids policy recursion (`vet_appointments` policy → helper →
+`provider_staff` policy → …). `EXECUTE` is granted to `pawpi_app` explicitly.
+
+The **grant-vs-membership distinction** is the point of the bookings split: a provider with an
+active care **grant** but **no staff membership** of the booking's provider sees **zero**
+appointments, and a staff member of a **different** provider sees only **their** provider's
+bookings. Providers never INSERT an appointment (the owner books; the `provider_id` on the row
+is the *target*) and never DELETE one (they cancel via a `booking_status` UPDATE) — so both are
+owner-only, matching the routes.
+
+DML + sequence grants come from 0019's blanket grants (all four tables predate 0019). The
+helpers from 0019 are reused unchanged.
+
+### Tests (`test/integration/provider-records-rls.integration.test.ts`)
+
+Connects as `pawpi_app` and proves, per table: owner reads/writes only their own rows; a
+provider with the relevant active grant reads (and, where the route allows, INSERTs onto the
+owner's record) but cannot UPDATE/DELETE; a read-only grant is rejected at the INSERT
+`WITH CHECK`; no grant / no identity → zero. For `vet_appointments`: active staff SELECT (inbox)
++ UPDATE (booking_status); staff of a different provider, a grant-but-not-staff provider, and a
+different owner each see zero; the provider cannot INSERT (WITH CHECK) or DELETE. The grant
+**lifecycle** (revoked / expired / inactive-staff each flip provider access to zero) mirrors
+`assertCareAccess`. A catalog check asserts all four tables are `ENABLE` + `FORCE` RLS and carry
+their expected per-command policies.
+
+> ⚠️ **`0023` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
+> `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
+
 ### Remaining R2 groups (follow-ups)
 
-- **R2d — provider-accessible records.** `pet_medical_profiles` (owner + provider read via
-  `medical_read`), `vet_notes` (owner + provider read `medical_read` / write `medical_write`),
-  `pet_vaccinations` (owner + provider read `medical_read` / write `vaccinations_write`) via
-  `app_provider_has_grant(pet_id, scope)`. **Plus `vet_appointments` — HYBRID:** owner OR
-  active-staff-of-the-row's-`provider_id` (the booking inbox/actions), needing a new
-  `SECURITY DEFINER` helper `app_is_active_staff_of(provider_id)`. Mind read-vs-write scope.
 - **R2e — provider/business tables.** `providers`, `provider_staff`, services, locations,
   reviews, `care_access_grants`, `care_access_audit` — membership/owner scoped; mind helper
   recursion (the `SECURITY DEFINER` helpers read `provider_staff` / `care_access_grants`).
