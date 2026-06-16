@@ -111,6 +111,8 @@ export async function seedProviderWithStaff(
     staffUserProfileId: number;
     slug: string;
     staffStatus?: 'invited' | 'active' | 'removed';
+    staffRole?: 'owner' | 'admin' | 'staff' | 'vet';
+    providerStatus?: 'draft' | 'published';
   },
 ): Promise<{ providerId: number }> {
   const {
@@ -119,16 +121,102 @@ export async function seedProviderWithStaff(
     staffUserProfileId,
     slug,
     staffStatus = 'active',
+    staffRole = 'vet',
+    providerStatus = 'draft',
   } = opts;
   await sql`
-    insert into providers (id, owner_user_profile_id, provider_type, name, slug)
-    values (${providerId}, ${ownerUserProfileId}, 'vet', ${slug}, ${slug})
+    insert into providers (id, owner_user_profile_id, provider_type, name, slug, status)
+    values (${providerId}, ${ownerUserProfileId}, 'vet', ${slug}, ${slug}, ${providerStatus})
   `;
   await sql`
     insert into provider_staff (provider_id, user_profile_id, role, status)
-    values (${providerId}, ${staffUserProfileId}, 'vet', ${staffStatus})
+    values (${providerId}, ${staffUserProfileId}, ${staffRole}, ${staffStatus})
   `;
   return { providerId };
+}
+
+/**
+ * Seed a bare provider row (no staff) — for R2e tests that need a provider whose
+ * staff/ownership shape they control row-by-row via seedStaff. status defaults to
+ * 'draft'; owner_user_profile_id is the business owner (NOT auto-added as staff here).
+ */
+export async function seedProvider(
+  sql: Sql,
+  opts: {
+    providerId: number;
+    ownerUserProfileId: number;
+    slug: string;
+    status?: 'draft' | 'published';
+  },
+): Promise<{ providerId: number }> {
+  const { providerId, ownerUserProfileId, slug, status = 'draft' } = opts;
+  await sql`
+    insert into providers (id, owner_user_profile_id, provider_type, name, slug, status)
+    values (${providerId}, ${ownerUserProfileId}, 'vet', ${slug}, ${slug}, ${status})
+  `;
+  return { providerId };
+}
+
+/** Seed one provider_staff membership row (R2e). status/role default active/staff. */
+export async function seedStaff(
+  sql: Sql,
+  opts: {
+    providerId: number;
+    userProfileId: number;
+    role?: 'owner' | 'admin' | 'staff' | 'vet';
+    status?: 'invited' | 'active' | 'removed';
+  },
+): Promise<void> {
+  const { providerId, userProfileId, role = 'staff', status = 'active' } = opts;
+  await sql`
+    insert into provider_staff (provider_id, user_profile_id, role, status)
+    values (${providerId}, ${userProfileId}, ${role}, ${status})
+  `;
+}
+
+/** Seed a provider_service (R2e). active defaults true; name carries the id. */
+export async function seedService(
+  sql: Sql,
+  opts: { serviceId: number; providerId: number; active?: boolean; name?: string },
+): Promise<{ serviceId: number }> {
+  const { serviceId, providerId, active = true, name } = opts;
+  await sql`
+    insert into provider_services (id, provider_id, name, active)
+    values (${serviceId}, ${providerId}, ${name ?? `service-${serviceId}`}, ${active})
+  `;
+  return { serviceId };
+}
+
+/** Seed a provider_location (R2e). name carries the id. */
+export async function seedLocation(
+  sql: Sql,
+  opts: { locationId: number; providerId: number; name?: string },
+): Promise<{ locationId: number }> {
+  const { locationId, providerId, name } = opts;
+  await sql`
+    insert into provider_locations (id, provider_id, name)
+    values (${locationId}, ${providerId}, ${name ?? `location-${locationId}`})
+  `;
+  return { locationId };
+}
+
+/** Seed a provider_review by reviewer `ownerUserId` for `petId` (R2e). rating defaults 5. */
+export async function seedReview(
+  sql: Sql,
+  opts: {
+    reviewId: number;
+    providerId: number;
+    ownerUserId: number;
+    petId: number;
+    rating?: number;
+  },
+): Promise<{ reviewId: number }> {
+  const { reviewId, providerId, ownerUserId, petId, rating = 5 } = opts;
+  await sql`
+    insert into provider_reviews (id, provider_id, owner_user_id, pet_id, rating, body)
+    values (${reviewId}, ${providerId}, ${ownerUserId}, ${petId}, ${rating}, ${`review-${reviewId}`})
+  `;
+  return { reviewId };
 }
 
 /**

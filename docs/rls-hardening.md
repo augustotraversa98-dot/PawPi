@@ -408,10 +408,127 @@ their expected per-command policies.
 > Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
 > `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
 
-### Remaining R2 groups (follow-ups)
+### Remaining R2 groups (follow-ups, after R2d)
 
-- **R2e — provider/business tables.** `providers`, `provider_staff`, services, locations,
-  reviews, `care_access_grants`, `care_access_audit` — membership/owner scoped; mind helper
-  recursion (the `SECURITY DEFINER` helpers read `provider_staff` / `care_access_grants`).
+- **R2e — provider/business tables** (below) — `providers`, `provider_staff`, services,
+  locations, reviews. _(now done)_
+- **R2f — consent tables** — `care_access_grants`, `care_access_audit`.
+- **R1-rollout** — apply `withRequestContext` to all ~93 remaining routes (prerequisite for R3).
+- **R3 cutover** — apply ALL R2 migrations to Supabase + switch `DATABASE_URL` to `pawpi_app`.
+
+## R2e — provider / business entity tables (`providers`, `provider_staff`, `provider_services`, `provider_locations`, `provider_reviews`)
+
+The fourth access shape, distinct from R2b (public read), R2c (owner-only) and R2d
+(provider-accessible medical): access is by provider-**staff membership** (active staff /
+`owner|admin` / the business owner), with a **published-discovery public-read** window. The
+route SQL was read directly (`providers` GET/POST/PATCH + `publish`, `discover`,
+`public/[slug]`, services/locations/staff/`staff/accept`, `provider-invites`) to pin each
+predicate — no wider.
+
+### The new helpers (`0024`)
+
+Both `SECURITY DEFINER` + pinned `search_path = public, pg_temp` + `STABLE`, exactly like
+`0019`/`0023`'s provider helpers and for the same reason: they read `provider_staff`, which
+gets its **own RLS in this migration**, so running them as the owner (DEFINER) keeps them
+from being re-filtered by `provider_staff`'s policy (under-count) and avoids policy recursion
+(`provider_staff` policy → helper → `provider_staff` policy → … is exactly what Postgres
+rejects with "infinite recursion detected in policy").
+
+- **`app_is_provider_admin(p_provider_id)`** — `EXISTS` active `provider_staff` for the caller
+  with `role IN ('owner','admin')`. Mirrors `requireProviderRole`'s **default** gate, used by
+  every provider **write** route.
+- **`app_provider_has_active_staff(p_provider_id)`** — `EXISTS` *any* active `provider_staff`
+  for the provider. Used **only** by the `provider_staff` INSERT bootstrap (below).
+
+(`app_is_active_staff_of` from `0023` covers the any-active-staff reads.)
+
+### The per-table model (`0024`)
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `providers` | published **OR** owner **OR** `active_staff_of(id)` | `owner_user_profile_id = me` | `is_provider_admin(id)` | owner only |
+| `provider_staff` | `active_staff_of(provider_id)` **OR** my own row | **bootstrap OR invite** (below) | my own row (accept) **OR** `is_provider_admin` | none (soft-remove is an UPDATE) |
+| `provider_services` | `active_staff_of` **OR** active service of a published provider | `is_provider_admin` | `is_provider_admin` | `is_provider_admin` |
+| `provider_locations` | `active_staff_of` **OR** any location of a published provider | `is_provider_admin` | `is_provider_admin` | `is_provider_admin` (hard delete) |
+| `provider_reviews` | reviewer — `owner_user_id = me` | `owner_user_id = me` | `owner_user_id = me` | `owner_user_id = me` |
+
+`provider_services` / `provider_locations` use the same **two-tier** shape as R2d (an admin
+`FOR ALL` policy + a public-read `FOR SELECT`): permissive policies OR per command, so writes
+stay `owner|admin` while the read widens to the public for a published provider's data. The
+public-read `EXISTS (providers … status='published')` runs under `providers`' own SELECT RLS —
+a published provider is visible there, so no DEFINER helper is needed.
+
+`provider_reviews` is a single owner(reviewer)-scoped `FOR ALL` policy: **no route reads or
+writes reviews today** (reviews-surfacing is deferred), so this keeps the table from being
+un-policied under `FORCE` without granting any access the routes don't. **Future:** when
+reviews-surfacing ships (public read of a provider's reviews), that feature's ticket adds a
+`FOR SELECT` public-read policy here.
+
+### The `providers` SELECT owner branch — required, not redundant
+
+`providers_select` is `published OR owner_user_profile_id = me OR active_staff_of(id)`. The
+`owner_user_profile_id` branch looks redundant (the owner is always also active staff) but is
+**load-bearing for the create CTE**: the providers-create route inserts the provider **and** its
+owner `provider_staff` row in **one** data-modifying CTE, and `INSERT … RETURNING` (plus the
+trailing `SELECT * FROM new_provider`) applies the **SELECT** policy to the brand-new **draft**
+row in that same statement. Data-modifying CTEs share one snapshot, so the just-inserted owner
+staff row is **not visible** yet → `app_is_active_staff_of(id)` is still false. `owner_user_profile_id`
+lives **on the providers row the INSERT just set**, so it is the only branch that lets the creator
+read their own draft provider back. (Discovered by the harness: without it the create CTE fails
+with "new row violates row-level security policy for table providers".)
+
+### The `provider_staff` INSERT bootstrap — membership-**absence** gated
+
+The owner row inserted by the create CTE cannot verify *"this provider is owned by me"* by
+selecting the `providers` row: same snapshot (the sibling `providers` INSERT is invisible),
+and `providers`' own SELECT RLS would hide a just-created draft anyway. So the gate is
+membership **absence**, which **is** snapshot-safe:
+
+```
+(user_profile_id = me AND role = 'owner' AND NOT app_provider_has_active_staff(provider_id))  -- BOOTSTRAP
+OR (app_is_provider_admin(provider_id) AND role IN ('admin','staff','vet'))                   -- INVITE
+```
+
+A brand-new provider has **no active staff** yet (the only invisible row is the one being
+inserted) → bootstrap allowed. An established provider always has its **unremovable owner** as
+active staff → a bare owner-insert against someone else's provider is **rejected**. This is why
+`app_provider_has_active_staff` exists and is `SECURITY DEFINER` (it must read `provider_staff`
+without recursion). The naive `EXISTS (providers WHERE owner = me)` bootstrap the access model
+first sketched **cannot work** in the atomic CTE — proven in the harness.
+
+### Recursion re-proof
+
+The `SECURITY DEFINER` helpers (`0019`'s `app_provider_has_grant`/`app_provider_has_booking`,
+`0023`'s `app_is_active_staff_of`, and `0024`'s two) all **read `provider_staff`**, which is now
+`FORCE`-RLS'd. Being DEFINER (owned by the privileged migration role) they still **bypass** that
+RLS — the membership/grant lookup is not re-filtered and there is no policy recursion. The proof
+is twofold: (a) the **full R2a–R2d integration suite stays green** (those tests exercise the
+helpers against pets/medical/appointments — a broken or recursing `provider_staff` RLS would turn
+them red), and (b) **explicit assertions** in `provider-business-rls` that
+`app_is_active_staff_of` / `app_is_provider_admin` / `app_provider_has_active_staff` return the
+right booleans when called as `pawpi_app` with `provider_staff` under `FORCE` RLS.
+
+### Tests (`test/integration/provider-business-rls.integration.test.ts`)
+
+Connects as `pawpi_app` and proves, per table: discovery (published readable by any authed,
+draft only by staff), management read (active staff), `owner|admin` writes (plain staff / outsider
+→ zero or `WITH CHECK` reject), the **real bootstrap CTE** (creating a provider + its owner staff
+row as `pawpi_app` succeeds) and that a bare owner-insert into an existing provider is rejected,
+invitee self-accept, `/provider-invites` self-read, services/locations public-vs-staff read, and
+the reviews owner-scoping (provider staff get zero). Plus the recursion re-proof assertions and a
+catalog check (every R2e table `ENABLE` + `FORCE` RLS with its expected policies). Integration
+**81 → 109**; unit gate **391** unchanged.
+
+> ⚠️ **`0024` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to
+> `pawpi_app`. (Same rule as R2a; see the warning under §R2a.)
+
+### Remaining R2 groups (follow-ups, after R2e)
+
+- **R2f — consent tables.** `care_access_grants` (SELECT owner-only; INSERT by provider staff —
+  `app_is_active_staff_of(provider_id)`, `requested_by='provider'`; UPDATE owner-only) +
+  `care_access_audit` (append-only: INSERT `staff_user_id = me`; no UPDATE/DELETE; SELECT
+  owner/none). ⚠️ `app_provider_has_grant` (DEFINER) reads `care_access_grants` → the same
+  recursion re-proof applies once grants are `FORCE`-RLS'd.
 - **R1-rollout** — apply `withRequestContext` to all ~93 remaining routes (prerequisite for R3).
 - **R3 cutover** — apply ALL R2 migrations to Supabase + switch `DATABASE_URL` to `pawpi_app`.

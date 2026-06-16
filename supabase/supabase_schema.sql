@@ -3372,4 +3372,165 @@ CREATE POLICY vet_appointments_provider_update ON public.vet_appointments
   FOR UPDATE
   USING (app_is_active_staff_of(provider_id));
 
+-- 0024_rls_provider_business.sql (RLS hardening R2e — docs/rls-hardening.md §R2e). The
+-- PROVIDER / BUSINESS entity tables (providers, provider_staff, provider_services,
+-- provider_locations, provider_reviews). Access is by provider-STAFF MEMBERSHIP (active
+-- staff / owner|admin / business owner) with a PUBLISHED-discovery public-read window.
+-- Mirrors the routes EXACTLY —
+--   providers: SELECT published OR active-staff(id); INSERT owner_user_profile_id = me;
+--     UPDATE owner|admin; DELETE owner only.
+--   provider_staff: SELECT active-staff(provider_id) OR my own row; INSERT bootstrap
+--     (the create CTE's owner row, gated by membership-ABSENCE — snapshot-safe; see the
+--     migration) OR invite (owner|admin → admin/staff/vet); UPDATE my own row (accept)
+--     OR owner|admin; no hard DELETE.
+--   provider_services / provider_locations: two-tier (admin FOR ALL + public read of a
+--     published provider's active services / all locations).
+--   provider_reviews: owner(reviewer)-scoped FOR ALL (reviews-surfacing deferred —
+--     that feature updates the SELECT policy when it ships).
+-- Two new helpers — app_is_provider_admin (owner|admin gate, mirrors requireProviderRole)
+-- and app_provider_has_active_staff (bootstrap absence-gate) — both SECURITY DEFINER +
+-- pinned search_path + STABLE (read provider_staff, which gets RLS here → DEFINER avoids
+-- re-filter/recursion). The 0019/0023 helpers reading provider_staff still bypass its new
+-- RLS (DEFINER), proven by the full R2a–R2d suite staying green. DML/sequence grants come
+-- from 0019's blanket grants (all five tables predate 0019). ⚠️ HARNESS-ONLY — NOT applied
+-- to Supabase yet (R3 applies the whole R2 set at the DATABASE_URL cutover to pawpi_app).
+CREATE OR REPLACE FUNCTION public.app_is_provider_admin(p_provider_id integer)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM provider_staff ps
+    WHERE ps.provider_id = p_provider_id
+      AND ps.user_profile_id = current_app_user_id()
+      AND ps.status = 'active'
+      AND ps.role IN ('owner', 'admin')
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.app_provider_has_active_staff(p_provider_id integer)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM provider_staff ps
+    WHERE ps.provider_id = p_provider_id
+      AND ps.status = 'active'
+  )
+$$;
+
+GRANT EXECUTE ON FUNCTION public.app_is_provider_admin(integer) TO pawpi_app;
+GRANT EXECUTE ON FUNCTION public.app_provider_has_active_staff(integer) TO pawpi_app;
+
+ALTER TABLE public.providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.providers FORCE ROW LEVEL SECURITY;
+-- The owner_user_profile_id branch is required for the create CTE's RETURNING/SELECT to
+-- read back the brand-new DRAFT provider (the owner staff row isn't visible in the same
+-- snapshot, so app_is_active_staff_of is still false). See 0024 migration for the full note.
+DROP POLICY IF EXISTS providers_select ON public.providers;
+CREATE POLICY providers_select ON public.providers
+  FOR SELECT
+  USING (
+    status = 'published'
+    OR owner_user_profile_id = current_app_user_id()
+    OR app_is_active_staff_of(id)
+  );
+DROP POLICY IF EXISTS providers_insert ON public.providers;
+CREATE POLICY providers_insert ON public.providers
+  FOR INSERT
+  WITH CHECK (owner_user_profile_id = current_app_user_id());
+DROP POLICY IF EXISTS providers_update ON public.providers;
+CREATE POLICY providers_update ON public.providers
+  FOR UPDATE
+  USING (app_is_provider_admin(id));
+DROP POLICY IF EXISTS providers_delete ON public.providers;
+CREATE POLICY providers_delete ON public.providers
+  FOR DELETE
+  USING (owner_user_profile_id = current_app_user_id());
+
+ALTER TABLE public.provider_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.provider_staff FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS provider_staff_select ON public.provider_staff;
+CREATE POLICY provider_staff_select ON public.provider_staff
+  FOR SELECT
+  USING (
+    app_is_active_staff_of(provider_id)
+    OR user_profile_id = current_app_user_id()
+  );
+DROP POLICY IF EXISTS provider_staff_insert ON public.provider_staff;
+CREATE POLICY provider_staff_insert ON public.provider_staff
+  FOR INSERT
+  WITH CHECK (
+    (
+      user_profile_id = current_app_user_id()
+      AND role = 'owner'
+      AND NOT app_provider_has_active_staff(provider_id)
+    )
+    OR (
+      app_is_provider_admin(provider_id)
+      AND role IN ('admin', 'staff', 'vet')
+    )
+  );
+DROP POLICY IF EXISTS provider_staff_update ON public.provider_staff;
+CREATE POLICY provider_staff_update ON public.provider_staff
+  FOR UPDATE
+  USING (
+    user_profile_id = current_app_user_id()
+    OR app_is_provider_admin(provider_id)
+  );
+
+ALTER TABLE public.provider_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.provider_services FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS provider_services_admin_all ON public.provider_services;
+CREATE POLICY provider_services_admin_all ON public.provider_services
+  FOR ALL
+  USING (app_is_provider_admin(provider_id))
+  WITH CHECK (app_is_provider_admin(provider_id));
+DROP POLICY IF EXISTS provider_services_read ON public.provider_services;
+CREATE POLICY provider_services_read ON public.provider_services
+  FOR SELECT
+  USING (
+    app_is_active_staff_of(provider_id)
+    OR (
+      active = true
+      AND EXISTS (
+        SELECT 1 FROM providers p
+        WHERE p.id = provider_id AND p.status = 'published'
+      )
+    )
+  );
+
+ALTER TABLE public.provider_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.provider_locations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS provider_locations_admin_all ON public.provider_locations;
+CREATE POLICY provider_locations_admin_all ON public.provider_locations
+  FOR ALL
+  USING (app_is_provider_admin(provider_id))
+  WITH CHECK (app_is_provider_admin(provider_id));
+DROP POLICY IF EXISTS provider_locations_read ON public.provider_locations;
+CREATE POLICY provider_locations_read ON public.provider_locations
+  FOR SELECT
+  USING (
+    app_is_active_staff_of(provider_id)
+    OR EXISTS (
+      SELECT 1 FROM providers p
+      WHERE p.id = provider_id AND p.status = 'published'
+    )
+  );
+
+ALTER TABLE public.provider_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.provider_reviews FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS provider_reviews_owner_all ON public.provider_reviews;
+CREATE POLICY provider_reviews_owner_all ON public.provider_reviews
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+
 
