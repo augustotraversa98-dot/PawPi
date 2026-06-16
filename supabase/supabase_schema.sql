@@ -3533,4 +3533,48 @@ CREATE POLICY provider_reviews_owner_all ON public.provider_reviews
   USING (owner_user_id = current_app_user_id())
   WITH CHECK (owner_user_id = current_app_user_id());
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0025_rls_consent_ledger.sql (RLS hardening R2f — docs/rls-hardening.md §R2f). The
+-- CONSENT LEDGER: care_access_grants (owner approves/revokes) + care_access_audit
+-- (append-only access log). FINAL R2 policy group. No new helper — reuses 0023's
+-- app_is_active_staff_of. ⚠️ HARNESS-ONLY — NOT applied to Supabase (R3 applies the whole
+-- R2 set at the DATABASE_URL cutover). ⚠️ RECURSION: 0019's app_provider_has_grant
+-- (DEFINER) reads care_access_grants — being DEFINER it still bypasses this RLS.
+-- See 0025 migration for the full notes.
+
+ALTER TABLE public.care_access_grants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.care_access_grants FORCE ROW LEVEL SECURITY;
+-- SELECT: owner trust view OR active staff (REQUIRED for the access-request RETURNING *
+-- snapshot AND the direct assertCareAccess grant SELECT — see 0025).
+DROP POLICY IF EXISTS care_access_grants_select ON public.care_access_grants;
+CREATE POLICY care_access_grants_select ON public.care_access_grants
+  FOR SELECT
+  USING (
+    owner_user_id = current_app_user_id()
+    OR app_is_active_staff_of(provider_id)
+  );
+-- INSERT: active staff requesting (requested_by='provider'); the owner never inserts.
+DROP POLICY IF EXISTS care_access_grants_insert ON public.care_access_grants;
+CREATE POLICY care_access_grants_insert ON public.care_access_grants
+  FOR INSERT
+  WITH CHECK (
+    app_is_active_staff_of(provider_id)
+    AND requested_by = 'provider'
+  );
+-- UPDATE: owner only (approve/deny/revoke). DELETE: none (grants are status-flipped).
+DROP POLICY IF EXISTS care_access_grants_update ON public.care_access_grants;
+CREATE POLICY care_access_grants_update ON public.care_access_grants
+  FOR UPDATE
+  USING (owner_user_id = current_app_user_id());
+
+ALTER TABLE public.care_access_audit ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.care_access_audit FORCE ROW LEVEL SECURITY;
+-- INSERT: a staff member writes their OWN row (assertCareAccess, no RETURNING). SELECT/
+-- UPDATE/DELETE: none → append-only, zero reads for all under FORCE (future audit-review
+-- adds the SELECT policy). See 0025.
+DROP POLICY IF EXISTS care_access_audit_insert ON public.care_access_audit;
+CREATE POLICY care_access_audit_insert ON public.care_access_audit
+  FOR INSERT
+  WITH CHECK (staff_user_id = current_app_user_id());
+
 

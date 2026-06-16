@@ -525,10 +525,101 @@ catalog check (every R2e table `ENABLE` + `FORCE` RLS with its expected policies
 
 ### Remaining R2 groups (follow-ups, after R2e)
 
-- **R2f — consent tables.** `care_access_grants` (SELECT owner-only; INSERT by provider staff —
-  `app_is_active_staff_of(provider_id)`, `requested_by='provider'`; UPDATE owner-only) +
-  `care_access_audit` (append-only: INSERT `staff_user_id = me`; no UPDATE/DELETE; SELECT
-  owner/none). ⚠️ `app_provider_has_grant` (DEFINER) reads `care_access_grants` → the same
-  recursion re-proof applies once grants are `FORCE`-RLS'd.
+- **R2f — consent ledger** (below, `0025`) — `care_access_grants` + `care_access_audit`. **Done.**
 - **R1-rollout** — apply `withRequestContext` to all ~93 remaining routes (prerequisite for R3).
 - **R3 cutover** — apply ALL R2 migrations to Supabase + switch `DATABASE_URL` to `pawpi_app`.
+
+## R2f — consent ledger (`care_access_grants`, `care_access_audit`)
+
+The **final** R2 policy group (`0025`). With it every real table is `FORCE`-RLS'd; only
+**R1-rollout** + **R3 cutover** remain. These two tables are the cornerstone of
+provider-design.md §2 (Consent) + §3 (`assertCareAccess` is the only path): the
+per-(pet ↔ provider) **grant** the owner approves/revokes, and the **append-only audit log**
+every provider access writes. No new helper — reuses `0023`'s `app_is_active_staff_of`.
+
+### The per-command model (`0025`) — mirrors the routes exactly
+
+`care_access_grants`:
+
+- **SELECT** — `owner_user_id = current_app_user_id()` **OR** `app_is_active_staff_of(provider_id)`.
+  The owner branch is the trust view (`GET /care-access/grants`, `WHERE owner_user_id = me`). The
+  staff branch is **required, not a convenience** (see the snapshot note below).
+- **INSERT** — `app_is_active_staff_of(provider_id) AND requested_by = 'provider'`. Mirrors
+  `POST /providers/[id]/access-requests`: active staff request access; the owner **never** inserts a
+  grant. Scope/booking validity is app-layer; the policy gate is staff membership.
+- **UPDATE** — `owner_user_id = current_app_user_id()` (the owner's approve/deny/revoke via
+  `PATCH /care-access/grants/[grantId]`). A provider **cannot** UPDATE — no self-approval. `WITH
+  CHECK` defaults to `USING`; the transitions never change `owner_user_id`, so the owner predicate
+  holds for the updated row and the route's `RETURNING *` reads back fine.
+- **DELETE** — **no policy**. Grants are status-flipped (`pending→active→revoked/expired`), never
+  deleted, and no delete route exists → `FORCE` denies it for everyone.
+
+`care_access_audit` (append-only):
+
+- **INSERT** — `staff_user_id = current_app_user_id()`. `assertCareAccess` (utils/careAccess.js)
+  runs as the acting staff and writes one row per successful access; `WITH CHECK` pins
+  `staff_user_id` so one staff member cannot forge a row attributed to another. **No `RETURNING`** in
+  the helper, so no SELECT policy is needed for the app path.
+- **SELECT / UPDATE / DELETE** — **none.** No audit-review reader exists yet, and an audit row is
+  immutable, so leaving all three un-policied means `FORCE` returns/affects **zero rows** for
+  everyone — the correct posture for an append-only log. **Future:** when an audit-review feature
+  ships (owner sees who accessed their pet's data), *that* ticket adds a `FOR SELECT` policy — owner
+  via the `grant_id → care_access_grants.owner_user_id` join (and/or the acting staff reading their
+  own rows).
+
+### The grants SELECT staff branch — required by the `RETURNING` snapshot (and `assertCareAccess`)
+
+The R2f orientation floated "SELECT owner-only", but the **route shapes forbid it** — two app paths
+need active staff to read grant rows:
+
+1. **`access-requests` INSERT … `RETURNING *`** — `RETURNING` applies the SELECT policy to the
+   just-created row in the **same snapshot** (the R2e lesson). The new row's `owner_user_id` is the
+   **pet owner**, not the requesting staff member, so an owner-only SELECT policy would hide it and
+   `RETURNING` would come back empty. `app_is_active_staff_of(provider_id)` is the only branch that
+   lets the inserting staff read it back.
+2. **`assertCareAccess` step 2** — does a **direct** `SELECT * FROM care_access_grants WHERE
+   provider_id = … AND status='active' …` as the acting staff (**not** via the DEFINER helper), so it
+   needs the same SELECT branch.
+
+The branch grants no read the care relationship doesn't already imply (a provider reading the grants
+for *their own* provider; `assertCareAccess` already lets active staff act on active ones). A
+different provider's staff fails `app_is_active_staff_of(provider_id)` → zero.
+
+### Recursion re-proof
+
+`0019`'s `app_provider_has_grant` (`SECURITY DEFINER`, `STABLE`, pinned `search_path`) **reads
+`care_access_grants`**, which R2f `FORCE`-RLS's. Being DEFINER (owned by the privileged migration
+role) it still **bypasses** that RLS — the grant lookup is not re-filtered by the grants SELECT
+policy (no under-count) and there is no policy recursion (the grants policies never call the helper,
+so even an indirect loop can't form). The proof is twofold: (a) the **full R2a–R2e integration suite
+stays green** (R2d's medical tables + R2a's pets/booking exercise `app_provider_has_grant` against
+`care_access_grants` — a broken or recursing grants RLS would turn them red), and (b) an **explicit
+assertion** in `care-access-rls` that `app_provider_has_grant` returns the right boolean (true with an
+active grant; false after revoke / wrong scope / other provider / no identity) under `FORCE` RLS.
+
+### Tests (`test/integration/care-access-rls.integration.test.ts`)
+
+Connects as `pawpi_app` and proves, per table: grants SELECT (owner trust view + active staff;
+different-provider staff / non-participant owner / no identity → zero); grants INSERT (active staff
+with `RETURNING *` — the snapshot proof; owner / outsider / wrong-provider staff / forged
+`requested_by` → reject); grants UPDATE (owner approve→active / revoke→revoked with `RETURNING`;
+provider and non-participant owner → zero rows; DELETE denied for all); a live **revoke→zero**
+cross-check through a medical table (revoke is instant); audit append-only (staff INSERTs own row,
+cannot forge another's, SELECT zero for everyone, UPDATE/DELETE denied). Plus the recursion re-proof
+assertion and a catalog check (both tables `ENABLE` + `FORCE` RLS with **exactly** the expected
+policies — asserting the deliberate absence of any audit SELECT/UPDATE/DELETE policy). Integration
+**109 → 130**; unit gate **391** unchanged.
+
+> ⚠️ **`0025` is HARNESS-ONLY** — proven in the embedded-Postgres harness, **NOT applied to
+> Supabase**. R3 applies the whole accumulated R2 set at the `DATABASE_URL` cutover to `pawpi_app`.
+> (Same rule as R2a; see the warning under §R2a.)
+
+### R2 policy work is COMPLETE — only the rollout + cutover remain
+
+- **R1-rollout** — apply `withRequestContext` (R1) to all ~93 remaining routes so EVERY request sets
+  `app.current_user_id`. Mechanical but broad; prerequisite for R3 (a non-identity route hits `FORCE`
+  RLS with no GUC → zero rows). Best done in batches by route area, each keeping `npm test` green.
+- **R3 cutover** (the only step that touches prod) — apply ALL R2 migrations (`0019`–`0025`) to
+  Supabase in order, create the `pawpi_app` role there, switch `DATABASE_URL` to `pawpi_app`, then a
+  full cross-boundary sweep AS `pawpi_app` (owner isolation + provider consent + revoke-instant) on
+  live Supabase. This is where RLS actually turns on in production.
