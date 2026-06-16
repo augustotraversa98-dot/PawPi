@@ -1,7 +1,8 @@
-// Render pins for the promoted Pet Services hub (bottom-nav entry):
-//   - the LIVE Veterinary service renders and links to the vet discover/book flow;
-//   - NO not-yet-live types (walker / daycare / groomer / shop / adoption) are
-//     surfaced — only built types appear, no mock "coming soon" rows.
+// Render pins for the Pet Services hub category grid (bottom-nav entry):
+//   - ALL catalog categories render as cards (Veterinary live + coming-soon);
+//   - the LIVE Veterinary card navigates to the canonical vet discover/book flow;
+//   - coming-soon cards are signposts: badged "Coming soon" and NOT tappable
+//     (no navigation, no fake data behind them).
 // The router is mocked, so this exercises the screen wiring.
 
 import React from "react";
@@ -21,31 +22,40 @@ jest.mock("react-native-safe-area-context", () => ({
 
 import ServicesScreen from "./services";
 
+const COMING_SOON = [
+  "Grooming",
+  "Dog Walking",
+  "Daycare & Boarding",
+  "Pet Sitting",
+  "Training",
+  "Shop",
+  "Adoption",
+];
+
 beforeEach(() => {
   mockPush.mockReset();
 });
 
-test("features the live Veterinary service", () => {
-  const { getByText } = render(<ServicesScreen />);
+test("renders the full category grid (Veterinary + every coming-soon category)", () => {
+  const { getByText, getAllByText } = render(<ServicesScreen />);
   expect(getByText("Veterinary")).toBeTruthy();
+  for (const title of COMING_SOON) {
+    expect(getByText(title)).toBeTruthy();
+  }
+  // Every non-live category carries a visible "Coming soon" badge.
+  expect(getAllByText("Coming soon")).toHaveLength(COMING_SOON.length);
 });
 
-test("tapping Veterinary opens the vet discover/book flow", () => {
+test("tapping the live Veterinary card opens the vet discover/book flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Veterinary"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/vet");
 });
 
-test("does NOT surface not-yet-live service types (no mock rows)", () => {
-  const { queryByText } = render(<ServicesScreen />);
-  for (const notLive of [
-    "Walker",
-    "Daycare",
-    "Boarding",
-    "Groomer",
-    "Pet Shop",
-    "Adoption",
-  ]) {
-    expect(queryByText(notLive)).toBeNull();
+test("coming-soon cards do NOT navigate into any flow", () => {
+  const { getByText } = render(<ServicesScreen />);
+  for (const title of COMING_SOON) {
+    fireEvent.press(getByText(title));
   }
+  expect(mockPush).not.toHaveBeenCalled();
 });
