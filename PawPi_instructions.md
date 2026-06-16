@@ -1106,11 +1106,18 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             proof, plus explicit helper-under-FORCE assertions. HARNESS-ONLY (NOT applied to Supabase).
             Proven as pawpi_app in provider-business-rls.integration.test.ts incl. the real bootstrap CTE +
             a catalog check (integration 81 → 109; unit gate 391 unchanged).
-         R2f (CONSENT tables: care_access_grants, care_access_audit) = REMAINING. grants SELECT owner-only,
-            INSERT by provider staff (app_is_active_staff_of(provider_id)), UPDATE owner-only (approve/deny/
-            revoke); audit append-only (INSERT staff_user_id=me; no UPDATE/DELETE; SELECT owner/none).
-            ⚠️ app_provider_has_grant (DEFINER) READS care_access_grants → same recursion re-proof once
-            grants are FORCE-RLS'd.
+         R2f (CONSENT LEDGER: care_access_grants, care_access_audit) = DONE (0025, harness-only). grants
+            SELECT owner OR active-staff-of-provider (the staff branch is REQUIRED — the access-request
+            INSERT…RETURNING * snapshot AND the direct assertCareAccess grant SELECT both need it, NOT
+            owner-only as first scoped), INSERT active staff requesting (app_is_active_staff_of + requested_by
+            ='provider'; owner never inserts), UPDATE owner-only (approve/deny/revoke; provider cannot),
+            DELETE none (status-flipped, never deleted). audit append-only (INSERT staff_user_id=me; no
+            SELECT/UPDATE/DELETE → zero for all under FORCE; future audit-review adds the SELECT policy).
+            No new helper (reused 0023's app_is_active_staff_of). ⚠️ app_provider_has_grant (DEFINER) READS
+            care_access_grants → recursion RE-PROVEN: full R2a–R2e suite green + explicit helper-under-FORCE
+            assertion + live revoke→zero cross-check. HARNESS-ONLY (NOT applied to Supabase). Proven in
+            care-access-rls.integration.test.ts (integration 109 → 130; unit gate 391 unchanged). ⇒ R2 POLICY
+            WORK COMPLETE — every real table FORCE-RLS'd; only R1-rollout + R3 cutover remain.
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
             mechanical, not started.
          R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
