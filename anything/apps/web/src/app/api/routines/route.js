@@ -1,9 +1,10 @@
 import sql from "@/app/api/utils/sql";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET - Fetch all routines for the authenticated user
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -71,7 +72,7 @@ export async function GET(request) {
 }
 
 // POST - Create a new routine
-export async function POST(request) {
+async function POST(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -198,7 +199,7 @@ export async function POST(request) {
 }
 
 // PUT - Update an existing routine
-export async function PUT(request) {
+async function PUT(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -318,7 +319,7 @@ export async function PUT(request) {
 }
 
 // DELETE - Soft delete a routine (does not delete past walk history)
-export async function DELETE(request) {
+async function DELETE(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -380,3 +381,11 @@ export async function DELETE(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+const wrappedPUT = withRequestContext(PUT);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedGET as GET, wrappedPOST as POST, wrappedPUT as PUT, wrappedDELETE as DELETE };

@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/pet-vaccinations?petId=... — OWNER-side read of a pet's vaccinations.
 // Ticket 8 (docs/provider-design.md §4 item 8). This is the owner half that makes
@@ -10,7 +11,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 // OWNER-context route: authorization is pet ownership via the existing
 // `WHERE owner_user_id = me` pattern — NOT assertCareAccess (that gates the
 // provider side only). DB is porsager's tagged-template `sql`.
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -45,3 +46,8 @@ export async function GET(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

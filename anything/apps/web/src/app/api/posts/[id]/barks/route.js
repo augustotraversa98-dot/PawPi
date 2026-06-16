@@ -1,8 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Get barks (comments) for a post
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const postId = params.id;
 
@@ -29,7 +30,7 @@ export async function GET(request, { params }) {
 }
 
 // Create a bark (comment)
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -118,3 +119,9 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Failed to create bark" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

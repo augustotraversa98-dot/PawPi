@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { invalidServiceFields } from "@/app/api/utils/providerValidation";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One provider service — update and SOFT delete (owner|admin). Ticket 4b.
 //
@@ -18,7 +19,7 @@ import { invalidServiceFields } from "@/app/api/utils/providerValidation";
 // Update a service — owner|admin only. Partial via COALESCE; `active` toggles
 // here too (PATCH active=true reactivates a soft-deleted service). Omitted fields
 // are preserved.
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -83,7 +84,7 @@ export async function PATCH(request, { params }) {
 // SOFT delete a service — owner|admin only. Sets active=false (NOT a row delete)
 // because vet_appointments.service_id references it. Scoped by id AND
 // provider_id; a service belonging to another provider matches no row -> 404.
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -125,3 +126,9 @@ export async function DELETE(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPATCH = withRequestContext(PATCH);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedPATCH as PATCH, wrappedDELETE as DELETE };

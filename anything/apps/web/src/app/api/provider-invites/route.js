@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // The caller's own PENDING provider invitations. Closes the c2c staff-accept gap:
 // POST /api/providers/[id]/staff/accept can flip an invite to active, but an
@@ -12,7 +13,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 // caller is not active staff yet, exactly the reasoning of the accept route. The
 // scoped WHERE is the authorization: a user can only ever see their own invites.
 
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -54,3 +55,8 @@ export async function GET(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Publish / unpublish a provider — owner|admin only. Dedicated endpoint so the
 // profile PATCH (../route.js) never touches status. The value is validated
@@ -9,7 +10,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 
 const VALID_STATUSES = ["draft", "published"];
 
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -55,3 +56,8 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Failed to update status" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+export { wrappedPOST as POST };

@@ -5,6 +5,7 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One provider: read (any active staff) and profile update (owner|admin).
 // Every path resolves identity -> user_profiles.id then authorizes via
@@ -19,7 +20,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 const PROFILE_FIELDS = ["name", "provider_type", "bio", "logo_url", "slug"];
 
 // Get one provider — requires active staff membership (any role) or 403.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -59,7 +60,7 @@ export async function GET(request, { params }) {
 
 // Update provider profile fields — owner|admin only. Never changes
 // owner_user_profile_id or status (status flips via ./publish).
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -131,3 +132,9 @@ export async function PATCH(request, { params }) {
     return Response.json({ error: "Failed to update provider" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedGET as GET, wrappedPATCH as PATCH };

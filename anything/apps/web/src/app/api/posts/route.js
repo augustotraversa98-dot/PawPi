@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -22,7 +23,7 @@ export function mergeFeed(following, suggested, { limit, offset }) {
 }
 
 // Get feed posts
-export async function GET(request) {
+async function GET(request) {
   try {
     console.log("[GET /api/posts] ========================================");
     console.log("[GET /api/posts] Fetching posts from database");
@@ -191,7 +192,7 @@ export async function GET(request) {
 }
 
 // Create a new post
-export async function POST(request) {
+async function POST(request) {
   try {
     console.log("[POST /api/posts] ========================================");
     console.log("[POST /api/posts] Starting post creation");
@@ -366,3 +367,9 @@ export async function POST(request) {
     return Response.json({ error: "Failed to create post" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

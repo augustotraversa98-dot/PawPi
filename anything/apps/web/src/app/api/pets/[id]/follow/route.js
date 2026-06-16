@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Resolve the caller's user_profiles.id and verify they own followerPetId.
 // Returns { error, status } on failure, or { userId } on success.
@@ -44,7 +45,7 @@ async function followersCountOf(followedPetId) {
 }
 
 // Follow a pet ([id] = the pet being followed)
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -94,7 +95,7 @@ export async function POST(request, { params }) {
 }
 
 // Unfollow a pet ([id] = the pet being unfollowed)
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -124,3 +125,9 @@ export async function DELETE(request, { params }) {
     return Response.json({ error: "Failed to unfollow pet" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedPOST as POST, wrappedDELETE as DELETE };

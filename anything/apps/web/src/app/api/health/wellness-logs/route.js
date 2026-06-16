@@ -1,8 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
-export async function GET(request) {
+async function GET(request) {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,7 +62,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function POST(request) {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -134,3 +135,9 @@ export async function POST(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPOST = withRequestContext(POST);
+export { wrappedGET as GET, wrappedPOST as POST };

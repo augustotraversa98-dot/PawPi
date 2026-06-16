@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One provider staff member — remove (soft) and change role (owner|admin).
 // Ticket 4c.
@@ -33,7 +34,7 @@ async function findMembership(providerId, userProfileId) {
 
 // Remove a member — owner|admin only. SOFT delete: status='removed' (asserts an
 // UPDATE, not a row delete — preserves history + the unique row for re-invite).
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -83,7 +84,7 @@ export async function DELETE(request, { params }) {
 
 // Change a member's role — owner|admin only. Guards: cannot set role='owner'
 // (no ownership transfer); cannot change the owner's role.
-export async function PATCH(request, { params }) {
+async function PATCH(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -141,3 +142,9 @@ export async function PATCH(request, { params }) {
     return Response.json({ error: "Failed to change role" }, { status: 500 });
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedDELETE = withRequestContext(DELETE);
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedDELETE as DELETE, wrappedPATCH as PATCH };

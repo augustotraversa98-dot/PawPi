@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // A single published provider's PUBLIC profile (docs/provider-design.md §4 item 5).
 // Viewable by any logged-in user. Returns public business info + the provider's
@@ -12,7 +13,7 @@ import { auth } from "@/auth";
 //
 // Auth: session required (401); no per-user scoping, so no resolveUserId /
 // requireProviderRole.
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -58,3 +59,8 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };

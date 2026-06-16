@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // POST /api/providers/[id]/book — the pet's OWNER books this provider.
 // Ticket 6a (docs/provider-design.md §4 item 6, owner half; 6b adds the provider
@@ -15,7 +16,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
-export async function POST(request, { params }) {
+async function POST(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -156,3 +157,8 @@ export async function POST(request, { params }) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedPOST = withRequestContext(POST);
+export { wrappedPOST as POST };

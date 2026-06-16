@@ -1,8 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Get or create user profile
-export async function GET(request) {
+async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -43,7 +44,7 @@ export async function GET(request) {
 }
 
 // Update user profile
-export async function PATCH(request) {
+async function PATCH(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -119,3 +120,9 @@ export async function PATCH(request) {
     );
   }
 }
+
+// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
+// bodies are unchanged — only their DB connection is now request-scoped.
+const wrappedGET = withRequestContext(GET);
+const wrappedPATCH = withRequestContext(PATCH);
+export { wrappedGET as GET, wrappedPATCH as PATCH };
