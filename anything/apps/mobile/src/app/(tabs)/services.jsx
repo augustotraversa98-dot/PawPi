@@ -2,24 +2,86 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Stethoscope, ChevronRight, PawPrint } from "lucide-react-native";
+import {
+  Stethoscope,
+  Scissors,
+  Footprints,
+  Home,
+  Heart,
+  GraduationCap,
+  ShoppingBag,
+  PawPrint,
+  ChevronRight,
+} from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 
-// Pet Services hub — promoted into the main bottom navigation so the built
-// provider/booking loops are reachable in 1-2 taps.
+// Pet Services hub — a quick-access CATEGORY GRID promoted into the main bottom
+// navigation so the built provider/booking loops are 1-2 taps away.
 //
-// IMPORTANT: only LIVE provider types are featured here. Veterinary is the only
-// type built end-to-end today, so it is the only entry. As walker / daycare /
-// groomer / shop / adoption ship their type modules, add them to LIVE_SERVICES
-// (no mock / "coming soon" rows — empty state or omit, per the data rules).
-const LIVE_SERVICES = [
+// Veterinary is the ONLY category built end-to-end today, so it is the only LIVE
+// card: it navigates to the single canonical vet discovery (more/vet.jsx — no
+// duplicate discovery screen). Every other catalog category is rendered as a
+// "Coming soon" SIGNPOST card: visible and clearly badged, but NOT tappable into
+// any flow and with NO fake provider data behind it. These light up in later
+// Phase-2 tickets (grooming → walking → daycare/boarding → sitting → training →
+// shop → adoption).
+const CATEGORIES = [
   {
     key: "vet",
     title: "Veterinary",
     subtitle: "Find and book a vet, then share records",
-    emoji: "🏥",
     icon: Stethoscope,
+    live: true,
     route: "/(tabs)/more/vet",
+  },
+  {
+    key: "grooming",
+    title: "Grooming",
+    subtitle: "Baths, trims, and nail care",
+    icon: Scissors,
+    live: false,
+  },
+  {
+    key: "walking",
+    title: "Dog Walking",
+    subtitle: "On-demand and scheduled walks",
+    icon: Footprints,
+    live: false,
+  },
+  {
+    key: "boarding",
+    title: "Daycare & Boarding",
+    subtitle: "Day stays and overnight care",
+    icon: Home,
+    live: false,
+  },
+  {
+    key: "sitting",
+    title: "Pet Sitting",
+    subtitle: "In-home visits and care",
+    icon: Heart,
+    live: false,
+  },
+  {
+    key: "training",
+    title: "Training",
+    subtitle: "Obedience and behavior help",
+    icon: GraduationCap,
+    live: false,
+  },
+  {
+    key: "shop",
+    title: "Shop",
+    subtitle: "Food, toys, and supplies",
+    icon: ShoppingBag,
+    live: false,
+  },
+  {
+    key: "adoption",
+    title: "Adoption",
+    subtitle: "Find a dog to bring home",
+    icon: PawPrint,
+    live: false,
   },
 ];
 
@@ -59,116 +121,133 @@ export default function ServicesScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {LIVE_SERVICES.length === 0 ? (
-          <EmptyState />
-        ) : (
-          LIVE_SERVICES.map((service) => (
-            <ServiceCard
-              key={service.key}
-              service={service}
-              onPress={() => router.push(service.route)}
-            />
-          ))
-        )}
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
+          {CATEGORIES.map((category) =>
+            category.live ? (
+              <CategoryCard
+                key={category.key}
+                category={category}
+                onPress={() => router.push(category.route)}
+              />
+            ) : (
+              <CategoryCard key={category.key} category={category} />
+            ),
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-function ServiceCard({ service, onPress }) {
-  const Icon = service.icon;
+function CategoryCard({ category, onPress }) {
+  const Icon = category.icon;
+  const isLive = category.live;
+
+  // Coming-soon cards are pure signposts: rendered with no onPress so they are
+  // not tappable into any flow (no fake data behind them).
+  const Wrapper = isLive ? TouchableOpacity : View;
+  const wrapperProps = isLive
+    ? { onPress, activeOpacity: 0.9, accessibilityRole: "button" }
+    : { accessibilityRole: "text" };
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
+    <Wrapper
+      {...wrapperProps}
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        padding: 18,
+        width: "48%",
+        padding: 16,
         backgroundColor: COLORS.card,
         borderRadius: 20,
-        marginBottom: 12,
+        marginBottom: 14,
         shadowColor: COLORS.terracotta,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
+        shadowOpacity: isLive ? 0.07 : 0.03,
         shadowRadius: 14,
-        elevation: 3,
+        elevation: isLive ? 3 : 1,
         borderWidth: 1,
         borderColor: COLORS.peach,
+        opacity: isLive ? 1 : 0.65,
       }}
     >
       <View
         style={{
-          width: 52,
-          height: 52,
-          borderRadius: 16,
-          backgroundColor: COLORS.coral + "20",
-          justifyContent: "center",
+          flexDirection: "row",
           alignItems: "center",
-          marginRight: 14,
+          justifyContent: "space-between",
         }}
       >
-        {service.emoji ? (
-          <Text style={{ fontSize: 26 }}>{service.emoji}</Text>
+        <View
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 14,
+            backgroundColor: COLORS.coral + "20",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Icon size={22} color={COLORS.coral} />
+        </View>
+        {isLive ? (
+          <ChevronRight size={18} color={COLORS.peach} />
         ) : (
-          <Icon size={24} color={COLORS.coral} />
+          <ComingSoonBadge />
         )}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}>
-          {service.title}
-        </Text>
-        {service.subtitle ? (
-          <Text
-            style={{
-              fontSize: 13,
-              color: COLORS.mutedBrown,
-              marginTop: 3,
-              lineHeight: 18,
-            }}
-          >
-            {service.subtitle}
-          </Text>
-        ) : null}
-      </View>
-      <ChevronRight size={20} color={COLORS.peach} />
-    </TouchableOpacity>
-  );
-}
 
-function EmptyState() {
-  return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 32,
-        alignItems: "center",
-        marginTop: 24,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      <PawPrint size={34} color={COLORS.mutedBrown} />
       <Text
         style={{
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: "800",
           color: COLORS.warmBrown,
           marginTop: 12,
         }}
       >
-        No services available yet
+        {category.title}
       </Text>
+      {category.subtitle ? (
+        <Text
+          style={{
+            fontSize: 12,
+            color: COLORS.mutedBrown,
+            marginTop: 3,
+            lineHeight: 16,
+          }}
+        >
+          {category.subtitle}
+        </Text>
+      ) : null}
+    </Wrapper>
+  );
+}
+
+function ComingSoonBadge() {
+  return (
+    <View
+      style={{
+        backgroundColor: COLORS.sand,
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderWidth: 1,
+        borderColor: COLORS.peach,
+      }}
+    >
       <Text
         style={{
-          fontSize: 13,
+          fontSize: 10,
+          fontWeight: "800",
           color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
+          letterSpacing: 0.3,
         }}
       >
-        Check back soon — pet care providers are joining PawPi.
+        Coming soon
       </Text>
     </View>
   );
