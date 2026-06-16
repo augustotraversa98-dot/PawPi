@@ -3577,4 +3577,68 @@ CREATE POLICY care_access_audit_insert ON public.care_access_audit
   FOR INSERT
   WITH CHECK (staff_user_id = current_app_user_id());
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0026_rls_gap_closure.sql (RLS hardening R2g — docs/rls-hardening.md §R2g). Closes the
+-- gap the R3 cutover found on LIVE Supabase: 7 public tables had RLS ENABLED but ZERO
+-- policies (pawpi_app would read zero rows). (1) DISABLE RLS on the 5 auth/identity infra
+-- tables — they sit OUTSIDE the RLS model because the app reads them BEFORE
+-- app.current_user_id exists (resolveUserId translates the auth id → user_profiles.id;
+-- the Auth.js adapter reads auth_* during login). (2) ADD owner/participant policies to
+-- the 2 social-walk DATA tables, mirroring the routes. ⚠️ HARNESS-ONLY — NOT applied to
+-- Supabase (the user applies 0026 during the cutover). See 0026 migration for full notes.
+
+-- 1. Auth/identity infra — RLS-EXEMPT (read pre-identity → cannot be gated on the GUC).
+ALTER TABLE public.auth_users              DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_accounts           DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_sessions           DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_verification_token DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles           DISABLE ROW LEVEL SECURITY;
+
+-- 2. social_walks — read = any authed (discovery + join-request reads any scheduled walk);
+--    write = owner only. Two-tier shape (pets/posts).
+ALTER TABLE public.social_walks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.social_walks FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS social_walks_authed_read ON public.social_walks;
+CREATE POLICY social_walks_authed_read ON public.social_walks
+  FOR SELECT
+  USING (current_app_user_id() IS NOT NULL);
+DROP POLICY IF EXISTS social_walks_owner_all ON public.social_walks;
+CREATE POLICY social_walks_owner_all ON public.social_walks
+  FOR ALL
+  USING (owner_user_id = current_app_user_id())
+  WITH CHECK (owner_user_id = current_app_user_id());
+
+-- 3. social_walk_join_requests — per-command: SELECT = own request OR approved (count
+--    subqueries) OR walk owner; INSERT = requester (own row); UPDATE = walk owner
+--    (approve/decline); DELETE = none. EXISTS runs under social_walks' any-authed SELECT
+--    RLS — no DEFINER helper, no recursion.
+ALTER TABLE public.social_walk_join_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.social_walk_join_requests FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS social_walk_join_requests_select ON public.social_walk_join_requests;
+CREATE POLICY social_walk_join_requests_select ON public.social_walk_join_requests
+  FOR SELECT
+  USING (
+    requester_user_id = current_app_user_id()
+    OR (current_app_user_id() IS NOT NULL AND status = 'approved')
+    OR EXISTS (
+      SELECT 1 FROM social_walks sw
+      WHERE sw.id = social_walk_id
+        AND sw.owner_user_id = current_app_user_id()
+    )
+  );
+DROP POLICY IF EXISTS social_walk_join_requests_insert ON public.social_walk_join_requests;
+CREATE POLICY social_walk_join_requests_insert ON public.social_walk_join_requests
+  FOR INSERT
+  WITH CHECK (requester_user_id = current_app_user_id());
+DROP POLICY IF EXISTS social_walk_join_requests_update ON public.social_walk_join_requests;
+CREATE POLICY social_walk_join_requests_update ON public.social_walk_join_requests
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM social_walks sw
+      WHERE sw.id = social_walk_id
+        AND sw.owner_user_id = current_app_user_id()
+    )
+  );
+
 
