@@ -461,6 +461,154 @@ export async function seedJoinRequest(
 }
 
 /**
+ * Seed a provider_payment_account for (provider, rail) (ticket 2.3 — money group). Holds
+ * the provider's rail token; provider-admin RLS only. Defaults to mercadopago/connected.
+ */
+export async function seedPaymentAccount(
+  sql: Sql,
+  opts: {
+    accountId: number;
+    providerId: number;
+    rail?: 'mercadopago' | 'binance';
+    accessToken?: string | null;
+    accountRef?: string | null;
+  },
+): Promise<{ accountId: number }> {
+  const {
+    accountId,
+    providerId,
+    rail = 'mercadopago',
+    accessToken = 'secret-token',
+    accountRef = null,
+  } = opts;
+  await sql`
+    insert into provider_payment_accounts (id, provider_id, rail, access_token, account_ref, status)
+    values (${accountId}, ${providerId}, ${rail}, ${accessToken}, ${accountRef}, 'connected')
+  `;
+  return { accountId };
+}
+
+/**
+ * Seed an order paid by `ownerUserId` to `providerId` (ticket 2.3 — money group). kind
+ * defaults 'booking'; amount/currency carry sensible defaults; status 'pending'.
+ */
+export async function seedOrder(
+  sql: Sql,
+  opts: {
+    orderId: number;
+    ownerUserId: number;
+    providerId: number;
+    kind?: 'booking' | 'product' | 'adoption_fee' | 'donation' | 'subscription';
+    amountCents?: number;
+    status?: 'pending' | 'paid' | 'cancelled' | 'refunded' | 'failed';
+  },
+): Promise<{ orderId: number }> {
+  const {
+    orderId,
+    ownerUserId,
+    providerId,
+    kind = 'booking',
+    amountCents = 10000,
+    status = 'pending',
+  } = opts;
+  await sql`
+    insert into orders (id, owner_user_id, provider_id, kind, amount_cents, currency, status)
+    values (${orderId}, ${ownerUserId}, ${providerId}, ${kind}, ${amountCents}, 'ARS', ${status})
+  `;
+  return { orderId };
+}
+
+/** Seed an order_item line on `orderId` (ticket 2.3). */
+export async function seedOrderItem(
+  sql: Sql,
+  opts: { itemId: number; orderId: number; name?: string; unitCents?: number },
+): Promise<{ itemId: number }> {
+  const { itemId, orderId, name, unitCents = 5000 } = opts;
+  await sql`
+    insert into order_items (id, order_id, name, quantity, unit_cents)
+    values (${itemId}, ${orderId}, ${name ?? `item-${itemId}`}, 1, ${unitCents})
+  `;
+  return { itemId };
+}
+
+/** Seed a payment ledger row on `orderId` (ticket 2.3). rail/status default mercadopago/pending. */
+export async function seedPayment(
+  sql: Sql,
+  opts: {
+    paymentId: number;
+    orderId: number;
+    rail?: 'mercadopago' | 'binance';
+    status?: 'pending' | 'approved' | 'refunded' | 'failed';
+    amountCents?: number;
+    externalId?: string | null;
+  },
+): Promise<{ paymentId: number }> {
+  const {
+    paymentId,
+    orderId,
+    rail = 'mercadopago',
+    status = 'pending',
+    amountCents = 10000,
+    externalId = null,
+  } = opts;
+  await sql`
+    insert into payments (id, order_id, rail, external_id, status, amount_cents, commission_cents)
+    values (${paymentId}, ${orderId}, ${rail}, ${externalId}, ${status}, ${amountCents}, 0)
+  `;
+  return { paymentId };
+}
+
+/** Seed a payout for `providerId` (ticket 2.3 — provider-scoped settlement). */
+export async function seedPayout(
+  sql: Sql,
+  opts: {
+    payoutId: number;
+    providerId: number;
+    rail?: 'mercadopago' | 'binance';
+    amountCents?: number;
+    status?: 'pending' | 'paid' | 'failed';
+  },
+): Promise<{ payoutId: number }> {
+  const {
+    payoutId,
+    providerId,
+    rail = 'binance',
+    amountCents = 9000,
+    status = 'paid',
+  } = opts;
+  await sql`
+    insert into payouts (id, provider_id, rail, amount_cents, status)
+    values (${payoutId}, ${providerId}, ${rail}, ${amountCents}, ${status})
+  `;
+  return { payoutId };
+}
+
+/** Seed a subscription owned by `ownerUserId` billed to `providerId` (ticket 2.3). */
+export async function seedSubscription(
+  sql: Sql,
+  opts: {
+    subscriptionId: number;
+    ownerUserId: number;
+    providerId: number;
+    plan?: string;
+    status?: 'active' | 'paused' | 'cancelled';
+  },
+): Promise<{ subscriptionId: number }> {
+  const {
+    subscriptionId,
+    ownerUserId,
+    providerId,
+    plan = 'monthly',
+    status = 'active',
+  } = opts;
+  await sql`
+    insert into subscriptions (id, owner_user_id, provider_id, plan, status)
+    values (${subscriptionId}, ${ownerUserId}, ${providerId}, ${plan}, ${status})
+  `;
+  return { subscriptionId };
+}
+
+/**
  * Seed a vet_appointments booking linking a provider to a pet (the inbox path).
  * deleted defaults false; pass deleted:true to prove a soft-deleted booking grants
  * no visibility.

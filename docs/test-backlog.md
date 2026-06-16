@@ -13,6 +13,17 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## To test
 
+### [ ] 2.3 — Payments foundation (backend scaffold, key-stubbed)  ·  ticket/payments-foundation (2026-06-17)
+What shipped: the money layer for the marketplace — database tables + strict access rules + a provider-agnostic payment engine with two payment rails wired in but DORMANT until accounts/keys exist. Owners pay, the platform keeps a commission, the provider gets paid out (split payments). **There is NO phone UI in this ticket and NO live money flow yet** — it's a scaffold, so there is nothing to tap-test on a device. It is exercised entirely by the test harness (web vitest + real-Postgres RLS).
+- **No on-device check applies.** The routes return a clean "payments not configured" message until Tats sets up the accounts/keys below, so nothing crashes and nothing charges.
+- ⚙️ **MIGRATION TO APPLY TO SUPABASE:** `supabase/migrations/0029_payments_foundation.sql` — creates the money tables (provider_payment_accounts, orders, order_items, payments, payouts, subscriptions) each with ENABLE+FORCE RLS (money = strictest: owner sees only their own orders/payments; provider staff see their provider's; provider tokens are admin-only and NEVER visible to owners; payouts are provider-only). Hand-apply AFTER merge; until then the money tables run only in the test harness, not on live data.
+- ⚙️ **ACTION FOR TATS — accounts + keys (sandbox first, do NOT block the merge):**
+  1. **MercadoPago:** create a MercadoPago **marketplace application** (OAuth client) in the developer dashboard. Copy the **Client ID** and **Client Secret**. Generate a **webhook secret**. Register the **redirect URI** `https://<domain>/api/providers/<id>/payment-accounts/mercadopago/callback` and the **webhook URL** `https://<domain>/api/payments/webhooks/mercadopago`.
+  2. **Binance Pay:** create a **Binance Pay merchant account**, generate an **API key + secret**, and register the webhook URL `https://<domain>/api/payments/webhooks/binance`.
+  3. **Set env keys** in the web app's `.env` (template in `anything/apps/web/.env.example`): `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_WEBHOOK_SECRET`, `MP_REDIRECT_URI`, `BINANCE_PAY_API_KEY`, `BINANCE_PAY_API_SECRET`, and `PLATFORM_COMMISSION_BPS` (e.g. `500` = 5%). NEVER commit real values — `.env` is gitignored.
+  4. **Per-provider connect:** each provider completes the MercadoPago OAuth connect (start link from `GET /api/providers/<id>/payment-accounts/mercadopago/connect`, finished via the callback) and/or records their Binance handle (`POST /api/providers/<id>/payment-accounts/binance`). The token is stored server-side and never shown to owners.
+  5. Use **sandbox/test mode** end to end before going live.
+
 ### [ ] 2.0 — Pet Services in the main nav  ·  PR #111 (merged 2026-06-17)
 What shipped: the bottom bar is now **Feed · Health · Training · Services · More** (Community moved into More).
 1. Bottom bar shows Feed, Health, Training, **Services**, More — Community is gone from the bar.
