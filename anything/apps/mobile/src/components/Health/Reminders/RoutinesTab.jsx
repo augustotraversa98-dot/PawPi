@@ -18,7 +18,6 @@ import FeedingRoutineModal from "./FeedingRoutineModal";
 import WalkRoutineModal from "./WalkRoutineModal";
 import MedicationRoutineModal from "./MedicationRoutineModal";
 import PhotoCheckRoutineModal from "./PhotoCheckRoutineModal";
-import SimpleRoutineModal from "./SimpleRoutineModal";
 import PreventiveCareRoutineModal from "./PreventiveCareRoutineModal";
 import VaccineRoutineModal from "./VaccineRoutineModal";
 import VetAppointmentRoutineModal from "./VetAppointmentRoutineModal";
@@ -431,20 +430,6 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         onClose={closeAllModals}
         onSave={handleSaveRoutine}
         editingRoutine={editingRoutine}
-      />
-      <SimpleRoutineModal
-        visible={selectedType === ROUTINE_TYPES.GENERAL_CHECK}
-        onClose={closeAllModals}
-        onSave={handleSaveRoutine}
-        editingRoutine={editingRoutine}
-        routineType={ROUTINE_TYPES.GENERAL_CHECK}
-      />
-      <SimpleRoutineModal
-        visible={selectedType === ROUTINE_TYPES.WEIGHT_CHECK}
-        onClose={closeAllModals}
-        onSave={handleSaveRoutine}
-        editingRoutine={editingRoutine}
-        routineType={ROUTINE_TYPES.WEIGHT_CHECK}
       />
       <PreventiveCareRoutineModal
         visible={selectedType === ROUTINE_TYPES.PREVENTIVE}
