@@ -1088,10 +1088,29 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             Supabase). Proven as pawpi_app in provider-records-rls.integration.test.ts incl. grant lifecycle
             (revoke/expire/inactive-staff → zero), grant-vs-membership distinction, + a catalog check
             (integration 58 → 81; unit gate 391 unchanged).
-         R2e… = remaining group: R2e PROVIDER/business (providers, provider_staff, provider_services/
-            locations/reviews, care_access_grants, care_access_audit — provider_staff/owner scoped; mind
-            helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants, so
-            re-verify they still work once those tables are FORCE-RLS'd).
+         R2e (PROVIDER/BUSINESS entity tables: providers, provider_staff, provider_services,
+            provider_locations, provider_reviews — 5 tables) = DONE (branch ticket/rls-r2e-provider).
+            Migration 0024. Access by provider-STAFF MEMBERSHIP with a PUBLISHED-discovery public-read
+            window. Mirrors the routes EXACTLY: providers SELECT published OR owner OR active-staff(id),
+            INSERT owner_user_profile_id=me, UPDATE owner|admin (publish/profile), DELETE owner.
+            provider_staff SELECT active-staff(provider_id) OR my own row (powers /provider-invites),
+            INSERT BOOTSTRAP (the create CTE's owner row, gated by membership-ABSENCE — snapshot-safe,
+            since ownership-by-EXISTS can't see the sibling INSERT in the same CTE) OR INVITE (owner|admin
+            → admin/staff/vet), UPDATE self-accept OR owner|admin, no hard DELETE. services/locations =
+            two-tier (admin FOR ALL + public read of a published provider's active services / all
+            locations). reviews = owner(reviewer)-scoped FOR ALL (reviews-surfacing deferred → that
+            feature updates the SELECT policy). TWO NEW SECURITY DEFINER helpers: app_is_provider_admin
+            (owner|admin gate, mirrors requireProviderRole) + app_provider_has_active_staff (the bootstrap
+            absence-gate). RECURSION RE-PROOF: provider_staff is now FORCE-RLS'd, yet the 0019/0023 DEFINER
+            helpers reading it still bypass that RLS (DEFINER) — the full R2a–R2d suite staying green is the
+            proof, plus explicit helper-under-FORCE assertions. HARNESS-ONLY (NOT applied to Supabase).
+            Proven as pawpi_app in provider-business-rls.integration.test.ts incl. the real bootstrap CTE +
+            a catalog check (integration 81 → 109; unit gate 391 unchanged).
+         R2f (CONSENT tables: care_access_grants, care_access_audit) = REMAINING. grants SELECT owner-only,
+            INSERT by provider staff (app_is_active_staff_of(provider_id)), UPDATE owner-only (approve/deny/
+            revoke); audit append-only (INSERT staff_user_id=me; no UPDATE/DELETE; SELECT owner/none).
+            ⚠️ app_provider_has_grant (DEFINER) READS care_access_grants → same recursion re-proof once
+            grants are FORCE-RLS'd.
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,
             mechanical, not started.
          R3 CUTOVER (the ONLY step that touches prod): apply ALL R2 migrations to Supabase + switch
