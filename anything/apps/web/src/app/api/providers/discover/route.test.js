@@ -50,7 +50,7 @@ describe('GET /api/providers/discover', () => {
     expect(allQueryText()).toContain("status = 'published'");
   });
 
-  it("?type=vet filters provider_type and binds the value", async () => {
+  it("?type=vet matches by CAPABILITY (JOIN provider_capabilities), not provider_type", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 1, provider_type: 'vet' }]);
 
@@ -58,19 +58,24 @@ describe('GET /api/providers/discover', () => {
 
     expect(res.status).toBe(200);
     const [strings, ...values] = sql.mock.calls[0];
-    expect(strings.join(' ')).toContain('provider_type =');
-    expect(strings.join(' ')).toContain("status = 'published'");
+    const text = strings.join(' ');
+    // Ticket 2.1: filter is on provider_capabilities.capability via a JOIN, not on
+    // the providers.provider_type column.
+    expect(text).toContain('JOIN provider_capabilities');
+    expect(text).toContain('pc.capability =');
+    expect(text).not.toContain('provider_type = ');
+    expect(text).toContain("status = 'published'");
     expect(values).toContain('vet'); // bound param, not interpolated
   });
 
-  it('no ?type → unfiltered published query (no provider_type clause)', async () => {
+  it('no ?type → unfiltered published query (no capability JOIN)', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([]);
 
     await GET(req());
 
     const [strings] = sql.mock.calls[0];
-    expect(strings.join(' ')).not.toContain('provider_type =');
+    expect(strings.join(' ')).not.toContain('provider_capabilities');
   });
 
   it('never exposes owner identity or status in the projection', async () => {

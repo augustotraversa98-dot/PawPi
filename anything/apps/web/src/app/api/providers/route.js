@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // (DB work runs in a transaction carrying the caller's identity). Bodies unchanged.
@@ -38,11 +39,34 @@ async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, provider_type, bio, logo_url, slug } = body ?? {};
+    const { name, provider_type, bio, logo_url, slug, capabilities } = body ?? {};
 
     if (!name || !provider_type) {
       return Response.json(
         { error: "name and provider_type are required" },
+        { status: 400 },
+      );
+    }
+
+    // capabilities[] (multi-select, ticket 2.1) — optional on create. Normalize to a
+    // deduped list and validate every entry against the allowed set (a bad value is a
+    // 400, not a DB CHECK 500). Default: if none provided, seed the one capability that
+    // matches provider_type when it is itself a valid capability — so a provider always
+    // surfaces under at least its primary category in discovery (mirrors the backfill).
+    if (capabilities !== undefined && !Array.isArray(capabilities)) {
+      return Response.json(
+        { error: "capabilities must be an array" },
+        { status: 400 },
+      );
+    }
+    let caps = Array.from(new Set(capabilities ?? []));
+    if (caps.length === 0 && ALLOWED_CAPABILITIES.includes(provider_type)) {
+      caps = [provider_type];
+    }
+    const invalid = caps.filter((c) => !ALLOWED_CAPABILITIES.includes(c));
+    if (invalid.length > 0) {
+      return Response.json(
+        { error: `Invalid capability: ${invalid.join(", ")}` },
         { status: 400 },
       );
     }
@@ -62,9 +86,11 @@ async function POST(request) {
       n += 1;
     }
 
-    // Atomic: the providers row AND its owner provider_staff row are inserted in
-    // a single CTE statement, so a provider can never exist without its owner
-    // membership (and vice versa) — all-or-nothing.
+    // Atomic: the providers row, its owner provider_staff row, AND its capability rows
+    // are inserted in a single CTE statement, so a provider can never exist without its
+    // owner membership (and vice versa) — all-or-nothing. The capabilities insert
+    // unnests the validated caps array (empty array → no rows); ON CONFLICT keeps the
+    // statement idempotent against the UNIQUE(provider_id, capability).
     const created = await sql`
       WITH new_provider AS (
         INSERT INTO providers
@@ -76,11 +102,21 @@ async function POST(request) {
         INSERT INTO provider_staff (provider_id, user_profile_id, role, status)
         SELECT id, ${userId}, 'owner', 'active' FROM new_provider
         RETURNING id
+      ), new_caps AS (
+        INSERT INTO provider_capabilities (provider_id, capability)
+        SELECT new_provider.id, cap
+        FROM new_provider, unnest(${caps}::text[]) AS cap
+        ON CONFLICT (provider_id, capability) DO NOTHING
+        RETURNING capability
       )
       SELECT * FROM new_provider
     `;
 
-    return Response.json({ provider: created[0] }, { status: 201 });
+    const provider = created[0];
+    return Response.json(
+      { provider: { ...provider, capabilities: [...caps].sort() } },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("[POST /api/providers] Error:", error.message);
     return Response.json({ error: "Failed to create provider" }, { status: 500 });

@@ -24,17 +24,23 @@ async function GET(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Optional ?type= filter on provider_type (e.g. ?type=vet).
+    // Optional ?type=<capability> filter (e.g. ?type=vet). Ticket 2.1: discovery now
+    // matches providers that HAVE the capability (JOIN provider_capabilities), NOT
+    // provider_type — so a "vet shop" appears under both ?type=vet and ?type=shop. A
+    // provider with multiple capabilities is returned once per matching query.
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
-    // Two tagged-template variants (never sql(string, array)) — published-only in
-    // both; the filtered form binds ${type}. See SCHEMA_NOTES "neon→porsager".
+    // Two tagged-template variants (never sql(string, array)) — published-only in both;
+    // the filtered form JOINs provider_capabilities and binds ${type} (DISTINCT so a
+    // provider holding the capability appears once). See SCHEMA_NOTES "neon→porsager".
     const providers = type
       ? await sql`
-          SELECT id, slug, name, provider_type, bio, logo_url FROM providers
-          WHERE status = 'published' AND provider_type = ${type}
-          ORDER BY name ASC
+          SELECT DISTINCT p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url
+          FROM providers p
+          JOIN provider_capabilities pc ON pc.provider_id = p.id
+          WHERE p.status = 'published' AND pc.capability = ${type}
+          ORDER BY p.name ASC
         `
       : await sql`
           SELECT id, slug, name, provider_type, bio, logo_url FROM providers
