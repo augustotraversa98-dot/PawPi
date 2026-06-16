@@ -1062,10 +1062,24 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
             safe default). grant/booking helpers UNTOUCHED (they gate the MEDICAL tables in R2c).
             HARNESS-ONLY (NOT applied to Supabase). Proven as pawpi_app in social-rls.integration.test.ts
             + updated pets-rls (integration 29 → 49; unit gate 391 unchanged).
-         R2c… = remaining groups: R2c PRIVATE/medical (health_* logs; pet_medical_profiles/vet_notes/
-            pet_vaccinations/allergies/conditions/lab_results/surgeries; vet_documents; vet_appointments;
-            routines; reminder_dismissals — STRICT owner OR provider-with-scope-grant; mind which tables
-            providers may write). R2d PROVIDER/business (providers, provider_staff, provider_services/
+         R2c (OWNER-ONLY PRIVATE group: the 12 health_* logs; pet_allergies/conditions/lab_results/
+            surgeries; vet_documents; routines; reminder_dismissals — 19 tables) = DONE (branch
+            ticket/rls-r2c-owner-private). Migration 0022. UNIFORM single FOR ALL policy per table
+            (USING/WITH CHECK owner_user_id = current_app_user_id()), applied in a DO/FOREACH loop. The
+            OPPOSITE of R2b: NO any-authed read, NO provider access on ANY of these tables today. Headline
+            proof = PROVIDER-WITH-GRANT EXCLUSION: a provider-staff user WITH an active medical_read grant
+            for the pet still reads/writes ZERO rows (the grant/booking helpers gate the R2d medical-record
+            tables, NOT these). Future-provider note: care-access scopes health_logs_read/_write are
+            reserved for a future provider type; no route grants providers health_* access today, so
+            owner-only NOW (that feature's ticket adds the branch). HARNESS-ONLY (NOT applied to Supabase).
+            Proven as pawpi_app in owner-private-rls.integration.test.ts incl. a catalog check (every table
+            ENABLE+FORCE RLS + owner policy present) (integration 49 → 58; unit gate 391 unchanged).
+         R2d… = remaining groups: R2d PROVIDER-ACCESSIBLE records (pet_medical_profiles = owner + provider
+            read via medical_read; vet_notes = owner + provider read medical_read/write medical_write;
+            pet_vaccinations = owner + provider read medical_read/write vaccinations_write — via
+            app_provider_has_grant(pet_id, scope); PLUS vet_appointments HYBRID = owner OR active-staff-of-
+            the-row's-provider_id, needs a new SECURITY DEFINER helper app_is_active_staff_of(provider_id);
+            mind read-vs-write scope). R2e PROVIDER/business (providers, provider_staff, provider_services/
             locations/reviews, care_access_grants, care_access_audit — provider_staff/owner scoped; mind
             helper recursion: the SECURITY DEFINER helpers read provider_staff/care_access_grants).
          R1-rollout (apply withRequestContext to all ~93 remaining routes) — PREREQUISITE for R3,

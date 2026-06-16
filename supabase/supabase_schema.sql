@@ -3226,3 +3226,54 @@ CREATE POLICY pet_friendships_participant ON public.pet_friendships
   );
 
 
+-- 0022_rls_owner_private.sql (RLS hardening R2c — docs/rls-hardening.md §R2c). The
+-- OWNER-ONLY PRIVATE table group: a pet's private health/scheduling data, read AND
+-- written ONLY by the owner (owner_user_id = current_app_user_id()). Opposite of the
+-- social group (R2b): NO any-authed read, NO provider access on ANY of these tables.
+-- A provider EVEN WITH an active care grant gets ZERO rows here (the grant/booking
+-- helpers gate the R2d medical-record tables, NOT these). Uniform single FOR ALL
+-- policy per table, applied in a loop. NOTE: care-access scopes health_logs_read/
+-- _write are reserved for a FUTURE provider type; no route grants providers access
+-- to health_* today, so they are owner-only NOW (that feature's ticket adds the
+-- branch). ⚠️ HARNESS-ONLY — NOT applied to Supabase yet (R3 applies the whole R2
+-- set at the DATABASE_URL cutover). DML/sequence grants come from 0019's blanket grants.
+DO $$
+DECLARE
+  t text;
+  owner_private_tables text[] := ARRAY[
+    'health_food_logs',
+    'health_general_checks',
+    'health_medical_care_logs',
+    'health_mobility_logs',
+    'health_pee_logs',
+    'health_photo_checks',
+    'health_poo_logs',
+    'health_vomit_logs',
+    'health_walk_logs',
+    'health_weight_logs',
+    'health_wellness_logs',
+    'health_timeline_events',
+    'pet_allergies',
+    'pet_conditions',
+    'pet_lab_results',
+    'pet_surgeries',
+    'vet_documents',
+    'routines',
+    'reminder_dismissals'
+  ];
+BEGIN
+  FOREACH t IN ARRAY owner_private_tables LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_owner_all', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR ALL '
+      || 'USING (owner_user_id = current_app_user_id()) '
+      || 'WITH CHECK (owner_user_id = current_app_user_id())',
+      t || '_owner_all', t
+    );
+  END LOOP;
+END
+$$;
+
+
