@@ -28,7 +28,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
 
-const VALID_ACTIONS = ["confirm", "decline", "cancel", "assign"];
+const VALID_ACTIONS = ["confirm", "decline", "cancel", "assign", "complete"];
 
 async function PATCH(request, { params }) {
   try {
@@ -52,7 +52,10 @@ async function PATCH(request, { params }) {
 
     if (!VALID_ACTIONS.includes(action)) {
       return Response.json(
-        { error: "action must be one of confirm, decline, cancel, assign" },
+        {
+          error:
+            "action must be one of confirm, decline, cancel, assign, complete",
+        },
         { status: 400 },
       );
     }
@@ -161,6 +164,31 @@ async function PATCH(request, { params }) {
         UPDATE vet_appointments
         SET booking_status = ${"cancelled"},
             status = ${"cancelled"},
+            reminder_enabled = ${false},
+            updated_at = NOW()
+        WHERE id = ${appointmentId} AND provider_id = ${providerId}
+        RETURNING *
+      `;
+      return Response.json({ booking: updated[0] });
+    }
+
+    if (action === "complete") {
+      // Provider marks a CONFIRMED booking as done (2.4). This sets the LIFECYCLE
+      // status='completed' — the EXACT column + value the reviews gate (2.2) reads, so
+      // completing a booking is what unlocks the owner's "leave a review". booking_status
+      // is mirrored to 'completed' for the booking workflow. reminder_enabled is set
+      // false so the engine stops reminding about a finished appointment (a completed
+      // appointment is in the past; this matches decline/cancel's reminder-killing).
+      if (currentStatus !== "confirmed") {
+        return Response.json(
+          { error: "Only a confirmed booking can be completed" },
+          { status: 409 },
+        );
+      }
+      const updated = await sql`
+        UPDATE vet_appointments
+        SET booking_status = ${"completed"},
+            status = ${"completed"},
             reminder_enabled = ${false},
             updated_at = NOW()
         WHERE id = ${appointmentId} AND provider_id = ${providerId}

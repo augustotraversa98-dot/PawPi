@@ -127,3 +127,36 @@ test("only sends service/location ids that belong to this provider", async () =>
   expect(arg.service_id).toBe(5);
   expect(arg.provider_location_id).toBe(8);
 });
+
+// ── Ticket 2.4: generalized to any capability ─────────────────────────────────
+test("defaults capability to 'vet' and shows the appointment CTA", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = renderForm();
+
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByText("Confirm appointment")); // vet noun = "appointment"
+
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].capability).toBe("vet");
+});
+
+test("a groomer capability books with capability 'groomer' and grooming copy", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = render(
+    <BookingFormModal
+      visible
+      onClose={jest.fn()}
+      provider={{ id: 3, name: "Pet Spa", provider_type: "groomer" }}
+      locations={[]}
+      services={[]}
+    />,
+  );
+
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByText("Confirm grooming")); // groomer noun = "grooming"
+
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].capability).toBe("groomer");
+});

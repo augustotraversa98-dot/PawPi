@@ -174,6 +174,30 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
     expect(lastQueryText()).toContain('reminder_enabled');
   });
 
+  // ---- complete (ticket 2.4) ----
+  it('complete: confirmed → completed sets lifecycle status=completed (powers reviews)', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'confirmed', status: 'scheduled' }], // load
+      [{ id: 55, booking_status: 'completed', status: 'completed' }], // update
+    );
+
+    const res = await PATCH(patchReq({ action: 'complete' }), PARAMS);
+    expect(res.status).toBe(200);
+
+    const values = lastValues();
+    expect(values).toContain('completed'); // booking_status AND status both 'completed'
+    expect(values).toContain(false); // reminder_enabled stopped
+    const text = lastQueryText();
+    expect(text).toContain('status =');
+    expect(text).toContain('reminder_enabled');
+  });
+
+  it('complete on a non-confirmed booking → 409', async () => {
+    arrange([{ id: 55, booking_status: 'requested', status: 'scheduled' }]);
+    const res = await PATCH(patchReq({ action: 'complete' }), PARAMS);
+    expect(res.status).toBe(409);
+  });
+
   // ---- assign ----
   it('assign: sets staff_user_id when assignee is active staff', async () => {
     arrange(

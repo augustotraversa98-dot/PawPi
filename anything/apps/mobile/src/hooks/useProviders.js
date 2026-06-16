@@ -101,8 +101,10 @@ export function useBookProvider() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // mutateAsync({ providerId, petId, service_id?, provider_location_id?,
-    //   appointment_date, appointment_time, reason_for_visit?, notes?, title? })
+    // mutateAsync({ providerId, petId, capability?, service_id?,
+    //   provider_location_id?, staff_user_id?, appointment_date, appointment_time,
+    //   start_at?, end_at?, recurrence_rule?, order_id?, reason_for_visit?, notes?,
+    //   title? }) — capability defaults to 'vet' server-side (ticket 2.4).
     mutationFn: async ({ providerId, ...body }) => {
       const response = await fetch(`/api/providers/${providerId}/book`, {
         method: "POST",
