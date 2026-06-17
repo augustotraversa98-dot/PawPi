@@ -15,6 +15,7 @@ import {
   Loader2,
   MailCheck,
   Home,
+  GraduationCap,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -83,6 +84,13 @@ const NAV_ITEMS = [
     Icon: Home,
     enabled: true,
     href: "/provider/daycare",
+  },
+  {
+    key: "training",
+    label: "Training",
+    Icon: GraduationCap,
+    enabled: true,
+    href: "/provider/training",
   },
   { key: "sales", label: "Sales", Icon: DollarSign, enabled: false },
 ];

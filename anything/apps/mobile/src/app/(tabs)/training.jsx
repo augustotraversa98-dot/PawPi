@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import {
   GraduationCap,
   ChevronRight,
@@ -8,9 +9,16 @@ import {
   Trophy,
   CheckCircle2,
   Circle,
+  UserRound,
   X,
 } from "lucide-react-native";
 import { TRAINING_LESSONS } from "../../data/mockData";
+
+// This is the SELF / CONTENT training tab — static, do-it-yourself how-to lessons (no
+// provider, no DB). It is DISTINCT from the PROVIDER training SERVICE (hiring a real
+// trainer: 1:1 / group classes / programs), which lives under Pet Services → Training
+// (more/training.jsx, ticket 2.10). To avoid collision the two never overlap; this tab
+// adds a single banner that LINKS to the hire-a-trainer service for owners who want a pro.
 
 const C = {
   coral: "#FF6F61",
@@ -34,6 +42,7 @@ const DIFF_COLORS = {
 
 export default function TrainingScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [selectedLesson, setSelectedLesson] = useState(null);
 
   const LessonCard = ({ lesson }) => {
@@ -185,6 +194,47 @@ export default function TrainingScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Hire-a-trainer link — bridges to the PROVIDER training service (ticket 2.10),
+            kept distinct from this self/content tab. */}
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/more/training")}
+          activeOpacity={0.9}
+          accessibilityRole="button"
+          style={{
+            backgroundColor: C.card,
+            borderRadius: 18,
+            padding: 16,
+            marginBottom: 18,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderWidth: 1,
+            borderColor: C.peach,
+          }}
+        >
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              backgroundColor: C.coral + "20",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <UserRound size={20} color={C.coral} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: C.warmBrown }}>
+              Want a pro? Hire a trainer
+            </Text>
+            <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+              1:1 sessions, group classes, and multi-week programs
+            </Text>
+          </View>
+          <ChevronRight size={18} color={C.mutedBrown} />
+        </TouchableOpacity>
+
         {/* Progress Banner */}
         <View
           style={{
