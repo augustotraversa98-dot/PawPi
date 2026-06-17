@@ -69,6 +69,15 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.28 — Daily photo shareable frame (IG/X)  ·  ticket/daily-share-frame (2026-06-17)
+What shipped: a **Share** button on a daily post card produces a story-sized (9:16) **branded frame** — the dog's photo in a warm PawPi frame reading "[Dog name] is part of PawPi 🐾" — and opens the system **share sheet** (Instagram Stories, X, etc.) with an enhanced default caption for X. Optional + graceful (no crash if capture/sharing is unavailable). The BeReal daily-lock + posting flow + feed are **untouched**.
+- **No migration / no backend.** New deps: `react-native-view-shot@4.0.3` + `expo-sharing@~14.0.8` (SDK-54 aligned). **NEEDS A DEV BUILD** — these are native modules, so the frame won't capture in Expo Go; test on a dev build / standalone. The share button degrades gracefully (no-op) where unavailable.
+- Exercised by mobile jest (Share captures the off-screen card via view-shot and calls `Sharing.shareAsync` with the image + the enhanced text; the frame renders the real pet name; a locked post never captures/shares).
+- **NEEDS A DEVICE PASS (dev build)** — jest can't render the real frame or open the share sheet:
+1. Post the daily (or open your own daily post) → tap **Share** → the framed image looks cute and on-brand → the IG-Stories / X share sheet opens → it posts.
+2. Eyeball the frame design (photo is the hero; warm palette; the "[name] is part of PawPi" tagline). Tats can tweak the art.
+3. Posting / the daily lock / the feed behave exactly as before.
+
 ### [ ] 2.27 — Real owner↔owner messaging  ·  ticket/owner-messaging-real (2026-06-17)
 What shipped: the phone's **social Messages/Chat** is now a **real** 1:1 owner↔owner DM backend (SEPARATE from the provider chat, which is untouched). A **Message** button on another pet's profile starts (or reuses) a private thread; the **Messages** inbox shows real threads (other person, last message, unread badge, newest first) and the **conversation** view sends text + photos, short-polls, and marks read on open. Mock conversations are gone (file deleted; no startup seeding). A pair always shares ONE thread (normalized), and only the two participants can read/post.
 - ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0045_owner_messaging.sql` — `dm_threads` (normalized `user_a < user_b` + unique pair index) + `dm_messages`, both participant-scoped ENABLE+FORCE RLS, with the `app_is_dm_participant()` SECURITY DEFINER helper (mirrors 0031). Hand-apply after merge.
