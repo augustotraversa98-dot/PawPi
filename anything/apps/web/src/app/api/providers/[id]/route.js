@@ -28,6 +28,8 @@ const PROFILE_FIELDS = [
   "instagram_url",
   "facebook_url",
   "google_maps_url",
+  // Storefront banner (ticket 2.22) — optional; set from the Storefront section.
+  "cover_image_url",
 ];
 
 // Get one provider — requires active staff membership (any role) or 403.

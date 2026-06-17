@@ -53,6 +53,18 @@ export const servicesUrl = (providerId) => `/api/providers/${providerId}/service
 export const serviceUrl = (providerId, serviceId) =>
   `/api/providers/${providerId}/services/${serviceId}`;
 
+// Storefront posts (ticket 2.22). One cache entry per provider; compose/delete
+// invalidate it so the storefront composer refetches.
+export const postsKey = (providerId) => [
+  "provider-posts",
+  String(providerId ?? ""),
+];
+
+export const postsUrl = (providerId) => `/api/providers/${providerId}/posts`;
+
+export const postUrl = (providerId, postId) =>
+  `/api/providers/${providerId}/posts/${postId}`;
+
 export const locationsKey = (providerId) => [
   "provider-locations",
   String(providerId ?? ""),
@@ -374,6 +386,54 @@ export function useDeactivateService(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
+  });
+}
+
+// --- storefront posts (ticket 2.22) -----------------------------------------
+
+// All of a provider's non-deleted posts (any active staff). Disabled until a
+// providerId is known.
+export function useProviderPosts(providerId) {
+  return useQuery({
+    queryKey: postsKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(postsUrl(providerId));
+      return data.posts ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Compose a post (any active staff). body { body?, image_urls? } — needs text or
+// at least one image; 400 surfaces verbatim.
+export function useCreateProviderPost(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(postsUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.post;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: postsKey(providerId) });
+    },
+  });
+}
+
+// Soft-delete a post (any active staff).
+export function useDeleteProviderPost(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (postId) => {
+      await getJson(postUrl(providerId, postId), { method: "DELETE" });
+      return postId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: postsKey(providerId) });
     },
   });
 }

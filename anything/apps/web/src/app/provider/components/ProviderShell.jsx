@@ -18,6 +18,7 @@ import {
   GraduationCap,
   ShoppingBag,
   LayoutDashboard,
+  Store,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -51,6 +52,13 @@ const NAV_ITEMS = [
     Icon: Building2,
     enabled: true,
     href: "/provider/profile",
+  },
+  {
+    key: "storefront",
+    label: "Storefront",
+    Icon: Store,
+    enabled: true,
+    href: "/provider/storefront",
   },
   {
     key: "services",
