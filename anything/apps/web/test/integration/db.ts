@@ -609,6 +609,56 @@ export async function seedSubscription(
 }
 
 /**
+ * Seed a shop_products catalog row for `providerId` (ticket 2.11). price/stock/active default
+ * to a purchasable in-stock product; is_rx defaults false. Used to exercise the shop_products
+ * RLS (discovery vs admin) + the cart→order→stock flow.
+ */
+export async function seedShopProduct(
+  sql: Sql,
+  opts: {
+    productId: number;
+    providerId: number;
+    name?: string;
+    priceCents?: number;
+    stockQty?: number;
+    isRx?: boolean;
+    active?: boolean;
+    category?: string | null;
+  },
+): Promise<{ productId: number }> {
+  const {
+    productId,
+    providerId,
+    name,
+    priceCents = 5000,
+    stockQty = 10,
+    isRx = false,
+    active = true,
+    category = null,
+  } = opts;
+  await sql`
+    insert into shop_products
+      (id, provider_id, name, price_cents, stock_qty, is_rx, active, category)
+    values (
+      ${productId}, ${providerId}, ${name ?? `product-${productId}`}, ${priceCents},
+      ${stockQty}, ${isRx}, ${active}, ${category}
+    )
+  `;
+  return { productId };
+}
+
+/**
+ * Set a provider's published status (ticket 2.11 discovery tests). seedProvider defaults to
+ * 'draft'; flip to 'published' so its active products become discovery-readable.
+ */
+export async function setProviderStatus(
+  sql: Sql,
+  opts: { providerId: number; status: 'draft' | 'published' },
+): Promise<void> {
+  await sql`update providers set status = ${opts.status} where id = ${opts.providerId}`;
+}
+
+/**
  * Seed a vet_appointments booking linking a provider to a pet (the inbox path).
  * deleted defaults false; pass deleted:true to prove a soft-deleted booking grants
  * no visibility.

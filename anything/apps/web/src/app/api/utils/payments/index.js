@@ -231,6 +231,13 @@ async function findPaymentForWebhook(ref) {
 // Flip a payment's status and cascade to its order. Pure status-reconciliation logic:
 //   approved → order 'paid'; refunded → order 'refunded'; failed → order 'failed'.
 // Idempotent — writing the same status again is harmless.
+//
+// SHOP STOCK (ticket 2.11): for a 'product' order, paid DECREMENTS inventory and refunded
+// RESTOCKS it. We read the order's PRIOR status first so the move only happens on a real
+// TRANSITION (a repeated terminal webhook does not double-move stock). The move runs via
+// the SECURITY DEFINER app_adjust_order_stock helper (0037) so the payment actor — the
+// owner or a webhook, not a shop admin — can adjust catalog stock without catalog write
+// access. Non-product orders have no product_id lines, so the helper is a no-op for them.
 export async function applyPaymentStatus(payment, status, rawStatus) {
   await sql`
     UPDATE payments
@@ -246,10 +253,23 @@ export async function applyPaymentStatus(payment, status, rawStatus) {
           ? 'failed'
           : null;
   if (orderStatus) {
+    // Read the prior order row (kind + status) so the stock move is transition-only.
+    const prior = await sql`
+      SELECT kind, status FROM orders WHERE id = ${payment.order_id} LIMIT 1
+    `;
+    const prev = prior[0] ?? null;
     await sql`
       UPDATE orders SET status = ${orderStatus}, updated_at = now()
       WHERE id = ${payment.order_id}
     `;
+    if (prev?.kind === 'product') {
+      // Decrement on the first transition into paid; restock on the first into refunded.
+      if (orderStatus === 'paid' && prev.status !== 'paid') {
+        await sql`SELECT app_adjust_order_stock(${payment.order_id}, -1)`;
+      } else if (orderStatus === 'refunded' && prev.status !== 'refunded') {
+        await sql`SELECT app_adjust_order_stock(${payment.order_id}, 1)`;
+      }
+    }
   }
 }
 
