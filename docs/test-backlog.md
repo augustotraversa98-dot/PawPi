@@ -65,6 +65,12 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.17 — Shop auto-reorder charger (subscription cron)  ·  ticket/subscription-autocharge (2026-06-17)
+Backend-only, web app. **No on-device check** — nothing in the phone UI changes (until payment keys exist every charge cleanly skips). Subscribing to auto-reorder now sets the first charge date (one cadence out); a new machine-to-machine endpoint `POST /api/payments/subscriptions/run` re-buys each DUE plan (product × quantity) through the same payment layer as a normal shop order, then advances the next charge date. Rx products never auto-reorder; period-stable idempotency key prevents double-charging; one bad sub never breaks the run.
+- ⚙️ **MIGRATION TO APPLY (already in ACTION 1):** `0039_subscription_due_fn.sql` — a SECURITY DEFINER enumerator function only (no table; completeness guard unaffected). Hand-apply after merge.
+- ⚙️ **GO-LIVE (Tats, already in ACTION 1):** (a) apply 0039; (b) set `CRON_SECRET` in the web `.env`; (c) wire an EXTERNAL scheduler (host cron / CI cron) to `POST /api/payments/subscriptions/run` with the `x-cron-secret` header daily — PawPi has no built-in scheduler. Until then the endpoint returns a clean 503.
+- Exercised entirely by the test harness (web vitest + real-Postgres RLS + DEFINER proofs).
+
 ### [ ] 2.16 — Encrypt provider payment tokens at rest  ·  ticket/encrypt-payment-tokens (2026-06-17)
 Backend-only, web app. **No on-device check** — nothing in the phone UI changes. Provider MercadoPago OAuth tokens are now AES-256-GCM encrypted before they're written to the DB and decrypted only in-process for a charge/refund; a DB dump never shows a usable token. No migration (ciphertext fits the existing text columns); RLS unchanged. **Go-live action already listed in ACTION 1:** Tats sets `PAYMENTS_TOKEN_KEY` (32-byte) in the web `.env` BEFORE the first real provider connects a payment account (until then the connect flow returns a clean 503; pre-existing plaintext rows still decrypt via passthrough). Exercised entirely by the test harness (web vitest + integration).
 

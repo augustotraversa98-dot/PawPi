@@ -2,6 +2,10 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  nextChargeAt,
+  ALLOWED_PLANS,
+} from "@/app/api/utils/payments/subscriptionCadence";
 
 // /api/shop/subscriptions — the OWNER manages SHOP AUTO-REORDER plans. Phase 2 ticket 2.11
 // (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -72,7 +76,6 @@ async function POST(request) {
     if (!product_id) {
       return Response.json({ error: "product_id is required" }, { status: 400 });
     }
-    const ALLOWED_PLANS = ["weekly", "biweekly", "monthly", "quarterly"];
     if (!ALLOWED_PLANS.includes(plan)) {
       return Response.json(
         { error: `plan must be one of ${ALLOWED_PLANS.join(", ")}` },
@@ -102,11 +105,18 @@ async function POST(request) {
     }
 
     // Create the active subscription (cadence in plan; product + qty are the auto-reorder
-    // target). owner_user_id = me (the RLS key).
+    // target). owner_user_id = me (the RLS key). The initial purchase already happened via
+    // the one-off checkout, so the FIRST auto-charge is ONE cadence from now — set
+    // next_charge_at accordingly so the cron (2.17) can find it when due (without this it
+    // stayed NULL and a plan never became due).
+    const firstChargeAt = nextChargeAt(new Date(), plan);
     const created = await sql`
       INSERT INTO subscriptions
-        (owner_user_id, provider_id, plan, status, product_id, quantity)
-      VALUES (${userId}, ${product.provider_id}, ${plan}, 'active', ${product_id}, ${qty})
+        (owner_user_id, provider_id, plan, status, product_id, quantity, next_charge_at)
+      VALUES (
+        ${userId}, ${product.provider_id}, ${plan}, 'active', ${product_id}, ${qty},
+        ${firstChargeAt}
+      )
       RETURNING *
     `;
 
