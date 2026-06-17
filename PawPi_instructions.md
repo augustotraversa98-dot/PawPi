@@ -1161,9 +1161,11 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
           sturdy version would create user_profiles at SIGNUP, but src/auth.js is a LOCKED managed file
           ("Anything's internal auth — do not edit"), so we cannot hook createUser there. #108 already
           made the lazy-creation path (pets/route.js POST+PATCH) RLS-safe (setCurrentUserId after insert)
-          + collision-safe (uniqueUsername), so the app is robust as-is. OPTIONAL future cleanup:
-          centralize "ensure profile exists" into ONE early authenticated endpoint (e.g. user-profile
-          GET create-if-missing) instead of duplicated lazy-create — marginal value, not urgent.
+          + collision-safe (uniqueUsername), so the app is robust as-is. PARTLY DONE (Jun 2026, business
+          onboarding): the shared ensureUserProfile() helper now exists in api/utils/currentUser.js and
+          POST /api/providers uses it (create-if-missing + setCurrentUserId). REMAINING cleanup: migrate
+          pets/route.js's inline copy onto the shared helper (and optionally one early authenticated
+          create-if-missing endpoint) — marginal value, not urgent.
      ── PRIORITY ORDER (Tats, Jun 2026): (1) RLS — ✅ DONE / LIVE (above) → (2) SERVICES END-TO-END
         + DISCOVERY/NAV/FEED (← NOW THE TOP ACTIVE PRIORITY, below) → then the unranked LATER layers →
         anonymized analytics is LOW/future (no real data yet — not a now-problem).
@@ -1178,6 +1180,42 @@ Status tracked in this block, maintained by Claude in Cowork (this file is the l
        (own design+build). SEQUENCING: prominent entries should point ONLY at provider types that are
        actually live — build the type, then surface it (no featuring mock sections). This is the big
        push after RLS.
+     • ★ BUSINESS ONBOARDING ENTRY (web + mobile) — DONE (Cowork-driven w/ Tats, Jun 2026; both PRs
+       squash-merged). The signup → create-provider path now works END-TO-END on BOTH platforms. A
+       "business" is still ONE unified account that owns a provider entity (no separate account type).
+       WEB (apps/web): (1) post-auth redirect fixed — new resolveCallbackUrl.js: the mobile bridge's
+       incoming ?callbackUrl still wins; standalone web now falls back to /provider, NOT the dead
+       /auth/expo-web-success (the old fallback dumped web signups on a "page doesn't exist" screen).
+       (2) "/" is now a session-aware landing (resolveHomeView): logged-in → redirect to /provider;
+       logged-out → Sign in / Create account only. (3) useUser DEV-branch BUG fixed (apps/web/src/utils/
+       useUser.js): in development it returned a stale useState (null while the session loads, never
+       updated) → ProviderShell + home gated as logged-OUT even when authenticated → bounced to signin;
+       now returns the live session?.user. MOBILE (apps/mobile): replaced the FAKE vet-business-access.jsx
+       "Request early access" placeholder with a REAL create-provider form (name + provider_type
+       single-select vet/walker/daycare/shop/groomer + optional bio; keyboard-safe; logged-out /
+       fresh-create / already-owns states) + useCreateProvider() in hooks/useProviders.js; success points
+       to the web dashboard (management is web-primary). Both platforms call the SAME POST /api/providers.
+       BACKEND fixes (shared, landed on the web PR — both platforms need them): (1) ensureUserProfile()
+       in api/utils/currentUser.js — POST /api/providers now LAZILY creates the user_profiles row for a
+       business owner who never made a pet (the #108 profile-creation gap; RLS-safe via setCurrentUserId
+       BEFORE the provider/staff CTE), so the old 404 "User profile not found" is gone. (2) the
+       provider_capabilities INSERT was SPLIT OUT of the create CTE into a separate statement in the same
+       txn: its RLS write policy (0027) needs app_is_provider_admin = an EXISTING active owner-staff row,
+       which the sibling new_staff INSERT is NOT visible to inside one CTE (shared snapshot) → was failing
+       "new row violates row-level security policy for table provider_capabilities"; the later separate
+       statement sees the owner row → passes; still atomic (one txn, failure rolls back). +real-Postgres
+       integration test running the ACTUAL create as pawpi_app (provider-create-rls.integration.test.ts) —
+       the seed-based RLS tests predated 0027 and never exercised the route's create, which is why it
+       slipped. LESSON (recorded): a combined multi-INSERT CTE can't satisfy an RLS check that depends on
+       a sibling INSERT — split it.
+       DEV-ENV: AUTH_URL must stay UNSET in apps/web/.env (Auth.js uses trustHost + the request host — see
+       SCHEMA_NOTES "Auth.js origin gotcha"); a stale AUTH_URL after a DHCP IP change caused the post-login
+       "site can't be reached". scripts/dev-backend.sh now SELF-HEALS — it comments out any active AUTH_URL
+       line on startup (mirrors the existing mobile-.env IP sync).
+       DEVICE PASS: web verified live by Tats; MOBILE onboarding still owed a device pass (jest-green only)
+       — fits the standing "provider device passes deferred" posture.
+       FOLLOW-UP: migrate pets/route.js's inline lazy-create onto the shared ensureUserProfile helper (CC
+       task chip noted) — partly satisfies the GO-LIVE "centralize ensure-profile" item below.
      • LATER (unranked, each its own backend-first effort, none started): payments/Stripe Connect →
        provider Sales screen; messaging → provider+owner Chats; reviews surfacing; telehealth;
        vaccination-reconciliation residue (QW1 #96 did the Vaccination-History LIST; STILL OPEN:
@@ -1204,4 +1242,6 @@ QUEUED — Vet Summary real-data rebuild (priority #2 = Vet Record data-driven; 
 Phase C check (vet reminders end-to-end): routinesStore.loadRoutines may not map vet_appointment_schedule into the fields the vet generator reads. Confirm in Phase C.
 Cleanup: remove/gate the wrongPets debug query in pets/route.js:80-99.
 
-Dev-env note: mobile API base URL is EXPO_PUBLIC_BASE_URL in anything/apps/mobile/.env (NOT EXPO_PUBLIC_API_URL). DHCP LAN IP — update after wifi/IP change (ipconfig getifaddr en0), restart Expo with --clear. EXPO_PUBLIC_BASE_URL/PROXY_BASE_URL/HOST all 192.168.178.183:4000.
+Dev-env note: mobile API base URL is EXPO_PUBLIC_BASE_URL in anything/apps/mobile/.env (NOT EXPO_PUBLIC_API_URL). DHCP LAN IP — update after wifi/IP change (ipconfig getifaddr en0), restart Expo with --clear. EXPO_PUBLIC_BASE_URL/PROXY_BASE_URL/HOST all 192.168.178.183:4000. `Start PawPi.command` (scripts/dev-backend.sh + dev-mobile.sh) auto-syncs the mobile .env to the current LAN IP.
+
+Dev-env note (web AUTH_URL): AUTH_URL must stay UNSET in anything/apps/web/.env. Auth.js derives its origin from the request host via trustHost (see SCHEMA_NOTES "Auth.js origin gotcha"), so login redirects follow whatever host you browse (localhost or LAN IP) and survive DHCP changes. A stale/fixed AUTH_URL makes @hono/auth-js rewrite every request origin to it → after an IP change the post-login redirect points at an unreachable host → "site can't be reached" (web) / iOS -1004 (device). scripts/dev-backend.sh now self-heals: it comments out any active AUTH_URL line on startup. Do NOT re-add AUTH_URL for local/device dev.

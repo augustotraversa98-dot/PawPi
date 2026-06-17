@@ -51,6 +51,31 @@ policies), lost & found + microchip alerts, pet-friendly places directory (parks
 events & meetups, nutrition/diet plans, memorial/cremation services. None block the core; they slot
 onto the same discovery+profile patterns when wanted.
 
+### 1.5 — A provider offers MANY capabilities (not one `provider_type`) — CORE MODEL CHANGE
+
+A single business commonly offers several services at once: a "vet shop" does consultation +
+vaccination + grooming + store/products; a daycare may also walk and groom. So `providers.provider_type`
+(a single value) is too narrow. The model becomes **one provider → many capabilities**:
+
+- New **`provider_capabilities`** table (provider_id, capability) — many-to-many. Capability ∈
+  {`vet`, `groomer`, `walker`, `daycare`, `sitter`, `trainer`, `shop`, `adoption`, `transport`,
+  `pharmacy`}. A provider can hold several.
+- **Each capability unlocks its module** for that provider (clinical for `vet`, product catalog for
+  `shop`, GPS walks for `walker`, etc.). Gate modules with a `providerHasCapability(providerId, cap)`
+  helper, not `provider_type`.
+- **Onboarding** = multi-select capabilities (a provider picks all it offers).
+- **Discovery** `?type=<cap>` matches providers that HAVE that capability (so the vet-shop appears
+  under both Veterinary and Grooming and Shop).
+- **`provider_type`** is kept as an optional "primary/display category" (or backfilled into
+  capabilities) — do NOT use it to gate features anymore.
+- **`provider_services`** (line items) each get a `capability`/category tag so a service is grouped
+  under the right module.
+- **RLS / consent unaffected**: capability ≠ access. A vet still needs an `assertCareAccess` grant to
+  read medical data; capabilities only decide which modules/tools a provider can use.
+
+This is foundational — it lands as an early ticket (2.1) and **every service ticket assumes it**: a
+service module checks the capability, never a single type.
+
 ---
 
 ## 2. Cross-cutting systems (shared by every service — build once, reuse everywhere)
@@ -159,38 +184,33 @@ Principle: **surface what's live first**, then build the **cross-cutting unlocks
 chat, generalized booking) that make every subsequent service cheap, then roll out service types, then
 shop/adoption, then feed + dashboards. Only feature provider types in nav once they're live.
 
-**2.0 — Surface Pet Services in nav (FIRST — ticket written).** Promote "Pet Services" to a quick-
-access spot; move Community into More; feature only live types (Veterinary now). Makes the built vet
-loop reachable.
+**Paste-ready ticket prompts for every item below live in `docs/phase2-tickets/`** (one file each,
+plus `00-README.md` with shared conventions + the multi-capability model). CC reads those to build
+without guessing.
 
-**2.1 — Reviews surfacing (small, high-trust).** Write-after-completed-booking + show ratings on
-discovery/profiles. (Independent, quick, uses existing `provider_reviews`.)
+- **2.0 — Surface Pet Services in nav** (mobile). Promote Services to quick-access; move Community into
+  More; feature only live capabilities (Veterinary now).
+- **2.1 — Provider capabilities model** (§1.5). `provider_capabilities` many-to-many + onboarding
+  multi-select + discovery-by-capability + `providerHasCapability` helper + RLS. FOUNDATIONAL — every
+  service ticket assumes it.
+- **2.2 — Reviews surfacing.** Write-after-completed-booking + ratings on discovery/profiles (existing
+  `provider_reviews`).
+- **2.3 — Payments foundation (§3).** Money tables + RLS + provider-agnostic payment layer +
+  MercadoPago split adapter + Binance adapter (key-stubbed) + provider OAuth connect + webhooks.
+  Cross-cutting unlock — everything monetizable depends on it.
+- **2.4 — Generalized booking + calendar.** Booking usable by all capabilities; recurring; 2-way sync.
+- **2.5 — Chat / messaging.** Owner ↔ provider, booking-scoped.
+- **2.6–2.10 — Service modules (one ticket each):** Grooming → Walking (GPS) → Daycare/Boarding
+  (check-in/capacity/report cards/vaccine-check) → Sitting → Training. Each = capability module +
+  discovery surfacing + booking + the type-specific tools + payments wired.
+- **2.11 — Shop / e-commerce.** Catalog/inventory/orders + product payments + subscriptions.
+- **2.12 — Adoption.** `adoption` capability + adoptable-dog listings (dog-profile format) +
+  application workflow + fee/donation payments.
+- **2.13 — Feed integration.** Businesses/services in the social feed.
+- **2.14 — Dashboards & analytics.** Provider revenue/bookings/reviews/occupancy; owner orders hub.
 
-**2.2 — Payments foundation (big, cross-cutting unlock).** The §3 scaffold: money tables + RLS +
-payment layer + MercadoPago split adapter + Binance adapter (key-stubbed) + provider OAuth connect +
-webhooks. Everything monetizable depends on this, so do it early.
-
-**2.3 — Generalized booking + calendar.** Booking usable by all service types; recurring; 2-way sync.
-
-**2.4 — Chat / messaging.** Owner ↔ provider, booking-scoped. Unblocks walkers/sitters/adoption.
-
-**2.5 — Service-type rollout (one ticket each, in this rough order):**
-   Groomer → Walker (GPS) → Daycare/Boarding (check-in/capacity/report cards/vaccine-check) →
-   Sitter → Trainer. Each = onboarding type module + discovery surfacing + booking + the type module +
-   payments wired.
-
-**2.6 — Shop / e-commerce.** Catalog/inventory/orders + product payments + subscriptions/auto-reorder.
-
-**2.7 — Adoption.** `adoption` provider type + adoptable-dog listings (dog-profile format) +
-application workflow + fee/donation payments + (later) foster.
-
-**2.8 — Feed integration.** Surface businesses/services in the social feed for organic discovery.
-
-**2.9 — Dashboards & analytics.** Provider revenue/bookings/reviews/occupancy; owner orders/bookings
-hub.
-
-(Discovery filters, maps, and notifications are folded into the relevant tickets as each service ships.
-Telehealth, insurance, lost&found, places-directory, etc. are post-core add-ons.)
+(Discovery filters, maps, notifications fold into the relevant tickets. Transport, pharmacy,
+telehealth, insurance, lost&found, places-directory are post-core add-ons — noted in the README.)
 
 ---
 
