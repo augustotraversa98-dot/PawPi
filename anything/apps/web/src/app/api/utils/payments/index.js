@@ -17,6 +17,7 @@
 
 import sql from '../sql';
 import { railConfig, PaymentsNotConfiguredError } from './config';
+import { decryptToken } from './tokenCrypto';
 import * as mercadopago from './mercadopago';
 import * as binance from './binance';
 
@@ -39,13 +40,28 @@ export function getAdapter(rail) {
 
 // Load the provider's connected payment account for a rail (carries the token). Returns
 // the row or null. Runs under the caller's RLS identity — provider-admin only.
+//
+// This is the SINGLE decrypt-on-read seam (ticket 2.16): the access/refresh tokens are
+// stored encrypted, so we decrypt them here in-process before handing the row to an adapter.
+// Every consumer (createCheckout/getStatus/refund/payout) goes through this function, so the
+// adapter always receives PLAINTEXT tokens and stays unchanged. A legacy/plaintext value (no
+// "enc:v1:" prefix) passes through decryptToken unchanged; a null/absent token is left as-is.
 async function loadProviderAccount(providerId, rail) {
   const rows = await sql`
     SELECT * FROM provider_payment_accounts
     WHERE provider_id = ${providerId} AND rail = ${rail}
     LIMIT 1
   `;
-  return rows[0] ?? null;
+  const account = rows[0] ?? null;
+  if (account) {
+    if (account.access_token != null) {
+      account.access_token = decryptToken(account.access_token);
+    }
+    if (account.refresh_token != null) {
+      account.refresh_token = decryptToken(account.refresh_token);
+    }
+  }
+  return account;
 }
 
 /**

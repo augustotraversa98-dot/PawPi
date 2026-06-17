@@ -39,8 +39,8 @@ Tags: **scope** fe/be/db · **safe-parallel** yes only if it touches files no ot
 Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md). Status mirror
 (✅ merged · 🔨 building · ⛔ blocked-on-prereq · ☐ queued):
 
-- 🔨 **2.15** mobile capability multi-select — PR open, no migration.
-- ☐ 2.16 encrypt payment tokens · ☐ 2.17 sub auto-charge cron (⛔2.16) · ☐ 2.18 telehealth (⛔2.15)
+- ✅ **2.15** mobile capability multi-select — merged (#130), no migration.
+- 🔨 **2.16** encrypt payment tokens — PR open, no migration · ☐ 2.17 sub auto-charge cron (⛔2.16) · ☐ 2.18 telehealth (⛔2.15)
 - ☐ 2.19 nav fix · ☐ 2.20 onboarding links (⛔2.15/2.18) · ☐ 2.21 enrichment (⛔2.20)
 - ☐ 2.23 service images · ☐ 2.22 storefront (⛔2.20/2.23) · ☐ 2.24 calendar
 - ☐ 2.25 search/discover · ☐ 2.26 notifications · ☐ 2.27 owner DMs · ☐ 2.28 share frame
