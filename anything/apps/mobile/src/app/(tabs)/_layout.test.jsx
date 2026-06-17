@@ -62,3 +62,11 @@ test("the other primary tabs are intact", () => {
   const names = screens.map((s) => s.name);
   expect(names).toEqual(["index", "health", "training", "services", "more/index"]);
 });
+
+test("the bottom-right tab is now Profile, not More (ticket 2.39)", () => {
+  render(<TabLayout />);
+  const titles = screens.map((s) => s.title);
+  // Same route slot (more/index) but presented as the owner's Profile.
+  expect(titles[titles.length - 1]).toBe("Profile");
+  expect(titles).not.toContain("More");
+});

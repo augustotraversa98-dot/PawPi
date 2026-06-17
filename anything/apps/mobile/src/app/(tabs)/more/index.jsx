@@ -1,5 +1,12 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Modal,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -11,6 +18,8 @@ import {
   PawPrint,
   Bell,
   Calendar,
+  Menu,
+  X,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -45,6 +54,14 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { setAuth } = useAuth();
+  // Instagram-style (ticket 2.39): this tab is the owner's Profile; the former
+  // "More" menu lives behind a top-right burger. goMenu closes the sheet first
+  // so the destination push lands cleanly (no stale modal layered over a tab).
+  const [menuVisible, setMenuVisible] = useState(false);
+  const goMenu = (path) => {
+    setMenuVisible(false);
+    router.push(path);
+  };
 
   // The header reflects the reactive current pet (single source of truth), so it
   // updates immediately when the active pet is switched or a new pet is created —
@@ -122,6 +139,9 @@ export default function MoreScreen() {
           backgroundColor: C.card,
           borderBottomWidth: 1,
           borderBottomColor: C.peach,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
         <Text
@@ -132,14 +152,29 @@ export default function MoreScreen() {
             letterSpacing: -0.5,
           }}
         >
-          More 🐾
+          Profile 🐾
         </Text>
+        {/* Burger → the full "More" menu (every former More destination). */}
+        <TouchableOpacity
+          accessibilityLabel="Open menu"
+          onPress={() => setMenuVisible(true)}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: C.sand,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Menu size={22} color={C.warmBrown} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         {/* Profile Card */}
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/more/profile")}
+          onPress={() => goMenu("/(tabs)/more/profile")}
           activeOpacity={0.92}
           style={{
             backgroundColor: C.coral,
@@ -210,6 +245,57 @@ export default function MoreScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* My Dogs — switch/add the active pet (stays on the profile body). */}
+        <PetSwitcher variant="row" />
+      </ScrollView>
+
+      {/* ── Burger menu (ticket 2.39): every former "More" destination lives
+          here, opened from the profile's top-right ☰. Closing first keeps tab
+          nav clean (honors the 2.19 fix). ── */}
+      <Modal
+        visible={menuVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setMenuVisible(false)}
+          />
+          <View
+            style={{
+              backgroundColor: C.cream,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 6,
+              paddingBottom: insets.bottom + 20,
+              maxHeight: "82%",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <Text
+                style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
+              >
+                More
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel="Close menu"
+                onPress={() => setMenuVisible(false)}
+              >
+                <X size={22} color={C.mutedBrown} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
         <Text
           style={{
             fontSize: 11,
@@ -226,7 +312,7 @@ export default function MoreScreen() {
           title="Community"
           emoji="🐕"
           color={C.sageDark}
-          onPress={() => router.push("/(tabs)/more/community")}
+          onPress={() => goMenu("/(tabs)/more/community")}
         />
 
         <Text
@@ -248,22 +334,19 @@ export default function MoreScreen() {
           title="My Hub"
           emoji="🗂️"
           color={C.sageDark}
-          onPress={() => router.push("/(tabs)/more/hub")}
+          onPress={() => goMenu("/(tabs)/more/hub")}
         />
-
-        {/* My Dogs — opens the pet switcher / add-a-dog */}
-        <PetSwitcher variant="row" />
 
         <MenuItem
           title="Dog Profile"
           emoji="🐾"
           color={C.terracotta}
-          onPress={() => router.push("/(tabs)/more/profile")}
+          onPress={() => goMenu("/(tabs)/more/profile")}
         />
 
         {/* NEW: Reminders & Routines */}
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/more/reminders")}
+          onPress={() => goMenu("/(tabs)/more/reminders")}
           activeOpacity={0.9}
           style={{
             flexDirection: "row",
@@ -318,7 +401,7 @@ export default function MoreScreen() {
           title="Settings"
           emoji="⚙️"
           color={C.mutedBrown}
-          onPress={() => router.push("/(tabs)/more/settings")}
+          onPress={() => goMenu("/(tabs)/more/settings")}
         />
 
         <TouchableOpacity
@@ -341,7 +424,10 @@ export default function MoreScreen() {
             Reset App Data
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

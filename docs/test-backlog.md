@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.39 — Instagram nav: bottom Profile + More burger  ·  ticket/nav-profile-and-more-burger (2026-06-18)
+What shipped: the bottom-right tab is now **Profile** (avatar icon) instead of "More" — same `more/index` route slot, so the 2.19 nav-corruption fix stays intact. That screen is the owner's profile (the orange profile card + the My Dogs switcher); the former **More menu** (Community, My Hub, Dog Profile, Reminders & Routines, Settings, Reset App Data) now opens from a **top-right ☰ burger** as a bottom sheet. Tapping a menu item closes the sheet first, then navigates, so no stale modal layers over a tab.
+- **No migration.** Added a `tabs.profile` i18n key (EN "Profile" / ES "Perfil"). Exercised by mobile jest (+1 layout: 5th tab is Profile not More; +2 more: burger reveals every former destination, routes correctly).
+- **NEEDS A DEVICE PASS:** bottom-right opens your profile in one tap; the ☰ reveals the full menu; every old More item is reachable and returns cleanly; no tab corruption (open a menu item, go back, open another tab — all clean).
+
 ### [ ] 2.38 — Profile fixes: share button + real timestamps  ·  ticket/profile-fixes (2026-06-18)
 What shipped: (1) the **share button** in the post detail modal (opened from the feed AND from your own profile grid) was a no-op — it now reuses the **2.28 branded share** flow (`DailyShareButton`: off-screen capture → system share sheet). (2) Posts showed a fake **"Just now"** because the code read a non-existent `post.timestamp`; a pure `formatRelativeTime(created_at)` now renders the **true relative time** (just now / 5m / 1h / yesterday / 3d / date) in both the detail modal and the feed card.
 - **No migration.** Exercised by mobile jest (+5 relative-time buckets incl. skew/invalid; +2 detail-modal: share affordance wired, real timestamp not "Just now").
