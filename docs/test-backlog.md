@@ -65,6 +65,14 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.15 — Mobile business onboarding: multi-service select  ·  ticket/provider-capabilities-mobile (2026-06-17)
+What shipped: when you create a business on the phone, the "business type" step is now a **multi-select** — you tick **one OR MORE** services (Vet, Groomer, Dog walker, Daycare/boarding, Pet sitter, Trainer, Pet shop, Adoption/shelter). The business is saved with ALL the services you picked, so it shows up under **every** one of those in discovery (a real "vet shop" can finally be created on a phone). **No migration, web backend unchanged** (the web POST already accepted the `capabilities[]` array — this just feeds it).
+1. More → list your business (or the Services entry) → **Create your business** while logged in.
+2. The services step lets you tap **several** options and they all stay highlighted (not radio — multiple stick). A "Selected: …" line lists your picks.
+3. Pick e.g. **Vet + Pet shop**, enter a name, **Create business** → succeeds.
+4. Open **Services → Veterinary** AND **Services → Shop**: the business appears under **both**.
+5. Try to create with **no** service selected → blocked with "Please choose at least one service."
+
 ### [ ] DEV-NATIVE-UPLOAD — Native photo/video upload re-test (shared `fetch.ts` path)
 Not tied to one ticket — a standing device check flagged in the roadmap follow-ups. The visit/session media
 uploads (walk-session photos, sitting-visit photos/video, daycare report-card media, grooming before/after,

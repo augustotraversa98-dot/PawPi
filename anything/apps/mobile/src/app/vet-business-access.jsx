@@ -15,16 +15,23 @@ import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProviders, useCreateProvider } from "@/hooks/useProviders";
 
-// The fixed provider types, mirroring the web onboarding
-// (apps/web/src/app/provider/lib/providerTypes.js). provider_type is free-text
-// server-side, but onboarding offers this exact set. Sent verbatim as
-// provider_type — the backend seeds the matching capability.
-const PROVIDER_TYPES = [
+// The capabilities (services) a business can offer. A provider has MANY capabilities
+// (the CORE MODEL — see docs/phase2-tickets/00-README.md), so onboarding is MULTI-select:
+// a single business (e.g. a "vet shop") can offer several services at once and then
+// surfaces under EVERY one in discovery. We offer ONLY capabilities that have a LIVE
+// owner-facing service module (project rule: only feature live capabilities) — NOT
+// transport/pharmacy/telehealth (those modules aren't built yet; telehealth is appended
+// by ticket 2.18). Mirrors apps/web/src/app/api/utils/providerAuth.js ALLOWED_CAPABILITIES
+// and the web onboarding labels.
+const CAPABILITIES = [
   { value: "vet", label: "Veterinary clinic", icon: "🩺" },
+  { value: "groomer", label: "Groomer", icon: "✂️" },
   { value: "walker", label: "Dog walker", icon: "🦮" },
   { value: "daycare", label: "Daycare / boarding", icon: "🏠" },
+  { value: "sitter", label: "Pet sitter", icon: "🏡" },
+  { value: "trainer", label: "Trainer", icon: "🎓" },
   { value: "shop", label: "Pet shop", icon: "🛍️" },
-  { value: "groomer", label: "Groomer", icon: "✂️" },
+  { value: "adoption", label: "Adoption / shelter", icon: "🐶" },
 ];
 
 // Where to finish setup. Provider management/publishing is web-primary for now, so
@@ -114,8 +121,20 @@ function ProviderOnboarding() {
   const createProvider = useCreateProvider();
 
   const [name, setName] = useState("");
-  const [providerType, setProviderType] = useState(null);
+  const [selectedCapabilities, setSelectedCapabilities] = useState([]);
   const [bio, setBio] = useState("");
+
+  // Toggle a capability in/out of the selection, preserving CAPABILITIES order so the
+  // primary (provider_type) is stable and the summary line reads naturally.
+  const toggleCapability = (value) => {
+    setSelectedCapabilities((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : CAPABILITIES.filter((c) => c.value === value || prev.includes(c.value)).map(
+            (c) => c.value,
+          ),
+    );
+  };
   const [errorMessage, setErrorMessage] = useState(null);
   const [createdProvider, setCreatedProvider] = useState(null);
 
@@ -161,14 +180,18 @@ function ProviderOnboarding() {
       setErrorMessage("Please enter your business name.");
       return;
     }
-    if (!providerType) {
-      setErrorMessage("Please choose a business type.");
+    if (selectedCapabilities.length === 0) {
+      setErrorMessage("Please choose at least one service.");
       return;
     }
     try {
       const provider = await createProvider.mutateAsync({
         name: trimmedName,
-        provider_type: providerType,
+        // provider_type stays required server-side (now display-only per 2.1); send the
+        // FIRST/primary selected capability as the type. capabilities[] is the real
+        // multi-service set the backend persists into provider_capabilities.
+        provider_type: selectedCapabilities[0],
+        capabilities: selectedCapabilities,
         bio: bio.trim() || undefined,
       });
       setCreatedProvider(provider);
@@ -194,18 +217,18 @@ function ProviderOnboarding() {
         style={inputStyle}
       />
 
-      {/* Provider type (single-select) */}
+      {/* Services offered (multi-select) — a business can offer several at once */}
       <View style={{ height: 24 }} />
-      <FieldLabel label="Business type" required />
+      <FieldLabel label="Services you offer" required hint="Choose one or more" />
       <View style={{ gap: 12 }}>
-        {PROVIDER_TYPES.map((type) => {
-          const selected = providerType === type.value;
+        {CAPABILITIES.map((cap) => {
+          const selected = selectedCapabilities.includes(cap.value);
           return (
             <TouchableOpacity
-              key={type.value}
-              onPress={() => setProviderType(type.value)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              key={cap.value}
+              onPress={() => toggleCapability(cap.value)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -216,7 +239,7 @@ function ProviderOnboarding() {
                 borderColor: selected ? COLORS.coral : "transparent",
               }}
             >
-              <Text style={{ fontSize: 24, marginRight: 14 }}>{type.icon}</Text>
+              <Text style={{ fontSize: 24, marginRight: 14 }}>{cap.icon}</Text>
               <Text
                 style={{
                   flex: 1,
@@ -225,13 +248,30 @@ function ProviderOnboarding() {
                   color: COLORS.warmBrown,
                 }}
               >
-                {type.label}
+                {cap.label}
               </Text>
               {selected && <Check size={22} color={COLORS.coral} />}
             </TouchableOpacity>
           );
         })}
       </View>
+
+      {selectedCapabilities.length > 0 && (
+        <Text
+          style={{
+            marginTop: 12,
+            fontSize: 14,
+            fontWeight: "600",
+            color: COLORS.mutedBrown,
+          }}
+        >
+          Selected:{" "}
+          {selectedCapabilities
+            .map((v) => CAPABILITIES.find((c) => c.value === v)?.label)
+            .filter(Boolean)
+            .join(", ")}
+        </Text>
+      )}
 
       {/* Bio (optional) */}
       <View style={{ height: 24 }} />

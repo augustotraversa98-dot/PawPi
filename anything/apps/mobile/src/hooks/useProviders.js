@@ -282,14 +282,16 @@ export function useUnreadCount() {
 // canonical create endpoint). The backend lazily creates the caller's user_profiles row
 // (so a brand-new account with no pet can onboard), atomically creates provider + owner
 // provider_staff + provider_capabilities under RLS, and returns { provider } (status 201,
-// status 'draft'). Body { name, provider_type, bio? } — name + provider_type required;
-// the backend seeds the capability matching provider_type. On success we invalidate the
-// useMyProviders key so the new business appears immediately. Mirrors the web onboarding
+// status 'draft'). Body { name, provider_type, capabilities?, bio? } — name + provider_type
+// required; capabilities[] is the MULTI-service set (ticket 2.15) the backend validates
+// against ALLOWED_CAPABILITIES and persists into provider_capabilities, so the business
+// surfaces under every service it offers. On success we invalidate the useMyProviders key
+// so the new business appears immediately. Mirrors the web onboarding
 // (apps/web/src/app/provider/components/CreateProviderForm.jsx).
 export function useCreateProvider() {
   const queryClient = useQueryClient();
   return useMutation({
-    // mutateAsync({ name, provider_type, bio? }) → provider
+    // mutateAsync({ name, provider_type, capabilities?, bio? }) → provider
     mutationFn: async (body) => {
       const response = await fetch("/api/providers", {
         method: "POST",
