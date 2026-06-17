@@ -114,6 +114,34 @@ describe('PATCH /api/providers/[id]/services/[serviceId]', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('updates image_urls via COALESCE (ticket 2.23)', async () => {
+    auth.mockResolvedValue(SESSION);
+    const IMAGES = ['https://x/a.png'];
+    const UPDATED = { id: 9, provider_id: 100, image_urls: IMAGES };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([UPDATED]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await PATCH(patchReq({ image_urls: IMAGES }), PARAMS);
+
+    expect(res.status).toBe(200);
+    const text = queryTextOf(1);
+    expect(text).toContain('image_urls = COALESCE');
+    expect(valuesOf(1)).toEqual(expect.arrayContaining([IMAGES]));
+  });
+
+  it('rejects a bad image_urls shape with 400, no write (ticket 2.23)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await PATCH(patchReq({ image_urls: { 0: 'x' } }), PARAMS);
+
+    expect(res.status).toBe(400);
+    expect(sql).toHaveBeenCalledTimes(1); // profile lookup only
+  });
 });
 
 describe('DELETE /api/providers/[id]/services/[serviceId] — soft delete', () => {

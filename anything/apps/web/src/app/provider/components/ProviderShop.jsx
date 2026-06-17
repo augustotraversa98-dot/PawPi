@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingBag, Loader2, Plus, Package, Pill } from "lucide-react";
+import { ShoppingBag, Loader2, Plus, Package, Pill, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   useShopProducts,
@@ -10,6 +10,7 @@ import {
   useSetOrderFulfillment,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import ImageUploader from "./ImageUploader";
 
 // /provider/shop — the SHOP's catalog/inventory + order workspace (ticket 2.11). Manage
 // PRODUCTS (price, stock, Rx flag, active) and advance incoming ORDERS' FULFILLMENT
@@ -64,6 +65,7 @@ function CreateProductForm({ providerId }) {
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState("");
   const [isRx, setIsRx] = useState(false);
+  const [images, setImages] = useState([]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -79,6 +81,7 @@ function CreateProductForm({ providerId }) {
         stock_qty: parseInt(stock, 10) || 0,
         category: category || null,
         is_rx: isRx,
+        image_urls: images,
       });
       toast.success("Product added");
       setName("");
@@ -86,6 +89,7 @@ function CreateProductForm({ providerId }) {
       setStock("");
       setCategory("");
       setIsRx(false);
+      setImages([]);
     } catch (err) {
       toast.error(err.message || "Couldn't add the product");
     }
@@ -128,6 +132,9 @@ function CreateProductForm({ providerId }) {
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
+      </div>
+      <div className="mt-4">
+        <ImageUploader label="Product photos" value={images} onChange={setImages} />
       </div>
       <label className="mt-3 flex items-center gap-2 text-sm text-[#7A6254]">
         <input
@@ -192,67 +199,143 @@ function ProductList({ providerId }) {
   return (
     <div className="space-y-3">
       {products.map((p) => (
-        <div
+        <ProductRow
           key={p.id}
-          className="flex items-center gap-4 rounded-2xl border p-4"
-          style={{ borderColor: COLORS.peach, backgroundColor: "#fff", opacity: p.active ? 1 : 0.6 }}
-        >
+          product={p}
+          onRestock={() => restock(p)}
+          onDeactivate={() => del.mutate(p.id)}
+          onReactivate={() => update.mutate({ productId: p.id, active: true })}
+          update={update}
+        />
+      ))}
+    </div>
+  );
+}
+
+// One product row + an expandable photo editor (ticket 2.23). The first image is the
+// thumbnail (a Package icon when there are none). "Photos" reveals the shared
+// ImageUploader seeded from the product; Save persists image_urls via the PATCH route.
+function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update }) {
+  const [editing, setEditing] = useState(false);
+  const [images, setImages] = useState(
+    Array.isArray(p.image_urls) ? p.image_urls : [],
+  );
+  const thumb = Array.isArray(p.image_urls) ? p.image_urls[0] : null;
+
+  const savePhotos = async () => {
+    try {
+      await update.mutateAsync({ productId: p.id, image_urls: images });
+      toast.success("Photos updated");
+      setEditing(false);
+    } catch (err) {
+      toast.error(err.message || "Couldn't update photos");
+    }
+  };
+
+  return (
+    <div
+      className="rounded-2xl border p-4"
+      style={{ borderColor: COLORS.peach, backgroundColor: "#fff", opacity: p.active ? 1 : 0.6 }}
+    >
+      <div className="flex items-center gap-4">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={p.name}
+            className="h-12 w-12 flex-shrink-0 rounded-xl object-cover"
+            style={{ backgroundColor: COLORS.cream }}
+          />
+        ) : (
           <div
-            className="flex h-12 w-12 items-center justify-center rounded-xl"
-            style={{ backgroundColor: COLORS.sand }}
+            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundColor: COLORS.cream }}
           >
             <Package className="h-5 w-5" style={{ color: COLORS.coral }} />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate font-semibold text-[#3B241B]">{p.name}</span>
-              {p.is_rx ? (
-                <span
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  style={{ backgroundColor: COLORS.terracotta + "22", color: COLORS.terracotta }}
-                >
-                  <Pill className="h-3 w-3" /> Rx
-                </span>
-              ) : null}
-              {!p.active ? (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                  Inactive
-                </span>
-              ) : null}
-            </div>
-            <p className="text-sm text-[#7A6254]">
-              {money(p.price_cents, p.currency)} · {p.stock_qty} in stock
-              {p.category ? ` · ${p.category}` : ""}
-            </p>
-          </div>
+        )}
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            <span className="truncate font-semibold text-[#3B241B]">{p.name}</span>
+            {p.is_rx ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ backgroundColor: COLORS.terracotta + "22", color: COLORS.terracotta }}
+              >
+                <Pill className="h-3 w-3" /> Rx
+              </span>
+            ) : null}
+            {!p.active ? (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                Inactive
+              </span>
+            ) : null}
+          </div>
+          <p className="text-sm text-[#7A6254]">
+            {money(p.price_cents, p.currency)} · {p.stock_qty} in stock
+            {p.category ? ` · ${p.category}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEditing((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold text-[#3B241B]"
+            style={{ borderColor: COLORS.peach }}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            Photos
+          </button>
+          <button
+            onClick={onRestock}
+            className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-[#3B241B]"
+            style={{ borderColor: COLORS.peach }}
+          >
+            +10 stock
+          </button>
+          {p.active ? (
             <button
-              onClick={() => restock(p)}
-              className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-[#3B241B]"
+              onClick={onDeactivate}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ color: COLORS.terracotta }}
+            >
+              Deactivate
+            </button>
+          ) : (
+            <button
+              onClick={onReactivate}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ color: COLORS.coral }}
+            >
+              Reactivate
+            </button>
+          )}
+        </div>
+      </div>
+
+      {editing && (
+        <div className="mt-4 border-t pt-4" style={{ borderColor: COLORS.peach }}>
+          <ImageUploader label="Product photos" value={images} onChange={setImages} />
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={savePhotos}
+              disabled={update.isPending}
+              className="rounded-lg px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              style={{ backgroundColor: COLORS.coral }}
+            >
+              {update.isPending ? "Saving…" : "Save photos"}
+            </button>
+            <button
+              onClick={() => {
+                setImages(Array.isArray(p.image_urls) ? p.image_urls : []);
+                setEditing(false);
+              }}
+              className="rounded-lg border px-4 py-2 text-xs font-semibold text-[#7A6254]"
               style={{ borderColor: COLORS.peach }}
             >
-              +10 stock
+              Cancel
             </button>
-            {p.active ? (
-              <button
-                onClick={() => del.mutate(p.id)}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                style={{ color: COLORS.terracotta }}
-              >
-                Deactivate
-              </button>
-            ) : (
-              <button
-                onClick={() => update.mutate({ productId: p.id, active: true })}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                style={{ color: COLORS.coral }}
-              >
-                Reactivate
-              </button>
-            )}
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }

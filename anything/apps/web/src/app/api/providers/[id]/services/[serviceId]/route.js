@@ -2,7 +2,10 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { invalidServiceFields } from "@/app/api/utils/providerValidation";
+import {
+  invalidServiceFields,
+  invalidImageUrls,
+} from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One provider service — update and SOFT delete (owner|admin). Ticket 4b.
@@ -37,17 +40,27 @@ async function PATCH(request, { params }) {
 
     const body = (await request.json()) ?? {};
 
-    const fieldError = invalidServiceFields(body);
+    const fieldError =
+      invalidServiceFields(body) || invalidImageUrls(body.image_urls);
     if (fieldError) {
       return Response.json({ error: fieldError }, { status: 400 });
     }
 
-    const { name, description, duration_min, price_cents, deposit_cents, active } =
-      body;
+    const {
+      name,
+      description,
+      duration_min,
+      price_cents,
+      deposit_cents,
+      active,
+      image_urls,
+    } = body;
 
     // Scoped by id AND provider_id — cross-provider writes match no row -> 404.
     // `active` uses ?? null so an explicit false is honored (only undefined falls
-    // through to COALESCE keeping the existing value).
+    // through to COALESCE keeping the existing value). image_urls follows the same
+    // COALESCE pattern as shop_products: an omitted array keeps the existing images,
+    // a provided array (incl. [] to clear) replaces them.
     const result = await sql`
       UPDATE provider_services SET
         name = COALESCE(${name ?? null}, name),
@@ -56,6 +69,7 @@ async function PATCH(request, { params }) {
         price_cents = COALESCE(${price_cents ?? null}, price_cents),
         deposit_cents = COALESCE(${deposit_cents ?? null}, deposit_cents),
         active = COALESCE(${active ?? null}, active),
+        image_urls = COALESCE(${Array.isArray(image_urls) ? image_urls : null}, image_urls),
         updated_at = NOW()
       WHERE id = ${serviceId} AND provider_id = ${providerId}
       RETURNING *

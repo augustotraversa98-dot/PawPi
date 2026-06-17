@@ -93,6 +93,20 @@ describe("POST /api/providers/[id]/shop-products", () => {
     expect(res.status).toBe(400);
   });
 
+  it("400 when image_urls is not an array (ticket 2.23)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ has: true }]) // capability
+      .mockResolvedValueOnce([{ id: 1, role: "admin" }]); // admin membership
+    const res = await POST(
+      postReq({ name: "X", price_cents: 100, image_urls: "nope" }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+    expect(allQueryText()).not.toContain("INSERT INTO shop_products");
+  });
+
   it("201 creates a product for an admin", async () => {
     auth.mockResolvedValue(SESSION);
     const CREATED = { id: 9, name: "Kibble", price_cents: 5000, is_rx: false, active: true };
