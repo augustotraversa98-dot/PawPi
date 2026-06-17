@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.34 — Current-pet header sync (More shows active pet)  ·  ticket/current-pet-header-sync (2026-06-18)
+What shipped: the More-landing orange header showed the PREVIOUS pet after switching or creating a pet because it read a one-time `AsyncStorage` "pet_profile" snapshot. It now sources name, avatar, breed and age from the reactive `useCurrentPet` (the single source of truth), so it updates instantly on switch/create — no app restart.
+- **No migration / no backend.** Exercised by mobile jest (initial render shows the active pet; a hook change re-renders the header with the new pet; no-pet fallback shows "My Dog").
+- **NEEDS A DEVICE PASS:** switch the active pet (or create a new one) → open More → the header reflects the new pet immediately (name + avatar + breed/age).
+
 ### [ ] 2.33 — Notifications filter chips layout fix  ·  ticket/notif-chips-fix (2026-06-18)
 What shipped: the notifications filter chips (All / Walks / Feeding / Paws / Barks / Training) rendered as tall stretched rectangles because the horizontal `ScrollView` let its children stretch on the cross-axis. Added `alignItems:center` to the content container (chips size to their content) and `flexGrow:0` to the row (it no longer expands vertically). Pure style fix — filtering logic and data untouched.
 - **No migration / no backend.** Exercised by mobile jest (all six chips render in a center-aligned horizontal row).
