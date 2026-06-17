@@ -1,5 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { computePostingStreak } from "@/utils/feedDelight";
+import { getLocalPostDateString } from "@/utils/dateUtils";
+
+// Posting streak for one pet (ticket 2.37). The server returns the pet's recent
+// daily-post days; we compute the consecutive-day run against the VIEWER's local
+// day so the boundary is the phone's, not the server's. 0 when none → no badge.
+export function usePostingStreak(petId) {
+  const today = getLocalPostDateString();
+  const query = useQuery({
+    queryKey: ["posts", "streak", petId],
+    enabled: !!petId,
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/streak?petId=${petId}`);
+      if (!response.ok) throw new Error("Failed to load streak");
+      const data = await response.json();
+      return data.dailyPostDates || [];
+    },
+  });
+  const streak = computePostingStreak(query.data || [], today);
+  return { streak, isLoading: query.isLoading };
+}
 
 export function useFeedPosts(limit = 20, offset = 0) {
   // Scope the feed to the active pet so the backend can order it

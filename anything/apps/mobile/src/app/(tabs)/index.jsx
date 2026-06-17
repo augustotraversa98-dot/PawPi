@@ -12,6 +12,7 @@ import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
+import { usePostingStreak } from "@/hooks/useFeedPosts";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -33,6 +34,13 @@ export default function FeedScreen() {
     loadingPosts,
     uploading,
   } = useFeedData();
+
+  // Posting streak for the active pet (ticket 2.37) — the 🔥 badge shows on its
+  // own cards. Other pets' streaks aren't fetched (bounded to one query).
+  const { streak: activeStreak } = usePostingStreak(petProfile?.id);
+  const streakByPetId = petProfile?.id
+    ? { [petProfile.id]: activeStreak }
+    : {};
 
   // Phase 2 ticket 2.13 — public provider/adoption suggestion cards, interleaved into the
   // UNLOCKED feed at a capped cadence. Independent query from the posts feed (never disturbs the
@@ -206,6 +214,7 @@ export default function FeedScreen() {
               suggestions={suggestions}
               onOpenProvider={openProvider}
               onOpenAdoption={openAdoption}
+              streakByPetId={streakByPetId}
             />
           )}
         </RefreshableScrollView>

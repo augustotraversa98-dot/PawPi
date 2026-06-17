@@ -17,6 +17,7 @@ export function UnlockedFeed({
   suggestions,
   onOpenProvider,
   onOpenAdoption,
+  streakByPetId = {},
 }) {
   // Phase 2 ticket 2.13 — interleave provider/adoption "suggestion" cards between pet posts at a
   // controlled cadence + cap (see interleaveSuggestions). Posts keep their order/identity; the
@@ -77,6 +78,7 @@ export function UnlockedFeed({
             post={item}
             liked={!!likedPosts[item.id]}
             locked={false}
+            streak={streakByPetId[item.pet_id] || 0}
             onToggleLike={() => onToggleLike(item.id)}
             onOpenBarks={() => onOpenBarks(item)}
             onOpenDetail={() => onOpenDetail(item)}
