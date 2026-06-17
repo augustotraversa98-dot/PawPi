@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.40 — Unified Messages (people + businesses + owner search)  ·  ticket/unified-messages (2026-06-18)
+What shipped: the Messages screen is now ONE hub that lists **owner↔owner DMs (People)** and **owner↔business chats (Businesses)** together, newest-first, each with name/avatar + last message + unread badge. A segmented **All / People / Businesses** filter scopes the list. A **search** field finds pet owners (reusing the 2.25 search) → tap one → starts/reuses the DM (idempotent 2.27 route) and opens the chat. People route to `/chat`, businesses to `/provider-chat` — the two backends (`dm_threads` vs `message_threads`) stay separate, just presented together.
+- **No migration / no new web code** (reuses `/api/dm-threads`, `/api/threads`, `/api/search`). Exercised by mobile jest (+: both kinds listed, filter scopes, correct routing per kind, search→start-DM).
+- **NEEDS A DEVICE PASS:** Messages shows people + businesses with the filter; searching a pet parent and tapping starts a DM; a business "Message" conversation appears under Businesses afterward.
+
 ### [ ] 2.39 — Instagram nav: bottom Profile + More burger  ·  ticket/nav-profile-and-more-burger (2026-06-18)
 What shipped: the bottom-right tab is now **Profile** (avatar icon) instead of "More" — same `more/index` route slot, so the 2.19 nav-corruption fix stays intact. That screen is the owner's profile (the orange profile card + the My Dogs switcher); the former **More menu** (Community, My Hub, Dog Profile, Reminders & Routines, Settings, Reset App Data) now opens from a **top-right ☰ burger** as a bottom sheet. Tapping a menu item closes the sheet first, then navigates, so no stale modal layers over a tab.
 - **No migration.** Added a `tabs.profile` i18n key (EN "Profile" / ES "Perfil"). Exercised by mobile jest (+1 layout: 5th tab is Profile not More; +2 more: burger reveals every former destination, routes correctly).
