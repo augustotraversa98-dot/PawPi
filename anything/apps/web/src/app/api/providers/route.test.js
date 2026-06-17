@@ -11,7 +11,14 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+// getActiveTx/runWithTx are named exports requestContext imports; with no real
+// pool in unit tests getActiveTx returns undefined, so setCurrentUserId (called
+// by the lazy profile-create path) is a safe no-op and issues no extra query.
+vi.mock('@/app/api/utils/sql', () => ({
+  default: vi.fn(),
+  getActiveTx: () => undefined,
+  runWithTx: (tx, fn) => fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
@@ -62,7 +69,8 @@ describe('POST /api/providers — create', () => {
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // 1: profile lookup
       .mockResolvedValueOnce([]) // 2: slug collision check — none
-      .mockResolvedValueOnce([CREATED]); // 3: atomic CTE insert
+      .mockResolvedValueOnce([CREATED]) // 3: provider + owner-staff CTE
+      .mockResolvedValueOnce([]); // 4: provider_capabilities insert (SEPARATE statement)
 
     const res = await POST(jsonReq({ name: 'Happy Paws', provider_type: 'vet' }));
 
@@ -73,18 +81,71 @@ describe('POST /api/providers — create', () => {
       provider: { ...CREATED, capabilities: ['vet'] },
     });
 
-    // The create is a single atomic CTE: provider + owner staff + capability rows in one
-    // statement; the membership is fixed to role 'owner' / status 'active' in the SQL.
-    const insertText = queryTextOf(2);
-    expect(insertText).toContain('INSERT INTO providers');
-    expect(insertText).toContain('INSERT INTO provider_staff');
-    expect(insertText).toContain('INSERT INTO provider_capabilities');
-    expect(insertText).toContain("'owner'");
-    expect(insertText).toContain("'active'");
-
-    // owner_user_profile_id = the resolved user_profiles.id (7) and the generated
-    // slug are the bound values.
+    // The provider + owner-staff insert is ONE atomic CTE, membership fixed to
+    // role 'owner' / status 'active'. Capabilities are NOT in this statement —
+    // they were split out so the owner-staff row is visible to the capabilities
+    // WITH CHECK (provider_capabilities RLS, 0027) under READ COMMITTED.
+    const cteText = queryTextOf(2);
+    expect(cteText).toContain('INSERT INTO providers');
+    expect(cteText).toContain('INSERT INTO provider_staff');
+    expect(cteText).not.toContain('INSERT INTO provider_capabilities');
+    expect(cteText).toContain("'owner'");
+    expect(cteText).toContain("'active'");
     expect(sql.mock.calls[2]).toEqual(expect.arrayContaining([7, 'happy-paws']));
+
+    // Capabilities are inserted in a SEPARATE, LATER statement (after the staff row),
+    // bound to the new provider's id (100).
+    const capsText = queryTextOf(3);
+    expect(capsText).toContain('INSERT INTO provider_capabilities');
+    expect(capsText).toContain('ON CONFLICT');
+    expect(sql.mock.calls[3]).toEqual(expect.arrayContaining([100, ['vet']]));
+  });
+
+  it('no profile yet → lazily creates the user_profiles row, then the provider + owner staff (201)', async () => {
+    // Fresh business owner: signed up, never made a pet, so NO user_profiles row
+    // exists (the #108 gap). The create must still succeed by lazy-creating it.
+    auth.mockResolvedValue({
+      user: { id: 42, email: 'owner@biz.com', name: 'Biz Owner' },
+      expires: '9999999999',
+    });
+    const CREATED = {
+      id: 200,
+      owner_user_profile_id: 7,
+      name: 'Biz',
+      slug: 'biz',
+      provider_type: 'vet',
+      status: 'draft',
+    };
+    sql
+      .mockResolvedValueOnce([]) // 0: ensureUserProfile lookup — NO profile
+      .mockResolvedValueOnce([]) // 1: username collision check — base is free
+      .mockResolvedValueOnce([{ id: 7 }]) // 2: INSERT user_profiles RETURNING id
+      .mockResolvedValueOnce([]) // 3: slug collision check — none
+      .mockResolvedValueOnce([CREATED]) // 4: provider + owner-staff CTE
+      .mockResolvedValueOnce([]); // 5: provider_capabilities insert (SEPARATE statement)
+
+    const res = await POST(jsonReq({ name: 'Biz', provider_type: 'vet' }));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({
+      provider: { ...CREATED, capabilities: ['vet'] },
+    });
+
+    // The profile was lazily created with the default role; username derives from
+    // the email local-part, and the auth id is the bound value.
+    const profileInsert = queryTextOf(2);
+    expect(profileInsert).toContain('INSERT INTO user_profiles');
+    expect(profileInsert).toContain("'pet_owner'");
+    expect(sql.mock.calls[2]).toEqual(expect.arrayContaining([42, 'owner']));
+
+    // The provider CTE used the NEWLY created profile id (7) as owner, and the
+    // capabilities insert is a SEPARATE later statement bound to the new provider id.
+    const cte = queryTextOf(4);
+    expect(cte).toContain('INSERT INTO providers');
+    expect(cte).toContain('INSERT INTO provider_staff');
+    expect(sql.mock.calls[4]).toEqual(expect.arrayContaining([7, 'biz']));
+    expect(queryTextOf(5)).toContain('INSERT INTO provider_capabilities');
+    expect(sql.mock.calls[5]).toEqual(expect.arrayContaining([200, ['vet']]));
   });
 
   it('makes the slug unique on collision by appending a suffix', async () => {
@@ -92,7 +153,8 @@ describe('POST /api/providers — create', () => {
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
       .mockResolvedValueOnce([{ slug: 'happy-paws' }]) // collision: base taken
-      .mockResolvedValueOnce([{ id: 101, slug: 'happy-paws-2' }]); // insert
+      .mockResolvedValueOnce([{ id: 101, slug: 'happy-paws-2' }]) // provider + staff CTE
+      .mockResolvedValueOnce([]); // capabilities insert
 
     const res = await POST(jsonReq({ name: 'Happy Paws', provider_type: 'vet' }));
 
@@ -101,13 +163,14 @@ describe('POST /api/providers — create', () => {
     expect(sql.mock.calls[2]).toEqual(expect.arrayContaining(['happy-paws-2']));
   });
 
-  it('accepts a multi-select capabilities[] and binds the deduped array to the CTE', async () => {
+  it('accepts a multi-select capabilities[] and binds the deduped array to the SEPARATE caps insert', async () => {
     auth.mockResolvedValue(SESSION);
     const CREATED = { id: 102, name: 'Vet Shop', slug: 'vet-shop', provider_type: 'vet' };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
       .mockResolvedValueOnce([]) // slug check
-      .mockResolvedValueOnce([CREATED]); // CTE insert
+      .mockResolvedValueOnce([CREATED]) // provider + owner-staff CTE
+      .mockResolvedValueOnce([]); // capabilities insert (SEPARATE statement)
 
     const res = await POST(
       jsonReq({
@@ -121,8 +184,10 @@ describe('POST /api/providers — create', () => {
     expect(await res.json()).toEqual({
       provider: { ...CREATED, capabilities: ['shop', 'vet'] },
     });
-    // The validated, deduped array is bound to the unnest in the CTE.
-    const boundArrays = sql.mock.calls[2].filter((v) => Array.isArray(v));
+    // The validated, deduped array is bound to the unnest in the SEPARATE caps
+    // statement (call 3), NOT the provider+staff CTE (call 2).
+    expect(queryTextOf(3)).toContain('INSERT INTO provider_capabilities');
+    const boundArrays = sql.mock.calls[3].filter((v) => Array.isArray(v));
     expect(boundArrays).toContainEqual(['vet', 'shop']);
   });
 

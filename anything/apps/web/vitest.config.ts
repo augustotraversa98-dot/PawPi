@@ -17,6 +17,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Mirror the build alias (vite.config.ts) so modules importing the auth
+      // shim (e.g. utils/useUser.js) are resolvable under Vitest. Tests still
+      // vi.mock it, so the real @hono code never runs.
+      '@auth/create/react': '@hono/auth-js/react',
     },
   },
   esbuild: {

@@ -16,6 +16,20 @@ else
   echo "📡 Mac LAN IP: $LAN_IP"
   # Auto-sync the mobile .env to this IP so you never hand-edit it.
   "$REPO_ROOT/scripts/sync-mobile-ip.sh" || true
+
+  # Keep AUTH_URL UNSET in the web backend. Auth.js here uses trustHost + the
+  # request's host header (see apps/web/__create/index.ts), so login redirects
+  # follow whatever host you browse (localhost or the LAN IP) and survive Wi-Fi/
+  # IP changes. A fixed AUTH_URL rewrites every request origin to itself, so after
+  # an IP change the post-login redirect points at a stale host → "site can't be
+  # reached". So comment out any active AUTH_URL line if one sneaks back in.
+  WEB_ENV="$WEB_DIR/.env"
+  if [ -f "$WEB_ENV" ] && grep -qE '^AUTH_URL=' "$WEB_ENV"; then
+    TMP_ENV="$(mktemp)"
+    awk '/^AUTH_URL=/ { print "# " $0; next } { print }' "$WEB_ENV" > "$TMP_ENV"
+    mv "$TMP_ENV" "$WEB_ENV"
+    echo "🧹 Commented out active AUTH_URL in web .env (Auth.js uses trustHost + request host)."
+  fi
 fi
 
 # Free the port if a previous run is still holding it.
