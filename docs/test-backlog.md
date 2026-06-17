@@ -73,6 +73,12 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.35 — Onboarding required fields + keyboard  ·  ticket/onboarding-required-fields (2026-06-18)
+What shipped: pet-owner onboarding now REQUIRES a pet name (already) and a valid, available **@handle** before you can continue. The @handle rule lives in a pure, tested util (`validateHandle.js`): lowercase alphanumerics + `_`/`.`, 3–20 chars, must start alphanumeric, not in the taken list. "Continue" is blocked with inline errors until it's valid; the auto-generate-on-skip shortcut is gone. Species stays the app's dog default. The step content is now wrapped in the proven `KeyboardAwareScrollView` so focused inputs scroll above the keyboard (numeric fields keep number/decimal pads).
+- **No migration / no backend change** (the create shape already accepts these values).
+- Exercised by mobile jest (handle format accept/reject; uniqueness; empty-skip blocked).
+- **NEEDS A DEVICE PASS:** can't pass the handle step without a valid @handle; no onboarding input is hidden behind the keyboard; the Continue button stays reachable. (KeyboardAwareScrollView + the existing KeyboardAvoidingAnimatedView are both present — confirm there's no double-offset jump on focus.)
+
 ### [ ] 2.34 — Current-pet header sync (More shows active pet)  ·  ticket/current-pet-header-sync (2026-06-18)
 What shipped: the More-landing orange header showed the PREVIOUS pet after switching or creating a pet because it read a one-time `AsyncStorage` "pet_profile" snapshot. It now sources name, avatar, breed and age from the reactive `useCurrentPet` (the single source of truth), so it updates instantly on switch/create — no app restart.
 - **No migration / no backend.** Exercised by mobile jest (initial render shows the active pet; a hook change re-renders the header with the new pet; no-pet fallback shows "My Dog").
