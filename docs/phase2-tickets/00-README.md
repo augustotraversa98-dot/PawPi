@@ -9,6 +9,29 @@ Each ticket file (`2.x-*.md`) is a complete prompt: open it, paste its body into
 chat, build on a fresh branch off `origin/main`, squash-merge. The tickets are intentionally lean
 because the SHARED context below applies to all of them — don't re-derive it.
 
+## ⚡ WAVE 5 AUTONOMY PREAMBLE (applies to every 2.32–2.50 ticket — overnight unattended run)
+Tats is away while these are built. Operate fully autonomously:
+- **Never ask questions / never stop for input.** If any choice is ambiguous, pick the most sensible,
+  standard, on-brand option and proceed. A "doubt" is resolved by choosing the recommended option, not by
+  pausing.
+- **Merge policy:** build each ticket on its own fresh branch off `origin/main`; if CI is **green**,
+  squash-merge automatically. If CI is **red**, debug, fix, and merge once green. Never leave a ticket
+  half-done because of a question.
+- **Keep going** down the Wave 5 queue (in the build order below) for as long as tokens last. If the
+  token limit is reached, STOP cleanly (don't leave a broken tree) and CONTINUE from the next ticket when
+  the limit resets.
+- **Build order matters** (some tickets touch the same files / depend on a predecessor) — follow the
+  order; honor every ⛔ blocker; verify `origin/main` actually contains a prerequisite before building on
+  it.
+- **Migrations:** leave each new migration in `supabase/migrations/` using the **next free number** at
+  build time (check the dir — Wave 5 starts at ≥0046), and FLAG it in `docs/test-backlog.md` ACTION 1 for
+  Tats to hand-apply. Do NOT auto-apply to Supabase. RLS on every new table from day one (+ harness proofs
+  + completeness guard).
+- **Auth tickets (2.32, 2.46) are high-blast-radius:** additive only, never break the existing
+  email/password login; env-gate new providers so an install without keys is unchanged.
+- **No fake data** anywhere (empty states only). Update the status block + roadmap + test-backlog per
+  ticket as you merge, same as Waves 3/4.
+
 ## SHARED CONVENTIONS (apply to EVERY Phase-2 ticket)
 - **Spine reuse:** every service is the unified provider spine (`providers`, `provider_staff`,
   `provider_locations`, `provider_services`, discovery `/api/providers/discover` + `/public/[slug]`,
@@ -122,6 +145,39 @@ provider chain 2.20→2.21 and the image/storefront pair 2.23→2.22 are the ord
 free sequential number and update `docs/test-backlog.md` ACTION 1. (NOT relevant this wave: transport,
 pharmacy — deliberately deferred.)
 
+## WAVE 5 — polish, fixes, big features + the "epic four" (2.32–2.50)
+Built UNATTENDED per the ⚡ Wave 5 autonomy preamble at the top. Build in this order (dependency-driven;
+single agent works serially, so shared files are fine as long as order holds). Migrations use the **next
+free number ≥0046** at build time — flag each in `docs/test-backlog.md` ACTION 1; Tats hand-applies.
+
+Quick wins / bugs first (momentum + testability):
+1. **2.32** Password security rules — auth, additive, no migration. Don't break existing login.
+2. **2.33** Notifications filter-chips layout fix — mobile, trivial.
+3. **2.34** Current-pet header sync (More shows active pet) — mobile bug.
+4. **2.35** Onboarding required fields (@handle/name/species) + keyboard fix — mobile.
+Feed / profile / nav cluster (ordered — shared feed+profile files):
+5. **2.36** Feed daily-post fixes (delete/reupload, view-today, own post in feed) — adds post DELETE route.
+6. **2.37** Feed streak 🔥 + birthday 🎂 frame — ⛔ after 2.36.
+7. **2.38** Profile fixes (share button + real timestamps) — ⛔ after 2.37.
+8. **2.39** Instagram nav: bottom-right Profile + More-as-burger — ⛔ after 2.38; honor the 2.19 nav fix.
+Messaging + vet record:
+9. **2.40** Unified Messages (people + businesses tabs + owner search) — reuses 2.27 DMs + 2.5 chat.
+10. **2.41** Vet Record owner upload + complete info — `vet_documents` exists (check before migrating).
+11. **2.42** Vet Record append-only dated history log — ⛔ after 2.41; integrity is RLS (prove it).
+Big features:
+12. **2.43** Walks with buddies (map + public/private + invites) — extends `social_walks` (migration).
+13. **2.44** Community forum (Reddit-style) — new tables (migration).
+14. **2.45** Training supreme (researched curriculum + progress) — new progress table (migration).
+15. **2.46** Sign in with Apple + Google — auth, additive + env-gated; never break existing login.
+The epic four:
+16. **2.47** Family/caregiver consent sharing — person↔person grants mirroring `care_access` (migration).
+17. **2.48** Lost & Found (lost mode + local alerts + sightings) — new tables (migration).
+18. **2.49** Memories & Wrapped (on-this-day/milestones/year-in-review) — reuses 2.28 share; no migration.
+19. **2.50** AI health intelligence + real Vet Summary — ⛔ after 2.41+2.42; biggest, do LAST.
+
+If tokens run out mid-wave: stop cleanly and resume at the next un-built ticket. The auth tickets (2.32,
+2.46) and the access-control ticket (2.47) are the highest-risk — additive + RLS-proven only.
+
 ## POST-CORE ADD-ONS (not ticketed — note when relevant)
 Transport/pet-taxi (`transport`), pharmacy/Rx fulfillment (`pharmacy`) [`ALLOWED_CAPABILITIES` already
 reserves both], pet-insurance marketplace, lost&found + microchip alerts, pet-friendly places directory,
@@ -161,3 +217,22 @@ when prioritized.
 - 2.29-i18n-spanish.md                  (Wave 4 — English/Spanish i18n; no migration)
 - 2.30-adoption-deeplink.md             (Wave 4 — per-listing deep-link; ⛔ after 2.19; no migration)
 - 2.31-docs-hygiene.md                  (Wave 4 — refresh ARCHITECTURE.md + SCHEMA_NOTES.md; docs-only)
+- 2.32-password-security.md             (Wave 5 — password strength rules; no migration)
+- 2.33-notifications-chips-fix.md       (Wave 5 — notif filter-chip layout; no migration)
+- 2.34-current-pet-header-sync.md       (Wave 5 — More header shows active pet; no migration)
+- 2.35-onboarding-required-fields.md    (Wave 5 — required @handle/name/species + keyboard; no migration)
+- 2.36-feed-daily-post-fixes.md         (Wave 5 — delete/reupload + view-today + own-post-in-feed)
+- 2.37-feed-streak-birthday.md          (Wave 5 — streak 🔥 + birthday 🎂 frame; ⛔ after 2.36)
+- 2.38-profile-fixes.md                 (Wave 5 — share button + real timestamps; ⛔ after 2.37)
+- 2.39-nav-profile-and-more-burger.md   (Wave 5 — IG nav: bottom Profile + More burger; ⛔ after 2.38)
+- 2.40-unified-messages.md              (Wave 5 — people+businesses tabs + owner search; no migration)
+- 2.41-vet-record-owner-upload.md       (Wave 5 — owner docs upload + complete info)
+- 2.42-vet-record-history-log.md        (Wave 5 — append-only dated history log; ⛔ after 2.41)
+- 2.43-walks-with-buddies.md            (Wave 5 — map + public/private walks; migration ≥0046)
+- 2.44-community-forum.md               (Wave 5 — Reddit-style forum; migration ≥0046)
+- 2.45-training-supreme.md              (Wave 5 — researched curriculum + progress; migration ≥0046)
+- 2.46-social-login-apple-google.md     (Wave 5 — Apple + Google sign-in; additive/env-gated; no migration)
+- 2.47-family-caregiver-sharing.md      (Wave 5 — person↔person consent sharing; migration ≥0046)
+- 2.48-lost-and-found.md                (Wave 5 — lost mode + local alerts + sightings; migration ≥0046)
+- 2.49-memories-wrapped.md              (Wave 5 — on-this-day/milestones/Wrapped; no migration)
+- 2.50-ai-health-intelligence-vet-summary.md (Wave 5 — insights + real Vet Summary; ⛔ after 2.41+2.42)
