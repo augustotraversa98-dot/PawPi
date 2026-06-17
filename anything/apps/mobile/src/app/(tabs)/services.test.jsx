@@ -24,22 +24,19 @@ jest.mock("react-native-safe-area-context", () => ({
 
 import ServicesScreen from "./services";
 
-const COMING_SOON = [
-  "Adoption",
-];
+// Every catalog category is now LIVE (ticket 2.12 flips Adoption live — the last card).
+const COMING_SOON = [];
 
 beforeEach(() => {
   mockPush.mockReset();
 });
 
-test("renders the full category grid (Veterinary + every coming-soon category)", () => {
-  const { getByText, getAllByText } = render(<ServicesScreen />);
+test("renders the full category grid (every category live, none coming-soon)", () => {
+  const { getByText, queryAllByText } = render(<ServicesScreen />);
   expect(getByText("Veterinary")).toBeTruthy();
-  for (const title of COMING_SOON) {
-    expect(getByText(title)).toBeTruthy();
-  }
-  // Every non-live category carries a visible "Coming soon" badge.
-  expect(getAllByText("Coming soon")).toHaveLength(COMING_SOON.length);
+  expect(getByText("Adoption")).toBeTruthy();
+  // No category carries a "Coming soon" badge anymore — all flows are live.
+  expect(queryAllByText("Coming soon")).toHaveLength(COMING_SOON.length);
 });
 
 test("tapping the live Veterinary card opens the vet discover/book flow", () => {
@@ -82,6 +79,12 @@ test("tapping the live Shop card opens the shop discover/catalog flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Shop"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/shop");
+});
+
+test("tapping the live Adoption card opens the adoption discover flow", () => {
+  const { getByText } = render(<ServicesScreen />);
+  fireEvent.press(getByText("Adoption"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/adoption");
 });
 
 test("coming-soon cards do NOT navigate into any flow", () => {

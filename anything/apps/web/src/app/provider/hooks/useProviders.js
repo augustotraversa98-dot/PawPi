@@ -1049,3 +1049,115 @@ export function useSetOrderFulfillment(providerId) {
     },
   });
 }
+
+// ── Adoption (ticket 2.12) ──────────────────────────────────────────────────────
+export const adoptableListingsKey = (providerId) => ["provider", providerId, "adoptable-listings"];
+export const adoptionApplicationsKey = (providerId) => ["provider", providerId, "adoption-applications"];
+
+// The place's adoptable dogs (GET .../adoptable-listings). RLS: staff see all (incl.
+// pending/adopted + a draft place).
+export function useAdoptableListings(providerId) {
+  return useQuery({
+    queryKey: adoptableListingsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/adoptable-listings`);
+      return data.listings ?? [];
+    },
+  });
+}
+
+// Create a listing (POST .../adoptable-listings). mutateAsync({ name*, breed?, age_years?,
+// gender?, size?, story?, adoption_fee_cents?, good_with_*?, energy_level?,
+// vaccination_status? }). Shelter-admin only (gated server-side).
+export function useCreateAdoptableListing(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(`/api/providers/${providerId}/adoptable-listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.listing;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adoptableListingsKey(providerId) });
+    },
+  });
+}
+
+// Update a listing (PATCH .../adoptable-listings/[listingId]). mutateAsync({ listingId,
+// ...fields }) — incl. status (available/pending/adopted).
+export function useUpdateAdoptableListing(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, ...body }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/adoptable-listings/${listingId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return data.listing;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adoptableListingsKey(providerId) });
+    },
+  });
+}
+
+// Remove a listing (DELETE .../adoptable-listings/[listingId]).
+export function useDeleteAdoptableListing(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (listingId) => {
+      await getJson(`/api/providers/${providerId}/adoptable-listings/${listingId}`, {
+        method: "DELETE",
+      });
+      return listingId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adoptableListingsKey(providerId) });
+    },
+  });
+}
+
+// The place's incoming adoption applications (GET .../adoption-applications).
+export function useAdoptionApplications(providerId) {
+  return useQuery({
+    queryKey: adoptionApplicationsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/adoption-applications`);
+      return data.applications ?? [];
+    },
+  });
+}
+
+// Review an application (PATCH .../adoption-applications/[applicationId]). mutateAsync({
+// applicationId, status }) — under_review / declined / approved. APPROVAL creates the
+// adopter's pet + marks the listing adopted (server-side app_approve_adoption). Refreshes
+// both the application queue and the listings (the approved listing flips to 'adopted').
+export function useReviewAdoptionApplication(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ applicationId, status }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/adoption-applications/${applicationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adoptionApplicationsKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: adoptableListingsKey(providerId) });
+    },
+  });
+}

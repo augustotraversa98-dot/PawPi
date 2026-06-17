@@ -100,6 +100,13 @@ const NAV_ITEMS = [
     enabled: true,
     href: "/provider/shop",
   },
+  {
+    key: "adoption",
+    label: "Adoption",
+    Icon: PawPrint,
+    enabled: true,
+    href: "/provider/adoption",
+  },
   { key: "sales", label: "Sales", Icon: DollarSign, enabled: false },
 ];
 

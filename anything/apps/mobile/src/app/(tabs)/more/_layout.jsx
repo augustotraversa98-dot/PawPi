@@ -10,6 +10,7 @@ export default function MoreLayout() {
       <Stack.Screen name="walking" />
       <Stack.Screen name="sitting" />
       <Stack.Screen name="shop" />
+      <Stack.Screen name="adoption" />
       <Stack.Screen name="provider" />
       <Stack.Screen name="data-access" />
       <Stack.Screen name="profile" />

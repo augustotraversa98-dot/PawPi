@@ -836,6 +836,92 @@ export async function seedMessage(
 }
 
 /**
+ * Seed an adoptable_listings row for `providerId` (ticket 2.12 — adoption). status defaults
+ * 'available'; name carries the id; fee defaults to a small fee. Used to exercise the
+ * adoptable_listings RLS (published-available discovery vs shelter-staff) + the approval flow.
+ */
+export async function seedAdoptableListing(
+  sql: Sql,
+  opts: {
+    listingId: number;
+    providerId: number;
+    name?: string;
+    breed?: string | null;
+    status?: 'available' | 'pending' | 'adopted';
+    adoptionFeeCents?: number;
+    photoUrls?: string[];
+  },
+): Promise<{ listingId: number }> {
+  const {
+    listingId,
+    providerId,
+    name,
+    breed = 'Labrador',
+    status = 'available',
+    adoptionFeeCents = 5000,
+    photoUrls = [`dog-${opts.listingId}.jpg`],
+  } = opts;
+  await sql`
+    insert into adoptable_listings
+      (id, provider_id, name, breed, age_years, gender, size, photo_urls, story,
+       adoption_fee_cents, status)
+    values (
+      ${listingId}, ${providerId}, ${name ?? `dog-${listingId}`}, ${breed}, 2, 'male',
+      'medium', ${photoUrls}, ${`story-${listingId}`}, ${adoptionFeeCents}, ${status}
+    )
+  `;
+  return { listingId };
+}
+
+/**
+ * Seed an adoption_applications row by applicant `applicantUserId` for `listingId` at
+ * `providerId` (ticket 2.12). status defaults 'submitted'. Used to exercise the
+ * applicant-own vs shelter-staff RLS + the approval → pet-transfer helper.
+ */
+export async function seedAdoptionApplication(
+  sql: Sql,
+  opts: {
+    applicationId: number;
+    listingId: number;
+    providerId: number;
+    applicantUserId: number;
+    status?: 'submitted' | 'under_review' | 'approved' | 'declined';
+    answers?: Record<string, unknown>;
+  },
+): Promise<{ applicationId: number }> {
+  const {
+    applicationId,
+    listingId,
+    providerId,
+    applicantUserId,
+    status = 'submitted',
+    answers = { home: 'house', otherPets: false },
+  } = opts;
+  await sql`
+    insert into adoption_applications
+      (id, listing_id, provider_id, applicant_owner_user_id, answers, status)
+    values (
+      ${applicationId}, ${listingId}, ${providerId}, ${applicantUserId},
+      ${sql.json(answers)}, ${status}
+    )
+  `;
+  return { applicationId };
+}
+
+/** Seed an adoption_favorites row for owner `ownerUserId` on `listingId` (ticket 2.12). */
+export async function seedAdoptionFavorite(
+  sql: Sql,
+  opts: { favoriteId: number; ownerUserId: number; listingId: number },
+): Promise<{ favoriteId: number }> {
+  const { favoriteId, ownerUserId, listingId } = opts;
+  await sql`
+    insert into adoption_favorites (id, owner_user_id, listing_id)
+    values (${favoriteId}, ${ownerUserId}, ${listingId})
+  `;
+  return { favoriteId };
+}
+
+/**
  * Seed a pet_medical_profiles row for `petId` owned by `ownerUserId` (R2d
  * provider-accessible medical group). One row per pet (unique pet_id). microchip_id
  * carries the id for readable assertions.
