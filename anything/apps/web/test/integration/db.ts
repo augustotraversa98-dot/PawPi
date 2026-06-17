@@ -1064,3 +1064,128 @@ export async function seedSittingVisit(
   `;
   return { visitId };
 }
+
+/**
+ * Seed a training_programs ENROLLMENT for `petId` owned by `ownerUserId` at `providerId`
+ * (ticket 2.10 — training). status defaults 'active'; title/total_sessions/video_lesson_urls
+ * carry sensible defaults. Used to exercise the owner-FOR-ALL + provider-via-grant RLS.
+ */
+export async function seedTrainingProgram(
+  sql: Sql,
+  opts: {
+    programId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    bookingId?: number | null;
+    title?: string;
+    totalSessions?: number;
+    status?: 'active' | 'completed' | 'cancelled';
+    videoLessonUrls?: string[];
+  },
+): Promise<{ programId: number }> {
+  const {
+    programId,
+    petId,
+    ownerUserId,
+    providerId,
+    bookingId = null,
+    title,
+    totalSessions = 6,
+    status = 'active',
+    videoLessonUrls,
+  } = opts;
+  await sql`
+    insert into training_programs
+      (id, booking_id, pet_id, owner_user_id, provider_id, title, total_sessions,
+       status, video_lesson_urls)
+    values (
+      ${programId}, ${bookingId}, ${petId}, ${ownerUserId}, ${providerId},
+      ${title ?? `program-${programId}`}, ${totalSessions}, ${status},
+      ${videoLessonUrls ?? [`lesson-${programId}.mp4`]}
+    )
+  `;
+  return { programId };
+}
+
+/**
+ * Seed a training_sessions occurrence at `providerId` (ticket 2.10). kind defaults
+ * 'group_class'; capacity NULL = unlimited (pass a number for a capacity-managed class).
+ * Used to exercise the staff-manage / published-public RLS + the group-class capacity guard.
+ */
+export async function seedTrainingSession(
+  sql: Sql,
+  opts: {
+    sessionId: number;
+    providerId: number;
+    programId?: number | null;
+    kind?: 'one_on_one' | 'group_class' | 'program';
+    title?: string;
+    capacity?: number | null;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  },
+): Promise<{ sessionId: number }> {
+  const {
+    sessionId,
+    providerId,
+    programId = null,
+    kind = 'group_class',
+    title,
+    capacity = null,
+    status = 'scheduled',
+  } = opts;
+  await sql`
+    insert into training_sessions
+      (id, provider_id, program_id, kind, title, capacity, status)
+    values (
+      ${sessionId}, ${providerId}, ${programId}, ${kind},
+      ${title ?? `session-${sessionId}`}, ${capacity}, ${status}
+    )
+  `;
+  return { sessionId };
+}
+
+/**
+ * Seed a training_progress row (the per-pet attendance + progress note; ALSO the group-class
+ * roster row) for `petId` owned by `ownerUserId` at `providerId` on `sessionId` (ticket
+ * 2.10). status defaults 'booked'; progress_note/video carry the id. Used to exercise the
+ * owner-FOR-ALL + provider-via-grant RLS (owner sees own pet's progress only) + capacity.
+ */
+export async function seedTrainingProgress(
+  sql: Sql,
+  opts: {
+    progressId: number;
+    sessionId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    programId?: number | null;
+    attended?: boolean;
+    progressNote?: string | null;
+    videoLessonUrls?: string[];
+    status?: 'booked' | 'completed' | 'cancelled';
+  },
+): Promise<{ progressId: number }> {
+  const {
+    progressId,
+    sessionId,
+    petId,
+    ownerUserId,
+    providerId,
+    programId = null,
+    attended = false,
+    progressNote = null,
+    videoLessonUrls,
+    status = 'booked',
+  } = opts;
+  await sql`
+    insert into training_progress
+      (id, session_id, program_id, pet_id, owner_user_id, provider_id, attended,
+       progress_note, video_lesson_urls, status)
+    values (
+      ${progressId}, ${sessionId}, ${programId}, ${petId}, ${ownerUserId}, ${providerId},
+      ${attended}, ${progressNote}, ${videoLessonUrls ?? []}, ${status}
+    )
+  `;
+  return { progressId };
+}

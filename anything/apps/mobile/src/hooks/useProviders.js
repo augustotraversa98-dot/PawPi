@@ -566,3 +566,112 @@ export function useLogSittingVisit() {
     },
   });
 }
+
+// --- training (Phase 2 ticket 2.10) -----------------------------------------
+// The PROVIDER training service (HIRING a trainer) — DISTINCT from the consumer self-
+// Training tab (static content, no DB). The owner books a 1:1 / group class / program and
+// reads their pet's PROGRESS + VIDEO LESSONS; the trainer logs progress (web dashboard).
+// Booking a training service reuses useBookProvider({ capability: 'trainer' }); RLS (0036)
+// is the real guard — the owner sees their OWN pet's progress only.
+
+// Owner: the active pet's TRAINING PROGRAM enrollments (GET /api/pets/[id]/training-
+// programs), each with its per-session progress + video lessons. Polls every 30s so a
+// freshly-logged progress note appears. Empty → []. Newest first.
+export function useTrainingPrograms(petId) {
+  return useQuery({
+    queryKey: ["training-programs", "owner", petId],
+    enabled: petId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/training-programs`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch training programs");
+      }
+      const data = await response.json();
+      return data.programs ?? [];
+    },
+  });
+}
+
+// Owner: a trainer's bookable GROUP CLASSES (GET /api/providers/[id]/training-sessions?
+// kind=group_class). Published-provider sessions are public-readable (RLS 0036). Each
+// class carries attendee_count + capacity so the UI can show "X / N seats". Empty → [].
+export function useTrainingClasses(providerId) {
+  return useQuery({
+    queryKey: ["training-classes", providerId],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/training-sessions?kind=group_class`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch classes");
+      }
+      const data = await response.json();
+      return data.sessions ?? [];
+    },
+  });
+}
+
+// Owner ENROLLS in a program / books a 1:1 course (POST /api/pets/[id]/training-programs).
+// The backend gates the trainer capability. mutateAsync({ petId, provider_id, service_id?,
+// title*, total_sessions?, booking_id? }) → { program }. Invalidates the owner's programs.
+export function useEnrollTrainingProgram() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, ...body }) => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/training-programs`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to enroll");
+      }
+      return response.json(); // { program }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["training-programs", "owner", variables?.petId],
+      });
+    },
+  });
+}
+
+// Owner JOINS a group class for their pet (POST /api/pets/[id]/training-classes). The
+// backend enforces GROUP-CLASS CAPACITY (clean 409 "This class is full"). mutateAsync({
+// petId, session_id*, booking_id? }) → { progress }. Invalidates the owner's programs +
+// the class list (so the seat count refreshes).
+export function useJoinTrainingClass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, ...body }) => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/training-classes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        // Surface the backend's 400/403/409 message (incl. "This class is full").
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to join class");
+      }
+      return response.json(); // { progress }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["training-programs", "owner", variables?.petId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["training-classes"] });
+    },
+  });
+}

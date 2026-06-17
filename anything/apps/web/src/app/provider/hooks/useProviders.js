@@ -851,3 +851,95 @@ export function usePetVaccineCheck(providerId, petId, locationId) {
     },
   });
 }
+
+// --- training (ticket 2.10) -------------------------------------------------
+// The TRAINER workspace: manage 1:1 sessions / group classes / programs and LOG per-pet
+// PROGRESS. All data flows through the already-built backend; RLS (0036) + the capability
+// gate + assertCareAccess are the real guards. Distinct from the consumer self-Training tab.
+
+export const trainingSessionsKey = (providerId) => [
+  "provider-training-sessions",
+  String(providerId ?? ""),
+];
+
+export const trainingProgressKey = (providerId, sessionId) => [
+  "provider-training-progress",
+  String(providerId ?? ""),
+  String(sessionId ?? "all"),
+];
+
+export const trainingProgressPrefixKey = (providerId) => [
+  "provider-training-progress",
+  String(providerId ?? ""),
+];
+
+// The trainer's session/class SCHEDULE (GET .../training-sessions). Each group class
+// carries attendee_count + capacity so the UI shows fullness.
+export function useTrainingSessions(providerId) {
+  return useQuery({
+    queryKey: trainingSessionsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/training-sessions`);
+      return data.sessions ?? [];
+    },
+  });
+}
+
+// Create a session/class (POST .../training-sessions). mutateAsync({ kind*, title?,
+// capacity?, scheduled_at?, service_id?, program_id? }).
+export function useCreateTrainingSession(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(`/api/providers/${providerId}/training-sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.session;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trainingSessionsKey(providerId) });
+    },
+  });
+}
+
+// The roster/progress for a session (GET .../training-progress?session_id=). RLS scopes to
+// attendees the trainer holds a grant on.
+export function useTrainingProgress(providerId, sessionId) {
+  return useQuery({
+    queryKey: trainingProgressKey(providerId, sessionId),
+    enabled: providerId != null && providerId !== "" && sessionId != null,
+    queryFn: async () => {
+      const data = await getJson(
+        `/api/providers/${providerId}/training-progress?session_id=${encodeURIComponent(sessionId)}`,
+      );
+      return data.progress ?? [];
+    },
+  });
+}
+
+// Log per-pet progress (POST .../training-progress). Two shapes:
+//   - update an existing roster row: { progress_id, attended?, progress_note?, status?,
+//     video_lesson_urls? }
+//   - create a new one (1:1 / program session): { session_id, pet_id, program_id?, ... }
+// The backend gates capability('trainer') + assertCareAccess('health_logs_write').
+export function useLogTrainingProgress(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(`/api/providers/${providerId}/training-progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.progress;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: trainingProgressPrefixKey(providerId),
+      });
+    },
+  });
+}
