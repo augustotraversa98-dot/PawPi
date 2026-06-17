@@ -69,6 +69,16 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.27 — Real owner↔owner messaging  ·  ticket/owner-messaging-real (2026-06-17)
+What shipped: the phone's **social Messages/Chat** is now a **real** 1:1 owner↔owner DM backend (SEPARATE from the provider chat, which is untouched). A **Message** button on another pet's profile starts (or reuses) a private thread; the **Messages** inbox shows real threads (other person, last message, unread badge, newest first) and the **conversation** view sends text + photos, short-polls, and marks read on open. Mock conversations are gone (file deleted; no startup seeding). A pair always shares ONE thread (normalized), and only the two participants can read/post.
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0045_owner_messaging.sql` — `dm_threads` (normalized `user_a < user_b` + unique pair index) + `dm_messages`, both participant-scoped ENABLE+FORCE RLS, with the `app_is_dm_participant()` SECURITY DEFINER helper (mirrors 0031). Hand-apply after merge.
+- Exercised by web vitest (thread create idempotent per pair + normalized; list scoped to me; send requires participation/sender=caller → 403 on RLS reject; mark-read), the real-Postgres harness (both participants see the thread / outsider zero; can't post as another or into a foreign thread; recipient marks read; helper resolves), and mobile jest (inbox list + empty state + tap-through; conversation render by sender, send, mark-read on open).
+- **NEEDS A DEVICE PASS** — jest can't exercise the live chat or image upload:
+1. Open another owner's pet profile → **Message** → a thread opens; send text and a photo → they appear.
+2. The other account sees the thread in **Messages** with an unread badge; opening it clears the badge and shows only their side.
+3. Messaging the same person again reuses the SAME thread (no duplicates).
+4. A fresh account shows "No conversations yet"; the **provider chat** still works independently.
+
 ### [ ] 2.26 — Notifications on real data  ·  ticket/notifications-real (2026-06-17)
 What shipped: the phone **Notifications** bell now shows **real** activity on your content — someone **pawed** your post, **barked** (commented), or **followed** your pet — merged with the existing local **reminder** notifications, filterable (All/Walks/Feeding/Paws/Barks/Training). Tapping a follow opens that pet's profile; a paw/bark returns to the feed; reminders behave as before. Unread styling + **Mark all read** (marks both sources). Mock notifications are gone (file deleted; no startup seeding). A notify never blocks the underlying action, and you're never notified about your own action.
 - ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0044_notifications.sql` — `notifications` table (recipient/owner-scoped ENABLE+FORCE RLS) + the `app_notify(recipient, actor, type, subject_ref, body)` **SECURITY DEFINER** insert helper (lets the actor create a row for a different recipient; pinned search_path; GRANT EXECUTE to pawpi_app). Hand-apply after merge.
