@@ -73,6 +73,15 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.32 — Password security rules  ·  ticket/password-security (2026-06-18)
+What shipped: new accounts must choose a stronger password. One shared rule (`src/app/api/utils/passwordStrength.js`): **≥ 8 chars AND ≥ 3 of {lowercase, uppercase, number, symbol} AND not in a common-password blocklist**. Enforced **server-side** in the sign-up/credentials path (`src/auth.js` throws a `WeakPassword` error when the rule fails) — the source of truth. The web sign-up form mirrors it with a **live strength meter + a requirements checklist** and keeps the **Create account** button disabled until the password is valid (and matches confirm).
+- **No migration / no backend table.** **Login is deliberately untouched** — existing users with weaker passwords still sign in with whatever they have; the rule applies on sign-up (and any future password-change) only.
+- Exercised by web vitest (validator: accepts strong, rejects short / low-variety / common / empty; meter: empty→0, common capped, per-class booleans, strong long → score 4).
+- **NEEDS A QUICK BROWSER PASS** (mobile sign-up flows through this same web page in the AuthWebView):
+1. Open `/account/signup` → type a weak password ("123456") → meter shows red/"Very weak", checklist unticked, button stays disabled. The server also rejects it if forced.
+2. Type a strong one ("Sn!ffSpot1") → meter goes green, checklist ticks, button enables → account creates.
+3. **Sign IN** with an existing account that has an old/short password → still works (not blocked).
+
 ### [ ] 2.29 — i18n English/Spanish  ·  ticket/i18n-spanish (2026-06-17)
 What shipped: the app now has an **internationalization framework** (i18next + react-i18next + expo-localization). It defaults to the **phone's language** (Spanish on a Spanish phone, English otherwise) with a **Settings → Language** toggle (System default / English / Español) that switches **live** and **persists** (`pawpi:locale`). The **bottom-tab labels** and the **Settings** screen are translated; everything else falls back cleanly to English (a raw key is never shown), and new screens adopt `t("namespace.key")` from here. EN + ES catalogs ship with core keys (tabs, common buttons/empty/errors, settings, feed/health/services/search/messages/notifications headings) in neutral LATAM-friendly Spanish.
 - **No migration / no backend.** New deps: `i18next` + `react-i18next` (pure JS) + `expo-localization@~17.0.8` (SDK-54). Works in Expo Go (no custom native needed beyond expo-localization, which is in the SDK).

@@ -1,5 +1,12 @@
 import { useState } from "react";
 import useAuth from "@/utils/useAuth";
+import {
+  validatePassword,
+  passwordStrength,
+  PASSWORD_MIN_LENGTH,
+} from "@/app/api/utils/passwordStrength";
+
+const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
 
 export default function SignUpPage() {
   const [error, setError] = useState(null);
@@ -12,6 +19,16 @@ export default function SignUpPage() {
   });
 
   const { signUpWithCredentials } = useAuth();
+
+  // Live strength feedback mirrors the same rule the server enforces (2.32).
+  const strength = passwordStrength(formData.password);
+  const passwordValid = strength.valid;
+  const canSubmit =
+    !loading &&
+    formData.name.trim().length > 0 &&
+    formData.email.trim().length > 0 &&
+    passwordValid &&
+    formData.password === formData.confirmPassword;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -37,8 +54,9 @@ export default function SignUpPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    const { valid, errors } = validatePassword(formData.password);
+    if (!valid) {
+      setError(errors[0] || "Please choose a stronger password");
       setLoading(false);
       return;
     }
@@ -60,10 +78,14 @@ export default function SignUpPage() {
           "This email is already registered. Try logging in instead.",
         EmailCreateAccount: "This email is already registered.",
         OAuthCreateAccount: "Could not create account. Please try again.",
+        WeakPassword:
+          "That password is too weak. Use at least 8 characters and mix letters, numbers, and symbols.",
       };
 
       setError(
-        errorMessages[err.message] || "Something went wrong. Please try again.",
+        errorMessages[err.code] ||
+          errorMessages[err.message] ||
+          "Something went wrong. Please try again.",
       );
       setLoading(false);
     }
@@ -137,9 +159,48 @@ export default function SignUpPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, password: e.target.value }))
               }
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
+
+            {/* Live strength meter + requirements (mirrors the server rule) */}
+            {formData.password.length > 0 && (
+              <div className="mt-2">
+                <div className="flex gap-1" aria-hidden="true">
+                  {[1, 2, 3, 4].map((seg) => (
+                    <div
+                      key={seg}
+                      className="h-1.5 flex-1 rounded-full transition-colors"
+                      style={{
+                        backgroundColor:
+                          strength.score >= seg
+                            ? METER_COLORS[strength.score]
+                            : "#EFEAE6",
+                      }}
+                    />
+                  ))}
+                </div>
+                <p
+                  className="mt-1 text-xs font-semibold"
+                  style={{ color: METER_COLORS[strength.score] }}
+                >
+                  {strength.label}
+                </p>
+                <ul className="mt-1 space-y-0.5 text-xs text-[#7A6254]">
+                  <li className={formData.password.length >= PASSWORD_MIN_LENGTH ? "text-[#2E8F62]" : ""}>
+                    {formData.password.length >= PASSWORD_MIN_LENGTH ? "✓" : "•"}{" "}
+                    At least {PASSWORD_MIN_LENGTH} characters
+                  </li>
+                  <li className={strength.classCount >= 3 ? "text-[#2E8F62]" : ""}>
+                    {strength.classCount >= 3 ? "✓" : "•"} Mix 3 of: lowercase,
+                    uppercase, number, symbol
+                  </li>
+                  <li className={passwordValid ? "text-[#2E8F62]" : ""}>
+                    {passwordValid ? "✓" : "•"} Not a common password
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Confirm Password */}
@@ -173,8 +234,8 @@ export default function SignUpPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51] disabled:opacity-50"
+            disabled={!canSubmit}
+            className="w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create account"}
           </button>
