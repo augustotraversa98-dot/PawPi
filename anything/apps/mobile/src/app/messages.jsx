@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, Search } from "lucide-react-native";
+import { X, Search, User } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
-import useSocialPetStore from "@/store/socialPetStore";
-import { mockConversations, mockMessages } from "@/data/mockConversationsData";
+import { useDMThreads } from "@/hooks/useDMs";
 
+// Owner↔owner Messages inbox on REAL data (ticket 2.27). No mock — empty → empty state.
 const formatMessageTime = (timestamp) => {
+  if (!timestamp) return "";
   const now = new Date();
   const then = new Date(timestamp);
-  const diffMs = now - then;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
+  const diffMins = Math.floor((now - then) / 60000);
+  const diffHours = Math.floor((now - then) / 3600000);
+  const diffDays = Math.floor((now - then) / 86400000);
   if (diffMins < 60) return `${diffMins}m`;
   if (diffHours < 24) return `${diffHours}h`;
   if (diffDays === 1) return "Yesterday";
@@ -34,54 +34,31 @@ export default function MessagesScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const conversations = useSocialPetStore((state) => state.conversations);
-  const messages = useSocialPetStore((state) => state.messages);
+  const { data: threads, isLoading } = useDMThreads();
 
-  // Load mock conversations on first render
-  useEffect(() => {
-    const store = useSocialPetStore.getState();
-    if (conversations.length === 0) {
-      mockConversations.forEach((conv) => {
-        store.addConversation(conv);
-      });
-      // Load mock messages
-      Object.entries(mockMessages).forEach(([convId, msgs]) => {
-        msgs.forEach((msg) => {
-          // Don't use addMessage as it updates conversation, just set directly
-          store.messages[convId] = msgs;
-        });
-      });
-    }
-  }, []);
+  const filtered = (threads || []).filter((t) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (t.other_name || "").toLowerCase().includes(q) ||
+      (t.last_message_body || "").toLowerCase().includes(q)
+    );
+  });
 
-  // Filter conversations based on search
-  const filteredConversations = searchQuery.trim()
-    ? conversations.filter((conv) => {
-        const query = searchQuery.toLowerCase();
-        return (
-          conv.petName.toLowerCase().includes(query) ||
-          conv.ownerName.toLowerCase().includes(query) ||
-          conv.lastMessage.toLowerCase().includes(query)
-        );
-      })
-    : conversations;
-
-  const handleConversationTap = (conversation) => {
+  const openThread = (t) => {
     router.push({
       pathname: "/chat",
       params: {
-        conversationId: conversation.id,
-        petName: conversation.petName,
-        ownerName: conversation.ownerName,
-        avatar: conversation.avatar,
-        petAvatar: conversation.petAvatar,
+        threadId: String(t.id),
+        otherUserId: String(t.other_user_id),
+        otherName: t.other_name || t.other_username || "Pet parent",
+        otherAvatar: t.other_avatar_url || "",
       },
     });
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 6,
@@ -116,7 +93,6 @@ export default function MessagesScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        {/* Search input */}
         <View
           style={{
             flexDirection: "row",
@@ -132,12 +108,7 @@ export default function MessagesScreen() {
         >
           <Search size={18} color={COLORS.mutedBrown} />
           <TextInput
-            style={{
-              flex: 1,
-              fontSize: 15,
-              color: COLORS.warmBrown,
-              padding: 0,
-            }}
+            style={{ flex: 1, fontSize: 15, color: COLORS.warmBrown, padding: 0 }}
             placeholder="Search conversations…"
             placeholderTextColor={COLORS.mutedBrown}
             value={searchQuery}
@@ -151,12 +122,15 @@ export default function MessagesScreen() {
         </View>
       </View>
 
-      {/* Conversations list */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
-        {filteredConversations.length === 0 ? (
+        {isLoading ? (
+          <View style={{ alignItems: "center", paddingVertical: 60 }}>
+            <ActivityIndicator color={COLORS.coral} />
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={{ alignItems: "center", paddingVertical: 80 }}>
             <Text style={{ fontSize: 48 }}>💬</Text>
             <Text
@@ -178,128 +152,124 @@ export default function MessagesScreen() {
                 paddingHorizontal: 40,
               }}
             >
-              Start chatting with your pet friends!
+              Message another pet parent from their pet's profile.
             </Text>
           </View>
         ) : (
-          filteredConversations.map((conversation) => (
-            <TouchableOpacity
-              key={conversation.id}
-              onPress={() => handleConversationTap(conversation)}
-              style={{
-                marginHorizontal: 16,
-                marginTop: 12,
-                backgroundColor: COLORS.card,
-                borderRadius: 20,
-                padding: 16,
-                flexDirection: "row",
-                gap: 14,
-                borderWidth: 1,
-                borderColor: conversation.unread ? COLORS.coral : COLORS.peach,
-                shadowColor: conversation.unread ? COLORS.coral : "transparent",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: conversation.unread ? 0.1 : 0,
-                shadowRadius: 8,
-                elevation: conversation.unread ? 2 : 0,
-              }}
-            >
-              <View style={{ position: "relative" }}>
-                <Image
-                  source={{ uri: conversation.avatar }}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    borderWidth: 2,
-                    borderColor: COLORS.coral,
-                  }}
-                  transition={100}
-                />
-                {conversation.petAvatar && (
+          filtered.map((t) => {
+            const unread = (t.unread_count ?? 0) > 0;
+            const preview = t.last_message_body
+              ? t.last_message_body
+              : t.last_message_image_url
+                ? "📷 Photo"
+                : "Say hi 👋";
+            return (
+              <TouchableOpacity
+                key={t.id}
+                testID="dm-thread"
+                onPress={() => openThread(t)}
+                style={{
+                  marginHorizontal: 16,
+                  marginTop: 12,
+                  backgroundColor: COLORS.card,
+                  borderRadius: 20,
+                  padding: 16,
+                  flexDirection: "row",
+                  gap: 14,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: unread ? COLORS.coral : COLORS.peach,
+                }}
+              >
+                {t.other_avatar_url ? (
                   <Image
-                    source={{ uri: conversation.petAvatar }}
+                    source={{ uri: t.other_avatar_url }}
                     style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
+                      width: 56,
+                      height: 56,
+                      borderRadius: 28,
                       borderWidth: 2,
-                      borderColor: COLORS.card,
-                      position: "absolute",
-                      bottom: -4,
-                      right: -4,
+                      borderColor: COLORS.coral,
                     }}
                     transition={100}
                   />
+                ) : (
+                  <View
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 28,
+                      backgroundColor: COLORS.sand,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <User size={24} color={COLORS.coral} />
+                  </View>
                 )}
-              </View>
 
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: 6,
-                  }}
-                >
-                  <Text
+                <View style={{ flex: 1 }}>
+                  <View
                     style={{
-                      fontSize: 16,
-                      fontWeight: "800",
-                      color: COLORS.warmBrown,
-                      flex: 1,
-                      marginRight: 8,
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 4,
                     }}
                   >
-                    {conversation.petName}
-                  </Text>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "800",
+                        color: COLORS.warmBrown,
+                        flex: 1,
+                        marginRight: 8,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {t.other_name || t.other_username || "Pet parent"}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: COLORS.mutedBrown,
+                        fontWeight: unread ? "700" : "400",
+                      }}
+                    >
+                      {formatMessageTime(t.last_message_at)}
+                    </Text>
+                  </View>
                   <Text
                     style={{
-                      fontSize: 11,
-                      color: COLORS.mutedBrown,
-                      fontWeight: conversation.unread ? "700" : "400",
+                      fontSize: 14,
+                      color: unread ? COLORS.warmBrown : COLORS.mutedBrown,
+                      fontWeight: unread ? "700" : "400",
                     }}
+                    numberOfLines={1}
                   >
-                    {formatMessageTime(conversation.lastMessageTime)}
+                    {preview}
                   </Text>
                 </View>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: COLORS.mutedBrown,
-                    marginBottom: 4,
-                  }}
-                >
-                  with {conversation.ownerName}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: conversation.unread
-                      ? COLORS.warmBrown
-                      : COLORS.mutedBrown,
-                    fontWeight: conversation.unread ? "700" : "400",
-                    lineHeight: 20,
-                  }}
-                  numberOfLines={1}
-                >
-                  {conversation.lastMessage}
-                </Text>
-              </View>
 
-              {conversation.unread && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: COLORS.coral,
-                    alignSelf: "center",
-                  }}
-                />
-              )}
-            </TouchableOpacity>
-          ))
+                {unread && (
+                  <View
+                    style={{
+                      minWidth: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      paddingHorizontal: 6,
+                      backgroundColor: COLORS.coral,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "800" }}>
+                      {t.unread_count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </View>

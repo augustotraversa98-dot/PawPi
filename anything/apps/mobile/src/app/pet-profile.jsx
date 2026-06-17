@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, PawPrint, Grid3X3 } from "lucide-react-native";
+import { ChevronLeft, PawPrint, Grid3X3, MessageCircle } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
@@ -20,6 +20,7 @@ import {
   usePetSocialProfile,
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
+import { useStartDM } from "@/hooks/useDMs";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
@@ -87,6 +88,28 @@ export default function PetProfileScreen() {
   // You can't follow your own pet (the server rejects it too), and there's
   // nothing to follow with when you have no active pet.
   const canFollow = !!viewerPetId && String(viewerPetId) !== String(petId);
+
+  // Message the OWNER (ticket 2.27) — same gate; needs the owner's user id. Starts
+  // (or reuses) a 1:1 DM thread, then opens the conversation.
+  const startDM = useStartDM();
+  const canMessage = canFollow && !!owner?.id;
+  const handleMessage = useCallback(async () => {
+    if (!owner?.id) return;
+    try {
+      const { thread } = await startDM.mutateAsync({ otherUserId: owner.id });
+      router.push({
+        pathname: "/chat",
+        params: {
+          threadId: String(thread.id),
+          otherUserId: String(owner.id),
+          otherName: owner.full_name || owner.username || "Pet parent",
+          otherAvatar: owner.avatar_url || "",
+        },
+      });
+    } catch (e) {
+      // Non-fatal: the button just no-ops on failure.
+    }
+  }, [owner, startDM, router]);
 
   // ── Post detail / bark modals (mirror the feed) ──
   const [detailPost, setDetailPost] = useState(null);
@@ -294,42 +317,73 @@ export default function PetProfileScreen() {
             </Text>
           )}
 
-          {/* Follow button — hidden on your own pet and when you have no
+          {/* Follow + Message — hidden on your own pet and when you have no
               active pet (the server rejects both too). */}
           {canFollow && (
-            <TouchableOpacity
-              onPress={handleToggleFollow}
+            <View
               style={{
                 marginTop: 18,
-                paddingVertical: 13,
-                paddingHorizontal: 36,
-                borderRadius: 18,
-                backgroundColor: isFollowing ? C.sand : C.coral,
-                borderWidth: isFollowing ? 1.5 : 0,
-                borderColor: C.peach,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 8,
-                shadowColor: isFollowing ? "transparent" : C.coral,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
+                gap: 10,
               }}
             >
-              <PawPrint
-                size={18}
-                color={isFollowing ? C.mutedBrown : "#FFF"}
-              />
-              <Text
+              <TouchableOpacity
+                onPress={handleToggleFollow}
                 style={{
-                  fontWeight: "800",
-                  fontSize: 15,
-                  color: isFollowing ? C.mutedBrown : "#FFF",
+                  paddingVertical: 13,
+                  paddingHorizontal: 30,
+                  borderRadius: 18,
+                  backgroundColor: isFollowing ? C.sand : C.coral,
+                  borderWidth: isFollowing ? 1.5 : 0,
+                  borderColor: C.peach,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  shadowColor: isFollowing ? "transparent" : C.coral,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
                 }}
               >
-                {isFollowing ? "Following ✓" : "Follow +"}
-              </Text>
-            </TouchableOpacity>
+                <PawPrint size={18} color={isFollowing ? C.mutedBrown : "#FFF"} />
+                <Text
+                  style={{
+                    fontWeight: "800",
+                    fontSize: 15,
+                    color: isFollowing ? C.mutedBrown : "#FFF",
+                  }}
+                >
+                  {isFollowing ? "Following ✓" : "Follow +"}
+                </Text>
+              </TouchableOpacity>
+
+              {canMessage && (
+                <TouchableOpacity
+                  onPress={handleMessage}
+                  disabled={startDM.isPending}
+                  testID="message-owner"
+                  style={{
+                    paddingVertical: 13,
+                    paddingHorizontal: 22,
+                    borderRadius: 18,
+                    backgroundColor: C.sand,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <MessageCircle size={18} color={C.terracotta} />
+                  <Text
+                    style={{ fontWeight: "800", fontSize: 15, color: C.terracotta }}
+                  >
+                    Message
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 

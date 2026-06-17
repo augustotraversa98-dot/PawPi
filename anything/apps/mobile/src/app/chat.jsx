@@ -7,16 +7,21 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, Send, ImageIcon, Share2 } from "lucide-react-native";
+import { ChevronLeft, Send, ImageIcon, User } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { COLORS } from "@/constants/colors";
-import useSocialPetStore from "@/store/socialPetStore";
 import * as ImagePicker from "expo-image-picker";
+import { useDMMessages, useSendDM, useMarkDMRead } from "@/hooks/useDMs";
+import useUpload from "@/utils/useUpload";
 
-const formatMessageTime = (timestamp) => {
+// Owner↔owner conversation on REAL data (ticket 2.27). Messages come from the API
+// (newest-first → reversed for display); a message isMine when its sender isn't the
+// other participant. Mark-read on open; short-poll while open.
+const formatTime = (timestamp) => {
   const date = new Date(timestamp);
   const hours = date.getHours();
   const minutes = date.getMinutes();
@@ -30,57 +35,40 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { conversationId, petName, ownerName, avatar, petAvatar } = params;
+  const threadId = Array.isArray(params.threadId)
+    ? params.threadId[0]
+    : params.threadId;
+  const otherUserId = Array.isArray(params.otherUserId)
+    ? params.otherUserId[0]
+    : params.otherUserId;
+  const otherName = params.otherName || "Pet parent";
+  const otherAvatar = params.otherAvatar;
 
   const [text, setText] = useState("");
   const scrollViewRef = useRef(null);
-  const inputRef = useRef(null);
 
-  const currentUser = useSocialPetStore((state) => state.currentUser);
-  const getConversationMessages = useSocialPetStore(
-    (state) => state.getConversationMessages,
-  );
-  const addMessage = useSocialPetStore((state) => state.addMessage);
-  const markConversationRead = useSocialPetStore(
-    (state) => state.markConversationRead,
-  );
+  const { data: rawMessages, isLoading } = useDMMessages(threadId);
+  const send = useSendDM(threadId);
+  const markRead = useMarkDMRead();
+  const [upload, { loading: uploading }] = useUpload();
 
-  const [messages, setMessages] = useState([]);
+  // API returns newest-first; show oldest→newest.
+  const messages = [...(rawMessages || [])].reverse();
+
+  // Mark read on open + whenever new messages arrive.
+  useEffect(() => {
+    if (threadId) markRead.mutate(threadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, rawMessages?.length]);
 
   useEffect(() => {
-    // Load messages for this conversation
-    const convMessages = getConversationMessages(conversationId);
-    setMessages(convMessages);
-    // Mark as read
-    markConversationRead(conversationId);
-  }, [conversationId, getConversationMessages, markConversationRead]);
-
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages.length]);
 
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-
-    const newMessage = {
-      id: Date.now().toString(),
-      conversationId,
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      text: trimmed,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    addMessage(conversationId, newMessage);
-    // Update local messages
-    const updatedMessages = getConversationMessages(conversationId);
-    setMessages(updatedMessages);
-    setText("");
+    send.mutate({ body: trimmed }, { onSuccess: () => setText("") });
   };
 
   const handleImagePick = async () => {
@@ -90,27 +78,14 @@ export default function ChatScreen() {
       aspect: [4, 3],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      const newMessage = {
-        id: Date.now().toString(),
-        conversationId,
-        senderId: currentUser.id,
-        senderName: currentUser.name,
-        image: result.assets[0].uri,
-        timestamp: new Date().toISOString(),
-        read: false,
-      };
-
-      addMessage(conversationId, newMessage);
-      const updatedMessages = getConversationMessages(conversationId);
-      setMessages(updatedMessages);
-    }
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    const res = await upload({ reactNativeAsset: asset });
+    if (res?.url) send.mutate({ image_url: res.url });
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 6,
@@ -119,7 +94,6 @@ export default function ChatScreen() {
           backgroundColor: COLORS.card,
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
           borderBottomWidth: 1,
           borderBottomColor: COLORS.peach,
           gap: 12,
@@ -128,65 +102,38 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <ChevronLeft size={24} color={COLORS.coral} />
         </TouchableOpacity>
-
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-          }}
+        {otherAvatar ? (
+          <Image
+            source={{ uri: otherAvatar }}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              borderWidth: 2,
+              borderColor: COLORS.coral,
+            }}
+            transition={100}
+          />
+        ) : (
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: COLORS.sand,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <User size={20} color={COLORS.coral} />
+          </View>
+        )}
+        <Text
+          style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }}
+          numberOfLines={1}
         >
-          <View style={{ position: "relative" }}>
-            <Image
-              source={{ uri: avatar }}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
-                borderWidth: 2,
-                borderColor: COLORS.coral,
-              }}
-              transition={100}
-            />
-            {petAvatar && (
-              <Image
-                source={{ uri: petAvatar }}
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 2,
-                  borderColor: COLORS.card,
-                  position: "absolute",
-                  bottom: -2,
-                  right: -2,
-                }}
-                transition={100}
-              />
-            )}
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "800",
-                color: COLORS.warmBrown,
-              }}
-            >
-              {petName}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: COLORS.mutedBrown,
-              }}
-            >
-              {ownerName}
-            </Text>
-          </View>
-        </View>
+          {otherName}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -194,123 +141,96 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={insets.top + 60}
       >
-        {/* Messages */}
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingVertical: 16,
-            paddingHorizontal: 16,
-            paddingBottom: 20,
-          }}
+          contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 16 }}
           keyboardShouldPersistTaps="handled"
         >
-          {messages.map((message, index) => {
-            const isCurrentUser = message.senderId === currentUser.id;
-            const showAvatar = !isCurrentUser;
-            const prevMessage = messages[index - 1];
-            const showTimestamp =
-              !prevMessage ||
-              new Date(message.timestamp) - new Date(prevMessage.timestamp) >
-                5 * 60 * 1000; // 5 minutes
-
-            return (
-              <View key={message.id} style={{ marginBottom: 12 }}>
-                {showTimestamp && (
-                  <Text
+          {isLoading ? (
+            <View style={{ alignItems: "center", paddingVertical: 40 }}>
+              <ActivityIndicator color={COLORS.coral} />
+            </View>
+          ) : messages.length === 0 ? (
+            <View style={{ alignItems: "center", paddingVertical: 40 }}>
+              <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+                Say hello to start the conversation.
+              </Text>
+            </View>
+          ) : (
+            messages.map((m, index) => {
+              const isMine = String(m.sender_user_id) !== String(otherUserId);
+              const prev = messages[index - 1];
+              const showTime =
+                !prev ||
+                new Date(m.created_at) - new Date(prev.created_at) > 5 * 60 * 1000;
+              return (
+                <View key={m.id} style={{ marginBottom: 12 }}>
+                  {showTime && (
+                    <Text
+                      style={{
+                        textAlign: "center",
+                        fontSize: 11,
+                        color: COLORS.mutedBrown,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {formatTime(m.created_at)}
+                    </Text>
+                  )}
+                  <View
                     style={{
-                      textAlign: "center",
-                      fontSize: 11,
-                      color: COLORS.mutedBrown,
-                      marginBottom: 12,
+                      flexDirection: "row",
+                      justifyContent: isMine ? "flex-end" : "flex-start",
                     }}
                   >
-                    {formatMessageTime(message.timestamp)}
-                  </Text>
-                )}
-
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: isCurrentUser ? "flex-end" : "flex-start",
-                    alignItems: "flex-end",
-                    gap: 8,
-                  }}
-                >
-                  {showAvatar && (
-                    <Image
-                      source={{ uri: avatar }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                      }}
-                      transition={100}
-                    />
-                  )}
-
-                  {message.image ? (
-                    <View
-                      style={{
-                        maxWidth: "70%",
-                        backgroundColor: isCurrentUser
-                          ? COLORS.coral
-                          : COLORS.card,
-                        borderRadius: 18,
-                        overflow: "hidden",
-                        borderWidth: 1,
-                        borderColor: isCurrentUser
-                          ? COLORS.coral
-                          : COLORS.peach,
-                      }}
-                    >
-                      <Image
-                        source={{ uri: message.image }}
+                    {m.image_url ? (
+                      <View
                         style={{
-                          width: 200,
-                          height: 150,
-                        }}
-                        contentFit="cover"
-                        transition={100}
-                      />
-                    </View>
-                  ) : (
-                    <View
-                      style={{
-                        maxWidth: "70%",
-                        backgroundColor: isCurrentUser
-                          ? COLORS.coral
-                          : COLORS.card,
-                        borderRadius: 18,
-                        padding: 14,
-                        borderWidth: 1,
-                        borderColor: isCurrentUser
-                          ? COLORS.coral
-                          : COLORS.peach,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          color: isCurrentUser ? "#FFF" : COLORS.warmBrown,
-                          lineHeight: 21,
+                          maxWidth: "70%",
+                          backgroundColor: isMine ? COLORS.coral : COLORS.card,
+                          borderRadius: 18,
+                          overflow: "hidden",
+                          borderWidth: 1,
+                          borderColor: isMine ? COLORS.coral : COLORS.peach,
                         }}
                       >
-                        {message.text}
-                      </Text>
-                    </View>
-                  )}
-
-                  {!showAvatar && isCurrentUser && (
-                    <View style={{ width: 30 }} />
-                  )}
+                        <Image
+                          source={{ uri: m.image_url }}
+                          style={{ width: 200, height: 150 }}
+                          contentFit="cover"
+                          transition={100}
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={{
+                          maxWidth: "70%",
+                          backgroundColor: isMine ? COLORS.coral : COLORS.card,
+                          borderRadius: 18,
+                          padding: 14,
+                          borderWidth: 1,
+                          borderColor: isMine ? COLORS.coral : COLORS.peach,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            color: isMine ? "#FFF" : COLORS.warmBrown,
+                            lineHeight: 21,
+                          }}
+                        >
+                          {m.body}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </ScrollView>
 
-        {/* Input area */}
         <View
           style={{
             paddingHorizontal: 16,
@@ -326,6 +246,7 @@ export default function ChatScreen() {
         >
           <TouchableOpacity
             onPress={handleImagePick}
+            disabled={uploading}
             style={{
               width: 40,
               height: 40,
@@ -337,11 +258,14 @@ export default function ChatScreen() {
               borderColor: COLORS.peach,
             }}
           >
-            <ImageIcon size={18} color={COLORS.coral} />
+            {uploading ? (
+              <ActivityIndicator size="small" color={COLORS.coral} />
+            ) : (
+              <ImageIcon size={18} color={COLORS.coral} />
+            )}
           </TouchableOpacity>
 
           <TextInput
-            ref={inputRef}
             style={{
               flex: 1,
               backgroundColor: COLORS.sand,
@@ -366,7 +290,7 @@ export default function ChatScreen() {
 
           <TouchableOpacity
             onPress={handleSend}
-            disabled={!text.trim()}
+            disabled={!text.trim() || send.isPending}
             style={{
               width: 40,
               height: 40,

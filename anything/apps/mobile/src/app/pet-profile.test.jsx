@@ -46,6 +46,9 @@ jest.mock("@/hooks/usePetSocialProfile", () => ({
   }),
   useToggleFollow: () => ({ mutate: jest.fn() }),
 }));
+jest.mock("@/hooks/useDMs", () => ({
+  useStartDM: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}));
 
 import PetProfileScreen from "./pet-profile";
 
