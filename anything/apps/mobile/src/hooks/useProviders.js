@@ -259,3 +259,175 @@ export function useUnreadCount() {
     },
   });
 }
+
+// The providers the current user is ACTIVE STAFF of (GET /api/providers). Used by the
+// walker workspace to find the walker-capable businesses they work for. Empty → [].
+export function useMyProviders() {
+  return useQuery({
+    queryKey: ["providers", "mine"],
+    queryFn: async () => {
+      const response = await fetch("/api/providers");
+      if (!response.ok) {
+        throw new Error("Failed to fetch your providers");
+      }
+      const data = await response.json();
+      return data.providers ?? [];
+    },
+  });
+}
+
+// A provider's booking INBOX (GET /api/providers/[id]/bookings) — the walker reads the
+// walks owners booked so they can check in. Optional ?booking_status= filter. Disabled
+// until a provider id is known; polls every 20s. Empty → [].
+export function useProviderBookings(providerId, { bookingStatus } = {}) {
+  return useQuery({
+    queryKey: ["provider-bookings", providerId, bookingStatus ?? "all"],
+    enabled: providerId != null,
+    refetchInterval: 20000,
+    queryFn: async () => {
+      const qs = bookingStatus
+        ? `?booking_status=${encodeURIComponent(bookingStatus)}`
+        : "";
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/bookings${qs}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+      const data = await response.json();
+      return data.bookings ?? [];
+    },
+  });
+}
+
+// --- dog walking — live GPS sessions (Phase 2 ticket 2.7) -------------------
+// These wrap the walk-session routes (0033 participant RLS is the real guard). LIVE
+// TRACKING = short-interval POLLING (refetchInterval) — the SAME lightweight choice chat
+// used in 2.5, not Supabase Realtime (documented in the migration). Pattern matches the
+// hooks above: relative fetch("/api/..."), a query key, throw on !res.ok.
+
+// The OWNER's walk sessions for a pet (GET /api/pets/[id]/walk-sessions). When `live`,
+// polls every 5s so the owner watches the route grow during an in_progress walk; when not
+// live (just reading reports), no polling. Disabled until a pet id is known.
+export function useWalkSessions(petId, { live = false } = {}) {
+  return useQuery({
+    queryKey: ["walk-sessions", "owner", petId],
+    enabled: petId != null,
+    refetchInterval: live ? 5000 : false,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/walk-sessions`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk sessions");
+      }
+      const data = await response.json();
+      return data.sessions ?? [];
+    },
+  });
+}
+
+// The WALKER's own assigned sessions for a provider (GET /api/providers/[id]/walk-sessions).
+// Polls every 10s. Disabled until a provider id is known.
+export function useMyWalkSessions(providerId, { status } = {}) {
+  return useQuery({
+    queryKey: ["walk-sessions", "walker", providerId, status ?? "all"],
+    enabled: providerId != null,
+    refetchInterval: 10000,
+    queryFn: async () => {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-sessions${qs}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk sessions");
+      }
+      const data = await response.json();
+      return data.sessions ?? [];
+    },
+  });
+}
+
+// Walker CHECKS IN — creates an in_progress session for the pet
+// (POST /api/providers/[id]/pets/[petId]/walk-sessions). Invalidates the walker list.
+export function useCheckInWalk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ providerId, petId, booking_id? }) → { session }
+    mutationFn: async ({ providerId, petId, ...body }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/pets/${encodeURIComponent(petId)}/walk-sessions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to start walk");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["walk-sessions", "walker", variables?.providerId],
+      });
+    },
+  });
+}
+
+// Walker posts GPS points (PATCH ?action=track) — THROTTLED writes during the walk.
+// mutateAsync({ providerId, sessionId, points:[{lat,lng,t}], distance_m? }).
+export function useTrackWalk() {
+  return useMutation({
+    mutationFn: async ({ providerId, sessionId, ...body }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-sessions/${encodeURIComponent(sessionId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "track", ...body }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update walk");
+      }
+      return response.json();
+    },
+  });
+}
+
+// Walker FINISHES — writes the report (PATCH ?action=finish), which the backend routes
+// into the pet's health timeline. mutateAsync({ providerId, sessionId, distance_m?,
+// duration_s?, potty_pee?, potty_poo?, notes?, photo_urls? }). Invalidates the walker list
+// + the owner's walk sessions + the pet health surfaces.
+export function useFinishWalk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ providerId, sessionId, ...body }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-sessions/${encodeURIComponent(sessionId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "finish", ...body }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to finish walk");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["walk-sessions", "walker", variables?.providerId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["walk-sessions", "owner"] });
+      queryClient.invalidateQueries({ queryKey: ["health", "walk-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+    },
+  });
+}
