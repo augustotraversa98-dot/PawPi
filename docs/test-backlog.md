@@ -65,6 +65,9 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.16 — Encrypt provider payment tokens at rest  ·  ticket/encrypt-payment-tokens (2026-06-17)
+Backend-only, web app. **No on-device check** — nothing in the phone UI changes. Provider MercadoPago OAuth tokens are now AES-256-GCM encrypted before they're written to the DB and decrypted only in-process for a charge/refund; a DB dump never shows a usable token. No migration (ciphertext fits the existing text columns); RLS unchanged. **Go-live action already listed in ACTION 1:** Tats sets `PAYMENTS_TOKEN_KEY` (32-byte) in the web `.env` BEFORE the first real provider connects a payment account (until then the connect flow returns a clean 503; pre-existing plaintext rows still decrypt via passthrough). Exercised entirely by the test harness (web vitest + integration).
+
 ### [ ] 2.15 — Mobile business onboarding: multi-service select  ·  ticket/provider-capabilities-mobile (2026-06-17)
 What shipped: when you create a business on the phone, the "business type" step is now a **multi-select** — you tick **one OR MORE** services (Vet, Groomer, Dog walker, Daycare/boarding, Pet sitter, Trainer, Pet shop, Adoption/shelter). The business is saved with ALL the services you picked, so it shows up under **every** one of those in discovery (a real "vet shop" can finally be created on a phone). **No migration, web backend unchanged** (the web POST already accepted the `capabilities[]` array — this just feeds it).
 1. More → list your business (or the Services entry) → **Create your business** while logged in.
