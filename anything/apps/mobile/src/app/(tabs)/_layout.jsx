@@ -7,6 +7,8 @@ import {
   Stethoscope,
   MoreHorizontal,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
 import useRoutinesStore from "@/store/routinesStore";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { getScheduledNotifications } from "@/utils/notifications";
@@ -14,6 +16,7 @@ import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   useEffect(() => {
     // Initialize reminders from routines on app start
     const routinesStore = useRoutinesStore.getState();
@@ -70,28 +73,28 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Feed",
+          title: t("tabs.feed"),
           tabBarIcon: ({ color }) => <Home color={color} size={23} />,
         }}
       />
       <Tabs.Screen
         name="health"
         options={{
-          title: "Health",
+          title: t("tabs.health"),
           tabBarIcon: ({ color }) => <HeartPulse color={color} size={23} />,
         }}
       />
       <Tabs.Screen
         name="training"
         options={{
-          title: "Training",
+          title: t("tabs.training"),
           tabBarIcon: ({ color }) => <GraduationCap color={color} size={23} />,
         }}
       />
       <Tabs.Screen
         name="services"
         options={{
-          title: "Services",
+          title: t("tabs.services"),
           tabBarIcon: ({ color }) => <Stethoscope color={color} size={23} />,
           // Safety net (ticket 2.19): leaving the Services tab pops its stack to the grid
           // root, so it never reopens on a stale pushed screen.
@@ -101,7 +104,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="more/index"
         options={{
-          title: "More",
+          title: t("tabs.more"),
           tabBarIcon: ({ color }) => <MoreHorizontal color={color} size={23} />,
           // Safety net (ticket 2.19): leaving the More tab pops its stack to the landing
           // page and tears down any in-progress pushed flow / routine-creation modal, so

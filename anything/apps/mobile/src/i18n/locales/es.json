@@ -1,0 +1,62 @@
+{
+  "tabs": {
+    "feed": "Inicio",
+    "health": "Salud",
+    "training": "Entrenamiento",
+    "services": "Servicios",
+    "more": "Más"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "done": "Listo",
+    "retry": "Reintentar",
+    "loading": "Cargando…",
+    "noResults": "Sin resultados",
+    "somethingWrong": "Algo salió mal. Intentá de nuevo.",
+    "back": "Atrás",
+    "close": "Cerrar",
+    "share": "Compartir",
+    "send": "Enviar"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "language": "Idioma",
+    "languageHint": "Elegí cómo se ve PawPi en tu teléfono.",
+    "systemDefault": "Predeterminado del sistema",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "feed": {
+    "title": "Inicio",
+    "dailyPrompt": "Compartí el momento de hoy",
+    "empty": "Todavía no hay nada por aquí"
+  },
+  "health": {
+    "title": "Salud",
+    "today": "Hoy",
+    "track": "Registrar",
+    "insights": "Estadísticas",
+    "vetRecord": "Historia clínica"
+  },
+  "services": {
+    "title": "Servicios",
+    "empty": "Aún no hay servicios disponibles"
+  },
+  "search": {
+    "title": "Buscar y descubrir",
+    "noResults": "Sin resultados",
+    "nothingHere": "Todavía no hay nada por aquí"
+  },
+  "messages": {
+    "title": "Mensajes",
+    "empty": "Todavía no hay conversaciones"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "markAllRead": "Marcar todo como leído",
+    "empty": "Todavía no hay notificaciones"
+  }
+}

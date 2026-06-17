@@ -53,8 +53,9 @@ Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00
 - ✅ **2.26** notifications real data — merged (#141), migration 0044 (notifications + app_notify DEFINER insert).
 - ✅ **2.27** owner↔owner DMs — merged (#142), migration 0045 (dm_threads + dm_messages, participant RLS).
 - ✅ **2.28** daily share frame — merged (#143), no migration (react-native-view-shot + expo-sharing).
-- ✅ **2.30** adoption deep-link — merged, no migration (feed "Adopt me" → that exact listing).
-- ☐ 2.29 i18n · ☐ 2.31 docs hygiene
+- ✅ **2.30** adoption deep-link — merged (#144), no migration (feed "Adopt me" → that exact listing).
+- ✅ **2.29** i18n EN/ES — merged, no migration (i18next + react-i18next + expo-localization; framework + core + Settings toggle).
+- ☐ 2.31 docs hygiene
 
 Migrations 0039–0045 pending hand-apply (see [`docs/test-backlog.md`](test-backlog.md) ACTION 1).
 

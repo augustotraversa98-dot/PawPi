@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
+import "@/i18n"; // i18n init side-effect (ticket 2.29)
+import { initLocaleFromStorage } from "@/i18n/localePreference";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +34,11 @@ export default function RootLayout() {
   // independent of the reminder loop (which now schedules silently).
   useEffect(() => {
     initNotifications();
+  }, []);
+
+  // Apply the saved language override (ticket 2.29) — defaults to the phone's language.
+  useEffect(() => {
+    initLocaleFromStorage();
   }, []);
 
   // Start reminder notification sync
