@@ -255,6 +255,38 @@ describe("useCreateProvider", () => {
     expect(returned).toBe(provider);
   });
 
+  test("forwards the capabilities[] multi-service array in the POST body (ticket 2.15)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ provider: { id: 42, name: "Happy Paws" } }),
+    }));
+
+    const { result } = renderHook(() => useCreateProvider(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        name: "Happy Paws",
+        provider_type: "vet",
+        capabilities: ["vet", "shop"],
+      });
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Happy Paws",
+          provider_type: "vet",
+          capabilities: ["vet", "shop"],
+        }),
+      }),
+    );
+  });
+
   test("surfaces the backend error message on a non-ok response", async () => {
     global.fetch = jest.fn(async () => ({
       ok: false,

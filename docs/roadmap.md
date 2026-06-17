@@ -34,6 +34,20 @@ Tags: **scope** fe/be/db · **safe-parallel** yes only if it touches files no ot
 - **Docs hygiene:** `ARCHITECTURE.md` says a standalone `useCurrentPet.js` exists — it actually lives in `usePetProfile.js`; `supabase/SCHEMA_NOTES.md` migration-order line stops at 0011. Refresh both.
 - **Social mock chat:** the old pet-friend chat (`messages.jsx`/`chat.jsx`) still uses mock data (separate from the new provider chat) — convert off mock or retire.
 
+## 🌊 WAVE 3 + WAVE 4 — IN PROGRESS (tickets 2.15–2.31)
+
+Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md). Status mirror
+(✅ merged · 🔨 building · ⛔ blocked-on-prereq · ☐ queued):
+
+- 🔨 **2.15** mobile capability multi-select — PR open, no migration.
+- ☐ 2.16 encrypt payment tokens · ☐ 2.17 sub auto-charge cron (⛔2.16) · ☐ 2.18 telehealth (⛔2.15)
+- ☐ 2.19 nav fix · ☐ 2.20 onboarding links (⛔2.15/2.18) · ☐ 2.21 enrichment (⛔2.20)
+- ☐ 2.23 service images · ☐ 2.22 storefront (⛔2.20/2.23) · ☐ 2.24 calendar
+- ☐ 2.25 search/discover · ☐ 2.26 notifications · ☐ 2.27 owner DMs · ☐ 2.28 share frame
+- ☐ 2.30 adoption deep-link (⛔2.19) · ☐ 2.29 i18n · ☐ 2.31 docs hygiene
+
+Migrations 0039–0045 pending hand-apply (see [`docs/test-backlog.md`](test-backlog.md) ACTION 1).
+
 ---
 
 ## ★ PREVIOUS PRIORITY — Phase 2: the pet-services super-app (now done; reference below)
