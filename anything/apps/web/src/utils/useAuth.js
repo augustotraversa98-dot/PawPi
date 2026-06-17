@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { signIn, signOut } from "@auth/create/react";
+import { resolveCallbackUrl } from "@/utils/resolveCallbackUrl";
 
 function isDevIframe() {
   try {
@@ -14,23 +15,25 @@ function devSocialShim(provider, callbackUrl) {
 }
 
 function useAuth() {
-  const callbackUrl = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('callbackUrl')
-    : null;
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const callbackUrl = new URLSearchParams(search).get('callbackUrl');
 
+  // Credentials sign-in/up resolve the redirect dynamically: the mobile bridge's
+  // incoming `?callbackUrl=...` wins; standalone web falls back to options.callbackUrl
+  // (/provider). See resolveCallbackUrl for the why.
   const signInWithCredentials = useCallback((options) => {
     return signIn("credentials-signin", {
       ...options,
-      callbackUrl: callbackUrl ?? options.callbackUrl
+      callbackUrl: resolveCallbackUrl(search, options.callbackUrl)
     });
-  }, [callbackUrl])
+  }, [search])
 
   const signUpWithCredentials = useCallback((options) => {
     return signIn("credentials-signup", {
       ...options,
-      callbackUrl: callbackUrl ?? options.callbackUrl
+      callbackUrl: resolveCallbackUrl(search, options.callbackUrl)
     });
-  }, [callbackUrl])
+  }, [search])
 
   const signInWithGoogle = useCallback((options) => {
     const cb = callbackUrl ?? options?.callbackUrl;

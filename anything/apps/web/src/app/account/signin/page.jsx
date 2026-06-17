@@ -26,7 +26,10 @@ export default function SignInPage() {
       await signInWithCredentials({
         email: formData.email,
         password: formData.password,
-        callbackUrl: "/auth/expo-web-success",
+        // Standalone-web default. The mobile bridge passes its own ?callbackUrl=
+        // which takes precedence (see resolveCallbackUrl), so this only applies
+        // to a business owner opening the page directly.
+        callbackUrl: "/provider",
         redirect: true,
       });
     } catch (err) {

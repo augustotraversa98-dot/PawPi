@@ -34,6 +34,22 @@ The Auth.js origin is derived from the **request host** via `trustHost: true` in
 - **`basePath: '/api/auth'` stays pinned** in `__create/index.ts`. Without `AUTH_URL`, `@auth/core` would otherwise default `basePath` to `/auth` and break all auth routing.
 - **`__create/@auth/create.js:10` `secureCookie` tolerates an unset `AUTH_URL`** — it reads `process.env.AUTH_URL?.startsWith('https') ?? false`. With `AUTH_URL` unset (the Option B dev state above), the old `process.env.AUTH_URL.startsWith(...)` threw `TypeError: undefined is not an object` *inside* `auth()`, before the session guard — so **every** app API route that calls `auth()` returned 500 (e.g. `GET /api/pets`), even unauthenticated. Do **not** "fix" a future cookie issue by re-adding `AUTH_URL=localhost`: that reopens the device -1004 redirect bug above. In dev (http) `secureCookie` is correctly `false`; in prod the https `AUTH_URL` makes it `true`.
 - **Production:** a fixed `AUTH_URL` on the real domain is expected (and re-enables `trustHost` automatically).
+- **`scripts/dev-backend.sh` self-heals this (Jun 2026):** on startup it comments out any active `AUTH_URL=` line in `web/.env` (and prints `🧹 Commented out active AUTH_URL ...`). A stale `AUTH_URL` left over after a DHCP IP change was making post-login redirect to an unreachable host → **"site can't be reached"** on web (same root cause as the device -1004). Do not re-add `AUTH_URL` for local/device dev.
+
+### Lazy `user_profiles` creation (`ensureUserProfile`) — business owners with no pet
+
+`user_profiles` rows are created **lazily**, not at signup (`src/auth.js` is a locked managed file, so `createUser` can't be hooked). Historically only the pet flow (`pets/route.js`) created the profile, so a **business owner who signs up and goes straight to creating a provider had no profile** → `resolveUserId` returned `null` → `POST /api/providers` 404'd `"User profile not found"`.
+
+- Shared helper `ensureUserProfile(authUserId, { fullName, email })` in `api/utils/currentUser.js`: returns the existing `user_profiles.id`, else inserts one (collision-safe `uniqueUsername`, same default role as pets) and returns the new id. **Critical RLS ordering (the #108 lesson):** it calls `setCurrentUserId(newId)` immediately after the insert, BEFORE any dependent insert, so a same-request `providers`/`provider_staff` INSERT passes the FORCE-RLS `WITH CHECK (... = current_app_user_id())`. `resolveUserId` stays read-only.
+- `POST /api/providers` uses it. `pets/route.js` still has its own inline copy — migrating it onto the shared helper is a flagged follow-up.
+
+### RLS `WITH CHECK` can't see a sibling INSERT in the same CTE (`provider_capabilities`)
+
+`POST /api/providers` originally created `providers` + owner `provider_staff` + `provider_capabilities` in **one atomic CTE**. `provider_capabilities`' write policy (`0027`) requires `app_is_provider_admin(provider_id)` — i.e. an **existing** active owner/admin row in `provider_staff`. Inside a single statement, the owner-staff row inserted by the sibling `new_staff` CTE **is not visible** to the `new_caps` `WITH CHECK` (CTEs share one snapshot) → `"new row violates row-level security policy for table provider_capabilities"`.
+
+- Fix: **split the `provider_capabilities` INSERT into a separate statement** after the provider+staff insert, **in the same request transaction** (`withRequestContext`). Under READ COMMITTED the later statement sees the owner-staff row → `app_is_provider_admin` passes. Still atomic (one txn; a failure rolls back the whole create).
+- `provider_staff`'s OWN insert works inside the CTE only because its policy uses a snapshot-safe **membership-absence** bootstrap (`not app_provider_has_active_staff(...)`), not membership-presence.
+- **General lesson:** a combined multi-INSERT CTE cannot satisfy an RLS check that depends on a *sibling* INSERT — split such writes into ordered statements within one transaction. Covered by `provider-create-rls.integration.test.ts` (runs the real route as `pawpi_app`).
 
 ---
 

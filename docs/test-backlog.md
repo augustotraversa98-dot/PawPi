@@ -30,8 +30,27 @@ as the RLS migrations 0019–0026.)
 0036_training_module.sql              (2.10)
 0037_shop_ecommerce.sql               (2.11)
 0038_adoption.sql                     (2.12)
+0039_subscription_due_fn.sql          (2.17 — auto-charge cron; SECURITY DEFINER enumerator, no table)
+0040_telehealth.sql                   (2.18 — telehealth_sessions + widen two capability CHECKs)
+0041_provider_links.sql               (2.20 — website/instagram/facebook/google_maps columns on providers)
+0042_provider_posts.sql               (2.22 — provider_posts table + providers.cover_image_url)
+0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])
+0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)
+0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)
 ```
-(2.13 feed + 2.14 dashboards added NO migration — read-only.)
+(2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
+encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
+calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
+
+**Wave 3 extra go-live env keys (Tats, when ready, do NOT block merges):**
+- `2.16` set `PAYMENTS_TOKEN_KEY` (32-byte) in the web `.env` BEFORE any provider connects a payment account.
+- `2.17` set `CRON_SECRET` in the web `.env` AND wire an external scheduler (host cron / scheduled job / CI
+  cron) to `POST /api/payments/subscriptions/run` with the `x-cron-secret` header daily — PawPi has no
+  built-in scheduler.
+- `2.18` set the video-vendor keys when ready (until then consults book + the Join button shows a clean
+  "not set up yet" message; nothing crashes).
+- `2.21` set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready (until then "Import from the web"
+  shows a clean "not set up yet"; nothing auto-fills).
 
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Set up a MercadoPago marketplace app (OAuth client) + a Binance Pay merchant account, set the env keys
@@ -45,6 +64,14 @@ go-live checklist in `PawPi_instructions.md`.
 ---
 
 ## To test
+
+### [ ] DEV-NATIVE-UPLOAD — Native photo/video upload re-test (shared `fetch.ts` path)
+Not tied to one ticket — a standing device check flagged in the roadmap follow-ups. The visit/session media
+uploads (walk-session photos, sitting-visit photos/video, daycare report-card media, grooming before/after,
+provider posts, etc.) all go through the shared native upload path (`fetch.ts`). It is **jest/CI-green but
+unverified on a real device** since the native iOS upload work. Re-test on a physical phone: pick + upload a
+photo AND a video from at least two of those flows; confirm the file lands in Supabase Storage and renders
+back in-app. If it fails → it becomes a fix ticket (Cowork will write it); if it passes → delete this entry.
 
 ### [ ] 2.14 — Dashboards & analytics (provider overview + owner hub)  ·  ticket/dashboards-analytics (2026-06-17)
 What shipped: two "at a glance" overview screens that tie the super-app together — and they ONLY ever show data you already have access to (a business sees only its own numbers; you see only your own stuff). **Provider web dashboard HOME** (the `/provider` landing page, also a new "Dashboard" item in the sidebar): your business at a glance — **total revenue** (from paid orders), a **revenue-by-month** line chart, a **bookings-by-month** bar chart, **occupancy** (dogs currently on-site + booked ahead for daycare), your **average star rating** + review count, your **top services**, and your **upcoming bookings** list (which links into the full Bookings inbox). All charts use the existing recharts library. Every number is scoped to the **active business only** — switching businesses (if you staff more than one) recomputes for that one; you can never see another business's revenue/bookings. **Owner mobile hub** ("My Hub", new item under the More tab): one place showing **My bookings** (upcoming + past across ALL services — vet, groomer, walker, daycare, etc.), **My orders** (your shop history), **Auto-reorder** (your active shop subscriptions), **Who has access** (which providers can see your pets), and **Saved dogs** (your favorited adoption listings). It does NOT duplicate those screens — each section **links into** the real feature screen. Empty everywhere → clean empty states, never fake numbers. **No migration** — these are read-only summaries over existing tables; the deferred anonymized-predictions analytics layer stays OUT of scope.

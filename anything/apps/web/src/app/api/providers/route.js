@@ -1,6 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolveUserId, ensureUserProfile } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
 
@@ -33,10 +33,14 @@ async function POST(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = await resolveUserId(session.user.id);
-    if (userId === null) {
-      return Response.json({ error: "User profile not found" }, { status: 404 });
-    }
+    // Lazily create the user_profiles row if this is a fresh user who never made a
+    // pet (the #108 gap that 404'd business owners here). Stamps the request identity
+    // before the provider/staff CTE so it passes FORCE-RLS WITH CHECK. See
+    // ensureUserProfile.
+    const userId = await ensureUserProfile(session.user.id, {
+      fullName: session.user.name,
+      email: session.user.email,
+    });
 
     const body = await request.json();
     const { name, provider_type, bio, logo_url, slug, capabilities } = body ?? {};
@@ -86,11 +90,8 @@ async function POST(request) {
       n += 1;
     }
 
-    // Atomic: the providers row, its owner provider_staff row, AND its capability rows
-    // are inserted in a single CTE statement, so a provider can never exist without its
-    // owner membership (and vice versa) — all-or-nothing. The capabilities insert
-    // unnests the validated caps array (empty array → no rows); ON CONFLICT keeps the
-    // statement idempotent against the UNIQUE(provider_id, capability).
+    // The providers row and its owner provider_staff row are inserted in a single
+    // atomic CTE, so a provider can never exist without its owner membership.
     const created = await sql`
       WITH new_provider AS (
         INSERT INTO providers
@@ -102,17 +103,33 @@ async function POST(request) {
         INSERT INTO provider_staff (provider_id, user_profile_id, role, status)
         SELECT id, ${userId}, 'owner', 'active' FROM new_provider
         RETURNING id
-      ), new_caps AS (
-        INSERT INTO provider_capabilities (provider_id, capability)
-        SELECT new_provider.id, cap
-        FROM new_provider, unnest(${caps}::text[]) AS cap
-        ON CONFLICT (provider_id, capability) DO NOTHING
-        RETURNING capability
       )
       SELECT * FROM new_provider
     `;
 
     const provider = created[0];
+
+    // Capabilities are inserted in a SEPARATE statement AFTER the owner-staff row —
+    // NOT inside the CTE above — within the SAME request transaction (withRequestContext).
+    // Why split: provider_capabilities' write policy (0027) requires
+    // app_is_provider_admin(provider_id), which (0024) is true only when an ACTIVE
+    // owner/admin provider_staff row already EXISTS for current_app_user_id(). Inside the
+    // CTE, a new_caps branch could not see new_staff's just-inserted row (one CTE = one
+    // snapshot), so the insert was DENIED by RLS. As a later statement under READ COMMITTED
+    // it sees the in-transaction owner row, so app_is_provider_admin() is true and the
+    // insert passes. unnest(empty array) → no rows; ON CONFLICT keeps it idempotent against
+    // UNIQUE(provider_id, capability).
+    //
+    // Still atomic: this runs in the same request transaction as the CTE, so a failure here
+    // aborts that transaction — the provider + owner-staff rows roll back (no half-created
+    // provider). We let the DB error propagate to the catch below, which maps it to the 500.
+    await sql`
+      INSERT INTO provider_capabilities (provider_id, capability)
+      SELECT ${provider.id}, cap
+      FROM unnest(${caps}::text[]) AS cap
+      ON CONFLICT (provider_id, capability) DO NOTHING
+    `;
+
     return Response.json(
       { provider: { ...provider, capabilities: [...caps].sort() } },
       { status: 201 },

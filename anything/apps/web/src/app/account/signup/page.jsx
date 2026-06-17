@@ -48,7 +48,10 @@ export default function SignUpPage() {
         name: formData.name.trim(),
         email: formData.email,
         password: formData.password,
-        callbackUrl: "/auth/expo-web-success?next=/onboarding",
+        // Standalone-web default. The mobile bridge passes its own ?callbackUrl=
+        // which takes precedence (see resolveCallbackUrl), so this only applies
+        // to a business owner opening the page directly.
+        callbackUrl: "/provider",
         redirect: true,
       });
     } catch (err) {

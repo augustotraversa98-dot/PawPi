@@ -25,7 +25,12 @@ const useUser = () => {
   React.useEffect(refetchUser, [refetchUser]);
 
   if (process.env.NEXT_PUBLIC_CREATE_ENV !== "PRODUCTION") {
-    return { user, data: session?.user || null, loading: status === 'loading', refetch: refetchUser };
+    // Dev: the `user` useState is never updated in this branch (setUser only
+    // runs in the PRODUCTION refetch), so it stays stuck at its initial value
+    // (null while the session was still loading on first render). Return the
+    // LIVE session user instead so authenticated callers aren't treated as
+    // logged out. `data`/`loading` unchanged.
+    return { user: session?.user ?? null, data: session?.user || null, loading: status === 'loading', refetch: refetchUser };
   }
   return { user, data: user, loading: status === 'loading' || (status === 'authenticated' && !user), refetch: refetchUser };
 };
