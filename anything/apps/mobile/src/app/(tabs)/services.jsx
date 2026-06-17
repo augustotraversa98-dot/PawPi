@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   Stethoscope,
+  Video,
   Scissors,
   Footprints,
   Home,
@@ -36,6 +37,14 @@ const CATEGORIES = [
     icon: Stethoscope,
     live: true,
     route: "/(tabs)/more/vet",
+  },
+  {
+    key: "telehealth",
+    title: "Telehealth",
+    subtitle: "Video consult with a vet",
+    icon: Video,
+    live: true,
+    route: "/(tabs)/more/telehealth",
   },
   {
     key: "grooming",

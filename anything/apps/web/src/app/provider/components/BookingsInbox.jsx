@@ -14,6 +14,7 @@ import {
   Calendar,
   Loader2,
   Stethoscope,
+  Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -140,6 +141,41 @@ export default function BookingsInbox({ providerId }) {
     if (booking) runAction(booking.id, "assign", member.user_profile_id);
   };
 
+  // Join the video room for a telehealth consult (ticket 2.18). Ensures the session exists
+  // (assigned to me), then fetches the join link and opens it. The video vendor is dormant
+  // behind keys, so a clean 503 surfaces as a toast — nothing breaks. The clinical note is
+  // written via the existing "Open record" path (medical_write), not here.
+  const onJoinConsult = async (b) => {
+    try {
+      const createRes = await fetch(
+        `/api/providers/${providerId}/telehealth/sessions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ booking_id: b.id }),
+        },
+      );
+      if (!createRes.ok) {
+        const e = await createRes.json().catch(() => ({}));
+        throw new Error(e.error || "Couldn't start the consult");
+      }
+      const { session } = await createRes.json();
+      const joinRes = await fetch(
+        `/api/providers/${providerId}/telehealth/sessions/${session.id}/join`,
+        { method: "POST" },
+      );
+      if (!joinRes.ok) {
+        const e = await joinRes.json().catch(() => ({}));
+        throw new Error(e.error || "Couldn't join the consult");
+      }
+      const { joinUrl } = await joinRes.json();
+      if (joinUrl) window.open(joinUrl, "_blank", "noopener");
+      else toast.error("No join link was returned");
+    } catch (err) {
+      toast.error(err?.message || "Couldn't join the consult");
+    }
+  };
+
   // Open the booked pet's clinical record (c3). Carry the pet name + booking id so
   // the record screen can label itself and tie an access request to this booking.
   // The record itself is consent-gated server-side — this only navigates.
@@ -202,9 +238,21 @@ export default function BookingsInbox({ providerId }) {
           const canCancel = status === "requested" || status === "confirmed";
           const canAssign = status === "requested" || status === "confirmed";
           const canOpenRecord = b.pet_id != null;
+          // Telehealth consults can be joined while confirmed/in-progress (ticket 2.18).
+          const canJoinConsult =
+            b.capability === "telehealth" &&
+            (status === "confirmed" || status === "requested");
           const busy = isPending && variables?.appointmentId === b.id;
           return (
             <div className="flex flex-wrap items-center gap-2">
+              {canJoinConsult && (
+                <ActionButton
+                  label="Join consult"
+                  Icon={Video}
+                  onClick={() => onJoinConsult(b)}
+                  variant="primary"
+                />
+              )}
               {canOpenRecord && (
                 <ActionButton
                   label="Open record"
