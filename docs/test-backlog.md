@@ -65,6 +65,16 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.18 — Telehealth (vet video consult)  ·  ticket/telehealth (2026-06-17)
+What shipped: a vet can offer **Telehealth** (a new service/capability) and an owner can book a **video consult** — all on the existing spine (booking + payment + chat + consent). New phone surface: **Services → Telehealth** lists telehealth vets (real data; empty → "No telehealth vets yet"). Booking a consult reuses the normal provider booking + payment flow (capability `telehealth`). "My consults" shows your video sessions with a **Join video consult** button. The vet writes the consult note via the existing clinical record, so it lands in your pet's **Vet Record**. Video vendor is **dormant behind keys** — until Tats sets them, Join shows a clean "Video consults aren't set up yet" (nothing crashes).
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0040_telehealth.sql` — `telehealth_sessions` (participant-scoped ENABLE+FORCE RLS) + widens the `provider_capabilities` and `vet_appointments` capability CHECKs to accept `telehealth`. Hand-apply after merge.
+- ⚙️ **GO-LIVE (Tats, in ACTION 1):** set the video-vendor env keys (`VIDEO_API_KEY`/`VIDEO_API_SECRET`/`VIDEO_BASE_URL`, `VIDEO_PROVIDER`) when ready. Until then consults still book + show the Join button, which returns the clean "not set up yet" message.
+1. Onboard a business and tick **Telehealth (video vet)** (multi-select) → it appears under **Services → Telehealth** in discovery.
+2. As an owner, open **Services → Telehealth** → pick a vet → book a consult (pay, or see the clean "payments not configured" message).
+3. At the slot, open Telehealth → **My consults** → **Join video consult** → opens the room (or the "video not set up yet" message until keys exist).
+4. After the vet writes the consult note, it appears in the pet's **Vet Record**.
+5. Privacy: only you (owner) and the assigned vet can join/see a consult — no third party.
+
 ### [ ] 2.17 — Shop auto-reorder charger (subscription cron)  ·  ticket/subscription-autocharge (2026-06-17)
 Backend-only, web app. **No on-device check** — nothing in the phone UI changes (until payment keys exist every charge cleanly skips). Subscribing to auto-reorder now sets the first charge date (one cadence out); a new machine-to-machine endpoint `POST /api/payments/subscriptions/run` re-buys each DUE plan (product × quantity) through the same payment layer as a normal shop order, then advances the next charge date. Rx products never auto-reorder; period-stable idempotency key prevents double-charging; one bad sub never breaks the run.
 - ⚙️ **MIGRATION TO APPLY (already in ACTION 1):** `0039_subscription_due_fn.sql` — a SECURITY DEFINER enumerator function only (no table; completeness guard unaffected). Hand-apply after merge.

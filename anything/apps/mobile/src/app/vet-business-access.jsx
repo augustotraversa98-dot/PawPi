@@ -20,11 +20,11 @@ import { useMyProviders, useCreateProvider } from "@/hooks/useProviders";
 // a single business (e.g. a "vet shop") can offer several services at once and then
 // surfaces under EVERY one in discovery. We offer ONLY capabilities that have a LIVE
 // owner-facing service module (project rule: only feature live capabilities) — NOT
-// transport/pharmacy/telehealth (those modules aren't built yet; telehealth is appended
-// by ticket 2.18). Mirrors apps/web/src/app/api/utils/providerAuth.js ALLOWED_CAPABILITIES
-// and the web onboarding labels.
+// transport/pharmacy (those modules aren't built yet). telehealth was added by ticket 2.18.
+// Mirrors apps/web/src/app/api/utils/providerAuth.js ALLOWED_CAPABILITIES and the web labels.
 const CAPABILITIES = [
   { value: "vet", label: "Veterinary clinic", icon: "🩺" },
+  { value: "telehealth", label: "Telehealth (video vet)", icon: "📹" },
   { value: "groomer", label: "Groomer", icon: "✂️" },
   { value: "walker", label: "Dog walker", icon: "🦮" },
   { value: "daycare", label: "Daycare / boarding", icon: "🏠" },

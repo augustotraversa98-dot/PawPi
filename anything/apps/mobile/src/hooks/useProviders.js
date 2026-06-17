@@ -312,6 +312,59 @@ export function useCreateProvider() {
   });
 }
 
+// --- telehealth — vet video consults (Phase 2 ticket 2.18) -------------------
+// The consult IS a normal booking (useBookProvider({ capability: 'telehealth' })) +
+// payment + chat; the only telehealth-specific owner surfaces are the consult LIST and
+// JOIN. Discovery reuses useDiscoverProviders('telehealth').
+
+// The OWNER's video consults for a pet (GET /api/pets/[id]/telehealth-sessions). Polls
+// every 30s so a session the vet just created/started appears. Disabled until a pet id is
+// known. Empty → [].
+export function useTelehealthSessions(petId) {
+  return useQuery({
+    queryKey: ["telehealth-sessions", "owner", petId],
+    enabled: petId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/telehealth-sessions`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch consults");
+      }
+      const data = await response.json();
+      return data.sessions ?? [];
+    },
+  });
+}
+
+// JOIN a consult (POST /api/providers/[id]/telehealth/sessions/[sessionId]/join). Returns
+// { joinUrl, token, session }. Surfaces the backend's clean 503 ("Video consults aren't set
+// up yet") so the UI shows the right state instead of crashing. Invalidates the consult list
+// so a status flip (→ in_progress) shows.
+export function useJoinTelehealth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ providerId, sessionId, petId? }) → { joinUrl, token, session }
+    mutationFn: async ({ providerId, sessionId }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/telehealth/sessions/${encodeURIComponent(sessionId)}/join`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Couldn't join the consult");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["telehealth-sessions", "owner", variables?.petId],
+      });
+    },
+  });
+}
+
 // The providers the current user is ACTIVE STAFF of (GET /api/providers). Used by the
 // walker workspace to find the walker-capable businesses they work for. Empty → [].
 export function useMyProviders() {

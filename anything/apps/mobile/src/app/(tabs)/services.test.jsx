@@ -51,6 +51,12 @@ test("tapping the live Grooming card opens the grooming discover/book flow", () 
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/grooming");
 });
 
+test("tapping the live Telehealth card opens the telehealth discover/consult flow", () => {
+  const { getByText } = render(<ServicesScreen />);
+  fireEvent.press(getByText("Telehealth"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/telehealth");
+});
+
 test("tapping the live Dog Walking card opens the walking discover/live flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Dog Walking"));

@@ -37,6 +37,7 @@ export const ALLOWED_CAPABILITIES = [
   'adoption',
   'transport',
   'pharmacy',
+  'telehealth',
 ];
 
 /**
