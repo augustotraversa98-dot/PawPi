@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Platform,
@@ -14,12 +13,19 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Check } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import {
+  TAKEN_HANDLES,
+  validateHandleFormat,
+  handleErrorMessage,
+  isHandleAcceptable,
+} from "@/utils/validateHandle";
 
 const C = {
   coral: "#FF6F61",
@@ -32,18 +38,6 @@ const C = {
   warmBrown: "#3B241B",
   mutedBrown: "#7A6254",
 };
-
-// Mock handles database for uniqueness check
-const TAKEN_HANDLES = [
-  "buddy",
-  "max",
-  "charlie",
-  "cooper",
-  "lucy",
-  "daisy",
-  "duke",
-  "molly",
-];
 
 const TOTAL_STEPS = 9;
 
@@ -127,14 +121,12 @@ export default function OnboardingScreen() {
     setSuggestedHandles(suggestions.slice(0, 5));
   };
 
+  // Validate the handle's FORMAT and uniqueness together (ticket 2.35). Sets the
+  // inline error and returns whether it's acceptable.
   const checkHandleUniqueness = (handle) => {
-    const cleanHandle = handle.toLowerCase().replace("@", "").trim();
-    if (TAKEN_HANDLES.includes(cleanHandle)) {
-      setHandleError("This handle is already taken");
-      return false;
-    }
-    setHandleError("");
-    return true;
+    const error = handleErrorMessage(handle);
+    setHandleError(error);
+    return error === "";
   };
 
   const goToStep = (step) => {
@@ -148,14 +140,9 @@ export default function OnboardingScreen() {
     }
 
     if (currentStep === 1) {
-      // Handle step - validate if provided
-      if (formData.handle && !checkHandleUniqueness(formData.handle)) {
+      // Handle is REQUIRED now — block until it's a valid, available @handle.
+      if (!checkHandleUniqueness(formData.handle)) {
         return;
-      }
-      // Auto-generate if skipped
-      if (!formData.handle) {
-        const autoHandle = suggestedHandles[0] || `user${Date.now()}`;
-        setFormData((prev) => ({ ...prev, handle: autoHandle }));
       }
     }
 
@@ -470,8 +457,9 @@ export default function OnboardingScreen() {
   };
 
   const canGoNext = () => {
+    // Required: pet name (step 0) and a valid, available @handle (step 1).
     if (currentStep === 0) return formData.name.trim().length > 0;
-    if (currentStep === 1 && formData.handle) return !handleError;
+    if (currentStep === 1) return isHandleAcceptable(formData.handle);
     return true;
   };
 
@@ -547,18 +535,19 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        {/* Step content */}
-        <ScrollView
+        {/* Step content — KeyboardAwareScrollView keeps the focused input above
+            the keyboard so no field is hidden behind it (ticket 2.35). */}
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 24,
-            paddingBottom: insets.bottom + 180, // Increased to prevent keyboard/button overlap
+            paddingBottom: insets.bottom + 180, // room for the pinned button + keyboard
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {renderStep()}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Bottom buttons */}
         <View
