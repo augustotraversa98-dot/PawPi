@@ -67,7 +67,7 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 - ✅ **2.32** password security rules — merged (#148), no migration (shared `passwordStrength` validator; server-enforced on sign-up only, existing logins untouched; live strength meter).
 - ✅ **2.33** notifications filter-chips layout fix — merged (#149), no migration (horizontal chip row centers items so chips size to content instead of stretching into tall rectangles).
 - ✅ **2.34** current-pet header sync — merged (#150), no migration (More header reads the reactive `useCurrentPet` instead of a stale AsyncStorage snapshot; updates on switch/create).
-- ☐ **2.35** onboarding required fields
+- ✅ **2.35** onboarding required fields — merged (#151), no migration (@handle required + format rule in a pure `validateHandle` util; KeyboardAwareScrollView so inputs clear the keyboard).
 - ☐ **2.36** feed daily-post fixes · ☐ **2.37** streak+birthday (⛔2.36) · ☐ **2.38** profile fixes (⛔2.37) · ☐ **2.39** IG nav (⛔2.38)
 - ☐ **2.40** unified messages · ☐ **2.41** vet-record owner upload · ☐ **2.42** vet-record history log (⛔2.41)
 - ☐ **2.43** walks with buddies · ☐ **2.44** community forum · ☐ **2.45** training supreme · ☐ **2.46** Apple/Google sign-in
