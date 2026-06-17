@@ -943,3 +943,109 @@ export function useLogTrainingProgress(providerId) {
     },
   });
 }
+
+// ── Shop / e-commerce (ticket 2.11) ─────────────────────────────────────────────
+export const shopProductsKey = (providerId) => ["provider", providerId, "shop-products"];
+export const shopOrdersKey = (providerId) => ["provider", providerId, "shop-orders"];
+
+// The shop's catalog (GET .../shop-products). RLS: provider admins see all (incl. inactive).
+export function useShopProducts(providerId) {
+  return useQuery({
+    queryKey: shopProductsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/shop-products`);
+      return data.products ?? [];
+    },
+  });
+}
+
+// Create a product (POST .../shop-products). mutateAsync({ name*, price_cents*, stock_qty?,
+// description?, image_urls?, category?, is_rx?, active? }). Admin-only (gated server-side).
+export function useCreateShopProduct(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(`/api/providers/${providerId}/shop-products`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.product;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shopProductsKey(providerId) });
+    },
+  });
+}
+
+// Update a product (PATCH .../shop-products/[productId]). mutateAsync({ productId, ...fields }).
+export function useUpdateShopProduct(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ productId, ...body }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/shop-products/${productId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return data.product;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shopProductsKey(providerId) });
+    },
+  });
+}
+
+// Soft-delete a product (DELETE .../shop-products/[productId] → active=false).
+export function useDeleteShopProduct(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (productId) => {
+      await getJson(`/api/providers/${providerId}/shop-products/${productId}`, {
+        method: "DELETE",
+      });
+      return productId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shopProductsKey(providerId) });
+    },
+  });
+}
+
+// The shop's incoming product orders (GET .../shop-orders), with line items.
+export function useShopOrders(providerId) {
+  return useQuery({
+    queryKey: shopOrdersKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/shop-orders`);
+      return data.orders ?? [];
+    },
+  });
+}
+
+// Advance an order's fulfillment (PATCH .../shop-orders/[orderId]). mutateAsync({ orderId,
+// fulfillment_status }). Touches only fulfillment — never the 2.3 payment status.
+export function useSetOrderFulfillment(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderId, fulfillment_status }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/shop-orders/${orderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fulfillment_status }),
+        },
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shopOrdersKey(providerId) });
+    },
+  });
+}

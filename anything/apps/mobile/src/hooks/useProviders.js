@@ -675,3 +675,135 @@ export function useJoinTrainingClass() {
     },
   });
 }
+
+// ── Shop / e-commerce (ticket 2.11) ─────────────────────────────────────────────
+// REUSE the shared discovery (useDiscoverProviders('shop')) for the shop list. The hooks
+// below cover the owner's CATALOG browse, CART CHECKOUT (via the 2.3 payment layer),
+// SUBSCRIPTIONS (auto-reorder), and ORDER HISTORY. All real API; empty → empty states.
+
+// A shop provider's CATALOG — its active products (RLS: a published shop's active products
+// are readable by any authed). Disabled until a providerId is known. Empty → [].
+export function useShopProducts(providerId) {
+  return useQuery({
+    queryKey: ["shop-products", providerId],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/shop-products`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
+      }
+      const data = await response.json();
+      return data.products ?? [];
+    },
+  });
+}
+
+// The owner's product ORDER HISTORY (GET /api/shop/orders). Empty → [].
+export function useShopOrders() {
+  return useQuery({
+    queryKey: ["shop-orders", "owner"],
+    queryFn: async () => {
+      const response = await fetch(`/api/shop/orders`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
+      }
+      const data = await response.json();
+      return data.orders ?? [];
+    },
+  });
+}
+
+// CHECKOUT a cart for a pet (POST /api/pets/[id]/shop-checkout). The backend gates the shop
+// capability, refuses out-of-stock + Rx-without-vet lines, builds the order, and hands off to
+// the 2.3 payment layer. mutateAsync({ petId, provider_id, items:[{product_id, quantity}],
+// rail }) → { order, payment, checkoutUrl, deeplink, qrContent }. Surfaces the backend's
+// 409 "Out of stock" / 403 Rx / 503 "payments not configured" message.
+export function useShopCheckout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, ...body }) => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/shop-checkout`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Checkout failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-orders", "owner"] });
+    },
+  });
+}
+
+// The owner's auto-reorder SUBSCRIPTIONS (GET /api/shop/subscriptions). Empty → [].
+export function useShopSubscriptions() {
+  return useQuery({
+    queryKey: ["shop-subscriptions", "owner"],
+    queryFn: async () => {
+      const response = await fetch(`/api/shop/subscriptions`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch subscriptions");
+      }
+      const data = await response.json();
+      return data.subscriptions ?? [];
+    },
+  });
+}
+
+// CREATE an auto-reorder plan (POST /api/shop/subscriptions). mutateAsync({ product_id, plan,
+// quantity }) → { subscription }. The backend refuses Rx products. Invalidates the list.
+export function useCreateShopSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch(`/api/shop/subscriptions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to subscribe");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-subscriptions", "owner"] });
+    },
+  });
+}
+
+// CANCEL / pause / resume a subscription (PATCH /api/shop/subscriptions/[id]).
+// mutateAsync({ id, status }) → { subscription }. Invalidates the list.
+export function useUpdateShopSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }) => {
+      const response = await fetch(
+        `/api/shop/subscriptions/${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update subscription");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-subscriptions", "owner"] });
+    },
+  });
+}

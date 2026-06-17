@@ -19,15 +19,15 @@ import { COLORS } from "@/constants/colors";
 // navigation so the built provider/booking loops are 1-2 taps away.
 //
 // Veterinary (ticket 2.0), Grooming (ticket 2.6), Dog Walking (ticket 2.7), Daycare &
-// Boarding (ticket 2.8), Pet Sitting (ticket 2.9) and Training (ticket 2.10) are built
-// end-to-end today, so they are the LIVE cards: each navigates to its single canonical
-// discovery screen (more/vet.jsx, more/grooming.jsx, more/walking.jsx, more/daycare.jsx,
-// more/sitting.jsx, more/training.jsx — no duplicate discovery screen). NOTE: the Training
-// card here is the PROVIDER training SERVICE (hiring a trainer) — DISTINCT from the consumer
-// self-Training TAB ((tabs)/training.jsx, static how-to content). Every other catalog
-// category is rendered as a "Coming soon" SIGNPOST card: visible and clearly badged, but NOT
-// tappable into any flow and with NO fake provider data behind it. These light up in later
-// Phase-2 tickets (shop → adoption).
+// Boarding (ticket 2.8), Pet Sitting (ticket 2.9), Training (ticket 2.10) and Shop (ticket
+// 2.11) are built end-to-end today, so they are the LIVE cards: each navigates to its single
+// canonical discovery screen (more/vet.jsx, more/grooming.jsx, more/walking.jsx,
+// more/daycare.jsx, more/sitting.jsx, more/training.jsx, more/shop.jsx — no duplicate
+// discovery screen). NOTE: the Training card here is the PROVIDER training SERVICE (hiring a
+// trainer) — DISTINCT from the consumer self-Training TAB ((tabs)/training.jsx, static how-to
+// content). Every other catalog category is rendered as a "Coming soon" SIGNPOST card:
+// visible and clearly badged, but NOT tappable into any flow and with NO fake provider data
+// behind it. These light up in later Phase-2 tickets (adoption next).
 const CATEGORIES = [
   {
     key: "vet",
@@ -82,7 +82,8 @@ const CATEGORIES = [
     title: "Shop",
     subtitle: "Food, toys, and supplies",
     icon: ShoppingBag,
-    live: false,
+    live: true,
+    route: "/(tabs)/more/shop",
   },
   {
     key: "adoption",

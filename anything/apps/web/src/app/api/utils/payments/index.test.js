@@ -77,6 +77,9 @@ const ORDER = {
   currency: 'ARS',
 };
 
+const allQueryText = () =>
+  sql.mock.calls.map((c) => (c?.[0] ?? []).join(' ')).join(' | ');
+
 describe('createCheckout', () => {
   it('not configured → throws PaymentsNotConfiguredError (no DB)', async () => {
     await expect(
@@ -156,6 +159,7 @@ describe('handleWebhook', () => {
     mp.mapStatus.mockReturnValue('approved');
     sql.mockResolvedValueOnce([{ id: 99, order_id: 10, rail: 'mercadopago' }]); // findPayment
     sql.mockResolvedValueOnce([]); // UPDATE payments
+    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'pending' }]); // SELECT prior order (2.11 stock guard)
     sql.mockResolvedValueOnce([]); // UPDATE orders → paid
 
     const res = await handleWebhook('mercadopago', {
@@ -167,9 +171,12 @@ describe('handleWebhook', () => {
     const updPayments = sql.mock.calls[1];
     expect(updPayments[0].join(' ')).toContain('UPDATE payments');
     expect(updPayments).toEqual(expect.arrayContaining(['approved']));
-    const updOrders = sql.mock.calls[2];
+    // call[2] is the prior-order SELECT (2.11); call[3] is the UPDATE orders.
+    const updOrders = sql.mock.calls[3];
     expect(updOrders[0].join(' ')).toContain('UPDATE orders');
     expect(updOrders).toEqual(expect.arrayContaining(['paid']));
+    // booking order → no stock adjustment call.
+    expect(allQueryText()).not.toContain('app_adjust_order_stock');
   });
 
   it('verified but UNKNOWN reference → acknowledged (200) with nothing changed', async () => {
@@ -203,6 +210,7 @@ describe('getStatus / refund / payout', () => {
     sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
     mp.getPaymentStatus.mockResolvedValue({ status: 'approved', rawStatus: 'approved' });
     sql.mockResolvedValueOnce([]); // UPDATE payments
+    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'pending' }]); // SELECT prior order (2.11)
     sql.mockResolvedValueOnce([]); // UPDATE orders
 
     const res = await getStatus(payment);
@@ -217,12 +225,15 @@ describe('getStatus / refund / payout', () => {
     sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
     mp.refund.mockResolvedValue({ status: 'refunded' });
     sql.mockResolvedValueOnce([]); // UPDATE payments
+    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'paid' }]); // SELECT prior order (2.11)
     sql.mockResolvedValueOnce([]); // UPDATE orders
 
     const res = await refund(payment);
     expect(res.status).toBe('refunded');
     expect(mp.refund).toHaveBeenCalled();
-    expect(sql.mock.calls[3]).toEqual(expect.arrayContaining(['refunded']));
+    // call[0] (loadOrder), call[1] (loadProviderAccount), call[2] (UPDATE payments),
+    // call[3] (SELECT prior order, 2.11), call[4] (UPDATE orders → refunded).
+    expect(sql.mock.calls[4]).toEqual(expect.arrayContaining(['refunded']));
   });
 
   it('payout calls the rail Payout API and records a payouts row', async () => {
