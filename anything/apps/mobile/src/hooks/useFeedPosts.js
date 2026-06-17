@@ -80,6 +80,40 @@ export function useCreatePost() {
   });
 }
 
+// Delete the caller's own post (ticket 2.36). Owner-only is enforced server-side
+// (DELETE /api/posts/[id] matches on user_id). On success we invalidate the feed
+// AND the daily-lock queries so deleting today's daily reopens the composer.
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (postId) => {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to delete post");
+      }
+
+      return response.json();
+    },
+    onSuccess: (_data, postId) => {
+      // Drop the post from any cached feed list immediately.
+      queryClient.setQueriesData({ queryKey: ["posts", "feed"] }, (old) =>
+        Array.isArray(old) ? old.filter((p) => p.id !== postId) : old,
+      );
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Deleting today's daily frees the slot — refresh the lock state so the
+      // BeReal composer reopens for a re-upload.
+      queryClient.invalidateQueries({ queryKey: ["today-daily-update"] });
+      queryClient.invalidateQueries({ queryKey: ["owner-posted-today"] });
+    },
+  });
+}
+
 export function useTogglePaw(postId) {
   const queryClient = useQueryClient();
 

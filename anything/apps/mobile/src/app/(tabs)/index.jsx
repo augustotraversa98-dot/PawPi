@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -21,11 +21,13 @@ export default function FeedScreen() {
     hasPostedToday,
     feedUnlocked,
     todayPostId,
+    todayDailyUpdatePost,
     posts,
     likedPosts,
     handlePost,
     handleToggleLike,
     handleBarkAdded,
+    handleDeletePost,
     refetchPosts,
     refetchTodayDailyUpdate,
     loadingPosts,
@@ -103,14 +105,40 @@ export default function FeedScreen() {
   );
 
   // ── View today's post ──
+  // Open the real post. Prefer the copy already in the feed (own posts now appear
+  // there, ticket 2.36); fall back to the today's-daily object from the API so it
+  // opens even before the feed refetch lands.
   const handleViewTodayPost = useCallback(() => {
-    if (todayPostId) {
-      const post = posts.find((p) => p.id === todayPostId);
-      if (post) {
-        setDetailPost(post);
-      }
+    if (!todayPostId) return;
+    const post =
+      posts.find((p) => p.id === todayPostId) || todayDailyUpdatePost || null;
+    if (post) {
+      setDetailPost(post);
     }
-  }, [todayPostId, posts]);
+  }, [todayPostId, posts, todayDailyUpdatePost]);
+
+  // ── Delete own post (confirm first) ──
+  const handleConfirmDelete = useCallback(
+    (post) => {
+      if (!post?.id) return;
+      Alert.alert(
+        "Delete post?",
+        "This permanently removes the post. You can post a new daily photo afterwards.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              setDetailPost(null);
+              await handleDeletePost(post.id);
+            },
+          },
+        ],
+      );
+    },
+    [handleDeletePost],
+  );
 
   const handleBarkAddedWithUpdate = useCallback(
     (postId, newCount) => {
@@ -204,6 +232,9 @@ export default function FeedScreen() {
         visible={!!detailPost}
         post={detailPost}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
+        // The viewer can delete only their own active pet's post.
+        canDelete={!!detailPost && detailPost.pet_id === petProfile?.id}
+        onDelete={() => detailPost && handleConfirmDelete(detailPost)}
         onClose={() => setDetailPost(null)}
         onToggleLike={() => detailPost && handleToggleLike(detailPost.id)}
         onOpenBarks={() => {

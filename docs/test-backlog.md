@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.36 — Feed daily-post fixes (delete/reupload, view-today, own posts)  ·  ticket/feed-daily-post-fixes (2026-06-18)
+What shipped: three daily-post bugs fixed. (1) **Delete + reupload** — new owner-only `DELETE /api/posts/[id]` (hard delete; `post_paws`/`post_barks` cascade; deleting today's daily frees the unique slot so `owner-posted-today` flips false and the BeReal composer reopens). A trash button with a confirm appears in the post detail modal **only for your own active pet's post**. (2) **View today** — the handler searched only the feed list (which excluded own posts) so it opened nothing; own posts are now in the feed AND it falls back to the today's-daily object from the API. (3) **Own posts in feed** — the Following group now includes your active pet's posts (newest-first), so your post appears right after posting.
+- **No migration** (posts RLS already owner-write — `posts_author_all` FOR ALL covers DELETE). Exercised by web vitest (+6: DELETE owner-only/401/400/404; feed includes own pet) and mobile jest (+2: delete affordance shown only when own, fires onDelete).
+- **NEEDS A DEVICE PASS:** delete today's daily → the composer reopens and you can repost; "view today's post" opens the real post; your own posts appear in your feed in chronological order; you cannot delete someone else's post (no trash button on others' posts).
+
 ### [ ] 2.35 — Onboarding required fields + keyboard  ·  ticket/onboarding-required-fields (2026-06-18)
 What shipped: pet-owner onboarding now REQUIRES a pet name (already) and a valid, available **@handle** before you can continue. The @handle rule lives in a pure, tested util (`validateHandle.js`): lowercase alphanumerics + `_`/`.`, 3–20 chars, must start alphanumeric, not in the taken list. "Continue" is blocked with inline errors until it's valid; the auto-generate-on-skip shortcut is gone. Species stays the app's dog default. The step content is now wrapped in the proven `KeyboardAwareScrollView` so focused inputs scroll above the keyboard (numeric fields keep number/decimal pads).
 - **No migration / no backend change** (the create shape already accepts these values).

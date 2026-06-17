@@ -48,8 +48,10 @@ async function GET(request) {
     // pull the whole table; mergeFeed then slices the exact window.
     const groupLimit = offset + limit;
 
-    // 1) Following: posts from pets that viewerPetId follows (newest first).
-    //    Empty when there's no active pet — Suggested carries the feed.
+    // 1) Following + own: posts from pets that viewerPetId follows AND the
+    //    viewer's own active pet (newest first), so your own posts always appear
+    //    in your feed in chronological order (ticket 2.36). Empty when there's
+    //    no active pet — Suggested carries the feed.
     const following = viewerPetId
       ? await sql`
           SELECT
@@ -74,9 +76,12 @@ async function GET(request) {
             FROM post_barks
             GROUP BY post_id
           ) bark_count ON p.id = bark_count.post_id
-          WHERE p.pet_id IN (
-            SELECT followed_pet_id FROM pet_follows
-            WHERE follower_pet_id = ${viewerPetId}
+          WHERE (
+            p.pet_id = ${viewerPetId}
+            OR p.pet_id IN (
+              SELECT followed_pet_id FROM pet_follows
+              WHERE follower_pet_id = ${viewerPetId}
+            )
           )
           ORDER BY p.created_at DESC
           LIMIT ${groupLimit}

@@ -111,6 +111,20 @@ describe('GET /api/posts — Following + Suggested', () => {
     expect(posts.length).toBeGreaterThan(0);
   });
 
+  it("includes the viewer's OWN pet in the Following group (ticket 2.36)", async () => {
+    auth.mockResolvedValue(undefined);
+    sql
+      .mockResolvedValueOnce([post(9, 7)]) // following+own
+      .mockResolvedValueOnce([post(3, 20)]); // suggested
+
+    await GET(feedReq('?viewerPetId=7'));
+
+    // Call 0 = Following+own. It must select the viewer's own pet's posts too.
+    const followingSql = queryText(0).toLowerCase();
+    expect(followingSql).toContain('p.pet_id =');
+    expect(queryValues(0)).toContain(7);
+  });
+
   it('without viewerPetId, runs only the Suggested (global) query — no following filter', async () => {
     auth.mockResolvedValue(undefined);
     sql.mockResolvedValueOnce([post(3, 20), post(4, 30)]); // suggested only

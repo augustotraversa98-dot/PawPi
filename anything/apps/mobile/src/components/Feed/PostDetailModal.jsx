@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PawPrint, Megaphone, Share2, X } from "lucide-react-native";
+import { PawPrint, Megaphone, Share2, Trash2, X } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
@@ -21,6 +21,8 @@ export const PostDetailModal = memo(function PostDetailModal({
   visible,
   post,
   liked,
+  canDelete = false,
+  onDelete,
   onClose,
   onToggleLike,
   onOpenBarks,
@@ -82,9 +84,16 @@ export const PostDetailModal = memo(function PostDetailModal({
           >
             Pet moment
           </Text>
-          <TouchableOpacity>
-            <Share2 size={20} color={COLORS.mutedBrown} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+            {canDelete ? (
+              <TouchableOpacity onPress={onDelete} accessibilityLabel="Delete post">
+                <Trash2 size={20} color={COLORS.coral} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity>
+              <Share2 size={20} color={COLORS.mutedBrown} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView

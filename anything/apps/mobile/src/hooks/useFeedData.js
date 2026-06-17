@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { useFeedPosts, useCreatePost, useTogglePaw } from "./useFeedPosts";
+import {
+  useFeedPosts,
+  useCreatePost,
+  useDeletePost,
+  useTogglePaw,
+} from "./useFeedPosts";
 import { useCurrentPet } from "./usePetProfile";
 import { useTodayDailyUpdate } from "./useTodayDailyUpdate";
 import { useOwnerPostedToday } from "./useOwnerPostedToday";
@@ -30,8 +35,9 @@ export function useFeedData() {
     refetch: refetchTodayDailyUpdate,
   } = useTodayDailyUpdate(petId);
 
-  // Create post mutation
+  // Create / delete post mutations
   const createPostMutation = useCreatePost();
+  const deletePostMutation = useDeletePost();
 
   // Get auth user for logging
   const { data: authUser } = useUser();
@@ -294,6 +300,21 @@ export function useFeedData() {
     // Handled directly in PostCard using useTogglePaw
   }, []);
 
+  // Delete one of the viewer's own posts, then refresh the feed + daily lock so a
+  // deleted daily reopens the composer for a re-upload (ticket 2.36).
+  const handleDeletePost = useCallback(
+    async (postId) => {
+      if (!postId) return;
+      try {
+        await deletePostMutation.mutateAsync(postId);
+        await Promise.all([refetchPosts(), refetchTodayDailyUpdate()]);
+      } catch (error) {
+        Alert.alert("Error", `Could not delete: ${error.message}`);
+      }
+    },
+    [deletePostMutation, refetchPosts, refetchTodayDailyUpdate],
+  );
+
   const handleBarkAdded = useCallback(
     (postId, newCount) => {
       // Refetch posts to update bark count
@@ -308,11 +329,13 @@ export function useFeedData() {
     hasPostedToday, // per active pet (DailyPromptCard prompt)
     feedUnlocked, // per owner (feed lock)
     todayPostId,
+    todayDailyUpdatePost: effectiveTodayDailyUpdate, // full post for "view today"
     posts,
     likedPosts,
     handlePost,
     handleToggleLike,
     handleBarkAdded,
+    handleDeletePost,
     refetchPosts,
     refetchTodayDailyUpdate,
     loadingPosts:
