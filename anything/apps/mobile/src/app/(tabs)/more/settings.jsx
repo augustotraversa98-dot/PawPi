@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Bell,
@@ -11,8 +12,13 @@ import {
   HelpCircle,
   PawPrint,
   Activity,
+  Check,
 } from "lucide-react-native";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
+import {
+  getLocalePreference,
+  setLocalePreference,
+} from "@/i18n/localePreference";
 
 const C = {
   coral: "#FF6F61",
@@ -25,9 +31,56 @@ const C = {
   mutedBrown: "#7A6254",
 };
 
+// Language selector (ticket 2.29): System default / English / Español. Updates the app
+// language immediately and persists the choice. "System default" follows the phone.
+function LanguageSelector() {
+  const { t } = useTranslation();
+  const [pref, setPref] = useState("system");
+
+  useEffect(() => {
+    getLocalePreference().then(setPref);
+  }, []);
+
+  const choose = async (value) => {
+    setPref(value);
+    await setLocalePreference(value);
+  };
+
+  const OPTIONS = [
+    { value: "system", label: t("settings.systemDefault") },
+    { value: "en", label: t("settings.english") },
+    { value: "es", label: t("settings.spanish") },
+  ];
+
+  return (
+    <View>
+      {OPTIONS.map((o, i) => (
+        <TouchableOpacity
+          key={o.value}
+          testID={`lang-${o.value}`}
+          onPress={() => choose(o.value)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 14,
+            borderBottomWidth: i < OPTIONS.length - 1 ? 1 : 0,
+            borderBottomColor: "#FFD9B3",
+          }}
+        >
+          <Text style={{ flex: 1, fontSize: 15, color: "#3B241B", fontWeight: "600" }}>
+            {o.label}
+          </Text>
+          {pref === o.value ? <Check size={18} color="#FF6F61" /> : null}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const [feedReminder, setFeedReminder] = useState(true);
   const [healthAlerts, setHealthAlerts] = useState(true);
   const [communityUpdates, setCommunityUpdates] = useState(false);
@@ -123,7 +176,7 @@ export default function SettingsScreen() {
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 22, fontWeight: "800", color: C.warmBrown }}>
-          Settings ⚙️
+          {t("settings.title")} ⚙️
         </Text>
       </View>
 
@@ -189,11 +242,25 @@ export default function SettingsScreen() {
             letterSpacing: 0.8,
           }}
         >
+          {t("settings.language").toUpperCase()}
+        </Text>
+        <SectionCard>
+          <LanguageSelector />
+        </SectionCard>
+
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "800",
+            color: C.mutedBrown,
+            marginBottom: 10,
+            letterSpacing: 0.8,
+          }}
+        >
           PRIVACY & DATA
         </Text>
         <SectionCard>
           <SettingRow label="Account Privacy" icon={Lock} value="Public" />
-          <SettingRow label="Language" icon={Globe} value="English" />
         </SectionCard>
 
         <Text

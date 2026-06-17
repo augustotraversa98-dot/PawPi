@@ -69,6 +69,16 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.29 — i18n English/Spanish  ·  ticket/i18n-spanish (2026-06-17)
+What shipped: the app now has an **internationalization framework** (i18next + react-i18next + expo-localization). It defaults to the **phone's language** (Spanish on a Spanish phone, English otherwise) with a **Settings → Language** toggle (System default / English / Español) that switches **live** and **persists** (`pawpi:locale`). The **bottom-tab labels** and the **Settings** screen are translated; everything else falls back cleanly to English (a raw key is never shown), and new screens adopt `t("namespace.key")` from here. EN + ES catalogs ship with core keys (tabs, common buttons/empty/errors, settings, feed/health/services/search/messages/notifications headings) in neutral LATAM-friendly Spanish.
+- **No migration / no backend.** New deps: `i18next` + `react-i18next` (pure JS) + `expo-localization@~17.0.8` (SDK-54). Works in Expo Go (no custom native needed beyond expo-localization, which is in the SDK).
+- **Follow-up (not in this PR):** translate the deeper screens incrementally — Feed/daily composer, Health Today/Track/Insights/Vet Record bodies, the Services grid + each service screen, More menu, onboarding/auth, provider dashboard-facing strings. The catalog + `t()` pattern are in place; until then those screens render English (no raw keys).
+- Exercised by mobile jest (t() resolves EN + ES for sample keys; device-locale `es` → Spanish, unknown → English; the Settings override switches + persists + applies on startup; a missing key falls back to English).
+- **NEEDS A DEVICE PASS:**
+1. On a **Spanish** phone the app opens in Spanish (tab labels: Inicio/Salud/Entrenamiento/Servicios/Más); on an English phone, English.
+2. **More → Settings → Language**: switch to English / Español → the UI updates immediately; reopen the app → the choice persists. "System default" follows the phone.
+3. An untranslated screen shows English (never a raw `key.name`).
+
 ### [ ] 2.30 — Adoption per-listing deep-link  ·  ticket/adoption-deeplink (2026-06-17)
 What shipped: tapping an **"Adopt me"** card in the feed now opens **that exact dog's listing** (story, vitals, fee, apply/favorite/chat) instead of the generic Adoption hub. The card passes `{ listingId, providerId }`; the Adoption screen opens the listing's detail on mount. If the dog is gone/adopted it shows a graceful "no longer available" notice. Routes through the root-level `service/` stack (the 2.19 nav fix), so the **More tab is never corrupted** and back returns to the feed.
 - **No migration / no backend.** Deviation from the ticket: the single-listing route (`adoptable-listings/[listingId]`) is **admin-only (no public GET)**, so the deep-open instead loads the place's **public** listings (available-of-published) and finds the dog there — works even before the browse list is open.

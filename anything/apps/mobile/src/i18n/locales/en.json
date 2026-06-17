@@ -1,0 +1,62 @@
+{
+  "tabs": {
+    "feed": "Feed",
+    "health": "Health",
+    "training": "Training",
+    "services": "Services",
+    "more": "More"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "done": "Done",
+    "retry": "Try again",
+    "loading": "Loading…",
+    "noResults": "No results",
+    "somethingWrong": "Something went wrong. Please try again.",
+    "back": "Back",
+    "close": "Close",
+    "share": "Share",
+    "send": "Send"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageHint": "Choose how PawPi appears on your phone.",
+    "systemDefault": "System default",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "feed": {
+    "title": "Feed",
+    "dailyPrompt": "Share today's daily",
+    "empty": "Nothing here yet"
+  },
+  "health": {
+    "title": "Health",
+    "today": "Today",
+    "track": "Track",
+    "insights": "Insights",
+    "vetRecord": "Vet Record"
+  },
+  "services": {
+    "title": "Services",
+    "empty": "No services available yet"
+  },
+  "search": {
+    "title": "Search & Discover",
+    "noResults": "No results",
+    "nothingHere": "Nothing here yet"
+  },
+  "messages": {
+    "title": "Messages",
+    "empty": "No conversations yet"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "No new notifications yet"
+  }
+}
