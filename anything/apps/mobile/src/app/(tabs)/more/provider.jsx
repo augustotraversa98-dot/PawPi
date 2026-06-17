@@ -16,10 +16,15 @@ import {
   Clock,
   Calendar,
   Star,
+  MessageSquare,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import { useProviderProfile, useProviderReviews } from "@/hooks/useProviders";
+import {
+  useProviderProfile,
+  useProviderReviews,
+  useStartThread,
+} from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import RatingBadge from "@/components/Providers/RatingBadge";
 
@@ -39,6 +44,7 @@ export default function ProviderScreen() {
 
   const { data, isLoading, isError, refetch } = useProviderProfile(slugStr);
   const [showBooking, setShowBooking] = useState(false);
+  const { mutate: startThread, isPending: startingThread } = useStartThread();
 
   const provider = data?.provider;
   const locations = data?.locations ?? [];
@@ -300,7 +306,7 @@ export default function ProviderScreen() {
         </RefreshableScrollView>
       )}
 
-      {/* Primary CTA */}
+      {/* Primary CTAs: Message (start/reuse a thread → open conversation) + Book. */}
       {provider && (
         <View
           style={{
@@ -309,11 +315,57 @@ export default function ProviderScreen() {
             borderTopWidth: 1,
             borderTopColor: COLORS.peach,
             backgroundColor: COLORS.card,
+            flexDirection: "row",
+            gap: 12,
           }}
         >
           <TouchableOpacity
+            onPress={() => {
+              if (startingThread) return;
+              startThread(
+                { providerId: provider.id },
+                {
+                  onSuccess: (res) => {
+                    const thread = res?.thread;
+                    if (!thread) return;
+                    router.push({
+                      pathname: "/provider-chat",
+                      params: {
+                        threadId: String(thread.id),
+                        providerName: provider.name || "Provider",
+                        ownerUserId: String(thread.owner_user_id),
+                      },
+                    });
+                  },
+                },
+              );
+            }}
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.sand,
+              borderRadius: 16,
+              padding: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: COLORS.peach,
+            }}
+          >
+            {startingThread ? (
+              <ActivityIndicator size="small" color={COLORS.coral} />
+            ) : (
+              <MessageSquare size={18} color={COLORS.coral} />
+            )}
+            <Text style={{ color: COLORS.coral, fontWeight: "800", fontSize: 15 }}>
+              Message
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => setShowBooking(true)}
             style={{
+              flex: 1,
               backgroundColor: COLORS.coral,
               borderRadius: 16,
               padding: 16,
@@ -324,8 +376,8 @@ export default function ProviderScreen() {
             }}
           >
             <Calendar size={18} color="#FFF" />
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-              Book appointment
+            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
+              Book
             </Text>
           </TouchableOpacity>
         </View>

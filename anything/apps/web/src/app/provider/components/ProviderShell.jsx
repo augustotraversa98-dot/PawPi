@@ -23,8 +23,8 @@ import { useProviderSelection } from "../store/providerSelection";
 import CreateProviderForm from "./CreateProviderForm";
 
 // Dashboard sections. Bookings (c1), Profile (c2a), Services + Locations (c2b),
-// Staff (c2c), Clinical (c3) are wired and navigate to their routes; the rest are
-// clearly-disabled "coming soon" stubs (Sales/Chats → future layers with no
+// Staff (c2c), Clinical (c3), Chats (2.5) are wired and navigate to their routes;
+// the rest are clearly-disabled "coming soon" stubs (Sales → a future layer with no
 // backend yet). They never dead-end.
 const NAV_ITEMS = [
   {
@@ -69,8 +69,14 @@ const NAV_ITEMS = [
     enabled: true,
     href: "/provider/clinical",
   },
+  {
+    key: "chats",
+    label: "Chats",
+    Icon: MessageSquare,
+    enabled: true,
+    href: "/provider/chats",
+  },
   { key: "sales", label: "Sales", Icon: DollarSign, enabled: false },
-  { key: "chats", label: "Chats", Icon: MessageSquare, enabled: false },
 ];
 
 function FullScreen({ children }) {

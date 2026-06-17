@@ -130,6 +130,21 @@ async function getJson(url, init) {
   return data;
 }
 
+// Chat threads + messages (ticket 2.5). Provider-side inbox keyed by provider id;
+// a conversation's messages keyed by thread id. The unread badge keyed per provider.
+export const threadsKey = (providerId) => [
+  "provider-threads",
+  String(providerId ?? ""),
+];
+export const threadMessagesKey = (threadId) => [
+  "thread-messages",
+  String(threadId ?? ""),
+];
+export const threadsUnreadKey = (providerId) => [
+  "provider-threads-unread",
+  String(providerId ?? ""),
+];
+
 // --- hooks ------------------------------------------------------------------
 
 // Providers the logged-in user is ACTIVE staff of. [] = belongs to none.
@@ -599,6 +614,102 @@ export function useAddVaccination(providerId, petId) {
       queryClient.invalidateQueries({
         queryKey: petRecordKey(providerId, petId),
       });
+    },
+  });
+}
+
+// --- chat / messaging (ticket 2.5) ------------------------------------------
+
+// Provider-side thread inbox (GET /api/threads?side=provider&providerId=). RLS
+// restricts to threads of providers the caller staffs; the providerId narrows to
+// the active one. Polls every 15s so new owner messages surface without a manual
+// refresh (the documented "polling, not heavy realtime" choice).
+export function useProviderThreads(providerId) {
+  return useQuery({
+    queryKey: threadsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const data = await getJson(
+        `/api/threads?side=provider&providerId=${encodeURIComponent(providerId)}`,
+      );
+      return data.threads ?? [];
+    },
+  });
+}
+
+// One thread's messages (GET /api/threads/[id]/messages). Newest-first; polls every
+// 8s while the conversation is open. Enabled only with a thread id.
+export function useThreadMessages(threadId) {
+  return useQuery({
+    queryKey: threadMessagesKey(threadId),
+    enabled: threadId != null && threadId !== "",
+    refetchInterval: 8000,
+    queryFn: async () => {
+      const data = await getJson(
+        `/api/threads/${encodeURIComponent(threadId)}/messages?limit=50`,
+      );
+      return data.messages ?? [];
+    },
+  });
+}
+
+// Send a message (POST /api/threads/[id]/messages). body { body?, attachment_url? }.
+// On success refetch this thread's messages + the provider thread list (last message
+// + ordering) + the unread badge.
+export function useSendMessage(providerId, threadId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(
+        `/api/threads/${encodeURIComponent(threadId)}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return data.message;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadMessagesKey(threadId) });
+      queryClient.invalidateQueries({ queryKey: threadsKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: threadsUnreadKey(providerId) });
+    },
+  });
+}
+
+// Mark a thread read (POST /api/threads/[id]/read). Clears the unread badge for the
+// caller; refetches the thread list (per-thread unread) + the provider unread total.
+export function useMarkThreadRead(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId) => {
+      const data = await getJson(
+        `/api/threads/${encodeURIComponent(threadId)}/read`,
+        { method: "POST" },
+      );
+      return data.updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadsKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: threadsUnreadKey(providerId) });
+    },
+  });
+}
+
+// Provider-side unread total (GET /api/threads/unread-count?side=provider). Drives
+// the Chats nav badge; polls every 30s.
+export function useProviderUnreadCount(providerId) {
+  return useQuery({
+    queryKey: threadsUnreadKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const data = await getJson(
+        `/api/threads/unread-count?side=provider&providerId=${encodeURIComponent(providerId)}`,
+      );
+      return data.unread_count ?? 0;
     },
   });
 }

@@ -127,3 +127,135 @@ export function useBookProvider() {
     },
   });
 }
+
+// --- owner ↔ provider chat / messaging (Phase 2 ticket 2.5) -----------------
+// These wrap the participant-scoped thread/message routes (0031 RLS is the real
+// guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,
+// throw on !res.ok. REALTIME = short-interval POLLING (refetchInterval), the
+// documented lightweight choice — no Supabase Realtime websocket infra.
+
+// The owner's thread inbox (GET /api/threads?side=owner). Polls every 15s.
+export function useMyThreads() {
+  return useQuery({
+    queryKey: ["threads", "owner"],
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const response = await fetch("/api/threads?side=owner");
+      if (!response.ok) {
+        throw new Error("Failed to fetch conversations");
+      }
+      const data = await response.json();
+      return data.threads ?? [];
+    },
+  });
+}
+
+// One thread's messages (GET /api/threads/[id]/messages). Newest-first; polls every
+// 8s while open. Disabled until a thread id is known.
+export function useThreadMessages(threadId) {
+  return useQuery({
+    queryKey: ["thread-messages", threadId],
+    enabled: threadId != null,
+    refetchInterval: 8000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/threads/${encodeURIComponent(threadId)}/messages?limit=50`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch messages");
+      }
+      const data = await response.json();
+      return data.messages ?? [];
+    },
+  });
+}
+
+// Start (or reuse) a thread with a provider (POST /api/threads). Idempotent — returns
+// the existing thread if one already exists. Invalidates the owner inbox on success.
+export function useStartThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ providerId, booking_id? }) → { thread, reused }
+    mutationFn: async (body) => {
+      const response = await fetch("/api/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to start conversation");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads", "owner"] });
+    },
+  });
+}
+
+// Send a message (POST /api/threads/[id]/messages). body { body?, attachment_url? }.
+// Refetches this thread's messages + the inbox + the unread badge.
+export function useSendMessage(threadId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch(
+        `/api/threads/${encodeURIComponent(threadId)}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to send message");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["thread-messages", threadId] });
+      queryClient.invalidateQueries({ queryKey: ["threads", "owner"] });
+      queryClient.invalidateQueries({ queryKey: ["threads", "unread"] });
+    },
+  });
+}
+
+// Mark a thread read (POST /api/threads/[id]/read). Clears the caller's unread.
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId) => {
+      const response = await fetch(
+        `/api/threads/${encodeURIComponent(threadId)}/read`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to mark read");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads", "owner"] });
+      queryClient.invalidateQueries({ queryKey: ["threads", "unread"] });
+    },
+  });
+}
+
+// The owner's total unread message count (GET /api/threads/unread-count?side=owner).
+// Drives the Messages badge. Polls every 30s.
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ["threads", "unread"],
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch("/api/threads/unread-count?side=owner");
+      if (!response.ok) {
+        throw new Error("Failed to fetch unread count");
+      }
+      const data = await response.json();
+      return data.unread_count ?? 0;
+    },
+  });
+}
