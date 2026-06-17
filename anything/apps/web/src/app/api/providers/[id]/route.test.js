@@ -113,6 +113,32 @@ describe('PATCH /api/providers/[id] — profile fields only', () => {
     expect(values).toEqual(['New Name', 'hi', '100']);
   });
 
+  it('updates the optional business links via the profile whitelist (ticket 2.20)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+    sql.unsafe.mockResolvedValueOnce([
+      { id: 100, website_url: 'https://hp.example', instagram_url: 'https://ig.example/hp' },
+    ]);
+
+    const res = await PATCH(
+      patchReq({
+        website_url: 'https://hp.example',
+        instagram_url: 'https://ig.example/hp',
+      }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.provider.website_url).toBe('https://hp.example');
+
+    const [updateQuery, values] = sql.unsafe.mock.calls[0];
+    expect(updateQuery).toContain('website_url =');
+    expect(updateQuery).toContain('instagram_url =');
+    expect(values).toEqual(['https://hp.example', 'https://ig.example/hp', '100']);
+  });
+
   it('cannot change owner_user_profile_id or status via the profile path', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

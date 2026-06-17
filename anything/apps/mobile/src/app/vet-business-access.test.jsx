@@ -86,6 +86,29 @@ test("multi-select keeps several services selected and posts capabilities[] + pr
   );
 });
 
+test("optional links submit through useCreateProvider (ticket 2.20)", async () => {
+  const screen = render(<VetBusinessAccessScreen />);
+  fillName(screen);
+  fireEvent.press(screen.getByText("Veterinary clinic"));
+  fireEvent.changeText(
+    screen.getByPlaceholderText("Website (https://…)"),
+    "https://happypaws.example",
+  );
+  fireEvent.changeText(
+    screen.getByPlaceholderText("Google Maps URL"),
+    "https://maps.example/hp",
+  );
+  fireEvent.press(screen.getByText("Create business"));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  expect(mockCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      website_url: "https://happypaws.example",
+      google_maps_url: "https://maps.example/hp",
+    }),
+  );
+});
+
 test("tapping a selected service again de-selects it", () => {
   const screen = render(<VetBusinessAccessScreen />);
   fillName(screen);

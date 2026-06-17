@@ -29,6 +29,7 @@ async function GET(request, { params }) {
     const providers = await sql`
       SELECT
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+        p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
         (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
         (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
       FROM providers p

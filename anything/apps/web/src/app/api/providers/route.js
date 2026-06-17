@@ -43,7 +43,29 @@ async function POST(request) {
     });
 
     const body = await request.json();
-    const { name, provider_type, bio, logo_url, slug, capabilities } = body ?? {};
+    const {
+      name,
+      provider_type,
+      bio,
+      logo_url,
+      slug,
+      capabilities,
+      website_url,
+      instagram_url,
+      facebook_url,
+      google_maps_url,
+    } = body ?? {};
+
+    // Links (ticket 2.20) are OPTIONAL public profile fields. Trim; an empty/blank/non-string
+    // value becomes null (never hard-fail a messy value — enrichment 2.21 cleans them later).
+    const link = (v) => {
+      const t = typeof v === "string" ? v.trim() : "";
+      return t || null;
+    };
+    const websiteUrl = link(website_url);
+    const instagramUrl = link(instagram_url);
+    const facebookUrl = link(facebook_url);
+    const googleMapsUrl = link(google_maps_url);
 
     if (!name || !provider_type) {
       return Response.json(
@@ -95,9 +117,11 @@ async function POST(request) {
     const created = await sql`
       WITH new_provider AS (
         INSERT INTO providers
-          (owner_user_profile_id, provider_type, name, slug, bio, logo_url, status)
+          (owner_user_profile_id, provider_type, name, slug, bio, logo_url, status,
+           website_url, instagram_url, facebook_url, google_maps_url)
         VALUES
-          (${userId}, ${provider_type}, ${name}, ${finalSlug}, ${bio ?? null}, ${logo_url ?? null}, 'draft')
+          (${userId}, ${provider_type}, ${name}, ${finalSlug}, ${bio ?? null}, ${logo_url ?? null}, 'draft',
+           ${websiteUrl}, ${instagramUrl}, ${facebookUrl}, ${googleMapsUrl})
         RETURNING *
       ), new_staff AS (
         INSERT INTO provider_staff (provider_id, user_profile_id, role, status)

@@ -123,6 +123,11 @@ function ProviderOnboarding() {
   const [name, setName] = useState("");
   const [selectedCapabilities, setSelectedCapabilities] = useState([]);
   const [bio, setBio] = useState("");
+  // Optional public links (ticket 2.20) — onboarding stays fast; all optional.
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
 
   // Toggle a capability in/out of the selection, preserving CAPABILITIES order so the
   // primary (provider_type) is stable and the summary line reads naturally.
@@ -193,6 +198,11 @@ function ProviderOnboarding() {
         provider_type: selectedCapabilities[0],
         capabilities: selectedCapabilities,
         bio: bio.trim() || undefined,
+        // Optional links (ticket 2.20) — only send non-empty ones.
+        website_url: websiteUrl.trim() || undefined,
+        instagram_url: instagramUrl.trim() || undefined,
+        facebook_url: facebookUrl.trim() || undefined,
+        google_maps_url: googleMapsUrl.trim() || undefined,
       });
       setCreatedProvider(provider);
     } catch (err) {
@@ -283,6 +293,53 @@ function ProviderOnboarding() {
         placeholderTextColor={COLORS.mutedBrown}
         multiline
         style={[inputStyle, { minHeight: 96, textAlignVertical: "top" }]}
+      />
+
+      {/* Public links (optional, ticket 2.20) — owners can add or edit these later. */}
+      <View style={{ height: 24 }} />
+      <FieldLabel label="Links" hint="Optional" />
+      <TextInput
+        value={websiteUrl}
+        onChangeText={setWebsiteUrl}
+        placeholder="Website (https://…)"
+        placeholderTextColor={COLORS.mutedBrown}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        style={inputStyle}
+      />
+      <View style={{ height: 12 }} />
+      <TextInput
+        value={instagramUrl}
+        onChangeText={setInstagramUrl}
+        placeholder="Instagram URL"
+        placeholderTextColor={COLORS.mutedBrown}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        style={inputStyle}
+      />
+      <View style={{ height: 12 }} />
+      <TextInput
+        value={facebookUrl}
+        onChangeText={setFacebookUrl}
+        placeholder="Facebook URL"
+        placeholderTextColor={COLORS.mutedBrown}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        style={inputStyle}
+      />
+      <View style={{ height: 12 }} />
+      <TextInput
+        value={googleMapsUrl}
+        onChangeText={setGoogleMapsUrl}
+        placeholder="Google Maps URL"
+        placeholderTextColor={COLORS.mutedBrown}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        style={inputStyle}
       />
 
       {errorMessage && (
