@@ -65,6 +65,13 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.21 — AI-assisted enrichment from links (confirm-first)  ·  ticket/provider-link-enrichment (2026-06-17)
+Web dashboard only — **verify in a browser, no on-device check.** On the provider Profile there's an **"Import from the web"** button: it reads the business's saved links (2.20) and PROPOSES a draft (a description from the website, and address/phone/hours/photos from Google Places). **Nothing is saved until the provider reviews and clicks Save** — confirm-first; unverified data never goes live. IG/FB are link-only (never scraped). No migration. **Dormant behind keys.**
+- ⚙️ **GO-LIVE (Tats, already in ACTION 1):** set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready. Until then **Import** shows a clean "not set up yet" (503) — nothing auto-fills, nothing crashes.
+1. Provider dashboard → Profile → **Import from the web** (with keys set): the Bio pre-fills from the website; a toast notes any address/phone/hours/photos found (added via Locations/Services). Review, edit, then **Save** — only then does it persist.
+2. With keys NOT set: Import shows the clean "not set up yet" message; nothing changes.
+3. A bad/unreachable link doesn't break the import — the other source still fills what it can.
+
 ### [ ] 2.20 — Provider onboarding: business links  ·  ticket/provider-onboarding-links (2026-06-17)
 What shipped: a business can add its **website, Instagram, Facebook, and Google Maps** links at onboarding (and edit them later on the profile). They're **optional** (onboarding stays fast) and show up read-only as tappable chips on the public provider profile. These links are also the INPUT that ticket 2.21 (AI enrichment) will read.
 - ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0041_provider_links.sql` — four additive nullable columns on `providers` (website_url, instagram_url, facebook_url, google_maps_url). No new table, no RLS change (they ride the existing any-authed-read / owner|admin-write policy). Hand-apply after merge.

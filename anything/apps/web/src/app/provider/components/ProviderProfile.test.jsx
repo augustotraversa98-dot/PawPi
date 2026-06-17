@@ -8,6 +8,7 @@ vi.mock("../hooks/useProviders", () => ({
   useProvider: vi.fn(),
   useUpdateProviderProfile: vi.fn(),
   useSetProviderStatus: vi.fn(),
+  useEnrichProvider: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
@@ -17,6 +18,7 @@ import {
   useProvider,
   useUpdateProviderProfile,
   useSetProviderStatus,
+  useEnrichProvider,
 } from "../hooks/useProviders";
 import ProviderProfile from "./ProviderProfile";
 
@@ -55,6 +57,7 @@ beforeEach(() => {
     mutate: statusMutate,
     isPending: false,
   });
+  useEnrichProvider.mockReturnValue({ mutate: vi.fn(), isPending: false });
   setProvider(DRAFT);
 });
 

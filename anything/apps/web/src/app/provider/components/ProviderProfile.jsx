@@ -7,12 +7,14 @@ import {
   EyeOff,
   Check,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProvider,
   useUpdateProviderProfile,
   useSetProviderStatus,
+  useEnrichProvider,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
@@ -46,12 +48,14 @@ export default function ProviderProfile({ providerId }) {
 
   const update = useUpdateProviderProfile(providerId);
   const setStatus = useSetProviderStatus(providerId);
+  const enrich = useEnrichProvider(providerId);
 
   const {
     register,
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors, isDirty },
   } = useForm({
     defaultValues: seedFrom(null),
@@ -103,6 +107,34 @@ export default function ProviderProfile({ providerId }) {
     });
   };
 
+  // Confirm-first import (ticket 2.21): fetch a PROPOSED draft from the provider's links and
+  // PRE-FILL the editable fields — nothing is saved until the provider reviews + clicks Save.
+  const onImport = () => {
+    enrich.mutate(undefined, {
+      onSuccess: ({ draft, sources }) => {
+        if (draft?.description) {
+          setValue("bio", draft.description, { shouldDirty: true });
+        }
+        const found = [];
+        if (draft?.address) found.push("address");
+        if (draft?.phone) found.push("phone");
+        if (draft?.hours) found.push("hours");
+        if (draft?.photos?.length) found.push(`${draft.photos.length} photo(s)`);
+        const extra = found.length
+          ? ` Also found ${found.join(", ")} — add via Locations/Services.`
+          : "";
+        toast.success(
+          `Imported a draft from your links. Review and Save.${extra}`,
+        );
+        if (sources?.website === "failed" || sources?.google_place === "failed") {
+          toast("Some links couldn't be read — fill those fields in manually.");
+        }
+      },
+      onError: (err) =>
+        toast.error(err?.message || "Couldn't import from the web"),
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center gap-3 px-8 py-20 text-[#7A6254]">
@@ -131,12 +163,27 @@ export default function ProviderProfile({ providerId }) {
         >
           <Building2 className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-[#3B241B]">Profile</h1>
           <p className="text-sm text-[#7A6254]">
             Your public business profile and listing status
           </p>
         </div>
+        {/* Confirm-first enrichment (ticket 2.21) — proposes a draft from your links. */}
+        <button
+          type="button"
+          onClick={onImport}
+          disabled={enrich.isPending}
+          className="flex items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm font-bold transition-opacity disabled:opacity-60"
+          style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
+        >
+          {enrich.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {enrich.isPending ? "Importing…" : "Import from the web"}
+        </button>
       </div>
 
       <StatusCard
