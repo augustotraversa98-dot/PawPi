@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -14,7 +14,18 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+
+// Mirror the pet-profile age formatting so the header reads "2 yrs 3 mos".
+function formatAge(years, months) {
+  const y = Number(years) || 0;
+  const m = Number(months) || 0;
+  const parts = [];
+  if (y > 0) parts.push(`${y} ${y === 1 ? "yr" : "yrs"}`);
+  if (m > 0) parts.push(`${m} ${m === 1 ? "mo" : "mos"}`);
+  return parts.join(" ");
+}
 
 const C = {
   coral: "#FF6F61",
@@ -33,16 +44,12 @@ const C = {
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [petProfile, setPetProfile] = useState(null);
   const { setAuth } = useAuth();
 
-  useEffect(() => {
-    async function loadProfile() {
-      const profile = await AsyncStorage.getItem("pet_profile");
-      if (profile) setPetProfile(JSON.parse(profile));
-    }
-    loadProfile();
-  }, []);
+  // The header reflects the reactive current pet (single source of truth), so it
+  // updates immediately when the active pet is switched or a new pet is created —
+  // no stale AsyncStorage snapshot (ticket 2.34).
+  const { data: currentPet } = useCurrentPet();
 
   const MenuItem = ({ title, icon: Icon, color, emoji, onPress }) => (
     <TouchableOpacity
@@ -148,9 +155,9 @@ export default function MoreScreen() {
             elevation: 6,
           }}
         >
-          {petProfile?.photo ? (
+          {currentPet?.avatar_url ? (
             <Image
-              source={{ uri: petProfile.photo }}
+              source={{ uri: currentPet.avatar_url }}
               style={{
                 width: 62,
                 height: 62,
@@ -177,7 +184,7 @@ export default function MoreScreen() {
           )}
           <View style={{ marginLeft: 14, flex: 1 }}>
             <Text style={{ fontSize: 20, fontWeight: "800", color: "#FFF" }}>
-              {petProfile?.name || "My Dog"}
+              {currentPet?.name || "My Dog"}
             </Text>
             <Text
               style={{
@@ -186,7 +193,10 @@ export default function MoreScreen() {
                 marginTop: 2,
               }}
             >
-              {petProfile?.breed || "Puppy"} · {petProfile?.age || ""}
+              {currentPet?.breed || "Puppy"}
+              {currentPet?.age_years || currentPet?.age_months
+                ? ` · ${formatAge(currentPet.age_years, currentPet.age_months)}`
+                : ""}
             </Text>
           </View>
           <View
