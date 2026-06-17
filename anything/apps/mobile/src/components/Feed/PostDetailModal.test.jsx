@@ -24,6 +24,16 @@ jest.mock("@/hooks/useFeedPosts", () => ({
 jest.mock("@/components/Pets/PetAvatar", () => ({
   PetAvatar: () => null,
 }));
+// DailyShareButton pulls in react-native-view-shot + expo-sharing; stub it to a
+// labelled pressable so we can assert the real share affordance is wired (2.38).
+jest.mock("./DailyShareButton", () => {
+  const React = require("react");
+  const { Text } = require("react-native");
+  return {
+    DailyShareButton: ({ photoUri }) =>
+      React.createElement(Text, { accessibilityLabel: "Share post" }, photoUri || "share"),
+  };
+});
 
 import { PostDetailModal } from "./PostDetailModal";
 
@@ -36,6 +46,22 @@ const post = {
   paw_count: 0,
   bark_count: 0,
 };
+
+test("renders the real share affordance (2.38) wired to the photo", () => {
+  const { getByLabelText } = render(
+    <PostDetailModal visible post={{ ...post, image_url: "u.jpg" }} />,
+  );
+  expect(getByLabelText("Share post")).toBeTruthy();
+});
+
+test("shows a real relative timestamp from created_at, not 'Just now' (2.38)", () => {
+  const created_at = new Date(Date.now() - 2 * 3600000).toISOString(); // 2h ago
+  const { getByText, queryByText } = render(
+    <PostDetailModal visible post={{ ...post, created_at }} />,
+  );
+  expect(getByText(/2h/)).toBeTruthy();
+  expect(queryByText("Just now")).toBeNull();
+});
 
 test("no delete button when canDelete is false", () => {
   const { queryByLabelText } = render(

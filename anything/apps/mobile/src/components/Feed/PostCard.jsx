@@ -6,6 +6,7 @@ import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { isBirthdayToday } from "@/utils/feedDelight";
+import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 
 export const PostCard = memo(function PostCard({
@@ -145,7 +146,7 @@ export const PostCard = memo(function PostCard({
             </Text>
           </View>
           <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
-            {post.timestamp || "Just now"}
+            {formatRelativeTime(post.created_at) || post.timestamp || "just now"}
           </Text>
         </View>
       </TouchableOpacity>
