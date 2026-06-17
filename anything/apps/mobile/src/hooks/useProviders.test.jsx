@@ -15,6 +15,8 @@ import {
   useDiscoverProviders,
   useProviderProfile,
   useBookProvider,
+  useDaycareStays,
+  useBookDaycareStay,
 } from "./useProviders";
 
 function makeWrapper(queryClient) {
@@ -209,6 +211,107 @@ describe("useBookProvider", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["vet-appointment-reminders", 7],
+    });
+  });
+});
+
+describe("useDaycareStays (ticket 2.8)", () => {
+  test("is disabled until a pet id is known", async () => {
+    global.fetch = jest.fn();
+    const { result } = renderHook(() => useDaycareStays(undefined), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("fetches the owner's stays for a pet and returns the array", async () => {
+    const stays = [{ id: 1, status: "booked", report_cards: [], vaccine_status: { passed: true } }];
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ stays }) }));
+    const { result } = renderHook(() => useDaycareStays(55), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe("/api/pets/55/daycare-stays");
+    expect(result.current.data).toBe(stays);
+  });
+});
+
+describe("useBookDaycareStay (ticket 2.8)", () => {
+  test("POSTs to /api/pets/[id]/daycare-stays with the body (petId stripped)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ stay: { id: 9 }, vaccine_status: { passed: true } }),
+    }));
+    const { result } = renderHook(() => useBookDaycareStay(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        petId: 55,
+        provider_id: 100,
+        start_date: "2026-08-01",
+        end_date: "2026-08-03",
+        feeding_instructions: "Two cups",
+      });
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/pets/55/daycare-stays",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          provider_id: 100,
+          start_date: "2026-08-01",
+          end_date: "2026-08-03",
+          feeding_instructions: "Two cups",
+        }),
+      }),
+    );
+  });
+
+  test("surfaces the backend 'fully booked' message on overbook (409)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: "The facility is fully booked for those dates" }),
+    }));
+    const { result } = renderHook(() => useBookDaycareStay(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await expect(
+      act(async () => {
+        await result.current.mutateAsync({
+          petId: 55,
+          provider_id: 100,
+          start_date: "2026-08-01",
+          end_date: "2026-08-03",
+        });
+      }),
+    ).rejects.toThrow(/fully booked/i);
+  });
+
+  test("invalidates the owner's daycare-stays key on success", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ stay: { id: 9 }, vaccine_status: { passed: true } }),
+    }));
+    const client = makeClient();
+    const invalidateSpy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useBookDaycareStay(), {
+      wrapper: makeWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        petId: 55,
+        provider_id: 100,
+        start_date: "2026-08-01",
+        end_date: "2026-08-03",
+      });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["daycare-stays", "owner", 55],
     });
   });
 });

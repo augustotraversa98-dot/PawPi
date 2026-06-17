@@ -872,6 +872,111 @@ export async function seedGroomSession(
 }
 
 /**
+ * Set a provider_locations.capacity (ticket 2.8). Seed the location with seedLocation
+ * first, then set its capacity here (the column is additive in 0034). NULL clears it.
+ */
+export async function setLocationCapacity(
+  sql: Sql,
+  opts: { locationId: number; capacity: number | null },
+): Promise<void> {
+  const { locationId, capacity } = opts;
+  await sql`update provider_locations set capacity = ${capacity} where id = ${locationId}`;
+}
+
+/**
+ * Seed a daycare_requirements row (ticket 2.8) — a facility's required vaccine. locationId
+ * NULL = provider-wide. active defaults true.
+ */
+export async function seedDaycareRequirement(
+  sql: Sql,
+  opts: {
+    requirementId: number;
+    providerId: number;
+    vaccineName: string;
+    locationId?: number | null;
+    active?: boolean;
+  },
+): Promise<{ requirementId: number }> {
+  const { requirementId, providerId, vaccineName, locationId = null, active = true } = opts;
+  await sql`
+    insert into daycare_requirements (id, provider_id, location_id, vaccine_name, active)
+    values (${requirementId}, ${providerId}, ${locationId}, ${vaccineName}, ${active})
+  `;
+  return { requirementId };
+}
+
+/**
+ * Seed a daycare_stays row for `petId` owned by `ownerUserId` at `providerId` (ticket 2.8).
+ * status defaults 'booked'; start/end default to a one-day stay. Used to exercise the
+ * owner-FOR-ALL + provider-via-grant RLS + the report-card scoping.
+ */
+export async function seedDaycareStay(
+  sql: Sql,
+  opts: {
+    stayId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    locationId?: number | null;
+    bookingId?: number | null;
+    startDate?: string;
+    endDate?: string;
+    status?: 'booked' | 'checked_in' | 'checked_out' | 'cancelled';
+    feedingInstructions?: string | null;
+    medInstructions?: string | null;
+  },
+): Promise<{ stayId: number }> {
+  const {
+    stayId,
+    petId,
+    ownerUserId,
+    providerId,
+    locationId = null,
+    bookingId = null,
+    startDate = '2026-08-01',
+    endDate = '2026-08-03',
+    status = 'booked',
+    feedingInstructions = 'Two cups, morning and evening',
+    medInstructions = null,
+  } = opts;
+  await sql`
+    insert into daycare_stays
+      (id, booking_id, pet_id, owner_user_id, provider_id, location_id,
+       start_date, end_date, status, feeding_instructions, med_instructions)
+    values (
+      ${stayId}, ${bookingId}, ${petId}, ${ownerUserId}, ${providerId}, ${locationId},
+      ${startDate}, ${endDate}, ${status}, ${feedingInstructions}, ${medInstructions}
+    )
+  `;
+  return { stayId };
+}
+
+/**
+ * Seed a report_cards row on `stayId` (ticket 2.8). date defaults to the stay's first day;
+ * mood/photo carry the id for readable assertions. Used to exercise the through-stay RLS.
+ */
+export async function seedReportCard(
+  sql: Sql,
+  opts: {
+    cardId: number;
+    stayId: number;
+    date?: string;
+    mood?: string;
+    photoUrls?: string[];
+  },
+): Promise<{ cardId: number }> {
+  const { cardId, stayId, date = '2026-08-01', mood, photoUrls } = opts;
+  await sql`
+    insert into report_cards (id, stay_id, date, mood, photo_urls)
+    values (
+      ${cardId}, ${stayId}, ${date}, ${mood ?? `mood-${cardId}`},
+      ${photoUrls ?? [`card-${cardId}.jpg`]}
+    )
+  `;
+  return { cardId };
+}
+
+/**
  * Seed a walk_sessions row for `petId` owned by `ownerUserId`, run by `providerId` and
  * ASSIGNED to walker `staffUserId` (ticket 2.7 — walking GPS). status defaults to
  * 'in_progress'; route defaults to a one-point live track for readable assertions. Used
