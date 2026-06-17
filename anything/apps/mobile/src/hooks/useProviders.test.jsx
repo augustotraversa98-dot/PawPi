@@ -17,6 +17,9 @@ import {
   useBookProvider,
   useDaycareStays,
   useBookDaycareStay,
+  useSittingVisits,
+  useMySittingVisits,
+  useLogSittingVisit,
 } from "./useProviders";
 
 function makeWrapper(queryClient) {
@@ -312,6 +315,120 @@ describe("useBookDaycareStay (ticket 2.8)", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["daycare-stays", "owner", 55],
+    });
+  });
+});
+
+describe("useSittingVisits (ticket 2.9)", () => {
+  test("is disabled until a pet id is known", async () => {
+    global.fetch = jest.fn();
+    const { result } = renderHook(() => useSittingVisits(undefined), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("fetches the owner's pet visit updates and returns the array", async () => {
+    const visits = [{ id: 1, status: "completed", notes: "fed + walked" }];
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ visits }) }));
+    const { result } = renderHook(() => useSittingVisits(55), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe("/api/pets/55/sitting-visits");
+    expect(result.current.data).toBe(visits);
+  });
+});
+
+describe("useMySittingVisits (ticket 2.9)", () => {
+  test("is disabled until a provider id is known", async () => {
+    global.fetch = jest.fn();
+    const { result } = renderHook(() => useMySittingVisits(undefined), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("fetches the sitter's OWN assigned visits with an optional status filter", async () => {
+    const visits = [{ id: 2, status: "scheduled" }];
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ visits }) }));
+    const { result } = renderHook(
+      () => useMySittingVisits(100, { status: "scheduled" }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe(
+      "/api/providers/100/sitting-visits?status=scheduled",
+    );
+    expect(result.current.data).toBe(visits);
+  });
+});
+
+describe("useLogSittingVisit (ticket 2.9)", () => {
+  test("POSTs to /api/providers/[id]/sitting-visits with the body (providerId stripped)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ visit: { id: 9 } }),
+    }));
+    const { result } = renderHook(() => useLogSittingVisit(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        providerId: 100,
+        pet_id: 55,
+        notes: "Evening drop-in",
+        photo_urls: ["https://cdn/x.jpg"],
+      });
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers/100/sitting-visits",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          pet_id: 55,
+          notes: "Evening drop-in",
+          photo_urls: ["https://cdn/x.jpg"],
+        }),
+      }),
+    );
+  });
+
+  test("surfaces the backend 403 (needs consent) message", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "No active care-access grant for the required scope" }),
+    }));
+    const { result } = renderHook(() => useLogSittingVisit(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+    await expect(
+      act(async () => {
+        await result.current.mutateAsync({ providerId: 100, pet_id: 55 });
+      }),
+    ).rejects.toThrow(/care-access grant/i);
+  });
+
+  test("invalidates the provider's sitting-visits key on success", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ visit: { id: 9 } }),
+    }));
+    const client = makeClient();
+    const invalidateSpy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useLogSittingVisit(), {
+      wrapper: makeWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ providerId: 100, pet_id: 55 });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["sitting-visits", "provider", 100],
     });
   });
 });

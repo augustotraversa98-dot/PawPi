@@ -116,6 +116,8 @@ export default function RootLayout() {
           <Stack.Screen name="walk-live" />
           {/* Walker workspace — start/track/finish booked walks (ticket 2.7). */}
           <Stack.Screen name="walker-walks" />
+          {/* Sitter workspace — log per-visit updates for booked sitting jobs (ticket 2.9). */}
+          <Stack.Screen name="sitter-visits" />
         </Stack>
         <AuthModal />
       </GestureHandlerRootView>

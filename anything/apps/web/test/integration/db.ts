@@ -708,6 +708,7 @@ export async function seedGeneralBooking(
     bookingStatus?: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
     orderId?: number | null;
     recurrenceRule?: string | null;
+    meetAndGreet?: boolean;
   },
 ): Promise<{ apptId: number }> {
   const {
@@ -722,16 +723,17 @@ export async function seedGeneralBooking(
     bookingStatus = 'requested',
     orderId = null,
     recurrenceRule = null,
+    meetAndGreet = false,
   } = opts;
   await sql`
     insert into vet_appointments
       (id, pet_id, owner_user_id, title, appointment_date, appointment_time,
        provider_id, staff_user_id, capability, start_at, end_at, recurrence_rule,
-       order_id, booking_status, source, status)
+       order_id, meet_and_greet, booking_status, source, status)
     values (
       ${apptId}, ${petId}, ${ownerUserId}, 'Groom', '2026-07-06', '09:00',
       ${providerId}, ${staffUserId}, ${capability}, ${startAt}, ${endAt}, ${recurrenceRule},
-      ${orderId}, ${bookingStatus}, 'owner', 'scheduled'
+      ${orderId}, ${meetAndGreet}, ${bookingStatus}, 'owner', 'scheduled'
     )
   `;
   return { apptId };
@@ -1015,4 +1017,50 @@ export async function seedWalkSession(
     )
   `;
   return { sessionId };
+}
+
+/**
+ * Seed a sitting_visits row for `petId` owned by `ownerUserId`, run by `providerId` and
+ * ASSIGNED to sitter `staffUserId` (ticket 2.9 — pet sitting). status defaults to
+ * 'completed'; photo/video default to one URL each for readable media assertions. Used to
+ * exercise the participant-scoped RLS (owner FOR ALL + assigned-sitter per-command) — the
+ * visit-media guard.
+ */
+export async function seedSittingVisit(
+  sql: Sql,
+  opts: {
+    visitId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    staffUserId?: number | null;
+    bookingId?: number | null;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+    photoUrls?: string[];
+    videoUrls?: string[];
+  },
+): Promise<{ visitId: number }> {
+  const {
+    visitId,
+    petId,
+    ownerUserId,
+    providerId,
+    staffUserId = null,
+    bookingId = null,
+    status = 'completed',
+    photoUrls,
+    videoUrls,
+  } = opts;
+  await sql`
+    insert into sitting_visits
+      (id, booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status,
+       photo_urls, video_urls)
+    values (
+      ${visitId}, ${bookingId}, ${petId}, ${ownerUserId}, ${providerId},
+      ${staffUserId}, ${status},
+      ${photoUrls ?? [`visit-${visitId}.jpg`]},
+      ${videoUrls ?? [`visit-${visitId}.mp4`]}
+    )
+  `;
+  return { visitId };
 }
