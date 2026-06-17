@@ -72,7 +72,7 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 - ✅ **2.37** feed streak + birthday — merged (#153), no migration (🔥 consecutive-day streak via /api/posts/streak; 🎂 + orange frame on birthday/adoption day).
 - ✅ **2.38** profile fixes — merged (#154), no migration (profile/feed share button reuses the 2.28 branded share; real `formatRelativeTime(created_at)` replaces fake "Just now").
 - ✅ **2.39** Instagram nav — merged (#155), no migration (bottom-right tab is now Profile; the former More menu lives behind a top-right ☰ burger; 2.19 nav fix intact).
-- ☐ **2.40** unified messages · ☐ **2.41** vet-record owner upload · ☐ **2.42** vet-record history log (⛔2.41)
+- ✅ **2.40** unified messages — merged (#156), no migration (one Messages hub: People DMs + Businesses threads + All/People/Businesses filter + owner search → start DM; two backends stay separate). · ☐ **2.41** vet-record owner upload · ☐ **2.42** vet-record history log (⛔2.41)
 - ☐ **2.43** walks with buddies · ☐ **2.44** community forum · ☐ **2.45** training supreme · ☐ **2.46** Apple/Google sign-in
 - ☐ **2.47** family/caregiver sharing · ☐ **2.48** lost & found · ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
 
