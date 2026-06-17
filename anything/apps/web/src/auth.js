@@ -8,6 +8,14 @@ import Credentials from "@auth/core/providers/credentials"
 import { CredentialsSignin } from '@auth/core/errors'
 import pg from 'pg'
 import { hash, verify } from 'argon2'
+import { validatePassword } from './app/api/utils/passwordStrength.js'
+
+// Thrown by the sign-up path when a new password is too weak (Ticket 2.32).
+// A distinct code so the client can show the strength message rather than the
+// generic "email already registered" copy.
+class WeakPassword extends CredentialsSignin {
+  code = 'WeakPassword'
+}
 
 const { Pool } = pg
 
@@ -327,6 +335,14 @@ export const { auth } = CreateAuth({
     }
     if (typeof email !== 'string' || typeof password !== 'string') {
       return null;
+    }
+
+    // Enforce the password-strength rule on NEW accounts only (Ticket 2.32).
+    // The sign-IN provider above is deliberately untouched, so existing users
+    // with weaker passwords keep signing in. Server-side is the source of truth;
+    // the sign-up form mirrors the same rule for live feedback.
+    if (!validatePassword(password).valid) {
+      throw new WeakPassword();
     }
 
     // logic to verify if user exists

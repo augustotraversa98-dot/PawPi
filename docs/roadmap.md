@@ -59,6 +59,20 @@ Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00
 
 Migrations 0039–0045 pending hand-apply (see [`docs/test-backlog.md`](test-backlog.md) ACTION 1).
 
+## 🌊 WAVE 5 — polish, fixes, big features + the "epic four" (tickets 2.32–2.50)
+
+Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirror
+(✅ merged · 🔨 building · ⛔ blocked-on-prereq · ☐ queued):
+
+- ✅ **2.32** password security rules — merged (#148), no migration (shared `passwordStrength` validator; server-enforced on sign-up only, existing logins untouched; live strength meter).
+- ☐ **2.33** notifications filter-chips layout fix
+- ☐ **2.34** current-pet header sync
+- ☐ **2.35** onboarding required fields
+- ☐ **2.36** feed daily-post fixes · ☐ **2.37** streak+birthday (⛔2.36) · ☐ **2.38** profile fixes (⛔2.37) · ☐ **2.39** IG nav (⛔2.38)
+- ☐ **2.40** unified messages · ☐ **2.41** vet-record owner upload · ☐ **2.42** vet-record history log (⛔2.41)
+- ☐ **2.43** walks with buddies · ☐ **2.44** community forum · ☐ **2.45** training supreme · ☐ **2.46** Apple/Google sign-in
+- ☐ **2.47** family/caregiver sharing · ☐ **2.48** lost & found · ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
+
 ---
 
 ## ★ PREVIOUS PRIORITY — Phase 2: the pet-services super-app (now done; reference below)
