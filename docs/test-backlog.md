@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.38 — Profile fixes: share button + real timestamps  ·  ticket/profile-fixes (2026-06-18)
+What shipped: (1) the **share button** in the post detail modal (opened from the feed AND from your own profile grid) was a no-op — it now reuses the **2.28 branded share** flow (`DailyShareButton`: off-screen capture → system share sheet). (2) Posts showed a fake **"Just now"** because the code read a non-existent `post.timestamp`; a pure `formatRelativeTime(created_at)` now renders the **true relative time** (just now / 5m / 1h / yesterday / 3d / date) in both the detail modal and the feed card.
+- **No migration.** Exercised by mobile jest (+5 relative-time buckets incl. skew/invalid; +2 detail-modal: share affordance wired, real timestamp not "Just now").
+- **NEEDS A DEVICE PASS:** on your profile, open a post → Share opens the share sheet with the branded card; post timestamps read realistically (an hour-old post says "1h", not "Just now").
+
 ### [ ] 2.37 — Feed streak 🔥 + birthday 🎂 frame  ·  ticket/feed-streak-birthday (2026-06-18)
 What shipped: (1) a **posting streak** — a 🔥 + consecutive-day count next to the pet name on the **active pet's** cards. Count = consecutive days ending today with a daily post; **0 (no badge) if you haven't posted today** (a missed day breaks the chain). Computed from the pet's recent daily-post days (`GET /api/posts/streak`) against the **phone's local day**, in a pure tested helper. (2) **birthday/adoption highlight** — on a pet's birthday OR adoption anniversary (month+day, any year), a 🎂 appears by the name and the post card gets a thicker **signature-orange frame**.
 - **No migration** — `pets.birthday` / `pets.adoption_date` already exist; added to the feed SELECT. Scope note: the 🔥 badge is fetched for the active pet only (one query, bounded) so it shows on your own cards; 🎂 shows for any pet whose date is today.

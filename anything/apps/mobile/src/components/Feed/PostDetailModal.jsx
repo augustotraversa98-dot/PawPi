@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PawPrint, Megaphone, Share2, Trash2, X } from "lucide-react-native";
+import { PawPrint, Megaphone, Trash2, X } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
+import { DailyShareButton } from "./DailyShareButton";
+import { formatRelativeTime } from "@/utils/relativeTime";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -45,7 +47,9 @@ export const PostDetailModal = memo(function PostDetailModal({
   const avatar = post.pet_avatar || post.avatar;
   const photo = post.image_url || post.photo;
   const caption = post.caption;
-  const timestamp = post.timestamp || "Just now";
+  // Real relative time from created_at (ticket 2.38) — no more fake "Just now".
+  const timestamp =
+    formatRelativeTime(post.created_at) || post.timestamp || "just now";
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
@@ -90,9 +94,8 @@ export const PostDetailModal = memo(function PostDetailModal({
                 <Trash2 size={20} color={COLORS.coral} />
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity>
-              <Share2 size={20} color={COLORS.mutedBrown} />
-            </TouchableOpacity>
+            {/* Real share: reuses the 2.28 branded capture + system share sheet. */}
+            <DailyShareButton petName={dogName} photoUri={photo} />
           </View>
         </View>
 
