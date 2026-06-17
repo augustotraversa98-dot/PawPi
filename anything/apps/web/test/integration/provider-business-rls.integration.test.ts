@@ -383,6 +383,33 @@ describe('RLS R2e — provider_services (as pawpi_app)', () => {
       expect(await tx`delete from provider_services where id = 100 returning id`).toHaveLength(0);
     });
   });
+
+  // Ticket 2.23 — image_urls rides the EXISTING provider_services RLS unchanged: an
+  // admin writes the array, the published-active public read returns it, a plain staff
+  // member can't write it. Proves the additive 0043 column has no policy gap.
+  it('image_urls: admin writes, published public read returns them, plain staff cannot write', async () => {
+    const IMAGES = ['https://x/a.png', 'https://x/b.png'];
+    await asApp(ADMIN.profileId, async (tx) => {
+      const updated = await tx`
+        update provider_services set image_urls = ${IMAGES} where id = 100 returning image_urls
+      `;
+      expect(updated).toHaveLength(1);
+      expect(updated[0].image_urls).toEqual(IMAGES);
+    });
+    // Public read of the published provider's ACTIVE service exposes the images.
+    await raw`update providers set status = 'published' where id = ${P1}`;
+    await asApp(OUTSIDER.profileId, async (tx) => {
+      const rows = await tx`select id, image_urls from provider_services`;
+      expect(ids(rows)).toEqual([100]);
+      expect(rows[0].image_urls).toEqual(IMAGES);
+    });
+    // A plain staff member's image_urls write affects ZERO rows (admin-only).
+    await asApp(STAFF.profileId, async (tx) => {
+      expect(
+        await tx`update provider_services set image_urls = ${['https://x/hijack.png']} where id = 100 returning id`,
+      ).toHaveLength(0);
+    });
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

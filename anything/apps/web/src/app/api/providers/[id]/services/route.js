@@ -5,7 +5,10 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { invalidServiceFields } from "@/app/api/utils/providerValidation";
+import {
+  invalidServiceFields,
+  invalidImageUrls,
+} from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Provider services — list (any active staff) and create (owner|admin).
@@ -69,17 +72,26 @@ async function POST(request, { params }) {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
 
-    const fieldError = invalidServiceFields(body);
+    const fieldError =
+      invalidServiceFields(body) || invalidImageUrls(body.image_urls);
     if (fieldError) {
       return Response.json({ error: fieldError }, { status: 400 });
     }
 
-    const { name, description, duration_min, price_cents, deposit_cents, active } =
-      body;
+    const {
+      name,
+      description,
+      duration_min,
+      price_cents,
+      deposit_cents,
+      active,
+      image_urls,
+    } = body;
+    const images = Array.isArray(image_urls) ? image_urls : [];
 
     const created = await sql`
       INSERT INTO provider_services
-        (provider_id, name, description, duration_min, price_cents, deposit_cents, active)
+        (provider_id, name, description, duration_min, price_cents, deposit_cents, active, image_urls)
       VALUES (
         ${providerId},
         ${name},
@@ -87,7 +99,8 @@ async function POST(request, { params }) {
         ${duration_min ?? null},
         ${price_cents ?? null},
         ${deposit_cents ?? null},
-        ${active === undefined ? true : active}
+        ${active === undefined ? true : active},
+        ${images}
       )
       RETURNING *
     `;

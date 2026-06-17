@@ -6,6 +6,7 @@ import {
   requireProviderCapability,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
+import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // /api/providers/[id]/shop-products/[productId] — update / soft-delete one catalog product.
@@ -53,6 +54,10 @@ async function PATCH(request, { params }) {
         { error: "stock_qty must be a non-negative integer" },
         { status: 400 },
       );
+    }
+    const imageError = invalidImageUrls(body.image_urls);
+    if (imageError) {
+      return Response.json({ error: imageError }, { status: 400 });
     }
 
     // COALESCE keeps unspecified fields. RLS (admin_all) + the provider_id filter scope the

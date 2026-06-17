@@ -51,7 +51,7 @@ async function GET(request, { params }) {
     `;
 
     const services = await sql`
-      SELECT id, name, description, duration_min, price_cents, deposit_cents, active
+      SELECT id, name, description, duration_min, price_cents, deposit_cents, image_urls, active
       FROM provider_services
       WHERE provider_id = ${provider.id} AND active = true
       ORDER BY created_at ASC

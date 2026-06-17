@@ -290,6 +290,30 @@ export default function ProviderScreen() {
                       {`${s.duration_min} min`}
                     </Row>
                   ) : null}
+                  {Array.isArray(s.image_urls) && s.image_urls.length > 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        marginTop: 10,
+                      }}
+                    >
+                      {s.image_urls.map((uri, i) => (
+                        <Image
+                          key={`${s.id}-img-${i}`}
+                          testID="service-image"
+                          source={{ uri }}
+                          style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: 12,
+                            backgroundColor: COLORS.sand,
+                          }}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </Section>

@@ -6,6 +6,7 @@ import {
   requireProviderCapability,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
+import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // /api/providers/[id]/shop-products — a shop's CATALOG + INVENTORY. Phase 2 ticket 2.11
@@ -105,6 +106,10 @@ async function POST(request, { params }) {
         { error: "price_cents must be a non-negative integer" },
         { status: 400 },
       );
+    }
+    const imageError = invalidImageUrls(image_urls);
+    if (imageError) {
+      return Response.json({ error: imageError }, { status: 400 });
     }
     const stock =
       Number.isInteger(stock_qty) && stock_qty >= 0 ? stock_qty : 0;

@@ -9,6 +9,7 @@ import {
   useDeactivateService,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import ImageUploader from "./ImageUploader";
 import {
   centsToCurrency,
   centsToInput,
@@ -169,12 +170,26 @@ export default function ProviderServices({ providerId }) {
                     }`}
                   >
                     <td className="px-4 py-3 align-top">
-                      <div className="font-semibold text-[#3B241B]">{s.name}</div>
-                      {s.description && (
-                        <div className="mt-0.5 max-w-md text-xs text-[#7A6254]">
-                          {s.description}
+                      <div className="flex items-start gap-3">
+                        {Array.isArray(s.image_urls) && s.image_urls[0] && (
+                          <img
+                            src={s.image_urls[0]}
+                            alt={s.name}
+                            className="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
+                            style={{ backgroundColor: COLORS.cream }}
+                          />
+                        )}
+                        <div>
+                          <div className="font-semibold text-[#3B241B]">
+                            {s.name}
+                          </div>
+                          {s.description && (
+                            <div className="mt-0.5 max-w-md text-xs text-[#7A6254]">
+                              {s.description}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-top text-[#3B241B]">
                       {s.duration_min != null ? `${s.duration_min} min` : "—"}
@@ -274,6 +289,10 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
     },
   });
 
+  // image_urls is an ordered array, not a text field — kept outside react-hook-form
+  // and seeded from the service when editing (ticket 2.23).
+  const [images, setImages] = useState([]);
+
   useEffect(() => {
     reset({
       name: service?.name ?? "",
@@ -282,6 +301,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       price: centsToInput(service?.price_cents),
       deposit: centsToInput(service?.deposit_cents),
     });
+    setImages(Array.isArray(service?.image_urls) ? service.image_urls : []);
   }, [service, reset]);
 
   const submit = (values) => {
@@ -309,6 +329,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       duration_min: duration.value ?? null,
       price_cents: price.cents ?? null,
       deposit_cents: deposit.cents ?? null,
+      image_urls: images,
     };
     onSubmit(body);
   };
@@ -390,6 +411,12 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               />
             </Field>
           </div>
+
+          <ImageUploader
+            label="Photos"
+            value={images}
+            onChange={setImages}
+          />
 
           <div className="flex justify-end gap-3 pt-2">
             <button

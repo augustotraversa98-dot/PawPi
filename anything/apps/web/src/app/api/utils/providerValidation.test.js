@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   invalidLocationFields,
   invalidServiceFields,
+  invalidImageUrls,
+  MAX_IMAGE_URLS,
 } from './providerValidation';
 
 // Pins the behavior of the provider location/service validators after they were
@@ -81,6 +83,45 @@ describe('invalidServiceFields', () => {
     );
     expect(invalidServiceFields({ duration_min: 2.5 })).toBe(
       'duration_min must be a positive integer',
+    );
+  });
+});
+
+describe('invalidImageUrls (ticket 2.23)', () => {
+  it('allows absent image_urls (undefined/null) and an empty array', () => {
+    expect(invalidImageUrls(undefined)).toBe(null);
+    expect(invalidImageUrls(null)).toBe(null);
+    expect(invalidImageUrls([])).toBe(null);
+  });
+
+  it('allows an array of non-empty URL strings up to the cap', () => {
+    expect(invalidImageUrls(['https://x/1.png', 'https://x/2.png'])).toBe(null);
+    expect(
+      invalidImageUrls(Array.from({ length: MAX_IMAGE_URLS }, (_, i) => `u${i}`)),
+    ).toBe(null);
+  });
+
+  it('rejects a non-array', () => {
+    expect(invalidImageUrls('https://x/1.png')).toBe(
+      'image_urls must be an array of URLs',
+    );
+    expect(invalidImageUrls({ 0: 'x' })).toBe(
+      'image_urls must be an array of URLs',
+    );
+  });
+
+  it('rejects more than the cap', () => {
+    expect(
+      invalidImageUrls(Array.from({ length: MAX_IMAGE_URLS + 1 }, () => 'u')),
+    ).toBe(`image_urls allows at most ${MAX_IMAGE_URLS} images`);
+  });
+
+  it('rejects non-string or empty entries', () => {
+    expect(invalidImageUrls(['ok', 42])).toBe(
+      'image_urls must be non-empty URL strings',
+    );
+    expect(invalidImageUrls(['ok', '  '])).toBe(
+      'image_urls must be non-empty URL strings',
     );
   });
 });

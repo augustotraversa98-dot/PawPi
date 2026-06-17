@@ -65,6 +65,16 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.23 — Service & product image uploads  ·  ticket/service-product-images (2026-06-17)
+What shipped: providers can attach **photos to their services and products** from the web dashboard — their "store". On the **Services** editor and the **Shop** product editor there's a multi-image uploader (add via the shared Storage path, **remove**, **reorder**) with thumbnails; the **Services** table and **Shop** list show a thumbnail of the first photo. Those images flow to the **public storefront / service menu** and the **shop catalog** (products already rendered images; services now do too). Real uploads only — no images shows a neutral placeholder (Package icon / text-only service). Max 8 images each; a non-array `image_urls` is rejected.
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0043_provider_service_images.sql` — one additive `provider_services.image_urls text[] not null default '{}'` column (shop_products already had it, 0037). No new table, no RLS change — it rides the existing provider_services admin-write / published-active public-read policies (0024). Hand-apply after merge.
+- Exercised by web vitest (service/product save persists image_urls; bad shape → 400), the real-Postgres harness (image_urls rides provider_services RLS — admin writes, published public read returns them, plain staff can't), and mobile jest (service images render where present, none when empty).
+- **NEEDS A DEVICE/BROWSER PASS** — jest/vitest can't exercise the real Storage upload or the live storefront render:
+1. Provider dashboard → **Services** → add/edit a service → **Photos**: upload 2–3 images, reorder, remove one → Save → thumbnails persist and show in the list.
+2. Provider dashboard → **Shop** → add a product with photos, and on an existing product tap **Photos** → upload/reorder/remove → Save photos → the first photo shows as the row thumbnail.
+3. On the phone, open that provider's **public profile** (Services → its category → the provider): the service photos render; products show photos in the shop catalog/cart/checkout.
+4. A service/product with no photos shows a clean placeholder (no fake images).
+
 ### [ ] 2.21 — AI-assisted enrichment from links (confirm-first)  ·  ticket/provider-link-enrichment (2026-06-17)
 Web dashboard only — **verify in a browser, no on-device check.** On the provider Profile there's an **"Import from the web"** button: it reads the business's saved links (2.20) and PROPOSES a draft (a description from the website, and address/phone/hours/photos from Google Places). **Nothing is saved until the provider reviews and clicks Save** — confirm-first; unverified data never goes live. IG/FB are link-only (never scraped). No migration. **Dormant behind keys.**
 - ⚙️ **GO-LIVE (Tats, already in ACTION 1):** set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready. Until then **Import** shows a clean "not set up yet" (503) — nothing auto-fills, nothing crashes.

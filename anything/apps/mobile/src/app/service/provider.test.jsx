@@ -1,0 +1,82 @@
+// Ticket 2.23 — service images on the public provider profile. A service that
+// carries image_urls renders one <Image testID="service-image"> per URL; a service
+// with no images renders none (the storefront shows just the text — no fakes).
+// The data hook + router + heavy child components are mocked, so this exercises the
+// provider screen's service-rendering wiring only.
+
+import React from "react";
+import { render } from "@testing-library/react-native";
+
+let mockProfile;
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useLocalSearchParams: () => ({ slug: "happy-paws" }),
+}));
+jest.mock("lucide-react-native", () =>
+  new Proxy({}, { get: () => () => null }),
+);
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock("@/components/RefreshableScrollView", () => {
+  const { View } = require("react-native");
+  return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
+});
+jest.mock("@/components/Providers/BookingFormModal", () => () => null);
+jest.mock("@/components/Providers/RatingBadge", () => () => null);
+jest.mock("@/hooks/useProviders", () => ({
+  useProviderProfile: () => mockProfile,
+  useProviderReviews: () => ({ data: [] }),
+  useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
+}));
+
+import ProviderScreen from "./provider";
+
+const baseProvider = {
+  id: 1,
+  slug: "happy-paws",
+  name: "Happy Paws Clinic",
+  provider_type: "vet",
+};
+
+test("renders one image per service image_url", () => {
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      locations: [],
+      services: [
+        {
+          id: 10,
+          name: "Grooming",
+          price_cents: 5000,
+          image_urls: ["https://x/a.png", "https://x/b.png"],
+        },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { getByText, getAllByTestId } = render(<ProviderScreen />);
+  expect(getByText("Grooming")).toBeTruthy();
+  expect(getAllByTestId("service-image")).toHaveLength(2);
+});
+
+test("renders no service images when a service has none (placeholder, no fakes)", () => {
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      locations: [],
+      services: [{ id: 11, name: "Checkup", price_cents: 3000, image_urls: [] }],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { getByText, queryAllByTestId } = render(<ProviderScreen />);
+  expect(getByText("Checkup")).toBeTruthy();
+  expect(queryAllByTestId("service-image")).toHaveLength(0);
+});

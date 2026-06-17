@@ -52,3 +52,25 @@ export function invalidServiceFields(body) {
   }
   return null;
 }
+
+// Max images a single service/product may carry (ticket 2.23). A sane cap so a
+// runaway client can't store an unbounded array.
+export const MAX_IMAGE_URLS = 8;
+
+// Validate an optional image_urls field (ticket 2.23 — service & product images).
+// Returns an error message or null. Absent (undefined/null) is allowed; when
+// present it MUST be an array of non-empty string URLs, capped at MAX_IMAGE_URLS.
+// Shared by the provider_services and shop_products write routes.
+export function invalidImageUrls(image_urls) {
+  if (image_urls === undefined || image_urls === null) return null;
+  if (!Array.isArray(image_urls)) {
+    return "image_urls must be an array of URLs";
+  }
+  if (image_urls.length > MAX_IMAGE_URLS) {
+    return `image_urls allows at most ${MAX_IMAGE_URLS} images`;
+  }
+  if (image_urls.some((u) => typeof u !== "string" || u.trim().length === 0)) {
+    return "image_urls must be non-empty URL strings";
+  }
+  return null;
+}

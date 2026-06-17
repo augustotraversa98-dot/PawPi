@@ -164,4 +164,38 @@ describe('POST /api/providers/[id]/services — create', () => {
     expect(values).toContain('100');
     expect(values).toContain(true);
   });
+
+  it('persists image_urls on create (ticket 2.23)', async () => {
+    auth.mockResolvedValue(SESSION);
+    const IMAGES = ['https://x/a.png', 'https://x/b.png'];
+    const CREATED = { id: 9, provider_id: 100, name: 'Checkup', image_urls: IMAGES };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
+      .mockResolvedValueOnce([CREATED]); // insert
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await POST(
+      postReq({ name: 'Checkup', image_urls: IMAGES }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(201);
+    expect(queryTextOf(1)).toContain('image_urls');
+    // The exact array is bound as a single parameter.
+    expect(valuesOf(1)).toEqual(expect.arrayContaining([IMAGES]));
+  });
+
+  it('rejects a non-array image_urls with 400, no insert (ticket 2.23)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await POST(
+      postReq({ name: 'Checkup', image_urls: 'not-an-array' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(400);
+    expect(sql).toHaveBeenCalledTimes(1); // profile lookup only
+  });
 });

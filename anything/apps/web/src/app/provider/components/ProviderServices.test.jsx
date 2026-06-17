@@ -116,6 +116,7 @@ describe("ProviderServices", () => {
       duration_min: 45,
       price_cents: 7550,
       deposit_cents: null,
+      image_urls: [],
     });
   });
 
