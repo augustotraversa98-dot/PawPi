@@ -33,15 +33,19 @@ as the RLS migrations 0019–0026.)
 0039_subscription_due_fn.sql          (2.17 — auto-charge cron; SECURITY DEFINER enumerator, no table)   ✅ APPLIED + VERIFIED 2026-06-17
 0040_telehealth.sql                   (2.18 — telehealth_sessions + widen two capability CHECKs)          ✅ APPLIED + VERIFIED 2026-06-17
 0041_provider_links.sql               (2.20 — website/instagram/facebook/google_maps columns on providers) ✅ APPLIED + VERIFIED 2026-06-17
-0042_provider_posts.sql               (2.22 — provider_posts table + providers.cover_image_url)            ⏳ pending (apply when 2.22 merges)
-0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])                              ⏳ pending (apply when 2.23 merges)
-0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)       ⏳ pending (apply when 2.26 merges)
-0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)             ⏳ pending (apply when 2.27 merges)
+0042_provider_posts.sql               (2.22 — provider_posts table + providers.cover_image_url)            ✅ APPLIED + VERIFIED 2026-06-17
+0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])                              ✅ APPLIED + VERIFIED 2026-06-17
+0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)       ✅ APPLIED + VERIFIED 2026-06-17
+0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)             ✅ APPLIED + VERIFIED 2026-06-17
 ```
-**Status (2026-06-17):** 0039 / 0040 / 0041 hand-applied to live Supabase and verified (cron function
-present + granted; telehealth_sessions RLS on+forced with owner-ALL + staff read/insert/update policies;
-both capability CHECKs now include `'telehealth'`; the four provider link columns present). 0042–0045
-remain harness-only until their tickets merge — apply each in numeric order then.
+**Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
+- 0039 cron function present + granted; 0040 telehealth_sessions RLS on+forced (owner-ALL + staff
+  read/insert/update) + both capability CHECKs include `'telehealth'`; 0041 the four provider link columns.
+- 0042 provider_posts RLS (read=SELECT, staff_all=ALL) + providers.cover_image_url; 0043
+  provider_services.image_urls; 0044 notifications RLS (select/update; inserts only via app_notify DEFINER)
+  + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
+  read/update/delete) + app_is_dm_participant present.
+No Phase 2 migrations remain pending. Future tickets that add tables will append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
