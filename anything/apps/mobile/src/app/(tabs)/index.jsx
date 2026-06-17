@@ -81,10 +81,26 @@ export default function FeedScreen() {
     [router],
   );
 
-  // ── Open the adoption browse hub (2.13 suggestion card tap) ──
-  const openAdoption = useCallback(() => {
-    router.push("/service/adoption");
-  }, [router]);
+  // ── Open a SPECIFIC adoption listing (2.30 deep-link) — the "Adopt me" card opens
+  //    that exact dog's detail, not the generic hub. Routes into the root-level service/
+  //    stack (2.19), so the More tab is never buried. Falls back to the hub if the card
+  //    lacks ids. ──
+  const openAdoption = useCallback(
+    (item) => {
+      if (item?.id != null && item?.provider_id != null) {
+        router.push({
+          pathname: "/service/adoption",
+          params: {
+            listingId: String(item.id),
+            providerId: String(item.provider_id),
+          },
+        });
+      } else {
+        router.push("/service/adoption");
+      }
+    },
+    [router],
+  );
 
   // ── View today's post ──
   const handleViewTodayPost = useCallback(() => {

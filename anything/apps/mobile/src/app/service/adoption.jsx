@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
   PawPrint,
@@ -69,8 +69,47 @@ function ageLabel(years, months) {
 export default function AdoptionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [tab, setTab] = useState("browse");
   const [openListing, setOpenListing] = useState(null); // { listing, place }
+
+  // Deep-link (ticket 2.30): an "Adopt me" feed/discovery card passes { listingId,
+  // providerId }. Open THAT dog's detail on mount. The single-listing fetch route is
+  // admin-only (no public GET — deviation from the ticket), so we load the place's
+  // public listings (available-of-published) + find the dog there; the place comes
+  // from adoption discovery. If the dog is gone/adopted it won't be in the list →
+  // a graceful "no longer available" notice, no crash. No param → the normal hub.
+  const deepListingId = params.listingId ? String(params.listingId) : null;
+  const deepProviderId = params.providerId ? String(params.providerId) : null;
+  // Shares the same query key as BrowseTab's discover (cached, no extra fetch).
+  const { data: deepPlaces } = useDiscoverProviders("adoption");
+  const { data: deepListings } = useAdoptableListings(deepProviderId);
+  const [deepHandled, setDeepHandled] = useState(false);
+
+  useEffect(() => {
+    if (deepHandled || !deepListingId || !deepProviderId) return;
+    if (!deepListings) return; // wait for the listing fetch
+    const listing = deepListings.find((l) => String(l.id) === deepListingId);
+    if (listing) {
+      const place =
+        (deepPlaces || []).find((p) => String(p.id) === deepProviderId) || {
+          id: Number(deepProviderId),
+        };
+      setOpenListing({ listing, place });
+    } else {
+      Alert.alert(
+        "No longer available",
+        "This dog has found a home or the listing was removed.",
+      );
+    }
+    setDeepHandled(true);
+  }, [
+    deepHandled,
+    deepListingId,
+    deepProviderId,
+    deepListings,
+    deepPlaces,
+  ]);
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
