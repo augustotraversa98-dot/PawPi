@@ -4,12 +4,13 @@
 // pet and assert the header re-renders.
 
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, fireEvent } from "@testing-library/react-native";
 
 let mockCurrentPet;
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+  useRouter: () => ({ back: jest.fn(), push: mockPush, replace: jest.fn() }),
 }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
@@ -34,6 +35,7 @@ jest.mock("@/hooks/usePetProfile", () => ({
 import MoreScreen from "./index";
 
 beforeEach(() => {
+  mockPush.mockReset();
   mockCurrentPet = {
     id: 1,
     name: "Rex",
@@ -74,4 +76,26 @@ test("falls back to a friendly default when there is no pet yet", () => {
   mockCurrentPet = null;
   const { getByText } = render(<MoreScreen />);
   expect(getByText("My Dog")).toBeTruthy();
+});
+
+test("the burger opens the More menu with every former destination (2.39)", () => {
+  const { getByLabelText, getByText } = render(<MoreScreen />);
+  fireEvent.press(getByLabelText("Open menu"));
+  for (const item of [
+    "Community",
+    "My Hub",
+    "Dog Profile",
+    "Reminders & Routines",
+    "Settings",
+    "Reset App Data",
+  ]) {
+    expect(getByText(item)).toBeTruthy();
+  }
+});
+
+test("a menu item closes the sheet and routes to its destination (2.39)", () => {
+  const { getByLabelText, getByText } = render(<MoreScreen />);
+  fireEvent.press(getByLabelText("Open menu"));
+  fireEvent.press(getByText("Settings"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/settings");
 });

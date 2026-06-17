@@ -5,7 +5,7 @@ import {
   HeartPulse,
   GraduationCap,
   Stethoscope,
-  MoreHorizontal,
+  CircleUser,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
@@ -104,8 +104,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="more/index"
         options={{
-          title: t("tabs.more"),
-          tabBarIcon: ({ color }) => <MoreHorizontal color={color} size={23} />,
+          title: t("tabs.profile"),
+          tabBarIcon: ({ color }) => <CircleUser color={color} size={23} />,
           // Safety net (ticket 2.19): leaving the More tab pops its stack to the landing
           // page and tears down any in-progress pushed flow / routine-creation modal, so
           // tapping More always reopens its root — even if some unforeseen push slipped in.
