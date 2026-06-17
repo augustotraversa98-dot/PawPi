@@ -6,6 +6,11 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 const navigateMock = vi.fn();
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
+  Link: ({ to, children, ...props }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock("../hooks/useProviders", () => ({
   useProviderBookings: vi.fn(),

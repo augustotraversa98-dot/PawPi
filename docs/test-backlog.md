@@ -65,6 +65,15 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.24 — Web bookings calendar view  ·  ticket/provider-calendar-view (2026-06-17)
+What shipped: a **week/day calendar** in the provider dashboard (new **Calendar** sidebar entry, before Bookings) — dates are columns, times are rows, each booking sits in its start-hour cell showing the pet + what they booked, with a paid/unpaid dot and an in-store/house-visit marker. Navigate weeks/days + **Today**; switch **Week/Day**. Clicking a booking opens a detail popover with the full booking context (owner, service, pet species/breed, location + address, status, **value + paid/unpaid**, notes) and the existing **confirm / decline / cancel / assign** actions (reused from the inbox — not rebuilt). The list inbox stays available; the two cross-link ("Calendar view" ⇄ "List view"). Scoped to the active provider; switching providers recomputes. No migration. **Booking-context only — no medical data on this path.**
+- **No DB change.** The calendar reads `GET /api/providers/[id]/bookings?view=calendar&from=&to=` — the same endpoint as the inbox, extended with a date-window branch that also joins `provider_locations` (location) and `orders` (value + paid). Cross-provider isolation + the no-medical-tables rule are asserted in vitest.
+- **Web-only — verify in a browser** (provider-facing UI; on the deferred provider-device-pass posture):
+1. Provider dashboard → **Calendar**: bookings land in the right day/time cells; paid/unpaid dot + location marker show.
+2. Click a booking → the popover shows owner/service/pet/location/value/paid/notes; **Confirm/Decline/Cancel/Assign** work (same effect as the inbox).
+3. **Today**, prev/next, and **Week/Day** navigate correctly; an empty week shows a clean empty grid (no fake events).
+4. **Calendar view ⇄ List view** links switch between the two; switching the active provider recomputes (never another business's bookings).
+
 ### [ ] 2.22 — Provider storefront profile + posts  ·  ticket/provider-storefront-profile (2026-06-17)
 What shipped: the public provider profile is now a **storefront** ("entering the store"). The provider sets a **cover image** and composes **posts** (text + photos) from a new **Storefront** section in the web dashboard (sidebar, after Profile); posts list with delete. An owner opening the provider on the phone sees the rich storefront — cover banner + logo, name/bio/links, rating + reviews, the **Services** menu (with 2.23 photos), an **Items** grid (the shop catalog summary; tap → the existing Shop), and a **Posts** feed (newest first). All real data; every section has an empty state and the storefront degrades to text when there's no media. Booking/chat/shop/reviews are **reused**, not rebuilt. No private data (staff/owner/payment/medical) is exposed; post author identity is never returned.
 - ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0042_provider_posts.sql` — new `provider_posts` table (ENABLE+FORCE RLS: active-staff write/read-all + published-non-deleted public read) + an additive `providers.cover_image_url` column (rides providers' existing policy). Hand-apply after merge.

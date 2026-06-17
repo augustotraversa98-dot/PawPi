@@ -124,3 +124,85 @@ describe('GET /api/providers/[id]/bookings', () => {
     expect(lastValues()).toContain('requested'); // bound filter value
   });
 });
+
+describe('GET /api/providers/[id]/bookings?view=calendar (ticket 2.24)', () => {
+  const from = '2026-06-15T00:00:00.000Z';
+  const to = '2026-06-22T00:00:00.000Z';
+  const calReq = () =>
+    new Request(
+      `http://localhost/api/providers/100/bookings?view=calendar&from=${from}&to=${to}`,
+    );
+
+  it('400 when from/to are missing', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([ACTIVE_MEMBERSHIP]);
+
+    const res = await GET(inboxReq('?view=calendar'), PARAMS);
+
+    expect(res.status).toBe(400);
+    // No calendar SELECT ran (only profile + membership).
+    expect(sql).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns the grid fields incl. location + value/paid, scoped to the window', async () => {
+    auth.mockResolvedValue(SESSION);
+    const ROWS = [
+      {
+        id: 9,
+        start_at: '2026-06-16T14:00:00.000Z',
+        end_at: '2026-06-16T14:30:00.000Z',
+        pet_name: 'Rex',
+        pet_species: 'Dog',
+        owner_name: 'Jane Doe',
+        service_name: 'Checkup',
+        location_name: 'Main',
+        location_address: '1 St',
+        value_cents: 5000,
+        value_currency: 'ARS',
+        paid: true,
+      },
+    ];
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([ACTIVE_MEMBERSHIP])
+      .mockResolvedValueOnce(ROWS);
+
+    const res = await GET(calReq(), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ bookings: ROWS });
+
+    const text = lastQueryText();
+    // Grid extras present: location join + order value/paid + pet basic info.
+    expect(text).toContain('provider_locations');
+    expect(text).toContain('location_name');
+    expect(text).toContain('value_cents');
+    expect(text).toContain('paid');
+    expect(text).toContain('pet_species');
+    // Window-scoped to start_at [from, to) and to THIS provider.
+    expect(text).toContain('va.start_at >=');
+    expect(text).toContain('va.start_at <');
+    expect(text).toContain('va.provider_id =');
+    const values = lastValues();
+    expect(values).toContain('100');
+    expect(values).toContain(from);
+    expect(values).toContain(to);
+  });
+
+  it('the calendar SELECT touches NO medical tables', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([ACTIVE_MEMBERSHIP])
+      .mockResolvedValueOnce([]);
+
+    await GET(calReq(), PARAMS);
+
+    const text = lastQueryText();
+    expect(text).not.toContain('health_');
+    expect(text).not.toContain('weight');
+    expect(text).not.toContain('vaccinations');
+    expect(text).not.toContain('vet_notes');
+    expect(text).not.toContain('care_access');
+  });
+});

@@ -47,6 +47,72 @@ async function GET(request, { params }) {
     const { searchParams } = new URL(request.url);
     const bookingStatus = searchParams.get("booking_status");
 
+    // CALENDAR view (ticket 2.24) — the same booking-context-ONLY data as the inbox,
+    // plus the grid extras: pet basic info (species/breed/avatar — NOT medical), the
+    // location (in-store name/address), and the order's value + paid flag. Scoped to a
+    // [from, to) start_at window so the grid only pulls the visible week/day.
+    //
+    // STILL booking-context only — NO medical table is touched (no weight/meds/vaccines/
+    // vet notes/care_access). orders/provider_locations are booking metadata, not health
+    // data. assertCareAccess is deliberately not called (no medical data).
+    if (searchParams.get("view") === "calendar") {
+      const from = searchParams.get("from");
+      const to = searchParams.get("to");
+      if (!from || !to) {
+        return Response.json(
+          { error: "from and to are required for the calendar view" },
+          { status: 400 },
+        );
+      }
+
+      const calendar = await sql`
+        SELECT
+          va.id,
+          va.pet_id,
+          va.owner_user_id,
+          va.title,
+          va.appointment_date,
+          va.appointment_time,
+          va.reason_for_visit,
+          va.notes,
+          va.booking_status,
+          va.status,
+          va.staff_user_id,
+          va.provider_id,
+          va.provider_location_id,
+          va.service_id,
+          va.capability,
+          va.start_at,
+          va.end_at,
+          va.order_id,
+          p.name AS pet_name,
+          p.species AS pet_species,
+          p.breed AS pet_breed,
+          p.avatar_url AS pet_avatar_url,
+          COALESCE(up.full_name, up.username) AS owner_name,
+          s.name AS service_name,
+          pl.name AS location_name,
+          pl.address AS location_address,
+          o.amount_cents AS value_cents,
+          o.currency AS value_currency,
+          (o.status = 'paid') AS paid
+        FROM vet_appointments va
+        LEFT JOIN pets p ON p.id = va.pet_id
+        LEFT JOIN user_profiles up ON up.id = va.owner_user_id
+        LEFT JOIN provider_services s ON s.id = va.service_id
+        LEFT JOIN provider_locations pl ON pl.id = va.provider_location_id
+        LEFT JOIN orders o ON o.id = va.order_id
+        WHERE va.provider_id = ${providerId}
+          AND va.deleted_at IS NULL
+          AND va.start_at IS NOT NULL
+          AND va.start_at >= ${from}
+          AND va.start_at < ${to}
+        ORDER BY va.start_at ASC, va.id ASC
+      `;
+
+      return Response.json({ bookings: calendar });
+    }
+
     // BOOKING FIELDS + CONTEXT ONLY. The joins surface human-readable context
     // (pet/owner/service names); no medical table is touched. owner_name prefers
     // full_name, falling back to username. provider_services is LEFT JOIN'd
