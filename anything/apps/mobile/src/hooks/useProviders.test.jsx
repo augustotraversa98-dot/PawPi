@@ -20,6 +20,7 @@ import {
   useSittingVisits,
   useMySittingVisits,
   useLogSittingVisit,
+  useCreateProvider,
 } from "./useProviders";
 
 function makeWrapper(queryClient) {
@@ -214,6 +215,84 @@ describe("useBookProvider", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["vet-appointment-reminders", 7],
+    });
+  });
+});
+
+describe("useCreateProvider", () => {
+  test("POSTs to /api/providers with the body and returns the created provider", async () => {
+    const provider = { id: 42, name: "Happy Paws", provider_type: "vet", status: "draft" };
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ provider }),
+    }));
+
+    const { result } = renderHook(() => useCreateProvider(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    let returned;
+    await act(async () => {
+      returned = await result.current.mutateAsync({
+        name: "Happy Paws",
+        provider_type: "vet",
+        bio: "We love pets",
+      });
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/providers",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Happy Paws",
+          provider_type: "vet",
+          bio: "We love pets",
+        }),
+      }),
+    );
+    expect(returned).toBe(provider);
+  });
+
+  test("surfaces the backend error message on a non-ok response", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "name and provider_type are required" }),
+    }));
+
+    const { result } = renderHook(() => useCreateProvider(), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    await expect(
+      act(async () => {
+        await result.current.mutateAsync({ name: "", provider_type: "" });
+      }),
+    ).rejects.toThrow(/name and provider_type are required/i);
+  });
+
+  test("invalidates the useMyProviders key on success", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 201,
+      json: async () => ({ provider: { id: 42, name: "Happy Paws" } }),
+    }));
+
+    const client = makeClient();
+    const invalidateSpy = jest.spyOn(client, "invalidateQueries");
+
+    const { result } = renderHook(() => useCreateProvider(), {
+      wrapper: makeWrapper(client),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: "Happy Paws", provider_type: "vet" });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["providers", "mine"],
     });
   });
 });

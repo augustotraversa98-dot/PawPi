@@ -278,6 +278,38 @@ export function useUnreadCount() {
   });
 }
 
+// Create a provider — the caller becomes its active 'owner' (POST /api/providers, the
+// canonical create endpoint). The backend lazily creates the caller's user_profiles row
+// (so a brand-new account with no pet can onboard), atomically creates provider + owner
+// provider_staff + provider_capabilities under RLS, and returns { provider } (status 201,
+// status 'draft'). Body { name, provider_type, bio? } — name + provider_type required;
+// the backend seeds the capability matching provider_type. On success we invalidate the
+// useMyProviders key so the new business appears immediately. Mirrors the web onboarding
+// (apps/web/src/app/provider/components/CreateProviderForm.jsx).
+export function useCreateProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ name, provider_type, bio? }) → provider
+    mutationFn: async (body) => {
+      const response = await fetch("/api/providers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        // Surface the backend's 400/401 message rather than swallowing it.
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to create your business");
+      }
+      const data = await response.json();
+      return data.provider;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["providers", "mine"] });
+    },
+  });
+}
+
 // The providers the current user is ACTIVE STAFF of (GET /api/providers). Used by the
 // walker workspace to find the walker-capable businesses they work for. Empty → [].
 export function useMyProviders() {
