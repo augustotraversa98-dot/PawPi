@@ -160,3 +160,41 @@ test("a groomer capability books with capability 'groomer' and grooming copy", a
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].capability).toBe("groomer");
 });
+
+// ── Ticket 2.6: recurring grooming cycle ──────────────────────────────────────
+test("a groomer booking sends recurrence_rule ONLY when the owner opts in", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const renderGroomer = () =>
+    render(
+      <BookingFormModal
+        visible
+        onClose={jest.fn()}
+        provider={{ id: 3, name: "Pet Spa" }}
+        locations={[]}
+        services={[]}
+        capability="groomer"
+      />,
+    );
+
+  // Without opting in → no recurrence_rule.
+  let view = renderGroomer();
+  fireEvent.press(view.getByTestId("booking-date"));
+  fireEvent.press(view.getByTestId("booking-time"));
+  fireEvent.press(view.getByText("Confirm grooming"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].recurrence_rule).toBeUndefined();
+
+  mockMutateAsync.mockClear();
+  view.unmount();
+
+  // Opting in to "every 6 weeks" → the booking carries the RRULE.
+  view = renderGroomer();
+  fireEvent.press(view.getByTestId("booking-date"));
+  fireEvent.press(view.getByTestId("booking-time"));
+  fireEvent.press(view.getByTestId("booking-recurrence"));
+  fireEvent.press(view.getByText("Confirm grooming"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].recurrence_rule).toBe(
+    "FREQ=WEEKLY;INTERVAL=6",
+  );
+});

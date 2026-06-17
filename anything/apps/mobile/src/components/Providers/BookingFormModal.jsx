@@ -17,7 +17,15 @@ const CAPABILITY_COPY = {
     noun: "appointment",
     reasons: ["Checkup", "Vaccination", "Injury", "Dental", "Grooming"],
   },
-  groomer: { icon: "✂️", noun: "grooming", reasons: ["Full groom", "Bath & tidy", "Nail trim", "De-shed"] },
+  groomer: {
+    icon: "✂️",
+    noun: "grooming",
+    reasons: ["Full groom", "Bath & tidy", "Nail trim", "De-shed"],
+    // Grooming is naturally a recurring cycle (ticket 2.6). Offer "every 6 weeks" so the
+    // booking carries a recurrence_rule (2.4) and the EXISTING reminder engine nudges the
+    // owner to re-book — no new reminder path. iCal RRULE; INTERVAL=6 weeks.
+    recurrence: { label: "Repeat every 6 weeks", rule: "FREQ=WEEKLY;INTERVAL=6" },
+  },
   walker: { icon: "🐾", noun: "walk", reasons: ["30 min walk", "60 min walk", "Group walk", "Puppy walk"] },
   daycare: { icon: "🏠", noun: "daycare", reasons: ["Half day", "Full day", "Recurring"] },
   sitter: { icon: "🧸", noun: "sitting", reasons: ["Drop-in", "Overnight", "House sit"] },
@@ -81,6 +89,7 @@ export default function BookingFormModal({
   const [time, setTime] = useState(""); // canonical HH:MM from TimeField
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [repeat, setRepeat] = useState(false); // recurring cycle (2.6 grooming)
 
   const resetAndClose = () => {
     setServiceId(null);
@@ -89,6 +98,7 @@ export default function BookingFormModal({
     setTime("");
     setReason("");
     setNotes("");
+    setRepeat(false);
     onClose?.();
   };
 
@@ -122,6 +132,10 @@ export default function BookingFormModal({
         appointment_time: time,
         reason_for_visit: reason || undefined,
         notes: notes || undefined,
+        // Recurring cycle (2.6): when the owner opts in, carry the capability's RRULE so
+        // the booking recurs and the existing reminder engine nudges a re-book.
+        recurrence_rule:
+          repeat && copy.recurrence ? copy.recurrence.rule : undefined,
       });
       resetAndClose();
       Alert.alert(
@@ -278,6 +292,42 @@ export default function BookingFormModal({
         value={notes}
         onChangeText={setNotes}
       />
+
+      {/* Recurring cycle (2.6) — only when the capability defines one (e.g. grooming
+          "every 6 weeks"). A simple opt-in chip; sets recurrence_rule on the booking. */}
+      {copy.recurrence && (
+        <View style={{ marginTop: 18 }}>
+          <SectionLabel>Recurring</SectionLabel>
+          <TouchableOpacity
+            testID="booking-recurrence"
+            onPress={() => setRepeat((v) => !v)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              backgroundColor: repeat ? COLORS.coral : COLORS.sand,
+              borderRadius: 12,
+              borderWidth: 1.5,
+              borderColor: repeat ? COLORS.coral : COLORS.peach,
+              paddingHorizontal: 14,
+              paddingVertical: 13,
+            }}
+          >
+            <Text
+              style={{
+                fontWeight: "700",
+                fontSize: 14,
+                color: repeat ? "#FFF" : COLORS.mutedBrown,
+              }}
+            >
+              {copy.recurrence.label}
+            </Text>
+            <Text style={{ fontSize: 16, color: repeat ? "#FFF" : COLORS.mutedBrown }}>
+              {repeat ? "✓" : ""}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardSafeFormModal>
   );
 }

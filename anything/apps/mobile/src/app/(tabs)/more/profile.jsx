@@ -17,8 +17,10 @@ import {
   Weight,
   Info,
   User,
+  Scissors,
 } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useGroomSessions } from "@/hooks/useGroomSessions";
 import useUser from "@/utils/auth/useUser";
 
 const C = {
@@ -40,6 +42,8 @@ export default function ProfileScreen() {
   // Fetch pet from database instead of AsyncStorage
   const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
   const { data: authUser } = useUser();
+  // Grooming sessions for this pet (ticket 2.6) — before/after photos a groomer logged.
+  const { data: groomSessions } = useGroomSessions(currentPet?.id);
 
   // Debug logging
   useEffect(() => {
@@ -345,8 +349,193 @@ export default function ProfileScreen() {
                 "No extra notes yet. Add information about allergies, food preferences, or medical conditions."}
             </Text>
           </View>
+
+          {/* Grooming (ticket 2.6) — before/after photos + coat notes a groomer logged.
+              Owner-read; empty → empty state, no fake data. Coat/skin notes ALSO live in
+              the pet's Health timeline (the existing health-log path). */}
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "800",
+              color: C.mutedBrown,
+              marginTop: 22,
+              marginBottom: 12,
+              letterSpacing: 0.6,
+            }}
+          >
+            GROOMING
+          </Text>
+          <GroomingSection sessions={groomSessions} />
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+// Renders a pet's grooming sessions (ticket 2.6). Each card shows the groomer, date,
+// the before/after photo strips, and the coat/skin note. Empty → a friendly empty state
+// (no fake data); the coat/skin notes also appear in the pet's Health timeline.
+function GroomingSection({ sessions }) {
+  const list = Array.isArray(sessions) ? sessions : [];
+
+  if (list.length === 0) {
+    return (
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 18,
+          padding: 18,
+          borderWidth: 1,
+          borderColor: C.peach,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <Scissors size={20} color={C.mutedBrown} />
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 14,
+            color: C.mutedBrown,
+            lineHeight: 20,
+          }}
+        >
+          No grooming sessions yet. Book a groomer from Services → Grooming; their
+          before/after photos and coat notes will show up here.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 14 }}>
+      {list.map((s) => (
+        <GroomSessionCard key={s.id} session={s} />
+      ))}
+    </View>
+  );
+}
+
+function formatSessionDate(dateString) {
+  if (!dateString) return null;
+  try {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+function GroomSessionCard({ session }) {
+  const before = Array.isArray(session.before_urls) ? session.before_urls : [];
+  const after = Array.isArray(session.after_urls) ? session.after_urls : [];
+  const dateLabel = formatSessionDate(session.created_at);
+
+  return (
+    <View
+      style={{
+        backgroundColor: C.card,
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: C.peach,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <Text
+          style={{ fontSize: 15, fontWeight: "800", color: C.warmBrown }}
+          numberOfLines={1}
+        >
+          {session.provider_name || "Groomer"}
+        </Text>
+        {dateLabel ? (
+          <Text style={{ fontSize: 12, color: C.mutedBrown }}>{dateLabel}</Text>
+        ) : null}
+      </View>
+
+      {before.length > 0 || after.length > 0 ? (
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <PhotoStrip label="Before" urls={before} />
+          <PhotoStrip label="After" urls={after} />
+        </View>
+      ) : null}
+
+      {session.coat_skin_notes ? (
+        <Text
+          style={{
+            fontSize: 13,
+            color: C.warmBrown,
+            lineHeight: 19,
+            marginTop: 12,
+          }}
+        >
+          {session.coat_skin_notes}
+        </Text>
+      ) : null}
+
+      {session.products_used ? (
+        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 6 }}>
+          Products: {session.products_used}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function PhotoStrip({ label, urls }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: "800",
+          color: C.mutedBrown,
+          marginBottom: 6,
+          letterSpacing: 0.4,
+        }}
+      >
+        {label.toUpperCase()}
+      </Text>
+      {urls.length > 0 ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {urls.map((uri, i) => (
+            <Image
+              key={`${label}-${i}`}
+              source={{ uri }}
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 10,
+                backgroundColor: C.sand,
+              }}
+              contentFit="cover"
+            />
+          ))}
+        </View>
+      ) : (
+        <View
+          style={{
+            height: 64,
+            borderRadius: 10,
+            backgroundColor: C.sand,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 11, color: C.mutedBrown }}>—</Text>
+        </View>
+      )}
     </View>
   );
 }

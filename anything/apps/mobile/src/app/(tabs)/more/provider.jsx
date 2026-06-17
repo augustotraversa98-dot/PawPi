@@ -39,8 +39,13 @@ function formatPrice(cents) {
 export default function ProviderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { slug } = useLocalSearchParams();
+  const { slug, capability } = useLocalSearchParams();
   const slugStr = Array.isArray(slug) ? slug[0] : slug;
+  // Optional capability the owner is booking FOR (ticket 2.6: grooming passes
+  // capability='groomer'). Threaded into the shared BookingFormModal so it books the
+  // right service (2.4 generalized booking). Absent (e.g. from vet discovery) → the
+  // modal falls back to the provider's primary type / 'vet', unchanged.
+  const capabilityStr = Array.isArray(capability) ? capability[0] : capability;
 
   const { data, isLoading, isError, refetch } = useProviderProfile(slugStr);
   const [showBooking, setShowBooking] = useState(false);
@@ -389,6 +394,7 @@ export default function ProviderScreen() {
         provider={provider}
         locations={locations}
         services={services}
+        capability={capabilityStr}
       />
     </View>
   );

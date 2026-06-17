@@ -18,13 +18,13 @@ import { COLORS } from "@/constants/colors";
 // Pet Services hub — a quick-access CATEGORY GRID promoted into the main bottom
 // navigation so the built provider/booking loops are 1-2 taps away.
 //
-// Veterinary is the ONLY category built end-to-end today, so it is the only LIVE
-// card: it navigates to the single canonical vet discovery (more/vet.jsx — no
-// duplicate discovery screen). Every other catalog category is rendered as a
-// "Coming soon" SIGNPOST card: visible and clearly badged, but NOT tappable into
-// any flow and with NO fake provider data behind it. These light up in later
-// Phase-2 tickets (grooming → walking → daycare/boarding → sitting → training →
-// shop → adoption).
+// Veterinary (ticket 2.0) and Grooming (ticket 2.6) are built end-to-end today, so
+// they are the LIVE cards: each navigates to its single canonical discovery screen
+// (more/vet.jsx, more/grooming.jsx — no duplicate discovery screen). Every other
+// catalog category is rendered as a "Coming soon" SIGNPOST card: visible and clearly
+// badged, but NOT tappable into any flow and with NO fake provider data behind it.
+// These light up in later Phase-2 tickets (walking → daycare/boarding → sitting →
+// training → shop → adoption).
 const CATEGORIES = [
   {
     key: "vet",
@@ -39,7 +39,8 @@ const CATEGORIES = [
     title: "Grooming",
     subtitle: "Baths, trims, and nail care",
     icon: Scissors,
-    live: false,
+    live: true,
+    route: "/(tabs)/more/grooming",
   },
   {
     key: "walking",
