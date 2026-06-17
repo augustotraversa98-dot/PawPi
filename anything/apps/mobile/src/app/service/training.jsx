@@ -142,7 +142,7 @@ export default function TrainingServiceScreen() {
               provider={p}
               onOpen={() =>
                 router.push({
-                  pathname: "/(tabs)/more/provider",
+                  pathname: "/service/provider",
                   params: { slug: p.slug, capability: "trainer" },
                 })
               }

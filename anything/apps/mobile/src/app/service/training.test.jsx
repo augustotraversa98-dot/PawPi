@@ -98,7 +98,7 @@ test("tapping a card navigates to the provider detail with slug + capability=tra
   fireEvent.press(getByText("Pawsitive Training"));
 
   expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/(tabs)/more/provider",
+    pathname: "/service/provider",
     params: { slug: "pawsitive", capability: "trainer" },
   });
 });

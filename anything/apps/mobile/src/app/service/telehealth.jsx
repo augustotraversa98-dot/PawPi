@@ -42,7 +42,7 @@ export default function TelehealthScreen() {
 
   const openProvider = (slug) => {
     router.push({
-      pathname: "/(tabs)/more/provider",
+      pathname: "/service/provider",
       params: { slug, capability: "telehealth" },
     });
   };

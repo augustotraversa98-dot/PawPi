@@ -261,7 +261,7 @@ export default function MyHubScreen() {
             title="My orders"
             Icon={ShoppingBag}
             count={orderList.length}
-            onPress={() => router.push("/(tabs)/more/shop")}
+            onPress={() => router.push("/service/shop")}
           >
             {orderList.length === 0 ? (
               <Empty text="No orders yet." />
@@ -284,7 +284,7 @@ export default function MyHubScreen() {
             title="Auto-reorder"
             Icon={RefreshCw}
             count={subList.length}
-            onPress={() => router.push("/(tabs)/more/shop")}
+            onPress={() => router.push("/service/shop")}
           >
             {subList.length === 0 ? (
               <Empty text="No active auto-reorder plans." />
@@ -326,7 +326,7 @@ export default function MyHubScreen() {
             title="Saved dogs"
             Icon={Heart}
             count={favList.length}
-            onPress={() => router.push("/(tabs)/more/adoption")}
+            onPress={() => router.push("/service/adoption")}
           >
             {favList.length === 0 ? (
               <Empty text="No saved adoption listings." />

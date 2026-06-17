@@ -100,7 +100,7 @@ test("tapping a card navigates to the provider detail with slug + capability=sit
   fireEvent.press(getByText("Cozy Sits"));
 
   expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/(tabs)/more/provider",
+    pathname: "/service/provider",
     params: { slug: "cozy-sits", capability: "sitter" },
   });
 });

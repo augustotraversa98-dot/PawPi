@@ -80,7 +80,7 @@ test("tapping a card navigates to the provider detail with slug + capability=gro
   fireEvent.press(getByText("Pet Spa"));
 
   expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/(tabs)/more/provider",
+    pathname: "/service/provider",
     params: { slug: "pet-spa", capability: "groomer" },
   });
 });

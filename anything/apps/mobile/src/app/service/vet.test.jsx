@@ -70,7 +70,7 @@ test("tapping a card navigates to the provider detail with the slug", () => {
   fireEvent.press(getByText("Happy Paws Clinic"));
 
   expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/(tabs)/more/provider",
+    pathname: "/service/provider",
     params: { slug: "happy-paws" },
   });
 });
