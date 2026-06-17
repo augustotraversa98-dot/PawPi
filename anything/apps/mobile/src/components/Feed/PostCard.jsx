@@ -1,9 +1,10 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Image } from "expo-image";
-import { PawPrint, Megaphone, Share2 } from "lucide-react-native";
+import { PawPrint, Megaphone } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
+import { DailyShareButton } from "./DailyShareButton";
 
 export const PostCard = memo(function PostCard({
   post,
@@ -213,12 +214,9 @@ export const PostCard = memo(function PostCard({
 
           <View style={{ flex: 1 }} />
 
-          <TouchableOpacity disabled={locked}>
-            <Share2
-              size={20}
-              color={locked ? COLORS.peach : COLORS.mutedBrown}
-            />
-          </TouchableOpacity>
+          {/* Share a branded story frame of this daily photo (ticket 2.28). Optional;
+              the daily-post flow + BeReal lock are untouched. */}
+          <DailyShareButton petName={dogName} photoUri={photo} locked={locked} />
         </View>
       </View>
     </View>
