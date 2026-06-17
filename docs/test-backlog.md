@@ -30,14 +30,18 @@ as the RLS migrations 0019–0026.)
 0036_training_module.sql              (2.10)
 0037_shop_ecommerce.sql               (2.11)
 0038_adoption.sql                     (2.12)
-0039_subscription_due_fn.sql          (2.17 — auto-charge cron; SECURITY DEFINER enumerator, no table)
-0040_telehealth.sql                   (2.18 — telehealth_sessions + widen two capability CHECKs)
-0041_provider_links.sql               (2.20 — website/instagram/facebook/google_maps columns on providers)
-0042_provider_posts.sql               (2.22 — provider_posts table + providers.cover_image_url)
-0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])
-0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)
-0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)
+0039_subscription_due_fn.sql          (2.17 — auto-charge cron; SECURITY DEFINER enumerator, no table)   ✅ APPLIED + VERIFIED 2026-06-17
+0040_telehealth.sql                   (2.18 — telehealth_sessions + widen two capability CHECKs)          ✅ APPLIED + VERIFIED 2026-06-17
+0041_provider_links.sql               (2.20 — website/instagram/facebook/google_maps columns on providers) ✅ APPLIED + VERIFIED 2026-06-17
+0042_provider_posts.sql               (2.22 — provider_posts table + providers.cover_image_url)            ⏳ pending (apply when 2.22 merges)
+0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])                              ⏳ pending (apply when 2.23 merges)
+0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)       ⏳ pending (apply when 2.26 merges)
+0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)             ⏳ pending (apply when 2.27 merges)
 ```
+**Status (2026-06-17):** 0039 / 0040 / 0041 hand-applied to live Supabase and verified (cron function
+present + granted; telehealth_sessions RLS on+forced with owner-ALL + staff read/insert/update policies;
+both capability CHECKs now include `'telehealth'`; the four provider link columns present). 0042–0045
+remain harness-only until their tickets merge — apply each in numeric order then.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
@@ -64,6 +68,16 @@ go-live checklist in `PawPi_instructions.md`.
 ---
 
 ## To test
+
+### [ ] 2.26 — Notifications on real data  ·  ticket/notifications-real (2026-06-17)
+What shipped: the phone **Notifications** bell now shows **real** activity on your content — someone **pawed** your post, **barked** (commented), or **followed** your pet — merged with the existing local **reminder** notifications, filterable (All/Walks/Feeding/Paws/Barks/Training). Tapping a follow opens that pet's profile; a paw/bark returns to the feed; reminders behave as before. Unread styling + **Mark all read** (marks both sources). Mock notifications are gone (file deleted; no startup seeding). A notify never blocks the underlying action, and you're never notified about your own action.
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0044_notifications.sql` — `notifications` table (recipient/owner-scoped ENABLE+FORCE RLS) + the `app_notify(recipient, actor, type, subject_ref, body)` **SECURITY DEFINER** insert helper (lets the actor create a row for a different recipient; pinned search_path; GRANT EXECUTE to pawpi_app). Hand-apply after merge.
+- Exercised by web vitest (paw/bark/follow each notify the content owner — not the actor; idempotent repeats don't double-notify; GET recipient-scoped; mark-read), the real-Postgres harness (recipient reads own / others read zero; recipient marks own read; a direct insert is denied; app_notify inserts cross-user + no-ops on self), and mobile jest (merged real + reminder render, filters, tap-through, mark-all, empty state).
+- **NEEDS A DEVICE PASS** — jest can't exercise the live notify pipeline or real navigation:
+1. Have a second account **paw / bark / follow** your content → a real notification appears in your bell, tappable (follow → your pet's profile; paw/bark → the feed).
+2. Reminder notifications still appear and merge in; the filter chips work across both.
+3. **Mark all read** clears the unread styling; a fresh account shows the empty state.
+4. You never get a notification for your **own** paw/bark/follow.
 
 ### [ ] 2.25 — Search & Discover on real data  ·  ticket/feed-search-discover-real (2026-06-17)
 What shipped: the phone **Search & Discover** screen is now backed by **real data** — the mock discovery data is gone (file deleted; startup no longer seeds it). Typing (debounced) searches real **pets** (name/breed/handle/species), **businesses** (published providers by name), and **pet parents** (username/full name) via a new `GET /api/search?q=`; with no query the screen shows **Discover** — real **Popular Profiles** (pets ranked by followers then paws received) and **Popular Pet Moments** (recent posts) via `GET /api/discover`. Tap-through: a pet/profile → the real pet profile (`/pet-profile?petId`), a business → its storefront (`/service/provider?slug`), a moment → its pet's profile. Public/RLS-scoped fields only (no medical/owner data). No migration. Empty → clean empty states ("No results" / "Nothing here yet"), no mock fallback.

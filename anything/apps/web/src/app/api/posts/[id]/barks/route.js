@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Get barks (comments) for a post
@@ -81,9 +82,9 @@ async function POST(request, { params }) {
       );
     }
 
-    // Check if post exists
+    // Check if post exists (user_id = the owner, the notification recipient)
     const post = await sql`
-      SELECT id FROM posts WHERE id = ${postId} LIMIT 1
+      SELECT id, user_id FROM posts WHERE id = ${postId} LIMIT 1
     `;
 
     if (post.length === 0) {
@@ -96,6 +97,15 @@ async function POST(request, { params }) {
       VALUES (${postId}, ${userId}, ${petId}, ${text})
       RETURNING *
     `;
+
+    // Notify the post's owner (ticket 2.26). Fire-and-don't-block; never self-notify.
+    await safeNotify({
+      recipient: post[0].user_id,
+      actor: userId,
+      type: "bark",
+      subjectRef: String(postId),
+      body: "barked on your post",
+    });
 
     // Get enriched info for response (same shape GET returns)
     const barkWithUser = await sql`

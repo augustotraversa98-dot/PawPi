@@ -117,6 +117,30 @@ describe('POST /api/posts/[id]/barks', () => {
     });
   });
 
+  it('notifies the post owner on a new bark (not the actor) — ticket 2.26', async () => {
+    auth.mockResolvedValue(SESSION);
+    // 1: profile (7), 2: owned-pet, 3: post owned by 9, 4: INSERT, 5: app_notify, 6: enriched
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([OWNED_PET])
+      .mockResolvedValueOnce([{ id: 5, user_id: 9 }])
+      .mockResolvedValueOnce([{ id: 100 }])
+      .mockResolvedValueOnce([{ app_notify: 1 }])
+      .mockResolvedValueOnce([ENRICHED_BARK]);
+
+    const res = await POST(postReq(), { params: { id: '5' } });
+
+    expect(res.status).toBe(201);
+    const notifyCall = sql.mock.calls.find((c) =>
+      (c?.[0] ?? []).join(' ').includes('app_notify'),
+    );
+    expect(notifyCall).toBeTruthy();
+    const values = notifyCall.slice(1);
+    expect(values).toContain(9); // recipient = post owner
+    expect(values).toContain(7); // actor = caller
+    expect(values).toContain('bark');
+  });
+
   it('400 when petId is missing — never inserts', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);
