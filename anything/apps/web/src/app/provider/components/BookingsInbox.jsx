@@ -5,13 +5,14 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import {
   Check,
   X,
   Ban,
   UserPlus,
   Calendar,
+  CalendarDays,
   Loader2,
   Stethoscope,
   Video,
@@ -340,6 +341,13 @@ export default function BookingsInbox({ providerId }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/provider/calendar"
+            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#7A6254]"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendar view
+          </Link>
           <label
             htmlFor="booking-status-filter"
             className="text-sm font-semibold text-[#7A6254]"

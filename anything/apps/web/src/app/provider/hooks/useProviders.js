@@ -33,6 +33,20 @@ export const bookingsUrl = (providerId, bookingStatus) =>
       )}`
     : `/api/providers/${providerId}/bookings`;
 
+// Calendar view (ticket 2.24): the same bookings endpoint with ?view=calendar and a
+// [from, to) start_at window. Keyed by the window so each week/day caches separately.
+export const bookingsCalendarKey = (providerId, from, to) => [
+  "provider-bookings-calendar",
+  String(providerId ?? ""),
+  from ?? "",
+  to ?? "",
+];
+
+export const bookingsCalendarUrl = (providerId, from, to) =>
+  `/api/providers/${providerId}/bookings?view=calendar&from=${encodeURIComponent(
+    from,
+  )}&to=${encodeURIComponent(to)}`;
+
 // One provider's cache entry — the profile screen reads/invalidates this. The
 // shared ["providers"] list is invalidated alongside it so the switcher/shell
 // reflect renames + status changes.
@@ -199,6 +213,21 @@ export function useProviderBookings(providerId, bookingStatus) {
       return data.bookings ?? [];
     },
     enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Calendar bookings for a [from, to) window (ticket 2.24). Disabled until a
+// providerId AND a window are known. Returns the richer grid rows (value/paid/
+// location/pet info) — still booking-context only, no medical data.
+export function useProviderBookingsCalendar(providerId, from, to) {
+  return useQuery({
+    queryKey: bookingsCalendarKey(providerId, from, to),
+    queryFn: async () => {
+      const data = await getJson(bookingsCalendarUrl(providerId, from, to));
+      return data.bookings ?? [];
+    },
+    enabled:
+      providerId != null && providerId !== "" && Boolean(from) && Boolean(to),
   });
 }
 

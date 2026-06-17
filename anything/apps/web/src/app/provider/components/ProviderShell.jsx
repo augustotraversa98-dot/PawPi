@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   LayoutDashboard,
   Store,
+  CalendarDays,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -38,6 +39,13 @@ const NAV_ITEMS = [
     Icon: LayoutDashboard,
     enabled: true,
     href: "/provider",
+  },
+  {
+    key: "calendar",
+    label: "Calendar",
+    Icon: CalendarDays,
+    enabled: true,
+    href: "/provider/calendar",
   },
   {
     key: "bookings",
