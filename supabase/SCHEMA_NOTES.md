@@ -4,7 +4,27 @@
 
 The earlier version of this file documented *guesses* from a code-only reconstruction. Those guesses have now been confirmed or corrected against the dump — see "Previously-flagged uncertainties: RESOLVED" below.
 
-Migration order: `0001_auth` → `0002_user_profiles` → `0003_pets` → `0004_social` → `0005_vet_records` → `0006_routines` → `0007_social_walks` → `0008_health_logs` → `0009_backfill_double_encoded_jsonb` → `0010_wellness_general_check_type` → `0011_reminder_dismissals`. The DDL set (0001–0008, 0011) uses `IF NOT EXISTS`; 0009 (data backfill) and 0010 (constraint widen, drop-if-exists then re-add) are likewise re-runnable.
+Migration order: numeric, `0001` → current. **`supabase/migrations/` is the source of truth** for the
+full list (don't hand-maintain an enumeration here — it goes stale). As of this writing the set runs
+`0001`–`0045`, in four arcs:
+- **0001–0011 — base schema:** auth, user_profiles, pets, social, vet_records, routines, social_walks,
+  health_logs, the double-encoded-jsonb backfill (0009), the wellness `general` check-type widen (0010),
+  and reminder_dismissals (0011).
+- **0012–0018 — Phase-2 prerequisites:** pet_follows, post_barks.pet_id, providers, care_access,
+  vaccinations + booking columns, the booking_status check, vaccination reconciliation.
+- **0019–0026 — the RLS arc:** role helpers + `pawpi_app` + `current_app_user_id()` (0019), then per-area
+  ENABLE/FORCE policies (pets, social, owner-private, provider-records, provider-business, consent-ledger)
+  and the gap-closure/completeness guard (0026).
+- **0027–0045 — Phase 2 + Wave 3/4 features:** provider capabilities, reviews-surfacing RLS, payments,
+  generalized booking, chat, the service modules (grooming/walking/daycare/sitting/training), shop,
+  adoption, the subscription cron fn (0039), telehealth (0040), provider links (0041), provider_posts
+  (0042), provider_services.image_urls (0043), notifications + `app_notify` (0044), and owner↔owner DMs
+  (0045).
+
+Migrations are written to be **re-runnable** (DDL uses `IF NOT EXISTS`/`CREATE OR REPLACE`; data backfills
+and constraint-widens drop-if-exists then re-add). Per-migration call-outs that matter are kept below; the
+0039–0045 set is harness-proven and hand-applied to Supabase as each ticket lands (see `docs/test-backlog.md`
+ACTION 1).
 
 > **0010** widens `health_wellness_logs.check_type` to also allow `'general'` (Ticket 7 wellness-log slice) so a "General check" lands in `health_wellness_logs` with the same `routine_id` + `wellness_check_item_index` linkage as the other wellness checks. Weight intentionally stays on `health_weight_logs` (Insights path) and is **not** in this constraint. `supabase_schema.sql` (line ~574) was updated to match.
 

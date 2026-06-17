@@ -173,16 +173,15 @@ Two parallel mechanisms; **no Redux, no pets Context provider:**
 
 ### "Current pet" — how it's determined
 There is **no `selectedPetId` and no persisted pet selection.** The current pet is implicitly **`pets[0]`** — the first item of the React Query result (the server returns pets ordered `created_at DESC`).
-- `src/hooks/usePetProfile.js:9-13` fetches `useQuery(["pets"], ... fetch("/api/pets"))`; `useCurrentPet()` at `:116-119` returns `pets[0]`.
-- A second, standalone `src/hooks/useCurrentPet.js:6-18` independently fetches `/api/pets` and returns `data.pets[0]`.
-- **Two `useCurrentPet` hooks exist** (in `useCurrentPet.js` and `usePetProfile.js`) with slightly different return shapes; different files import different ones (e.g. `RoutinesTab.jsx:13` and most components use `@/hooks/useCurrentPet`; `useFeedData.js:3`, `useFetchHealthData.js:2` use the `usePetProfile` version).
+- `src/hooks/usePetProfile.js` fetches `useQuery(["pets"], ... fetch("/api/pets"))`; the **single** `useCurrentPet()` (at `usePetProfile.js:126`) returns `pets[0]`.
+- There is **one** `useCurrentPet`, exported from `usePetProfile.js`. The earlier standalone `src/hooks/useCurrentPet.js` was removed when the hooks were unified (PR #12) — that file no longer exists. Consumers import it from `@/hooks/usePetProfile` (e.g. `pet-profile.jsx`, `nearby-walks.jsx`, `walk-live.jsx`, plus `useFeedData.js`, `useFetchHealthData.js`).
 - `socialPetStore.currentPet` / `setCurrentPet` (`socialPetStore.js:16-17`) exist but **`setCurrentPet` is never called** — dead for pet selection.
 - Persistence: pet data is **not** the source of truth in AsyncStorage/SecureStore; it is re-fetched via React Query. AsyncStorage holds only an onboarding/offline fallback (`onboarding.jsx:285`, `index.jsx:41`); SecureStore holds only auth tokens.
 
 ### Routines store & how pet_id reaches features
 - `routinesStore.js` keeps a **flat `routines: []` array** (`:8`); each routine carries `petId` (`:31`). It is **pet-id-agnostic** — it never reads the current pet itself; the caller passes `petId` into `loadRoutines(petId)` which fetches `/api/routines?petId=...` (`:14-18`) and **replaces** the whole array (`:88`).
 - The component layer injects the id. Canonical chain:
-  1. `useCurrentPet()` → `pets[0]` (`usePetProfile.js:116-119` / `useCurrentPet.js:6-18`)
+  1. `useCurrentPet()` → `pets[0]` (`usePetProfile.js:126`)
   2. `RoutinesTab.jsx:40` reads `const { data: currentPet } = useCurrentPet();`
   3. `RoutinesTab.jsx:57-63` effect calls `loadRoutines(currentPet.id)` when the id changes
   4. `routinesStore.loadRoutines` fetches and populates (`routinesStore.js:14-18, 88`)
@@ -241,4 +240,4 @@ Routine creation is **not a router route** — it is in-component React Native `
 
 4. **The `/api/db/:database` endpoint referenced in `web/src/app/api/utils/create.js`.** It's imported/used but no matching route exists in this tree. I'm unsure whether `create.js` is actually exercised at runtime, or is dead/legacy scaffolding from the Anything export superseded by the direct `sql.js` + per-resource API routes.
 
-5. **Which `useCurrentPet` is authoritative, and the impact of the duplication.** Two same-named hooks with different return shapes coexist and are imported by different files. I'm not certain whether this causes real divergence (e.g. different cache keys / refetch behavior) or is benign duplication — and I haven't confirmed every consumer destructures the correct shape.
+5. **RESOLVED — `useCurrentPet` is a single hook.** An earlier version of this doc flagged two same-named hooks; they were unified (PR #12). There is now ONE `useCurrentPet`, exported from `src/hooks/usePetProfile.js` (the standalone `useCurrentPet.js` was removed). No duplication / divergence remains.

@@ -34,7 +34,7 @@ Tags: **scope** fe/be/db · **safe-parallel** yes only if it touches files no ot
 - **Docs hygiene:** `ARCHITECTURE.md` says a standalone `useCurrentPet.js` exists — it actually lives in `usePetProfile.js`; `supabase/SCHEMA_NOTES.md` migration-order line stops at 0011. Refresh both.
 - **Social mock chat:** the old pet-friend chat (`messages.jsx`/`chat.jsx`) still uses mock data (separate from the new provider chat) — convert off mock or retire.
 
-## 🌊 WAVE 3 + WAVE 4 — IN PROGRESS (tickets 2.15–2.31)
+## 🌊 WAVE 3 + WAVE 4 — COMPLETE (tickets 2.15–2.31, all merged)
 
 Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md). Status mirror
 (✅ merged · 🔨 building · ⛔ blocked-on-prereq · ☐ queued):
@@ -54,8 +54,8 @@ Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00
 - ✅ **2.27** owner↔owner DMs — merged (#142), migration 0045 (dm_threads + dm_messages, participant RLS).
 - ✅ **2.28** daily share frame — merged (#143), no migration (react-native-view-shot + expo-sharing).
 - ✅ **2.30** adoption deep-link — merged (#144), no migration (feed "Adopt me" → that exact listing).
-- ✅ **2.29** i18n EN/ES — merged, no migration (i18next + react-i18next + expo-localization; framework + core + Settings toggle).
-- ☐ 2.31 docs hygiene
+- ✅ **2.29** i18n EN/ES — merged (#145), no migration (i18next + react-i18next + expo-localization; framework + core + Settings toggle).
+- ✅ **2.31** docs hygiene — merged, docs-only (ARCHITECTURE single useCurrentPet; SCHEMA_NOTES migration order → 0045 + source-of-truth pointer).
 
 Migrations 0039–0045 pending hand-apply (see [`docs/test-backlog.md`](test-backlog.md) ACTION 1).
 
