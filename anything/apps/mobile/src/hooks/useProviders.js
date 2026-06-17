@@ -431,3 +431,61 @@ export function useFinishWalk() {
     },
   });
 }
+
+// --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
+// These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
+// real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,
+// throw on !res.ok.
+
+// The OWNER's daycare stays for a pet (GET /api/pets/[id]/daycare-stays). Each stay carries
+// its daily report_cards + the vaccine_status (pass/fail + missing) computed from the
+// owner's own pet_vaccinations. Disabled until a pet id is known. Polls every 30s so a new
+// report card / check-in shows without a manual refresh.
+export function useDaycareStays(petId) {
+  return useQuery({
+    queryKey: ["daycare-stays", "owner", petId],
+    enabled: petId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/daycare-stays`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch daycare stays");
+      }
+      const data = await response.json();
+      return data.stays ?? [];
+    },
+  });
+}
+
+// Owner BOOKS a stay (POST /api/pets/[id]/daycare-stays). The backend enforces capacity /
+// overbook prevention (clean 409) + the daycare capability gate. mutateAsync({ petId,
+// provider_id, location_id?, start_date, end_date, feeding_instructions?, med_instructions?,
+// booking_id? }) → { stay, vaccine_status }. Invalidates the owner's stays.
+export function useBookDaycareStay() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, ...body }) => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/daycare-stays`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        // Surface the backend's 400/403/409 message (incl. "fully booked for those dates").
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to book stay");
+      }
+      return response.json(); // { stay, vaccine_status }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["daycare-stays", "owner", variables?.petId],
+      });
+    },
+  });
+}

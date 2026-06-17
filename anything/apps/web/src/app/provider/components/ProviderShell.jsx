@@ -14,6 +14,7 @@ import {
   PawPrint,
   Loader2,
   MailCheck,
+  Home,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -75,6 +76,13 @@ const NAV_ITEMS = [
     Icon: MessageSquare,
     enabled: true,
     href: "/provider/chats",
+  },
+  {
+    key: "daycare",
+    label: "Daycare",
+    Icon: Home,
+    enabled: true,
+    href: "/provider/daycare",
   },
   { key: "sales", label: "Sales", Icon: DollarSign, enabled: false },
 ];

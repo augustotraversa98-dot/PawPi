@@ -713,3 +713,141 @@ export function useProviderUnreadCount(providerId) {
     },
   });
 }
+
+// --- daycare & boarding (ticket 2.8) ----------------------------------------
+// The facility dashboard section: occupancy list, check-in/out, report cards,
+// required-vaccine config, and the consent-gated vaccine check.
+
+export const daycareStaysKey = (providerId, status) => [
+  "provider-daycare-stays",
+  String(providerId ?? ""),
+  status ?? "all",
+];
+export const daycareStaysPrefixKey = (providerId) => [
+  "provider-daycare-stays",
+  String(providerId ?? ""),
+];
+export const daycareRequirementsKey = (providerId) => [
+  "provider-daycare-requirements",
+  String(providerId ?? ""),
+];
+
+// The facility OCCUPANCY list (GET /api/providers/[id]/daycare-stays). Optional status
+// filter. Each row carries pet/owner/location names + report_card_count + the owner's
+// feeding/med instructions. RLS scopes per-row visibility to granted pets.
+export function useDaycareStays(providerId, status) {
+  return useQuery({
+    queryKey: daycareStaysKey(providerId, status),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const url = status
+        ? `/api/providers/${providerId}/daycare-stays?status=${encodeURIComponent(status)}`
+        : `/api/providers/${providerId}/daycare-stays`;
+      const data = await getJson(url);
+      return data.stays ?? [];
+    },
+  });
+}
+
+// Check a pet IN / OUT (or cancel) a stay (PATCH .../daycare-stays/[stayId]).
+// mutateAsync({ stayId, action }) where action is check_in | check_out | cancel.
+export function useDaycareStayAction(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stayId, action }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/daycare-stays/${stayId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      return data.stay;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: daycareStaysPrefixKey(providerId),
+      });
+    },
+  });
+}
+
+// Post a DAILY REPORT CARD on a stay (POST .../daycare-stays/[stayId]/report-cards).
+// mutateAsync({ stayId, date*, mood?, meals?, activities?, notes?, photo_urls? }).
+export function usePostReportCard(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stayId, ...body }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/daycare-stays/${stayId}/report-cards`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return data.report_card;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: daycareStaysPrefixKey(providerId),
+      });
+    },
+  });
+}
+
+// The facility's REQUIRED VACCINES (GET .../daycare-requirements).
+export function useDaycareRequirements(providerId) {
+  return useQuery({
+    queryKey: daycareRequirementsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/daycare-requirements`);
+      return data.requirements ?? [];
+    },
+  });
+}
+
+// Add a required vaccine (owner|admin). mutateAsync({ vaccine_name*, location_id? }).
+export function useAddDaycareRequirement(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(`/api/providers/${providerId}/daycare-requirements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.requirement;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: daycareRequirementsKey(providerId),
+      });
+    },
+  });
+}
+
+// Run the CONSENT-GATED vaccine check for a pet (GET .../pets/[petId]/vaccine-check).
+// Returns { required, passed, missing, vaccinations } — or a 403 with needs_consent
+// when the facility lacks a medical_read grant (the UI prompts the owner to share). Not
+// auto-fetched: call refetch() from a button so the audit/medical read is intentional.
+export function usePetVaccineCheck(providerId, petId, locationId) {
+  return useQuery({
+    queryKey: [
+      "provider-vaccine-check",
+      String(providerId ?? ""),
+      String(petId ?? ""),
+      String(locationId ?? ""),
+    ],
+    enabled: false, // intentional: triggered by an explicit "Check vaccines" action
+    retry: false,
+    queryFn: async () => {
+      const url = locationId
+        ? `/api/providers/${providerId}/pets/${petId}/vaccine-check?location_id=${encodeURIComponent(locationId)}`
+        : `/api/providers/${providerId}/pets/${petId}/vaccine-check`;
+      return getJson(url);
+    },
+  });
+}

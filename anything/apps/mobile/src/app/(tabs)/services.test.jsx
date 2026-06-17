@@ -1,8 +1,8 @@
 // Render pins for the Pet Services hub category grid (bottom-nav entry):
-//   - ALL catalog categories render as cards (Veterinary + Grooming + Dog Walking live +
-//     coming-soon);
-//   - the LIVE Veterinary / Grooming / Dog Walking cards navigate to their canonical
-//     discover/book flow;
+//   - ALL catalog categories render as cards (Veterinary + Grooming + Dog Walking +
+//     Daycare & Boarding live + coming-soon);
+//   - the LIVE Veterinary / Grooming / Dog Walking / Daycare cards navigate to their
+//     canonical discover/book flow;
 //   - coming-soon cards are signposts: badged "Coming soon" and NOT tappable
 //     (no navigation, no fake data behind them).
 // The router is mocked, so this exercises the screen wiring.
@@ -25,7 +25,6 @@ jest.mock("react-native-safe-area-context", () => ({
 import ServicesScreen from "./services";
 
 const COMING_SOON = [
-  "Daycare & Boarding",
   "Pet Sitting",
   "Training",
   "Shop",
@@ -62,6 +61,12 @@ test("tapping the live Dog Walking card opens the walking discover/live flow", (
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Dog Walking"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/walking");
+});
+
+test("tapping the live Daycare & Boarding card opens the daycare discover/book flow", () => {
+  const { getByText } = render(<ServicesScreen />);
+  fireEvent.press(getByText("Daycare & Boarding"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/daycare");
 });
 
 test("coming-soon cards do NOT navigate into any flow", () => {
