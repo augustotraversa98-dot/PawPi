@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,80 +14,35 @@ import {
   Search,
   PawPrint,
   Megaphone,
-  MapPin,
-  UserPlus,
+  Store,
+  User,
   Sparkles,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
-import useSocialPetStore from "@/store/socialPetStore";
-import {
-  mockPopularProfiles,
-  mockPopularPetMoments,
-} from "@/data/mockDiscoveryData";
+import { useDiscover } from "@/hooks/useDiscover";
+import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 
+// Search & Discover on REAL data (ticket 2.25). No mock fallback — empty → empty state.
+// When the (debounced) query is < 2 chars we show Discover (popular profiles + moments);
+// otherwise we show real Search results (pets / owners / businesses).
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [query, setQuery] = useState("");
+  const debounced = useDebouncedValue(query, 300);
+  const searching = debounced.trim().length >= 2;
 
-  const popularProfiles = useSocialPetStore((state) => state.popularProfiles);
-  const setPopularProfiles = useSocialPetStore(
-    (state) => state.setPopularProfiles,
-  );
-  const popularPetMoments = useSocialPetStore(
-    (state) => state.popularPetMoments,
-  );
-  const setPopularPetMoments = useSocialPetStore(
-    (state) => state.setPopularPetMoments,
-  );
+  const discover = useDiscover();
+  const search = useSearch(debounced);
 
-  // Load mock data on first render
-  useEffect(() => {
-    if (popularProfiles.length === 0) {
-      setPopularProfiles(mockPopularProfiles);
-    }
-    if (popularPetMoments.length === 0) {
-      setPopularPetMoments(mockPopularPetMoments);
-    }
-  }, []);
-
-  // Filter profiles based on search
-  const filteredProfiles = searchQuery.trim()
-    ? popularProfiles.filter((profile) => {
-        const query = searchQuery.toLowerCase();
-        return (
-          profile.petName.toLowerCase().includes(query) ||
-          profile.ownerName.toLowerCase().includes(query) ||
-          profile.breed.toLowerCase().includes(query) ||
-          (profile.location && profile.location.toLowerCase().includes(query))
-        );
-      })
-    : popularProfiles;
-
-  const handleProfileTap = (profile) => {
-    router.push({
-      pathname: "/pet-profile",
-      params: {
-        dogName: profile.petName,
-        ownerName: profile.ownerName,
-        avatar: profile.avatar,
-        breed: profile.breed || "",
-        age: profile.age || "",
-        bio: profile.bio || "",
-        location: profile.location || "",
-        totalPosts: String(profile.dailyPosts || 0),
-        totalPaws: String(profile.paws || 0),
-        totalBarks: String(profile.barks || 0),
-        friends: String(0),
-        pastPosts: JSON.stringify([]),
-      },
-    });
-  };
+  const openPet = (petId) =>
+    router.push({ pathname: "/pet-profile", params: { petId: String(petId) } });
+  const openProvider = (slug) =>
+    router.push({ pathname: "/service/provider", params: { slug } });
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 6,
@@ -121,7 +77,6 @@ export default function SearchScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        {/* Search input */}
         <View
           style={{
             flexDirection: "row",
@@ -137,20 +92,15 @@ export default function SearchScreen() {
         >
           <Search size={18} color={COLORS.mutedBrown} />
           <TextInput
-            style={{
-              flex: 1,
-              fontSize: 15,
-              color: COLORS.warmBrown,
-              padding: 0,
-            }}
-            placeholder="Search dogs, breeds, or pet parents…"
+            style={{ flex: 1, fontSize: 15, color: COLORS.warmBrown, padding: 0 }}
+            placeholder="Search pets, breeds, owners, or businesses…"
             placeholderTextColor={COLORS.mutedBrown}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            value={query}
+            onChangeText={setQuery}
             autoFocus
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery("")}>
               <X size={16} color={COLORS.mutedBrown} />
             </TouchableOpacity>
           )}
@@ -160,302 +110,263 @@ export default function SearchScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Popular Profiles */}
-        <View style={{ paddingTop: 20 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 20,
-              paddingBottom: 14,
-              gap: 6,
-            }}
-          >
-            <PawPrint size={14} color={COLORS.terracotta} />
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "800",
-                color: COLORS.mutedBrown,
-                letterSpacing: 0.7,
-              }}
-            >
-              {searchQuery.trim() ? "SEARCH RESULTS" : "POPULAR PROFILES"}
-            </Text>
-          </View>
+        {searching ? (
+          <SearchResults
+            data={search.data}
+            isLoading={search.isLoading}
+            onOpenPet={openPet}
+            onOpenProvider={openProvider}
+          />
+        ) : (
+          <Discover
+            data={discover.data}
+            isLoading={discover.isLoading}
+            onOpenPet={openPet}
+          />
+        )}
+      </ScrollView>
+    </View>
+  );
+}
 
-          {filteredProfiles.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 50 }}>
-              <Text style={{ fontSize: 40 }}>🔍</Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "600",
-                  color: COLORS.mutedBrown,
-                  marginTop: 12,
-                }}
-              >
-                No profiles found
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: COLORS.mutedBrown,
-                  marginTop: 4,
-                }}
-              >
-                Try a different search term
-              </Text>
-            </View>
-          ) : (
-            filteredProfiles.map((profile) => (
+function SectionHeader({ Icon, color, label }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+        gap: 6,
+      }}
+    >
+      <Icon size={14} color={color} />
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: "800",
+          color: COLORS.mutedBrown,
+          letterSpacing: 0.7,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function Loading() {
+  return (
+    <View style={{ alignItems: "center", paddingVertical: 50 }}>
+      <ActivityIndicator color={COLORS.coral} />
+    </View>
+  );
+}
+
+function EmptyState({ emoji = "🔍", title, subtitle }) {
+  return (
+    <View style={{ alignItems: "center", paddingVertical: 50 }}>
+      <Text style={{ fontSize: 40 }}>{emoji}</Text>
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "600",
+          color: COLORS.mutedBrown,
+          marginTop: 12,
+        }}
+      >
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+          {subtitle}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
+  if (isLoading) return <Loading />;
+  const pets = data?.pets ?? [];
+  const owners = data?.owners ?? [];
+  const providers = data?.providers ?? [];
+  const total = pets.length + owners.length + providers.length;
+
+  if (total === 0) {
+    return (
+      <EmptyState title="No results" subtitle="Try a different search term" />
+    );
+  }
+
+  return (
+    <View>
+      {pets.length > 0 && (
+        <>
+          <SectionHeader Icon={PawPrint} color={COLORS.terracotta} label="PETS" />
+          {pets.map((p) => (
+            <ResultRow
+              key={`pet-${p.id}`}
+              testID="search-pet"
+              avatar={p.avatar_url}
+              title={p.name}
+              subtitle={[p.breed, p.handle ? `@${p.handle}` : null]
+                .filter(Boolean)
+                .join(" • ")}
+              onPress={() => onOpenPet(p.id)}
+            />
+          ))}
+        </>
+      )}
+
+      {providers.length > 0 && (
+        <>
+          <SectionHeader Icon={Store} color={COLORS.coral} label="BUSINESSES" />
+          {providers.map((pr) => (
+            <ResultRow
+              key={`prov-${pr.id}`}
+              testID="search-provider"
+              avatar={pr.logo_url}
+              fallbackIcon={Store}
+              title={pr.name}
+              subtitle={pr.provider_type}
+              onPress={() => onOpenProvider(pr.slug)}
+            />
+          ))}
+        </>
+      )}
+
+      {owners.length > 0 && (
+        <>
+          <SectionHeader Icon={User} color={COLORS.sage} label="PET PARENTS" />
+          {owners.map((o) => (
+            <ResultRow
+              key={`owner-${o.id}`}
+              testID="search-owner"
+              avatar={o.avatar_url}
+              fallbackIcon={User}
+              title={o.full_name || o.username}
+              subtitle={o.username ? `@${o.username}` : null}
+            />
+          ))}
+        </>
+      )}
+    </View>
+  );
+}
+
+function Discover({ data, isLoading, onOpenPet }) {
+  if (isLoading) return <Loading />;
+  const profiles = data?.profiles ?? [];
+  const moments = data?.moments ?? [];
+
+  if (profiles.length === 0 && moments.length === 0) {
+    return (
+      <EmptyState
+        emoji="🐾"
+        title="Nothing here yet"
+        subtitle="Popular pets and moments will appear as the community grows"
+      />
+    );
+  }
+
+  return (
+    <View>
+      {profiles.length > 0 && (
+        <>
+          <SectionHeader
+            Icon={PawPrint}
+            color={COLORS.terracotta}
+            label="POPULAR PROFILES"
+          />
+          {profiles.map((p) => (
+            <ResultRow
+              key={`disc-${p.id}`}
+              testID="discover-profile"
+              avatar={p.avatar_url}
+              title={p.name}
+              subtitle={[p.breed, p.owner_name ? `by ${p.owner_name}` : null]
+                .filter(Boolean)
+                .join(" • ")}
+              stats={[
+                { Icon: PawPrint, value: p.paws ?? 0 },
+                { Icon: Megaphone, value: p.barks ?? 0 },
+              ]}
+              onPress={() => onOpenPet(p.id)}
+            />
+          ))}
+        </>
+      )}
+
+      {moments.length > 0 && (
+        <>
+          <SectionHeader
+            Icon={Sparkles}
+            color={COLORS.honey}
+            label="POPULAR PET MOMENTS"
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+            style={{ flexGrow: 0 }}
+          >
+            {moments.map((m) => (
               <TouchableOpacity
-                key={profile.id}
-                onPress={() => handleProfileTap(profile)}
+                key={`moment-${m.id}`}
+                testID="discover-moment"
+                onPress={() => onOpenPet(m.pet_id)}
                 style={{
-                  marginHorizontal: 16,
-                  marginBottom: 12,
+                  width: 200,
                   backgroundColor: COLORS.card,
-                  borderRadius: 20,
-                  padding: 16,
-                  flexDirection: "row",
-                  gap: 14,
+                  borderRadius: 18,
+                  overflow: "hidden",
                   borderWidth: 1,
                   borderColor: COLORS.peach,
-                  shadowColor: COLORS.terracotta,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 8,
-                  elevation: 2,
                 }}
               >
                 <Image
-                  source={{ uri: profile.avatar }}
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 32,
-                    borderWidth: 2.5,
-                    borderColor: COLORS.coral,
-                  }}
+                  source={{ uri: m.image_url }}
+                  style={{ width: "100%", height: 140 }}
+                  contentFit="cover"
                   transition={100}
                 />
-
-                <View style={{ flex: 1, justifyContent: "center" }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "800",
-                      color: COLORS.warmBrown,
-                      marginBottom: 2,
-                    }}
-                  >
-                    {profile.petName}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: COLORS.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {profile.breed} • by {profile.ownerName}
-                  </Text>
-                  {profile.location && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <MapPin size={11} color={COLORS.sage} />
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          color: COLORS.sageDark,
-                          fontWeight: "600",
-                        }}
-                      >
-                        {profile.location}
-                      </Text>
-                    </View>
-                  )}
+                <View style={{ padding: 12 }}>
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 8,
+                      marginBottom: 8,
                     }}
                   >
-                    <View
+                    <Image
+                      source={{ uri: m.pet_avatar }}
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        borderWidth: 1.5,
+                        borderColor: COLORS.coral,
                       }}
-                    >
-                      <PawPrint
-                        size={12}
-                        color={COLORS.coral}
-                        fill={COLORS.coral}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: COLORS.mutedBrown,
-                        }}
-                      >
-                        {profile.paws}
-                      </Text>
-                    </View>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Megaphone size={11} color={COLORS.terracotta} />
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: COLORS.mutedBrown,
-                        }}
-                      >
-                        {profile.barks}
-                      </Text>
-                    </View>
+                      transition={100}
+                    />
                     <Text
                       style={{
-                        fontSize: 11,
-                        color: COLORS.mutedBrown,
+                        fontSize: 13,
+                        fontWeight: "800",
+                        color: COLORS.warmBrown,
+                        flex: 1,
                       }}
+                      numberOfLines={1}
                     >
-                      {profile.dailyPosts} posts
+                      {m.pet_name}
                     </Text>
                   </View>
-                </View>
-
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: COLORS.coral,
-                    borderRadius: 14,
-                    width: 36,
-                    height: 36,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    alignSelf: "center",
-                  }}
-                >
-                  <UserPlus size={18} color="#FFF" />
-                </TouchableOpacity>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        {/* Pet Moments Near You */}
-        {!searchQuery.trim() && popularPetMoments.length > 0 && (
-          <View style={{ paddingTop: 24 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 20,
-                paddingBottom: 14,
-                gap: 6,
-              }}
-            >
-              <Sparkles size={14} color={COLORS.honey} />
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "800",
-                  color: COLORS.mutedBrown,
-                  letterSpacing: 0.7,
-                }}
-              >
-                POPULAR PET MOMENTS
-              </Text>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                gap: 12,
-              }}
-              style={{ flexGrow: 0 }}
-            >
-              {popularPetMoments.map((moment) => (
-                <TouchableOpacity
-                  key={moment.id}
-                  style={{
-                    width: 200,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 18,
-                    overflow: "hidden",
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                    shadowColor: COLORS.terracotta,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    elevation: 2,
-                  }}
-                >
-                  <Image
-                    source={{ uri: moment.photo }}
-                    style={{ width: "100%", height: 140 }}
-                    contentFit="cover"
-                    transition={100}
-                  />
-                  <View style={{ padding: 12 }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 8,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Image
-                        source={{ uri: moment.petAvatar }}
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          borderWidth: 1.5,
-                          borderColor: COLORS.coral,
-                        }}
-                        transition={100}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "800",
-                            color: COLORS.warmBrown,
-                          }}
-                        >
-                          {moment.petName}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            color: COLORS.mutedBrown,
-                          }}
-                        >
-                          {moment.timestamp}
-                        </Text>
-                      </View>
-                    </View>
+                  {m.caption ? (
                     <Text
                       style={{
                         fontSize: 12,
@@ -465,63 +376,119 @@ export default function SearchScreen() {
                       }}
                       numberOfLines={2}
                     >
-                      {moment.caption}
+                      {m.caption}
                     </Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 14,
-                      }}
-                    >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <PawPrint
-                          size={13}
-                          color={COLORS.coral}
-                          fill={COLORS.coral}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: COLORS.mutedBrown,
-                          }}
-                        >
-                          {moment.paws}
-                        </Text>
-                      </View>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Megaphone size={12} color={COLORS.terracotta} />
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: COLORS.mutedBrown,
-                          }}
-                        >
-                          {moment.barks}
-                        </Text>
-                      </View>
-                    </View>
+                  ) : null}
+                  <View
+                    style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+                  >
+                    <Stat Icon={PawPrint} value={m.paw_count ?? 0} />
+                    <Stat Icon={Megaphone} value={m.bark_count ?? 0} />
                   </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-      </ScrollView>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </>
+      )}
     </View>
+  );
+}
+
+function Stat({ Icon, value }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <Icon size={12} color={COLORS.coral} />
+      <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.mutedBrown }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ResultRow({
+  testID,
+  avatar,
+  fallbackIcon: Fallback,
+  title,
+  subtitle,
+  stats,
+  onPress,
+}) {
+  const Wrapper = onPress ? TouchableOpacity : View;
+  return (
+    <Wrapper
+      testID={testID}
+      onPress={onPress}
+      style={{
+        marginHorizontal: 16,
+        marginBottom: 12,
+        backgroundColor: COLORS.card,
+        borderRadius: 20,
+        padding: 16,
+        flexDirection: "row",
+        gap: 14,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: COLORS.peach,
+      }}
+    >
+      {avatar ? (
+        <Image
+          source={{ uri: avatar }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            borderWidth: 2,
+            borderColor: COLORS.coral,
+          }}
+          transition={100}
+        />
+      ) : (
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: COLORS.sand,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {Fallback ? <Fallback size={22} color={COLORS.coral} /> : null}
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text
+            style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+        {stats ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 6,
+            }}
+          >
+            {stats.map((s, i) => (
+              <Stat key={i} Icon={s.Icon} value={s.value} />
+            ))}
+          </View>
+        ) : null}
+      </View>
+    </Wrapper>
   );
 }

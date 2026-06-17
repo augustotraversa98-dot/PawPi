@@ -48,8 +48,9 @@ Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00
 - ✅ **2.21** AI enrichment (confirm-first) — merged (#136), no migration (proposes a draft; applies via existing routes).
 - ✅ **2.23** service/product images — merged (#137), migration 0043 (provider_services.image_urls[]).
 - ✅ **2.22** storefront + posts — merged (#138), migration 0042 (provider_posts + providers.cover_image_url).
-- ✅ **2.24** web bookings calendar — merged, no migration (week/day grid; reuses inbox actions).
-- ☐ 2.25 search/discover · ☐ 2.26 notifications · ☐ 2.27 owner DMs · ☐ 2.28 share frame
+- ✅ **2.24** web bookings calendar — merged (#139), no migration (week/day grid; reuses inbox actions).
+- ✅ **2.25** search/discover real data — merged, no migration (/api/search + /api/discover; mock data removed).
+- ☐ 2.26 notifications · ☐ 2.27 owner DMs · ☐ 2.28 share frame
 - ☐ 2.30 adoption deep-link (⛔2.19) · ☐ 2.29 i18n · ☐ 2.31 docs hygiene
 
 Migrations 0039–0045 pending hand-apply (see [`docs/test-backlog.md`](test-backlog.md) ACTION 1).
