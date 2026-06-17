@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.33 — Notifications filter chips layout fix  ·  ticket/notif-chips-fix (2026-06-18)
+What shipped: the notifications filter chips (All / Walks / Feeding / Paws / Barks / Training) rendered as tall stretched rectangles because the horizontal `ScrollView` let its children stretch on the cross-axis. Added `alignItems:center` to the content container (chips size to their content) and `flexGrow:0` to the row (it no longer expands vertically). Pure style fix — filtering logic and data untouched.
+- **No migration / no backend.** Exercised by mobile jest (all six chips render in a center-aligned horizontal row).
+- **NEEDS A DEVICE PASS:** open the bell → the filter row reads as a neat row of compact pills (not tall rectangles); each still filters.
+
 ### [ ] 2.32 — Password security rules  ·  ticket/password-security (2026-06-18)
 What shipped: new accounts must choose a stronger password. One shared rule (`src/app/api/utils/passwordStrength.js`): **≥ 8 chars AND ≥ 3 of {lowercase, uppercase, number, symbol} AND not in a common-password blocklist**. Enforced **server-side** in the sign-up/credentials path (`src/auth.js` throws a `WeakPassword` error when the rule fails) — the source of truth. The web sign-up form mirrors it with a **live strength meter + a requirements checklist** and keeps the **Create account** button disabled until the password is valid (and matches confirm).
 - **No migration / no backend table.** **Login is deliberately untouched** — existing users with weaker passwords still sign in with whatever they have; the rule applies on sign-up (and any future password-change) only.

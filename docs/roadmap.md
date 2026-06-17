@@ -65,7 +65,7 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 (✅ merged · 🔨 building · ⛔ blocked-on-prereq · ☐ queued):
 
 - ✅ **2.32** password security rules — merged (#148), no migration (shared `passwordStrength` validator; server-enforced on sign-up only, existing logins untouched; live strength meter).
-- ☐ **2.33** notifications filter-chips layout fix
+- ✅ **2.33** notifications filter-chips layout fix — merged (#149), no migration (horizontal chip row centers items so chips size to content instead of stretching into tall rectangles).
 - ☐ **2.34** current-pet header sync
 - ☐ **2.35** onboarding required fields
 - ☐ **2.36** feed daily-post fixes · ☐ **2.37** streak+birthday (⛔2.36) · ☐ **2.38** profile fixes (⛔2.37) · ☐ **2.39** IG nav (⛔2.38)
