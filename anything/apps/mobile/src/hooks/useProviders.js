@@ -489,3 +489,80 @@ export function useBookDaycareStay() {
     },
   });
 }
+
+// --- pet sitting (Phase 2 ticket 2.9) ---------------------------------------
+// The owner reads their pet's SITTING VISIT updates; the sitter (provider-side) reads
+// their OWN assigned visits and logs/edits them. Booking a sitting service reuses
+// useBookProvider({ capability: 'sitter', meet_and_greet? }); coordination reuses chat
+// (2.5). RLS (0035) is the real participant guard — visit media stays participant-only.
+
+// Owner: the active pet's sitting visit updates (GET /api/pets/[id]/sitting-visits).
+// Polls every 30s so a freshly-posted sitter update appears. Empty → []. Newest first.
+export function useSittingVisits(petId) {
+  return useQuery({
+    queryKey: ["sitting-visits", "owner", petId],
+    enabled: petId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/sitting-visits`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch sitting visits");
+      }
+      const data = await response.json();
+      return data.visits ?? [];
+    },
+  });
+}
+
+// Sitter (provider-side): the caller's OWN assigned visits for a provider
+// (GET /api/providers/[id]/sitting-visits[?status=]). Polls every 30s. Empty → [].
+export function useMySittingVisits(providerId, { status } = {}) {
+  return useQuery({
+    queryKey: ["sitting-visits", "provider", providerId, status ?? "all"],
+    enabled: providerId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/sitting-visits${qs}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch sitting visits");
+      }
+      const data = await response.json();
+      return data.visits ?? [];
+    },
+  });
+}
+
+// Sitter logs a new per-visit update (POST /api/providers/[id]/sitting-visits). The
+// backend gates capability('sitter') + assertCareAccess('health_logs_write') and assigns
+// the visit to the caller. mutateAsync({ providerId, pet_id, booking_id?, visit_at?,
+// status?, notes?, photo_urls?, video_urls?, check_in_lat?, check_in_lng? }) → { visit }.
+export function useLogSittingVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ providerId, ...body }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/sitting-visits`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to log visit");
+      }
+      return response.json(); // { visit }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["sitting-visits", "provider", variables?.providerId],
+      });
+    },
+  });
+}

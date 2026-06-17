@@ -25,7 +25,6 @@ jest.mock("react-native-safe-area-context", () => ({
 import ServicesScreen from "./services";
 
 const COMING_SOON = [
-  "Pet Sitting",
   "Training",
   "Shop",
   "Adoption",
@@ -67,6 +66,12 @@ test("tapping the live Daycare & Boarding card opens the daycare discover/book f
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Daycare & Boarding"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/daycare");
+});
+
+test("tapping the live Pet Sitting card opens the sitting discover/book flow", () => {
+  const { getByText } = render(<ServicesScreen />);
+  fireEvent.press(getByText("Pet Sitting"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/sitting");
 });
 
 test("coming-soon cards do NOT navigate into any flow", () => {

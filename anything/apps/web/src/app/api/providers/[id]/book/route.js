@@ -12,7 +12,9 @@ import { getCalendarSync } from "@/app/api/utils/calendarSync";
 // 0030's PATH-(a) decision) carrying provider context (provider_id/location/service),
 // a capability (default 'vet'), an optional slot (start_at/end_at) + recurrence rule,
 // an optional deposit link (order_id from 2.3), source='owner', booking_status=
-// 'requested'.
+// 'requested'. An optional meet_and_greet flag (2.9) tags a booking as the lightweight
+// pre-engagement INTRO step (owner + sitter align over chat before the real booking);
+// it defaults false so every non-sitter booking is unchanged.
 //
 // This is an OWNER-context route, NOT a provider one: authorization is pet
 // ownership (WHERE owner_user_id = me), not provider_staff membership — so it uses
@@ -56,6 +58,7 @@ async function POST(request, { params }) {
       end_at,
       recurrence_rule,
       order_id,
+      meet_and_greet,
     } = body;
 
     if (!petId || !appointment_date || !appointment_time) {
@@ -247,6 +250,7 @@ async function POST(request, { params }) {
         end_at,
         recurrence_rule,
         order_id,
+        meet_and_greet,
         source,
         booking_status,
         status
@@ -267,6 +271,7 @@ async function POST(request, { params }) {
         ${end_at ?? null},
         ${recurrence_rule ?? null},
         ${order_id ?? null},
+        ${meet_and_greet === true},
         ${"owner"},
         ${"requested"},
         ${"scheduled"}
