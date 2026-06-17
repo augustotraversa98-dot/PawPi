@@ -15,7 +15,16 @@ export default function CreateProviderForm() {
     handleSubmit,
     formState: { errors },
   } = useForm({
-    defaultValues: { name: "", provider_type: "", bio: "", logo_url: "" },
+    defaultValues: {
+      name: "",
+      provider_type: "",
+      bio: "",
+      logo_url: "",
+      website_url: "",
+      instagram_url: "",
+      facebook_url: "",
+      google_maps_url: "",
+    },
   });
   const { mutate, isPending } = useCreateProvider();
 
@@ -26,6 +35,11 @@ export default function CreateProviderForm() {
         provider_type: values.provider_type,
         bio: values.bio?.trim() || undefined,
         logo_url: values.logo_url?.trim() || undefined,
+        // Optional public links (ticket 2.20).
+        website_url: values.website_url?.trim() || undefined,
+        instagram_url: values.instagram_url?.trim() || undefined,
+        facebook_url: values.facebook_url?.trim() || undefined,
+        google_maps_url: values.google_maps_url?.trim() || undefined,
       },
       {
         onError: (err) => {
@@ -111,6 +125,23 @@ export default function CreateProviderForm() {
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
             />
           </Field>
+
+          {/* Public business links (ticket 2.20) — optional. */}
+          {[
+            { name: "website_url", label: "Website", ph: "https://…" },
+            { name: "instagram_url", label: "Instagram", ph: "https://instagram.com/…" },
+            { name: "facebook_url", label: "Facebook", ph: "https://facebook.com/…" },
+            { name: "google_maps_url", label: "Google Maps", ph: "https://maps.google.com/…" },
+          ].map((f) => (
+            <Field key={f.name} label={f.label} hint="Optional">
+              <input
+                type="text"
+                placeholder={f.ph}
+                {...register(f.name)}
+                className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+              />
+            </Field>
+          ))}
 
           <button
             type="submit"

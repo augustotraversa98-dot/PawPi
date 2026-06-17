@@ -65,6 +65,14 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.20 — Provider onboarding: business links  ·  ticket/provider-onboarding-links (2026-06-17)
+What shipped: a business can add its **website, Instagram, Facebook, and Google Maps** links at onboarding (and edit them later on the profile). They're **optional** (onboarding stays fast) and show up read-only as tappable chips on the public provider profile. These links are also the INPUT that ticket 2.21 (AI enrichment) will read.
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0041_provider_links.sql` — four additive nullable columns on `providers` (website_url, instagram_url, facebook_url, google_maps_url). No new table, no RLS change (they ride the existing any-authed-read / owner|admin-write policy). Hand-apply after merge.
+1. Mobile: More → list your business → create one → the form has optional **Links** (Website / Instagram / Facebook / Google Maps); fill some, leave others blank → it saves.
+2. Open the business's public profile (Services → its category → the provider) → the links you entered show as tappable chips and open correctly; blank ones are simply absent (no fake/empty links).
+3. Web dashboard → Profile → edit/add the same links → save → they persist and show on the profile.
+4. Links are never required — creating with none works fine.
+
 ### [ ] 2.19 — More-tab navigation corruption fix  ·  ticket/nav-more-tab-fix (2026-06-17)
 What shipped: the long-standing bug where opening a service (e.g. Services → Veterinary) and tapping back corrupted the **More** tab — More would reopen *inside* the service screen and only an app restart recovered it. **Root fix:** the shared service screens (Vet, Telehealth, Grooming, Walking, Daycare, Sitting, Training, Shop, Adoption, and the provider profile) moved OUT of the More tab's stack into a **root-level `service/` stack** that presents over the tabs — so opening a service from ANY tab (Services grid, Training tab, Feed cards, owner Hub) never buries the More root, and **back returns to the tab you came from**. Belt-and-suspenders: each tab now pops its stack to root when you leave it (`popToTopOnBlur`), so any in-progress pushed screen / routine-creation modal is torn down on a tab switch. No migration. **NEEDS A DEVICE PASS** — jest can't exercise real expo-router navigation.
 1. **Services → Veterinary** (or any service) → **back** → you're back on **Services** (not the wrong section).

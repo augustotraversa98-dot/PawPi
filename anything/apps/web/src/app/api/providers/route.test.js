@@ -148,6 +148,47 @@ describe('POST /api/providers — create', () => {
     expect(sql.mock.calls[5]).toEqual(expect.arrayContaining([200, ['vet']]));
   });
 
+  it('persists the optional business links on create, trimming + nulling blanks (ticket 2.20)', async () => {
+    auth.mockResolvedValue(SESSION);
+    const CREATED = {
+      id: 100,
+      owner_user_profile_id: 7,
+      name: 'Happy Paws',
+      slug: 'happy-paws',
+      provider_type: 'vet',
+      status: 'draft',
+      website_url: 'https://hp.example',
+      google_maps_url: 'https://maps.example/hp',
+    };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([]) // slug check
+      .mockResolvedValueOnce([CREATED]) // CTE
+      .mockResolvedValueOnce([]); // caps
+
+    const res = await POST(
+      jsonReq({
+        name: 'Happy Paws',
+        provider_type: 'vet',
+        website_url: '  https://hp.example  ', // trimmed
+        instagram_url: '', // blank → null
+        google_maps_url: 'https://maps.example/hp',
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const cte = sql.mock.calls[2];
+    expect(queryTextOf(2)).toContain('website_url');
+    // Trimmed non-empty links are bound; the blank instagram is bound as null.
+    expect(cte).toEqual(
+      expect.arrayContaining(['https://hp.example', 'https://maps.example/hp', null]),
+    );
+    // The response carries the persisted links back.
+    const body = await res.json();
+    expect(body.provider.website_url).toBe('https://hp.example');
+    expect(body.provider.google_maps_url).toBe('https://maps.example/hp');
+  });
+
   it('makes the slug unique on collision by appending a suffix', async () => {
     auth.mockResolvedValue(SESSION);
     sql

@@ -20,10 +20,25 @@ import { PROVIDER_TYPES } from "../lib/providerTypes";
 // Profile screen — load the provider, edit profile fields, and publish/unpublish.
 // Loaded inside the shell so providerId is always resolved. Saves send ONLY the
 // changed fields (PATCH whitelist); a 409 slug clash surfaces inline.
-const EDITABLE = ["name", "provider_type", "bio", "logo_url", "slug"];
+const EDITABLE = [
+  "name",
+  "provider_type",
+  "bio",
+  "logo_url",
+  "slug",
+  // Public business links (ticket 2.20).
+  "website_url",
+  "instagram_url",
+  "facebook_url",
+  "google_maps_url",
+];
 
 // Normalize a stored value to a controlled-input string so empty diffs cleanly.
 const asStr = (v) => (v == null ? "" : String(v));
+
+// Build the form seed from EDITABLE so the field list lives in ONE place.
+const seedFrom = (p) =>
+  Object.fromEntries(EDITABLE.map((f) => [f, asStr(p?.[f])]));
 
 export default function ProviderProfile({ providerId }) {
   const { data, isLoading, isError, error } = useProvider(providerId);
@@ -39,19 +54,13 @@ export default function ProviderProfile({ providerId }) {
     setError,
     formState: { errors, isDirty },
   } = useForm({
-    defaultValues: { name: "", provider_type: "", bio: "", logo_url: "", slug: "" },
+    defaultValues: seedFrom(null),
   });
 
   // Seed the form once the provider loads (and whenever it changes after a save).
   useEffect(() => {
     if (provider) {
-      reset({
-        name: asStr(provider.name),
-        provider_type: asStr(provider.provider_type),
-        bio: asStr(provider.bio),
-        logo_url: asStr(provider.logo_url),
-        slug: asStr(provider.slug),
-      });
+      reset(seedFrom(provider));
     }
   }, [provider, reset]);
 
@@ -69,13 +78,7 @@ export default function ProviderProfile({ providerId }) {
     }
     update.mutate(changes, {
       onSuccess: (p) => {
-        reset({
-          name: asStr(p.name),
-          provider_type: asStr(p.provider_type),
-          bio: asStr(p.bio),
-          logo_url: asStr(p.logo_url),
-          slug: asStr(p.slug),
-        });
+        reset(seedFrom(p));
         toast.success("Profile saved");
       },
       onError: (err) => {
@@ -187,6 +190,20 @@ export default function ProviderProfile({ providerId }) {
 
         <Field label="Logo URL" hint="Optional">
           <input type="text" {...register("logo_url")} className={inputCls} />
+        </Field>
+
+        {/* Public business links (ticket 2.20) — optional. */}
+        <Field label="Website" hint="Optional">
+          <input type="text" {...register("website_url")} className={inputCls} placeholder="https://…" />
+        </Field>
+        <Field label="Instagram" hint="Optional">
+          <input type="text" {...register("instagram_url")} className={inputCls} placeholder="https://instagram.com/…" />
+        </Field>
+        <Field label="Facebook" hint="Optional">
+          <input type="text" {...register("facebook_url")} className={inputCls} placeholder="https://facebook.com/…" />
+        </Field>
+        <Field label="Google Maps" hint="Optional">
+          <input type="text" {...register("google_maps_url")} className={inputCls} placeholder="https://maps.google.com/…" />
         </Field>
 
         <button

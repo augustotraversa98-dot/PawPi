@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -17,6 +18,10 @@ import {
   Calendar,
   Star,
   MessageSquare,
+  Globe,
+  Instagram,
+  Facebook,
+  Map,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -196,6 +201,9 @@ export default function ProviderScreen() {
               {provider.bio}
             </Text>
           ) : null}
+
+          {/* Public business links (ticket 2.20) — tappable; only rendered when present. */}
+          <ProviderLinks provider={provider} />
 
           {/* Locations */}
           {locations.length > 0 && (
@@ -486,6 +494,49 @@ function Row({ icon, children }) {
       <Text style={{ fontSize: 13, color: COLORS.mutedBrown, flex: 1 }}>
         {children}
       </Text>
+    </View>
+  );
+}
+
+// Public business links (ticket 2.20). Renders only the links that exist (no fake/empty
+// rows); each opens externally via Linking. The provider profile is public, so these are
+// safe to surface read-only.
+function ProviderLinks({ provider }) {
+  const links = [
+    { url: provider?.website_url, label: "Website", Icon: Globe },
+    { url: provider?.instagram_url, label: "Instagram", Icon: Instagram },
+    { url: provider?.facebook_url, label: "Facebook", Icon: Facebook },
+    { url: provider?.google_maps_url, label: "Google Maps", Icon: Map },
+  ].filter((l) => typeof l.url === "string" && l.url.trim().length > 0);
+
+  if (links.length === 0) return null;
+
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+      {links.map(({ url, label, Icon }) => (
+        <TouchableOpacity
+          key={label}
+          onPress={() => Linking.openURL(url.trim())}
+          accessibilityRole="link"
+          accessibilityLabel={label}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: COLORS.sand,
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderWidth: 1,
+            borderColor: COLORS.peach,
+          }}
+        >
+          <Icon size={15} color={COLORS.coral} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.warmBrown }}>
+            {label}
+          </Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 }

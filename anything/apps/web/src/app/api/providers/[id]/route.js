@@ -17,7 +17,18 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // Fields a profile PATCH may set. owner_user_profile_id and status are
 // deliberately absent — ownership is immutable here and status flips only through
 // the publish route.
-const PROFILE_FIELDS = ["name", "provider_type", "bio", "logo_url", "slug"];
+const PROFILE_FIELDS = [
+  "name",
+  "provider_type",
+  "bio",
+  "logo_url",
+  "slug",
+  // Public business links (ticket 2.20) — optional; the profile editor writes them here.
+  "website_url",
+  "instagram_url",
+  "facebook_url",
+  "google_maps_url",
+];
 
 // Get one provider — requires active staff membership (any role) or 403.
 async function GET(request, { params }) {
