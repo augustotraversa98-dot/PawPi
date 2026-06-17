@@ -807,3 +807,127 @@ export function useUpdateShopSubscription() {
     },
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADOPTION (ticket 2.12). The owner discovers adoption PLACES via the shared
+// useDiscoverProviders('adoption'), browses a place's adoptable dogs (dog-profile format),
+// FAVORITES, APPLIES, CHATS (reuse useStartThread), and pays the fee / donates (reuse the 2.3
+// payment layer). All real API; empty → empty states. RLS (0038) is the real guard.
+
+// A place's adoptable dogs — its AVAILABLE listings (RLS: a published place's available
+// listings are readable by any authed). Disabled until a providerId is known. Empty → [].
+export function useAdoptableListings(providerId) {
+  return useQuery({
+    queryKey: ["adoptable-listings", providerId],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/adoptable-listings`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch listings");
+      }
+      const data = await response.json();
+      return data.listings ?? [];
+    },
+  });
+}
+
+// The owner's adoption APPLICATIONS (GET /api/adoption/applications). Empty → [].
+export function useMyAdoptionApplications() {
+  return useQuery({
+    queryKey: ["adoption-applications", "owner"],
+    queryFn: async () => {
+      const response = await fetch(`/api/adoption/applications`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch applications");
+      }
+      const data = await response.json();
+      return data.applications ?? [];
+    },
+  });
+}
+
+// APPLY to adopt a listing (POST /api/adoption/applications). mutateAsync({ listing_id,
+// answers }) → { application }. Surfaces the backend's 409 "already applied" / "no longer
+// available". Invalidates the owner's application list.
+export function useApplyForAdoption() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch(`/api/adoption/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to apply");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adoption-applications", "owner"] });
+    },
+  });
+}
+
+// The owner's FAVORITED listings (GET /api/adoption/favorites). Empty → [].
+export function useAdoptionFavorites() {
+  return useQuery({
+    queryKey: ["adoption-favorites", "owner"],
+    queryFn: async () => {
+      const response = await fetch(`/api/adoption/favorites`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch favorites");
+      }
+      const data = await response.json();
+      return data.favorites ?? [];
+    },
+  });
+}
+
+// Toggle a favorite (POST / DELETE /api/adoption/favorites). mutateAsync({ listing_id,
+// favorited }) — favorited=true POSTs, false DELETEs. Invalidates the favorites list.
+export function useToggleAdoptionFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listing_id, favorited }) => {
+      const response = await fetch(`/api/adoption/favorites`, {
+        method: favorited ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listing_id }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update favorite");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adoption-favorites", "owner"] });
+    },
+  });
+}
+
+// Pay an adoption FEE or DONATE to a place via the SHARED 2.3 payment layer (POST
+// /api/payments/checkout). mutateAsync({ provider_id, kind, amount_cents, source_ref }) →
+// { order, checkoutUrl, deeplink, qrContent }. kind is 'adoption_fee' or 'donation'. Surfaces
+// the backend's 503 "payments not configured" so the UI can show the right state. Does NOT
+// duplicate payments — same route the rest of the app uses.
+export function useAdoptionCheckout() {
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch(`/api/payments/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rail: "mercadopago", currency: "ARS", ...body }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Checkout failed");
+      }
+      return response.json();
+    },
+  });
+}
