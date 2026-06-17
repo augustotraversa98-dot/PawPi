@@ -27,7 +27,7 @@ export default function GroomingScreen() {
 
   const openProvider = (slug) => {
     router.push({
-      pathname: "/(tabs)/more/provider",
+      pathname: "/service/provider",
       params: { slug, capability: "groomer" },
     });
   };

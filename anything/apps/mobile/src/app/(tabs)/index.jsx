@@ -74,7 +74,7 @@ export default function FeedScreen() {
     (provider) => {
       if (!provider?.slug) return;
       router.push({
-        pathname: "/(tabs)/more/provider",
+        pathname: "/service/provider",
         params: { slug: String(provider.slug) },
       });
     },
@@ -83,7 +83,7 @@ export default function FeedScreen() {
 
   // ── Open the adoption browse hub (2.13 suggestion card tap) ──
   const openAdoption = useCallback(() => {
-    router.push("/(tabs)/more/adoption");
+    router.push("/service/adoption");
   }, [router]);
 
   // ── View today's post ──

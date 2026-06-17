@@ -65,6 +65,14 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.19 — More-tab navigation corruption fix  ·  ticket/nav-more-tab-fix (2026-06-17)
+What shipped: the long-standing bug where opening a service (e.g. Services → Veterinary) and tapping back corrupted the **More** tab — More would reopen *inside* the service screen and only an app restart recovered it. **Root fix:** the shared service screens (Vet, Telehealth, Grooming, Walking, Daycare, Sitting, Training, Shop, Adoption, and the provider profile) moved OUT of the More tab's stack into a **root-level `service/` stack** that presents over the tabs — so opening a service from ANY tab (Services grid, Training tab, Feed cards, owner Hub) never buries the More root, and **back returns to the tab you came from**. Belt-and-suspenders: each tab now pops its stack to root when you leave it (`popToTopOnBlur`), so any in-progress pushed screen / routine-creation modal is torn down on a tab switch. No migration. **NEEDS A DEVICE PASS** — jest can't exercise real expo-router navigation.
+1. **Services → Veterinary** (or any service) → **back** → you're back on **Services** (not the wrong section).
+2. After visiting a service, tap **More** → it opens the **More landing page** every time (no stale service screen, no app restart needed).
+3. Repeat from the **Training** tab (→ "Hire a trainer"), the **Feed** suggestion cards (→ a provider / Adoption), and the **Hub** (→ Shop / Adoption) — none corrupts More.
+4. Open the routine-creation flow (More → reminders), switch bottom tabs, come back → it's reset, not stuck mid-modal.
+5. Confirm deep entry into each service screen still works and back behaves.
+
 ### [ ] 2.18 — Telehealth (vet video consult)  ·  ticket/telehealth (2026-06-17)
 What shipped: a vet can offer **Telehealth** (a new service/capability) and an owner can book a **video consult** — all on the existing spine (booking + payment + chat + consent). New phone surface: **Services → Telehealth** lists telehealth vets (real data; empty → "No telehealth vets yet"). Booking a consult reuses the normal provider booking + payment flow (capability `telehealth`). "My consults" shows your video sessions with a **Join video consult** button. The vet writes the consult note via the existing clinical record, so it lands in your pet's **Vet Record**. Video vendor is **dormant behind keys** — until Tats sets them, Join shows a clean "Video consults aren't set up yet" (nothing crashes).
 - ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0040_telehealth.sql` — `telehealth_sessions` (participant-scoped ENABLE+FORCE RLS) + widens the `provider_capabilities` and `vet_appointments` capability CHECKs to accept `telehealth`. Hand-apply after merge.

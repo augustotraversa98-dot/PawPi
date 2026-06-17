@@ -101,6 +101,9 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="pet-profile" />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Shared service screens — a root-level stack OVER the tabs, so opening a
+              service from any tab never buries the More tab root (ticket 2.19). */}
+          <Stack.Screen name="service" options={{ headerShown: false }} />
           <Stack.Screen
             name="notifications"
             options={{ presentation: "modal" }}

@@ -7,17 +7,17 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Switch,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Heart,
+  Home,
   ChevronRight,
   MessageSquare,
-  MapPin,
+  CheckCircle2,
+  AlertTriangle,
   X,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
@@ -26,26 +26,19 @@ import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
 import {
   useDiscoverProviders,
-  useSittingVisits,
-  useBookProvider,
+  useDaycareStays,
+  useBookDaycareStay,
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
 
-// Pet Sitting discovery + visit updates (ticket 2.9) — browse PUBLISHED sitter providers
-// (real data, no mocks) and manage the active pet's sitting: book a drop-in visit /
-// overnight / house-sit (optionally as a MEET-AND-GREET intro first), then read the
-// per-visit UPDATES the sitter posts (notes + photos/video + optional location check-in).
-// Discovery is the SHARED /api/providers/discover?type=sitter (capability match, ticket
-// 2.1) via the SAME useDiscoverProviders hook the vet/grooming/walking/daycare screens use.
-// Coordination (incl. the meet-and-greet conversation) reuses the provider chat (2.5).
-const SERVICE_TYPES = [
-  { key: "drop_in", label: "Drop-in visit" },
-  { key: "overnight", label: "Overnight" },
-  { key: "house_sit", label: "House-sit" },
-];
-
-export default function SittingScreen() {
+// Daycare & Boarding discovery + stays (ticket 2.8) — browse PUBLISHED daycare providers
+// (real data, no mocks) and manage the active pet's STAYS: book a multi-day stay with
+// feeding/med instructions, see the VACCINE status (pass/fail + missing), and read the
+// daily REPORT CARDS the facility posts. Discovery is the SHARED
+// /api/providers/discover?type=daycare (capability match, ticket 2.1) via the SAME
+// useDiscoverProviders hook the vet/grooming/walking screens use — no duplicate endpoint.
+export default function DaycareScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -56,10 +49,15 @@ export default function SittingScreen() {
     isLoading,
     isError,
     refetch,
-  } = useDiscoverProviders("sitter");
+  } = useDiscoverProviders("daycare");
 
-  const { data: visits } = useSittingVisits(petId);
-  const activeVisits = (visits ?? []).filter((v) => v.status !== "cancelled");
+  const { data: stays } = useDaycareStays(petId);
+  const activeStays = (stays ?? []).filter(
+    (s) => s.status === "booked" || s.status === "checked_in",
+  );
+  const pastStays = (stays ?? []).filter(
+    (s) => s.status === "checked_out" || s.status === "cancelled",
+  );
 
   const [bookFor, setBookFor] = useState(null); // the provider being booked
 
@@ -82,10 +80,10 @@ export default function SittingScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
-            Pet Sitting 💛
+            Daycare & Boarding 🏠
           </Text>
           <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
-            In-home visits, overnights, and house-sits
+            Book a stay, get daily report cards
           </Text>
         </View>
         <TouchableOpacity
@@ -108,18 +106,18 @@ export default function SittingScreen() {
         refetch={refetch}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       >
-        {/* Visit updates the sitter posted, owner-readable. */}
-        {activeVisits.length > 0 ? (
+        {/* Active stays — booked / checked-in, with vaccine status + report cards. */}
+        {activeStays.length > 0 ? (
           <>
-            <SectionLabel>VISIT UPDATES</SectionLabel>
-            {activeVisits.map((v) => (
-              <VisitCard key={v.id} visit={v} />
+            <SectionLabel>YOUR STAYS</SectionLabel>
+            {activeStays.map((s) => (
+              <StayCard key={s.id} stay={s} petName={currentPet?.name} />
             ))}
           </>
         ) : null}
 
-        <SectionLabel style={{ marginTop: activeVisits.length ? 24 : 0 }}>
-          SITTERS NEAR YOU
+        <SectionLabel style={{ marginTop: activeStays.length ? 24 : 0 }}>
+          DAYCARE NEAR YOU
         </SectionLabel>
 
         {isLoading ? (
@@ -128,13 +126,13 @@ export default function SittingScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load sitters"
+            title="Couldn't load facilities"
             body="Something went wrong. Pull down to try again."
           />
         ) : !providers || providers.length === 0 ? (
           <EmptyState
-            title="No sitters available yet"
-            body="Check back soon — pet sitters are joining PawPi."
+            title="No facilities available yet"
+            body="Check back soon — daycares are joining PawPi."
           />
         ) : (
           providers.map((p) => (
@@ -143,17 +141,26 @@ export default function SittingScreen() {
               provider={p}
               onOpen={() =>
                 router.push({
-                  pathname: "/(tabs)/more/provider",
-                  params: { slug: p.slug, capability: "sitter" },
+                  pathname: "/service/provider",
+                  params: { slug: p.slug, capability: "daycare" },
                 })
               }
               onBook={() => setBookFor(p)}
             />
           ))
         )}
+
+        {pastStays.length > 0 ? (
+          <>
+            <SectionLabel style={{ marginTop: 24 }}>PAST STAYS</SectionLabel>
+            {pastStays.map((s) => (
+              <StayCard key={s.id} stay={s} petName={currentPet?.name} />
+            ))}
+          </>
+        ) : null}
       </RefreshableScrollView>
 
-      <BookSittingModal
+      <BookStayModal
         provider={bookFor}
         petId={petId}
         onClose={() => setBookFor(null)}
@@ -162,9 +169,10 @@ export default function SittingScreen() {
   );
 }
 
-function VisitCard({ visit }) {
-  const hasLocation =
-    visit.check_in_lat != null && visit.check_in_lng != null;
+function StayCard({ stay, petName }) {
+  const status = stay.status;
+  const vax = stay.vaccine_status;
+  const cards = stay.report_cards ?? [];
   return (
     <View
       style={{
@@ -184,58 +192,137 @@ function VisitCard({ visit }) {
         }}
       >
         <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
-          {visit.provider_name || "Visit"}
+          {stay.provider_name || "Stay"}
         </Text>
-        <StatusPill status={visit.status} />
+        <StatusPill status={status} />
       </View>
-      {visit.visit_at ? (
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
-          {String(visit.visit_at).slice(0, 16).replace("T", " ")}
-          {visit.sitter_name ? ` · ${visit.sitter_name}` : ""}
+      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+        {stay.start_date}
+        {stay.end_date && stay.end_date !== stay.start_date
+          ? ` → ${stay.end_date}`
+          : ""}
+        {stay.location_name ? ` · ${stay.location_name}` : ""}
+      </Text>
+
+      {/* Vaccine status pass/fail + missing. */}
+      {vax ? <VaccineStatus vax={vax} /> : null}
+
+      {stay.feeding_instructions ? (
+        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 8 }}>
+          🍽️ {stay.feeding_instructions}
+        </Text>
+      ) : null}
+      {stay.med_instructions ? (
+        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 4 }}>
+          💊 {stay.med_instructions}
         </Text>
       ) : null}
 
-      {visit.notes ? (
-        <Text style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 8 }}>
-          {visit.notes}
-        </Text>
-      ) : null}
-
-      {hasLocation ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
-          <MapPin size={14} color={COLORS.coral} />
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
-            Checked in at {Number(visit.check_in_lat).toFixed(4)},{" "}
-            {Number(visit.check_in_lng).toFixed(4)}
+      {/* Daily report cards from the facility. */}
+      {cards.length > 0 ? (
+        <View style={{ marginTop: 10 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "800",
+              color: COLORS.mutedBrown,
+              letterSpacing: 0.5,
+              marginBottom: 6,
+            }}
+          >
+            REPORT CARDS
           </Text>
+          {cards.map((c) => (
+            <ReportCard key={c.id} card={c} petName={petName} />
+          ))}
         </View>
       ) : null}
+    </View>
+  );
+}
 
-      {Array.isArray(visit.photo_urls) && visit.photo_urls.length > 0 ? (
+function ReportCard({ card, petName }) {
+  return (
+    <View
+      style={{
+        backgroundColor: COLORS.cream,
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: COLORS.peach,
+      }}
+    >
+      <Text style={{ fontSize: 12, fontWeight: "800", color: COLORS.warmBrown }}>
+        {card.date}
+      </Text>
+      {card.mood ? (
+        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+          Mood: {card.mood}
+        </Text>
+      ) : null}
+      {card.meals ? (
+        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+          Meals: {card.meals}
+        </Text>
+      ) : null}
+      {card.activities ? (
+        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+          Activities: {card.activities}
+        </Text>
+      ) : null}
+      {card.notes ? (
+        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 4 }}>
+          {card.notes}
+        </Text>
+      ) : null}
+      {Array.isArray(card.photo_urls) && card.photo_urls.length > 0 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {visit.photo_urls.map((u) => (
+          {card.photo_urls.map((u) => (
             <Image
               key={u}
               source={{ uri: u }}
-              style={{ width: 72, height: 72, borderRadius: 8, backgroundColor: COLORS.sand }}
+              style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: COLORS.sand }}
             />
           ))}
         </View>
       ) : null}
-      {Array.isArray(visit.video_urls) && visit.video_urls.length > 0 ? (
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 6 }}>
-          🎥 {visit.video_urls.length} video
-          {visit.video_urls.length > 1 ? "s" : ""}
+    </View>
+  );
+}
+
+function VaccineStatus({ vax }) {
+  if (!vax.required || vax.required.length === 0) return null;
+  if (vax.passed) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+        <CheckCircle2 size={16} color="#3FA34D" />
+        <Text style={{ fontSize: 12, color: "#3FA34D", fontWeight: "700" }}>
+          Vaccinations up to date
         </Text>
-      ) : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ marginTop: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <AlertTriangle size={16} color={COLORS.coral} />
+        <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700" }}>
+          Missing required vaccines
+        </Text>
+      </View>
+      <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+        {vax.missing.join(", ")}
+      </Text>
     </View>
   );
 }
 
 function StatusPill({ status }) {
   const map = {
-    scheduled: { label: "Scheduled", color: COLORS.coral },
-    completed: { label: "Done", color: "#3FA34D" },
+    booked: { label: "Booked", color: COLORS.coral },
+    checked_in: { label: "Checked in", color: "#3FA34D" },
+    checked_out: { label: "Checked out", color: COLORS.mutedBrown },
     cancelled: { label: "Cancelled", color: COLORS.mutedBrown },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
@@ -293,7 +380,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
               alignItems: "center",
             }}
           >
-            <Heart size={24} color={COLORS.coral} />
+            <Home size={24} color={COLORS.coral} />
           </View>
         )}
         <View style={{ flex: 1 }}>
@@ -333,64 +420,53 @@ function ProviderCard({ provider, onOpen, onBook }) {
         }}
       >
         <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>
-          Book a sitter
+          Book a stay
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// Book a sitting service: type (drop-in / overnight / house-sit) + date/time + an optional
-// MEET-AND-GREET toggle (the lightweight intro step — owner + sitter align over chat first)
-// + a recurring-drop-ins toggle (a weekly pack via recurrence_rule). Reuses useBookProvider
-// with capability='sitter'; the backend stores meet_and_greet + recurrence_rule.
-function BookSittingModal({ provider, petId, onClose }) {
-  const [serviceType, setServiceType] = useState("drop_in");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("09:00");
-  const [meetAndGreet, setMeetAndGreet] = useState(false);
-  const [recurring, setRecurring] = useState(false);
-  const [notes, setNotes] = useState("");
-  const book = useBookProvider();
+// Book a stay: dates + feeding/med instructions. Calls useBookDaycareStay, which the
+// backend gates for capacity/overbook (the "fully booked" message surfaces here).
+function BookStayModal({ provider, petId, onClose }) {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [feeding, setFeeding] = useState("");
+  const [meds, setMeds] = useState("");
+  const book = useBookDaycareStay();
 
   const reset = () => {
-    setServiceType("drop_in");
-    setDate("");
-    setTime("09:00");
-    setMeetAndGreet(false);
-    setRecurring(false);
-    setNotes("");
+    setStartDate("");
+    setEndDate("");
+    setFeeding("");
+    setMeds("");
   };
 
   const submit = async () => {
-    if (!date) {
-      Alert.alert("Pick a date", "Choose a date for the visit.");
+    if (!startDate || !endDate) {
+      Alert.alert("Pick dates", "Choose a start and end date for the stay.");
       return;
     }
-    const typeLabel =
-      SERVICE_TYPES.find((t) => t.key === serviceType)?.label || "Visit";
     try {
-      await book.mutateAsync({
-        providerId: provider.id,
+      const res = await book.mutateAsync({
         petId,
-        capability: "sitter",
-        appointment_date: date,
-        appointment_time: time || "09:00",
-        title: meetAndGreet ? `Meet & greet — ${typeLabel}` : typeLabel,
-        notes: notes || null,
-        meet_and_greet: meetAndGreet,
-        // A recurring drop-in pack is one booking carrying a weekly RRULE (2.4).
-        recurrence_rule:
-          recurring && serviceType === "drop_in"
-            ? "FREQ=WEEKLY;BYDAY=MO,WE,FR"
-            : null,
+        provider_id: provider.id,
+        location_id: provider.primary_location_id ?? null,
+        start_date: startDate,
+        end_date: endDate,
+        feeding_instructions: feeding || null,
+        med_instructions: meds || null,
       });
-      Alert.alert(
-        meetAndGreet ? "Meet & greet requested" : "Sitter booked",
-        meetAndGreet
-          ? "Message your sitter to arrange the intro. You'll align before the engagement."
-          : "Your sitter is booked. You'll see visit updates here.",
-      );
+      const vax = res?.vaccine_status;
+      if (vax && vax.required?.length > 0 && !vax.passed) {
+        Alert.alert(
+          "Stay booked — vaccines needed",
+          `Missing: ${vax.missing.join(", ")}. The facility may ask you to share proof.`,
+        );
+      } else {
+        Alert.alert("Stay booked", "Your stay is booked. You'll get daily report cards.");
+      }
       reset();
       onClose();
     } catch (e) {
@@ -418,7 +494,7 @@ function BookSittingModal({ provider, petId, onClose }) {
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
-            Book a sitter
+            Book a stay
           </Text>
           <TouchableOpacity onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
@@ -432,68 +508,36 @@ function BookSittingModal({ provider, petId, onClose }) {
             </Text>
           ) : null}
 
-          <FieldLabel>Service</FieldLabel>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {SERVICE_TYPES.map((t) => {
-              const selected = serviceType === t.key;
-              return (
-                <TouchableOpacity
-                  key={t.key}
-                  onPress={() => setServiceType(t.key)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 9,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    borderColor: selected ? COLORS.coral : COLORS.peach,
-                    backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: selected ? COLORS.coral : COLORS.warmBrown,
-                    }}
-                  >
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <FieldLabel>Start date</FieldLabel>
+          <DateField value={startDate} onChange={setStartDate} placeholder="Select start" />
 
-          <FieldLabel style={{ marginTop: 16 }}>Date</FieldLabel>
-          <DateField value={date} onChange={setDate} placeholder="Select date" />
+          <FieldLabel style={{ marginTop: 16 }}>End date</FieldLabel>
+          <DateField
+            value={endDate}
+            onChange={setEndDate}
+            placeholder="Select end"
+            minimumDate={startDate ? new Date(startDate) : undefined}
+          />
 
-          <FieldLabel style={{ marginTop: 16 }}>Notes for the sitter</FieldLabel>
+          <FieldLabel style={{ marginTop: 16 }}>Feeding instructions</FieldLabel>
           <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="e.g. Keys under the mat, feed at 8am"
+            value={feeding}
+            onChangeText={setFeeding}
+            placeholder="e.g. Two cups, morning and evening"
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={inputStyle}
           />
 
-          <ToggleRow
-            label="Meet & greet first"
-            help="A quick intro so you and the sitter align before the engagement."
-            value={meetAndGreet}
-            onValueChange={setMeetAndGreet}
+          <FieldLabel style={{ marginTop: 16 }}>Medication instructions</FieldLabel>
+          <TextInput
+            value={meds}
+            onChangeText={setMeds}
+            placeholder="e.g. 1 tablet with breakfast"
+            placeholderTextColor={COLORS.mutedBrown}
+            multiline
+            style={inputStyle}
           />
-
-          {serviceType === "drop_in" ? (
-            <ToggleRow
-              label="Recurring drop-ins"
-              help="A weekly pack (Mon / Wed / Fri) instead of a single visit."
-              value={recurring}
-              onValueChange={setRecurring}
-            />
-          ) : null}
 
           <TouchableOpacity
             onPress={submit}
@@ -509,46 +553,12 @@ function BookSittingModal({ provider, petId, onClose }) {
             }}
           >
             <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-              {book.isPending
-                ? "Booking…"
-                : meetAndGreet
-                  ? "Request meet & greet"
-                  : "Confirm booking"}
+              {book.isPending ? "Booking…" : "Confirm stay"}
             </Text>
           </TouchableOpacity>
         </KeyboardAwareScrollView>
       </View>
     </Modal>
-  );
-}
-
-function ToggleRow({ label, help, value, onValueChange }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 18,
-        gap: 12,
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.warmBrown }}>
-          {label}
-        </Text>
-        {help ? (
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
-            {help}
-          </Text>
-        ) : null}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ true: COLORS.coral }}
-      />
-    </View>
   );
 }
 
@@ -608,7 +618,7 @@ function EmptyState({ title, body }) {
         borderColor: COLORS.peach,
       }}
     >
-      <Heart size={32} color={COLORS.mutedBrown} />
+      <Home size={32} color={COLORS.mutedBrown} />
       <Text
         style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}
       >

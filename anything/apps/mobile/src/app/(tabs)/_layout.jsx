@@ -93,6 +93,9 @@ export default function TabLayout() {
         options={{
           title: "Services",
           tabBarIcon: ({ color }) => <Stethoscope color={color} size={23} />,
+          // Safety net (ticket 2.19): leaving the Services tab pops its stack to the grid
+          // root, so it never reopens on a stale pushed screen.
+          popToTopOnBlur: true,
         }}
       />
       <Tabs.Screen
@@ -100,6 +103,10 @@ export default function TabLayout() {
         options={{
           title: "More",
           tabBarIcon: ({ color }) => <MoreHorizontal color={color} size={23} />,
+          // Safety net (ticket 2.19): leaving the More tab pops its stack to the landing
+          // page and tears down any in-progress pushed flow / routine-creation modal, so
+          // tapping More always reopens its root — even if some unforeseen push slipped in.
+          popToTopOnBlur: true,
         }}
       />
     </Tabs>

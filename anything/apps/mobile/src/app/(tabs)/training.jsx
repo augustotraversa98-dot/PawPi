@@ -197,7 +197,7 @@ export default function TrainingScreen() {
         {/* Hire-a-trainer link — bridges to the PROVIDER training service (ticket 2.10),
             kept distinct from this self/content tab. */}
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/more/training")}
+          onPress={() => router.push("/service/training")}
           activeOpacity={0.9}
           accessibilityRole="button"
           style={{

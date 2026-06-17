@@ -36,7 +36,7 @@ const CATEGORIES = [
     subtitle: "Find and book a vet, then share records",
     icon: Stethoscope,
     live: true,
-    route: "/(tabs)/more/vet",
+    route: "/service/vet",
   },
   {
     key: "telehealth",
@@ -44,7 +44,7 @@ const CATEGORIES = [
     subtitle: "Video consult with a vet",
     icon: Video,
     live: true,
-    route: "/(tabs)/more/telehealth",
+    route: "/service/telehealth",
   },
   {
     key: "grooming",
@@ -52,7 +52,7 @@ const CATEGORIES = [
     subtitle: "Baths, trims, and nail care",
     icon: Scissors,
     live: true,
-    route: "/(tabs)/more/grooming",
+    route: "/service/grooming",
   },
   {
     key: "walking",
@@ -60,7 +60,7 @@ const CATEGORIES = [
     subtitle: "On-demand and scheduled walks",
     icon: Footprints,
     live: true,
-    route: "/(tabs)/more/walking",
+    route: "/service/walking",
   },
   {
     key: "boarding",
@@ -68,7 +68,7 @@ const CATEGORIES = [
     subtitle: "Day stays and overnight care",
     icon: Home,
     live: true,
-    route: "/(tabs)/more/daycare",
+    route: "/service/daycare",
   },
   {
     key: "sitting",
@@ -76,7 +76,7 @@ const CATEGORIES = [
     subtitle: "In-home visits and care",
     icon: Heart,
     live: true,
-    route: "/(tabs)/more/sitting",
+    route: "/service/sitting",
   },
   {
     key: "training",
@@ -84,7 +84,7 @@ const CATEGORIES = [
     subtitle: "Hire a trainer: 1:1, classes, programs",
     icon: GraduationCap,
     live: true,
-    route: "/(tabs)/more/training",
+    route: "/service/training",
   },
   {
     key: "shop",
@@ -92,7 +92,7 @@ const CATEGORIES = [
     subtitle: "Food, toys, and supplies",
     icon: ShoppingBag,
     live: true,
-    route: "/(tabs)/more/shop",
+    route: "/service/shop",
   },
   {
     key: "adoption",
@@ -100,7 +100,7 @@ const CATEGORIES = [
     subtitle: "Find a dog to bring home",
     icon: PawPrint,
     live: true,
-    route: "/(tabs)/more/adoption",
+    route: "/service/adoption",
   },
 ];
 

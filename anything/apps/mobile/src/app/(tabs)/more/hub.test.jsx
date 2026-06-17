@@ -99,13 +99,13 @@ describe("MyHubScreen", () => {
   it("links into the existing per-feature screens (no duplication)", () => {
     render(<MyHubScreen />);
     fireEvent.press(render(<MyHubScreen />).getByText("My orders"));
-    expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/shop");
+    expect(mockPush).toHaveBeenCalledWith("/service/shop");
 
     fireEvent.press(render(<MyHubScreen />).getByText("Who has access"));
     expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/data-access");
 
     fireEvent.press(render(<MyHubScreen />).getByText("Saved dogs"));
-    expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/adoption");
+    expect(mockPush).toHaveBeenCalledWith("/service/adoption");
   });
 
   it("shows empty states with no data (no fake metrics)", () => {

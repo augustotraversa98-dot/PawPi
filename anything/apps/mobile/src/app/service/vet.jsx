@@ -22,7 +22,7 @@ export default function VetScreen() {
     useDiscoverProviders("vet");
 
   const openProvider = (slug) => {
-    router.push({ pathname: "/(tabs)/more/provider", params: { slug } });
+    router.push({ pathname: "/service/provider", params: { slug } });
   };
 
   return (

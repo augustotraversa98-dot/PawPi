@@ -42,55 +42,80 @@ test("renders the full category grid (every category live, none coming-soon)", (
 test("tapping the live Veterinary card opens the vet discover/book flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Veterinary"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/vet");
+  expect(mockPush).toHaveBeenCalledWith("/service/vet");
 });
 
 test("tapping the live Grooming card opens the grooming discover/book flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Grooming"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/grooming");
+  expect(mockPush).toHaveBeenCalledWith("/service/grooming");
 });
 
 test("tapping the live Telehealth card opens the telehealth discover/consult flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Telehealth"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/telehealth");
+  expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
+});
+
+// Regression guard for the More-tab corruption (ticket 2.19): NO Services card may push
+// into the (tabs)/more/ stack. They must all open the root-level `service/` stack, which
+// presents over the tabs and never buries the More tab root.
+test("no Services card routes into the More tab stack (2.19 regression)", () => {
+  const { getByText } = render(<ServicesScreen />);
+  for (const title of [
+    "Veterinary",
+    "Telehealth",
+    "Grooming",
+    "Dog Walking",
+    "Daycare & Boarding",
+    "Pet Sitting",
+    "Training",
+    "Shop",
+    "Adoption",
+  ]) {
+    fireEvent.press(getByText(title));
+  }
+  for (const call of mockPush.mock.calls) {
+    const target = typeof call[0] === "string" ? call[0] : call[0]?.pathname;
+    expect(String(target)).not.toContain("/(tabs)/more/");
+    expect(String(target).startsWith("/service/")).toBe(true);
+  }
 });
 
 test("tapping the live Dog Walking card opens the walking discover/live flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Dog Walking"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/walking");
+  expect(mockPush).toHaveBeenCalledWith("/service/walking");
 });
 
 test("tapping the live Daycare & Boarding card opens the daycare discover/book flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Daycare & Boarding"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/daycare");
+  expect(mockPush).toHaveBeenCalledWith("/service/daycare");
 });
 
 test("tapping the live Pet Sitting card opens the sitting discover/book flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Pet Sitting"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/sitting");
+  expect(mockPush).toHaveBeenCalledWith("/service/sitting");
 });
 
 test("tapping the live Training card opens the PROVIDER training service (not the self tab)", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Training"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/training");
+  expect(mockPush).toHaveBeenCalledWith("/service/training");
 });
 
 test("tapping the live Shop card opens the shop discover/catalog flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Shop"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/shop");
+  expect(mockPush).toHaveBeenCalledWith("/service/shop");
 });
 
 test("tapping the live Adoption card opens the adoption discover flow", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Adoption"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/adoption");
+  expect(mockPush).toHaveBeenCalledWith("/service/adoption");
 });
 
 test("coming-soon cards do NOT navigate into any flow", () => {
