@@ -22,13 +22,25 @@ async function GET(request, { params }) {
 
     const slug = params.slug;
 
+    // Storefront paging for the posts feed (ticket 2.22) — same shape as /api/posts.
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("postsLimit") || "20", 10) || 20, 1),
+      50,
+    );
+    const offset = Math.max(
+      parseInt(searchParams.get("postsOffset") || "0", 10) || 0,
+      0,
+    );
+
     // Public business fields only — owner_user_profile_id and status are excluded
     // from the projection. A draft (or non-existent) slug never matches. avg_rating +
     // review_count (ticket 2.2) come from correlated subqueries over provider_reviews —
     // always-correct, no cached column. No reviews → avg_rating NULL + review_count 0.
+    // cover_image_url (ticket 2.22) is the storefront banner.
     const providers = await sql`
       SELECT
-        p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+        p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url, p.cover_image_url,
         p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
         (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
         (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
@@ -65,7 +77,34 @@ async function GET(request, { params }) {
     `;
     const capabilities = capabilityRows.map((r) => r.capability);
 
-    return Response.json({ provider, locations, services, capabilities });
+    // Storefront ITEMS (ticket 2.22) — this provider's ACTIVE shop products (public catalog
+    // summary). Empty when the provider has no shop / no active products.
+    const products = await sql`
+      SELECT id, name, description, image_urls, price_cents, currency, category, is_rx
+      FROM shop_products
+      WHERE provider_id = ${provider.id} AND active = true
+      ORDER BY created_at DESC, id DESC
+    `;
+
+    // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated. No author
+    // identity is exposed (author_user_id stays internal — the storefront shows the
+    // business voice, not a person).
+    const posts = await sql`
+      SELECT id, body, image_urls, created_at
+      FROM provider_posts
+      WHERE provider_id = ${provider.id} AND deleted_at IS NULL
+      ORDER BY created_at DESC, id DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    return Response.json({
+      provider,
+      locations,
+      services,
+      capabilities,
+      products,
+      posts,
+    });
   } catch (error) {
     console.error("[GET /api/providers/public/[slug]] Error:", error.message);
     return Response.json(

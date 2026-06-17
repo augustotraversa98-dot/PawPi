@@ -139,6 +139,25 @@ describe('PATCH /api/providers/[id] — profile fields only', () => {
     expect(values).toEqual(['https://hp.example', 'https://ig.example/hp', '100']);
   });
 
+  it('updates cover_image_url via the profile whitelist (ticket 2.22)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+    sql.unsafe.mockResolvedValueOnce([
+      { id: 100, cover_image_url: 'https://x/cover.png' },
+    ]);
+
+    const res = await PATCH(
+      patchReq({ cover_image_url: 'https://x/cover.png' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    const [updateQuery, values] = sql.unsafe.mock.calls[0];
+    expect(updateQuery).toContain('cover_image_url =');
+    expect(values).toEqual(['https://x/cover.png', '100']);
+  });
+
   it('cannot change owner_user_profile_id or status via the profile path', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

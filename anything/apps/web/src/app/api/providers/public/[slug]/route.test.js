@@ -49,7 +49,7 @@ describe('GET /api/providers/public/[slug]', () => {
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
-  it('published provider → public fields + locations + ACTIVE services only', async () => {
+  it('published provider → public fields + locations + ACTIVE services + items + posts', async () => {
     auth.mockResolvedValue(SESSION);
     const PROVIDER = {
       id: 100,
@@ -58,14 +58,19 @@ describe('GET /api/providers/public/[slug]', () => {
       provider_type: 'vet',
       bio: 'We care',
       logo_url: null,
+      cover_image_url: 'https://x/cover.png',
     };
     const LOCATIONS = [{ id: 5, name: 'Main', address: '1 St' }];
     const SERVICES = [{ id: 9, name: 'Checkup', active: true }];
+    const PRODUCTS = [{ id: 3, name: 'Kibble', price_cents: 5000 }];
+    const POSTS = [{ id: 7, body: 'Hello', image_urls: [], created_at: 'now' }];
     sql
       .mockResolvedValueOnce([PROVIDER]) // provider lookup
       .mockResolvedValueOnce(LOCATIONS) // locations
       .mockResolvedValueOnce(SERVICES) // active services
-      .mockResolvedValueOnce([{ capability: 'shop' }, { capability: 'vet' }]); // capabilities
+      .mockResolvedValueOnce([{ capability: 'shop' }, { capability: 'vet' }]) // capabilities
+      .mockResolvedValueOnce(PRODUCTS) // active products
+      .mockResolvedValueOnce(POSTS); // posts
 
     const res = await GET(req(), PARAMS);
 
@@ -75,6 +80,8 @@ describe('GET /api/providers/public/[slug]', () => {
       locations: LOCATIONS,
       services: SERVICES,
       capabilities: ['shop', 'vet'],
+      products: PRODUCTS,
+      posts: POSTS,
     });
 
     // Services query is scoped to the resolved provider id and active=true only.
@@ -83,13 +90,43 @@ describe('GET /api/providers/public/[slug]', () => {
     expect(svcValues).toContain(100);
   });
 
+  it('ticket 2.22: posts are paginated and expose NO author identity', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]); // posts
+
+    await GET(
+      new Request(
+        'http://localhost/api/providers/public/happy-paws?postsLimit=5&postsOffset=10',
+      ),
+      PARAMS,
+    );
+
+    // The posts query (call index 5) is LIMIT/OFFSET bound and never selects author_user_id.
+    const [postStrings, ...postValues] = sql.mock.calls[5];
+    const postText = postStrings.join(' ');
+    expect(postText).toContain('provider_posts');
+    expect(postText).toContain('LIMIT');
+    expect(postText).toContain('OFFSET');
+    expect(postText).not.toContain('author_user_id');
+    expect(postValues).toContain(5); // bound limit
+    expect(postValues).toContain(10); // bound offset
+  });
+
   it('response carries NO staff list and NO owner_user_profile_id', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws', name: 'Happy Paws' }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]); // capabilities
+      .mockResolvedValueOnce([]) // capabilities
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]); // posts
 
     const res = await GET(req(), PARAMS);
     const body = await res.json();
@@ -108,7 +145,9 @@ describe('GET /api/providers/public/[slug]', () => {
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]); // capabilities
+      .mockResolvedValueOnce([]) // capabilities
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]); // posts
 
     await GET(req(), PARAMS);
 
@@ -121,7 +160,9 @@ describe('GET /api/providers/public/[slug]', () => {
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]); // posts
 
     await GET(req(), PARAMS);
 

@@ -80,3 +80,53 @@ test("renders no service images when a service has none (placeholder, no fakes)"
   expect(getByText("Checkup")).toBeTruthy();
   expect(queryAllByTestId("service-image")).toHaveLength(0);
 });
+
+// Ticket 2.22 — storefront sections (cover, items, posts).
+test("renders the storefront cover, items, and posts when present", () => {
+  mockProfile = {
+    data: {
+      provider: { ...baseProvider, cover_image_url: "https://x/cover.png" },
+      locations: [],
+      services: [],
+      products: [
+        { id: 20, name: "Kibble", price_cents: 5000, image_urls: ["https://x/k.png"] },
+        { id: 21, name: "Toy", price_cents: 1500, image_urls: [] },
+      ],
+      posts: [
+        { id: 30, body: "Open this weekend!", image_urls: ["https://x/p.png"] },
+        { id: 31, body: "Thanks all", image_urls: [] },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { getByText, getAllByTestId, getByTestId } = render(<ProviderScreen />);
+  expect(getByTestId("storefront-cover")).toBeTruthy();
+  expect(getAllByTestId("storefront-item")).toHaveLength(2);
+  expect(getByText("Kibble")).toBeTruthy();
+  expect(getAllByTestId("storefront-post")).toHaveLength(2);
+  expect(getByText("Open this weekend!")).toBeTruthy();
+  expect(getAllByTestId("storefront-post-image")).toHaveLength(1);
+});
+
+test("storefront degrades cleanly: no cover/items/posts → those sections are absent", () => {
+  mockProfile = {
+    data: {
+      provider: baseProvider, // no cover_image_url
+      locations: [],
+      services: [],
+      products: [],
+      posts: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { queryByTestId, queryAllByTestId } = render(<ProviderScreen />);
+  expect(queryByTestId("storefront-cover")).toBeNull();
+  expect(queryAllByTestId("storefront-item")).toHaveLength(0);
+  expect(queryAllByTestId("storefront-post")).toHaveLength(0);
+});

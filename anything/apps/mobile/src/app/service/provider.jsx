@@ -22,6 +22,7 @@ import {
   Instagram,
   Facebook,
   Map,
+  ShoppingBag,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -59,6 +60,9 @@ export default function ProviderScreen() {
   const provider = data?.provider;
   const locations = data?.locations ?? [];
   const services = data?.services ?? [];
+  // Storefront sections (ticket 2.22): the provider's shop items + posts feed.
+  const products = data?.products ?? [];
+  const posts = data?.posts ?? [];
 
   // Reviews for this provider (ticket 2.2). Keyed by id once the profile resolves.
   const { data: reviews } = useProviderReviews(provider?.id);
@@ -129,6 +133,21 @@ export default function ProviderScreen() {
           refetch={refetch}
           contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         >
+          {/* Storefront cover banner (ticket 2.22) — only when set. */}
+          {provider.cover_image_url ? (
+            <Image
+              testID="storefront-cover"
+              source={{ uri: provider.cover_image_url }}
+              style={{
+                width: "100%",
+                height: 140,
+                borderRadius: 18,
+                marginBottom: 14,
+                backgroundColor: COLORS.sand,
+              }}
+            />
+          ) : null}
+
           {/* Header card */}
           <View
             style={{
@@ -307,6 +326,129 @@ export default function ProviderScreen() {
                           style={{
                             width: 72,
                             height: 72,
+                            borderRadius: 12,
+                            backgroundColor: COLORS.sand,
+                          }}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </Section>
+          )}
+
+          {/* Items (ticket 2.22) — the provider's shop catalog summary. Tapping any
+              item opens the existing Shop flow (we don't rebuild checkout). */}
+          {products.length > 0 && (
+            <Section title="Items">
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                {products.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    testID="storefront-item"
+                    onPress={() => router.push("/service/shop")}
+                    style={{
+                      width: "47%",
+                      backgroundColor: COLORS.card,
+                      borderRadius: 16,
+                      padding: 10,
+                      borderWidth: 1,
+                      borderColor: COLORS.peach,
+                    }}
+                  >
+                    {Array.isArray(p.image_urls) && p.image_urls[0] ? (
+                      <Image
+                        source={{ uri: p.image_urls[0] }}
+                        style={{
+                          width: "100%",
+                          height: 90,
+                          borderRadius: 12,
+                          backgroundColor: COLORS.sand,
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: "100%",
+                          height: 90,
+                          borderRadius: 12,
+                          backgroundColor: COLORS.sand,
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <ShoppingBag size={22} color={COLORS.coral} />
+                      </View>
+                    )}
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "800",
+                        color: COLORS.warmBrown,
+                        marginTop: 6,
+                      }}
+                    >
+                      {p.name}
+                    </Text>
+                    {formatPrice(p.price_cents) ? (
+                      <Text
+                        style={{ fontSize: 13, fontWeight: "800", color: COLORS.coral }}
+                      >
+                        {formatPrice(p.price_cents)}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Section>
+          )}
+
+          {/* Posts (ticket 2.22) — the provider's storefront feed; newest first. */}
+          {posts.length > 0 && (
+            <Section title="Posts">
+              {posts.map((post) => (
+                <View
+                  key={post.id}
+                  testID="storefront-post"
+                  style={{
+                    backgroundColor: COLORS.card,
+                    borderRadius: 16,
+                    padding: 14,
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: COLORS.peach,
+                  }}
+                >
+                  {post.body ? (
+                    <Text style={{ fontSize: 14, color: COLORS.warmBrown, lineHeight: 20 }}>
+                      {post.body}
+                    </Text>
+                  ) : null}
+                  {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        marginTop: post.body ? 10 : 0,
+                      }}
+                    >
+                      {post.image_urls.map((uri, i) => (
+                        <Image
+                          key={`${post.id}-img-${i}`}
+                          testID="storefront-post-image"
+                          source={{ uri }}
+                          style={{
+                            width: 96,
+                            height: 96,
                             borderRadius: 12,
                             backgroundColor: COLORS.sand,
                           }}

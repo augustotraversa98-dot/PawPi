@@ -413,6 +413,68 @@ describe('RLS R2e — provider_services (as pawpi_app)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 3b. provider_posts (ticket 2.22) — storefront feed. Active staff write + read all
+//     (incl. soft-deleted); any authed user reads a PUBLISHED provider's NON-deleted
+//     posts. A pet-owner / outsider / other-provider's staff cannot write.
+describe('RLS R2e — provider_posts (as pawpi_app)', () => {
+  beforeEach(async () => {
+    // 400 = live P1 post, 401 = soft-deleted P1 post, 402 = live P2 post.
+    await raw`insert into provider_posts (id, provider_id, author_user_id, body) values (400, ${P1}, ${OWNER.profileId}, 'p1-live')`;
+    await raw`insert into provider_posts (id, provider_id, author_user_id, body, deleted_at) values (401, ${P1}, ${OWNER.profileId}, 'p1-gone', now())`;
+    await raw`insert into provider_posts (id, provider_id, author_user_id, body) values (402, ${P2}, ${OWNER2.profileId}, 'p2-live')`;
+    await raw`select setval(pg_get_serial_sequence('provider_posts','id'), (select max(id) from provider_posts))`;
+  });
+
+  it('staff read ALL of their provider\'s posts (incl. soft-deleted), even while DRAFT', async () => {
+    await asApp(STAFF.profileId, async (tx) => {
+      expect(ids(await tx`select id from provider_posts where provider_id = ${P1}`)).toEqual([400, 401]);
+    });
+    // A pet owner / outsider sees nothing while the provider is draft.
+    await asApp(A.profileId, async (tx) => {
+      expect(await tx`select id from provider_posts`).toHaveLength(0);
+    });
+  });
+
+  it('public read: a PUBLISHED provider\'s NON-deleted posts only (never deleted, never a draft provider\'s)', async () => {
+    await raw`update providers set status = 'published' where id = ${P1}`;
+    await asApp(A.profileId, async (tx) => {
+      // 400 (live, published) only — not 401 (soft-deleted), not 402 (P2 still draft).
+      expect(ids(await tx`select id from provider_posts`)).toEqual([400]);
+    });
+  });
+
+  it('writes: active staff insert/update/soft-delete; pet-owner, outsider, other-provider staff cannot', async () => {
+    await asApp(STAFF.profileId, async (tx) => {
+      const created = await tx`
+        insert into provider_posts (provider_id, author_user_id, body) values (${P1}, ${STAFF.profileId}, 'New') returning id
+      `;
+      expect(created).toHaveLength(1);
+      expect(await tx`update provider_posts set body = 'Edited' where id = 400 returning id`).toHaveLength(1);
+      expect(await tx`update provider_posts set deleted_at = now() where id = 400 returning id`).toHaveLength(1);
+    });
+    // A pet owner cannot author into a provider they don't staff.
+    await expect(
+      asApp(A.profileId, (tx) => tx`insert into provider_posts (provider_id, body) values (${P1}, 'Nope')`),
+    ).rejects.toThrow(/row-level security/i);
+    // The other provider's staff can't touch P1's posts.
+    await expect(
+      asApp(STAFF2.profileId, (tx) => tx`insert into provider_posts (provider_id, body) values (${P1}, 'Nope')`),
+    ).rejects.toThrow(/row-level security/i);
+    await asApp(STAFF2.profileId, async (tx) => {
+      expect(await tx`update provider_posts set body = 'x' where id = 400 returning id`).toHaveLength(0);
+    });
+  });
+
+  it('no identity → zero rows for a DRAFT provider (deny-by-default)', async () => {
+    // Both providers are draft here, so neither the staff branch (no identity) nor the
+    // published-storefront branch matches → nothing is visible.
+    await asApp(null, async (tx) => {
+      expect(await tx`select id from provider_posts`).toHaveLength(0);
+    });
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // 4. provider_locations — public read (ALL locations of a published provider) + staff
 //    read; owner|admin writes incl. HARD delete.
 describe('RLS R2e — provider_locations (as pawpi_app)', () => {
