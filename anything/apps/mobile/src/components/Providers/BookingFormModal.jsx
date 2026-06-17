@@ -26,7 +26,15 @@ const CAPABILITY_COPY = {
     // owner to re-book — no new reminder path. iCal RRULE; INTERVAL=6 weeks.
     recurrence: { label: "Repeat every 6 weeks", rule: "FREQ=WEEKLY;INTERVAL=6" },
   },
-  walker: { icon: "🐾", noun: "walk", reasons: ["30 min walk", "60 min walk", "Group walk", "Puppy walk"] },
+  walker: {
+    icon: "🐾",
+    noun: "walk",
+    reasons: ["30 min walk", "60 min walk", "Group walk", "Puppy walk"],
+    // Walking supports both on-demand (a one-off slot — leave Repeat off) and a RECURRING
+    // weekly pack walk (ticket 2.7). Opting in carries a weekly recurrence_rule (2.4) so
+    // the EXISTING reminder engine nudges the owner — no new reminder path. iCal RRULE.
+    recurrence: { label: "Repeat weekly (pack walk)", rule: "FREQ=WEEKLY;INTERVAL=1" },
+  },
   daycare: { icon: "🏠", noun: "daycare", reasons: ["Half day", "Full day", "Recurring"] },
   sitter: { icon: "🧸", noun: "sitting", reasons: ["Drop-in", "Overnight", "House sit"] },
   trainer: { icon: "🎓", noun: "training", reasons: ["Puppy basics", "Obedience", "Behaviour", "1-on-1"] },

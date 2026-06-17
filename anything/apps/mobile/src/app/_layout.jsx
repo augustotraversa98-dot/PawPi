@@ -112,6 +112,10 @@ export default function RootLayout() {
               messages/chat screens above. */}
           <Stack.Screen name="provider-messages" />
           <Stack.Screen name="provider-chat" />
+          {/* Live walk watch + report (ticket 2.7, owner). */}
+          <Stack.Screen name="walk-live" />
+          {/* Walker workspace — start/track/finish booked walks (ticket 2.7). */}
+          <Stack.Screen name="walker-walks" />
         </Stack>
         <AuthModal />
       </GestureHandlerRootView>

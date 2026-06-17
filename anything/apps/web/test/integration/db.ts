@@ -870,3 +870,44 @@ export async function seedGroomSession(
   `;
   return { sessionId };
 }
+
+/**
+ * Seed a walk_sessions row for `petId` owned by `ownerUserId`, run by `providerId` and
+ * ASSIGNED to walker `staffUserId` (ticket 2.7 — walking GPS). status defaults to
+ * 'in_progress'; route defaults to a one-point live track for readable assertions. Used
+ * to exercise the participant-scoped RLS (owner FOR ALL + assigned-walker per-command) —
+ * the live-location guard.
+ */
+export async function seedWalkSession(
+  sql: Sql,
+  opts: {
+    sessionId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    staffUserId?: number | null;
+    bookingId?: number | null;
+    status?: 'scheduled' | 'in_progress' | 'finished' | 'cancelled';
+    route?: Array<{ lat: number; lng: number; t?: number | null }>;
+  },
+): Promise<{ sessionId: number }> {
+  const {
+    sessionId,
+    petId,
+    ownerUserId,
+    providerId,
+    staffUserId = null,
+    bookingId = null,
+    status = 'in_progress',
+    route = [{ lat: 1.1, lng: 2.2, t: 1000 }],
+  } = opts;
+  await sql`
+    insert into walk_sessions
+      (id, booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status, route)
+    values (
+      ${sessionId}, ${bookingId}, ${petId}, ${ownerUserId}, ${providerId},
+      ${staffUserId}, ${status}, ${sql.json(route)}
+    )
+  `;
+  return { sessionId };
+}
