@@ -831,3 +831,42 @@ export async function seedVaccination(
   `;
   return { vaxId };
 }
+
+/**
+ * Seed a groom_sessions row for `petId` owned by `ownerUserId`, logged by `providerId`
+ * (ticket 2.6 — grooming). before/after URLs default off the id for readable
+ * assertions. Used to exercise the owner-read / provider-grant RLS on groom_sessions.
+ */
+export async function seedGroomSession(
+  sql: Sql,
+  opts: {
+    sessionId: number;
+    petId: number;
+    ownerUserId: number;
+    providerId: number;
+    bookingId?: number | null;
+    beforeUrls?: string[];
+    afterUrls?: string[];
+    coatSkinNotes?: string | null;
+  },
+): Promise<{ sessionId: number }> {
+  const {
+    sessionId,
+    petId,
+    ownerUserId,
+    providerId,
+    bookingId = null,
+    beforeUrls = [`before-${opts.sessionId}.jpg`],
+    afterUrls = [`after-${opts.sessionId}.jpg`],
+    coatSkinNotes = `coat-${opts.sessionId}`,
+  } = opts;
+  await sql`
+    insert into groom_sessions
+      (id, booking_id, pet_id, owner_user_id, provider_id, before_urls, after_urls, coat_skin_notes)
+    values (
+      ${sessionId}, ${bookingId}, ${petId}, ${ownerUserId}, ${providerId},
+      ${beforeUrls}, ${afterUrls}, ${coatSkinNotes}
+    )
+  `;
+  return { sessionId };
+}

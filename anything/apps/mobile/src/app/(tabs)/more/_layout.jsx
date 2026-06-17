@@ -6,6 +6,7 @@ export default function MoreLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="community" />
       <Stack.Screen name="vet" />
+      <Stack.Screen name="grooming" />
       <Stack.Screen name="provider" />
       <Stack.Screen name="data-access" />
       <Stack.Screen name="profile" />
