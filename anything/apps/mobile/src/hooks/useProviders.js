@@ -24,6 +24,24 @@ export function useDiscoverProviders(type = "vet") {
   });
 }
 
+// The owner's bookings ACROSS ALL SERVICES (GET /api/me/bookings) for the owner hub (ticket
+// 2.14). Owner-scoped server-side (owner_user_id = me); returns { upcoming, past }, each row
+// carrying provider/pet/service names so the hub can link into the per-feature screens. Empty
+// → { upcoming: [], past: [] }.
+export function useMyBookings() {
+  return useQuery({
+    queryKey: ["my-bookings", "owner"],
+    queryFn: async () => {
+      const response = await fetch(`/api/me/bookings`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+      const data = await response.json();
+      return { upcoming: data.upcoming ?? [], past: data.past ?? [] };
+    },
+  });
+}
+
 // One published provider's PUBLIC profile: { provider, locations, services }.
 // Disabled until a slug is known; a draft/unknown slug 404s → query error.
 export function useProviderProfile(slug) {

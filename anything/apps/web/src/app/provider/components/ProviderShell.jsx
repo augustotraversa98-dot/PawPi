@@ -17,6 +17,7 @@ import {
   Home,
   GraduationCap,
   ShoppingBag,
+  LayoutDashboard,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -30,6 +31,13 @@ import CreateProviderForm from "./CreateProviderForm";
 // the rest are clearly-disabled "coming soon" stubs (Sales → a future layer with no
 // backend yet). They never dead-end.
 const NAV_ITEMS = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    Icon: LayoutDashboard,
+    enabled: true,
+    href: "/provider",
+  },
   {
     key: "bookings",
     label: "Bookings",

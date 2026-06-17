@@ -26,6 +26,23 @@ export function useCareAccessGrants(petId) {
   });
 }
 
+// ALL of the signed-in owner's care-access grants, across EVERY pet (no petId filter — the
+// route scopes to owner_user_id = me when petId is omitted). Used by the owner hub's "Who has
+// access" section (ticket 2.14). Empty → [].
+export function useAllCareAccessGrants() {
+  return useQuery({
+    queryKey: ["care-access-grants", "all"],
+    queryFn: async () => {
+      const response = await fetch(`/api/care-access/grants`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch care access grants");
+      }
+      const data = await response.json();
+      return data.grants ?? [];
+    },
+  });
+}
+
 // Approve / deny / revoke a single grant. The backend flips the grant's status
 // (approve pending→active, deny pending→revoked, revoke active→revoked), which
 // assertCareAccess honors instantly — so on success we just invalidate this pet's

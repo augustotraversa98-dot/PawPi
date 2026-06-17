@@ -145,6 +145,15 @@ export const threadsUnreadKey = (providerId) => [
   String(providerId ?? ""),
 ];
 
+// Dashboard analytics (ticket 2.14). One cache entry per provider; the dashboard home reads it.
+export const analyticsKey = (providerId) => [
+  "provider-analytics",
+  String(providerId ?? ""),
+];
+
+export const analyticsUrl = (providerId) =>
+  `/api/providers/${providerId}/analytics`;
+
 // --- hooks ------------------------------------------------------------------
 
 // Providers the logged-in user is ACTIVE staff of. [] = belongs to none.
@@ -155,6 +164,17 @@ export function useProviders() {
       const data = await getJson("/api/providers");
       return data.providers ?? [];
     },
+  });
+}
+
+// The dashboard HOME summary (GET /api/providers/[id]/analytics) — revenue, bookings,
+// occupancy, rating, top services, all aggregated over ONLY this provider's own rows. Disabled
+// until a providerId is known.
+export function useProviderAnalytics(providerId) {
+  return useQuery({
+    queryKey: analyticsKey(providerId),
+    queryFn: () => getJson(analyticsUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
   });
 }
 

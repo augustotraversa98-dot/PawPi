@@ -233,6 +233,14 @@ export default function MoreScreen() {
           YOUR ACCOUNT
         </Text>
 
+        {/* My Hub — the unified owner overview (bookings, orders, access, saved) */}
+        <MenuItem
+          title="My Hub"
+          emoji="🗂️"
+          color={C.sageDark}
+          onPress={() => router.push("/(tabs)/more/hub")}
+        />
+
         {/* My Dogs — opens the pet switcher / add-a-dog */}
         <PetSwitcher variant="row" />
 
