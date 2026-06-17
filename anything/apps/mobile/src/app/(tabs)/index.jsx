@@ -11,6 +11,7 @@ import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
+import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -30,6 +31,11 @@ export default function FeedScreen() {
     loadingPosts,
     uploading,
   } = useFeedData();
+
+  // Phase 2 ticket 2.13 — public provider/adoption suggestion cards, interleaved into the
+  // UNLOCKED feed at a capped cadence. Independent query from the posts feed (never disturbs the
+  // BeReal lock or the Following/Suggested ordering).
+  const { data: suggestions } = useFeedSuggestions();
 
   // Modal states — each isolated from the other
   const [composerVisible, setComposerVisible] = useState(false);
@@ -62,6 +68,23 @@ export default function FeedScreen() {
     },
     [router],
   );
+
+  // ── Open a provider's public profile (2.13 suggestion card tap) ──
+  const openProvider = useCallback(
+    (provider) => {
+      if (!provider?.slug) return;
+      router.push({
+        pathname: "/(tabs)/more/provider",
+        params: { slug: String(provider.slug) },
+      });
+    },
+    [router],
+  );
+
+  // ── Open the adoption browse hub (2.13 suggestion card tap) ──
+  const openAdoption = useCallback(() => {
+    router.push("/(tabs)/more/adoption");
+  }, [router]);
 
   // ── View today's post ──
   const handleViewTodayPost = useCallback(() => {
@@ -136,6 +159,9 @@ export default function FeedScreen() {
               onOpenBarks={setBarkPost}
               onOpenDetail={setDetailPost}
               onOpenProfile={openProfile}
+              suggestions={suggestions}
+              onOpenProvider={openProvider}
+              onOpenAdoption={openAdoption}
             />
           )}
         </RefreshableScrollView>
