@@ -198,11 +198,13 @@ export default function NotificationsScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
+          alignItems: "center",
           paddingHorizontal: 20,
           paddingVertical: 16,
           gap: 10,
         }}
         style={{
+          flexGrow: 0,
           borderBottomWidth: 1,
           borderBottomColor: COLORS.peach,
           backgroundColor: COLORS.card,

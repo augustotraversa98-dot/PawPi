@@ -113,6 +113,23 @@ test("Mark all read marks both store reminders and API notifications", () => {
   expect(mockMarkRead).toHaveBeenCalledWith({ all: true });
 });
 
+test("all six filter chips render in the row (2.33 layout fix)", () => {
+  const { getByText, UNSAFE_getAllByType } = render(<NotificationsScreen />);
+  // All six options render...
+  for (const label of ["All", "Walks", "Feeding", "Paws", "Barks", "Training"]) {
+    expect(getByText(label)).toBeTruthy();
+  }
+  // ...inside a horizontal ScrollView whose content centers items so each chip
+  // sizes to its content (the fix: no vertical stretch into tall rectangles).
+  const { ScrollView } = require("react-native");
+  const chipRow = UNSAFE_getAllByType(ScrollView).find((sv) => {
+    const cc = sv.props.contentContainerStyle;
+    const flat = Array.isArray(cc) ? Object.assign({}, ...cc) : cc;
+    return flat && flat.alignItems === "center";
+  });
+  expect(chipRow).toBeTruthy();
+});
+
 test("empty state when there are no notifications", () => {
   mockStoreState = {
     notifications: [],
