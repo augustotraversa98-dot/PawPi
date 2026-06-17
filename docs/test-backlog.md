@@ -69,6 +69,15 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.30 — Adoption per-listing deep-link  ·  ticket/adoption-deeplink (2026-06-17)
+What shipped: tapping an **"Adopt me"** card in the feed now opens **that exact dog's listing** (story, vitals, fee, apply/favorite/chat) instead of the generic Adoption hub. The card passes `{ listingId, providerId }`; the Adoption screen opens the listing's detail on mount. If the dog is gone/adopted it shows a graceful "no longer available" notice. Routes through the root-level `service/` stack (the 2.19 nav fix), so the **More tab is never corrupted** and back returns to the feed.
+- **No migration / no backend.** Deviation from the ticket: the single-listing route (`adoptable-listings/[listingId]`) is **admin-only (no public GET)**, so the deep-open instead loads the place's **public** listings (available-of-published) and finds the dog there — works even before the browse list is open.
+- Exercised by mobile jest (the card forwards its press; a deep `{listingId, providerId}` opens the detail modal on mount; no param → the hub with no modal; a missing listing → a graceful notice, no modal).
+- **NEEDS A DEVICE PASS** — jest can't exercise real expo-router cross-tab nav:
+1. From the **Feed**, tap an **Adopt me** card → that exact dog's detail opens (not the hub).
+2. **Back** returns to the Feed; open **More** → it's the More landing (no corruption).
+3. A removed/adopted dog's card → a clean "no longer available" notice (no crash, no fake dog).
+
 ### [ ] 2.28 — Daily photo shareable frame (IG/X)  ·  ticket/daily-share-frame (2026-06-17)
 What shipped: a **Share** button on a daily post card produces a story-sized (9:16) **branded frame** — the dog's photo in a warm PawPi frame reading "[Dog name] is part of PawPi 🐾" — and opens the system **share sheet** (Instagram Stories, X, etc.) with an enhanced default caption for X. Optional + graceful (no crash if capture/sharing is unavailable). The BeReal daily-lock + posting flow + feed are **untouched**.
 - **No migration / no backend.** New deps: `react-native-view-shot@4.0.3` + `expo-sharing@~14.0.8` (SDK-54 aligned). **NEEDS A DEV BUILD** — these are native modules, so the frame won't capture in Expo Go; test on a dev build / standalone. The share button degrades gracefully (no-op) where unavailable.
