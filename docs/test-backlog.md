@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.42 — Vet Record: append-only dated history log  ·  ticket/vet-record-history-log (2026-06-18)
+What shipped: the Vet Record "Vet Notes" section is now a proper **History** log — every entry is shown newest-first with its **date** and an **author label** (the clinic/vet name, or **"You"** for owner-authored entries), with a real derived **General summary** block at the top (entry count · last-updated date · last author — not the AI summary, which is 2.50). The **owner can add** a dated entry (`AddVetNoteModal`) and **delete** their entries. Append-only integrity is enforced by RLS: a vet with `medical_write` can INSERT but **cannot edit or delete** any entry — only the owner can.
+- **No migration.** The append-only RLS is already proven in `provider-records-rls.integration.test.ts` (provider INSERT ok; provider UPDATE/DELETE → 0 rows; owner edits/deletes; non-grantee sees nothing), so no new integration test. Exercised by web vitest (+7: notes GET/POST/DELETE owner-scoped + validation) and mobile jest (+2: owner add posts the right body, append-only framing).
+- **NEEDS A DEVICE PASS:** add a history entry → it appears dated as "You"; the summary updates; delete works; (when a vet adds a note via their dashboard it shows with their clinic name and you can't edit it).
+
 ### [ ] 2.41 — Vet Record: owner upload + complete info  ·  ticket/vet-record-owner-upload (2026-06-18)
 What shipped: the owner can now **add documents** to the Vet Record. The Documents section has an **"Add document"** button → a modal (name + type chips + a **photo of the paperwork** via the image picker + a date) → Supabase Storage upload → `POST /api/vet-record/documents` (owner-scoped). Each document row is **tappable to open** the file and has a **delete** (owner, confirm). Empty state stays when there are none. The medical-profile **edit** path (EditMedicalProfileModal → `onSave` refetch) already persists, so "complete info" works.
 - **No migration** — `vet_documents` already exists and is owner-scoped (RLS R2c). Its owner-only access is already proven in `owner-private-rls.integration.test.ts`, so no new integration test. Exercised by web vitest (+7: GET/POST/DELETE owner-scoped, validation, 401/400) and mobile jest (+2: the add flow uploads → POSTs the right body → refetch + close).

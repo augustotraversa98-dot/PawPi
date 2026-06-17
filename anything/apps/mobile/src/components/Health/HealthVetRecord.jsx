@@ -39,6 +39,7 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { AddDocumentModal } from "./VetRecord/AddDocumentModal";
+import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import EditMedicalProfileModal from "./VetRecord/EditMedicalProfileModal";
@@ -260,6 +261,49 @@ export default function HealthVetRecord() {
     },
     enabled: !!currentPet?.id && expandedSections.vetNotes,
   });
+
+  // Append-only clinical history log (ticket 2.42): owner can add + delete; vets
+  // append via their clinical route and can't edit/delete (RLS-enforced).
+  const [addNoteVisible, setAddNoteVisible] = useState(false);
+  const refetchVetNotes = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["vet-record-notes", currentPet?.id],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["vet-record-summary", currentPet?.id],
+    });
+  }, [queryClient, currentPet?.id]);
+
+  const deleteVetNote = useCallback(
+    (note) => {
+      Alert.alert(
+        "Delete entry?",
+        "This permanently removes your history entry.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const res = await fetch(
+                  `/api/vet-record/notes?id=${note.id}`,
+                  { method: "DELETE" },
+                );
+                if (!res.ok) throw new Error("Failed");
+                refetchVetNotes();
+              } catch (e) {
+                Alert.alert("Error", "Could not delete the entry.");
+              }
+            },
+          },
+        ],
+      );
+    },
+    [refetchVetNotes],
+  );
+
+  const historyNotes = vetNotesData?.notes || [];
 
   // Fetch upcoming appointments
   const { data: upcomingAppointmentsData } = useQuery({
@@ -1637,20 +1681,65 @@ export default function HealthVetRecord() {
           </View>
         )}
 
-        {/* Vet Notes */}
+        {/* History (append-only clinical log, ticket 2.42) */}
         <SectionHeader
-          title="Vet Notes"
-          icon={Edit}
+          title="History"
+          icon={ClipboardList}
           section="vetNotes"
           count={summary?.vetNotesCount || 0}
         />
         {expandedSections.vetNotes && (
           <View style={{ marginBottom: 16 }}>
+            {/* General summary — a real derived recap, not the AI summary (2.50) */}
+            {historyNotes.length > 0 && (
+              <View
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 14,
+                  padding: 14,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: C.peach,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "800", color: C.mutedBrown, letterSpacing: 0.6 }}>
+                  GENERAL SUMMARY
+                </Text>
+                <Text style={{ fontSize: 13, color: C.warmBrown, marginTop: 4, fontWeight: "600" }}>
+                  {`${historyNotes.length} ${historyNotes.length === 1 ? "entry" : "entries"} · last updated ${formatDate(historyNotes[0].note_date)}${historyNotes[0].vet_name ? ` by ${historyNotes[0].vet_name}` : ""}`}
+                </Text>
+              </View>
+            )}
+
+            {/* Owner add entry */}
+            <TouchableOpacity
+              testID="add-vet-note"
+              onPress={() => setAddNoteVisible(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                backgroundColor: C.coral + "15",
+                borderRadius: 14,
+                paddingVertical: 14,
+                marginBottom: 12,
+                borderWidth: 1.5,
+                borderColor: C.coral,
+                borderStyle: "dashed",
+              }}
+            >
+              <Plus size={18} color={C.coral} />
+              <Text style={{ color: C.coral, fontWeight: "700", fontSize: 14 }}>
+                Add to history
+              </Text>
+            </TouchableOpacity>
+
             {vetNotesData?.notes?.length === 0 ? (
               <EmptyState
-                icon={Edit}
-                title="No vet notes yet"
-                description="Add notes from vet visits or questions for your veterinarian."
+                icon={ClipboardList}
+                title="No history yet"
+                description="Add a dated entry, or your vet's notes will appear here. History is append-only — entries are kept, not overwritten."
               />
             ) : (
               vetNotesData?.notes?.map((note) => (
@@ -1673,25 +1762,33 @@ export default function HealthVetRecord() {
                       marginBottom: 8,
                     }}
                   >
-                    {note.vet_name && (
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: "700",
-                          color: C.warmBrown,
-                        }}
-                      >
-                        {note.vet_name}
-                      </Text>
-                    )}
+                    {/* Author label: clinic/vet name, or "You" for owner entries */}
                     <Text
                       style={{
-                        fontSize: 11,
-                        color: C.mutedBrown,
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: C.warmBrown,
                       }}
                     >
-                      {formatDate(note.note_date)}
+                      {note.vet_name || "You"}
                     </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: C.mutedBrown,
+                        }}
+                      >
+                        {formatDate(note.note_date)}
+                      </Text>
+                      <TouchableOpacity
+                        testID="delete-vet-note"
+                        onPress={() => deleteVetNote(note)}
+                        hitSlop={8}
+                      >
+                        <Trash2 size={15} color={C.mutedBrown} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <Text
                     style={{
@@ -2138,6 +2235,14 @@ export default function HealthVetRecord() {
         onClose={() => setAddDocVisible(false)}
         petId={currentPet?.id}
         onSaved={refetchDocuments}
+      />
+
+      {/* Add History Entry Modal (ticket 2.42) */}
+      <AddVetNoteModal
+        visible={addNoteVisible}
+        onClose={() => setAddNoteVisible(false)}
+        petId={currentPet?.id}
+        onSaved={refetchVetNotes}
       />
     </RefreshableScrollView>
   );
