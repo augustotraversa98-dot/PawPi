@@ -5,11 +5,14 @@ import { PawPrint, Megaphone } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
+import { isBirthdayToday } from "@/utils/feedDelight";
+import { getLocalPostDateString } from "@/utils/dateUtils";
 
 export const PostCard = memo(function PostCard({
   post,
   liked,
   locked,
+  streak = 0,
   onToggleLike,
   onOpenBarks,
   onOpenDetail,
@@ -44,6 +47,14 @@ export const PostCard = memo(function PostCard({
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
 
+  // Birthday / adoption-day highlight (ticket 2.37): a 🎂 by the name + a thicker
+  // signature-orange frame on the card. Computed from the pet's own date fields
+  // against the viewer's local day — never fabricated when no date is set.
+  const isBirthday = isBirthdayToday(
+    { birthday: post.pet_birthday, adoption_date: post.pet_adoption_date },
+    getLocalPostDateString(),
+  );
+
   return (
     <View
       style={{
@@ -57,8 +68,8 @@ export const PostCard = memo(function PostCard({
         shadowOpacity: 0.08,
         shadowRadius: 16,
         elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
+        borderWidth: isBirthday ? 2.5 : 1,
+        borderColor: isBirthday ? COLORS.coral : COLORS.peach,
       }}
     >
       {/* Header */}
@@ -87,15 +98,27 @@ export const PostCard = memo(function PostCard({
             />
           </View>
           <View>
-            <Text
-              style={{
-                fontWeight: "800",
-                fontSize: 15,
-                color: COLORS.warmBrown,
-              }}
-            >
-              {dogName}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Text
+                style={{
+                  fontWeight: "800",
+                  fontSize: 15,
+                  color: COLORS.warmBrown,
+                }}
+              >
+                {dogName}
+              </Text>
+              {isBirthday ? (
+                <Text accessibilityLabel="Birthday" style={{ fontSize: 15 }}>
+                  🎂
+                </Text>
+              ) : null}
+              {streak > 0 ? (
+                <Text accessibilityLabel={`${streak} day streak`} style={{ fontSize: 13 }}>
+                  🔥{streak}
+                </Text>
+              ) : null}
+            </View>
             {petHandle ? (
               <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
                 @{petHandle}

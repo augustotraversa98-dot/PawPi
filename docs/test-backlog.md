@@ -73,6 +73,12 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.37 — Feed streak 🔥 + birthday 🎂 frame  ·  ticket/feed-streak-birthday (2026-06-18)
+What shipped: (1) a **posting streak** — a 🔥 + consecutive-day count next to the pet name on the **active pet's** cards. Count = consecutive days ending today with a daily post; **0 (no badge) if you haven't posted today** (a missed day breaks the chain). Computed from the pet's recent daily-post days (`GET /api/posts/streak`) against the **phone's local day**, in a pure tested helper. (2) **birthday/adoption highlight** — on a pet's birthday OR adoption anniversary (month+day, any year), a 🎂 appears by the name and the post card gets a thicker **signature-orange frame**.
+- **No migration** — `pets.birthday` / `pets.adoption_date` already exist; added to the feed SELECT. Scope note: the 🔥 badge is fetched for the active pet only (one query, bounded) so it shows on your own cards; 🎂 shows for any pet whose date is today.
+- Exercised by web vitest (+3 streak endpoint) and mobile jest (+10 streak/birthday helper, +5 PostCard render).
+- **NEEDS A DEVICE PASS:** post daily on consecutive days → 🔥 count climbs; skip a day → it resets (no badge until you post). On a pet's birthday/adoption day the 🎂 + orange frame appear; no false positive on other days.
+
 ### [ ] 2.36 — Feed daily-post fixes (delete/reupload, view-today, own posts)  ·  ticket/feed-daily-post-fixes (2026-06-18)
 What shipped: three daily-post bugs fixed. (1) **Delete + reupload** — new owner-only `DELETE /api/posts/[id]` (hard delete; `post_paws`/`post_barks` cascade; deleting today's daily frees the unique slot so `owner-posted-today` flips false and the BeReal composer reopens). A trash button with a confirm appears in the post detail modal **only for your own active pet's post**. (2) **View today** — the handler searched only the feed list (which excluded own posts) so it opened nothing; own posts are now in the feed AND it falls back to the today's-daily object from the API. (3) **Own posts in feed** — the Following group now includes your active pet's posts (newest-first), so your post appears right after posting.
 - **No migration** (posts RLS already owner-write — `posts_author_all` FOR ALL covers DELETE). Exercised by web vitest (+6: DELETE owner-only/401/400/404; feed includes own pet) and mobile jest (+2: delete affordance shown only when own, fires onDelete).

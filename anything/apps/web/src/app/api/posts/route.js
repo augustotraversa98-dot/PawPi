@@ -61,6 +61,8 @@ async function GET(request) {
             pet.name as pet_name,
             pet.handle as pet_handle,
             pet.avatar_url as pet_avatar,
+            pet.birthday as pet_birthday,
+            pet.adoption_date as pet_adoption_date,
             COALESCE(paw_count.count, 0)::int as paw_count,
             COALESCE(bark_count.count, 0)::int as bark_count
           FROM posts p
@@ -99,6 +101,8 @@ async function GET(request) {
         pet.name as pet_name,
         pet.handle as pet_handle,
         pet.avatar_url as pet_avatar,
+        pet.birthday as pet_birthday,
+        pet.adoption_date as pet_adoption_date,
         COALESCE(paw_count.count, 0)::int as paw_count,
         COALESCE(bark_count.count, 0)::int as bark_count
       FROM posts p
