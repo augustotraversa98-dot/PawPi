@@ -65,6 +65,16 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.25 — Search & Discover on real data  ·  ticket/feed-search-discover-real (2026-06-17)
+What shipped: the phone **Search & Discover** screen is now backed by **real data** — the mock discovery data is gone (file deleted; startup no longer seeds it). Typing (debounced) searches real **pets** (name/breed/handle/species), **businesses** (published providers by name), and **pet parents** (username/full name) via a new `GET /api/search?q=`; with no query the screen shows **Discover** — real **Popular Profiles** (pets ranked by followers then paws received) and **Popular Pet Moments** (recent posts) via `GET /api/discover`. Tap-through: a pet/profile → the real pet profile (`/pet-profile?petId`), a business → its storefront (`/service/provider?slug`), a moment → its pet's profile. Public/RLS-scoped fields only (no medical/owner data). No migration. Empty → clean empty states ("No results" / "Nothing here yet"), no mock fallback.
+- **No DB change** (reads existing pets/posts/pet_follows/post_paws/providers/user_profiles). Both routes select **public fields only**; vitest asserts no medical/private leakage and providers are published-only.
+- Exercised by web vitest (search returns pets/owners/providers, public fields, short query → empty, no leakage; discover ranks by real signals) and mobile jest (Discover renders on first load, typing shows real results, tap-through routes, empty states; debounce).
+- **NEEDS A DEVICE PASS** — jest can't exercise the live API or real navigation:
+1. Open **Search** (Feed → search) → with no query, **Popular Profiles** + **Popular Pet Moments** show real pets/posts (or a clean "Nothing here yet" on a fresh DB).
+2. Search a real dog name / breed / business → real results grouped into **Pets / Businesses / Pet parents**; a nonsense query → **"No results"**.
+3. Tap a pet → its profile; tap a business → its storefront; tap a moment → that pet's profile.
+4. Confirm there's no leftover mock content anywhere on the screen.
+
 ### [ ] 2.24 — Web bookings calendar view  ·  ticket/provider-calendar-view (2026-06-17)
 What shipped: a **week/day calendar** in the provider dashboard (new **Calendar** sidebar entry, before Bookings) — dates are columns, times are rows, each booking sits in its start-hour cell showing the pet + what they booked, with a paid/unpaid dot and an in-store/house-visit marker. Navigate weeks/days + **Today**; switch **Week/Day**. Clicking a booking opens a detail popover with the full booking context (owner, service, pet species/breed, location + address, status, **value + paid/unpaid**, notes) and the existing **confirm / decline / cancel / assign** actions (reused from the inbox — not rebuilt). The list inbox stays available; the two cross-link ("Calendar view" ⇄ "List view"). Scoped to the active provider; switching providers recomputes. No migration. **Booking-context only — no medical data on this path.**
 - **No DB change.** The calendar reads `GET /api/providers/[id]/bookings?view=calendar&from=&to=` — the same endpoint as the inbox, extended with a date-window branch that also joins `provider_locations` (location) and `orders` (value + paid). Cross-provider isolation + the no-medical-tables rule are asserted in vitest.

@@ -7,10 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import useSocialPetStore from "@/store/socialPetStore";
 import { mockNotifications } from "@/data/mockNotificationsData";
 import { mockConversations, mockMessages } from "@/data/mockConversationsData";
-import {
-  mockPopularProfiles,
-  mockPopularPetMoments,
-} from "@/data/mockDiscoveryData";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
@@ -68,14 +64,7 @@ export default function RootLayout() {
         store.messages[convId] = msgs;
       });
     }
-
-    // Load discovery data
-    if (store.popularProfiles.length === 0) {
-      store.setPopularProfiles(mockPopularProfiles);
-    }
-    if (store.popularPetMoments.length === 0) {
-      store.setPopularPetMoments(mockPopularPetMoments);
-    }
+    // Discover data is now fetched live from /api/discover (ticket 2.25) — no seeding.
   }, []);
 
   useEffect(() => {
