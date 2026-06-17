@@ -5,6 +5,7 @@ import { requireProviderRole } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { exchangeOAuthCode } from "@/app/api/utils/payments/mercadopago";
 import { PaymentsNotConfiguredError } from "@/app/api/utils/payments/config";
+import { encryptToken } from "@/app/api/utils/payments/tokenCrypto";
 
 // POST /api/providers/[id]/payment-accounts/mercadopago/callback — COMPLETE the OAuth
 // connect (ticket 2.3). owner|admin posts the `code` + `state` returned by MercadoPago;
@@ -37,12 +38,19 @@ async function POST(request, { params }) {
 
     const token = await exchangeOAuthCode(code);
 
+    // Encrypt the secrets BEFORE they touch the DB (ticket 2.16). account_ref is a public
+    // payout handle and meta must carry no secret, so both are stored as-is. If
+    // PAYMENTS_TOKEN_KEY is unset, encryptToken throws a 503-shaped config error (caught
+    // below) — we refuse to persist a token in plaintext.
+    const accessTokenEnc = encryptToken(token.accessToken);
+    const refreshTokenEnc = encryptToken(token.refreshToken ?? null);
+
     // UPSERT — one row per (provider, rail). Re-connecting refreshes the token.
     await sql`
       INSERT INTO provider_payment_accounts
         (provider_id, rail, access_token, refresh_token, account_ref, meta, status)
       VALUES (
-        ${providerId}, 'mercadopago', ${token.accessToken}, ${token.refreshToken ?? null},
+        ${providerId}, 'mercadopago', ${accessTokenEnc}, ${refreshTokenEnc},
         ${token.accountRef ?? null}, ${sql.json(token.meta ?? {})}, 'connected'
       )
       ON CONFLICT (provider_id, rail) DO UPDATE SET

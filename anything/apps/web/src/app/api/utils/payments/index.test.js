@@ -37,6 +37,7 @@ import {
   payout,
 } from './index';
 import { PaymentsNotConfiguredError } from './config';
+import { encryptToken } from './tokenCrypto'; // real (not mocked) — proves decrypt-on-read
 
 const MP_ENV = ['MP_CLIENT_ID', 'MP_CLIENT_SECRET', 'MP_WEBHOOK_SECRET'];
 const BIN_ENV = ['BINANCE_PAY_API_KEY', 'BINANCE_PAY_API_SECRET'];
@@ -257,5 +258,47 @@ describe('getStatus / refund / payout', () => {
     await expect(payout({ id: 5 }, 100, { rail: 'binance' })).rejects.toBeInstanceOf(
       PaymentsNotConfiguredError,
     );
+  });
+});
+
+describe('decrypt-on-read (ticket 2.16)', () => {
+  const TOKEN_KEY = '0'.repeat(64);
+  let savedKey;
+  beforeEach(() => {
+    savedKey = process.env.PAYMENTS_TOKEN_KEY;
+    process.env.PAYMENTS_TOKEN_KEY = TOKEN_KEY;
+  });
+  afterEach(() => {
+    if (savedKey === undefined) delete process.env.PAYMENTS_TOKEN_KEY;
+    else process.env.PAYMENTS_TOKEN_KEY = savedKey;
+  });
+
+  it('loadProviderAccount hands the adapter a DECRYPTED token (row stored encrypted)', async () => {
+    configureMp();
+    // The DB row carries CIPHERTEXT (as it would after the 2.16 encrypt-on-write).
+    sql.mockResolvedValueOnce([
+      { id: 1, rail: 'mercadopago', access_token: encryptToken('PLAINTEXT_TOKEN') },
+    ]); // loadProviderAccount
+    mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u' });
+    sql.mockResolvedValueOnce([{ id: 99, status: 'pending' }]); // INSERT payment
+
+    await createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' });
+
+    // The adapter must see PLAINTEXT, never the enc:v1: ciphertext.
+    const passedAccount = mp.createCheckout.mock.calls[0][0].account;
+    expect(passedAccount.access_token).toBe('PLAINTEXT_TOKEN');
+  });
+
+  it('a legacy plaintext row passes through decrypt unchanged', async () => {
+    configureMp();
+    sql.mockResolvedValueOnce([
+      { id: 1, rail: 'mercadopago', access_token: 'legacy-plain' },
+    ]);
+    mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u' });
+    sql.mockResolvedValueOnce([{ id: 99, status: 'pending' }]);
+
+    await createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' });
+
+    expect(mp.createCheckout.mock.calls[0][0].account.access_token).toBe('legacy-plain');
   });
 });
