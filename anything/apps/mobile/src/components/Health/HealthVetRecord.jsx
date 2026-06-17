@@ -7,6 +7,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -35,7 +36,9 @@ import {
   X,
   CheckCircle,
   ClipboardList,
+  Trash2,
 } from "lucide-react-native";
+import { AddDocumentModal } from "./VetRecord/AddDocumentModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import EditMedicalProfileModal from "./VetRecord/EditMedicalProfileModal";
@@ -203,6 +206,46 @@ export default function HealthVetRecord() {
     },
     enabled: !!currentPet?.id && expandedSections.documents,
   });
+
+  // Owner document upload + management (ticket 2.41).
+  const [addDocVisible, setAddDocVisible] = useState(false);
+  const refetchDocuments = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["vet-record-documents", currentPet?.id],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["vet-record-summary", currentPet?.id],
+    });
+  }, [queryClient, currentPet?.id]);
+
+  const openDocument = useCallback((doc) => {
+    if (doc?.file_url) Linking.openURL(doc.file_url).catch(() => {});
+  }, []);
+
+  const deleteDocument = useCallback(
+    (doc) => {
+      Alert.alert("Delete document?", `Remove "${doc.name}"?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await fetch(
+                `/api/vet-record/documents?id=${doc.id}`,
+                { method: "DELETE" },
+              );
+              if (!res.ok) throw new Error("Failed to delete");
+              refetchDocuments();
+            } catch (e) {
+              Alert.alert("Error", "Could not delete the document.");
+            }
+          },
+        },
+      ]);
+    },
+    [refetchDocuments],
+  );
 
   // Fetch vet notes
   const { data: vetNotesData } = useQuery({
@@ -1435,6 +1478,30 @@ export default function HealthVetRecord() {
         />
         {expandedSections.documents && (
           <View style={{ marginBottom: 16 }}>
+            {/* Owner upload (ticket 2.41) */}
+            <TouchableOpacity
+              testID="add-document"
+              onPress={() => setAddDocVisible(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                backgroundColor: C.coral + "15",
+                borderRadius: 14,
+                paddingVertical: 14,
+                marginBottom: 12,
+                borderWidth: 1.5,
+                borderColor: C.coral,
+                borderStyle: "dashed",
+              }}
+            >
+              <Plus size={18} color={C.coral} />
+              <Text style={{ color: C.coral, fontWeight: "700", fontSize: 14 }}>
+                Add document
+              </Text>
+            </TouchableOpacity>
+
             {documentsData?.documents?.length === 0 ? (
               <EmptyState
                 icon={FileText}
@@ -1443,8 +1510,11 @@ export default function HealthVetRecord() {
               />
             ) : (
               documentsData?.documents?.map((doc) => (
-                <View
+                <TouchableOpacity
                   key={doc.id}
+                  testID="vet-document-row"
+                  onPress={() => openDocument(doc)}
+                  activeOpacity={0.85}
                   style={{
                     backgroundColor: C.card,
                     borderRadius: 16,
@@ -1517,7 +1587,14 @@ export default function HealthVetRecord() {
                       </View>
                     </View>
                   </View>
-                </View>
+                  <TouchableOpacity
+                    testID="delete-document"
+                    onPress={() => deleteDocument(doc)}
+                    hitSlop={8}
+                  >
+                    <Trash2 size={18} color={C.mutedBrown} />
+                  </TouchableOpacity>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -2054,6 +2131,14 @@ export default function HealthVetRecord() {
           onSave={refetchMedicalProfile}
         />
       )}
+
+      {/* Add Document Modal (ticket 2.41) */}
+      <AddDocumentModal
+        visible={addDocVisible}
+        onClose={() => setAddDocVisible(false)}
+        petId={currentPet?.id}
+        onSaved={refetchDocuments}
+      />
     </RefreshableScrollView>
   );
 }

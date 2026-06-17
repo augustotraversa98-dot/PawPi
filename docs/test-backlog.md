@@ -73,6 +73,11 @@ go-live checklist in `PawPi_instructions.md`.
 
 ## To test
 
+### [ ] 2.41 — Vet Record: owner upload + complete info  ·  ticket/vet-record-owner-upload (2026-06-18)
+What shipped: the owner can now **add documents** to the Vet Record. The Documents section has an **"Add document"** button → a modal (name + type chips + a **photo of the paperwork** via the image picker + a date) → Supabase Storage upload → `POST /api/vet-record/documents` (owner-scoped). Each document row is **tappable to open** the file and has a **delete** (owner, confirm). Empty state stays when there are none. The medical-profile **edit** path (EditMedicalProfileModal → `onSave` refetch) already persists, so "complete info" works.
+- **No migration** — `vet_documents` already exists and is owner-scoped (RLS R2c). Its owner-only access is already proven in `owner-private-rls.integration.test.ts`, so no new integration test. Exercised by web vitest (+7: GET/POST/DELETE owner-scoped, validation, 401/400) and mobile jest (+2: the add flow uploads → POSTs the right body → refetch + close).
+- **NEEDS A DEVICE PASS:** add a document (pick a photo) → it appears newest-first and **opens** when tapped; **delete** removes it; edit medical info → persists across reopen; empty sections show empty states. (Native image upload uses the shared `fetch.ts` path — confirm on a real device.)
+
 ### [ ] 2.40 — Unified Messages (people + businesses + owner search)  ·  ticket/unified-messages (2026-06-18)
 What shipped: the Messages screen is now ONE hub that lists **owner↔owner DMs (People)** and **owner↔business chats (Businesses)** together, newest-first, each with name/avatar + last message + unread badge. A segmented **All / People / Businesses** filter scopes the list. A **search** field finds pet owners (reusing the 2.25 search) → tap one → starts/reuses the DM (idempotent 2.27 route) and opens the chat. People route to `/chat`, businesses to `/provider-chat` — the two backends (`dm_threads` vs `message_threads`) stay separate, just presented together.
 - **No migration / no new web code** (reuses `/api/dm-threads`, `/api/threads`, `/api/search`). Exercised by mobile jest (+: both kinds listed, filter scopes, correct routing per kind, search→start-DM).
