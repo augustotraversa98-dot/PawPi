@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Resolve the caller's user_profiles.id and verify they own followerPetId.
@@ -69,21 +70,34 @@ async function POST(request, { params }) {
       );
     }
 
-    // The followed pet must exist.
+    // The followed pet must exist (owner_user_id = the notification recipient).
     const followedPet = await sql`
-      SELECT id FROM pets WHERE id = ${followedPetId} LIMIT 1
+      SELECT id, owner_user_id FROM pets WHERE id = ${followedPetId} LIMIT 1
     `;
 
     if (followedPet.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
-    // Idempotent: a repeat follow is a no-op, not a duplicate.
-    await sql`
+    // Idempotent: a repeat follow is a no-op, not a duplicate. RETURNING tells us
+    // whether a NEW follow happened, so we only notify on a genuine new follow.
+    const inserted = await sql`
       INSERT INTO pet_follows (follower_pet_id, followed_pet_id)
       VALUES (${followerPetId}, ${followedPetId})
       ON CONFLICT (follower_pet_id, followed_pet_id) DO NOTHING
+      RETURNING follower_pet_id
     `;
+
+    if (inserted.length > 0) {
+      // Notify the followed pet's owner (ticket 2.26). Fire-and-don't-block.
+      await safeNotify({
+        recipient: followedPet[0].owner_user_id,
+        actor: owner.userId,
+        type: "follow",
+        subjectRef: String(followedPetId),
+        body: "started following your pet",
+      });
+    }
 
     const followersCount = await followersCountOf(followedPetId);
 

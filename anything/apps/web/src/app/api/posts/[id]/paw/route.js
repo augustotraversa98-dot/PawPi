@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // Add a paw to a post
@@ -29,9 +30,9 @@ async function POST(request, { params }) {
 
     const userId = userProfile[0].id;
 
-    // Check if post exists
+    // Check if post exists (user_id = the owner, the notification recipient)
     const post = await sql`
-      SELECT id FROM posts WHERE id = ${postId} LIMIT 1
+      SELECT id, user_id FROM posts WHERE id = ${postId} LIMIT 1
     `;
 
     if (post.length === 0) {
@@ -57,10 +58,19 @@ async function POST(request, { params }) {
 
     // Get new paw count
     const pawCount = await sql`
-      SELECT COUNT(*)::int as count 
-      FROM post_paws 
+      SELECT COUNT(*)::int as count
+      FROM post_paws
       WHERE post_id = ${postId}
     `;
+
+    // Notify the post's owner (ticket 2.26). Fire-and-don't-block; never self-notify.
+    await safeNotify({
+      recipient: post[0].user_id,
+      actor: userId,
+      type: "paw",
+      subjectRef: String(postId),
+      body: "pawed your post",
+    });
 
     return Response.json({
       success: true,

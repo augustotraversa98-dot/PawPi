@@ -16,7 +16,7 @@ vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7 };
 const OWNED_PET = { id: 1 }; // follower pet, owned by profile 7
-const FOLLOWED_PET = { id: 2 };
+const FOLLOWED_PET = { id: 2, owner_user_id: 9 }; // owned by a DIFFERENT user (9)
 
 // POST /api/pets/2/follow with body { followerPetId: 1 }
 const followReq = (body = { followerPetId: 1 }) =>
@@ -39,36 +39,52 @@ beforeEach(() => {
 });
 
 describe('POST /api/pets/[id]/follow', () => {
-  it('inserts and returns following:true with followersCount', async () => {
+  it('inserts and returns following:true with followersCount; notifies the followed pet owner', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1: profile, 2: owned-pet, 3: followed-pet exists, 4: INSERT, 5: count
+    // 1: profile, 2: owned-pet, 3: followed-pet, 4: INSERT (RETURNING a new row),
+    // 5: app_notify (ticket 2.26), 6: count
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([OWNED_PET])
       .mockResolvedValueOnce([FOLLOWED_PET])
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce([{ follower_pet_id: 1 }]) // a genuine new follow
+      .mockResolvedValueOnce([{ app_notify: 1 }]) // notify the owner
       .mockResolvedValueOnce([{ count: 1 }]);
 
     const res = await POST(followReq(), { params: { id: '2' } });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ following: true, followersCount: 1 });
+    // The notify targets the followed pet's owner (9), as the actor (7) — never self.
+    const notifyCall = sql.mock.calls.find((c) =>
+      (c?.[0] ?? []).join(" ").includes("app_notify"),
+    );
+    expect(notifyCall).toBeTruthy();
+    const values = notifyCall.slice(1);
+    expect(values).toContain(9); // recipient = followed pet owner
+    expect(values).toContain(7); // actor = caller
+    expect(values).toContain("follow");
   });
 
-  it('is idempotent — a second identical call still 200, count unchanged', async () => {
+  it('is idempotent — a repeat follow 200s, no new row, and does NOT notify', async () => {
     auth.mockResolvedValue(SESSION);
-    // ON CONFLICT DO NOTHING means the INSERT no-ops; count stays 1.
+    // ON CONFLICT DO NOTHING → RETURNING is empty → no notify, just the count.
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([OWNED_PET])
       .mockResolvedValueOnce([FOLLOWED_PET])
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce([]) // no row inserted (already following)
       .mockResolvedValueOnce([{ count: 1 }]);
 
     const res = await POST(followReq(), { params: { id: '2' } });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ following: true, followersCount: 1 });
+    // No app_notify call on a repeat follow.
+    const notifyCall = sql.mock.calls.find((c) =>
+      (c?.[0] ?? []).join(" ").includes("app_notify"),
+    );
+    expect(notifyCall).toBeFalsy();
   });
 
   it('403 when followerPetId is not owned by the caller', async () => {
