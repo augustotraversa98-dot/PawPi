@@ -738,6 +738,52 @@ export async function seedGeneralBooking(
 }
 
 /**
+ * Seed a message_thread between owner `ownerUserId` and `providerId` (ticket 2.5 —
+ * chat). bookingId optional (a booking-tied thread). Used to exercise the
+ * participant-scoped RLS.
+ */
+export async function seedThread(
+  sql: Sql,
+  opts: {
+    threadId: number;
+    ownerUserId: number;
+    providerId: number;
+    bookingId?: number | null;
+  },
+): Promise<{ threadId: number }> {
+  const { threadId, ownerUserId, providerId, bookingId = null } = opts;
+  await sql`
+    insert into message_threads (id, owner_user_id, provider_id, booking_id)
+    values (${threadId}, ${ownerUserId}, ${providerId}, ${bookingId})
+  `;
+  return { threadId };
+}
+
+/**
+ * Seed a message on `threadId` authored by `senderUserId` (ticket 2.5). body defaults
+ * off the id; readAt optional (a read message). Used to exercise the messages RLS +
+ * unread count.
+ */
+export async function seedMessage(
+  sql: Sql,
+  opts: {
+    messageId: number;
+    threadId: number;
+    senderUserId: number;
+    body?: string;
+    attachmentUrl?: string | null;
+    readAt?: string | null;
+  },
+): Promise<{ messageId: number }> {
+  const { messageId, threadId, senderUserId, body, attachmentUrl = null, readAt = null } = opts;
+  await sql`
+    insert into messages (id, thread_id, sender_user_id, body, attachment_url, read_at)
+    values (${messageId}, ${threadId}, ${senderUserId}, ${body ?? `msg-${messageId}`}, ${attachmentUrl}, ${readAt})
+  `;
+  return { messageId };
+}
+
+/**
  * Seed a pet_medical_profiles row for `petId` owned by `ownerUserId` (R2d
  * provider-accessible medical group). One row per pet (unique pet_id). microchip_id
  * carries the id for readable assertions.

@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Stethoscope,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -44,7 +45,7 @@ export default function VetScreen() {
         >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </TouchableOpacity>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
             Veterinary 🏥
           </Text>
@@ -52,6 +53,21 @@ export default function VetScreen() {
             Find and book a vet
           </Text>
         </View>
+        {/* Owner ↔ provider Messages inbox (ticket 2.5). */}
+        <TouchableOpacity
+          onPress={() => router.push("/provider-messages")}
+          accessibilityLabel="Messages"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: COLORS.sand,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <MessageSquare size={20} color={COLORS.coral} />
+        </TouchableOpacity>
       </View>
 
       <RefreshableScrollView

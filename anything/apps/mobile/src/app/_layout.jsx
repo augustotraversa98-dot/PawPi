@@ -108,6 +108,10 @@ export default function RootLayout() {
           <Stack.Screen name="search" options={{ presentation: "modal" }} />
           <Stack.Screen name="messages" options={{ presentation: "modal" }} />
           <Stack.Screen name="chat" />
+          {/* Owner ↔ provider messaging (ticket 2.5) — distinct from the social-pet
+              messages/chat screens above. */}
+          <Stack.Screen name="provider-messages" />
+          <Stack.Screen name="provider-chat" />
         </Stack>
         <AuthModal />
       </GestureHandlerRootView>
