@@ -44,7 +44,8 @@ Build order + blockers in [`docs/phase2-tickets/00-README.md`](phase2-tickets/00
 - ✅ **2.17** sub auto-charge cron — merged (#132), migration 0039 (fn only).
 - ✅ **2.18** telehealth — merged (#133), migration 0040 (telehealth_sessions + 2 widened CHECKs).
 - ✅ **2.19** More-tab nav fix — merged (#134), no migration (service screens → root `service/` stack).
-- 🔨 **2.20** provider onboarding links — PR open, migration 0041 (4 link columns) · ☐ 2.21 enrichment (⛔2.20)
+- ✅ **2.20** provider onboarding links — merged (#135), migration 0041 (4 link columns).
+- 🔨 **2.21** AI enrichment (confirm-first) — PR open, no migration (proposes a draft; applies via existing routes).
 - ☐ 2.23 service images · ☐ 2.22 storefront (⛔2.20/2.23) · ☐ 2.24 calendar
 - ☐ 2.25 search/discover · ☐ 2.26 notifications · ☐ 2.27 owner DMs · ☐ 2.28 share frame
 - ☐ 2.30 adoption deep-link (⛔2.19) · ☐ 2.29 i18n · ☐ 2.31 docs hygiene

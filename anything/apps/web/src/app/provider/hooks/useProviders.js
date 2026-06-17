@@ -270,6 +270,20 @@ export function useUpdateProviderProfile(providerId) {
   });
 }
 
+// Confirm-first enrichment (ticket 2.21): POST .../enrich returns a PROPOSED draft from the
+// provider's links. It writes NOTHING — the UI pre-fills the edit form from the draft and the
+// provider saves via useUpdateProviderProfile. A clean 503 surfaces when enrichment is unconfigured.
+export function useEnrichProvider(providerId) {
+  return useMutation({
+    mutationFn: async () => {
+      const data = await getJson(`/api/providers/${providerId}/enrich`, {
+        method: "POST",
+      });
+      return data; // { draft, sources, applied:false }
+    },
+  });
+}
+
 // Publish / unpublish — the single status toggle (POST .../publish {status}).
 // status is 'draft' | 'published'. On success refresh the same caches so the
 // shell + profile reflect the new state.
