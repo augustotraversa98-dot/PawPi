@@ -11,6 +11,39 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## ⚙️ ACTION 1 — Apply Phase 2 migrations to Supabase (in order, after the merges)
+
+These were built + proven in the test harness but, per Cowork's rule, NOT applied to live Supabase.
+Hand-apply in numeric order, then the live app gets all the new features. (Same harness-only pattern
+as the RLS migrations 0019–0026.)
+
+```
+0027_provider_capabilities.sql        (2.1 — one business, many services)
+0028_rls_provider_reviews_surfacing.sql (2.2 — reviews/ratings)
+0029_payments_foundation.sql          (2.3 — money tables)
+0030_generalized_booking.sql          (2.4 — booking for all services)
+0031_chat_messaging.sql               (2.5 — owner↔provider chat)
+0032_grooming_sessions.sql            (2.6)
+0033_walk_sessions.sql                (2.7)
+0034_daycare_boarding.sql             (2.8)
+0035_sitting_visits.sql               (2.9)
+0036_training_module.sql              (2.10)
+0037_shop_ecommerce.sql               (2.11)
+0038_adoption.sql                     (2.12)
+```
+(2.13 feed + 2.14 dashboards added NO migration — read-only.)
+
+## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
+Set up a MercadoPago marketplace app (OAuth client) + a Binance Pay merchant account, set the env keys
+(see the commented block added in 2.3), register webhook/redirect URLs, and connect each provider's
+account. Until then, every checkout shows a clean "payments not configured" message (nothing crashes).
+
+## ⚙️ ACTION 3 — Pre-launch security
+Change the `pawpi_app` DB password (currently the placeholder `pawpi_app`) before real users — see the
+go-live checklist in `PawPi_instructions.md`.
+
+---
+
 ## To test
 
 ### [ ] 2.14 — Dashboards & analytics (provider overview + owner hub)  ·  ticket/dashboards-analytics (2026-06-17)

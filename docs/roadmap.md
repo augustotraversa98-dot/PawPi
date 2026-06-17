@@ -19,7 +19,24 @@ Tags: **scope** fe/be/db · **safe-parallel** yes only if it touches files no ot
 
 ---
 
-## ★ CURRENT PRIORITY — Phase 2: the pet-services super-app
+## ✅ PHASE 2 COMPLETE (2026-06-17) — all 15 tickets merged
+
+2.0 nav · 2.1 capabilities · 2.2 reviews · 2.3 payments · 2.4 booking · 2.5 chat · 2.6 grooming ·
+2.7 walking · 2.8 daycare · 2.9 sitting · 2.10 training · 2.11 shop · 2.12 adoption · 2.13 feed ·
+2.14 dashboards. PRs #109–#127. Migrations 0027–0038 pending hand-apply to Supabase (see
+[`docs/test-backlog.md`](test-backlog.md) ACTION 1). Device tests + go-live actions also in the backlog.
+
+### Phase 2 follow-ups (noted by build agents — not blocking, schedule when wanted)
+- **Payments:** recurring-subscription scheduler/cron (fire `next_charge_at` → order+charge); encrypt provider OAuth tokens at rest.
+- **Capabilities:** mobile provider-onboarding multi-select + owner discovery filter chips by capability.
+- **Adoption:** per-listing deep-link from feed/discovery (currently opens the adoption hub); foster workflow; urgent/featured listings; multi-pet bulk import.
+- **Native uploads:** photo/video upload for visit/session media needs real-device re-test (shared fetch.ts path).
+- **Docs hygiene:** `ARCHITECTURE.md` says a standalone `useCurrentPet.js` exists — it actually lives in `usePetProfile.js`; `supabase/SCHEMA_NOTES.md` migration-order line stops at 0011. Refresh both.
+- **Social mock chat:** the old pet-friend chat (`messages.jsx`/`chat.jsx`) still uses mock data (separate from the new provider chat) — convert off mock or retire.
+
+---
+
+## ★ PREVIOUS PRIORITY — Phase 2: the pet-services super-app (now done; reference below)
 
 From the master plan's sequenced roadmap (§6). Surface-what's-live first, then the cross-cutting
 unlocks (payments/reviews/chat/booking) that make every later service cheap, then roll out types.
