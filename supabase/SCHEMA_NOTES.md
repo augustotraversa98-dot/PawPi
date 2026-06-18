@@ -6,7 +6,7 @@ The earlier version of this file documented *guesses* from a code-only reconstru
 
 Migration order: numeric, `0001` → current. **`supabase/migrations/` is the source of truth** for the
 full list (don't hand-maintain an enumeration here — it goes stale). As of this writing the set runs
-`0001`–`0045`, in four arcs:
+`0001`–`0055`, in five arcs:
 - **0001–0011 — base schema:** auth, user_profiles, pets, social, vet_records, routines, social_walks,
   health_logs, the double-encoded-jsonb backfill (0009), the wellness `general` check-type widen (0010),
   and reminder_dismissals (0011).
@@ -20,6 +20,12 @@ full list (don't hand-maintain an enumeration here — it goes stale). As of thi
   adoption, the subscription cron fn (0039), telehealth (0040), provider links (0041), provider_posts
   (0042), provider_services.image_urls (0043), notifications + `app_notify` (0044), and owner↔owner DMs
   (0045).
+- **0046–0055 — Wave 5 + Wave 6 features:** walks-with-buddies (0046), community forum (0047),
+  self-training progress (0048), family/caregiver sharing (0049), lost & found (0050); then Wave 6 —
+  emergency medical card + DEFINER public-read fns (0051), transport_trips (0052), vet prescriptions +
+  refill DEFINER helpers (0053), insurance marketplace + capability-CHECK widen (0054), and the additive
+  adoption foster/urgent flags (0055). 0046–0050 are APPLIED to Supabase; **0051–0055 are harness-proven
+  and PENDING hand-apply** (see `docs/test-backlog.md` ACTION 1).
 
 Migrations are written to be **re-runnable** (DDL uses `IF NOT EXISTS`/`CREATE OR REPLACE`; data backfills
 and constraint-widens drop-if-exists then re-add). Per-migration call-outs that matter are kept below; the

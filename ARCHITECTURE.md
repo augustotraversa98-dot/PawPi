@@ -230,6 +230,51 @@ Routine creation is **not a router route** — it is in-component React Native `
 
 ---
 
+## Wave 6 feature surfaces (tickets 2.51–2.58)
+
+Added on top of the unified provider spine + RLS model. Migrations **0051–0055** are harness-proven
+and PENDING hand-apply to Supabase (`docs/test-backlog.md` ACTION 1). All new owned tables are
+ENABLE+FORCE RLS and pass the completeness guard (`test/integration/rls-gap-closure.integration.test.ts`).
+
+- **Emergency Card (2.51, migration 0051).** Owner-facing card that ASSEMBLES existing medical sources
+  (`pet_medical_profiles`/`pet_allergies`/`pet_conditions`/`pets` + the 0050 `lost_reports`) for a real
+  vet, plus two **PUBLIC no-login web pages**: `/p/tag/[token]` (the permanent printed-QR tag — basic
+  info; medical only if the owner opts in) and `/p/card/[token]` (a revocable/expiring vet link).
+  Tables: `pet_emergency_cards` + `pet_emergency_share_links`, both **OWNER FOR ALL only**. The public
+  read is NOT a broad policy — it flows ONLY through SECURITY DEFINER fns `app_emergency_card_by_tag`,
+  `app_emergency_card_by_link`, `app_emergency_relay_contact` (pinned search_path, GRANT to pawpi_app).
+  Owner API: `/api/emergency-card` (+ `/links`); public API: `/api/public/emergency/tag|card/[token]`.
+  Mobile screen `app/emergency-card.jsx` (reached from the Vet Record) reuses the 2.28 share +
+  `react-native-qrcode-svg` for the printable tag. Widens `notifications_type_check` for `'emergency_contact'`.
+- **Transport / pet-taxi (2.52, migration 0052).** A `transport` capability on the spine; a trip IS a
+  generalized booking (2.4), so it surfaces in the existing inbox/calendar. New `transport_trips`
+  (owner FOR-ALL-but-can't-self-advance + active-staff read/update; reuses `app_is_active_staff_of`).
+  Web: `/api/providers/[id]/transport-trips` (+ `[tripId]`), owner `/api/transport-trips`. Mobile:
+  `app/service/transport.jsx` (discovery → booking form with `WalkMapPicker` pickup/dropoff → trips list).
+- **Vet prescriptions / Rx (2.53, migration 0053).** A section INSIDE Veterinary + the Vet Record, NOT
+  a pharmacy. `prescriptions` (OWNER read-only, append-only — no provider UPDATE/DELETE policy) +
+  `rx_refill_requests` (owner files, vet decides). Controlled mutations via DEFINER helpers
+  `decide_rx_refill` (decrements refills on approve) + `cancel_rx`; INSERT gate `app_provider_can_rx`
+  (staff + medical_write grant OR booking). Mobile: `PrescriptionsSection` in the Vet Record
+  ("Prescribed by {clinic}", request refill, no owner edit).
+- **Insurance marketplace (2.54, migration 0054).** A lead-gen `insurance` capability (capability CHECKs
+  + ALLOWED_CAPABILITIES widened). `insurance_plans` (admin-managed; published-public read, two-tier like
+  provider_services) + `insurance_leads` (owner-or-provider scoped). No binding/payment, no Vet Record
+  sent. Web: `/api/providers/[id]/insurance-plans|insurance-leads`, owner `/api/insurance-leads`. Mobile:
+  `app/service/insurance.jsx` (discovery → plans → compare → quote form prefilled from the pet → lead).
+- **Adoption foster/urgent flags (2.57, migration 0055).** ADDITIVE columns riding the existing adoption
+  RLS (0038): `adoptable_listings` += `placement_type`/`is_urgent`/`is_featured`/`urgent_reason`/
+  `featured_until`; `adoption_applications` += `requested_placement`. Browse orders featured-first; mobile
+  shows an URGENT badge + foster/adopt picker. No new table, no policy change.
+- **Feed "Suggested" divider (2.58, no migration).** `mergeFeed` tags each post `feed_group`
+  (`following`|`suggested`); `UnlockedFeed` renders a "Suggested for you" divider at the boundary, only
+  when followed content sits above real suggested content.
+- **Followers/Following route fix (2.67, no migration).** Hardened the 2.61 `/follows` navigation
+  (absolute-href to the root route + active-pet fallback so the embedded Profile tab never pushes an
+  empty petId; counts non-interactive while the pet loads).
+
+---
+
 ## Top 5 things I'm least sure about (please verify)
 
 1. **Live DB schema vs. code-inferred schema.** No migration/DDL files exist in the repo; the 32 table names and all column mappings (incl. `pets.owner_user_id → user_profiles.id`) are inferred from queries only. Whether the actual Neon DB has these tables, columns, and FK constraints — and whether existing `pets` rows still carry the *wrong* `owner_user_id` (auth id) that the repair handler targets — needs to be checked against the real database.

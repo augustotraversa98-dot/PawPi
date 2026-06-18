@@ -14,10 +14,17 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 export function mergeFeed(following, suggested, { limit, offset }) {
   const seen = new Set();
   const ordered = [];
-  for (const post of [...following, ...suggested]) {
+  // Tag each post's feed_group so the client can render a "Suggested for you"
+  // divider at the boundary (ticket 2.58) — additive labeling, ordering unchanged.
+  for (const post of following) {
     if (seen.has(post.id)) continue;
     seen.add(post.id);
-    ordered.push(post);
+    ordered.push({ ...post, feed_group: "following" });
+  }
+  for (const post of suggested) {
+    if (seen.has(post.id)) continue;
+    seen.add(post.id);
+    ordered.push({ ...post, feed_group: "suggested" });
   }
   return ordered.slice(offset, offset + limit);
 }
