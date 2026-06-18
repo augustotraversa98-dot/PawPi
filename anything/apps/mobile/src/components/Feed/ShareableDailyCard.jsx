@@ -10,14 +10,17 @@ import { COLORS } from "@/constants/colors";
 // forwardRef so the capture target is this view. The exact art is a judgment call — Tats
 // will eyeball + tweak on device.
 const ShareableDailyCard = forwardRef(function ShareableDailyCard(
-  { petName, photoUri },
+  { petName, photoUri, onReady, onError },
   ref,
 ) {
   const name = petName || "My pup";
+  // The card is "ready" to capture only once the hero image has decoded. When
+  // there's no photo, it's ready as soon as it lays out (nothing to wait for).
   return (
     <View
       ref={ref}
       collapsable={false}
+      onLayout={!photoUri && onReady ? () => onReady() : undefined}
       style={{
         width: 360,
         height: 640, // 9:16
@@ -56,9 +59,14 @@ const ShareableDailyCard = forwardRef(function ShareableDailyCard(
       >
         {photoUri ? (
           <Image
+            testID="share-card-image"
             source={{ uri: photoUri }}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="high"
+            onLoad={onReady}
+            onError={onError}
           />
         ) : (
           <View

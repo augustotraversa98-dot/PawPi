@@ -94,7 +94,7 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
 
 **Part A — mobile UX fix-pack (do FIRST; NO migrations):**
 - ✅ **2.55** remove "Phoebe" + avatar fallback — do first (avatar fallback reused by 2.60).
-- ☐ **2.62** share frame attaches the real daily-moment photo (capture was firing before image load).
+- ✅ **2.62** share frame attaches the real daily-moment photo (capture was firing before image load).
 - ☐ **2.63** app-wide keyboard: tap field first, then keyboard (kill auto-focus on bark/comments).
 - ☐ **2.64** double-tap image → Paw/like (brand-color animation).
 - ☐ **2.65** edit own daily-update caption (owner-only PATCH posts/[id]).

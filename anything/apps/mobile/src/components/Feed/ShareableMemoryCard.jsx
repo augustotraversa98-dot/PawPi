@@ -9,14 +9,18 @@ import { COLORS } from "@/constants/colors";
 // a big STAT (wrapped slide / milestone). Rendered off-screen + snapshotted; forwardRef so
 // the capture target is this view.
 const ShareableMemoryCard = forwardRef(function ShareableMemoryCard(
-  { petName, headline, subtitle, emoji, photoUri, stat, statLabel },
+  { petName, headline, subtitle, emoji, photoUri, stat, statLabel, onReady, onError },
   ref,
 ) {
   const name = petName || "My pup";
+  // Photo slides are "ready" only once the hero image decodes; stat/emoji slides
+  // (no photo) are ready as soon as they lay out.
   return (
     <View
       ref={ref}
+      testID="shareable-memory-card"
       collapsable={false}
+      onLayout={!photoUri && onReady ? () => onReady() : undefined}
       style={{
         width: 360,
         height: 640,
@@ -47,7 +51,16 @@ const ShareableMemoryCard = forwardRef(function ShareableMemoryCard(
         }}
       >
         {photoUri ? (
-          <Image source={{ uri: photoUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          <Image
+            testID="memory-card-image"
+            source={{ uri: photoUri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="high"
+            onLoad={onReady}
+            onError={onError}
+          />
         ) : (
           <>
             {emoji ? <Text style={{ fontSize: 72, marginBottom: 12 }}>{emoji}</Text> : null}

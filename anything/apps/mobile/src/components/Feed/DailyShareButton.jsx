@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Share2 } from "lucide-react-native";
 import { captureRef } from "react-native-view-shot";
@@ -17,11 +17,37 @@ export function shareCaption(petName) {
 // system share sheet (expo-sharing → Instagram Stories / X / etc.). Optional + graceful:
 // any failure (capture or sharing unavailable) is a no-op, never a crash. The daily-post
 // flow + BeReal lock are untouched.
+// How long to wait for the photo to decode before giving up (ticket 2.62). A slow
+// image must never hang the share forever — and we never snapshot a blank card.
+const CAPTURE_TIMEOUT_MS = 5000;
+
 export function DailyShareButton({ petName, photoUri, locked, size = 20, color }) {
   const cardRef = useRef(null);
   const [capturing, setCapturing] = useState(false);
+  const doneRef = useRef(false); // guards against onReady/onError/timeout double-firing
+  const timeoutRef = useRef(null);
 
-  const onCardReady = useCallback(async () => {
+  const clearTimer = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  // Tear down a pending capture without sharing — used on error/timeout.
+  const abort = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    clearTimer();
+    setCapturing(false);
+  }, [clearTimer]);
+
+  // Fires only once the hero image has actually decoded (ticket 2.62), so the
+  // snapshot contains the real photo, not the blank cream center.
+  const onReady = useCallback(async () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    clearTimer();
     try {
       const uri = await captureRef(cardRef, { format: "png", quality: 1 });
       const available = await Sharing.isAvailableAsync().catch(() => false);
@@ -37,11 +63,16 @@ export function DailyShareButton({ petName, photoUri, locked, size = 20, color }
     } finally {
       setCapturing(false);
     }
-  }, [petName]);
+  }, [petName, clearTimer]);
+
+  useEffect(() => clearTimer, [clearTimer]);
 
   const onPress = () => {
     if (locked || !photoUri) return;
-    setCapturing(true); // mounts the off-screen card; capture fires on its layout
+    doneRef.current = false;
+    clearTimer();
+    timeoutRef.current = setTimeout(abort, CAPTURE_TIMEOUT_MS);
+    setCapturing(true); // mounts the off-screen card; capture waits for image load
   };
 
   return (
@@ -53,11 +84,16 @@ export function DailyShareButton({ petName, photoUri, locked, size = 20, color }
       {capturing && (
         <View
           testID="share-capture-card"
-          onLayout={onCardReady}
           pointerEvents="none"
           style={{ position: "absolute", left: -9999, top: -9999 }}
         >
-          <ShareableDailyCard ref={cardRef} petName={petName} photoUri={photoUri} />
+          <ShareableDailyCard
+            ref={cardRef}
+            petName={petName}
+            photoUri={photoUri}
+            onReady={onReady}
+            onError={abort}
+          />
         </View>
       )}
     </>
