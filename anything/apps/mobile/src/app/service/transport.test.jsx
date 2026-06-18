@@ -21,7 +21,7 @@ jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
 });
-jest.mock("@/components/SocialWalks/WalkMapPicker", () => () => null);
+jest.mock("@/components/Map/MapLocationPicker", () => () => null);
 jest.mock("@/components/DateField", () => {
   const { Text, TouchableOpacity } = require("react-native");
   return {

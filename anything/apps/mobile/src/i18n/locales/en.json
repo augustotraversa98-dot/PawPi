@@ -59,5 +59,13 @@
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "empty": "No new notifications yet"
+  },
+  "map": {
+    "setOnMap": "Set location on map",
+    "myLocation": "My location",
+    "tapToDrop": "Tap the map to drop a pin",
+    "pinned": "Pinned",
+    "noLocation": "No location set",
+    "addressPlaceholder": "Enter an address"
   }
 }

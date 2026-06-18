@@ -15,7 +15,7 @@ import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
-import WalkMapPicker from "@/components/SocialWalks/WalkMapPicker";
+import MapLocationPicker from "@/components/Map/MapLocationPicker";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useDiscoverProviders, useStartThread } from "@/hooks/useProviders";
 import {
@@ -226,7 +226,7 @@ export default function TransportScreen() {
               style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
             />
             <View style={{ height: 140, marginTop: 8, borderRadius: 12, overflow: "hidden" }}>
-              <WalkMapPicker coord={pickupCoord} onPick={setPickupCoord} testID="pickup-map" />
+              <MapLocationPicker value={pickupCoord} onChange={setPickupCoord} testID="pickup-map" />
             </View>
 
             <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginTop: 12, marginBottom: 4 }}>
@@ -241,7 +241,7 @@ export default function TransportScreen() {
               style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
             />
             <View style={{ height: 140, marginTop: 8, borderRadius: 12, overflow: "hidden" }}>
-              <WalkMapPicker coord={dropoffCoord} onPick={setDropoffCoord} testID="dropoff-map" />
+              <MapLocationPicker value={dropoffCoord} onChange={setDropoffCoord} testID="dropoff-map" />
             </View>
 
             <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>Trip</Text>

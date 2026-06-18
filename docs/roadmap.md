@@ -166,7 +166,10 @@ widgets/Apple-Watch deferred to a dedicated attended effort). Cross-cutting requ
 every section that captures/shows a location** — 2.68 builds the shared component first; the rest reuse it.
 Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
 
-- ☐ **2.68** Shared Apple-Maps location component — mobile, no migration. **Build FIRST** (foundation).
+- ✅ **2.68** Shared Apple-Maps location component — mobile, no migration. **Built FIRST** (foundation):
+  `src/components/Map/{MapLocationPicker,MapLocationView,LocationField}.jsx` (Apple Maps via
+  `PROVIDER_DEFAULT`); `WalkMapPicker` is now a thin wrapper over the shared picker, transport adopts
+  `MapLocationPicker` directly; i18n `map.*` EN+ES; mobile jest +7.
 - ☐ **2.69** Provider Sales / payouts + reconciliation UI — web, expected no migration (surfaces 2.3 money).
 - ☐ **2.70** Transport live-GPS tracking — migration **0056**; ⛔ after 2.68; the planned 2.52 follow-up.
 - ☐ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057**; new `pharmacy` capability.
