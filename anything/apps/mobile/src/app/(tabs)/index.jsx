@@ -12,7 +12,7 @@ import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
-import { usePostingStreak } from "@/hooks/useFeedPosts";
+import { usePostingStreak, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -124,6 +124,9 @@ export default function FeedScreen() {
       setDetailPost(post);
     }
   }, [todayPostId, posts, todayDailyUpdatePost]);
+
+  // ── Edit own post caption (ticket 2.65) ──
+  const updateCaption = useUpdatePostCaption();
 
   // ── Delete own post (confirm first) ──
   const handleConfirmDelete = useCallback(
@@ -243,6 +246,10 @@ export default function FeedScreen() {
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
         // The viewer can delete only their own active pet's post.
         canDelete={!!detailPost && detailPost.pet_id === petProfile?.id}
+        canEdit={!!detailPost && detailPost.pet_id === petProfile?.id}
+        onSaveCaption={(caption) =>
+          updateCaption.mutateAsync({ postId: detailPost.id, caption })
+        }
         onDelete={() => detailPost && handleConfirmDelete(detailPost)}
         onClose={() => setDetailPost(null)}
         onToggleLike={() => detailPost && handleToggleLike(detailPost.id)}

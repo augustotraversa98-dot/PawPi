@@ -135,6 +135,38 @@ export function useDeletePost() {
   });
 }
 
+// Edit the caption of the caller's own post (ticket 2.65). Text only — the photo
+// and daily-lock are untouched (the PATCH route enforces owner-only + caption-only).
+export function useUpdatePostCaption() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ postId, caption }) => {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caption }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update post");
+      }
+
+      return response.json();
+    },
+    onSuccess: (_data, { postId, caption }) => {
+      // Reflect the new caption in any cached feed list immediately.
+      queryClient.setQueriesData({ queryKey: ["posts", "feed"] }, (old) =>
+        Array.isArray(old)
+          ? old.map((p) => (p.id === postId ? { ...p, caption } : p))
+          : old,
+      );
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+}
+
 export function useTogglePaw(postId) {
   const queryClient = useQueryClient();
 

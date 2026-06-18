@@ -2,7 +2,7 @@
 // viewer's own post and fires onDelete when tapped.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -77,4 +77,55 @@ test("shows the delete button and fires onDelete when own post", () => {
   );
   fireEvent.press(getByLabelText("Delete post"));
   expect(onDelete).toHaveBeenCalled();
+});
+
+describe("edit own caption (ticket 2.65)", () => {
+  it("shows no edit affordance when canEdit is false", () => {
+    const { queryByLabelText } = render(
+      <PostDetailModal visible post={post} canEdit={false} onSaveCaption={jest.fn()} />,
+    );
+    expect(queryByLabelText("Edit caption")).toBeNull();
+  });
+
+  it("shows no edit affordance without an onSaveCaption handler", () => {
+    const { queryByLabelText } = render(
+      <PostDetailModal visible post={post} canEdit />,
+    );
+    expect(queryByLabelText("Edit caption")).toBeNull();
+  });
+
+  it("edits the caption: prefilled, saves the new text, updates in place", async () => {
+    const onSaveCaption = jest.fn().mockResolvedValue();
+    const { getByLabelText, getByTestId, getByText } = render(
+      <PostDetailModal visible post={post} canEdit onSaveCaption={onSaveCaption} />,
+    );
+
+    fireEvent.press(getByLabelText("Edit caption"));
+    const input = getByTestId("edit-caption-input");
+    expect(input.props.value).toBe("hi"); // prefilled with current caption
+    // Honors the 2.63 keyboard rule — the editor does not auto-focus.
+    expect(input.props.autoFocus).not.toBe(true);
+
+    fireEvent.changeText(input, "fixed typo");
+    fireEvent.press(getByTestId("save-caption"));
+
+    await waitFor(() =>
+      expect(onSaveCaption).toHaveBeenCalledWith("fixed typo"),
+    );
+    // The modal reflects the new caption immediately.
+    await waitFor(() => expect(getByText(/fixed typo/)).toBeTruthy());
+  });
+
+  it("cancel discards the edit", () => {
+    const onSaveCaption = jest.fn();
+    const { getByLabelText, getByTestId, queryByTestId, getByText } = render(
+      <PostDetailModal visible post={post} canEdit onSaveCaption={onSaveCaption} />,
+    );
+    fireEvent.press(getByLabelText("Edit caption"));
+    fireEvent.changeText(getByTestId("edit-caption-input"), "nope");
+    fireEvent.press(getByTestId("cancel-caption"));
+    expect(queryByTestId("edit-caption-input")).toBeNull();
+    expect(onSaveCaption).not.toHaveBeenCalled();
+    expect(getByText(/\bhi\b/)).toBeTruthy(); // original caption intact
+  });
 });
