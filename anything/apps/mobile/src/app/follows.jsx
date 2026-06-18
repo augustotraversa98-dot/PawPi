@@ -32,12 +32,14 @@ export default function FollowsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const petId = params.petId || "";
-  const rel = params.rel === "following" ? "following" : "followers";
-  const title = rel === "following" ? "Following" : "Followers";
-
   const { data: currentPet } = useCurrentPet();
   const viewerPetId = currentPet?.id ?? null;
+
+  const rel = params.rel === "following" ? "following" : "followers";
+  const title = rel === "following" ? "Following" : "Followers";
+  // petId from the route param; if absent (a paramless open), fall back to the
+  // viewer's active pet so the list still shows the current pet's lists (2.67).
+  const petId = params.petId || (viewerPetId ? String(viewerPetId) : "");
 
   const { data: pets = [], isLoading } = useFollowList(petId, rel, viewerPetId);
 

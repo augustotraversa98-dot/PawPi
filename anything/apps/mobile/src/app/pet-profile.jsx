@@ -159,15 +159,21 @@ export default function PetProfileScreen({ embedded = false }) {
   }, [canFollow, isFollowing, viewerPetId, toggleFollow]);
 
   // Tapping Followers / Following opens the searchable list (ticket 2.61).
+  // Resolve the pet robustly (ticket 2.67): the route param, else — in the
+  // embedded Profile tab — the viewer's active pet. Never navigate with an empty
+  // petId (that dead-taps and lands the list on no pet). The `follows` route is
+  // a ROOT-stack screen, so an ABSOLUTE href string targets it reliably from
+  // inside the (tabs) group (no relative-resolution surprise on device).
+  const resolvedFollowsPetId = petId || (viewerPetId ? String(viewerPetId) : "");
   const openFollows = useCallback(
     (rel) => {
-      if (!petId) return;
-      router.push({
-        pathname: "/follows",
-        params: { petId: String(petId), rel, petName: name },
-      });
+      if (!resolvedFollowsPetId) return; // currentPet still loading — graceful no-op
+      router.navigate(
+        `/follows?petId=${encodeURIComponent(resolvedFollowsPetId)}` +
+          `&rel=${rel}&petName=${encodeURIComponent(name || "")}`,
+      );
     },
-    [petId, name, router],
+    [resolvedFollowsPetId, name, router],
   );
 
   const StatPill = ({ value, label, color, onPress }) => {
@@ -454,13 +460,17 @@ export default function PetProfileScreen({ embedded = false }) {
             value={stats?.followers ?? 0}
             label="Followers"
             color={C.sageDark}
-            onPress={() => openFollows("followers")}
+            onPress={
+              resolvedFollowsPetId ? () => openFollows("followers") : undefined
+            }
           />
           <View style={{ width: 1, backgroundColor: C.peach }} />
           <StatPill
             value={stats?.following ?? 0}
             label="Following"
-            onPress={() => openFollows("following")}
+            onPress={
+              resolvedFollowsPetId ? () => openFollows("following") : undefined
+            }
           />
         </View>
 

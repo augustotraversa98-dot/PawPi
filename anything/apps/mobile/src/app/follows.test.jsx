@@ -6,6 +6,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 let mockList;
 let mockParams;
+let mockFollowArgs; // [petId, rel, viewerPetId] captured from useFollowList
 const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
@@ -23,13 +24,17 @@ jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 4 } }),
 }));
 jest.mock("@/hooks/usePetSocialProfile", () => ({
-  useFollowList: () => ({ data: mockList, isLoading: false }),
+  useFollowList: (...args) => {
+    mockFollowArgs = args;
+    return { data: mockList, isLoading: false };
+  },
 }));
 
 import FollowsScreen from "./follows";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockFollowArgs = undefined;
   mockParams = { petId: "7", rel: "followers", petName: "Rex" };
   mockList = [
     { id: 9, name: "Buddy", handle: "buddy", avatar_url: "", owner_name: "Al", is_following: false },
@@ -95,4 +100,16 @@ test("no-match state when the search filters everything out", () => {
   const { getByTestId, getByText } = render(<FollowsScreen />);
   fireEvent.changeText(getByTestId("follows-search"), "zzzzz");
   expect(getByText("No matches")).toBeTruthy();
+});
+
+test("2.67: uses the route petId when present", () => {
+  render(<FollowsScreen />);
+  expect(mockFollowArgs[0]).toBe("7"); // param petId wins
+});
+
+test("2.67: falls back to the current pet when no petId param", () => {
+  mockParams = { rel: "following" }; // paramless open (no petId)
+  render(<FollowsScreen />);
+  // Resolves to the viewer's active pet (mocked useCurrentPet → id 4).
+  expect(mockFollowArgs[0]).toBe("4");
 });
