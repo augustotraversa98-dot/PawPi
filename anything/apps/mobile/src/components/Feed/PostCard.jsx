@@ -5,6 +5,7 @@ import { PawPrint, Megaphone } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
+import { PawablePhoto } from "./PawablePhoto";
 import { isBirthdayToday } from "@/utils/feedDelight";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
@@ -31,6 +32,17 @@ export const PostCard = memo(function PostCard({
       console.error("Error toggling paw:", error);
       Alert.alert("Error", "Could not save. Please try again.");
     }
+  };
+
+  // Double-tap the photo to Paw (ticket 2.64): idempotent — paw only when not
+  // already pawed; an already-pawed post just replays the animation (never
+  // un-paws). Optimistic via the same mutation as the button, so they stay in
+  // sync; on error the optimistic update is reverted by the mutation.
+  const handleDoubleTapPaw = () => {
+    if (locked || liked) return;
+    togglePawMutation.mutateAsync({ isPawed: false }).catch((error) => {
+      console.error("Error pawing:", error);
+    });
   };
 
   const tagStyle = TAG_COLORS[post.tag] || {
@@ -151,18 +163,15 @@ export const PostCard = memo(function PostCard({
         </View>
       </TouchableOpacity>
 
-      {/* Photo — tapping the pet's photo opens that pet's profile */}
-      <TouchableOpacity
+      {/* Photo — single tap opens the pet's profile, double tap gives a Paw (2.64) */}
+      <PawablePhoto
         testID="feed-post-photo"
-        onPress={locked ? undefined : onOpenProfile}
-        activeOpacity={locked ? 1 : 0.95}
-      >
-        <Image
-          source={{ uri: photo }}
-          style={{ width: "100%", height: 340 }}
-          resizeMode="cover"
-        />
-      </TouchableOpacity>
+        photoUri={photo}
+        disabled={locked}
+        onSingleTap={onOpenProfile}
+        onDoubleTap={handleDoubleTapPaw}
+        style={{ width: "100%", height: 340 }}
+      />
 
       {/* Caption + Actions */}
       <View style={{ padding: 14 }}>
