@@ -107,5 +107,24 @@
     "payUnavailable": "Payments not available yet",
     "payUnavailableBody": "Your order is placed and will be tracked; you can pay once payments are set up.",
     "payUnavailableShort": "Payment isn't set up yet"
+  },
+  "ins": {
+    "title": "Pet insurance",
+    "apply": "Apply for this plan",
+    "applyNow": "Apply",
+    "yourPolicies": "YOUR POLICIES",
+    "policy": "Policy",
+    "policyNo": "Policy no.",
+    "theInsurer": "the insurer",
+    "disclaimer": "PawPi facilitates this application — {{insurer}} issues and underwrites the policy under its own terms. PawPi is not the insurer and does not provide insurance advice.",
+    "readTerms": "Read the insurer's terms",
+    "acceptTerms": "I have read and accept the insurer's terms and disclaimer.",
+    "appliedTitle": "Application sent",
+    "appliedBody": "The insurer will review and set your premium.",
+    "couldNotApply": "Couldn't apply",
+    "payPremium": "Pay premium",
+    "couldNotPay": "Couldn't start payment",
+    "payUnavailable": "Payments not available yet",
+    "payUnavailableBody": "Your application is saved; you can pay once payments are set up."
   }
 }

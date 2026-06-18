@@ -185,7 +185,11 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   harness-proven + completeness guard). `pharmacy` already in the CHECK (0040) — no widen. Owner routes +
   provider queue routes; mobile request flow (delivery via 2.68 `LocationField` / pickup, pay via 2.3) +
   provider dashboard `Rx Fulfillment` queue. i18n EN+ES.
-- ☐ **2.72** Insurance in-app binding + payment — migration **0058**; extends 2.54 lead-gen.
+- ✅ **2.72** Insurance in-app binding + payment — migration **0058** (`insurance_policies`; owner applies +
+  accepts terms but can't self-issue number/premium or self-activate; insurer staff issue/advance but can't
+  set `active`; `activate_insurance_policy` DEFINER is the only path to active, requiring an approved 2.3
+  payment; harness-proven + completeness guard). `insurance` already in the CHECK (0054). Owner apply/pay/hub
+  + provider dashboard `Policies` view; non-underwriting disclaimer (insurer = party-of-record). i18n EN+ES.
 - ☐ **2.73** Pet-friendly places directory — migration **0059**; ⛔ after 2.68; Google Places data + Apple map.
 - ☐ **2.74** Events / meetups — migration **0060**; ⛔ after 2.68; community (forum/social-walk patterns).
 - ☐ **2.75** Nutrition plans + food-recall alerts — migration **0061**; owner+pet health, non-diagnostic.

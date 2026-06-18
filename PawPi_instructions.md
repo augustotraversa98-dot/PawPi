@@ -774,7 +774,12 @@ not a hand-maintained log here:
   owned, active, refillable Rx; pharmacy-staff advance; the `fulfill_rx_order` DEFINER consumes a refill on
   the 2.53 safe path so prescriptions stay append-only; `pharmacy` already in the CHECK since 0040 — no
   widen; harness-proven, **PENDING hand-apply**). Owner request flow (delivery via 2.68 / pickup, pay via
-  2.3) + provider dashboard `Rx Fulfillment` queue. From the
+  2.3) + provider dashboard `Rx Fulfillment` queue.
+  **✅ 2.72 insurance in-app binding MERGED** — migration **0058** `insurance_policies` (owner applies +
+  accepts terms but can't self-issue number/premium or self-activate; insurer issues/advances but can't set
+  `active`; `activate_insurance_policy` DEFINER requires an approved 2.3 payment; harness-proven, **PENDING
+  hand-apply**). `insurance` already in CHECK (0054). Owner apply/pay/hub + provider `Policies` dashboard;
+  non-underwriting disclaimer. From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +
