@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Car, MapPin, MessageCircle } from "lucide-react-native";
+import { ArrowLeft, Car, MapPin, MessageCircle, Navigation } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import DateField from "@/components/DateField";
@@ -337,6 +337,16 @@ export default function TransportScreen() {
                   <MessageCircle size={16} color={COLORS.sageDark} />
                   <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>Message</Text>
                 </TouchableOpacity>
+                {t.status === "en_route" && (
+                  <TouchableOpacity
+                    testID={`track-${t.id}`}
+                    onPress={() => router.push(`/transport-track?tripId=${t.id}`)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                  >
+                    <Navigation size={16} color={COLORS.coral} />
+                    <Text style={{ color: COLORS.coral, fontWeight: "700" }}>Track live</Text>
+                  </TouchableOpacity>
+                )}
                 {(t.status === "requested" || t.status === "confirmed") && (
                   <TouchableOpacity
                     testID={`cancel-${t.id}`}

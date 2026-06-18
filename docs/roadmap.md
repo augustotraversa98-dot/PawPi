@@ -174,7 +174,11 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   2.3 money): `GET /api/providers/[id]/sales` (active-staff-scoped: revenue net/gross series + ledger
   [payments × orders] + payouts/pending + aggregate reconciliation, no money mutated) → enabled `Sales`
   dashboard section (`provider/sales/page.jsx` + `ProviderSales.jsx`, recharts + empty states). web vitest +6.
-- ☐ **2.70** Transport live-GPS tracking — migration **0056**; ⛔ after 2.68; the planned 2.52 follow-up.
+- ✅ **2.70** Transport live-GPS tracking — migration **0056** (`transport_trip_locations`; append-only
+  driver pings; INSERT only by the assigned driver while en_route via `app_can_post_trip_location`, SELECT by
+  owner+driver+staff via `app_can_read_trip_location`; harness-proven as pawpi_app + completeness guard).
+  Driver ping POST + owner/staff `/track` GET; owner live Apple-map screen (`transport-track.jsx`, reuses 2.68
+  `MapLocationView`, 5s polling) + driver "Share live location" (`expo-location`, en_route-only). i18n EN+ES.
 - ☐ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057**; new `pharmacy` capability.
 - ☐ **2.72** Insurance in-app binding + payment — migration **0058**; extends 2.54 lead-gen.
 - ☐ **2.73** Pet-friendly places directory — migration **0059**; ⛔ after 2.68; Google Places data + Apple map.

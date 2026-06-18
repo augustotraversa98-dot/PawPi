@@ -56,3 +56,47 @@ export function useCancelTransport() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["transport-trips"] }),
   });
 }
+
+// Live-GPS track for a trip (ticket 2.70) — { trip, locations }. Serves owner + staff; RLS scopes.
+// `live` enables 5s polling (the walk-live shape) so the route grows in real time.
+export function useTripTrack(tripId, { live = false } = {}) {
+  return useQuery({
+    queryKey: ["transport-trip-track", tripId ?? "none"],
+    enabled: tripId != null,
+    refetchInterval: live ? 5000 : false,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/transport-trips/${encodeURIComponent(tripId)}/track`,
+      );
+      if (!res.ok) throw new Error("Failed to load track");
+      return res.json(); // { trip, locations }
+    },
+  });
+}
+
+// The assigned driver posts a single live GPS ping (ticket 2.70). Allowed only while the trip is
+// en_route — the server returns 403/409 otherwise (the caller surfaces that).
+export function usePostTripLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    // mutateAsync({ providerId, tripId, lat, lng }) → { location }
+    mutationFn: async ({ providerId, tripId, lat, lng }) => {
+      const res = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/transport-trips/${encodeURIComponent(tripId)}/locations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat, lng }),
+        },
+      );
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to post location");
+      }
+      return res.json();
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["transport-trip-track", vars?.tripId] });
+    },
+  });
+}

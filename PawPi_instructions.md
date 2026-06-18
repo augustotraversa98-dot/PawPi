@@ -765,7 +765,11 @@ not a hand-maintained log here:
   `WalkMapPicker` is a thin wrapper; transport adopts `MapLocationPicker`; i18n `map.*` EN+ES.
   **✅ 2.69 provider Sales/payouts/reconciliation MERGED** — read-only `GET /api/providers/[id]/sales`
   (active-staff-scoped) surfaces revenue/ledger/payouts/reconciliation from the 2.3 money tables; enabled the
-  `Sales` dashboard section (recharts + empty states); **no migration, no money mutated.** From the
+  `Sales` dashboard section (recharts + empty states); **no migration, no money mutated.**
+  **✅ 2.70 transport live-GPS MERGED** — migration **0056** `transport_trip_locations` (append-only driver
+  pings; assigned-driver-while-en_route INSERT + owner/driver/staff SELECT via two SECURITY DEFINER helpers;
+  harness-proven, **PENDING hand-apply**, last applied = 0055); driver ping POST + owner/staff `/track` GET;
+  owner live Apple-map screen + driver location sharing (reuses 2.68 `MapLocationView`). From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +
