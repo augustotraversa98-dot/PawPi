@@ -4,13 +4,14 @@
 // null) → a graceful "no longer available" notice. All data hooks are mocked.
 
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { render, waitFor, fireEvent } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 let mockParams;
 let mockListings;
 let mockPlaces;
 let mockSingleListing; // the 2.56 single-listing fetch result (or null for 404)
+let mockApply; // captures the apply mutation (ticket 2.57 requested_placement)
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
@@ -35,7 +36,7 @@ jest.mock("@/hooks/useProviders", () => ({
     isLoading: false,
     isFetched: true,
   }),
-  useApplyForAdoption: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useApplyForAdoption: () => ({ mutateAsync: mockApply, isPending: false }),
   useMyAdoptionApplications: () => ({ data: [] }),
   useAdoptionFavorites: () => ({ data: [] }),
   useToggleAdoptionFavorite: () => ({ mutate: jest.fn() }),
@@ -62,6 +63,7 @@ beforeEach(() => {
   mockListings = [REX];
   mockSingleListing = REX; // the direct single-listing fetch resolves the dog
   mockPlaces = []; // no places → browse renders no listings, so "Rex" can only come from the modal
+  mockApply = jest.fn(() => Promise.resolve({ application: { id: 1 } }));
 });
 
 test("deep-link param opens that dog's detail modal on mount (direct fetch)", async () => {
@@ -92,4 +94,40 @@ test("a gone/adopted listing (404 → null) shows a graceful notice, no modal", 
   const { queryByText } = render(<AdoptionScreen />);
   await waitFor(() => expect(alertSpy).toHaveBeenCalled());
   expect(queryByText("Apply to adopt")).toBeNull();
+});
+
+// ── Ticket 2.57 — foster + urgent/featured flags (in the detail modal) ──
+test("an urgent listing shows the urgent banner in the detail", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, is_urgent: true, urgent_reason: "Medical" };
+  const { findByTestId, getByText } = render(<AdoptionScreen />);
+  expect(await findByTestId("detail-urgent")).toBeTruthy();
+  expect(getByText(/Urgent: Medical/)).toBeTruthy();
+});
+
+test("a 'both' listing lets the applicant choose foster and posts requested_placement", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, placement_type: "both" };
+  const { findByTestId, getByText } = render(<AdoptionScreen />);
+  fireEvent.press(await findByTestId("placement-foster"));
+  fireEvent.press(getByText("Apply to foster"));
+  await waitFor(() =>
+    expect(mockApply).toHaveBeenCalledWith(
+      expect.objectContaining({ listing_id: 5, requested_placement: "foster" }),
+    ),
+  );
+});
+
+test("an adopt-only listing posts requested_placement adopt (no picker)", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, placement_type: "adopt" };
+  const { findByText, queryByTestId } = render(<AdoptionScreen />);
+  const applyBtn = await findByText("Apply to adopt");
+  expect(queryByTestId("placement-foster")).toBeNull();
+  fireEvent.press(applyBtn);
+  await waitFor(() =>
+    expect(mockApply).toHaveBeenCalledWith(
+      expect.objectContaining({ requested_placement: null }),
+    ),
+  );
 });

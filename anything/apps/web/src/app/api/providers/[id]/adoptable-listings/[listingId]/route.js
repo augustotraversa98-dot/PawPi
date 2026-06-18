@@ -47,6 +47,7 @@ async function GET(request, { params }) {
         al.gender, al.size, al.photo_urls, al.video_url, al.story,
         al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
         al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+        al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.featured_until,
         al.created_at, al.updated_at,
         p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url
       FROM adoptable_listings al
@@ -104,6 +105,12 @@ async function PATCH(request, { params }) {
     ) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
+    if (
+      body.placement_type !== undefined &&
+      !["adopt", "foster", "both"].includes(body.placement_type)
+    ) {
+      return Response.json({ error: "Invalid placement_type" }, { status: 400 });
+    }
 
     // COALESCE keeps unspecified fields. RLS (admin_all) + the provider_id filter scope the
     // row to THIS place's admin — a non-admin updates ZERO rows (handled as 404 below).
@@ -135,6 +142,11 @@ async function PATCH(request, { params }) {
         adoption_fee_cents = COALESCE(${body.adoption_fee_cents ?? null}, adoption_fee_cents),
         currency = COALESCE(${body.currency ?? null}, currency),
         status = COALESCE(${body.status ?? null}, status),
+        placement_type = COALESCE(${body.placement_type ?? null}, placement_type),
+        is_urgent = COALESCE(${body.is_urgent === undefined ? null : body.is_urgent}, is_urgent),
+        is_featured = COALESCE(${body.is_featured === undefined ? null : body.is_featured}, is_featured),
+        urgent_reason = COALESCE(${body.urgent_reason ?? null}, urgent_reason),
+        featured_until = COALESCE(${body.featured_until ?? null}, featured_until),
         updated_at = now()
       WHERE id = ${listingId} AND provider_id = ${providerId}
       RETURNING *

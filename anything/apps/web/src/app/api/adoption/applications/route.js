@@ -28,8 +28,8 @@ async function GET(request) {
     const applications = await sql`
       SELECT
         a.id, a.listing_id, a.provider_id, a.applicant_owner_user_id, a.answers,
-        a.status, a.transferred_pet_id, a.created_at, a.updated_at,
-        l.name AS listing_name, l.breed AS listing_breed,
+        a.status, a.requested_placement, a.transferred_pet_id, a.created_at, a.updated_at,
+        l.name AS listing_name, l.breed AS listing_breed, l.placement_type AS listing_placement_type,
         l.photo_urls AS listing_photo_urls,
         p.name AS provider_name
       FROM adoption_applications a
@@ -62,6 +62,10 @@ async function POST(request) {
     if (!listing_id) {
       return Response.json({ error: "listing_id is required" }, { status: 400 });
     }
+    // Foster-vs-adopt intent (ticket 2.57) — optional; only 'adopt'|'foster' allowed.
+    const requestedPlacement = ["adopt", "foster"].includes(body.requested_placement)
+      ? body.requested_placement
+      : null;
 
     // Resolve the listing — it must be an AVAILABLE listing of a PUBLISHED place (RLS lets an
     // authed owner read exactly those, so a draft/pending/adopted listing reads as NOT FOUND).
@@ -85,10 +89,10 @@ async function POST(request) {
     try {
       created = await sql`
         INSERT INTO adoption_applications
-          (listing_id, provider_id, applicant_owner_user_id, answers, status)
+          (listing_id, provider_id, applicant_owner_user_id, answers, status, requested_placement)
         VALUES (
           ${listing.id}, ${listing.provider_id}, ${userId},
-          ${sql.json(answers ?? {})}, 'submitted'
+          ${sql.json(answers ?? {})}, 'submitted', ${requestedPlacement}
         )
         RETURNING *
       `;
