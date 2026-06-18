@@ -784,6 +784,9 @@ not a hand-maintained log here:
   table — the key-gated Google Places web proxy fetches live and degrades clean to `configured:false`, key
   never shipped to the client; harness-proven, **PENDING hand-apply**). Mobile Places screen (2.68 Apple map
   + list + category filter + Saved favorites + Apple-Maps directions hand-off). Reuses `GOOGLE_PLACES_API_KEY`.
+  **✅ 2.74 events/meetups MERGED** — migration **0060** `events` + `event_rsvps` (forum-style published
+  public read + host-only writes/soft-delete + own-only RSVP toggle, COUNT-on-read; harness-proven, **PENDING
+  hand-apply**). Mobile Events section in Community (2.68 Apple map + RSVP + create via the 2.68 picker).
   From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new

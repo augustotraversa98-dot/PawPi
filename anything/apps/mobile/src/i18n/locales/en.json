@@ -138,5 +138,26 @@
     "openNow": "Open now",
     "closed": "Closed",
     "directions": "Directions"
+  },
+  "events": {
+    "title": "Events & meetups",
+    "empty": "No upcoming events near you.",
+    "going": "going",
+    "by": "by",
+    "rsvp": "RSVP",
+    "goingYes": "Going ✓",
+    "directions": "Directions",
+    "cancel": "Cancel",
+    "cancelTitle": "Cancel this event?",
+    "cancelEvent": "Cancel event",
+    "keep": "Keep",
+    "couldNotRsvp": "Couldn't RSVP",
+    "createTitle": "Create an event",
+    "titlePlaceholder": "Event title",
+    "descPlaceholder": "What's it about?",
+    "location": "Location",
+    "capacity": "Capacity (optional)",
+    "publish": "Publish event",
+    "couldNotCreate": "Couldn't create the event"
   }
 }
