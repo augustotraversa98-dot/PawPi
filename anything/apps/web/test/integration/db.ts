@@ -460,6 +460,39 @@ export async function seedJoinRequest(
   return { requestId };
 }
 
+/** Seed a lost_reports row (ticket 2.48). Defaults to an active alert. */
+export async function seedLostReport(
+  sql: Sql,
+  opts: {
+    id: number;
+    petId: number;
+    ownerUserId: number;
+    status?: 'active' | 'resolved';
+    lat?: number | null;
+    lng?: number | null;
+  },
+): Promise<{ id: number }> {
+  const { id, petId, ownerUserId, status = 'active', lat = 40.7, lng = -74 } = opts;
+  await sql`
+    insert into lost_reports (id, pet_id, owner_user_id, status, last_seen_lat, last_seen_lng, last_seen_area)
+    values (${id}, ${petId}, ${ownerUserId}, ${status}, ${lat}, ${lng}, 'Central Park')
+  `;
+  return { id };
+}
+
+/** Seed a lost_sightings row (ticket 2.48). */
+export async function seedLostSighting(
+  sql: Sql,
+  opts: { id: number; reportId: number; reporterUserId: number | null; note?: string },
+): Promise<{ id: number }> {
+  const { id, reportId, reporterUserId, note = 'saw the dog' } = opts;
+  await sql`
+    insert into lost_sightings (id, lost_report_id, reporter_user_id, note)
+    values (${id}, ${reportId}, ${reporterUserId}, ${note})
+  `;
+  return { id };
+}
+
 /** Seed a pet_caregivers person↔person grant (ticket 2.47). Defaults to an active grant. */
 export async function seedPetCaregiver(
   sql: Sql,

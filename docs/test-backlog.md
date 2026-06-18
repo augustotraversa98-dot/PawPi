@@ -41,6 +41,7 @@ as the RLS migrations 0019–0026.)
 0047_community_forum.sql              (2.44 — forum_threads + forum_comments + forum_votes + forum_vote fn) ⏳ PENDING — apply after merge
 0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ⏳ PENDING — apply after merge
 0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ⏳ PENDING — apply after merge
+0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ⏳ PENDING — apply after merge
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -90,13 +91,26 @@ as the RLS migrations 0019–0026.)
   expired/revoked → zero; non-grantee → zero on private data; owner-only delete) + the completeness guard.
   Hand-apply after merge. NOTE: `pets` rows stay any-authed-readable (0021 social) — this gates the PRIVATE
   data (routines/health/medical), not the public pet profile row.
+
+**⏳ PENDING (Wave 5):** `0050_lost_and_found.sql` (ticket 2.48) — harness-proven, NOT yet applied.
+- New `lost_reports` (pet, owner, status active|resolved, last_seen lat/lng/area, notes, reward) +
+  `lost_sightings` (report, reporter, lat/lng, note, photo). Both ENABLE+FORCE RLS.
+- lost_reports: owner FOR ALL (activate/edit/resolve); any authed user reads an ACTIVE report (public
+  alert); a resolved report is owner-only. One active report per pet (partial unique index).
+- lost_sightings: a reporter INSERTs on an ACTIVE report (reporter = caller); SELECT by the report owner
+  (all) or the reporter (their own); append-only. Cross-table checks via SECURITY DEFINER helpers
+  `app_owns_lost_report` / `app_lost_report_active`.
+- WIDENS the 0044 `notifications_type_check` additively to admit `'lost_alert'` (drop+re-add). Alerts go
+  out best-effort via `app_notify` (followers on activation; owner on a new sighting) — a notify failure
+  never blocks. Proven as pawpi_app in `lost-found-rls.integration.test.ts` + the completeness guard.
+  Hand-apply after merge.
 - 0039 cron function present + granted; 0040 telehealth_sessions RLS on+forced (owner-ALL + staff
   read/insert/update) + both capability CHECKs include `'telehealth'`; 0041 the four provider link columns.
 - 0042 provider_posts RLS (read=SELECT, staff_all=ALL) + providers.cover_image_url; 0043
   provider_services.image_urls; 0044 notifications RLS (select/update; inserts only via app_notify DEFINER)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
-Wave-5 migrations `0046` (2.43) + `0047` (2.44) + `0048` (2.45) + `0049` (2.47) are PENDING — see above. Future tickets that add tables append here.
+Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are PENDING — see above. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
