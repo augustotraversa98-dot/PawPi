@@ -38,6 +38,10 @@ async function POST(request) {
       maxPets,
       approvalRequired,
       notesForGuests,
+      lat,
+      lng,
+      locationName,
+      inviteUserIds,
     } = body;
 
     if (!petId || !walkName || !scheduledAt || !visibility) {
@@ -45,6 +49,16 @@ async function POST(request) {
         { error: "petId, walkName, scheduledAt, and visibility are required" },
         { status: 400 },
       );
+    }
+
+    // Coords (optional) — must be a valid lat/lng pair if either is provided.
+    const latNum = lat === undefined || lat === null || lat === "" ? null : Number(lat);
+    const lngNum = lng === undefined || lng === null || lng === "" ? null : Number(lng);
+    if (
+      (latNum !== null && (Number.isNaN(latNum) || latNum < -90 || latNum > 90)) ||
+      (lngNum !== null && (Number.isNaN(lngNum) || lngNum < -180 || lngNum > 180))
+    ) {
+      return Response.json({ error: "Invalid lat/lng" }, { status: 400 });
     }
 
     // Verify pet ownership
@@ -74,7 +88,10 @@ async function POST(request) {
         meeting_location_details,
         max_pets,
         approval_required,
-        notes_for_guests
+        notes_for_guests,
+        lat,
+        lng,
+        location_name
       ) VALUES (
         ${routineId || null},
         ${routineWalkIndex || null},
@@ -89,12 +106,43 @@ async function POST(request) {
         ${meetingLocationDetails || null},
         ${maxPets || 4},
         ${approvalRequired ?? true},
-        ${notesForGuests || null}
+        ${notesForGuests || null},
+        ${latNum},
+        ${lngNum},
+        ${locationName || null}
       )
       RETURNING *
     `;
 
-    console.log("[social-walks] Social walk created:", result[0]);
+    const socialWalk = result[0];
+    console.log("[social-walks] Social walk created:", socialWalk);
+
+    // Private walk → record the explicit invitations (owner-issued). Only valid
+    // user_profiles ids that are not the owner are invited; deduped.
+    if (
+      visibility === "private" &&
+      Array.isArray(inviteUserIds) &&
+      inviteUserIds.length > 0
+    ) {
+      const cleanIds = [
+        ...new Set(
+          inviteUserIds
+            .map((v) => Number(v))
+            .filter((v) => Number.isInteger(v) && v > 0 && v !== ownerUserId),
+        ),
+      ];
+      for (const invitedUserId of cleanIds) {
+        await sql`
+          INSERT INTO social_walk_invites
+            (social_walk_id, invited_user_id, invited_by_user_id)
+          VALUES (${socialWalk.id}, ${invitedUserId}, ${ownerUserId})
+          ON CONFLICT (social_walk_id, invited_user_id) DO NOTHING
+        `;
+      }
+      console.log(
+        `[social-walks] Invited ${cleanIds.length} user(s) to private walk ${socialWalk.id}`,
+      );
+    }
 
     // If friends_only, notify mutual friends
     if (visibility === "friends_only") {
@@ -156,10 +204,63 @@ async function GET(request) {
     const visibility = searchParams.get("visibility");
     const status = searchParams.get("status") || "scheduled";
     const myWalks = searchParams.get("myWalks") === "true";
+    const invited = searchParams.get("invited") === "true";
+
+    // Optional bounding-box for nearby discovery (no PostGIS — a plain numeric range).
+    const centerLat = parseFloat(searchParams.get("lat"));
+    const centerLng = parseFloat(searchParams.get("lng"));
+    const radiusKm = parseFloat(searchParams.get("radiusKm")) || 25;
+    const hasBox = Number.isFinite(centerLat) && Number.isFinite(centerLng);
+    let latMin, latMax, lngMin, lngMax;
+    if (hasBox) {
+      const latDelta = radiusKm / 111;
+      const lngDelta =
+        radiusKm / (111 * Math.max(0.01, Math.cos((centerLat * Math.PI) / 180)));
+      latMin = centerLat - latDelta;
+      latMax = centerLat + latDelta;
+      lngMin = centerLng - lngDelta;
+      lngMax = centerLng + lngDelta;
+    }
 
     let walks;
 
-    if (myWalks) {
+    if (invited) {
+      // Private walks the current user has been invited to (invitee view of discovery).
+      walks = await sql`
+        SELECT
+          sw.id,
+          sw.walk_name,
+          sw.scheduled_at,
+          sw.duration_minutes,
+          sw.pace,
+          sw.meeting_area,
+          sw.lat,
+          sw.lng,
+          sw.location_name,
+          sw.max_pets,
+          sw.approval_required,
+          sw.notes_for_guests,
+          sw.visibility,
+          sw.status,
+          p.name as pet_name,
+          p.avatar_url as pet_avatar,
+          up.username as owner_username,
+          (
+            SELECT COUNT(*)
+            FROM social_walk_join_requests swjr
+            WHERE swjr.social_walk_id = sw.id AND swjr.status = 'approved'
+          ) as approved_participants_count
+        FROM social_walks sw
+        JOIN social_walk_invites swi ON swi.social_walk_id = sw.id
+          AND swi.invited_user_id = ${ownerUserId}
+        JOIN pets p ON sw.pet_id = p.id
+        JOIN user_profiles up ON sw.owner_user_id = up.id
+        WHERE sw.status = 'scheduled'
+          AND sw.scheduled_at > NOW()
+        ORDER BY sw.scheduled_at ASC
+        LIMIT 50
+      `;
+    } else if (myWalks) {
       // Get user's own social walks
       walks = await sql`
         SELECT 
@@ -196,6 +297,9 @@ async function GET(request) {
             sw.duration_minutes,
             sw.pace,
             sw.meeting_area,
+            sw.lat,
+            sw.lng,
+            sw.location_name,
             sw.max_pets,
             sw.approval_required,
             sw.notes_for_guests,
@@ -216,6 +320,14 @@ async function GET(request) {
             AND sw.status = 'scheduled'
             AND sw.scheduled_at > NOW()
             AND sw.owner_user_id != ${ownerUserId}
+            AND (
+              ${!hasBox}
+              OR (
+                sw.lat IS NOT NULL AND sw.lng IS NOT NULL
+                AND sw.lat BETWEEN ${latMin ?? null} AND ${latMax ?? null}
+                AND sw.lng BETWEEN ${lngMin ?? null} AND ${lngMax ?? null}
+              )
+            )
           ORDER BY sw.scheduled_at ASC
           LIMIT 50
         `;
@@ -240,6 +352,9 @@ async function GET(request) {
             sw.duration_minutes,
             sw.pace,
             sw.meeting_area,
+            sw.lat,
+            sw.lng,
+            sw.location_name,
             sw.max_pets,
             sw.approval_required,
             sw.notes_for_guests,

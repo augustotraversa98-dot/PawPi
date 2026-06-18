@@ -461,6 +461,29 @@ export async function seedJoinRequest(
 }
 
 /**
+ * Seed a social_walk_invites row — an owner-issued invitation to a PRIVATE walk
+ * (ticket 2.43). `invitedByUserId` defaults to the walk's owner concept (caller passes it).
+ */
+export async function seedWalkInvite(
+  sql: Sql,
+  opts: {
+    inviteId: number;
+    walkId: number;
+    invitedUserId: number;
+    invitedByUserId: number;
+    status?: 'invited' | 'accepted' | 'declined';
+  },
+): Promise<{ inviteId: number }> {
+  const { inviteId, walkId, invitedUserId, invitedByUserId, status = 'invited' } = opts;
+  await sql`
+    insert into social_walk_invites
+      (id, social_walk_id, invited_user_id, invited_by_user_id, status)
+    values (${inviteId}, ${walkId}, ${invitedUserId}, ${invitedByUserId}, ${status})
+  `;
+  return { inviteId };
+}
+
+/**
  * Seed a provider_payment_account for (provider, rail) (ticket 2.3 — money group). Holds
  * the provider's rail token; provider-admin RLS only. Defaults to mercadopago/connected.
  */
