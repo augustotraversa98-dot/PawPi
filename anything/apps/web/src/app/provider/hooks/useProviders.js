@@ -180,6 +180,15 @@ export const analyticsKey = (providerId) => [
 export const analyticsUrl = (providerId) =>
   `/api/providers/${providerId}/analytics`;
 
+// Sales / payouts / reconciliation (ticket 2.69). One read-only cache entry per provider; the
+// Sales dashboard section reads revenue + ledger + payouts + reconciliation from it.
+export const salesKey = (providerId) => [
+  "provider-sales",
+  String(providerId ?? ""),
+];
+
+export const salesUrl = (providerId) => `/api/providers/${providerId}/sales`;
+
 // --- hooks ------------------------------------------------------------------
 
 // Providers the logged-in user is ACTIVE staff of. [] = belongs to none.
@@ -200,6 +209,17 @@ export function useProviderAnalytics(providerId) {
   return useQuery({
     queryKey: analyticsKey(providerId),
     queryFn: () => getJson(analyticsUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// The Sales section read (GET /api/providers/[id]/sales) — revenue series + totals, ledger,
+// payouts, and aggregate reconciliation, all over ONLY this provider's own money rows. Read-only.
+// Disabled until a providerId is known.
+export function useProviderSales(providerId) {
+  return useQuery({
+    queryKey: salesKey(providerId),
+    queryFn: () => getJson(salesUrl(providerId)),
     enabled: providerId != null && providerId !== "",
   });
 }
