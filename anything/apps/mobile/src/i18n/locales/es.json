@@ -59,5 +59,13 @@
     "title": "Notificaciones",
     "markAllRead": "Marcar todo como leído",
     "empty": "Todavía no hay notificaciones"
+  },
+  "map": {
+    "setOnMap": "Marcar ubicación en el mapa",
+    "myLocation": "Mi ubicación",
+    "tapToDrop": "Toca el mapa para colocar un pin",
+    "pinned": "Fijado",
+    "noLocation": "Sin ubicación",
+    "addressPlaceholder": "Escribe una dirección"
   }
 }

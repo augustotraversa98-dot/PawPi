@@ -758,9 +758,12 @@ not a hand-maintained log here:
   - **Decisions of record:** added `react-native-qrcode-svg` (mobile) for the printable tag QR; 2.53 clinical
     mutations go through DEFINER helpers with NO provider UPDATE policy (Rx history can't be rewritten);
     2.51/2.54 owner routes never attach the Vet Record. Owes a device pass across the new surfaces.
-- **Wave 7 — SCOPED + TICKETED (queued, not built).** Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
+- **Wave 7 — IN PROGRESS (autonomous run).** Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
   section of `00-README.md`); status mirror in `docs/roadmap.md`; planned migrations 0056–0061 pre-flagged in
-  `docs/test-backlog.md` ACTION 1. From the un-ticketed post-core list: 2.68 shared Apple-Maps component
+  `docs/test-backlog.md` ACTION 1. **✅ 2.68 shared Apple-Maps component MERGED** —
+  `src/components/Map/{MapLocationPicker,MapLocationView,LocationField}.jsx` (Apple via `PROVIDER_DEFAULT`);
+  `WalkMapPicker` is a thin wrapper; transport adopts `MapLocationPicker`; i18n `map.*` EN+ES. From the
+  un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +
   Apple map), 2.74 events/meetups, 2.75 nutrition plans + food-recall alerts. **Decisions of record (Tats

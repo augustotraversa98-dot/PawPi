@@ -360,3 +360,4 @@ slot onto the same spine/capability/discovery patterns when prioritized.
 - 2.75-nutrition-plans-food-recalls.md        (Wave 7 — nutrition plans + food-recall alerts; migration 0061; non-diagnostic)
 - 2.76-widgets-watch-live-activities.md        (NATIVE track — Widgets + Live Activities + Apple Watch; ATTENDED, no auto-merge; no migration)
 - 2.77-ios27-liquid-glass-redesign.md          (CROSS-CUTTING redesign — iOS 27 Liquid Glass + smoother motion; keep palette; DO LAST, after Wave 7 + 2.76; no migration)
+- 2.78-app-store-readiness.md                   (FINAL STEP of the Wave 7 autonomous run — debugging + App Store compliance hardening; auto-fix + flag; aims at submission)
