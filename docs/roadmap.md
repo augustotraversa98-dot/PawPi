@@ -86,6 +86,37 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 
 ---
 
+## 🌊 WAVE 6 — UX fix-pack + trust + new capabilities (tickets 2.51–2.66) — QUEUED
+
+Authoritative spec + build order: [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md)
+(Wave 6 section). Decided with Tats 2026-06-18 (+ an on-device UX fix-pack). Built per the ⚡ Wave 5
+autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
+
+**Part A — mobile UX fix-pack (do FIRST; NO migrations):**
+- ☐ **2.55** remove "Phoebe" + avatar fallback — do first (avatar fallback reused by 2.60).
+- ☐ **2.62** share frame attaches the real daily-moment photo (capture was firing before image load).
+- ☐ **2.63** app-wide keyboard: tap field first, then keyboard (kill auto-focus on bark/comments).
+- ☐ **2.64** double-tap image → Paw/like (brand-color animation).
+- ☐ **2.65** edit own daily-update caption (owner-only PATCH posts/[id]).
+- ☐ **2.66** Health → Today "Today's Progress" on real logged data (kills hardcoded chips).
+- ☐ **2.59** floating IG-style tab bar (edits `(tabs)/_layout.jsx`).
+- ☐ **2.60** Profile tab → active pet's social profile + pet-photo icon — ⛔ after 2.59 + 2.55.
+- ☐ **2.61** followers/following lists + paw follow/unfollow + search — ⛔ after 2.60 (no migration).
+
+**Part B — capabilities + loose ends (migrations 0051–0055):**
+- ☐ **2.56** adoption public single-listing GET — no migration.
+- ☐ **2.51** emergency mode + printable medical-card tag QR + revocable vet link — migration **0051**.
+- ☐ **2.52** transport / pet-taxi — migration **0052**.
+- ☐ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS).
+- ☐ **2.54** insurance marketplace — migration **0054**.
+- ☐ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56.
+- ☐ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; build LAST.
+
+Migrations 0051–0055 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as Code builds
+each (Tats hand-applies). Part A adds none.
+
+---
+
 ## ★ PREVIOUS PRIORITY — Phase 2: the pet-services super-app (now done; reference below)
 
 From the master plan's sequenced roadmap (§6). Surface-what's-live first, then the cross-cutting
