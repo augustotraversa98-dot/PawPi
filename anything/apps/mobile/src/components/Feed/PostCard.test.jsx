@@ -1,12 +1,16 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 import { PostCard } from "./PostCard";
 
 // useTogglePaw pulls in react-query; stub it so the card renders without a
-// QueryClient. The mutation object only needs the shape PostCard reads.
+// QueryClient. A module-level mutateAsync lets the double-tap tests assert the
+// paw call (ticket 2.64). The mutation object only needs the shape PostCard reads.
+const mockMutateAsync = jest.fn(() => Promise.resolve());
 jest.mock("@/hooks/useFeedPosts", () => ({
-  useTogglePaw: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useTogglePaw: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
+
+beforeEach(() => mockMutateAsync.mockClear());
 
 // Pin "today" so the birthday helper is deterministic (ticket 2.37).
 jest.mock("@/utils/dateUtils", () => ({
@@ -95,19 +99,28 @@ describe("PostCard — streak + birthday delight (2.37)", () => {
 });
 
 describe("PostCard — photo/caption tap targets", () => {
-  it("tapping the photo opens the pet's profile, not the post detail", () => {
-    const onOpenProfile = jest.fn();
-    const onOpenDetail = jest.fn();
-    const { getByTestId } = render(
-      <PostCard
-        post={basePost}
-        onOpenProfile={onOpenProfile}
-        onOpenDetail={onOpenDetail}
-      />,
-    );
-    fireEvent.press(getByTestId("feed-post-photo"));
-    expect(onOpenProfile).toHaveBeenCalledTimes(1);
-    expect(onOpenDetail).not.toHaveBeenCalled();
+  it("single-tapping the photo opens the pet's profile, not the post detail", () => {
+    jest.useFakeTimers();
+    try {
+      const onOpenProfile = jest.fn();
+      const onOpenDetail = jest.fn();
+      const { getByTestId } = render(
+        <PostCard
+          post={basePost}
+          onOpenProfile={onOpenProfile}
+          onOpenDetail={onOpenDetail}
+        />,
+      );
+      fireEvent.press(getByTestId("feed-post-photo"));
+      // Single tap is deferred past the double-tap window (ticket 2.64).
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(onOpenProfile).toHaveBeenCalledTimes(1);
+      expect(onOpenDetail).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("tapping the caption still opens the post detail", () => {
@@ -132,5 +145,45 @@ describe("PostCard — photo/caption tap targets", () => {
     );
     fireEvent.press(getByTestId("feed-post-photo"));
     expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("PostCard — double-tap to Paw (2.64)", () => {
+  it("double-tapping an un-pawed photo paws once and does not open profile", () => {
+    const onOpenProfile = jest.fn();
+    const { getByTestId, queryByTestId } = render(
+      <PostCard post={basePost} liked={false} onOpenProfile={onOpenProfile} />,
+    );
+    const photo = getByTestId("feed-post-photo");
+    fireEvent.press(photo);
+    fireEvent.press(photo);
+
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenCalledWith({ isPawed: false });
+    expect(onOpenProfile).not.toHaveBeenCalled();
+    // The coral paw-pop is shown.
+    expect(queryByTestId("paw-pop")).toBeTruthy();
+  });
+
+  it("double-tapping an already-pawed photo replays the animation but does NOT paw again", () => {
+    const { getByTestId, queryByTestId } = render(
+      <PostCard post={basePost} liked onOpenProfile={jest.fn()} />,
+    );
+    const photo = getByTestId("feed-post-photo");
+    fireEvent.press(photo);
+    fireEvent.press(photo);
+
+    expect(mockMutateAsync).not.toHaveBeenCalled(); // never un-paws
+    expect(queryByTestId("paw-pop")).toBeTruthy();
+  });
+
+  it("double-tapping a locked photo does nothing", () => {
+    const { getByTestId } = render(
+      <PostCard post={basePost} locked liked={false} />,
+    );
+    const photo = getByTestId("feed-post-photo");
+    fireEvent.press(photo);
+    fireEvent.press(photo);
+    expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 });

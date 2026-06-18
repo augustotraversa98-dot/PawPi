@@ -15,6 +15,7 @@ import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { DailyShareButton } from "./DailyShareButton";
+import { PawablePhoto } from "./PawablePhoto";
 import { formatRelativeTime } from "@/utils/relativeTime";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -53,6 +54,13 @@ export const PostDetailModal = memo(function PostDetailModal({
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
+
+  // Double-tap the photo to Paw (ticket 2.64): paw only when not already pawed
+  // (never un-paws on double-tap); reuses the same toggle the paw button uses so
+  // the button + count stay in sync.
+  const handleDoubleTapPaw = () => {
+    if (!liked && onToggleLike) onToggleLike();
+  };
 
   const tagStyle = TAG_COLORS[tag] || {
     bg: COLORS.peach,
@@ -168,11 +176,12 @@ export const PostDetailModal = memo(function PostDetailModal({
             </View>
           </TouchableOpacity>
 
-          {/* Photo */}
-          <Image
-            source={{ uri: photo }}
+          {/* Photo — double tap gives a Paw (2.64) */}
+          <PawablePhoto
+            testID="detail-post-photo"
+            photoUri={photo}
+            onDoubleTap={handleDoubleTapPaw}
             style={{ width: SCREEN_W, height: SCREEN_W }}
-            resizeMode="cover"
           />
 
           {/* Caption */}
