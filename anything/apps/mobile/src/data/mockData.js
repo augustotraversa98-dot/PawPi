@@ -238,56 +238,6 @@ export const SHOP_PRODUCTS = [
   },
 ];
 
-export const COMMUNITY_POSTS = [
-  {
-    id: "1",
-    title: "Best food for sensitive stomachs?",
-    category: "Food",
-    author: "Sarah M.",
-    timestamp: "2h ago",
-    comments: 12,
-  },
-  {
-    id: "2",
-    title: "How to stop leash pulling?",
-    category: "Training",
-    author: "Mike D.",
-    timestamp: "5h ago",
-    comments: 8,
-  },
-  {
-    id: "3",
-    title: "My dog has been scratching a lot — any tips?",
-    category: "Health",
-    author: "Priya K.",
-    timestamp: "8h ago",
-    comments: 15,
-  },
-  {
-    id: "4",
-    title: "Is it normal for puppies to sleep 18 hours?",
-    category: "General",
-    author: "Tom J.",
-    timestamp: "1d ago",
-    comments: 22,
-  },
-  {
-    id: "5",
-    title: "My dog gets anxious during thunderstorms",
-    category: "Behavior",
-    author: "Rachel W.",
-    timestamp: "1d ago",
-    comments: 19,
-  },
-  {
-    id: "6",
-    title: "What treats work best for high-value training?",
-    category: "Training",
-    author: "Carlos B.",
-    timestamp: "2d ago",
-    comments: 7,
-  },
-];
 
 // Mock walk logs (for future database integration)
 export const MOCK_WALK_LOGS = [

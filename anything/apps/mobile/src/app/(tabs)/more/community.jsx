@@ -4,21 +4,23 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Search, Megaphone, Plus, Filter } from "lucide-react-native";
-import { COMMUNITY_POSTS } from "../../../data/mockData";
+import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp } from "lucide-react-native";
+import {
+  useForumThreads,
+  useForumVote,
+  FORUM_CATEGORIES,
+} from "@/hooks/useForum";
+import VoteControl from "@/components/Forum/VoteControl";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 
 const C = {
   coral: "#FF6F61",
-  apricot: "#FFB37A",
   peach: "#FFD9B3",
-  honey: "#FFC857",
   terracotta: "#B75D32",
-  sage: "#A7BFA3",
-  sageDark: "#5A8A74",
   cream: "#FFF7EF",
   sand: "#F8EBDD",
   card: "#FFFCF8",
@@ -34,105 +36,102 @@ const CATEGORY_COLORS = {
   General: { bg: C.sand, text: C.mutedBrown },
 };
 
+const SORTS = [
+  { key: "hot", label: "Hot", Icon: Flame },
+  { key: "new", label: "New", Icon: Clock },
+  { key: "top", label: "Top", Icon: TrendingUp },
+];
+
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [sort, setSort] = useState("hot");
 
-  const categories = [
-    "All",
-    "Health",
-    "Food",
-    "Training",
-    "Behavior",
-    "General",
-  ];
+  const {
+    data: threads,
+    isLoading,
+    refetch,
+  } = useForumThreads(activeCategory, sort);
+  const voteMutation = useForumVote();
 
-  const filtered = COMMUNITY_POSTS.filter((p) => {
-    const matchCat = activeCategory === "All" || p.category === activeCategory;
-    const matchSearch =
-      !search ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.author.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
+  const handleVote = (thread, value) => {
+    voteMutation.mutate({ targetType: "thread", targetId: thread.id, value });
+  };
 
-  const PostCard = ({ post }) => {
-    const catStyle = CATEGORY_COLORS[post.category] || CATEGORY_COLORS.General;
+  const ThreadCard = ({ thread }) => {
+    const catStyle = CATEGORY_COLORS[thread.category] || CATEGORY_COLORS.General;
     return (
       <TouchableOpacity
+        testID={`thread-${thread.id}`}
         activeOpacity={0.92}
+        onPress={() => router.push(`/forum-thread?id=${thread.id}`)}
         style={{
           backgroundColor: C.card,
-          borderRadius: 22,
-          padding: 17,
+          borderRadius: 18,
+          padding: 16,
           marginBottom: 12,
-          shadowColor: C.terracotta,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.07,
-          shadowRadius: 14,
-          elevation: 3,
+          flexDirection: "row",
+          gap: 12,
           borderWidth: 1,
           borderColor: C.peach,
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginBottom: 10,
-            alignItems: "center",
-          }}
-        >
+        <VoteControl
+          score={thread.score || 0}
+          myVote={thread.my_vote ?? null}
+          onVote={(value) => handleVote(thread, value)}
+          testIDPrefix={`thread-vote-${thread.id}`}
+        />
+        <View style={{ flex: 1 }}>
           <View
             style={{
-              backgroundColor: catStyle.bg,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 9,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              marginBottom: 8,
+              alignItems: "center",
             }}
           >
-            <Text
-              style={{ fontSize: 12, color: catStyle.text, fontWeight: "700" }}
+            <View
+              style={{
+                backgroundColor: catStyle.bg,
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+                borderRadius: 9,
+              }}
             >
-              {post.category}
-            </Text>
+              <Text style={{ fontSize: 11, color: catStyle.text, fontWeight: "700" }}>
+                {thread.category}
+              </Text>
+            </View>
           </View>
-          <Text style={{ fontSize: 11, color: C.mutedBrown }}>
-            {post.timestamp}
-          </Text>
-        </View>
-        <Text
-          style={{
-            fontSize: 17,
-            fontWeight: "800",
-            color: C.warmBrown,
-            marginBottom: 10,
-            lineHeight: 23,
-          }}
-        >
-          {post.title}
-        </Text>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
           <Text
-            style={{ fontSize: 13, color: C.mutedBrown, fontWeight: "600" }}
+            style={{
+              fontSize: 16,
+              fontWeight: "800",
+              color: C.warmBrown,
+              marginBottom: 8,
+              lineHeight: 22,
+            }}
           >
-            🐾 {post.author}
+            {thread.title}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-            <Megaphone size={14} color={C.mutedBrown} />
-            <Text
-              style={{ fontSize: 13, color: C.mutedBrown, fontWeight: "600" }}
-            >
-              {post.comments} barks
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 12, color: C.mutedBrown, fontWeight: "600" }}>
+              🐾 {thread.author_username || "someone"}
             </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Megaphone size={14} color={C.mutedBrown} />
+              <Text style={{ fontSize: 12, color: C.mutedBrown, fontWeight: "600" }}>
+                {thread.comment_count || 0}
+              </Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -146,7 +145,7 @@ export default function CommunityScreen() {
         style={{
           paddingTop: insets.top,
           paddingHorizontal: 20,
-          paddingBottom: 14,
+          paddingBottom: 12,
           backgroundColor: C.card,
           borderBottomWidth: 1,
           borderBottomColor: C.peach,
@@ -157,27 +156,14 @@ export default function CommunityScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 14,
           }}
         >
-          <View
-            style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-          >
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ marginRight: 12 }}
-            >
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
               <ArrowLeft size={22} color={C.warmBrown} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 26,
-                  fontWeight: "800",
-                  color: C.warmBrown,
-                  letterSpacing: -0.5,
-                }}
-              >
+              <Text style={{ fontSize: 24, fontWeight: "800", color: C.warmBrown }}>
                 Community 🐕
               </Text>
               <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
@@ -186,6 +172,8 @@ export default function CommunityScreen() {
             </View>
           </View>
           <TouchableOpacity
+            testID="compose-button"
+            onPress={() => router.push("/forum-compose")}
             style={{
               backgroundColor: C.coral,
               width: 42,
@@ -193,39 +181,50 @@ export default function CommunityScreen() {
               borderRadius: 21,
               justifyContent: "center",
               alignItems: "center",
-              shadowColor: C.coral,
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.3,
-              shadowRadius: 6,
             }}
           >
             <Plus size={22} color="#FFF" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Search */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: C.sand,
-            borderRadius: 14,
-            paddingHorizontal: 14,
-            paddingVertical: 11,
-            borderWidth: 1,
-            borderColor: C.peach,
-          }}
-        >
-          <Search size={18} color={C.mutedBrown} style={{ marginRight: 9 }} />
-          <TextInput
-            placeholder="Search questions or tips..."
-            placeholderTextColor={C.mutedBrown}
-            style={{ flex: 1, fontSize: 14, color: C.warmBrown }}
-            value={search}
-            onChangeText={setSearch}
-          />
-          <Filter size={17} color={C.mutedBrown} />
-        </View>
+      {/* Sort */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          backgroundColor: C.card,
+        }}
+      >
+        {SORTS.map(({ key, label, Icon }) => (
+          <TouchableOpacity
+            key={key}
+            testID={`sort-${key}`}
+            onPress={() => setSort(key)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderRadius: 18,
+              backgroundColor: sort === key ? C.coral : C.sand,
+            }}
+          >
+            <Icon size={14} color={sort === key ? "#FFF" : C.mutedBrown} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: sort === key ? "#FFF" : C.mutedBrown,
+              }}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Categories */}
@@ -242,9 +241,10 @@ export default function CommunityScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
-          {categories.map((cat) => (
+          {FORUM_CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat}
+              testID={`category-${cat}`}
               onPress={() => setActiveCategory(cat)}
               style={{
                 paddingHorizontal: 16,
@@ -270,33 +270,27 @@ export default function CommunityScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      <RefreshableScrollView
+        refetch={refetch}
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
       >
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: "800",
-            color: C.mutedBrown,
-            marginBottom: 14,
-            letterSpacing: 0.8,
-          }}
-        >
-          LATEST DISCUSSIONS
-        </Text>
+        {isLoading && (
+          <View style={{ alignItems: "center", padding: 40 }}>
+            <ActivityIndicator size="large" color={C.coral} />
+          </View>
+        )}
 
-        {filtered.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {!isLoading &&
+          threads &&
+          threads.map((thread) => <ThreadCard key={thread.id} thread={thread} />)}
 
-        {filtered.length === 0 && (
+        {!isLoading && threads && threads.length === 0 && (
           <View style={{ alignItems: "center", padding: 50 }}>
             <Text style={{ fontSize: 36 }}>🐾</Text>
             <Text
               style={{
-                color: C.mutedBrown,
+                color: C.warmBrown,
                 fontSize: 16,
                 fontWeight: "700",
                 marginTop: 12,
@@ -309,23 +303,7 @@ export default function CommunityScreen() {
             </Text>
           </View>
         )}
-
-        <TouchableOpacity
-          style={{
-            marginTop: 16,
-            padding: 18,
-            backgroundColor: C.card,
-            borderRadius: 20,
-            borderWidth: 1.5,
-            borderColor: C.coral,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: C.coral, fontWeight: "800", fontSize: 15 }}>
-            🐾 Ask a Question
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+      </RefreshableScrollView>
     </View>
   );
 }

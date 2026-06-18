@@ -76,7 +76,8 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 - ✅ **2.41** vet-record owner upload — merged (#157), no migration (owner Add/open/delete documents into existing owner-scoped `vet_documents`; medical-profile edit already persists).
 - ✅ **2.42** vet-record history log — merged (#158), no migration (append-only History view over `vet_notes`: author label vet/"You" + dated entries + derived summary + owner add/delete; append-only integrity already RLS-proven in provider-records integration).
 - ✅ **2.43** walks with buddies — merged, migration `0046` (social_walks `lat/lng/location_name` + new `social_walk_invites` table; map picker + public/private toggle + nearby bounding-box discovery + invited view; private walks RLS-invisible to non-invitees, harness-proven).
-- ☐ **2.44** community forum · ☐ **2.45** training supreme · ☐ **2.46** Apple/Google sign-in
+- ✅ **2.44** community forum — merged, migration `0047` (Reddit-style `forum_threads`/`forum_comments`/`forum_votes`; any-authed read + author-only write/soft-delete; idempotent voting via the `forum_vote` DEFINER helper that recomputes score; mobile category/sort browse + thread detail + compose + comment + vote; COMMUNITY_POSTS mock removed).
+- ☐ **2.45** training supreme · ☐ **2.46** Apple/Google sign-in
 - ☐ **2.47** family/caregiver sharing · ☐ **2.48** lost & found · ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
 
 ---
