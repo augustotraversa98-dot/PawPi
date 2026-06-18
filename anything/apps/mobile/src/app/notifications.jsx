@@ -266,7 +266,7 @@ export default function NotificationsScreen() {
                 paddingHorizontal: 40,
               }}
             >
-              Phoebe's world is quiet for now.
+              It's quiet here for now.
             </Text>
           </View>
         ) : (

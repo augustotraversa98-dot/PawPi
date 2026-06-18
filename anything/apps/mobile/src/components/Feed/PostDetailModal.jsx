@@ -116,16 +116,18 @@ export const PostDetailModal = memo(function PostDetailModal({
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
-              <Image
-                source={{ uri: avatar }}
+              <View
                 style={{
                   width: 46,
                   height: 46,
                   borderRadius: 23,
                   borderWidth: 2.5,
                   borderColor: COLORS.coral,
+                  overflow: "hidden",
                 }}
-              />
+              >
+                <PetAvatar uri={avatar || undefined} name={dogName} size={41} />
+              </View>
               <View>
                 <Text
                   style={{

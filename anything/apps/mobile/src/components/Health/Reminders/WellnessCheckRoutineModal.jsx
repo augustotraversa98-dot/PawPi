@@ -489,7 +489,7 @@ export default function WellnessCheckRoutineModal({
 
     const routine = {
       type: ROUTINE_TYPES.WELLNESS_CHECK,
-      petId: editingRoutine?.petId || "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       wellnessCheckSchedule,
       // Legacy fields for backward compatibility

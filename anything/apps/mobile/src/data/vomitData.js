@@ -4,7 +4,7 @@
 export const vomitLogs = [
   {
     id: "vomit001",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T10:30:00Z",
     episodes: 1,
     appearance: "foam",
@@ -18,7 +18,7 @@ export const vomitLogs = [
   },
   {
     id: "vomit002",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T14:20:00Z",
     episodes: 2,
     appearance: "bile/yellow",
@@ -32,7 +32,7 @@ export const vomitLogs = [
   },
   {
     id: "vomit003",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-03T08:15:00Z",
     episodes: 1,
     appearance: "food",
@@ -165,7 +165,7 @@ export const getConcernMessage = (concerns) => {
 export const addVomitLog = (logData) => {
   const newLog = {
     id: `vomit${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: new Date().toISOString(),
     ...logData,
   };

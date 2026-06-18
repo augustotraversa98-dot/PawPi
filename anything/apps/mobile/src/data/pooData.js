@@ -4,7 +4,7 @@
 export const pooLogs = [
   {
     id: "poo001",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T08:30:00Z",
     amount: "medium",
     shape: "soft",
@@ -19,7 +19,7 @@ export const pooLogs = [
   },
   {
     id: "poo002",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T06:20:00Z",
     amount: "medium",
     shape: "normal",
@@ -34,7 +34,7 @@ export const pooLogs = [
   },
   {
     id: "poo003",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T19:15:00Z",
     amount: "medium",
     shape: "normal",
@@ -49,7 +49,7 @@ export const pooLogs = [
   },
   {
     id: "poo004",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T07:30:00Z",
     amount: "large",
     shape: "soft",
@@ -140,7 +140,7 @@ export const getConcernMessage = (concerns) => {
 export const addPooLog = (logData) => {
   const newLog = {
     id: `poo${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: new Date().toISOString(),
     ...logData,
   };

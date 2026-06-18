@@ -1011,7 +1011,7 @@ function getTimeOfDay(date) {
 export const mockRoutines = [
   {
     id: "routine_feeding_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.FEEDING,
     isActive: true,
     meals: [
@@ -1048,7 +1048,7 @@ export const mockRoutines = [
   },
   {
     id: "routine_walk_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.WALK,
     isActive: true,
     walks: [
@@ -1093,7 +1093,7 @@ export const mockRoutines = [
   },
   {
     id: "routine_photocheck_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.PHOTO_CHECK,
     isActive: true,
     bodyArea: BODY_AREAS.PAWS,
@@ -1111,7 +1111,7 @@ export const mockRoutines = [
   },
   {
     id: "routine_medication_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.MEDICATION,
     isActive: true,
     medicationName: "Apoquel",
@@ -1132,7 +1132,7 @@ export const mockRoutines = [
   },
   {
     id: "routine_generalcheck_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.GENERAL_CHECK,
     isActive: true,
     frequency: ROUTINE_FREQUENCY.WEEKLY,
@@ -1149,7 +1149,7 @@ export const mockRoutines = [
   },
   {
     id: "routine_weight_1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: ROUTINE_TYPES.WEIGHT_CHECK,
     isActive: true,
     frequency: ROUTINE_FREQUENCY.WEEKLY,

@@ -79,7 +79,7 @@ export async function requestNotificationPermissions() {
       return new Promise((resolve) => {
         Alert.alert(
           "🔔 Enable Reminders",
-          "Social Pet can remind you about feeding, walks, medication, and photo checks so Phoebe's care routine stays on track.",
+          "Social Pet can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
           [
             {
               text: "Maybe later",

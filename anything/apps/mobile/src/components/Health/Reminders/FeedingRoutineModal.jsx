@@ -94,6 +94,7 @@ export default function FeedingRoutineModal({
   onClose,
   onSave,
   editingRoutine,
+  petName = "your pet",
 }) {
   const [step, setStep] = useState("count"); // 'count' or 'details'
   const [mealCount, setMealCount] = useState(2);
@@ -189,7 +190,7 @@ export default function FeedingRoutineModal({
   const handleSave = () => {
     const routine = {
       type: ROUTINE_TYPES.FEEDING,
-      petId: "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       meals,
       times: meals.map((m) => m.time),
@@ -255,7 +256,7 @@ export default function FeedingRoutineModal({
                   🍽️ Feeding Routine
                 </Text>
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  How many meals does Phoebe eat per day?
+                  How many meals does {petName} eat per day?
                 </Text>
               </View>
               <TouchableOpacity

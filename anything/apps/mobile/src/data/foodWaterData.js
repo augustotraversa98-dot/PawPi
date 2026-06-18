@@ -4,7 +4,7 @@
 export const foodWaterLogs = [
   {
     id: "fw001",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "food",
     timestamp: "2026-05-06T07:15:00Z",
     mealType: "breakfast",
@@ -18,7 +18,7 @@ export const foodWaterLogs = [
   },
   {
     id: "fw002",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "food",
     timestamp: "2026-05-06T12:30:00Z",
     mealType: "snack",
@@ -32,7 +32,7 @@ export const foodWaterLogs = [
   },
   {
     id: "fw003",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "water",
     timestamp: "2026-05-06T09:00:00Z",
     waterIntake: "normal",
@@ -42,7 +42,7 @@ export const foodWaterLogs = [
   },
   {
     id: "fw004",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "food",
     timestamp: "2026-05-05T18:45:00Z",
     mealType: "dinner",
@@ -56,7 +56,7 @@ export const foodWaterLogs = [
   },
   {
     id: "fw005",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "food",
     timestamp: "2026-05-05T07:00:00Z",
     mealType: "breakfast",
@@ -70,7 +70,7 @@ export const foodWaterLogs = [
   },
   {
     id: "fw006",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "water",
     timestamp: "2026-05-05T14:20:00Z",
     waterIntake: "high",
@@ -187,7 +187,7 @@ export const getNextFeedingTime = () => {
 export const addFoodLog = (logData) => {
   const newLog = {
     id: `fw${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "food",
     timestamp: new Date().toISOString(),
     ...logData,
@@ -200,7 +200,7 @@ export const addFoodLog = (logData) => {
 export const addWaterLog = (logData) => {
   const newLog = {
     id: `fw${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     type: "water",
     timestamp: new Date().toISOString(),
     ...logData,

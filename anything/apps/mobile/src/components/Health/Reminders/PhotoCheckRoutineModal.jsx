@@ -319,7 +319,7 @@ export default function PhotoCheckRoutineModal({
     const primary = photoCheckSchedule[0];
     const routine = {
       type: ROUTINE_TYPES.PHOTO_CHECK,
-      petId: editingRoutine?.petId || "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       photoCheckSchedule,
       // Legacy fields for backward compatibility

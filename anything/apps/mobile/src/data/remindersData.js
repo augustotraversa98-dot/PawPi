@@ -170,10 +170,10 @@ export const mockReminders = [
   // Today - Dinner (time-sensitive, due soon)
   {
     id: "rem1",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.FEEDING,
     title: "Dinner time",
-    description: "Phoebe's dinner is due at 7:00 PM",
+    description: "Your pet's dinner is due at 7:00 PM",
     date: now.toISOString().split("T")[0],
     time: "19:00",
     nextTriggerAt: new Date(
@@ -201,7 +201,7 @@ export const mockReminders = [
   // Today - Evening walk (time-sensitive, due soon)
   {
     id: "rem2",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.WALK,
     title: "Evening walk",
     description: "Walk reminder at 6:30 PM",
@@ -232,10 +232,10 @@ export const mockReminders = [
   // Today - Medication (time-sensitive, due soon)
   {
     id: "rem3",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.MEDICATION,
     title: "Medication",
-    description: "Give Phoebe her medication",
+    description: "Give your pet her medication",
     date: now.toISOString().split("T")[0],
     time: "20:00",
     nextTriggerAt: new Date(
@@ -263,11 +263,11 @@ export const mockReminders = [
   // Today - Paws photo check (important)
   {
     id: "rem4",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.PHOTO_CHECK,
     title: "Weekly paws photo",
     description:
-      "Upload Phoebe's paws photo to compare visible changes over time",
+      "Upload your pet's paws photo to compare visible changes over time",
     date: now.toISOString().split("T")[0],
     time: null,
     nextTriggerAt: new Date(
@@ -295,7 +295,7 @@ export const mockReminders = [
   // Tomorrow - Flea prevention
   {
     id: "rem5",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.PREVENTIVE,
     title: "Flea prevention",
     description: "Apply monthly flea and tick treatment",
@@ -324,10 +324,10 @@ export const mockReminders = [
   // This week - General check (Sunday)
   {
     id: "rem6",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.GENERAL_CHECK,
     title: "General check",
-    description: "Weekly health check for Phoebe",
+    description: "Weekly health check for your pet",
     date: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0],
@@ -353,7 +353,7 @@ export const mockReminders = [
   // This week - Weight check (Saturday)
   {
     id: "rem7",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.WEIGHT_CHECK,
     title: "Weight check",
     description: "Weekly weight tracking",
@@ -382,7 +382,7 @@ export const mockReminders = [
   // Later - Vet appointment
   {
     id: "rem8",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.VET_APPOINTMENT,
     title: "Annual vet checkup",
     description: "Dr. Smith at Happy Paws Veterinary",
@@ -411,10 +411,10 @@ export const mockReminders = [
   // Later - Eyes photo check
   {
     id: "rem9",
-    petId: "phoebe",
+    petId: "sample-pet",
     type: REMINDER_TYPES.PHOTO_CHECK,
     title: "Eyes photo check",
-    description: "Upload Phoebe's eyes photo",
+    description: "Upload your pet's eyes photo",
     date: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0],

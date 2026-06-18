@@ -727,7 +727,7 @@ function generateGeneralCheckReminders(
           petId: routine.petId,
           type: "general_check",
           title: "General Check",
-          description: "Check Phoebe's overall health",
+          description: "Check your pet's overall health",
           scheduledAt: scheduledTime.toISOString(),
           nextTriggerAt: scheduledTime.toISOString(),
           status: REMINDER_STATUS.UPCOMING,
@@ -776,7 +776,7 @@ function generateGeneralCheckReminders(
             petId: routine.petId,
             type: "general_check",
             title: "General Check",
-            description: "Check Phoebe's overall health",
+            description: "Check your pet's overall health",
             scheduledAt: scheduledTime.toISOString(),
             nextTriggerAt: scheduledTime.toISOString(),
             status: REMINDER_STATUS.UPCOMING,
@@ -847,7 +847,7 @@ function generateWeightCheckReminders(
           petId: routine.petId,
           type: "weight_check",
           title: "Weight Check",
-          description: "Log Phoebe's weight",
+          description: "Log your pet's weight",
           scheduledAt: scheduledTime.toISOString(),
           nextTriggerAt: scheduledTime.toISOString(),
           status: REMINDER_STATUS.UPCOMING,
@@ -1378,13 +1378,13 @@ function getWellnessCheckDescription(item) {
   if (item.notes) return item.notes;
 
   const descriptions = {
-    general: "Check Phoebe's overall health",
-    weight: "Log Phoebe's weight",
-    body_condition: "Assess Phoebe's body condition",
-    mobility: "Check Phoebe's mobility and movement",
-    mood_energy: "Check Phoebe's mood and energy level",
-    skin_coat: "Inspect Phoebe's skin and coat",
-    appetite_hydration: "Check Phoebe's appetite and water intake",
+    general: "Check your pet's overall health",
+    weight: "Log your pet's weight",
+    body_condition: "Assess your pet's body condition",
+    mobility: "Check your pet's mobility and movement",
+    mood_energy: "Check your pet's mood and energy level",
+    skin_coat: "Inspect your pet's skin and coat",
+    appetite_hydration: "Check your pet's appetite and water intake",
   };
   return descriptions[item.checkType] || "Complete wellness check";
 }

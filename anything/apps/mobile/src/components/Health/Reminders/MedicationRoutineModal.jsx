@@ -32,6 +32,7 @@ export default function MedicationRoutineModal({
   onClose,
   onSave,
   editingRoutine,
+  petName = "your pet",
 }) {
   const [medicationName, setMedicationName] = useState("");
   const [dose, setDose] = useState("");
@@ -80,7 +81,7 @@ export default function MedicationRoutineModal({
   const handleSave = () => {
     const routine = {
       type: ROUTINE_TYPES.MEDICATION,
-      petId: "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       medicationName,
       dose,
@@ -133,7 +134,7 @@ export default function MedicationRoutineModal({
                 💊 {editingRoutine ? "Edit" : "Create"} Medication
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Track Phoebe's medication schedule
+                Track {petName}'s medication schedule
               </Text>
             </View>
             <TouchableOpacity

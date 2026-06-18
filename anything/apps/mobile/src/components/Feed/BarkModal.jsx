@@ -116,16 +116,22 @@ export const BarkModal = memo(function BarkModal({
               gap: 12,
             }}
           >
-            <Image
-              source={{ uri: post.pet_avatar || post.avatar }}
+            <View
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: 20,
                 borderWidth: 2,
                 borderColor: COLORS.coral,
+                overflow: "hidden",
               }}
-            />
+            >
+              <PetAvatar
+                uri={post.pet_avatar || post.avatar || undefined}
+                name={post.pet_name || post.dogName}
+                size={36}
+              />
+            </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{

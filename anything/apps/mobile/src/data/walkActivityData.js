@@ -4,7 +4,7 @@
 export const walkLogs = [
   {
     id: "walk001",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T07:30:00Z",
     duration: 25, // minutes
     distance: 1.2, // miles
@@ -21,7 +21,7 @@ export const walkLogs = [
   },
   {
     id: "walk002",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T18:15:00Z",
     duration: 15,
     distance: 0.7,
@@ -38,7 +38,7 @@ export const walkLogs = [
   },
   {
     id: "walk003",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T07:00:00Z",
     duration: 30,
     distance: 1.5,
@@ -58,7 +58,7 @@ export const walkLogs = [
 export const mobilityChecks = [
   {
     id: "mobility001",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-04T16:20:00Z",
     limping: false,
     stiffness: true,
@@ -69,7 +69,7 @@ export const mobilityChecks = [
   },
   {
     id: "mobility002",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-02T09:30:00Z",
     limping: false,
     stiffness: false,
@@ -83,8 +83,8 @@ export const mobilityChecks = [
 export const socialWalks = [
   {
     id: "social001",
-    petId: "phoebe",
-    hostName: "Phoebe",
+    petId: "sample-pet",
+    hostName: "Your pet",
     date: "2026-05-08",
     time: "10:00 AM",
     meetingLocation: "Riverside Park - Main Entrance",
@@ -100,7 +100,7 @@ export const socialWalks = [
   },
   {
     id: "social002",
-    petId: "phoebe",
+    petId: "sample-pet",
     hostName: "Charlie",
     date: "2026-05-10",
     time: "5:30 PM",
@@ -111,7 +111,7 @@ export const socialWalks = [
     maxPets: 3,
     notes: "Beach walk at sunset",
     attendees: [
-      { petName: "Phoebe", ownerName: "You" },
+      { petName: "Your pet", ownerName: "You" },
       { petName: "Bella", ownerName: "Mike" },
     ],
   },
@@ -241,7 +241,7 @@ export const getNextSocialWalk = () => {
 export const addWalkLog = (walkData) => {
   const newLog = {
     id: `walk${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: new Date().toISOString(),
     isActive: false,
     ...walkData,
@@ -254,7 +254,7 @@ export const addWalkLog = (walkData) => {
 export const addMobilityCheck = (mobilityData) => {
   const newCheck = {
     id: `mobility${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: new Date().toISOString(),
     ...mobilityData,
   };
@@ -266,7 +266,7 @@ export const addMobilityCheck = (mobilityData) => {
 export const addSocialWalk = (socialWalkData) => {
   const newSocialWalk = {
     id: `social${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     attendees: [],
     ...socialWalkData,
   };

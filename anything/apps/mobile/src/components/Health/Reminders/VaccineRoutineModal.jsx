@@ -63,7 +63,7 @@ export default function VaccineRoutineModal({
   const handleSave = () => {
     const routine = {
       type: ROUTINE_TYPES.VACCINE,
-      petId: "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       vaccineName,
       lastGiven,

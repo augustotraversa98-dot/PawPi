@@ -391,6 +391,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         onClose={closeAllModals}
         onSave={handleSaveRoutine}
         editingRoutine={editingRoutine}
+        petName={petName}
       />
       <WalkRoutineModal
         visible={selectedType === ROUTINE_TYPES.WALK}
@@ -398,6 +399,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         onSave={handleSaveRoutine}
         onDelete={handleDelete}
         editingRoutine={editingRoutine}
+        petName={petName}
       />
       <PhotoCheckRoutineModal
         visible={selectedType === ROUTINE_TYPES.PHOTO_CHECK}
@@ -430,6 +432,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         onClose={closeAllModals}
         onSave={handleSaveRoutine}
         editingRoutine={editingRoutine}
+        petName={petName}
       />
       <PreventiveCareRoutineModal
         visible={selectedType === ROUTINE_TYPES.PREVENTIVE}

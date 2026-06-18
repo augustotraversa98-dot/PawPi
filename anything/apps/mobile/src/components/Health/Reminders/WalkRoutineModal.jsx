@@ -24,6 +24,7 @@ export default function WalkRoutineModal({
   onSave,
   onDelete,
   editingRoutine,
+  petName = "your pet",
 }) {
   const {
     step,
@@ -230,7 +231,7 @@ export default function WalkRoutineModal({
   const handleSave = () => {
     const routine = {
       type: ROUTINE_TYPES.WALK,
-      petId: "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       walks,
       times: walks.map((w) => w.time),
@@ -252,6 +253,7 @@ export default function WalkRoutineModal({
         visible={visible}
         onClose={onClose}
         onSelectCount={handleCountSelect}
+        petName={petName}
       />
     );
   }
@@ -287,7 +289,7 @@ export default function WalkRoutineModal({
                 🚶 {editingRoutine ? "Edit" : "Create"} Walk Routine
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Set Phoebe's walk schedule
+                Set {petName}'s walk schedule
               </Text>
             </View>
             <TouchableOpacity

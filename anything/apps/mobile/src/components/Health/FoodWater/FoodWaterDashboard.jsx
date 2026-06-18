@@ -447,7 +447,7 @@ export default function FoodWaterDashboard() {
                 lineHeight: 17,
               }}
             >
-              Phoebe's appetite has been lower than usual in recent meals. This
+              Your pet's appetite has been lower than usual in recent meals. This
               may be worth monitoring. Contact your vet if it continues or comes
               with other symptoms.
             </Text>

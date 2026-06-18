@@ -66,7 +66,7 @@ export default function PreventiveCareRoutineModal({
   const handleSave = () => {
     const routine = {
       type: ROUTINE_TYPES.PREVENTIVE,
-      petId: "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: true,
       productName,
       treatmentType,

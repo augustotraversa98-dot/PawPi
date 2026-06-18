@@ -71,7 +71,7 @@ export default function ReminderCreationModal({ visible, onClose }) {
 
     const newReminder = {
       id: `rem_${Date.now()}`,
-      petId: "phoebe",
+      petId: null,
       type: selectedType,
       title: title.trim(),
       description: description.trim() || `Reminder for ${title}`,
