@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthModal } from "@/utils/auth/store";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/legal";
 
 const C = {
   coral: "#FF6F61",
@@ -155,7 +156,28 @@ export default function WelcomeScreen() {
             opacity: 0.7,
           }}
         >
-          By continuing, you agree to our Terms & Privacy Policy
+          By continuing, you agree to our{" "}
+          <Text
+            style={{ textDecorationLine: TERMS_OF_SERVICE_URL ? "underline" : "none" }}
+            onPress={
+              TERMS_OF_SERVICE_URL
+                ? () => Linking.openURL(TERMS_OF_SERVICE_URL)
+                : undefined
+            }
+          >
+            Terms
+          </Text>{" "}
+          &{" "}
+          <Text
+            style={{ textDecorationLine: PRIVACY_POLICY_URL ? "underline" : "none" }}
+            onPress={
+              PRIVACY_POLICY_URL
+                ? () => Linking.openURL(PRIVACY_POLICY_URL)
+                : undefined
+            }
+          >
+            Privacy Policy
+          </Text>
         </Text>
       </ScrollView>
     </View>

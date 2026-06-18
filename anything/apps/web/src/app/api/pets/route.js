@@ -22,113 +22,34 @@ async function uniqueUsername(base, exists) {
   return `${base}_${Date.now()}`;
 }
 
-// Get all pets for the current user
+// Get all pets for the current user (owner-scoped; pets.owner_user_id = user_profiles.id).
 async function GET(request) {
   try {
-    console.log("[GET /api/pets] ========================================");
-    console.log("[GET /api/pets] Fetching pets for current user");
-
     const session = await auth();
-    console.log("[GET /api/pets] Session:", session);
-
     if (!session?.user?.id) {
-      console.error("[GET /api/pets] ERROR: No session or user ID");
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
-
     const authUserId = session.user.id;
-    console.log("[GET /api/pets] Auth user ID:", authUserId);
 
-    // Get user profile
-    console.log("[GET /api/pets] Fetching user profile...");
     const userProfile = await sql`
-      SELECT id, auth_user_id, full_name, username, role, onboarding_completed 
-      FROM user_profiles 
+      SELECT id, auth_user_id, full_name, username, role, onboarding_completed
+      FROM user_profiles
       WHERE auth_user_id = ${authUserId}
       LIMIT 1
     `;
-
-    console.log("[GET /api/pets] User profile query result:", userProfile);
-
     if (userProfile.length === 0) {
-      console.log(
-        "[GET /api/pets] ⚠️ No user profile found, returning empty pets array",
-      );
       return Response.json({ pets: [] });
     }
 
     const userId = userProfile[0].id;
-    console.log("[GET /api/pets] User profile ID:", userId);
-    console.log("[GET /api/pets] User profile details:");
-    console.log(
-      "[GET /api/pets]   - auth_user_id:",
-      userProfile[0].auth_user_id,
-    );
-    console.log("[GET /api/pets]   - id:", userProfile[0].id);
-    console.log("[GET /api/pets]   - username:", userProfile[0].username);
-    console.log(
-      "[GET /api/pets]   - onboarding_completed:",
-      userProfile[0].onboarding_completed,
-    );
-
-    // Get all pets for this user using user_profiles.id
-    console.log("[GET /api/pets] Querying pets where owner_user_id =", userId);
     const pets = await sql`
-      SELECT * FROM pets 
+      SELECT * FROM pets
       WHERE owner_user_id = ${userId}
       ORDER BY created_at DESC
     `;
-
-    console.log("[GET /api/pets] Pets query result:", pets);
-    console.log("[GET /api/pets] Number of pets found:", pets.length);
-
-    if (pets.length > 0) {
-      console.log("[GET /api/pets] ✅ Found pets:");
-      pets.forEach((pet, index) => {
-        console.log(
-          `[GET /api/pets]   ${index + 1}. ID: ${pet.id}, Name: ${pet.name}, Handle: ${pet.handle}`,
-        );
-      });
-    } else {
-      console.log(
-        "[GET /api/pets] ⚠️ No pets found for user_profiles.id:",
-        userId,
-      );
-      console.log(
-        "[GET /api/pets] Checking if any pets exist with wrong owner_user_id...",
-      );
-
-      // Debug: check if pets exist with auth_user_id instead (wrong mapping)
-      const wrongPets = await sql`
-        SELECT id, name, owner_user_id FROM pets 
-        WHERE owner_user_id = ${authUserId}
-        LIMIT 5
-      `;
-
-      if (wrongPets.length > 0) {
-        console.error("[GET /api/pets] ❌ FOUND PETS WITH WRONG OWNER ID!");
-        console.error(
-          "[GET /api/pets] These pets have owner_user_id = auth_user_id (should be user_profiles.id):",
-        );
-        wrongPets.forEach((p) => {
-          console.error(
-            `[GET /api/pets]   - Pet ID: ${p.id}, Name: ${p.name}, owner_user_id: ${p.owner_user_id}`,
-          );
-        });
-        console.error("[GET /api/pets] Expected owner_user_id:", userId);
-        console.error("[GET /api/pets] Actual owner_user_id:", authUserId);
-      }
-    }
-
-    console.log("[GET /api/pets] ========================================");
-
     return Response.json({ pets });
   } catch (error) {
-    console.error("[GET /api/pets] ========================================");
-    console.error("[GET /api/pets] FATAL ERROR:");
-    console.error("[GET /api/pets] Error message:", error.message);
-    console.error("[GET /api/pets] Error stack:", error.stack);
-    console.error("[GET /api/pets] ========================================");
+    console.error("[GET /api/pets] Error:", error.message);
     return Response.json({ error: "Failed to fetch pets" }, { status: 500 });
   }
 }
