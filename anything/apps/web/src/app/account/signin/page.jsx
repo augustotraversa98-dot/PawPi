@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useAuth from "@/utils/useAuth";
+import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 
 export default function SignInPage() {
   const [error, setError] = useState(null);
@@ -137,22 +138,7 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-4 py-3 text-base font-semibold text-[#7A6254] opacity-50"
-            >
-              Continue with Google (Coming soon)
-            </button>
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-4 py-3 text-base font-semibold text-[#7A6254] opacity-50"
-            >
-              Continue with Apple (Coming soon)
-            </button>
-          </div>
+          <SocialSignInButtons callbackUrl="/provider" />
 
           {/* Sign Up Link */}
           <p className="text-center text-sm text-[#7A6254]">
