@@ -235,12 +235,51 @@ high-blast-radius tickets are 2.51 (public read of MEDICAL data — DEFINER-only
 policy) and 2.53 (clinical Rx — owner read-only, append-only): strictest RLS, harness-proven, leak nothing
 beyond whitelisted columns.
 
+## 🌊 WAVE 7 — finish the money/transport loops + discovery/community/health add-ons (2.68–2.75)
+Decided with Tats (2026-06-18) from the un-ticketed post-core list. Built per the ⚡ Wave 5 autonomy preamble
+above (no questions; CI-green → auto squash-merge; RLS + harness proofs + completeness guard on every new
+table; migrations left at the next free number for Tats to hand-apply; no fake data). Continues the 2.NN
+numbering (the "Wave" is a grouping label, as in Waves 3–6). **Last applied migration = 0055; Wave 7
+migrations are 0056–0061.** Always take the NEXT FREE number in `supabase/migrations/` at build time and
+update `docs/test-backlog.md` ACTION 1.
+
+### Cross-cutting requirement (Tats, 2026-06-18): Apple Maps in EVERY location/address section
+Every section that captures OR shows an address/location must use a real map (Apple Maps on iOS for now).
+The app already uses `react-native-maps` + `PROVIDER_DEFAULT` (= Apple on iOS; no key needed) — **2.68
+extracts the shared map components and everything else reuses them.** Build 2.68 FIRST; do not hand-roll a
+new picker per screen.
+
+Build order (⛔ = hard blocker, must be merged to `origin/main` first):
+1. **2.68** Shared Apple-Maps location component — mobile, NO migration. **Do FIRST** (foundation reused by
+   2.70/2.73/2.74).
+2. **2.69** Provider Sales / payouts + reconciliation UI — web, expected NO migration (read-only surfacing of
+   the 2.3 money tables). Independent — can interleave.
+3. **2.70** Transport live-GPS tracking — migration **0056** (`transport_trip_locations`); the planned 2.52
+   follow-up, mirrors walker-GPS 2.7. ⛔ after **2.68** (reuses the shared map).
+4. **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057** (`rx_fulfillment_orders` + a new
+   `pharmacy` capability). Bridges 2.53 → 2.11 → 2.3; medical-grade RLS, refills only via the 2.53 safe path.
+5. **2.72** Insurance in-app binding + payment — migration **0058** (`insurance_policies`). Full in-app
+   bind+pay extending 2.54 lead-gen; reuses payments 2.3; insurer is party-of-record (disclaimers, not
+   underwriting).
+6. **2.73** Pet-friendly places directory — migration **0059** (`saved_places` [+ optional cache]). Google
+   Places DATA via a server route (key-gated, degrade-clean), Apple-map display. ⛔ after **2.68**.
+7. **2.74** Events / meetups — migration **0060** (`events` + `event_rsvps`). Community feature (forum 2.44 +
+   social-walks 2.43 patterns), location via the 2.68 picker. ⛔ after **2.68**.
+8. **2.75** Nutrition plans + food-recall alerts — migration **0061** (`nutrition_plans` + `food_recalls`
+   [+ optional matches]). Owner+pet health; external recall feed is key/cron-gated + degrade-clean;
+   non-diagnostic copy.
+
+Independent + parallel-safe (isolated files): 2.69 (web money), 2.71, 2.72, 2.75. The map-dependent trio
+(2.70/2.73/2.74) all wait on 2.68. Migration numbers 0056–0061 assume this order; if branches land out of
+order, take the next free sequential number and update `docs/test-backlog.md` ACTION 1. New go-live env keys
+this wave: the food-recall feed key + an external scheduler (2.75, like 2.17's CRON_SECRET); 2.73 also
+consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
+
 ## POST-CORE ADD-ONS (not ticketed — note when relevant)
-Still un-ticketed after Wave 6: medication/Rx FULFILLMENT (delivery/pickup + charging, reuses shop+payments),
-in-app insurance binding/payment, transport LIVE GPS tracking (the walker-GPS 2.7 pattern), provider
-Sales/payouts + reconciliation UI, pet-friendly places directory, events/meetups, nutrition plans +
-food-recall alerts, widgets / Apple Watch + Live Activities, calendar integration, weather-aware nudges,
-memorials. All slot onto the same spine/capability/discovery patterns when prioritized.
+Un-ticketed after Wave 7 (deferred by choice): **widgets / Apple Watch + Live Activities** (native iOS;
+deferred to a dedicated attended effort — can't be CI-verified, needs a dev build + app-store config),
+calendar integration, weather-aware nudges, memorials (2.68–2.75 dropped memorials per Tats 2026-06-18). All
+slot onto the same spine/capability/discovery patterns when prioritized.
 
 ## INDEX
 - 2.0-surface-nav.md
@@ -311,3 +350,13 @@ memorials. All slot onto the same spine/capability/discovery patterns when prior
 - 2.65-edit-daily-update-caption.md        (Wave 6 fix-pack — edit own post caption; owner-only PATCH; no migration)
 - 2.66-health-today-real-progress.md       (Wave 6 fix-pack — Today's Progress on real logged data; no migration)
 - 2.67-followers-following-route-fix.md     (Wave 6 — device fix: Followers/Following → +not-found; follow-up to 2.61; no migration)
+- 2.68-shared-map-location.md               (Wave 7 — shared Apple-Maps location components; no migration; build FIRST)
+- 2.69-provider-sales-payouts-reconciliation.md (Wave 7 — provider Sales/payouts/reconciliation UI; web; expected no migration)
+- 2.70-transport-live-gps.md                (Wave 7 — transport live GPS; migration 0056; ⛔ after 2.68; 2.52 follow-up)
+- 2.71-rx-fulfillment.md                     (Wave 7 — Rx delivery/pickup + charging; migration 0057; new `pharmacy` capability)
+- 2.72-insurance-binding-payment.md          (Wave 7 — in-app insurance binding + payment; migration 0058; extends 2.54)
+- 2.73-pet-friendly-places-directory.md      (Wave 7 — places directory, Google Places data + Apple map; migration 0059; ⛔ after 2.68)
+- 2.74-events-meetups.md                      (Wave 7 — events/meetups + RSVPs + map location; migration 0060; ⛔ after 2.68)
+- 2.75-nutrition-plans-food-recalls.md        (Wave 7 — nutrition plans + food-recall alerts; migration 0061; non-diagnostic)
+- 2.76-widgets-watch-live-activities.md        (NATIVE track — Widgets + Live Activities + Apple Watch; ATTENDED, no auto-merge; no migration)
+- 2.77-ios27-liquid-glass-redesign.md          (CROSS-CUTTING redesign — iOS 27 Liquid Glass + smoother motion; keep palette; DO LAST, after Wave 7 + 2.76; no migration)

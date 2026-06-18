@@ -42,12 +42,25 @@ as the RLS migrations 0019–0026.)
 0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ✅ APPLIED + VERIFIED 2026-06-18
 0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ✅ APPLIED + VERIFIED 2026-06-18
 0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ✅ APPLIED + VERIFIED 2026-06-18
-0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ⏳ HAND-APPLY (Wave 6)
-0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ⏳ HAND-APPLY (Wave 6)
-0053_vet_prescriptions.sql            (2.53 — prescriptions + rx_refill_requests; STRICTEST clinical append-only RLS)       ⏳ HAND-APPLY (Wave 6)
-0054_insurance_marketplace.sql        (2.54 — widen capability CHECKs +insurance; insurance_plans + insurance_leads RLS)     ⏳ HAND-APPLY (Wave 6)
-0055_adoption_foster_urgent_flags.sql (2.57 — additive columns on adoptable_listings + adoption_applications; ride 0038 RLS) ⏳ HAND-APPLY (Wave 6)
+0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ✅ APPLIED + VERIFIED 2026-06-18
+0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ✅ APPLIED + VERIFIED 2026-06-18
+0053_vet_prescriptions.sql            (2.53 — prescriptions + rx_refill_requests; STRICTEST clinical append-only RLS)       ✅ APPLIED + VERIFIED 2026-06-18
+0054_insurance_marketplace.sql        (2.54 — widen capability CHECKs +insurance; insurance_plans + insurance_leads RLS)     ✅ APPLIED + VERIFIED 2026-06-18
+0055_adoption_foster_urgent_flags.sql (2.57 — additive columns on adoptable_listings + adoption_applications; ride 0038 RLS) ✅ APPLIED + VERIFIED 2026-06-18
+--- WAVE 7 (planned numbers; each created at build time = next free, then flagged here on merge) ---
+0056_transport_trip_locations.sql     (2.70 — live driver GPS pings on transport_trips; owner+driver+staff RLS)        ⏳ NOT YET BUILT
+0057_rx_fulfillment.sql               (2.71 — rx_fulfillment_orders + new `pharmacy` capability; refills via 2.53 safe path) ⏳ NOT YET BUILT
+0058_insurance_policies.sql           (2.72 — insurance_policies; in-app bind+pay; owner can't self-issue/activate)        ⏳ NOT YET BUILT
+0059_pet_friendly_places.sql          (2.73 — saved_places [+ optional places_cache]; Google Places data, Apple-map UI)   ⏳ NOT YET BUILT
+0060_events_meetups.sql               (2.74 — events + event_rsvps; published public read, host-only writes, own rsvp)    ⏳ NOT YET BUILT
+0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans + food_recalls [+ optional matches]; external recall feed)  ⏳ NOT YET BUILT
 ```
+**Wave 7 (tickets 2.68–2.75, scoped 2026-06-18):** migrations 0056–0061 above are PLANNED, not yet built —
+each Wave 7 ticket leaves its migration at the next free number at build time and updates this block on
+merge (same harness-only pattern). **2.68** (shared Apple-Maps component) + **2.69** (provider Sales/payouts/
+reconciliation UI) add NO migration. New go-live env keys this wave: the **food-recall feed key + an external
+scheduler** (2.75, like 2.17's CRON_SECRET); **2.73** also consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
+
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
 **✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0046_walks_with_buddies.sql` (ticket 2.43) — harness-proven, NOT yet applied.
@@ -116,8 +129,10 @@ as the RLS migrations 0019–0026.)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
 Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIFIED on Supabase (2026-06-18).
+**Wave-6 migrations 0051–0055 (2.51, 2.52, 2.53, 2.54, 2.57) are APPLIED + VERIFIED on Supabase (2026-06-18)
+— all checks PASS via the verification SQL. No migrations remain pending; the live DB is at 0055.**
 
-**⏳ HAND-APPLY (Wave 6):** `0051_emergency_medical_card.sql` (ticket 2.51) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0051_emergency_medical_card.sql` (ticket 2.51) — verification SQL all-PASS (2 tables RLS on+forced, 1+1 owner policies, the 3 DEFINER public-read fns SECURITY DEFINER + EXECUTE-granted to pawpi_app, notifications_type_check widened to admit 'emergency_contact').
 - New `pet_emergency_cards` (one row per pet; permanent `tag_token`, `show_medical_on_tag` default
   FALSE, `contact_mode` relay|phone|email|none, `blood_type`, `active`) + `pet_emergency_share_links`
   (revocable/expiring vet links; `scope` full|basic, `expires_at`, `revoked_at`). Both ENABLE+FORCE RLS,
@@ -134,7 +149,7 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   can't create/revoke; tag basic-vs-medical toggle; link full/basic + revoked/expired → ZERO; relay
   notify) + the completeness guard. Hand-apply after merge.
 
-**⏳ HAND-APPLY (Wave 6):** `0052_transport_trips.sql` (ticket 2.52) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0052_transport_trips.sql` (ticket 2.52) — verification SQL all-PASS (transport_trips RLS on+forced, 5 policies: owner select/insert/update + staff select/update).
 - New `transport_trips` (pet-taxi trip detail hanging off a generalized booking) — ENABLE+FORCE RLS,
   modeled on walk_sessions: OWNER reads/creates/edits/cancels own (a new trip is always 'requested';
   the owner-UPDATE WITH CHECK pins them to requested|cancelled — they CANNOT self-advance to a
@@ -144,7 +159,7 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   provider_capabilities/vet_appointments capability CHECKs (0027/0030) — no CHECK widen needed.
   Proven as pawpi_app in `transport-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
-**⏳ HAND-APPLY (Wave 6):** `0053_vet_prescriptions.sql` (ticket 2.53) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0053_vet_prescriptions.sql` (ticket 2.53) — verification SQL all-PASS (prescriptions + rx_refill_requests RLS on+forced, 3+3 policies, the 5 DEFINER helpers app_provider_can_rx/app_owns_active_rx/app_staff_of_rx_provider/decide_rx_refill/cancel_rx SECURITY DEFINER + EXECUTE-granted to pawpi_app; owner read-only append-only intact).
 - New `prescriptions` + `rx_refill_requests` — STRICTEST clinical RLS, modeled on vet_notes append-only.
   prescriptions: OWNER **read-only** (no insert/update/delete — can never write/forge); active staff of
   the issuing provider READ + INSERT (via `app_provider_can_rx(provider_id, pet_id)` = active staff +
@@ -158,7 +173,7 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   read-only/can't forge; cross-provider zero; refill decrement via the safe path; owner can't approve own)
   + the completeness guard. Hand-apply after merge.
 
-**⏳ HAND-APPLY (Wave 6):** `0054_insurance_marketplace.sql` (ticket 2.54) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0054_insurance_marketplace.sql` (ticket 2.54) — verification SQL all-PASS (insurance_plans + insurance_leads RLS on+forced, 2+4 policies; provider_capabilities_capability_check + vet_appointments_capability_check both widened to admit 'insurance').
 - WIDENS the provider_capabilities + vet_appointments capability CHECKs additively to admit `'insurance'`
   (drop+re-add, like 0040 added 'telehealth'); the app-side ALLOWED_CAPABILITIES gained `'insurance'` too.
 - New `insurance_plans` (catalog — admin-managed write via `app_is_provider_admin`; read = active staff
@@ -168,7 +183,7 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   no payment/underwriting; no medical data beyond what the owner types. Proven as pawpi_app in
   `insurance-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
-**⏳ HAND-APPLY (Wave 6):** `0055_adoption_foster_urgent_flags.sql` (ticket 2.57) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0055_adoption_foster_urgent_flags.sql` (ticket 2.57) — verification SQL all-PASS (5 additive columns on adoptable_listings [placement_type/is_urgent/is_featured/urgent_reason/featured_until] + requested_placement on adoption_applications; both new CHECK constraints present; ride existing 0038 adoption RLS).
 - ADDITIVE columns only (no new table, no policy change) that RIDE the existing adoptable_listings RLS
   (0038): `placement_type` adopt|foster|both, `is_urgent`, `is_featured`, `urgent_reason`, `featured_until`
   on adoptable_listings + `requested_placement` adopt|foster on adoption_applications (+ CHECKs + a
@@ -211,6 +226,29 @@ go-live checklist in `PawPi_instructions.md`.
 ---
 
 ## To test
+
+### ▸ WAVE 6 device-test queue (2026-06-18) — all merged + migrations 0051–0055 applied; owes a real-device pass
+
+Run these on a real device. For the share/QR ones use a **dev build** (native modules don't work in Expo Go),
+and start with `npx expo start --clear` (new route files need a fresh Metro route tree). Tell Cowork/Code
+"X passed" to clear an entry, or "X is wrong: <what you saw>" to turn it into a fix ticket.
+
+- [ ] **2.67 — Followers/Following route.** From your pet's profile (both via the bottom Profile tab AND by tapping a pet name on a post), tap **Followers** and **Following** → the searchable list opens for the right pet (no "+not-found", no dead taps); search filters; the paw **Follow/Following** toggle persists across reopen; tapping a row opens that pet's profile. Confirm it works after a clean `--clear` start.
+- [ ] **2.55 — Avatar fallback + no "Phoebe".** No "Phoebe" anywhere; a pet/user with no photo shows a clean initials/paws avatar (never a broken image); a pet with a photo shows it.
+- [ ] **2.62 — Share attaches the real photo (dev build).** From a daily post → **Share** → the framed image shows the REAL pet photo (not a blank center) → share sheet opens. Repeat from feed card, post detail, profile grid, and a Memory.
+- [ ] **2.63 — Keyboard tap-to-focus.** Open barks/comments → the sheet animates in with NO keyboard; tap the field → keyboard opens and the field stays visible. Same calm behavior on other forms/modals; the dedicated search screen may still auto-focus (intended).
+- [ ] **2.64 — Double-tap to Paw (dev build for animation).** Double-tap a feed image → a coral paw pops and the post is pawed (count +1); double-tap again → it animates but stays pawed (no double-count, no unpaw); the paw button stays in sync; single-tap still opens the post.
+- [ ] **2.65 — Edit own caption.** Open your own post → **Edit** → fix the text → save → the corrected caption shows in the detail + feed and persists on reopen; you can't edit another pet's post (no edit affordance); the photo/daily-lock are unaffected.
+- [ ] **2.66 — Today's Progress on real data.** With nothing logged → an empty/encouraging state (no fake numbers); log a meal → "meals" increments (e.g. 1/3); complete a walk → walks count rises; the chips match the Today list; another pet/day isn't counted.
+- [ ] **2.59 — Floating tab bar.** The nav floats as a rounded pill above the home indicator with a shadow; the active tab is clear; scrolling content isn't hidden behind it; all five tabs navigate as before on notch + non-notch phones.
+- [ ] **2.60 — Profile tab.** The bottom-right tab shows your pet's photo and opens your pet's social profile in one tap; switching the active pet updates the icon + profile; the ☰ burger still reveals Community/Hub/Dog Profile/Reminders/Settings + the My Dogs switcher; a no-pet account shows the paws fallback + add-a-pet state.
+- [ ] **2.61 — Followers/Following lists.** (Covered with 2.67 above — verify follow/unfollow persists, search works, rows open profiles, empty/no-match states show, you can't follow yourself.)
+- [ ] **2.51 — Emergency card + tag QR + public pages (dev build).** In-app card assembles from the medical profile ("Not recorded" for empties); **Share** exports the card image. Print/scan the **tag QR** → it opens the public `/p/tag` page in a phone browser with **no login** and **no app-install wall** → with "show medical" OFF only basic info shows; toggle ON → medical appears. Create a **vet link** → open `/p/card` in a browser → full card; **revoke** it → the same URL says expired/revoked. Mark the pet lost (2.48) → the card + tag show the LOST banner. **Eyeball the public pages on a real phone to confirm only what you intend is visible.**
+- [ ] **2.52 — Transport / pet-taxi.** Book a pet-taxi (pickup + dropoff on the map) → it appears in the provider inbox/calendar → confirm + assign a driver → advance status → owner sees status + can chat; paying degrades cleanly if keys aren't set; another provider never sees the trip.
+- [ ] **2.53 — Vet prescriptions / Rx.** As a vet with access, issue an Rx to a pet → it appears in that owner's Vet Record labeled by clinic; owner requests a refill → the vet approves → refills remaining drops; owner cannot edit/forge an Rx (no edit affordance); a different clinic never sees it; empty Vet Record shows the empty state.
+- [ ] **2.54 — Insurance marketplace.** As an insurer, publish 2 plans → they appear in the owner marketplace; compare them; submit a quote for a pet → the insurer sees the lead + updates its status; unpublished plans stay hidden; another insurer never sees the lead; empty marketplace shows the empty state.
+- [ ] **2.57 — Adoption foster/urgent flags.** Flag a dog urgent → an URGENT badge shows in browse + feed; feature one → it sorts first (never hides non-featured); a foster/both listing lets the applicant choose foster; normal listings show no badge.
+- [ ] **2.58 — Feed "Suggested" divider.** The feed shows followed content, then a "Suggested for you" divider before suggested posts; with no suggested content there's no divider.
 
 ### [ ] 2.42 — Vet Record: append-only dated history log  ·  ticket/vet-record-history-log (2026-06-18)
 What shipped: the Vet Record "Vet Notes" section is now a proper **History** log — every entry is shown newest-first with its **date** and an **author label** (the clinic/vet name, or **"You"** for owner-authored entries), with a real derived **General summary** block at the top (entry count · last-updated date · last author — not the AI summary, which is 2.50). The **owner can add** a dated entry (`AddVetNoteModal`) and **delete** their entries. Append-only integrity is enforced by RLS: a vet with `medical_write` can INSERT but **cannot edit or delete** any entry — only the owner can.
