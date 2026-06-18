@@ -189,6 +189,15 @@ export const salesKey = (providerId) => [
 
 export const salesUrl = (providerId) => `/api/providers/${providerId}/sales`;
 
+// Rx fulfillment queue (ticket 2.71) — the dispensing provider's incoming fulfillment orders.
+export const rxFulfillmentKey = (providerId) => [
+  "provider-rx-fulfillment",
+  String(providerId ?? ""),
+];
+
+export const rxFulfillmentUrl = (providerId) =>
+  `/api/providers/${providerId}/rx-fulfillment-orders`;
+
 // --- hooks ------------------------------------------------------------------
 
 // Providers the logged-in user is ACTIVE staff of. [] = belongs to none.
@@ -270,6 +279,40 @@ export function useBookingAction(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingsPrefixKey(providerId) });
+    },
+  });
+}
+
+// The Rx fulfillment queue (GET /api/providers/[id]/rx-fulfillment-orders) — incoming orders for a
+// `pharmacy`-capable provider. Capability-gated server-side; disabled until a providerId is known.
+export function useProviderRxFulfillment(providerId) {
+  return useQuery({
+    queryKey: rxFulfillmentKey(providerId),
+    queryFn: () => getJson(rxFulfillmentUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Provider acts on a fulfillment: set price, accept, advance status, mark fulfilled (which consumes
+// a refill on the 2.53 safe path server-side).
+export function useRxFulfillmentAction(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderId, status, price_cents }) => {
+      const body = {};
+      if (status !== undefined) body.status = status;
+      if (price_cents !== undefined) body.price_cents = price_cents;
+      return getJson(
+        `/api/providers/${providerId}/rx-fulfillment-orders/${orderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rxFulfillmentKey(providerId) });
     },
   });
 }

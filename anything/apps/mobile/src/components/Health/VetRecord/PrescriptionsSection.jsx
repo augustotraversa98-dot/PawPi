@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
-import { Pill } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Pill, Truck } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { usePrescriptions, useRequestRefill } from "@/hooks/usePrescriptions";
 
@@ -23,6 +24,7 @@ function Field({ label, value }) {
 }
 
 export function PrescriptionsSection({ petId }) {
+  const router = useRouter();
   const { data, isLoading } = usePrescriptions(petId ?? null);
   const requestRefill = useRequestRefill(petId);
 
@@ -106,6 +108,21 @@ export function PrescriptionsSection({ petId }) {
                   style={{ marginTop: 10, backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 9, alignItems: "center" }}
                 >
                   <Text style={{ color: "#fff", fontWeight: "800" }}>Request refill</Text>
+                </TouchableOpacity>
+              )}
+              {rx.status === "active" && rx.refills_remaining > 0 && (
+                <TouchableOpacity
+                  testID={`rx-fulfill-${rx.id}`}
+                  onPress={() =>
+                    router.push(
+                      `/rx-fulfillment?prescriptionId=${rx.id}&petId=${petId}&drugName=${encodeURIComponent(rx.drug_name || "")}`,
+                    )
+                  }
+                  activeOpacity={0.85}
+                  style={{ marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: COLORS.card, borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: 12, paddingVertical: 9 }}
+                >
+                  <Truck size={15} color={COLORS.coral} />
+                  <Text style={{ color: COLORS.coral, fontWeight: "800" }}>Request fulfillment</Text>
                 </TouchableOpacity>
               )}
             </View>

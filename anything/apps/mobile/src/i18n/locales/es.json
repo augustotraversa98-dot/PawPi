@@ -88,5 +88,24 @@
     "notEnRoute": "La ubicación se comparte solo mientras el viaje está en camino.",
     "notFoundTitle": "Viaje no encontrado",
     "notFoundBody": "Este viaje ya no está disponible."
+  },
+  "rxf": {
+    "title": "Solicitar entrega",
+    "yourOrders": "TUS PEDIDOS DE ENTREGA",
+    "chooseProvider": "ELIGE UNA FARMACIA",
+    "noProviders": "Todavía no hay farmacias disponibles.",
+    "delivery": "Envío",
+    "pickup": "Retiro",
+    "deliveryAddress": "Dirección de envío",
+    "pharmacy": "Farmacia",
+    "request": "Solicitar entrega",
+    "pay": "Pagar",
+    "requestedTitle": "Entrega solicitada",
+    "requestedBody": "La farmacia confirmará y fijará un precio.",
+    "couldNotRequest": "No se pudo solicitar la entrega",
+    "couldNotPay": "No se pudo iniciar el pago",
+    "payUnavailable": "Pagos no disponibles aún",
+    "payUnavailableBody": "Tu pedido quedó registrado y podrás seguirlo; podrás pagar cuando los pagos estén configurados.",
+    "payUnavailableShort": "El pago aún no está configurado"
   }
 }

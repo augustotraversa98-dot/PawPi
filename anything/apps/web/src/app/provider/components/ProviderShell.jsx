@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Store,
   CalendarDays,
+  Pill,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -123,6 +124,13 @@ const NAV_ITEMS = [
     Icon: ShoppingBag,
     enabled: true,
     href: "/provider/shop",
+  },
+  {
+    key: "pharmacy",
+    label: "Rx Fulfillment",
+    Icon: Pill,
+    enabled: true,
+    href: "/provider/pharmacy",
   },
   {
     key: "adoption",

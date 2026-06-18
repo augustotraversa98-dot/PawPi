@@ -769,7 +769,12 @@ not a hand-maintained log here:
   **✅ 2.70 transport live-GPS MERGED** — migration **0056** `transport_trip_locations` (append-only driver
   pings; assigned-driver-while-en_route INSERT + owner/driver/staff SELECT via two SECURITY DEFINER helpers;
   harness-proven, **PENDING hand-apply**, last applied = 0055); driver ping POST + owner/staff `/track` GET;
-  owner live Apple-map screen + driver location sharing (reuses 2.68 `MapLocationView`). From the
+  owner live Apple-map screen + driver location sharing (reuses 2.68 `MapLocationView`).
+  **✅ 2.71 Rx fulfillment MERGED** — migration **0057** `rx_fulfillment_orders` (owner creates only on an
+  owned, active, refillable Rx; pharmacy-staff advance; the `fulfill_rx_order` DEFINER consumes a refill on
+  the 2.53 safe path so prescriptions stay append-only; `pharmacy` already in the CHECK since 0040 — no
+  widen; harness-proven, **PENDING hand-apply**). Owner request flow (delivery via 2.68 / pickup, pay via
+  2.3) + provider dashboard `Rx Fulfillment` queue. From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +

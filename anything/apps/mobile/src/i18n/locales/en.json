@@ -88,5 +88,24 @@
     "notEnRoute": "Location is shared only while the trip is en route.",
     "notFoundTitle": "Trip not found",
     "notFoundBody": "This trip is no longer available."
+  },
+  "rxf": {
+    "title": "Request fulfillment",
+    "yourOrders": "YOUR FULFILLMENT ORDERS",
+    "chooseProvider": "CHOOSE A PHARMACY",
+    "noProviders": "No fulfillment providers available yet.",
+    "delivery": "Delivery",
+    "pickup": "Pickup",
+    "deliveryAddress": "Delivery address",
+    "pharmacy": "Pharmacy",
+    "request": "Request fulfillment",
+    "pay": "Pay",
+    "requestedTitle": "Fulfillment requested",
+    "requestedBody": "The pharmacy will confirm and set a price.",
+    "couldNotRequest": "Couldn't request fulfillment",
+    "couldNotPay": "Couldn't start payment",
+    "payUnavailable": "Payments not available yet",
+    "payUnavailableBody": "Your order is placed and will be tracked; you can pay once payments are set up.",
+    "payUnavailableShort": "Payment isn't set up yet"
   }
 }
