@@ -1,16 +1,18 @@
-import React, { memo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Image,
   Modal,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PawPrint, Megaphone, Trash2, X } from "lucide-react-native";
+import { PawPrint, Megaphone, Trash2, X, Pencil } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/colors";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
@@ -25,17 +27,32 @@ export const PostDetailModal = memo(function PostDetailModal({
   post,
   liked,
   canDelete = false,
+  canEdit = false,
   onDelete,
   onClose,
   onToggleLike,
   onOpenBarks,
   onOpenProfile,
+  onSaveCaption,
 }) {
   const insets = useSafeAreaInsets();
 
   // Real bark thread for this post, scoped by post.id (same hook the BarkModal
   // uses). Called before the early return so hook order stays stable.
   const { data: barks = [], isLoading: loadingBarks } = usePostBarks(post?.id);
+
+  // Caption edit state (ticket 2.65). localCaption holds the just-saved text so
+  // the modal reflects the edit immediately even before the feed cache refreshes.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [savingCaption, setSavingCaption] = useState(false);
+  const [localCaption, setLocalCaption] = useState(null);
+
+  useEffect(() => {
+    // Reset edit state whenever we open a different post.
+    setEditing(false);
+    setLocalCaption(null);
+  }, [post?.id]);
 
   if (!post) return null;
 
@@ -60,6 +77,30 @@ export const PostDetailModal = memo(function PostDetailModal({
   // the button + count stay in sync.
   const handleDoubleTapPaw = () => {
     if (!liked && onToggleLike) onToggleLike();
+  };
+
+  // Edit-my-caption (ticket 2.65): shown only on the owner's own post (same
+  // signal as delete) and when a save handler is wired. Text only.
+  const displayCaption = localCaption ?? caption;
+  const canEditCaption = canEdit && typeof onSaveCaption === "function";
+
+  const startEditCaption = () => {
+    setDraft(displayCaption ?? "");
+    setEditing(true);
+  };
+
+  const saveEditCaption = async () => {
+    const next = draft;
+    setSavingCaption(true);
+    try {
+      await onSaveCaption(next);
+      setLocalCaption(next);
+      setEditing(false);
+    } catch (e) {
+      Alert.alert("Couldn't save", "Please try again.");
+    } finally {
+      setSavingCaption(false);
+    }
   };
 
   const tagStyle = TAG_COLORS[tag] || {
@@ -186,17 +227,88 @@ export const PostDetailModal = memo(function PostDetailModal({
 
           {/* Caption */}
           <View style={{ padding: 18 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                color: COLORS.warmBrown,
-                lineHeight: 23,
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>{dogName} </Text>
-              {caption}
-            </Text>
+            {editing ? (
+              <View style={{ marginBottom: 16 }}>
+                <TextInput
+                  testID="edit-caption-input"
+                  value={draft}
+                  onChangeText={setDraft}
+                  multiline
+                  maxLength={2000}
+                  placeholder="Write a caption…"
+                  placeholderTextColor={COLORS.mutedBrown}
+                  style={{
+                    minHeight: 72,
+                    backgroundColor: COLORS.card,
+                    borderRadius: 14,
+                    borderWidth: 1.5,
+                    borderColor: COLORS.peach,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    fontSize: 15,
+                    color: COLORS.warmBrown,
+                    textAlignVertical: "top",
+                  }}
+                />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "flex-end",
+                    gap: 18,
+                    marginTop: 10,
+                  }}
+                >
+                  <TouchableOpacity
+                    testID="cancel-caption"
+                    onPress={() => setEditing(false)}
+                    disabled={savingCaption}
+                  >
+                    <Text style={{ fontWeight: "700", color: COLORS.mutedBrown }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID="save-caption"
+                    onPress={saveEditCaption}
+                    disabled={savingCaption}
+                  >
+                    <Text style={{ fontWeight: "800", color: COLORS.coral }}>
+                      {savingCaption ? "Saving…" : "Save"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  marginBottom: 16,
+                }}
+              >
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    color: COLORS.warmBrown,
+                    lineHeight: 23,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800" }}>{dogName} </Text>
+                  {displayCaption}
+                </Text>
+                {canEditCaption ? (
+                  <TouchableOpacity
+                    testID="edit-caption"
+                    onPress={startEditCaption}
+                    accessibilityLabel="Edit caption"
+                    style={{ paddingLeft: 10, paddingTop: 2 }}
+                  >
+                    <Pencil size={16} color={COLORS.mutedBrown} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
 
             {/* Action row */}
             <View

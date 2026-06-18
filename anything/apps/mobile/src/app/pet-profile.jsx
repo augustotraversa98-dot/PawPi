@@ -15,7 +15,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useCurrentPet } from "@/hooks/usePetProfile";
-import { useTogglePaw } from "@/hooks/useFeedPosts";
+import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
   usePetSocialProfile,
   useToggleFollow,
@@ -60,6 +60,7 @@ export default function PetProfileScreen() {
   const petId = params.petId || "";
   const { data: currentPet } = useCurrentPet();
   const viewerPetId = currentPet?.id;
+  const updateCaption = useUpdatePostCaption();
 
   const { data: profile, isLoading, refetch } = usePetSocialProfile(
     petId,
@@ -604,6 +605,10 @@ export default function PetProfileScreen() {
         visible={!!detailPost}
         post={detailPost}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
+        canEdit={!!detailPost && detailPost.pet_id === viewerPetId}
+        onSaveCaption={(caption) =>
+          updateCaption.mutateAsync({ postId: detailPost.id, caption })
+        }
         onClose={() => setDetailPost(null)}
         onToggleLike={handleToggleLike}
         onOpenBarks={() => {
