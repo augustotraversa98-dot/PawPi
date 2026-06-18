@@ -166,9 +166,20 @@ export default function InsuranceScreen() {
                     <TouchableOpacity
                       testID={`quote-${plan.id}`}
                       onPress={() => setQuotePlan(plan)}
+                      style={{ borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                    >
+                      <Text style={{ color: COLORS.coral, fontWeight: "800" }}>Get a quote</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      testID={`apply-${plan.id}`}
+                      onPress={() =>
+                        router.push(
+                          `/insurance-policy?providerId=${insurer.id}&planId=${plan.id}&planName=${encodeURIComponent(plan.name || "")}&petId=${currentPet?.id ?? ""}&termsUrl=${encodeURIComponent(plan.terms_url || "")}&insurerName=${encodeURIComponent(insurer.name || "")}`,
+                        )
+                      }
                       style={{ backgroundColor: COLORS.coral, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
                     >
-                      <Text style={{ color: "#fff", fontWeight: "800" }}>Get a quote</Text>
+                      <Text style={{ color: "#fff", fontWeight: "800" }}>Apply / Buy</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

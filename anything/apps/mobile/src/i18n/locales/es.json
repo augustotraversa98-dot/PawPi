@@ -107,5 +107,24 @@
     "payUnavailable": "Pagos no disponibles aún",
     "payUnavailableBody": "Tu pedido quedó registrado y podrás seguirlo; podrás pagar cuando los pagos estén configurados.",
     "payUnavailableShort": "El pago aún no está configurado"
+  },
+  "ins": {
+    "title": "Seguro para mascotas",
+    "apply": "Solicitar este plan",
+    "applyNow": "Solicitar",
+    "yourPolicies": "TUS PÓLIZAS",
+    "policy": "Póliza",
+    "policyNo": "N.º de póliza",
+    "theInsurer": "la aseguradora",
+    "disclaimer": "PawPi facilita esta solicitud — {{insurer}} emite y suscribe la póliza según sus propios términos. PawPi no es la aseguradora ni brinda asesoramiento de seguros.",
+    "readTerms": "Leer los términos de la aseguradora",
+    "acceptTerms": "He leído y acepto los términos y el aviso de la aseguradora.",
+    "appliedTitle": "Solicitud enviada",
+    "appliedBody": "La aseguradora revisará y fijará tu prima.",
+    "couldNotApply": "No se pudo solicitar",
+    "payPremium": "Pagar prima",
+    "couldNotPay": "No se pudo iniciar el pago",
+    "payUnavailable": "Pagos no disponibles aún",
+    "payUnavailableBody": "Tu solicitud quedó guardada; podrás pagar cuando los pagos estén configurados."
   }
 }

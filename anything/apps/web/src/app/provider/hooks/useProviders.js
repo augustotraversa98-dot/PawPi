@@ -198,6 +198,15 @@ export const rxFulfillmentKey = (providerId) => [
 export const rxFulfillmentUrl = (providerId) =>
   `/api/providers/${providerId}/rx-fulfillment-orders`;
 
+// Insurance policies (ticket 2.72) — the insurer's bound/applied policies.
+export const insurancePoliciesKey = (providerId) => [
+  "provider-insurance-policies",
+  String(providerId ?? ""),
+];
+
+export const insurancePoliciesUrl = (providerId) =>
+  `/api/providers/${providerId}/insurance-policies`;
+
 // --- hooks ------------------------------------------------------------------
 
 // Providers the logged-in user is ACTIVE staff of. [] = belongs to none.
@@ -313,6 +322,35 @@ export function useRxFulfillmentAction(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: rxFulfillmentKey(providerId) });
+    },
+  });
+}
+
+// The insurer's policies (GET /api/providers/[id]/insurance-policies) — applications + bound
+// policies. Capability-gated server-side; disabled until a providerId is known.
+export function useProviderInsurancePolicies(providerId) {
+  return useQuery({
+    queryKey: insurancePoliciesKey(providerId),
+    queryFn: () => getJson(insurancePoliciesUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Insurer issues/advances a policy: set policy_number/premium/billing/effective, advance status.
+// 'active' is payment-driven server-side (never set here).
+export function useInsurancePolicyAction(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ policyId, ...patch }) =>
+      getJson(`/api/providers/${providerId}/insurance-policies/${policyId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: insurancePoliciesKey(providerId),
+      });
     },
   });
 }

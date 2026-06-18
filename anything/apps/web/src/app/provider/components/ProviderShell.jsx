@@ -21,6 +21,7 @@ import {
   Store,
   CalendarDays,
   Pill,
+  Shield,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
@@ -131,6 +132,13 @@ const NAV_ITEMS = [
     Icon: Pill,
     enabled: true,
     href: "/provider/pharmacy",
+  },
+  {
+    key: "insurance",
+    label: "Policies",
+    Icon: Shield,
+    enabled: true,
+    href: "/provider/insurance",
   },
   {
     key: "adoption",
