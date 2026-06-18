@@ -24,8 +24,8 @@ full list (don't hand-maintain an enumeration here — it goes stale). As of thi
   self-training progress (0048), family/caregiver sharing (0049), lost & found (0050); then Wave 6 —
   emergency medical card + DEFINER public-read fns (0051), transport_trips (0052), vet prescriptions +
   refill DEFINER helpers (0053), insurance marketplace + capability-CHECK widen (0054), and the additive
-  adoption foster/urgent flags (0055). 0046–0050 are APPLIED to Supabase; **0051–0055 are harness-proven
-  and PENDING hand-apply** (see `docs/test-backlog.md` ACTION 1).
+  adoption foster/urgent flags (0055). 0046–0055 are all **APPLIED + VERIFIED on Supabase (2026-06-18)**
+  (see `docs/test-backlog.md` ACTION 1).
 
 Migrations are written to be **re-runnable** (DDL uses `IF NOT EXISTS`/`CREATE OR REPLACE`; data backfills
 and constraint-widens drop-if-exists then re-add). Per-migration call-outs that matter are kept below; the
