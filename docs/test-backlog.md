@@ -46,6 +46,7 @@ as the RLS migrations 0019–0026.)
 0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ⏳ HAND-APPLY (Wave 6)
 0053_vet_prescriptions.sql            (2.53 — prescriptions + rx_refill_requests; STRICTEST clinical append-only RLS)       ⏳ HAND-APPLY (Wave 6)
 0054_insurance_marketplace.sql        (2.54 — widen capability CHECKs +insurance; insurance_plans + insurance_leads RLS)     ⏳ HAND-APPLY (Wave 6)
+0055_adoption_foster_urgent_flags.sql (2.57 — additive columns on adoptable_listings + adoption_applications; ride 0038 RLS) ⏳ HAND-APPLY (Wave 6)
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -166,6 +167,15 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   targeted provider's active staff read + status-update; other-provider/outsider zero). Lead-gen only —
   no payment/underwriting; no medical data beyond what the owner types. Proven as pawpi_app in
   `insurance-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
+
+**⏳ HAND-APPLY (Wave 6):** `0055_adoption_foster_urgent_flags.sql` (ticket 2.57) — harness-proven, NOT yet applied.
+- ADDITIVE columns only (no new table, no policy change) that RIDE the existing adoptable_listings RLS
+  (0038): `placement_type` adopt|foster|both, `is_urgent`, `is_featured`, `urgent_reason`, `featured_until`
+  on adoptable_listings + `requested_placement` adopt|foster on adoption_applications (+ CHECKs + a
+  featured-ordering index). Confirmed in `adoption-foster-flags-rls.integration.test.ts` that the new
+  columns surface on the published-available public read and DO NOT leak on a non-available row, shelter
+  staff still see all, and an applicant can set requested_placement. Completeness guard green (no new
+  table). Hand-apply after merge.
 
 No further migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token

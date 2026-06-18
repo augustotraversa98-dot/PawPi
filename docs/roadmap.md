@@ -141,7 +141,11 @@ Logged as a follow-up fix:
   (owner-or-provider scoped). Lead-gen v1 (no binding/payment, no Vet Record sent). Web: plans editor +
   leads inbox/status. Mobile: marketplace (discovery → plans → compare → quote form prefilled from the
   pet → lead). Harness-proven; migration flagged.
-- ☐ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56.
+- ✅ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56. Additive columns riding
+  the existing adoption RLS: `placement_type` (adopt/foster/both), `is_urgent`/`urgent_reason`,
+  `is_featured`/`featured_until` on listings + `requested_placement` on applications. Web: editor +
+  applications view fields, featured-first ordering, public read returns flags. Mobile: URGENT badge +
+  placement chips on cards, urgent banner + foster/adopt picker in the detail. Harness-proven; flagged.
 - ☐ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; build LAST.
 
 Migrations 0051–0055 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as Code builds

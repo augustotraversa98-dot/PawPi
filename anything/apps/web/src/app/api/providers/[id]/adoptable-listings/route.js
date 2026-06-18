@@ -49,10 +49,11 @@ async function GET(request, { params }) {
         id, provider_id, name, breed, age_years, age_months, gender, size,
         photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
         energy_level, vaccination_status, adoption_fee_cents, currency, status,
+        placement_type, is_urgent, is_featured, urgent_reason, featured_until,
         created_at, updated_at
       FROM adoptable_listings
       WHERE provider_id = ${providerId}
-      ORDER BY (status = 'available') DESC, created_at DESC, id DESC
+      ORDER BY (status = 'available') DESC, is_featured DESC, created_at DESC, id DESC
     `;
 
     return Response.json({ listings });
@@ -106,6 +107,10 @@ async function POST(request, { params }) {
     if (!name || typeof name !== "string") {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
+    // Foster/urgent/featured flags (ticket 2.57). placement_type defaults to 'adopt'.
+    const placementType = ["adopt", "foster", "both"].includes(body.placement_type)
+      ? body.placement_type
+      : "adopt";
     const fee =
       Number.isInteger(adoption_fee_cents) && adoption_fee_cents >= 0
         ? adoption_fee_cents
@@ -117,13 +122,16 @@ async function POST(request, { params }) {
       INSERT INTO adoptable_listings (
         provider_id, name, breed, age_years, age_months, gender, size,
         photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
-        energy_level, vaccination_status, adoption_fee_cents, currency
+        energy_level, vaccination_status, adoption_fee_cents, currency,
+        placement_type, is_urgent, is_featured, urgent_reason, featured_until
       ) VALUES (
         ${providerId}, ${name}, ${breed ?? null}, ${age_years ?? null},
         ${age_months ?? null}, ${gender ?? null}, ${size ?? null}, ${photos},
         ${video_url ?? null}, ${story ?? null}, ${good_with_kids ?? null},
         ${good_with_cats ?? null}, ${good_with_dogs ?? null}, ${energy_level ?? null},
-        ${vaccination_status ?? null}, ${fee}, ${currency ?? "ARS"}
+        ${vaccination_status ?? null}, ${fee}, ${currency ?? "ARS"},
+        ${placementType}, ${body.is_urgent === true}, ${body.is_featured === true},
+        ${body.urgent_reason ?? null}, ${body.featured_until ?? null}
       )
       RETURNING *
     `;

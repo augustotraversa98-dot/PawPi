@@ -324,6 +324,13 @@ function DogProfileCard({ listing, onPress }) {
             .join(" · ")}
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {listing.is_urgent ? (
+            <View testID={`urgent-${listing.id}`} style={{ backgroundColor: "#C2410C", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 11 }}>URGENT</Text>
+            </View>
+          ) : null}
+          {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
+          {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
           {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
           {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
           {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
@@ -343,10 +350,22 @@ function ListingDetailModal({ data, onClose, router }) {
   const apply = useApplyForAdoption();
   const { mutate: startThread, isPending: startingThread } = useStartThread();
   const checkout = useAdoptionCheckout();
+  // Foster-vs-adopt intent (ticket 2.57) — only shown when the listing allows BOTH.
+  const [placement, setPlacement] = useState("adopt");
 
   const doApply = async () => {
     try {
-      await apply.mutateAsync({ listing_id: listing.id, answers: {} });
+      const requestedPlacement =
+        listing.placement_type === "foster"
+          ? "foster"
+          : listing.placement_type === "both"
+            ? placement
+            : null;
+      await apply.mutateAsync({
+        listing_id: listing.id,
+        answers: {},
+        requested_placement: requestedPlacement,
+      });
       Alert.alert(
         "Application sent",
         `The shelter will review your application for ${listing.name}. You can chat with them anytime.`,
@@ -428,11 +447,55 @@ function ListingDetailModal({ data, onClose, router }) {
           </View>
 
           <RefreshableScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+            {listing.is_urgent ? (
+              <View testID="detail-urgent" style={{ margin: 16, marginBottom: 0, backgroundColor: "#C2410C", borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: "#fff", fontWeight: "800" }}>
+                  Urgent{listing.urgent_reason ? `: ${listing.urgent_reason}` : ""}
+                </Text>
+              </View>
+            ) : null}
+
             <DogProfileDetail listing={listing} place={place} />
 
             <View style={{ padding: 16, gap: 12 }}>
+              {/* Placement: shown only when the listing allows BOTH adopt + foster. */}
+              {listing.placement_type === "both" ? (
+                <View>
+                  <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginBottom: 6 }}>
+                    I'd like to:
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      testID="placement-adopt"
+                      onPress={() => setPlacement("adopt")}
+                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: placement === "adopt" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "adopt" ? COLORS.coral + "18" : COLORS.card }}
+                    >
+                      <Text style={{ color: placement === "adopt" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }}>Adopt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      testID="placement-foster"
+                      onPress={() => setPlacement("foster")}
+                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: placement === "foster" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "foster" ? COLORS.coral + "18" : COLORS.card }}
+                    >
+                      <Text style={{ color: placement === "foster" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }}>Foster</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : listing.placement_type === "foster" ? (
+                <Text testID="placement-foster-only" style={{ color: COLORS.mutedBrown, fontWeight: "700" }}>
+                  This dog is available to foster.
+                </Text>
+              ) : null}
+
               <PrimaryButton
-                label={apply.isPending ? "Sending…" : "Apply to adopt"}
+                label={
+                  apply.isPending
+                    ? "Sending…"
+                    : listing.placement_type === "foster" ||
+                        (listing.placement_type === "both" && placement === "foster")
+                      ? "Apply to foster"
+                      : "Apply to adopt"
+                }
                 onPress={doApply}
                 disabled={apply.isPending}
               />
