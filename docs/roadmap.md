@@ -101,7 +101,7 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
 - ✅ **2.66** Health → Today "Today's Progress" on real logged data (kills hardcoded chips).
 - ✅ **2.59** floating IG-style tab bar (edits `(tabs)/_layout.jsx`).
 - ✅ **2.60** Profile tab → active pet's social profile + pet-photo icon — ⛔ after 2.59 + 2.55.
-- ☐ **2.61** followers/following lists + paw follow/unfollow + search — ⛔ after 2.60 (no migration).
+- ✅ **2.61** followers/following lists + paw follow/unfollow + search — ⛔ after 2.60 (no migration).
 
 **Part B — capabilities + loose ends (migrations 0051–0055):**
 - ☐ **2.56** adoption public single-listing GET — no migration.

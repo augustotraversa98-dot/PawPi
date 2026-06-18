@@ -158,30 +158,57 @@ export default function PetProfileScreen({ embedded = false }) {
     toggleFollow.mutate({ isFollowing, viewerPetId });
   }, [canFollow, isFollowing, viewerPetId, toggleFollow]);
 
-  const StatPill = ({ value, label, color }) => (
-    <View style={{ alignItems: "center", flex: 1 }}>
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: "800",
-          color: color || C.warmBrown,
-          letterSpacing: -0.5,
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={{
-          fontSize: 11,
-          color: C.mutedBrown,
-          marginTop: 2,
-          fontWeight: "600",
-        }}
-      >
-        {label}
-      </Text>
-    </View>
+  // Tapping Followers / Following opens the searchable list (ticket 2.61).
+  const openFollows = useCallback(
+    (rel) => {
+      if (!petId) return;
+      router.push({
+        pathname: "/follows",
+        params: { petId: String(petId), rel, petName: name },
+      });
+    },
+    [petId, name, router],
   );
+
+  const StatPill = ({ value, label, color, onPress }) => {
+    const inner = (
+      <>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "800",
+            color: color || C.warmBrown,
+            letterSpacing: -0.5,
+          }}
+        >
+          {value}
+        </Text>
+        <Text
+          style={{
+            fontSize: 11,
+            color: C.mutedBrown,
+            marginTop: 2,
+            fontWeight: "600",
+          }}
+        >
+          {label}
+        </Text>
+      </>
+    );
+    if (onPress) {
+      return (
+        <TouchableOpacity
+          testID={`stat-${label}`}
+          onPress={onPress}
+          activeOpacity={0.7}
+          style={{ alignItems: "center", flex: 1 }}
+        >
+          {inner}
+        </TouchableOpacity>
+      );
+    }
+    return <View style={{ alignItems: "center", flex: 1 }}>{inner}</View>;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.cream }}>
@@ -427,9 +454,14 @@ export default function PetProfileScreen({ embedded = false }) {
             value={stats?.followers ?? 0}
             label="Followers"
             color={C.sageDark}
+            onPress={() => openFollows("followers")}
           />
           <View style={{ width: 1, backgroundColor: C.peach }} />
-          <StatPill value={stats?.following ?? 0} label="Following" />
+          <StatPill
+            value={stats?.following ?? 0}
+            label="Following"
+            onPress={() => openFollows("following")}
+          />
         </View>
 
         {/* ── Daily posts grid ── */}
