@@ -67,5 +67,26 @@
     "pinned": "Fijado",
     "noLocation": "Sin ubicación",
     "addressPlaceholder": "Escribe una dirección"
+  },
+  "transport": {
+    "trackTitle": "Viaje en vivo",
+    "completedTitle": "Resumen del viaje",
+    "trackLive": "Seguir en vivo",
+    "live": "EN VIVO",
+    "waiting": "Esperando la ubicación del conductor…",
+    "noRoute": "No se registró ninguna ruta para este viaje.",
+    "travelled": "Recorrido",
+    "elapsed": "Tiempo",
+    "pings": "Puntos GPS",
+    "pickup": "Recogida",
+    "dropoff": "Destino",
+    "driver": "Conductor",
+    "shareLive": "Compartir ubicación en vivo",
+    "sharing": "Compartiendo tu ubicación en vivo…",
+    "stopSharing": "Dejar de compartir",
+    "locationDenied": "Se necesita permiso de ubicación para compartir tu ubicación en vivo.",
+    "notEnRoute": "La ubicación se comparte solo mientras el viaje está en camino.",
+    "notFoundTitle": "Viaje no encontrado",
+    "notFoundBody": "Este viaje ya no está disponible."
   }
 }

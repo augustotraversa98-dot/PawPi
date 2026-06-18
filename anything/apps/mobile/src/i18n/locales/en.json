@@ -67,5 +67,26 @@
     "pinned": "Pinned",
     "noLocation": "No location set",
     "addressPlaceholder": "Enter an address"
+  },
+  "transport": {
+    "trackTitle": "Live trip",
+    "completedTitle": "Trip summary",
+    "trackLive": "Track live",
+    "live": "LIVE",
+    "waiting": "Waiting for the driver's location…",
+    "noRoute": "No route was recorded for this trip.",
+    "travelled": "Travelled",
+    "elapsed": "Elapsed",
+    "pings": "GPS points",
+    "pickup": "Pickup",
+    "dropoff": "Dropoff",
+    "driver": "Driver",
+    "shareLive": "Share live location",
+    "sharing": "Sharing your live location…",
+    "stopSharing": "Stop sharing",
+    "locationDenied": "Location permission is needed to share your live location.",
+    "notEnRoute": "Location is shared only while the trip is en route.",
+    "notFoundTitle": "Trip not found",
+    "notFoundBody": "This trip is no longer available."
   }
 }
