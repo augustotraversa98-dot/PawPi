@@ -8,6 +8,7 @@ import {
   CircleUser,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
 import useRoutinesStore from "@/store/routinesStore";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
@@ -17,6 +18,7 @@ import useRemindersStore from "@/store/remindersStore";
 
 export default function TabLayout() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   useEffect(() => {
     // Initialize reminders from routines on app start
     const routinesStore = useRoutinesStore.getState();
@@ -49,20 +51,34 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Floating Instagram-style pill (ticket 2.59): a rounded bar with side
+        // margins lifted off the bottom edge (above the home indicator) with a
+        // soft shadow and no top hairline. Kept IN-FLOW (margins reserve its
+        // footprint) rather than position:absolute, so it never covers the last
+        // row of scrolling content — no per-screen padding needed. Routes, tabs
+        // and navigation behavior are unchanged (purely visual).
         tabBarStyle: {
+          marginHorizontal: 16,
+          marginBottom: Math.max(insets.bottom, 12),
+          height: 62,
+          borderRadius: 28,
           backgroundColor: "#FFF7EF",
-          borderTopWidth: 1,
+          borderTopWidth: 0,
+          borderWidth: 1,
           borderColor: "#FFD9B3",
-          paddingBottom: 10,
+          paddingBottom: 0,
           paddingTop: 8,
           shadowColor: "#B75D32",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 8,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.14,
+          shadowRadius: 16,
+          elevation: 12,
         },
         tabBarActiveTintColor: "#FF6F61",
         tabBarInactiveTintColor: "#B5947F",
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",

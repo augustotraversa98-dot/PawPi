@@ -9,9 +9,13 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 const screens = [];
+let capturedScreenOptions = null;
 
 jest.mock("expo-router", () => {
-  const Tabs = ({ children }) => <>{children}</>;
+  const Tabs = ({ children, screenOptions }) => {
+    capturedScreenOptions = screenOptions;
+    return <>{children}</>;
+  };
   Tabs.Screen = ({ name, options }) => {
     screens.push({ name, title: options?.title });
     return null;
@@ -21,6 +25,9 @@ jest.mock("expo-router", () => {
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
 jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
   default: { getState: () => ({ routines: [] }) },
@@ -69,4 +76,14 @@ test("the bottom-right tab is now Profile, not More (ticket 2.39)", () => {
   // Same route slot (more/index) but presented as the owner's Profile.
   expect(titles[titles.length - 1]).toBe("Profile");
   expect(titles).not.toContain("More");
+});
+
+test("the tab bar is a floating pill, lifted off the bottom (ticket 2.59)", () => {
+  render(<TabLayout />);
+  const bar = capturedScreenOptions.tabBarStyle;
+  expect(bar.borderRadius).toBeGreaterThan(0); // rounded pill
+  expect(bar.marginHorizontal).toBeGreaterThan(0); // side margins (detached)
+  expect(bar.marginBottom).toBeGreaterThanOrEqual(12); // lifted above home indicator
+  expect(bar.borderTopWidth).toBe(0); // no top hairline
+  expect(bar.elevation).toBeGreaterThan(0); // shadow/elevation
 });
