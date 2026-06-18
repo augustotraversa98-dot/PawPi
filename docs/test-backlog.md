@@ -43,6 +43,7 @@ as the RLS migrations 0019–0026.)
 0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ✅ APPLIED + VERIFIED 2026-06-18
 0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ✅ APPLIED + VERIFIED 2026-06-18
 0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ⏳ HAND-APPLY (Wave 6)
+0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ⏳ HAND-APPLY (Wave 6)
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -129,6 +130,16 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   Proven as pawpi_app in `emergency-card-rls.integration.test.ts` (owner manages own; non-owner ZERO +
   can't create/revoke; tag basic-vs-medical toggle; link full/basic + revoked/expired → ZERO; relay
   notify) + the completeness guard. Hand-apply after merge.
+
+**⏳ HAND-APPLY (Wave 6):** `0052_transport_trips.sql` (ticket 2.52) — harness-proven, NOT yet applied.
+- New `transport_trips` (pet-taxi trip detail hanging off a generalized booking) — ENABLE+FORCE RLS,
+  modeled on walk_sessions: OWNER reads/creates/edits/cancels own (a new trip is always 'requested';
+  the owner-UPDATE WITH CHECK pins them to requested|cancelled — they CANNOT self-advance to a
+  provider-only status); active STAFF of provider_id read ALL the provider's trips + UPDATE them
+  (confirm/assign-driver/advance/fare); other-provider staff + outsiders → ZERO. Reuses
+  app_is_active_staff_of (no new helper). `transport` was already in ALLOWED_CAPABILITIES + the
+  provider_capabilities/vet_appointments capability CHECKs (0027/0030) — no CHECK widen needed.
+  Proven as pawpi_app in `transport-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
 No further migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
