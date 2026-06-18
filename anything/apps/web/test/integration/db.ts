@@ -460,6 +460,61 @@ export async function seedJoinRequest(
   return { requestId };
 }
 
+/** Seed a pet_caregivers person↔person grant (ticket 2.47). Defaults to an active grant. */
+export async function seedPetCaregiver(
+  sql: Sql,
+  opts: {
+    id: number;
+    petId: number;
+    ownerUserId: number;
+    granteeUserId: number;
+    role?: 'family' | 'caregiver';
+    scopes?: string[];
+    status?: 'pending' | 'active' | 'revoked' | 'declined' | 'expired';
+    expiresAt?: string | null;
+  },
+): Promise<{ id: number }> {
+  const {
+    id, petId, ownerUserId, granteeUserId,
+    role = 'family', scopes = [], status = 'active', expiresAt = null,
+  } = opts;
+  await sql`
+    insert into pet_caregivers
+      (id, pet_id, owner_user_id, grantee_user_id, role, scopes, status, expires_at, accepted_at)
+    values (
+      ${id}, ${petId}, ${ownerUserId}, ${granteeUserId}, ${role}, ${scopes}, ${status},
+      ${expiresAt}, ${status === 'active' ? sql`now()` : null}
+    )
+  `;
+  return { id };
+}
+
+/** Seed a routines row owned by `ownerUserId` for `petId` (ticket 2.47 access proofs). */
+export async function seedRoutineRow(
+  sql: Sql,
+  opts: { id: number; petId: number; ownerUserId: number; routineType?: string },
+): Promise<{ id: number }> {
+  const { id, petId, ownerUserId, routineType = 'feeding' } = opts;
+  await sql`
+    insert into routines (id, pet_id, owner_user_id, routine_type, title)
+    values (${id}, ${petId}, ${ownerUserId}, ${routineType}, ${`routine-${id}`})
+  `;
+  return { id };
+}
+
+/** Seed a health_food_logs row (ticket 2.47 family read/write proofs). */
+export async function seedFoodLogRow(
+  sql: Sql,
+  opts: { id: number; petId: number; ownerUserId: number },
+): Promise<{ id: number }> {
+  const { id, petId, ownerUserId } = opts;
+  await sql`
+    insert into health_food_logs (id, pet_id, owner_user_id, logged_at)
+    values (${id}, ${petId}, ${ownerUserId}, now())
+  `;
+  return { id };
+}
+
 /** Seed a training_progress_self completion row (ticket 2.45). */
 export async function seedSelfTrainingProgress(
   sql: Sql,

@@ -79,7 +79,8 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 - ✅ **2.44** community forum — merged, migration `0047` (Reddit-style `forum_threads`/`forum_comments`/`forum_votes`; any-authed read + author-only write/soft-delete; idempotent voting via the `forum_vote` DEFINER helper that recomputes score; mobile category/sort browse + thread detail + compose + comment + vote; COMMUNITY_POSTS mock removed).
 - ✅ **2.45** training supreme — merged, migration `0048` (`training_progress_self`, owner-scoped per-pet completion; 8-program AKC-style researched curriculum in the static `trainingCurriculum` content module; training.jsx rebuilt as program→session→detail with Mark-complete + progress bars per active pet; TRAINING_LESSONS mock removed; "Want a pro?" banner still links to the provider service).
 - ✅ **2.46** Apple/Google sign-in — merged, NO migration (additive + env-gated `@auth/core` Google + Apple providers via `socialProviders(env)`; Credentials path untouched; buttons appear only when keys configured, else "Coming soon"; new OAuth users get a `user_profiles` row via the existing lazy path; env keys flagged for Tats).
-- ☐ **2.47** family/caregiver sharing · ☐ **2.48** lost & found · ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
+- ✅ **2.47** family/caregiver sharing — merged, migration `0049` (`pet_caregivers` person↔person grants + audit mirroring care_access; family co-manage vs caregiver scoped read-only + expiry + instant revoke; additive per-table RLS via `app_user_has_pet_access`/`app_user_has_pet_family` helpers + `pets_guard_owner_transfer` trigger; owner-only delete preserved; proven hard in `family-caregiver-rls.integration.test.ts`).
+- ☐ **2.48** lost & found · ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
 
 ---
 
