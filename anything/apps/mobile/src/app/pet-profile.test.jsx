@@ -24,6 +24,10 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
+jest.mock("@/components/More/OwnerMenu", () => {
+  const { Text } = require("react-native");
+  return { OwnerMenu: () => <Text>OWNER_MENU</Text> };
+});
 jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
@@ -121,4 +125,33 @@ test("hides the Follow button when there is no active pet", () => {
   mockViewer = null;
   const { queryByText } = render(<PetProfileScreen />);
   expect(queryByText("Follow +")).toBeNull();
+});
+
+describe("Profile tab — embedded mode (ticket 2.60)", () => {
+  test("non-embedded (pushed route) shows a Back button, no owner menu", () => {
+    mockViewer = { id: 4 };
+    const { getByText, queryByText } = render(<PetProfileScreen />);
+    expect(getByText("Back")).toBeTruthy();
+    expect(queryByText("OWNER_MENU")).toBeNull();
+    expect(getByText("Pet profile")).toBeTruthy();
+  });
+
+  test("embedded (Profile tab) shows the ☰ owner menu instead of Back", () => {
+    mockViewer = { id: 4 };
+    const { getByText, queryByText } = render(<PetProfileScreen embedded />);
+    expect(getByText("OWNER_MENU")).toBeTruthy(); // burger/menu present
+    expect(queryByText("Back")).toBeNull();
+    expect(getByText("Profile")).toBeTruthy();
+  });
+
+  test("embedded falls back to the viewer's own pet (no route param)", () => {
+    // No petId param; the tab shows the current pet's profile.
+    mockParams = {};
+    mockViewer = { id: 7 }; // current pet === the fetched profile pet (7)
+    const { getByText, queryByText } = render(<PetProfileScreen embedded />);
+    // Renders the current pet's social profile…
+    expect(getByText("Rex")).toBeTruthy();
+    // …and it's your own pet, so no Follow affordance.
+    expect(queryByText("Follow +")).toBeNull();
+  });
 });

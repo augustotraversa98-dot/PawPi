@@ -28,6 +28,12 @@ jest.mock("lucide-react-native", () =>
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
+// The Profile tab icon (2.60) reads the current pet; stub the hook so importing
+// the layout doesn't pull AsyncStorage/native deps into this structural test.
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: null }),
+}));
+jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
 jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
   default: { getState: () => ({ routines: [] }) },

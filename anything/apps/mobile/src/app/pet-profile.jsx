@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, PawPrint, Grid3X3, MessageCircle } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
+import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
@@ -50,16 +51,18 @@ function formatAge(years, months) {
   return parts.join(" ");
 }
 
-export default function PetProfileScreen() {
+export default function PetProfileScreen({ embedded = false }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
 
   // The real pet whose profile this is, plus the viewer's active pet (drives
   // isFollowing and gates the follow button).
-  const petId = params.petId || "";
   const { data: currentPet } = useCurrentPet();
   const viewerPetId = currentPet?.id;
+  // In the Profile TAB (embedded, ticket 2.60) there's no route param — show the
+  // viewer's own active pet. As a pushed route, use the param pet.
+  const petId = params.petId || (embedded ? String(currentPet?.id ?? "") : "");
   const updateCaption = useUpdatePostCaption();
 
   const { data: profile, isLoading, refetch } = usePetSocialProfile(
@@ -196,24 +199,34 @@ export default function PetProfileScreen() {
           borderBottomColor: C.peach,
         }}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 4,
-            padding: 6,
-          }}
-        >
-          <ChevronLeft size={22} color={C.coral} />
-          <Text style={{ color: C.coral, fontWeight: "700", fontSize: 15 }}>
-            Back
-          </Text>
-        </TouchableOpacity>
+        {embedded ? (
+          // Profile TAB (2.60): no back — the burger holds the former More menu
+          // + the My Dogs switcher, so nothing owner-level is orphaned.
+          <View style={{ width: 70 }} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              padding: 6,
+            }}
+          >
+            <ChevronLeft size={22} color={C.coral} />
+            <Text style={{ color: C.coral, fontWeight: "700", fontSize: 15 }}>
+              Back
+            </Text>
+          </TouchableOpacity>
+        )}
         <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
-          Pet profile
+          {embedded ? "Profile" : "Pet profile"}
         </Text>
-        <View style={{ width: 70 }} />
+        {embedded ? (
+          <OwnerMenu />
+        ) : (
+          <View style={{ width: 70 }} />
+        )}
       </View>
 
       <RefreshableScrollView
