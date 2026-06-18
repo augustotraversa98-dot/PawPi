@@ -758,7 +758,14 @@ not a hand-maintained log here:
   - **Decisions of record:** added `react-native-qrcode-svg` (mobile) for the printable tag QR; 2.53 clinical
     mutations go through DEFINER helpers with NO provider UPDATE policy (Rx history can't be rewritten);
     2.51/2.54 owner routes never attach the Vet Record. Owes a device pass across the new surfaces.
-- **Wave 7 — IN PROGRESS (autonomous run).** Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
+- **Wave 7 — ✅ COMPLETE (autonomous run).** All of 2.68–2.75 built, CI-green, squash-merged (PRs #189–#196).
+  Migrations **0056–0061** harness-proven + PENDING hand-apply (last applied = 0055). **✅ 2.75 nutrition +
+  food-recalls MERGED** — migration **0061** `nutrition_plans` (owner-RLS, family follow-up) + `food_recalls`
+  (public read, DEFINER `ingest_food_recall`) + `pet_food_recall_matches` (owner-RLS) + `match_food_recall`
+  DEFINER (recall→plan match + `food_recall` notify) + notifications CHECK widen; secret-gated idempotent
+  ingest (`/api/recalls/ingest`, needs `CRON_SECRET` + external scheduler); mobile Nutrition card +
+  dismissible recall alerts (non-diagnostic). Next: the 2.78 App Store readiness pass.
+  Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
   section of `00-README.md`); status mirror in `docs/roadmap.md`; planned migrations 0056–0061 pre-flagged in
   `docs/test-backlog.md` ACTION 1. **✅ 2.68 shared Apple-Maps component MERGED** —
   `src/components/Map/{MapLocationPicker,MapLocationView,LocationField}.jsx` (Apple via `PROVIDER_DEFAULT`);

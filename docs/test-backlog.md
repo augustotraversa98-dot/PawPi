@@ -53,14 +53,14 @@ as the RLS migrations 0019–0026.)
 0058_insurance_policies.sql           (2.72 — insurance_policies; in-app bind+pay; owner can't self-issue/activate; activate_insurance_policy safe path) 🟡 BUILT + harness-proven (PR 2.72) — PENDING hand-apply
 0059_pet_friendly_places.sql          (2.73 — saved_places owner-FOR-ALL RLS; NO cache table [proxy fetches live]; Google Places via key-gated web route) 🟡 BUILT + harness-proven (PR 2.73) — PENDING hand-apply
 0060_events_meetups.sql               (2.74 — events + event_rsvps; published public read, host-only writes, own-only rsvp; no DEFINER/notify) 🟡 BUILT + harness-proven (PR 2.74) — PENDING hand-apply
-0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans + food_recalls [+ optional matches]; external recall feed)  ⏳ NOT YET BUILT
+0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans owner-RLS + food_recalls [public read, DEFINER ingest] + pet_food_recall_matches owner-RLS + match/ingest DEFINERs + notifications 'food_recall' widen) 🟡 BUILT + harness-proven (PR 2.75) — PENDING hand-apply
 ```
-**Wave 7 (tickets 2.68–2.75, scoped 2026-06-18):** migration 0061 above is PLANNED, not yet built — each
-Wave 7 ticket leaves its migration at the next free number at build time and updates this block on
-merge (same harness-only pattern). **2.68** (shared Apple-Maps component) + **2.69** (provider Sales/payouts/
-reconciliation UI) add NO migration. **2.70** (transport live-GPS, **0056**) + **2.71** (Rx fulfillment,
-**0057**) + **2.72** (insurance binding, **0058**) + **2.73** (places, **0059**) + **2.74** (events,
-**0060**) are BUILT + harness-proven and PENDING hand-apply (last applied on Supabase = 0055). New go-live env keys this wave: the **food-recall feed key + an external
+**Wave 7 (tickets 2.68–2.75, scoped 2026-06-18) — ✅ ALL BUILT.** Migrations **0056–0061** are harness-proven
+and PENDING hand-apply (last applied on Supabase = 0055). **2.68** (shared Apple-Maps component) + **2.69**
+(provider Sales/payouts/reconciliation UI) add NO migration. **2.70** (transport live-GPS, **0056**) +
+**2.71** (Rx fulfillment, **0057**) + **2.72** (insurance binding, **0058**) + **2.73** (places, **0059**) +
+**2.74** (events, **0060**) + **2.75** (nutrition + food-recalls, **0061**) are BUILT + harness-proven and
+PENDING hand-apply. New go-live env keys this wave: the **food-recall feed key + an external
 scheduler** (2.75, like 2.17's CRON_SECRET); **2.73** also consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
 
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.

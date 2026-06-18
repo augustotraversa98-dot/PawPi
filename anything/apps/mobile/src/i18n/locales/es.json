@@ -159,5 +159,29 @@
     "capacity": "Capacidad (opcional)",
     "publish": "Publicar evento",
     "couldNotCreate": "No se pudo crear el evento"
+  },
+  "nutrition": {
+    "title": "Nutrición",
+    "yourPlan": "Tu plan de nutrición",
+    "addPlan": "Agregar un plan de nutrición",
+    "disclaimer": "Esto te ayuda a registrar la comida de tu mascota y prepararte para hablar con el veterinario. No diagnostica ni prescribe una dieta, y no reemplaza la atención veterinaria.",
+    "brand": "Marca de alimento",
+    "product": "Producto / receta",
+    "form_dry": "Seco",
+    "form_wet": "Húmedo",
+    "form_raw": "Crudo",
+    "form_mixed": "Mixto",
+    "portion": "Porción diaria (ej. 1.5 tazas)",
+    "calories": "Calorías objetivo / día",
+    "notes": "Notas",
+    "feedingLink": "Configura los horarios de comida en Recordatorios y Rutinas → Alimentación.",
+    "save": "Guardar plan",
+    "update": "Actualizar plan",
+    "savedTitle": "Plan de nutrición guardado",
+    "savedBody": "Puedes actualizarlo cuando quieras.",
+    "couldNotSave": "No se pudo guardar el plan",
+    "recallTitle": "Alerta de retiro de alimento",
+    "recallBody": "Un producto que coincide con la comida de {{pet}} fue retirado: {{reason}}. Consulta con tu veterinario.",
+    "recallLink": "Ver el aviso de retiro"
   }
 }
