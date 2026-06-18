@@ -460,6 +460,25 @@ export async function seedJoinRequest(
   return { requestId };
 }
 
+/** Seed a training_progress_self completion row (ticket 2.45). */
+export async function seedSelfTrainingProgress(
+  sql: Sql,
+  opts: {
+    id: number;
+    ownerUserId: number;
+    petId: number;
+    programKey?: string;
+    sessionKey?: string;
+  },
+): Promise<{ id: number }> {
+  const { id, ownerUserId, petId, programKey = 'basic-obedience', sessionKey = 'sit' } = opts;
+  await sql`
+    insert into training_progress_self (id, owner_user_id, pet_id, program_key, session_key)
+    values (${id}, ${ownerUserId}, ${petId}, ${programKey}, ${sessionKey})
+  `;
+  return { id };
+}
+
 /**
  * Seed a forum_threads row (ticket 2.44). Defaults to a live (non-deleted) General thread.
  */
