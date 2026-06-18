@@ -146,6 +146,12 @@ free sequential number and update `docs/test-backlog.md` ACTION 1. (NOT relevant
 pharmacy — deliberately deferred.)
 
 ## WAVE 5 — polish, fixes, big features + the "epic four" (2.32–2.50)
+✅ **COMPLETE (2026-06).** All 19 tickets (2.32–2.50) built, CI-green, squash-merged to `origin/main`
+(PRs #148–#166). No-migration tickets: 2.32–2.42, 2.46, 2.49, 2.50. Pending hand-apply to Supabase:
+migrations **0046–0050** (2.43/2.44/2.45/2.47/2.48) — see `docs/test-backlog.md` ACTION 1. Pending env
+keys: Apple + Google OAuth (2.46) — buttons stay "Coming soon" until set. The order below is kept for
+reference.
+
 Built UNATTENDED per the ⚡ Wave 5 autonomy preamble at the top. Build in this order (dependency-driven;
 single agent works serially, so shared files are fine as long as order holds). Migrations use the **next
 free number ≥0046** at build time — flag each in `docs/test-backlog.md` ACTION 1; Tats hand-applies.
@@ -178,11 +184,63 @@ The epic four:
 If tokens run out mid-wave: stop cleanly and resume at the next un-built ticket. The auth tickets (2.32,
 2.46) and the access-control ticket (2.47) are the highest-risk — additive + RLS-proven only.
 
+## 🌊 WAVE 6 — UX fix-pack first, then trust + new capabilities (2.51–2.66)
+Decided with Tats (2026-06-18, expanded with a UX fix-pack from on-device feedback). Built per the ⚡ Wave 5
+autonomy preamble above (same rules: no questions, CI-green → auto squash-merge, RLS + harness proofs +
+completeness guard on every new table, migrations left at the next free number for Tats to hand-apply, no
+fake data). Build in this order; each ticket is a fresh branch off `origin/main`. **Last applied migration =
+0050; the only Wave 6 migrations are 0051–0055 (the feature tickets) — the entire fix-pack (2.55, 2.59–2.66)
+adds NO migration.** Always take the NEXT FREE number in `supabase/migrations/` at build time and update
+`docs/test-backlog.md` ACTION 1.
+
+### Part A — UX fix-pack (mobile bugs/polish Tats is hitting on-device; do FIRST, no migrations)
+1. **2.55** Remove "Phoebe" + avatar fallback — cleanup; also provides the shared avatar fallback that
+   2.60 reuses. **Do first.**
+2. **2.62** Share frame attaches the REAL daily-moment photo (capture was firing before the image loaded).
+3. **2.63** App-wide keyboard UX — tap the field first, then the keyboard (kill auto-focus on bark/comments).
+4. **2.64** Double-tap an image → Paw (brand-color like animation); reuses the paw endpoint.
+5. **2.65** Edit my daily update's caption (owner-only PATCH on posts/[id]); text only, photo/daily-lock untouched.
+6. **2.66** Health → Today "Today's Progress" on REAL logged data (kills the hardcoded "Fed 2 times" chips).
+7. **2.59** Floating Instagram-style tab bar (visual only; preserve 2.19 + 2.39). **Edits `(tabs)/_layout.jsx`.**
+8. **2.60** Bottom "Profile" tab → the active pet's SOCIAL profile + pet-photo avatar icon (refines 2.39).
+   ⛔ after **2.59** (same `_layout.jsx`) and **2.55** (avatar fallback).
+9. **2.61** Followers/Following — tappable counts → searchable list + paw follow/unfollow toggle + row→profile.
+   No migration (`pet_follows` exists; adds read routes). ⛔ after **2.60**.
+
+⚠️ Shared-file sequencing in Part A: 2.62/2.64/2.65 (+2.63) all touch the Feed post components
+(PostCard / PostDetailModal / BarkModal) — a single serial agent is fine; if parallelized, rebase. 2.59 → 2.60
+are ordered on `(tabs)/_layout.jsx`. 2.61 follows 2.60.
+
+### Part B — trust + new capabilities + remaining loose ends (the migrations live here)
+10. **2.56** Adoption public single-listing GET — web, no migration; closes the 2.30 admin-only deviation.
+11. **2.51** Emergency mode + shareable/printable medical card — mobile + PUBLIC web page; migration **0051**
+    (`pet_emergency_cards` + `pet_emergency_share_links`; public reads via SECURITY DEFINER fns ONLY).
+    Headline. Reuses the medical profile + 2.28 share + consent + 2.48 lost. Fixed printable tag QR →
+    no-login public web page; revocable vet link; in-app image/PDF share.
+12. **2.52** Transport / pet-taxi — new `transport` capability on the spine; migration **0052**
+    (`transport_trips`). Reuses booking 2.4 / payments 2.3 / chat 2.5.
+13. **2.53** Vet prescriptions / Rx (a section INSIDE Veterinary, NOT a pharmacy storefront) — migration
+    **0053** (`prescriptions` + `rx_refill_requests`); STRICTEST medical append-only RLS (clinical-write
+    model, like vet_notes).
+14. **2.54** Pet-insurance marketplace — new `insurance` capability; migration **0054** (widen the
+    capabilities CHECK + `insurance_plans` + `insurance_leads`). Lead-gen v1, no in-app binding/payment.
+15. **2.57** Adoption foster workflow + urgent/featured flags — migration **0055** (additive columns riding
+    the existing adoption RLS); ⛔ after **2.56** (shared adoption files).
+16. **2.58** Feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md expansion — mobile + docs, no
+    migration. **Do LAST** so the docs capture every Wave 6 table/feature.
+
+Notes: Part A is all mobile, no migration — safe to run start-to-finish before any DB work. In Part B,
+2.56 / 2.51 / 2.52 / 2.54 are mutually independent (different files); 2.57 waits on 2.56; 2.58 is last. The
+high-blast-radius tickets are 2.51 (public read of MEDICAL data — DEFINER-only, never a broad SELECT
+policy) and 2.53 (clinical Rx — owner read-only, append-only): strictest RLS, harness-proven, leak nothing
+beyond whitelisted columns.
+
 ## POST-CORE ADD-ONS (not ticketed — note when relevant)
-Transport/pet-taxi (`transport`), pharmacy/Rx fulfillment (`pharmacy`) [`ALLOWED_CAPABILITIES` already
-reserves both], pet-insurance marketplace, lost&found + microchip alerts, pet-friendly places directory,
-events/meetups, nutrition plans, memorials. All slot onto the same spine/capability/discovery patterns
-when prioritized.
+Still un-ticketed after Wave 6: medication/Rx FULFILLMENT (delivery/pickup + charging, reuses shop+payments),
+in-app insurance binding/payment, transport LIVE GPS tracking (the walker-GPS 2.7 pattern), provider
+Sales/payouts + reconciliation UI, pet-friendly places directory, events/meetups, nutrition plans +
+food-recall alerts, widgets / Apple Watch + Live Activities, calendar integration, weather-aware nudges,
+memorials. All slot onto the same spine/capability/discovery patterns when prioritized.
 
 ## INDEX
 - 2.0-surface-nav.md
@@ -236,3 +294,19 @@ when prioritized.
 - 2.48-lost-and-found.md                (Wave 5 — lost mode + local alerts + sightings; migration ≥0046)
 - 2.49-memories-wrapped.md              (Wave 5 — on-this-day/milestones/Wrapped; no migration)
 - 2.50-ai-health-intelligence-vet-summary.md (Wave 5 — insights + real Vet Summary; ⛔ after 2.41+2.42)
+- 2.51-emergency-medical-card.md         (Wave 6 — emergency mode + printable tag QR + revocable vet link + image share; migration 0051)
+- 2.52-transport-pet-taxi.md             (Wave 6 — `transport` capability on the spine; migration 0052)
+- 2.53-vet-prescriptions-rx.md           (Wave 6 — Rx section inside Veterinary; migration 0053; strictest medical RLS)
+- 2.54-insurance-marketplace.md          (Wave 6 — `insurance` capability marketplace, lead-gen; migration 0054)
+- 2.55-remove-phoebe-avatar-fallback.md  (Wave 6 — remove hardcoded "Phoebe" + avatar fallback; no migration)
+- 2.56-adoption-public-listing-get.md    (Wave 6 — public single-listing GET; closes 2.30 deviation; no migration)
+- 2.57-adoption-foster-urgent-flags.md   (Wave 6 — foster workflow + urgent/featured flags; ⛔ after 2.56; migration 0055)
+- 2.58-feed-suggested-divider-and-architecture.md (Wave 6 — feed Suggested divider + docs expansion; no migration; build LAST)
+- 2.59-floating-tab-bar.md                (Wave 6 fix-pack — floating IG-style tab bar; no migration; edits (tabs)/_layout.jsx)
+- 2.60-profile-tab-pet-profile.md         (Wave 6 fix-pack — Profile tab → pet social profile + photo icon; ⛔ after 2.59+2.55; no migration)
+- 2.61-followers-following-lists.md        (Wave 6 fix-pack — followers/following lists + follow toggle + search; ⛔ after 2.60; no migration)
+- 2.62-share-frame-attach-photo.md         (Wave 6 fix-pack — share frame attaches the real photo; no migration)
+- 2.63-keyboard-tap-to-focus.md            (Wave 6 fix-pack — tap field first, then keyboard, app-wide; no migration)
+- 2.64-double-tap-paw.md                   (Wave 6 fix-pack — double-tap image → Paw/like; no migration)
+- 2.65-edit-daily-update-caption.md        (Wave 6 fix-pack — edit own post caption; owner-only PATCH; no migration)
+- 2.66-health-today-real-progress.md       (Wave 6 fix-pack — Today's Progress on real logged data; no migration)

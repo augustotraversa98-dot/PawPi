@@ -37,15 +37,15 @@ as the RLS migrations 0019–0026.)
 0043_provider_service_images.sql      (2.23 — provider_services.image_urls[])                              ✅ APPLIED + VERIFIED 2026-06-17
 0044_notifications.sql                (2.26 — notifications table + app_notify DEFINER insert helper)       ✅ APPLIED + VERIFIED 2026-06-17
 0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)             ✅ APPLIED + VERIFIED 2026-06-17
-0046_walks_with_buddies.sql           (2.43 — social_walks lat/lng/location_name + social_walk_invites)    ⏳ PENDING — apply after merge
-0047_community_forum.sql              (2.44 — forum_threads + forum_comments + forum_votes + forum_vote fn) ⏳ PENDING — apply after merge
-0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ⏳ PENDING — apply after merge
-0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ⏳ PENDING — apply after merge
-0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ⏳ PENDING — apply after merge
+0046_walks_with_buddies.sql           (2.43 — social_walks lat/lng/location_name + social_walk_invites)    ✅ APPLIED + VERIFIED 2026-06-18
+0047_community_forum.sql              (2.44 — forum_threads + forum_comments + forum_votes + forum_vote fn) ✅ APPLIED + VERIFIED 2026-06-18
+0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ✅ APPLIED + VERIFIED 2026-06-18
+0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ✅ APPLIED + VERIFIED 2026-06-18
+0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ✅ APPLIED + VERIFIED 2026-06-18
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
-**⏳ PENDING (Wave 5):** `0046_walks_with_buddies.sql` (ticket 2.43) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0046_walks_with_buddies.sql` (ticket 2.43) — harness-proven, NOT yet applied.
 - Adds `lat numeric`, `lng numeric`, `location_name text` to `social_walks` (+ a `(lat,lng)` index).
 - New `social_walk_invites` table (owner-issued invitations to a PRIVATE walk) — ENABLE+FORCE RLS:
   invitee/walk-owner SELECT, walk-owner INSERT/DELETE, invitee-or-owner UPDATE — via the two new
@@ -55,7 +55,7 @@ as the RLS migrations 0019–0026.)
   invitees (PUBLIC `nearby_pets` / friends_only stay any-authed readable). Proven as pawpi_app in
   `walks-buddies-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
-**⏳ PENDING (Wave 5):** `0047_community_forum.sql` (ticket 2.44) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0047_community_forum.sql` (ticket 2.44) — harness-proven, NOT yet applied.
 - New `forum_threads`, `forum_comments` (one-level reply via `parent_comment_id`), `forum_votes`
   (unique per user+target). All ENABLE+FORCE RLS.
 - threads/comments: READ any-authed, INSERT/UPDATE/DELETE author-only (soft-delete via `deleted_at`).
@@ -66,7 +66,7 @@ as the RLS migrations 0019–0026.)
   GRANT EXECUTE to pawpi_app). `comment_count` is COUNTed on read, not denormalized. Proven as pawpi_app
   in `forum-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
-**⏳ PENDING (Wave 5):** `0048_training_progress_self.sql` (ticket 2.45) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0048_training_progress_self.sql` (ticket 2.45) — harness-proven, NOT yet applied.
 - New `training_progress_self` (owner_user_id, pet_id, program_key, session_key, completed_at,
   UNIQUE per owner+pet+program+session) — per-pet completion of the DIY self-training curriculum (the
   curriculum CONTENT ships in the app's static `trainingCurriculum` module, not the DB). ENABLE+FORCE RLS,
@@ -74,7 +74,7 @@ as the RLS migrations 0019–0026.)
   2.10's provider `training_progress`. Proven as pawpi_app in `training-self-rls.integration.test.ts` +
   the completeness guard. Hand-apply after merge.
 
-**⏳ PENDING (Wave 5):** `0049_family_caregiver_sharing.sql` (ticket 2.47) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0049_family_caregiver_sharing.sql` (ticket 2.47) — harness-proven, NOT yet applied.
 - New `pet_caregivers` (person↔person grant: pet, owner, grantee, role family|caregiver, scopes[],
   status, expires_at) + append-only `pet_caregiver_audit`. Both ENABLE+FORCE RLS (owner manages /
   grantee sees grants naming them; audit owner-or-actor read, actor-insert append-only).
@@ -92,7 +92,7 @@ as the RLS migrations 0019–0026.)
   Hand-apply after merge. NOTE: `pets` rows stay any-authed-readable (0021 social) — this gates the PRIVATE
   data (routines/health/medical), not the public pet profile row.
 
-**⏳ PENDING (Wave 5):** `0050_lost_and_found.sql` (ticket 2.48) — harness-proven, NOT yet applied.
+**✅ APPLIED + VERIFIED 2026-06-18 (Wave 5):** `0050_lost_and_found.sql` (ticket 2.48) — harness-proven, NOT yet applied.
 - New `lost_reports` (pet, owner, status active|resolved, last_seen lat/lng/area, notes, reward) +
   `lost_sightings` (report, reporter, lat/lng, note, photo). Both ENABLE+FORCE RLS.
 - lost_reports: owner FOR ALL (activate/edit/resolve); any authed user reads an ACTIVE report (public
@@ -110,7 +110,8 @@ as the RLS migrations 0019–0026.)
   provider_services.image_urls; 0044 notifications RLS (select/update; inserts only via app_notify DEFINER)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
-Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are PENDING — see above. Future tickets that add tables append here.
+Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIFIED on Supabase (2026-06-18).
+No migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
