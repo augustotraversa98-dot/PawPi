@@ -461,6 +461,65 @@ export async function seedJoinRequest(
 }
 
 /**
+ * Seed a forum_threads row (ticket 2.44). Defaults to a live (non-deleted) General thread.
+ */
+export async function seedForumThread(
+  sql: Sql,
+  opts: {
+    threadId: number;
+    authorUserId: number;
+    category?: string;
+    title?: string;
+    score?: number;
+  },
+): Promise<{ threadId: number }> {
+  const { threadId, authorUserId, category = 'General', title = `thread-${opts.threadId}`, score = 0 } = opts;
+  await sql`
+    insert into forum_threads (id, author_user_id, category, title, body, score)
+    values (${threadId}, ${authorUserId}, ${category}, ${title}, 'body', ${score})
+  `;
+  return { threadId };
+}
+
+/** Seed a forum_comments row (ticket 2.44). */
+export async function seedForumComment(
+  sql: Sql,
+  opts: {
+    commentId: number;
+    threadId: number;
+    authorUserId: number;
+    parentCommentId?: number | null;
+    score?: number;
+  },
+): Promise<{ commentId: number }> {
+  const { commentId, threadId, authorUserId, parentCommentId = null, score = 0 } = opts;
+  await sql`
+    insert into forum_comments (id, thread_id, author_user_id, parent_comment_id, body, score)
+    values (${commentId}, ${threadId}, ${authorUserId}, ${parentCommentId}, 'comment', ${score})
+  `;
+  return { commentId };
+}
+
+/** Seed a forum_votes row directly (ticket 2.44) — bypasses forum_vote() for setup. */
+export async function seedForumVote(
+  sql: Sql,
+  opts: {
+    voteId: number;
+    userId: number;
+    targetType: 'thread' | 'comment';
+    targetId: number;
+    value: 1 | -1;
+  },
+): Promise<{ voteId: number }> {
+  const { voteId, userId, targetType, targetId, value } = opts;
+  await sql`
+    insert into forum_votes (id, user_id, target_type, target_id, value)
+    values (${voteId}, ${userId}, ${targetType}, ${targetId}, ${value})
+  `;
+  return { voteId };
+}
+
+/**
  * Seed a social_walk_invites row — an owner-issued invitation to a PRIVATE walk
  * (ticket 2.43). `invitedByUserId` defaults to the walk's owner concept (caller passes it).
  */
