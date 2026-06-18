@@ -121,7 +121,11 @@ Logged as a follow-up fix:
   columns only, exact browse visibility; no RLS change); the 2.30 feed deep-open now
   fetches the single listing directly (resolves a dog not in the loaded browse list),
   keeping the graceful "no longer available" path + the 2.19 nav.
-- ☐ **2.51** emergency mode + printable medical-card tag QR + revocable vet link — migration **0051**.
+- ✅ **2.51** emergency mode + printable medical-card tag QR + revocable vet link — migration **0051**.
+  Two owner-only tables + 3 SECURITY DEFINER public-read fns (tag basic/medical-opt-in; revocable+expiring
+  vet link; relay contact). Two PUBLIC no-login web pages (`/p/tag/[token]`, `/p/card/[token]`); mobile
+  Emergency Card screen (assembled card + image share reusing 2.28 + printable tag QR + create/revoke vet
+  links). LOST banner from 2.48. Harness-proven RLS + completeness guard. Migration flagged in test-backlog.
 - ☐ **2.52** transport / pet-taxi — migration **0052**.
 - ☐ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS).
 - ☐ **2.54** insurance marketplace — migration **0054**.

@@ -345,6 +345,13 @@ export default function HealthVetRecord() {
     setShowAddRecordPicker(true);
   };
 
+  // Open the Emergency Card (ticket 2.51) for the active pet — the printable tag QR,
+  // the revocable vet link, and the shareable image card.
+  const handleEmergencyCard = () => {
+    if (currentPet?.id == null) return;
+    router.push(`/emergency-card?petId=${currentPet.id}`);
+  };
+
   const handleRecordTypeSelect = (type) => {
     setShowAddRecordPicker(false);
     Alert.alert("Coming Soon", `The ${type} form will be added next.`);
@@ -605,6 +612,27 @@ export default function HealthVetRecord() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Emergency Card entry (ticket 2.51) */}
+        <TouchableOpacity
+          testID="open-emergency-card"
+          onPress={handleEmergencyCard}
+          style={{
+            backgroundColor: C.coral,
+            borderRadius: 16,
+            paddingVertical: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 16,
+          }}
+        >
+          <Heart size={18} color="#FFFFFF" />
+          <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+            Emergency Card
+          </Text>
+        </TouchableOpacity>
 
         {/* Access Control Message */}
         <View
