@@ -146,7 +146,15 @@ Logged as a follow-up fix:
   `is_featured`/`featured_until` on listings + `requested_placement` on applications. Web: editor +
   applications view fields, featured-first ordering, public read returns flags. Mobile: URGENT badge +
   placement chips on cards, urgent banner + foster/adopt picker in the detail. Harness-proven; flagged.
-- ☐ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; build LAST.
+- ✅ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; built LAST.
+  `mergeFeed` tags each post `feed_group`; the feed shows a "Suggested for you" divider at the
+  Following→Suggested boundary (only when followed content sits above real suggested content). Docs:
+  ARCHITECTURE.md gained a Wave 6 feature-surfaces section (2.51–2.58 + tables/RLS); SCHEMA_NOTES.md
+  migration-order line advanced to 0055.
+
+**Wave 6 COMPLETE (2026-06-18).** Part A (2.55, 2.59–2.66) + 2.67 fix + Part B (2.56, 2.51–2.54, 2.57,
+2.58) all built, CI-green, squash-merged. Migrations **0051–0055** pending hand-apply to Supabase
+(test-backlog ACTION 1).
 
 Migrations 0051–0055 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as Code builds
 each (Tats hand-applies). Part A adds none.

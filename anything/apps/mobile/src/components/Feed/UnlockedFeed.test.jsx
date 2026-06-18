@@ -103,3 +103,26 @@ describe("UnlockedFeed — interleaved suggestion cards", () => {
     expect(getByText("PET FRIENDS' MOMENTS")).toBeTruthy();
   });
 });
+
+// Ticket 2.58 — the "Suggested for you" divider at the Following→Suggested boundary.
+const fpost = (id, group) => ({ ...post(id), feed_group: group });
+
+describe("UnlockedFeed — Suggested divider (2.58)", () => {
+  it("renders the divider before the first suggested post when following content is above it", () => {
+    const posts = [fpost(1, "following"), fpost(2, "following"), fpost(3, "suggested"), fpost(4, "suggested")];
+    const { getByTestId } = render(<UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />);
+    expect(getByTestId("suggested-divider")).toBeTruthy();
+  });
+
+  it("does NOT render the divider when there is no suggested content", () => {
+    const posts = [fpost(1, "following"), fpost(2, "following")];
+    const { queryByTestId } = render(<UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />);
+    expect(queryByTestId("suggested-divider")).toBeNull();
+  });
+
+  it("does NOT render a dangling divider when the whole feed is suggested (no following above)", () => {
+    const posts = [fpost(1, "suggested"), fpost(2, "suggested")];
+    const { queryByTestId } = render(<UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />);
+    expect(queryByTestId("suggested-divider")).toBeNull();
+  });
+});

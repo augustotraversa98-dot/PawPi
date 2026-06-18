@@ -44,6 +44,17 @@ describe('mergeFeed — Following-first, de-duped, paginated', () => {
     expect(out.map((p) => p.id)).toEqual([1, 2, 3, 4]);
   });
 
+  it('tags each post with feed_group for the 2.58 divider', () => {
+    const following = [post(1, 10), post(2, 10)];
+    const suggested = [post(3, 20), post(4, 30)];
+
+    const out = mergeFeed(following, suggested, { limit: 20, offset: 0 });
+
+    expect(out.map((p) => p.feed_group)).toEqual([
+      'following', 'following', 'suggested', 'suggested',
+    ]);
+  });
+
   it('drops a post id that appears in both groups (no duplicates)', () => {
     const following = [post(1, 10), post(2, 10)];
     // id 1 leaks into suggested — must not appear twice; Following wins.

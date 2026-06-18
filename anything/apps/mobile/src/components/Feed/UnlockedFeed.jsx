@@ -26,6 +26,50 @@ export function UnlockedFeed({
     () => interleaveSuggestions(posts, suggestions),
     [posts, suggestions],
   );
+
+  // "Suggested for you" divider (ticket 2.58): the feed comes Following-first then
+  // Suggested (each pet post carries feed_group from the API). Show the divider before
+  // the FIRST suggested pet post — but only when there's followed content above it, so
+  // it's a real boundary and never a dangling label over an empty Following section.
+  const { dividerBeforeId } = useMemo(() => {
+    const hasFollowing = items.some(
+      (it) => !it.kind && it.feed_group === "following",
+    );
+    const firstSuggested = items.find(
+      (it) => !it.kind && it.feed_group === "suggested",
+    );
+    return {
+      dividerBeforeId:
+        hasFollowing && firstSuggested ? firstSuggested.id : null,
+    };
+  }, [items]);
+
+  const SuggestedDivider = () => (
+    <View
+      testID="suggested-divider"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingTop: 6,
+        paddingBottom: 14,
+        gap: 6,
+      }}
+    >
+      <PawPrint size={14} color={COLORS.terracotta} />
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: "800",
+          color: COLORS.mutedBrown,
+          letterSpacing: 0.7,
+        }}
+      >
+        SUGGESTED FOR YOU
+      </Text>
+    </View>
+  );
+
   return (
     <>
       {/* Pet friends label */}
@@ -73,17 +117,19 @@ export function UnlockedFeed({
           );
         }
         return (
-          <PostCard
-            key={item.id}
-            post={item}
-            liked={!!likedPosts[item.id]}
-            locked={false}
-            streak={streakByPetId[item.pet_id] || 0}
-            onToggleLike={() => onToggleLike(item.id)}
-            onOpenBarks={() => onOpenBarks(item)}
-            onOpenDetail={() => onOpenDetail(item)}
-            onOpenProfile={() => onOpenProfile(item)}
-          />
+          <React.Fragment key={item.id}>
+            {item.id === dividerBeforeId && <SuggestedDivider />}
+            <PostCard
+              post={item}
+              liked={!!likedPosts[item.id]}
+              locked={false}
+              streak={streakByPetId[item.pet_id] || 0}
+              onToggleLike={() => onToggleLike(item.id)}
+              onOpenBarks={() => onOpenBarks(item)}
+              onOpenDetail={() => onOpenDetail(item)}
+              onOpenProfile={() => onOpenProfile(item)}
+            />
+          </React.Fragment>
         );
       })}
 
