@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as Location from "expo-location";
 import {
   ArrowLeft,
   MapPin,
@@ -18,10 +19,14 @@ import {
   Calendar,
   Send,
   X,
+  Plus,
+  Globe,
+  Lock,
 } from "lucide-react-native";
 import { useSocialWalks, useJoinSocialWalk } from "@/hooks/useSocialWalks";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { isValidCoord } from "@/utils/walkBuddies";
 
 const C = {
   cream: "#FFF7EF",
@@ -39,11 +44,45 @@ export default function NearbyWalksPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
+  const [tab, setTab] = useState("nearby"); // 'nearby' (public) | 'invited' (private)
+  const [location, setLocation] = useState(null);
+
+  // Best-effort device location → bounding-box discovery. Falls back to all public walks.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({});
+        const lat = pos?.coords?.latitude;
+        const lng = pos?.coords?.longitude;
+        if (active && isValidCoord(lat, lng)) setLocation({ lat, lng });
+      } catch {
+        // no location — discovery still returns all public walks
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const {
     data: nearbyWalks,
-    isLoading,
+    isLoading: nearbyLoading,
     refetch: refetchNearbyWalks,
-  } = useSocialWalks("nearby_pets");
+  } = useSocialWalks("nearby_pets", false, { location });
+  const {
+    data: invitedWalks,
+    isLoading: invitedLoading,
+    refetch: refetchInvited,
+  } = useSocialWalks(null, false, { invited: true });
+
+  const isInvited = tab === "invited";
+  const walks = isInvited ? invitedWalks : nearbyWalks;
+  const isLoading = isInvited ? invitedLoading : nearbyLoading;
+  const refetchWalks = isInvited ? refetchInvited : refetchNearbyWalks;
+
   const [selectedWalk, setSelectedWalk] = useState(null);
   const [joinMessage, setJoinMessage] = useState("");
   const joinMutation = useJoinSocialWalk();
@@ -135,17 +174,94 @@ export default function NearbyWalksPage() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            Nearby Walks
+            Buddy Walks
           </Text>
           <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-            Join walks in your area
+            Find walks near you or create your own
           </Text>
         </View>
+        <TouchableOpacity
+          testID="create-walk-button"
+          onPress={() => router.push("/create-walk")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: C.coral,
+            borderRadius: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 9,
+          }}
+        >
+          <Plus size={16} color="#FFF" />
+          <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFF" }}>
+            Create
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tabs: Nearby (public) / Invited (private) */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+          paddingHorizontal: 20,
+          paddingTop: 14,
+        }}
+      >
+        <TouchableOpacity
+          testID="tab-nearby"
+          onPress={() => setTab("nearby")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingVertical: 9,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            backgroundColor: !isInvited ? C.sage : C.sand,
+          }}
+        >
+          <Globe size={14} color={!isInvited ? "#FFF" : C.warmBrown} />
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              color: !isInvited ? "#FFF" : C.warmBrown,
+            }}
+          >
+            Nearby
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="tab-invited"
+          onPress={() => setTab("invited")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingVertical: 9,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            backgroundColor: isInvited ? C.sage : C.sand,
+          }}
+        >
+          <Lock size={14} color={isInvited ? "#FFF" : C.warmBrown} />
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              color: isInvited ? "#FFF" : C.warmBrown,
+            }}
+          >
+            Invited
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
       <RefreshableScrollView
-        refetch={refetchNearbyWalks}
+        refetch={refetchWalks}
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 20,
@@ -158,7 +274,7 @@ export default function NearbyWalksPage() {
           </View>
         )}
 
-        {!isLoading && nearbyWalks && nearbyWalks.length === 0 && (
+        {!isLoading && walks && walks.length === 0 && (
           <View
             style={{
               backgroundColor: C.sand,
@@ -176,7 +292,7 @@ export default function NearbyWalksPage() {
                 marginBottom: 6,
               }}
             >
-              No walks nearby
+              {isInvited ? "No invites yet" : "No walks nearby"}
             </Text>
             <Text
               style={{
@@ -185,14 +301,16 @@ export default function NearbyWalksPage() {
                 textAlign: "center",
               }}
             >
-              Check back later or create your own social walk
+              {isInvited
+                ? "Private walks you're invited to will show up here"
+                : "Check back later or create your own social walk"}
             </Text>
           </View>
         )}
 
         {!isLoading &&
-          nearbyWalks &&
-          nearbyWalks.map((walk) => {
+          walks &&
+          walks.map((walk) => {
             const spotsAvailable = getSpotsAvailable(walk);
             const isFull = spotsAvailable <= 0;
 

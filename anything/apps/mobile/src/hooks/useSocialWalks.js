@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
+import { isValidCoord } from "@/utils/walkBuddies";
 
 // Create a social walk
 export function useCreateSocialWalk() {
@@ -31,14 +32,31 @@ export function useCreateSocialWalk() {
   });
 }
 
-// Get social walks (discoverable or owned)
-export function useSocialWalks(visibility = null, myWalks = false) {
+// Get social walks (discoverable or owned).
+// options: { location: { lat, lng }, radiusKm, invited } — for ticket 2.43 map discovery.
+export function useSocialWalks(visibility = null, myWalks = false, options = {}) {
+  const { location, radiusKm = 25, invited = false } = options;
+  const hasLocation = !!location && isValidCoord(location.lat, location.lng);
+
   return useQuery({
-    queryKey: ["social-walks", visibility, myWalks],
+    queryKey: [
+      "social-walks",
+      visibility,
+      myWalks,
+      invited,
+      hasLocation ? `${location.lat},${location.lng}` : null,
+      hasLocation ? radiusKm : null,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (visibility) params.append("visibility", visibility);
       if (myWalks) params.append("myWalks", "true");
+      if (invited) params.append("invited", "true");
+      if (hasLocation) {
+        params.append("lat", String(location.lat));
+        params.append("lng", String(location.lng));
+        params.append("radiusKm", String(radiusKm));
+      }
 
       const response = await fetch(`/api/social-walks?${params}`);
 
