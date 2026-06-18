@@ -39,6 +39,7 @@ as the RLS migrations 0019–0026.)
 0045_owner_messaging.sql              (2.27 — dm_threads + dm_messages, participant-scoped RLS)             ✅ APPLIED + VERIFIED 2026-06-17
 0046_walks_with_buddies.sql           (2.43 — social_walks lat/lng/location_name + social_walk_invites)    ⏳ PENDING — apply after merge
 0047_community_forum.sql              (2.44 — forum_threads + forum_comments + forum_votes + forum_vote fn) ⏳ PENDING — apply after merge
+0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ⏳ PENDING — apply after merge
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -62,13 +63,21 @@ as the RLS migrations 0019–0026.)
   (bypasses the author-only thread/comment UPDATE a non-author voter can't satisfy; pinned search_path,
   GRANT EXECUTE to pawpi_app). `comment_count` is COUNTed on read, not denormalized. Proven as pawpi_app
   in `forum-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
+
+**⏳ PENDING (Wave 5):** `0048_training_progress_self.sql` (ticket 2.45) — harness-proven, NOT yet applied.
+- New `training_progress_self` (owner_user_id, pet_id, program_key, session_key, completed_at,
+  UNIQUE per owner+pet+program+session) — per-pet completion of the DIY self-training curriculum (the
+  curriculum CONTENT ships in the app's static `trainingCurriculum` module, not the DB). ENABLE+FORCE RLS,
+  OWNER-SCOPED FOR ALL (owner reads/writes own; others zero). Named distinctly so it never collides with
+  2.10's provider `training_progress`. Proven as pawpi_app in `training-self-rls.integration.test.ts` +
+  the completeness guard. Hand-apply after merge.
 - 0039 cron function present + granted; 0040 telehealth_sessions RLS on+forced (owner-ALL + staff
   read/insert/update) + both capability CHECKs include `'telehealth'`; 0041 the four provider link columns.
 - 0042 provider_posts RLS (read=SELECT, staff_all=ALL) + providers.cover_image_url; 0043
   provider_services.image_urls; 0044 notifications RLS (select/update; inserts only via app_notify DEFINER)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
-Wave-5 migrations `0046` (2.43) + `0047` (2.44) are PENDING — see above. Future tickets that add tables append here.
+Wave-5 migrations `0046` (2.43) + `0047` (2.44) + `0048` (2.45) are PENDING — see above. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)

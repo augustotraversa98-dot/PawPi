@@ -3,30 +3,38 @@ import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  GraduationCap,
   ChevronRight,
   Clock,
-  Trophy,
   CheckCircle2,
   Circle,
   UserRound,
   X,
+  ArrowLeft,
+  Lightbulb,
 } from "lucide-react-native";
-import { TRAINING_LESSONS } from "../../data/mockData";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import {
+  useSelfTrainingProgress,
+  useToggleSession,
+} from "@/hooks/useSelfTraining";
+import {
+  TRAINING_PROGRAMS,
+  completionId,
+  programDoneCount,
+} from "@/data/trainingCurriculum";
 
-// This is the SELF / CONTENT training tab — static, do-it-yourself how-to lessons (no
-// provider, no DB). It is DISTINCT from the PROVIDER training SERVICE (hiring a real
-// trainer: 1:1 / group classes / programs), which lives under Pet Services → Training
-// (more/training.jsx, ticket 2.10). To avoid collision the two never overlap; this tab
-// adds a single banner that LINKS to the hire-a-trainer service for owners who want a pro.
+// The SELF / DIY training tab (ticket 2.45) — a real, multi-program curriculum the owner
+// works through per pet. DISTINCT from the PROVIDER training SERVICE (hiring a trainer, 2.10),
+// which the "Want a pro?" banner links to. Curriculum content is curated (trainingCurriculum
+// module); only completion is persisted (training_progress_self).
 
 const C = {
   coral: "#FF6F61",
   apricot: "#FFB37A",
   peach: "#FFD9B3",
-  honey: "#FFC857",
   terracotta: "#B75D32",
   sage: "#A7BFA3",
+  sageDark: "#5A8A74",
   cream: "#FFF7EF",
   sand: "#F8EBDD",
   card: "#FFFCF8",
@@ -43,120 +51,107 @@ const DIFF_COLORS = {
 export default function TrainingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [selectedLesson, setSelectedLesson] = useState(null);
+  const { data: currentPet } = useCurrentPet();
+  const petId = currentPet?.id;
 
-  const LessonCard = ({ lesson }) => {
-    const diff = DIFF_COLORS[lesson.difficulty] || DIFF_COLORS.Beginner;
+  const { completedSet } = useSelfTrainingProgress(petId);
+  const toggle = useToggleSession(petId);
+
+  const [openProgram, setOpenProgram] = useState(null); // program object
+  const [openSession, setOpenSession] = useState(null); // session object
+
+  const totalDone = TRAINING_PROGRAMS.reduce(
+    (sum, p) => sum + programDoneCount(p.key, completedSet),
+    0,
+  );
+  const totalSessions = TRAINING_PROGRAMS.reduce(
+    (sum, p) => sum + p.sessions.length,
+    0,
+  );
+
+  const handleToggle = (program, session) => {
+    if (!petId) return;
+    const id = completionId(program.key, session.key);
+    const isDone = completedSet.has(id);
+    toggle.mutate({
+      programKey: program.key,
+      sessionKey: session.key,
+      completed: !isDone,
+    });
+  };
+
+  const ProgramCard = ({ program }) => {
+    const done = programDoneCount(program.key, completedSet);
+    const total = program.sessions.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const diff = DIFF_COLORS[program.difficulty] || DIFF_COLORS.Beginner;
     return (
       <TouchableOpacity
-        onPress={() => setSelectedLesson(lesson)}
+        testID={`program-${program.key}`}
+        onPress={() => setOpenProgram(program)}
         activeOpacity={0.92}
         style={{
           backgroundColor: C.card,
-          borderRadius: 22,
+          borderRadius: 20,
           padding: 18,
           marginBottom: 14,
-          shadowColor: C.terracotta,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.07,
-          shadowRadius: 14,
-          elevation: 3,
           borderWidth: 1,
           borderColor: C.peach,
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: 10,
-          }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+          <Text style={{ fontSize: 26, marginRight: 10 }}>{program.emoji}</Text>
           <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 19,
-                fontWeight: "800",
-                color: C.warmBrown,
-                letterSpacing: -0.3,
-              }}
-            >
-              {lesson.title}
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
+              {program.title}
             </Text>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginTop: 6,
-                gap: 8,
+                backgroundColor: diff.bg,
+                alignSelf: "flex-start",
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 7,
+                marginTop: 4,
               }}
             >
-              <View
-                style={{
-                  backgroundColor: diff.bg,
-                  paddingHorizontal: 9,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 12, color: diff.text, fontWeight: "700" }}
-                >
-                  {lesson.difficulty}
-                </Text>
-              </View>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              >
-                <Clock size={13} color={C.mutedBrown} />
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: C.mutedBrown,
-                    fontWeight: "600",
-                  }}
-                >
-                  {lesson.time}
-                </Text>
-              </View>
+              <Text style={{ fontSize: 11, color: diff.text, fontWeight: "700" }}>
+                {program.difficulty}
+              </Text>
             </View>
           </View>
-          {lesson.status === "completed" ? (
-            <CheckCircle2 size={26} color="#2E7D32" />
-          ) : lesson.status === "in progress" ? (
-            <View
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 13,
-                borderWidth: 2.5,
-                borderColor: C.coral,
-                borderStyle: "dashed",
-              }}
-            />
+          {done === total && total > 0 ? (
+            <CheckCircle2 size={24} color="#2E7D32" />
           ) : (
-            <Circle size={26} color={C.peach} />
+            <ChevronRight size={20} color={C.mutedBrown} />
           )}
         </View>
-
-        <Text
+        <Text style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 19, marginBottom: 12 }}>
+          {program.summary}
+        </Text>
+        <View
           style={{
-            fontSize: 14,
-            color: C.mutedBrown,
-            lineHeight: 21,
-            marginBottom: 14,
+            height: 8,
+            backgroundColor: C.sand,
+            borderRadius: 4,
+            overflow: "hidden",
           }}
         >
-          {lesson.description}
-        </Text>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: C.coral }}>
-            Start Lesson
-          </Text>
-          <ChevronRight size={16} color={C.coral} />
+          <View
+            style={{
+              width: `${pct}%`,
+              height: "100%",
+              backgroundColor: C.sageDark,
+              borderRadius: 4,
+            }}
+          />
         </View>
+        <Text
+          testID={`program-progress-${program.key}`}
+          style={{ fontSize: 12, color: C.mutedBrown, marginTop: 6, fontWeight: "700" }}
+        >
+          {done} of {total} sessions done
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -174,18 +169,13 @@ export default function TrainingScreen() {
           borderBottomColor: C.peach,
         }}
       >
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "800",
-            color: C.warmBrown,
-            letterSpacing: -0.5,
-          }}
-        >
+        <Text style={{ fontSize: 26, fontWeight: "800", color: C.warmBrown }}>
           Dog Training 🎓
         </Text>
         <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
-          Build habits. Strengthen your bond.
+          {currentPet?.name
+            ? `${currentPet.name}'s curriculum · build habits, strengthen your bond.`
+            : "Build habits. Strengthen your bond."}
         </Text>
       </View>
 
@@ -194,9 +184,9 @@ export default function TrainingScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hire-a-trainer link — bridges to the PROVIDER training service (ticket 2.10),
-            kept distinct from this self/content tab. */}
+        {/* Hire-a-trainer banner → PROVIDER training service (2.10), kept distinct. */}
         <TouchableOpacity
+          testID="hire-trainer-banner"
           onPress={() => router.push("/service/training")}
           activeOpacity={0.9}
           accessibilityRole="button"
@@ -235,70 +225,25 @@ export default function TrainingScreen() {
           <ChevronRight size={18} color={C.mutedBrown} />
         </TouchableOpacity>
 
-        {/* Progress Banner */}
+        {/* Overall progress */}
         <View
           style={{
             backgroundColor: C.apricot,
-            borderRadius: 22,
+            borderRadius: 20,
             padding: 18,
-            marginBottom: 22,
-            flexDirection: "row",
-            alignItems: "center",
-            shadowColor: C.terracotta,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.12,
-            shadowRadius: 12,
+            marginBottom: 20,
           }}
         >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}
-            >
-              Beginner Path 🏆
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: C.terracotta,
-                marginTop: 3,
-                marginBottom: 12,
-              }}
-            >
-              Complete 7 lessons to build a strong foundation.
-            </Text>
-            <View
-              style={{
-                height: 8,
-                backgroundColor: "rgba(255,255,255,0.5)",
-                borderRadius: 4,
-                overflow: "hidden",
-              }}
-            >
-              <View
-                style={{
-                  width: "30%",
-                  height: "100%",
-                  backgroundColor: C.warmBrown,
-                  borderRadius: 4,
-                }}
-              />
-            </View>
-            <Text
-              style={{
-                fontSize: 12,
-                color: C.terracotta,
-                marginTop: 6,
-                fontWeight: "700",
-              }}
-            >
-              2 of 7 lessons completed
-            </Text>
-          </View>
-          <Trophy
-            size={50}
-            color={C.warmBrown}
-            style={{ marginLeft: 14, opacity: 0.7 }}
-          />
+          <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
+            Your training journey 🏆
+          </Text>
+          <Text
+            testID="overall-progress"
+            style={{ fontSize: 13, color: C.terracotta, marginTop: 4, fontWeight: "700" }}
+          >
+            {totalDone} of {totalSessions} sessions completed across{" "}
+            {TRAINING_PROGRAMS.length} programs
+          </Text>
         </View>
 
         <Text
@@ -307,161 +252,205 @@ export default function TrainingScreen() {
             fontWeight: "800",
             color: C.warmBrown,
             marginBottom: 14,
-            letterSpacing: -0.2,
           }}
         >
-          Lesson List
+          Programs
         </Text>
 
-        {TRAINING_LESSONS.map((lesson) => (
-          <LessonCard key={lesson.id} lesson={lesson} />
+        {TRAINING_PROGRAMS.map((program) => (
+          <ProgramCard key={program.key} program={program} />
         ))}
-
-        <View style={{ marginTop: 10, alignItems: "center", padding: 16 }}>
-          <Text style={{ color: C.mutedBrown, fontSize: 13 }}>
-            🐾 New lessons added every month!
-          </Text>
-        </View>
       </ScrollView>
 
-      {/* Lesson Detail Modal */}
+      {/* Program → session list */}
       <Modal
-        visible={!!selectedLesson}
+        visible={!!openProgram}
         animationType="slide"
-        transparent={false}
+        onRequestClose={() => setOpenProgram(null)}
       >
-        <View
-          style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
-        >
+        <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
           <View
             style={{
-              padding: 20,
+              padding: 18,
               borderBottomWidth: 1,
               borderBottomColor: C.peach,
               flexDirection: "row",
-              justifyContent: "space-between",
               alignItems: "center",
               backgroundColor: C.card,
             }}
           >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                flex: 1,
-              }}
-            >
-              {selectedLesson?.title} Training
-            </Text>
             <TouchableOpacity
-              onPress={() => setSelectedLesson(null)}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: C.sand,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              testID="program-back"
+              onPress={() => setOpenProgram(null)}
+              style={{ marginRight: 12 }}
             >
-              <X size={16} color={C.mutedBrown} />
+              <ArrowLeft size={22} color={C.warmBrown} />
             </TouchableOpacity>
+            <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
+              {openProgram?.emoji} {openProgram?.title}
+            </Text>
           </View>
 
-          <ScrollView
-            contentContainerStyle={{ padding: 22, paddingBottom: 40 }}
-          >
-            <Text
-              style={{
-                fontSize: 15,
-                color: C.mutedBrown,
-                marginBottom: 24,
-                lineHeight: 24,
-              }}
-            >
-              {selectedLesson?.description}
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 21, marginBottom: 16 }}>
+              {openProgram?.summary}
             </Text>
 
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 18,
-              }}
-            >
-              Step-by-Step 🐾
-            </Text>
-
-            {selectedLesson?.steps.map((step, index) => (
-              <View
-                key={index}
-                style={{
-                  flexDirection: "row",
-                  marginBottom: 20,
-                  alignItems: "flex-start",
-                }}
-              >
-                <View
+            {openProgram?.sessions.map((session, index) => {
+              const isDone = completedSet.has(
+                completionId(openProgram.key, session.key),
+              );
+              return (
+                <TouchableOpacity
+                  key={session.key}
+                  testID={`session-${session.key}`}
+                  onPress={() => setOpenSession(session)}
+                  activeOpacity={0.9}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: C.coral,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginRight: 14,
-                    flexShrink: 0,
-                    shadowColor: C.coral,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 5,
-                  }}
-                >
-                  <Text
-                    style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}
-                  >
-                    {index + 1}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flex: 1,
                     backgroundColor: C.card,
                     borderRadius: 16,
-                    padding: 14,
+                    padding: 16,
+                    marginBottom: 10,
                     borderWidth: 1,
-                    borderColor: C.peach,
+                    borderColor: isDone ? C.sage : C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  <Text
-                    style={{ fontSize: 15, color: C.warmBrown, lineHeight: 23 }}
-                  >
-                    {step}
-                  </Text>
-                </View>
-              </View>
-            ))}
+                  {isDone ? (
+                    <CheckCircle2 size={24} color="#2E7D32" />
+                  ) : (
+                    <Circle size={24} color={C.peach} />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
+                      {index + 1}. {session.title}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+                      <Clock size={12} color={C.mutedBrown} />
+                      <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+                        {session.durationMin} min · {session.difficulty}
+                      </Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color={C.mutedBrown} />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
 
+      {/* Session detail */}
+      <Modal
+        visible={!!openSession}
+        animationType="slide"
+        onRequestClose={() => setOpenSession(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
+          <View
+            style={{
+              padding: 18,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: C.card,
+            }}
+          >
             <TouchableOpacity
-              onPress={() => setSelectedLesson(null)}
-              style={{
-                backgroundColor: C.coral,
-                borderRadius: 16,
-                padding: 18,
-                alignItems: "center",
-                marginTop: 16,
-                shadowColor: C.coral,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              }}
+              testID="session-close"
+              onPress={() => setOpenSession(null)}
+              style={{ marginRight: 12 }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-                Mark as Completed ✅
-              </Text>
+              <X size={20} color={C.warmBrown} />
             </TouchableOpacity>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
+              {openSession?.title}
+            </Text>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+            {openSession && openProgram && (
+              <>
+                <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 22, marginBottom: 18 }}>
+                  🎯 {openSession.objective}
+                </Text>
+
+                <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>
+                  Step-by-step
+                </Text>
+                {openSession.steps.map((step, i) => (
+                  <View key={i} style={{ flexDirection: "row", marginBottom: 14, alignItems: "flex-start" }}>
+                    <View
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        backgroundColor: C.coral,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginRight: 12,
+                      }}
+                    >
+                      <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>
+                        {i + 1}
+                      </Text>
+                    </View>
+                    <Text style={{ flex: 1, fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>
+                      {step}
+                    </Text>
+                  </View>
+                ))}
+
+                {openSession.tips?.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: C.sand,
+                      borderRadius: 14,
+                      padding: 14,
+                      marginTop: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {openSession.tips.map((tip, i) => (
+                      <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                        <Lightbulb size={15} color={C.terracotta} />
+                        <Text style={{ flex: 1, fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}>
+                          {tip}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {(() => {
+                  const isDone = completedSet.has(
+                    completionId(openProgram.key, openSession.key),
+                  );
+                  return (
+                    <TouchableOpacity
+                      testID="toggle-complete"
+                      onPress={() => handleToggle(openProgram, openSession)}
+                      disabled={toggle.isPending || !petId}
+                      style={{
+                        backgroundColor: isDone ? C.sageDark : C.coral,
+                        borderRadius: 16,
+                        padding: 18,
+                        alignItems: "center",
+                        marginTop: 16,
+                        opacity: !petId ? 0.5 : 1,
+                      }}
+                    >
+                      <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+                        {isDone ? "✓ Completed — tap to undo" : "Mark as completed"}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+              </>
+            )}
           </ScrollView>
         </View>
       </Modal>
