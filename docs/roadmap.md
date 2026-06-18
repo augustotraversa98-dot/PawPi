@@ -195,7 +195,11 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   proxy (`/api/places/search|[placeId]`, degrades clean to `configured:false`, key never reaches the client)
   + owner favorites; mobile Places screen (2.68 Apple map + list + category chips + Saved tab + directions
   hand-off, permission/empty/not-set-up states). i18n EN+ES. Reuses `GOOGLE_PLACES_API_KEY`.
-- ☐ **2.74** Events / meetups — migration **0060**; ⛔ after 2.68; community (forum/social-walk patterns).
+- ✅ **2.74** Events / meetups — migration **0060** (`events` + `event_rsvps`; forum-style published-public
+  read + host-only writes/soft-delete + own-only RSVP toggle, COUNT-on-read attendee count, no DEFINER
+  [non-recursive EXISTS subquery]; harness-proven + completeness guard). Web events CRUD + rsvp upsert;
+  mobile Events section in Community (2.68 Apple map + list + RSVP + directions + create via the 2.68
+  picker/DateField/TimeField + host cancel). i18n EN+ES. (Best-effort RSVP notify deferred — no CHECK widen.)
 - ☐ **2.75** Nutrition plans + food-recall alerts — migration **0061**; owner+pet health, non-diagnostic.
 
 Migrations 0056–0061 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as each merges

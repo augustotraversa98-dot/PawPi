@@ -138,5 +138,26 @@
     "openNow": "Abierto ahora",
     "closed": "Cerrado",
     "directions": "Cómo llegar"
+  },
+  "events": {
+    "title": "Eventos y encuentros",
+    "empty": "No hay eventos próximos cerca de ti.",
+    "going": "asisten",
+    "by": "por",
+    "rsvp": "Asistir",
+    "goingYes": "Asisto ✓",
+    "directions": "Cómo llegar",
+    "cancel": "Cancelar",
+    "cancelTitle": "¿Cancelar este evento?",
+    "cancelEvent": "Cancelar evento",
+    "keep": "Mantener",
+    "couldNotRsvp": "No se pudo confirmar",
+    "createTitle": "Crear un evento",
+    "titlePlaceholder": "Título del evento",
+    "descPlaceholder": "¿De qué se trata?",
+    "location": "Ubicación",
+    "capacity": "Capacidad (opcional)",
+    "publish": "Publicar evento",
+    "couldNotCreate": "No se pudo crear el evento"
   }
 }

@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp } from "lucide-react-native";
+import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp, CalendarDays } from "lucide-react-native";
 import {
   useForumThreads,
   useForumVote,
@@ -171,20 +171,36 @@ export default function CommunityScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity
-            testID="compose-button"
-            onPress={() => router.push("/forum-compose")}
-            style={{
-              backgroundColor: C.coral,
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Plus size={22} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TouchableOpacity
+              testID="events-button"
+              onPress={() => router.push("/events")}
+              style={{
+                backgroundColor: C.sand,
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <CalendarDays size={20} color={C.coral} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="compose-button"
+              onPress={() => router.push("/forum-compose")}
+              style={{
+                backgroundColor: C.coral,
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Plus size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
