@@ -1,15 +1,36 @@
 import { Tabs } from "expo-router";
 import { useEffect } from "react";
+import { View } from "react-native";
 import {
   Home,
   HeartPulse,
   GraduationCap,
   Stethoscope,
-  CircleUser,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import { PetAvatar } from "@/components/Pets/PetAvatar";
 import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
+
+// The Profile tab icon is the active pet's PHOTO (ticket 2.60) — a small circular
+// avatar with an active-state coral ring; falls back to the neutral paw/dog glyph
+// (2.55) when there's no photo or no pet.
+function ProfileTabIcon({ focused }) {
+  const { data: currentPet } = useCurrentPet();
+  return (
+    <View
+      style={{
+        borderWidth: 2,
+        borderColor: focused ? "#FF6F61" : "transparent",
+        borderRadius: 16,
+        padding: 1,
+      }}
+    >
+      <PetAvatar uri={currentPet?.avatar_url || undefined} size={24} />
+    </View>
+  );
+}
 import useRoutinesStore from "@/store/routinesStore";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { getScheduledNotifications } from "@/utils/notifications";
@@ -121,7 +142,7 @@ export default function TabLayout() {
         name="more/index"
         options={{
           title: t("tabs.profile"),
-          tabBarIcon: ({ color }) => <CircleUser color={color} size={23} />,
+          tabBarIcon: ({ focused }) => <ProfileTabIcon focused={focused} />,
           // Safety net (ticket 2.19): leaving the More tab pops its stack to the landing
           // page and tears down any in-progress pushed flow / routine-creation modal, so
           // tapping More always reopens its root — even if some unforeseen push slipped in.
