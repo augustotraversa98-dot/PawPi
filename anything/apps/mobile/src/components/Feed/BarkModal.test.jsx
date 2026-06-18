@@ -28,6 +28,31 @@ afterEach(() => {
   mockBarks = undefined;
 });
 
+describe("BarkModal — keyboard tap-to-focus (ticket 2.63)", () => {
+  it("renders the composer WITHOUT auto-focus (keyboard opens only on tap)", () => {
+    mockBarks = [];
+    const { getByTestId } = render(
+      <BarkModal visible post={post} onClose={jest.fn()} />,
+    );
+    const input = getByTestId("bark-input");
+    expect(input).toBeTruthy();
+    // The field must not grab focus on open (no autoFocus, no programmatic focus).
+    expect(input.props.autoFocus).not.toBe(true);
+  });
+
+  it("does not schedule a focus timer when opened", () => {
+    jest.useFakeTimers();
+    try {
+      mockBarks = [];
+      render(<BarkModal visible post={post} onClose={jest.fn()} />);
+      // The old behavior scheduled setTimeout(() => input.focus()) on open.
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe("BarkModal — bark row pet identity", () => {
   it("renders the commenting pet's @handle from pet_handle", () => {
     mockBarks = [

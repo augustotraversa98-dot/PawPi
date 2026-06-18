@@ -38,10 +38,8 @@ export const BarkModal = memo(function BarkModal({
     if (visible && post) {
       setText("");
       refetch();
-      // Small delay so Modal animation is done before focusing
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 400);
+      // Ticket 2.63: do NOT auto-focus. The field renders ready; tapping it
+      // raises the keyboard as a deliberate second step (no jank on open).
     }
   }, [visible, post, refetch]);
 
@@ -270,6 +268,7 @@ export const BarkModal = memo(function BarkModal({
           >
             <TextInput
               ref={inputRef}
+              testID="bark-input"
               style={{
                 flex: 1,
                 backgroundColor: COLORS.sand,

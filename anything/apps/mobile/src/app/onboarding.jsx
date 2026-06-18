@@ -661,9 +661,7 @@ export default function OnboardingScreen() {
 const StepName = ({ formData, setFormData }) => {
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 300);
-  }, []);
+  // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
     <View style={{ flex: 1, paddingTop: 40 }}>
@@ -1155,10 +1153,7 @@ const StepWeight = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
   const inputRef = useRef(null);
 
-  // Auto-focus input on mount
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 300);
-  }, []);
+  // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
     <View style={{ flex: 1, paddingTop: 40 }}>

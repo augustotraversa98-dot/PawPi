@@ -285,10 +285,10 @@ export const PostComposerModal = memo(function PostComposerModal({
                 borderWidth: 1.5,
                 borderColor: COLORS.peach,
               }}
+              testID="composer-caption"
               placeholder={`What's ${petName} doing today? 🐶`}
               placeholderTextColor={COLORS.mutedBrown}
               multiline
-              autoFocus
               value={caption}
               onChangeText={setCaption}
             />
