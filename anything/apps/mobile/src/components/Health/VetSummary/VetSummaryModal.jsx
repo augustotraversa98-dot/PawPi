@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,952 +6,306 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Switch,
-  Platform,
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  Share,
 } from "react-native";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   X,
-  Calendar,
-  Download,
   Share2,
-  ChevronDown,
-  ChevronRight,
   AlertCircle,
-  Image as ImageIcon,
+  Stethoscope,
 } from "lucide-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useVetSummary } from "@/hooks/useVetSummary";
+import { getLocalPostDateString } from "@/utils/dateUtils";
+import {
+  detectHealthFlags,
+  buildRecap,
+  DISCLAIMER,
+} from "@/utils/healthInsights";
+import { summaryToText } from "@/utils/vetSummaryText";
 
-// Mock data for demonstration
-const mockSummaryData = {
-  last7Days: {
-    mainConcerns: [
-      "Decreased appetite",
-      "Limping on front left paw",
-      "Occasional vomiting",
-    ],
-    appetiteChanges:
-      "Food intake reduced by ~30% over last 3 days. Water intake normal.",
-    foodWaterLogs: [
-      { date: "May 5", food: "1.5 cups", water: "3 bowls" },
-      { date: "May 4", food: "1.2 cups", water: "3 bowls" },
-      { date: "May 3", food: "2 cups", water: "2 bowls" },
-    ],
-    pooChanges:
-      "5 normal bowel movements. Consistency normal. No blood or mucus observed.",
-    peeChanges: "8 urinations. Color normal. No straining observed.",
-    vomitingEvents: [
-      {
-        date: "May 4, 2:30 PM",
-        contents: "Undigested food",
-        notes: "Shortly after eating",
-      },
-      {
-        date: "May 2, 8:15 AM",
-        contents: "Yellow bile",
-        notes: "Before breakfast",
-      },
-    ],
-    activityChanges:
-      "Less playful than usual. Walks completed but slower pace. Favoring left front paw.",
-    medications: [
-      {
-        name: "Apoquel 16mg",
-        dosage: "1 tablet daily",
-        adherence: "100% (7/7 doses given)",
-      },
-    ],
-    photoChecks: 4,
-    timeline: [
-      { date: "May 5, 9:00 AM", event: "Food: 0.8 cups (below normal)" },
-      { date: "May 4, 2:30 PM", event: "Vomiting episode - undigested food" },
-      {
-        date: "May 4, 7:00 AM",
-        event: "Walk: 15 min, slow pace, limping observed",
-      },
-      { date: "May 3, 6:00 PM", event: "Food: 1.2 cups (below normal)" },
-      { date: "May 2, 8:15 AM", event: "Vomiting episode - yellow bile" },
-    ],
-  },
+const C = {
+  cream: "#FFF7EF",
+  card: "#FFFCF8",
+  coral: "#FF6F61",
+  green: "#2E8F62",
+  amber: "#B8860B",
+  peach: "#FFD9B3",
+  sand: "#F8EBDD",
+  warmBrown: "#3B241B",
+  mutedBrown: "#7A6254",
 };
+
+const RANGES = [
+  { key: "7days", label: "7 days", days: 7 },
+  { key: "30days", label: "30 days", days: 30 },
+  { key: "90days", label: "90 days", days: 90 },
+];
+
+// Subtract N days from a YYYY-MM-DD (UTC math on a date-only value is exact).
+function minusDays(ymd, days) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function Stat({ label, value }) {
+  return (
+    <View style={{ minWidth: "30%", marginBottom: 10 }}>
+      <Text style={{ fontSize: 22, fontWeight: "900", color: C.warmBrown }}>{value}</Text>
+      <Text style={{ fontSize: 12, color: C.mutedBrown }}>{label}</Text>
+    </View>
+  );
+}
 
 export default function VetSummaryModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
-  const [selectedRange, setSelectedRange] = useState("7days");
-  const [showPreview, setShowPreview] = useState(false);
-  const [questionsForVet, setQuestionsForVet] = useState([
-    "Should we be concerned about the decreased appetite?",
-    "What could be causing the limping?",
-    "",
-  ]);
-  const [selectedPhotos, setSelectedPhotos] = useState({
-    paws: true,
-    skin: false,
-    teeth: false,
-    eyes: false,
-  });
-  const [expandedSections, setExpandedSections] = useState({
-    range: true,
-    concerns: false,
-    appetite: false,
-    foodWater: false,
-    pooPee: false,
-    vomiting: false,
-    activity: false,
-    medications: false,
-    photos: false,
-    questions: true,
-    timeline: false,
-  });
+  const { data: currentPet } = useCurrentPet();
+  const petId = currentPet?.id;
 
-  const toggleSection = (section) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  const [rangeKey, setRangeKey] = useState("7days");
+  const [questions, setQuestions] = useState(["", "", ""]);
+
+  const today = getLocalPostDateString();
+  const days = RANGES.find((r) => r.key === rangeKey)?.days || 7;
+  const from = minusDays(today, days);
+
+  const { data: summary, isLoading, error } = useVetSummary(petId, from, today, visible);
+
+  const flags = useMemo(() => (summary ? detectHealthFlags(summary) : []), [summary]);
+  const recap = useMemo(() => (summary ? buildRecap(summary, flags) : ""), [summary, flags]);
+
+  const onShare = async () => {
+    if (!summary) return;
+    try {
+      await Share.share({ message: summaryToText(summary, flags, questions) });
+    } catch (e) {
+      // graceful no-op
+    }
   };
 
-  const data = mockSummaryData.last7Days;
+  const setQuestion = (i, v) =>
+    setQuestions((qs) => qs.map((q, idx) => (idx === i ? v : q)));
 
-  const renderRangeSelector = () => (
-    <View style={{ marginBottom: 20 }}>
-      <TouchableOpacity
-        onPress={() => toggleSection("range")}
-        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-      >
-        {expandedSections.range ? (
-          <ChevronDown color="#6B7280" size={20} />
-        ) : (
-          <ChevronRight color="#6B7280" size={20} />
-        )}
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "600",
-            color: "#111",
-            marginLeft: 8,
-          }}
-        >
-          Time Range
-        </Text>
-      </TouchableOpacity>
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Stethoscope size={20} color={C.coral} />
+          <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown, marginLeft: 8 }}>
+            Vet Summary{currentPet?.name ? ` · ${currentPet.name}` : ""}
+          </Text>
+          <TouchableOpacity testID="vetsummary-close" onPress={onClose}>
+            <X size={22} color={C.warmBrown} />
+          </TouchableOpacity>
+        </View>
 
-      {expandedSections.range && (
-        <View style={{ gap: 8 }}>
-          {[
-            { value: "7days", label: "Last 7 days" },
-            { value: "14days", label: "Last 14 days" },
-            { value: "30days", label: "Last 30 days" },
-            { value: "custom", label: "Custom range" },
-          ].map((option) => (
+        {/* Range selector */}
+        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingTop: 14 }}>
+          {RANGES.map((r) => (
             <TouchableOpacity
-              key={option.value}
-              onPress={() => setSelectedRange(option.value)}
+              key={r.key}
+              testID={`range-${r.key}`}
+              onPress={() => setRangeKey(r.key)}
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 12,
-                borderRadius: 8,
-                backgroundColor:
-                  selectedRange === option.value ? "#DBEAFE" : "#F9FAFB",
-                borderWidth: 1,
-                borderColor:
-                  selectedRange === option.value ? "#3B82F6" : "#E5E7EB",
+                paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18,
+                backgroundColor: rangeKey === r.key ? C.coral : C.sand,
               }}
             >
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 2,
-                  borderColor:
-                    selectedRange === option.value ? "#3B82F6" : "#9CA3AF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 12,
-                }}
-              >
-                {selectedRange === option.value && (
-                  <View
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: "#3B82F6",
-                    }}
-                  />
-                )}
-              </View>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: selectedRange === option.value ? "#1F2937" : "#6B7280",
-                  fontWeight: selectedRange === option.value ? "600" : "400",
-                }}
-              >
-                {option.label}
+              <Text style={{ fontSize: 13, fontWeight: "700", color: rangeKey === r.key ? "#FFF" : C.warmBrown }}>
+                {r.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-      )}
-    </View>
-  );
 
-  const renderPhotoSelection = () => (
-    <View style={{ marginBottom: 20 }}>
-      <TouchableOpacity
-        onPress={() => toggleSection("photos")}
-        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-      >
-        {expandedSections.photos ? (
-          <ChevronDown color="#6B7280" size={20} />
-        ) : (
-          <ChevronRight color="#6B7280" size={20} />
-        )}
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "600",
-            color: "#111",
-            marginLeft: 8,
-          }}
-        >
-          Photo Checks to Include
-        </Text>
-      </TouchableOpacity>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+          {isLoading && <ActivityIndicator color={C.coral} style={{ marginTop: 30 }} />}
+          {error && (
+            <Text testID="vetsummary-error" style={{ color: C.mutedBrown, marginTop: 20 }}>
+              Couldn't load the summary. Pull the latest logs and try again.
+            </Text>
+          )}
 
-      {expandedSections.photos && (
-        <View style={{ gap: 12 }}>
-          {[
-            { key: "paws", label: "Paw photos (last 6 weeks)", count: 3 },
-            { key: "skin", label: "Skin/Fur photos (last 30 days)", count: 5 },
-            { key: "teeth", label: "Teeth photos (last 3 months)", count: 2 },
-            { key: "eyes", label: "Eye photos (last 30 days)", count: 1 },
-          ].map((photo) => (
-            <View
-              key={photo.key}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: 12,
-                borderRadius: 8,
-                backgroundColor: "#F9FAFB",
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-              >
-                <ImageIcon
-                  color="#6B7280"
-                  size={18}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={{ fontSize: 14, color: "#374151", flex: 1 }}>
-                  {photo.label}
-                </Text>
-                <Text
-                  style={{ fontSize: 12, color: "#9CA3AF", marginRight: 12 }}
-                >
-                  {photo.count} photos
-                </Text>
+          {!isLoading && summary && (
+            <>
+              {/* Recap */}
+              <View style={styles.recapCard} testID="vetsummary-recap">
+                <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>{recap}</Text>
               </View>
-              <Switch
-                value={selectedPhotos[photo.key]}
-                onValueChange={(value) =>
-                  setSelectedPhotos((prev) => ({ ...prev, [photo.key]: value }))
-                }
-                trackColor={{ false: "#D1D5DB", true: "#86EFAC" }}
-                thumbColor={selectedPhotos[photo.key] ? "#10B981" : "#F3F4F6"}
-              />
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
 
-  const renderQuestionsForVet = () => (
-    <View style={{ marginBottom: 20 }}>
-      <TouchableOpacity
-        onPress={() => toggleSection("questions")}
-        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-      >
-        {expandedSections.questions ? (
-          <ChevronDown color="#6B7280" size={20} />
-        ) : (
-          <ChevronRight color="#6B7280" size={20} />
-        )}
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "600",
-            color: "#111",
-            marginLeft: 8,
-          }}
-        >
-          Questions for the Vet
-        </Text>
-      </TouchableOpacity>
+              {/* Flags */}
+              {flags.length > 0 && (
+                <>
+                  <Text style={styles.sectionLabel}>WORTH DISCUSSING WITH YOUR VET</Text>
+                  {flags.map((f) => (
+                    <View key={f.key} testID={`flag-${f.key}`} style={styles.flagCard}>
+                      <AlertCircle size={18} color={f.severity === "notable" ? C.coral : C.amber} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "800", color: C.warmBrown }}>{f.title}</Text>
+                        <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>{f.detail}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
 
-      {expandedSections.questions && (
-        <View style={{ gap: 12 }}>
-          {questionsForVet.map((question, index) => (
-            <TextInput
-              key={index}
-              value={question}
-              onChangeText={(text) => {
-                const newQuestions = [...questionsForVet];
-                newQuestions[index] = text;
-                setQuestionsForVet(newQuestions);
-              }}
-              placeholder={`Question ${index + 1}`}
-              multiline
-              style={{
-                padding: 12,
-                borderRadius: 8,
-                backgroundColor: "#F9FAFB",
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                fontSize: 14,
-                color: "#374151",
-                minHeight: 44,
-              }}
-            />
-          ))}
-          <TouchableOpacity
-            onPress={() => setQuestionsForVet([...questionsForVet, ""])}
-            style={{
-              padding: 12,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: "#10B981",
-              borderStyle: "dashed",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 14, color: "#10B981", fontWeight: "500" }}>
-              + Add Question
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderPreview = () => (
-    <Modal
-      visible={showPreview}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={() => setShowPreview(false)}
-    >
-      <View
-        style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}
-      >
-        {/* Preview Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: "#E5E7EB",
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#111" }}>
-            Vet Summary Preview
-          </Text>
-          <TouchableOpacity onPress={() => setShowPreview(false)}>
-            <X color="#6B7280" size={24} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            padding: 20,
-            paddingBottom: insets.bottom + 100,
-          }}
-        >
-          {/* Header */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "700",
-                color: "#111",
-                marginBottom: 8,
-              }}
-            >
-              Veterinary Visit Summary
-            </Text>
-            <Text style={{ fontSize: 14, color: "#6B7280" }}>
-              Generated {new Date().toLocaleDateString()} • Last 7 days
-            </Text>
-          </View>
-
-          {/* Info Banner */}
-          <View
-            style={{
-              backgroundColor: "#EFF6FF",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24,
-              borderWidth: 1,
-              borderColor: "#BFDBFE",
-            }}
-          >
-            <Text style={{ fontSize: 13, color: "#1E40AF", lineHeight: 18 }}>
-              Here's a summary you can show your veterinarian.
-            </Text>
-          </View>
-
-          {/* Main Concerns */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Main Concerns
-            </Text>
-            {data.mainConcerns.map((concern, index) => (
-              <View
-                key={index}
-                style={{ flexDirection: "row", marginBottom: 8 }}
-              >
-                <Text
-                  style={{ fontSize: 14, color: "#EF4444", marginRight: 8 }}
-                >
-                  •
-                </Text>
-                <Text style={{ fontSize: 14, color: "#374151", flex: 1 }}>
-                  {concern}
-                </Text>
+              {/* Stats */}
+              <Text style={styles.sectionLabel}>LOGS IN THIS PERIOD</Text>
+              <View style={[styles.recapCard, { flexDirection: "row", flexWrap: "wrap" }]}>
+                <Stat label="food logs" value={summary.food?.count || 0} />
+                <Stat label="stool" value={summary.poo?.count || 0} />
+                <Stat label="urination" value={summary.pee?.count || 0} />
+                <Stat label="vomit episodes" value={summary.vomit?.episodes || 0} />
+                <Stat label="walks" value={summary.walks?.count || 0} />
+                <Stat label="photo checks" value={summary.photoChecks?.count || 0} />
               </View>
-            ))}
-          </View>
 
-          {/* Appetite Changes */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Appetite Changes
-            </Text>
-            <Text style={{ fontSize: 14, color: "#374151", lineHeight: 20 }}>
-              {data.appetiteChanges}
-            </Text>
-          </View>
-
-          {/* Food & Water Logs */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Food & Water Intake
-            </Text>
-            {data.foodWaterLogs.map((log, index) => (
-              <View
-                key={index}
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  paddingVertical: 8,
-                  borderBottomWidth:
-                    index < data.foodWaterLogs.length - 1 ? 1 : 0,
-                  borderBottomColor: "#F3F4F6",
-                }}
-              >
-                <Text
-                  style={{ fontSize: 14, color: "#6B7280", fontWeight: "500" }}
-                >
-                  {log.date}
-                </Text>
-                <Text style={{ fontSize: 14, color: "#374151" }}>
-                  Food: {log.food}
-                </Text>
-                <Text style={{ fontSize: 14, color: "#374151" }}>
-                  Water: {log.water}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Elimination */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Elimination
-            </Text>
-            <View style={{ marginBottom: 12 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#6B7280",
-                  marginBottom: 4,
-                }}
-              >
-                Bowel Movements
-              </Text>
-              <Text style={{ fontSize: 14, color: "#374151", lineHeight: 20 }}>
-                {data.pooChanges}
-              </Text>
-            </View>
-            <View>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#6B7280",
-                  marginBottom: 4,
-                }}
-              >
-                Urination
-              </Text>
-              <Text style={{ fontSize: 14, color: "#374151", lineHeight: 20 }}>
-                {data.peeChanges}
-              </Text>
-            </View>
-          </View>
-
-          {/* Vomiting Events */}
-          {data.vomitingEvents.length > 0 && (
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "600",
-                  color: "#111",
-                  marginBottom: 12,
-                }}
-              >
-                Vomiting Events
-              </Text>
-              {data.vomitingEvents.map((event, index) => (
-                <View
-                  key={index}
-                  style={{
-                    backgroundColor: "#FEF2F2",
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 8,
-                    borderWidth: 1,
-                    borderColor: "#FEE2E2",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: "#991B1B",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {event.date}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: "#7F1D1D" }}>
-                    Contents: {event.contents}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: "#991B1B", marginTop: 4 }}
-                  >
-                    {event.notes}
+              {/* Weight */}
+              {summary.weight?.series?.length > 0 && (
+                <View style={styles.recapCard}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>Weight</Text>
+                  <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
+                    {summary.weight.series[0].weight}
+                    {summary.weight.series[0].unit} →{" "}
+                    {summary.weight.series[summary.weight.series.length - 1].weight}
+                    {summary.weight.series[summary.weight.series.length - 1].unit} over {summary.weight.series.length} weigh-ins
                   </Text>
                 </View>
+              )}
+
+              {/* Medications */}
+              {(summary.meds || []).length > 0 && (
+                <>
+                  <Text style={styles.sectionLabel}>MEDICATIONS</Text>
+                  {summary.meds.map((m) => (
+                    <View key={m.name} style={styles.flagCard}>
+                      <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
+                        {m.name}{m.dose ? ` · ${m.dose}` : ""}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: m.missed ? C.coral : C.green, fontWeight: "700" }}>
+                        {m.given}/{m.total} given
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Conditions / allergies */}
+              {((summary.conditions || []).length > 0 || (summary.allergies || []).length > 0) && (
+                <>
+                  <Text style={styles.sectionLabel}>CONDITIONS & ALLERGIES</Text>
+                  <View style={styles.recapCard}>
+                    {summary.conditions?.map((c, i) => (
+                      <Text key={`c${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
+                        • {c.condition}{c.status ? ` (${c.status})` : ""}
+                      </Text>
+                    ))}
+                    {summary.allergies?.map((a, i) => (
+                      <Text key={`a${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
+                        • Allergy: {a.allergen}{a.severity ? ` (${a.severity})` : ""}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* Questions for the vet */}
+              <Text style={styles.sectionLabel}>QUESTIONS FOR THE VET</Text>
+              {questions.map((q, i) => (
+                <TextInput
+                  key={i}
+                  testID={`question-${i}`}
+                  value={q}
+                  onChangeText={(v) => setQuestion(i, v)}
+                  placeholder={`Question ${i + 1}`}
+                  placeholderTextColor={C.mutedBrown + "90"}
+                  style={styles.input}
+                />
               ))}
-            </View>
-          )}
 
-          {/* Activity Changes */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Activity & Mobility
-            </Text>
-            <Text style={{ fontSize: 14, color: "#374151", lineHeight: 20 }}>
-              {data.activityChanges}
-            </Text>
-          </View>
-
-          {/* Medications */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Current Medications
-            </Text>
-            {data.medications.map((med, index) => (
-              <View
-                key={index}
-                style={{
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111",
-                    marginBottom: 4,
-                  }}
-                >
-                  {med.name}
-                </Text>
-                <Text style={{ fontSize: 14, color: "#6B7280" }}>
-                  {med.dosage}
-                </Text>
-                <Text style={{ fontSize: 13, color: "#10B981", marginTop: 4 }}>
-                  ✓ {med.adherence}
-                </Text>
+              {/* Disclaimer */}
+              <View style={styles.disclaimer}>
+                <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17 }}>{DISCLAIMER}</Text>
               </View>
-            ))}
-          </View>
 
-          {/* Photo Checks */}
-          {Object.values(selectedPhotos).some((v) => v) && (
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "600",
-                  color: "#111",
-                  marginBottom: 12,
-                }}
-              >
-                Photo Documentation
-              </Text>
-              <Text style={{ fontSize: 14, color: "#6B7280", marginBottom: 8 }}>
-                {Object.entries(selectedPhotos).filter(([k, v]) => v).length}{" "}
-                photo check categories attached
-              </Text>
-              {Object.entries(selectedPhotos)
-                .filter(([k, v]) => v)
-                .map(([key]) => (
-                  <View
-                    key={key}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <ImageIcon
-                      color="#10B981"
-                      size={16}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: "#374151",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {key} photos
-                    </Text>
-                  </View>
-                ))}
-            </View>
+              {/* Share */}
+              <TouchableOpacity testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
+                <Share2 size={18} color="#FFF" />
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Share with vet</Text>
+              </TouchableOpacity>
+            </>
           )}
-
-          {/* Questions for Vet */}
-          {questionsForVet.filter((q) => q.trim()).length > 0 && (
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "600",
-                  color: "#111",
-                  marginBottom: 12,
-                }}
-              >
-                Questions for Veterinarian
-              </Text>
-              {questionsForVet
-                .filter((q) => q.trim())
-                .map((question, index) => (
-                  <View
-                    key={index}
-                    style={{ flexDirection: "row", marginBottom: 8 }}
-                  >
-                    <Text
-                      style={{ fontSize: 14, color: "#6B7280", marginRight: 8 }}
-                    >
-                      {index + 1}.
-                    </Text>
-                    <Text style={{ fontSize: 14, color: "#374151", flex: 1 }}>
-                      {question}
-                    </Text>
-                  </View>
-                ))}
-            </View>
-          )}
-
-          {/* Timeline */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Timeline of Events
-            </Text>
-            {data.timeline.map((event, index) => (
-              <View
-                key={index}
-                style={{ flexDirection: "row", marginBottom: 12 }}
-              >
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: "#10B981",
-                    marginRight: 12,
-                    marginTop: 6,
-                  }}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: "#6B7280",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {event.date}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: "#374151" }}>
-                    {event.event}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Disclaimer */}
-          <View
-            style={{
-              backgroundColor: "#FEF3C7",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24,
-              borderWidth: 1,
-              borderColor: "#FDE68A",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-              <AlertCircle
-                color="#92400E"
-                size={18}
-                style={{ marginRight: 8, marginTop: 2 }}
-              />
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: "#92400E",
-                  lineHeight: 18,
-                  flex: 1,
-                }}
-              >
-                This summary is based on your logs and is not a diagnosis.
-              </Text>
-            </View>
-          </View>
         </ScrollView>
-
-        {/* Bottom Actions */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "#fff",
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: insets.bottom + 16,
-            borderTopWidth: 1,
-            borderTopColor: "#E5E7EB",
-            gap: 10,
-          }}
-        >
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#10B981",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-            }}
-          >
-            <Download color="#fff" size={20} style={{ marginRight: 8 }} />
-            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
-              Download PDF
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "#10B981",
-            }}
-          >
-            <Share2 color="#10B981" size={20} style={{ marginRight: 8 }} />
-            <Text style={{ color: "#10B981", fontSize: 16, fontWeight: "600" }}>
-              Share with Vet
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </Modal>
   );
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: "#E5E7EB",
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#111" }}>
-            Create Vet Summary
-          </Text>
-          <TouchableOpacity onPress={onClose}>
-            <X color="#6B7280" size={24} />
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            padding: 20,
-            paddingBottom: insets.bottom + 100,
-          }}
-        >
-          {/* Instructions */}
-          <View
-            style={{
-              backgroundColor: "#F0FDF4",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24,
-              borderWidth: 1,
-              borderColor: "#BBF7D0",
-            }}
-          >
-            <Text style={{ fontSize: 14, color: "#166534", lineHeight: 20 }}>
-              Customize your summary by selecting a time range, choosing which
-              photos to include, and adding questions for your vet.
-            </Text>
-          </View>
-
-          {renderRangeSelector()}
-          {renderPhotoSelection()}
-          {renderQuestionsForVet()}
-        </KeyboardAwareScrollView>
-
-        {/* Bottom Actions */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "#fff",
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: insets.bottom + 16,
-            borderTopWidth: 1,
-            borderTopColor: "#E5E7EB",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => setShowPreview(true)}
-            style={{
-              backgroundColor: "#10B981",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
-              Preview Summary
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {renderPreview()}
-      </KeyboardAvoidingView>
-    </Modal>
-  );
 }
+
+const styles = {
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: C.peach,
+  },
+  recapCard: {
+    backgroundColor: C.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: C.peach,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: C.mutedBrown,
+    letterSpacing: 0.8,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  flagCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: C.peach,
+  },
+  input: {
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    color: C.warmBrown,
+    borderWidth: 1,
+    borderColor: C.peach,
+    marginBottom: 8,
+  },
+  disclaimer: {
+    backgroundColor: C.sand,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+  },
+  shareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: C.coral,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 20,
+  },
+};
