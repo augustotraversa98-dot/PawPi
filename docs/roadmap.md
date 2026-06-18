@@ -81,7 +81,8 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 - ✅ **2.46** Apple/Google sign-in — merged, NO migration (additive + env-gated `@auth/core` Google + Apple providers via `socialProviders(env)`; Credentials path untouched; buttons appear only when keys configured, else "Coming soon"; new OAuth users get a `user_profiles` row via the existing lazy path; env keys flagged for Tats).
 - ✅ **2.47** family/caregiver sharing — merged, migration `0049` (`pet_caregivers` person↔person grants + audit mirroring care_access; family co-manage vs caregiver scoped read-only + expiry + instant revoke; additive per-table RLS via `app_user_has_pet_access`/`app_user_has_pet_family` helpers + `pets_guard_owner_transfer` trigger; owner-only delete preserved; proven hard in `family-caregiver-rls.integration.test.ts`).
 - ✅ **2.48** lost & found — merged, migration `0050` (`lost_reports` + `lost_sightings`; active alert any-authed read, owner-only resolve, sighting-on-active RLS via `app_owns_lost_report`/`app_lost_report_active`; widened `notifications` type for `lost_alert`; best-effort `app_notify` to followers/owner; mobile `lost-found.jsx` near-me browse + mark-lost map pin + sighting + resolve).
-- ☐ **2.49** memories & wrapped · ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
+- ✅ **2.49** memories & wrapped — merged, NO migration (pure TZ-safe aggregation in `memoriesWrapped.js`: on-this-day, milestone detection [birthday/gotcha/streak/post-count], Wrapped tallies + slides, all empty-safe; one read route `posts/history`; `memories.jsx` + `wrapped.jsx` reusing the 2.28 capture+share flow via `ShareableMemoryCard`/`MemoryShareButton`).
+- ☐ **2.50** AI health + vet summary (⛔2.41+2.42)
 
 ---
 
