@@ -358,6 +358,13 @@ export default function MoreScreen() {
           onPress={() => goMenu("/lost-found")}
         />
 
+        <MenuItem
+          title="Memories & Wrapped"
+          emoji="✨"
+          color={C.apricot}
+          onPress={() => goMenu("/memories")}
+        />
+
         {/* NEW: Reminders & Routines */}
         <TouchableOpacity
           onPress={() => goMenu("/(tabs)/more/reminders")}
