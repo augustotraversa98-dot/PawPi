@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Heart, Activity, TrendingUp, FileText } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Heart, Activity, TrendingUp, FileText, Utensils } from "lucide-react-native";
 
 // Import the 4 section components (removed HealthReminders)
 import HealthToday from "../../components/Health/HealthToday";
@@ -31,6 +32,7 @@ const SECTIONS = [
 
 export default function HealthScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState("today");
 
   const renderContent = () => {
@@ -86,6 +88,27 @@ export default function HealthScreen() {
             Health Hub
           </Text>
           <Text style={{ fontSize: 22 }}>🩺</Text>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            testID="nutrition-button"
+            onPress={() => router.push("/nutrition")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor: C.sand,
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: C.peach,
+            }}
+          >
+            <Utensils size={15} color={C.coral} />
+            <Text style={{ fontWeight: "800", color: C.coral, fontSize: 13 }}>
+              Nutrition
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Pet switcher */}

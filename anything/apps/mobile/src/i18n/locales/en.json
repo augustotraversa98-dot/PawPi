@@ -159,5 +159,29 @@
     "capacity": "Capacity (optional)",
     "publish": "Publish event",
     "couldNotCreate": "Couldn't create the event"
+  },
+  "nutrition": {
+    "title": "Nutrition",
+    "yourPlan": "Your nutrition plan",
+    "addPlan": "Add a nutrition plan",
+    "disclaimer": "This helps you track your pet's food and prepare for vet conversations. It does not diagnose or prescribe a diet, and does not replace veterinary care.",
+    "brand": "Food brand",
+    "product": "Product / recipe",
+    "form_dry": "Dry",
+    "form_wet": "Wet",
+    "form_raw": "Raw",
+    "form_mixed": "Mixed",
+    "portion": "Daily portion (e.g. 1.5 cups)",
+    "calories": "Target calories / day",
+    "notes": "Notes",
+    "feedingLink": "Set meal times in Reminders & Routines → Feeding.",
+    "save": "Save plan",
+    "update": "Update plan",
+    "savedTitle": "Nutrition plan saved",
+    "savedBody": "You can update it anytime.",
+    "couldNotSave": "Couldn't save the plan",
+    "recallTitle": "Food recall alert",
+    "recallBody": "A product matching {{pet}}'s food was recalled: {{reason}}. Check with your vet.",
+    "recallLink": "View the recall notice"
   }
 }

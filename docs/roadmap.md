@@ -158,7 +158,7 @@ Logged as a follow-up fix:
 
 ---
 
-## 🌊 WAVE 7 — money/transport loops + discovery/community/health add-ons (tickets 2.68–2.75) — QUEUED
+## 🌊 WAVE 7 — money/transport loops + discovery/community/health add-ons (tickets 2.68–2.75) — ✅ COMPLETE
 
 Authoritative spec + build order: [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md) (Wave 7
 section). Scoped + ticketed with Tats 2026-06-18 from the un-ticketed post-core list (memorials dropped;
@@ -200,7 +200,13 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   [non-recursive EXISTS subquery]; harness-proven + completeness guard). Web events CRUD + rsvp upsert;
   mobile Events section in Community (2.68 Apple map + list + RSVP + directions + create via the 2.68
   picker/DateField/TimeField + host cancel). i18n EN+ES. (Best-effort RSVP notify deferred — no CHECK widen.)
-- ☐ **2.75** Nutrition plans + food-recall alerts — migration **0061**; owner+pet health, non-diagnostic.
+- ✅ **2.75** Nutrition plans + food-recall alerts — migration **0061** (`nutrition_plans` owner-RLS [family
+  follow-up noted]; `food_recalls` public reference data [any-authed read, DEFINER-only `ingest_food_recall`];
+  `pet_food_recall_matches` owner-RLS; `match_food_recall` DEFINER links a recall→plan + best-effort
+  `food_recall` notify; notifications CHECK widened; harness-proven + completeness guard). Owner nutrition
+  CRUD + secret-gated idempotent recall ingest (`/api/recalls/ingest`, degrade-clean) + owner recall-matches;
+  mobile Nutrition card (non-diagnostic disclaimer) + dismissible recall alerts. i18n EN+ES. Needs `CRON_SECRET`
+  + an external scheduler to post the feed.
 
 Migrations 0056–0061 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as each merges
 (Code hand-applies per the usual harness-only pattern). 2.69/2.71/2.72/2.75 are parallel-safe; the
