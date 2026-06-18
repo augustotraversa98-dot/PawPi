@@ -40,6 +40,7 @@ import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
 import { sectionTodayReminders } from "@/utils/reminderSections";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
+import { useTodayProgress } from "@/hooks/useTodayProgress";
 import {
   LOG_FLOWS,
   routeReminderLog,
@@ -87,6 +88,10 @@ export default function HealthToday() {
     refreshNow,
   } = useTodayReminders();
 
+  // "Today's Progress" on REAL data (ticket 2.66): real per-category counts for
+  // the active pet + local day (empty until something is logged — no fake numbers).
+  const todayProgress = useTodayProgress();
+
   // After a log/photo/wellness save, refetch the resolver sources so the acted-on
   // overdue instance drops out of the list immediately.
   const invalidateResolution = (keys) => {
@@ -113,6 +118,9 @@ export default function HealthToday() {
         "medical-care-logs",
         "photo-checks",
         "vet-appointment-reminders",
+        // Today's Progress sources (ticket 2.66).
+        "food-logs",
+        "walk-logs",
       ].map((key) =>
         queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
       ),
@@ -1134,44 +1142,36 @@ export default function HealthToday() {
             Today's Progress
           </Text>
         </View>
-        <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
+        {todayProgress.isEmpty ? (
+          <Text
+            testID="today-progress-empty"
+            style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}
           >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              🍽️ Fed 2 times
-            </Text>
+            Nothing logged yet today — log a meal, walk, or check-in and it'll
+            show up here.
+          </Text>
+        ) : (
+          <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
+            {todayProgress.chips.map((chip) => (
+              <View
+                key={chip.key}
+                testID={`progress-chip-${chip.key}`}
+                style={{
+                  backgroundColor: C.sage + "20",
+                  borderRadius: 12,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12, fontWeight: "600", color: C.sage }}
+                >
+                  {chip.emoji} {chip.label}
+                </Text>
+              </View>
+            ))}
           </View>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              🚶 1 walk
-            </Text>
-          </View>
-          <View
-            style={{
-              backgroundColor: C.sage + "20",
-              borderRadius: 12,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-              💊 Medication given
-            </Text>
-          </View>
-        </View>
+        )}
       </View>
 
       {/* Snooze Modal */}
