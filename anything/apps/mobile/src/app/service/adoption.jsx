@@ -26,6 +26,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useDiscoverProviders,
   useAdoptableListings,
+  useAdoptableListing,
   useApplyForAdoption,
   useMyAdoptionApplications,
   useAdoptionFavorites,
@@ -74,28 +75,33 @@ export default function AdoptionScreen() {
   const [openListing, setOpenListing] = useState(null); // { listing, place }
 
   // Deep-link (ticket 2.30): an "Adopt me" feed/discovery card passes { listingId,
-  // providerId }. Open THAT dog's detail on mount. The single-listing fetch route is
-  // admin-only (no public GET — deviation from the ticket), so we load the place's
-  // public listings (available-of-published) + find the dog there; the place comes
-  // from adoption discovery. If the dog is gone/adopted it won't be in the list →
-  // a graceful "no longer available" notice, no crash. No param → the normal hub.
+  // providerId }. Open THAT dog's detail on mount via the PUBLIC single-listing GET
+  // (ticket 2.56) — a direct fetch that resolves the exact dog even when it isn't in
+  // the currently-loaded browse list. The place identity rides in the listing payload
+  // (provider_name/slug/logo); we still prefer the richer discovery place row when
+  // it's already cached. A published+available dog opens; a gone/adopted/removed one
+  // returns null (404) → a graceful "no longer available" notice, no crash. No param
+  // → the normal hub. No param → the single fetch stays disabled.
   const deepListingId = params.listingId ? String(params.listingId) : null;
   const deepProviderId = params.providerId ? String(params.providerId) : null;
   // Shares the same query key as BrowseTab's discover (cached, no extra fetch).
   const { data: deepPlaces } = useDiscoverProviders("adoption");
-  const { data: deepListings } = useAdoptableListings(deepProviderId);
+  const { data: deepListing, isLoading: deepLoading, isFetched: deepFetched } =
+    useAdoptableListing(deepProviderId, deepListingId);
   const [deepHandled, setDeepHandled] = useState(false);
 
   useEffect(() => {
     if (deepHandled || !deepListingId || !deepProviderId) return;
-    if (!deepListings) return; // wait for the listing fetch
-    const listing = deepListings.find((l) => String(l.id) === deepListingId);
-    if (listing) {
+    if (deepLoading || !deepFetched) return; // wait for the single-listing fetch
+    if (deepListing) {
       const place =
         (deepPlaces || []).find((p) => String(p.id) === deepProviderId) || {
           id: Number(deepProviderId),
+          name: deepListing.provider_name,
+          slug: deepListing.provider_slug,
+          logo_url: deepListing.provider_logo_url,
         };
-      setOpenListing({ listing, place });
+      setOpenListing({ listing: deepListing, place });
     } else {
       Alert.alert(
         "No longer available",
@@ -107,7 +113,9 @@ export default function AdoptionScreen() {
     deepHandled,
     deepListingId,
     deepProviderId,
-    deepListings,
+    deepListing,
+    deepLoading,
+    deepFetched,
     deepPlaces,
   ]);
 
