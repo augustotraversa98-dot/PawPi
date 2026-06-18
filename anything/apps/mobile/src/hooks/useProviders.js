@@ -938,6 +938,28 @@ export function useAdoptableListings(providerId) {
   });
 }
 
+// A SINGLE adoptable listing — the public single-listing GET (ticket 2.56), used by
+// the 2.30 feed deep-link to open exactly that dog (even one not in the currently-
+// loaded browse list). Returns the listing only when published + available; a gone/
+// adopted/removed dog resolves to `null` (404) so the caller shows the graceful "no
+// longer available" notice. Disabled until both ids are known.
+export function useAdoptableListing(providerId, listingId) {
+  return useQuery({
+    queryKey: ["adoptable-listing", providerId, listingId],
+    enabled: providerId != null && listingId != null,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/adoptable-listings/${encodeURIComponent(listingId)}`,
+      );
+      if (response.status === 404) return null; // no longer available
+      if (!response.ok) throw new Error("Failed to fetch listing");
+      const data = await response.json();
+      return data.listing ?? null;
+    },
+  });
+}
+
 // The owner's adoption APPLICATIONS (GET /api/adoption/applications). Empty → [].
 export function useMyAdoptionApplications() {
   return useQuery({

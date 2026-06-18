@@ -20,6 +20,57 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // the last line (admin_all).
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager").
+
+// GET (ticket 2.56) — PUBLIC single-listing read, closing the 2.30 deviation (the
+// feed deep-link previously loaded the place's whole public list + found the dog).
+// Returns the dog IFF it is AVAILABLE and its place is PUBLISHED — the exact
+// visibility the public browse uses (adoptable_listings RLS 0038 SELECT branch:
+// status='available' AND a published provider). Filtering both here gives uniform
+// PUBLIC semantics even for a shelter admin (who could otherwise see pending/adopted
+// via RLS) and exposes ONLY the public columns (same projection as the browse GET) +
+// the place's public identity. Any unpublished / adopted / pending / removed listing
+// → 404 "not available" (the graceful path the mobile deep-open relies on). No RLS
+// change — purely a route. No resolveUserId / capability gate (a discovery read; the
+// published+available predicate IS the gate, and a 403 would break the 404 path).
+async function GET(request, { params }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: providerId, listingId } = params;
+
+    const rows = await sql`
+      SELECT
+        al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+        al.gender, al.size, al.photo_urls, al.video_url, al.story,
+        al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+        al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+        al.created_at, al.updated_at,
+        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url
+      FROM adoptable_listings al
+      JOIN providers p ON p.id = al.provider_id
+      WHERE al.id = ${listingId}
+        AND al.provider_id = ${providerId}
+        AND al.status = 'available'
+        AND p.status = 'published'
+    `;
+
+    if (rows.length === 0) {
+      return Response.json({ error: "Listing not available" }, { status: 404 });
+    }
+
+    return Response.json({ listing: rows[0] });
+  } catch (e) {
+    console.error(
+      "[GET /api/providers/[id]/adoptable-listings/[listingId]] Error:",
+      e?.message,
+    );
+    return Response.json({ error: "Failed to fetch listing" }, { status: 500 });
+  }
+}
+
 async function PATCH(request, { params }) {
   try {
     const session = await auth();
@@ -145,6 +196,7 @@ async function DELETE(request, { params }) {
   }
 }
 
+const wrappedGET = withRequestContext(GET);
 const wrappedPATCH = withRequestContext(PATCH);
 const wrappedDELETE = withRequestContext(DELETE);
-export { wrappedPATCH as PATCH, wrappedDELETE as DELETE };
+export { wrappedGET as GET, wrappedPATCH as PATCH, wrappedDELETE as DELETE };

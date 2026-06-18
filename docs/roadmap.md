@@ -116,7 +116,11 @@ Logged as a follow-up fix:
   fixes are hardening for the embedded entry point.
 
 **Part B — capabilities + loose ends (migrations 0051–0055):**
-- ☐ **2.56** adoption public single-listing GET — no migration.
+- ✅ **2.56** adoption public single-listing GET — no migration. Public GET on
+  `adoptable-listings/[listingId]` returns the dog IFF published + available (public
+  columns only, exact browse visibility; no RLS change); the 2.30 feed deep-open now
+  fetches the single listing directly (resolves a dog not in the loaded browse list),
+  keeping the graceful "no longer available" path + the 2.19 nav.
 - ☐ **2.51** emergency mode + printable medical-card tag QR + revocable vet link — migration **0051**.
 - ☐ **2.52** transport / pet-taxi — migration **0052**.
 - ☐ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS).
