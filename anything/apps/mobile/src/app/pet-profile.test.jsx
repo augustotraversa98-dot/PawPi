@@ -5,16 +5,17 @@
 // The data hooks are mocked, so this exercises the screen's wiring, not fetch.
 
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, fireEvent } from "@testing-library/react-native";
 
 // Per-test fixtures the mocked hooks read from (must be `mock*`-prefixed to be
 // referenceable inside the hoisted jest.mock factories).
 let mockProfile;
 let mockViewer;
 let mockParams;
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ back: jest.fn(), push: mockPush }),
   useLocalSearchParams: () => mockParams,
 }));
 jest.mock("lucide-react-native", () =>
@@ -58,6 +59,7 @@ jest.mock("@/hooks/useDMs", () => ({
 import PetProfileScreen from "./pet-profile";
 
 beforeEach(() => {
+  mockPush.mockReset();
   mockParams = { petId: "7", dogName: "Buddy", ownerName: "Alice" };
   mockProfile = {
     pet: {
@@ -142,6 +144,27 @@ describe("Profile tab — embedded mode (ticket 2.60)", () => {
     expect(getByText("OWNER_MENU")).toBeTruthy(); // burger/menu present
     expect(queryByText("Back")).toBeNull();
     expect(getByText("Profile")).toBeTruthy();
+  });
+
+  test("tapping the Followers / Following counts opens the lists (2.61)", () => {
+    mockViewer = { id: 4 };
+    const { getByTestId } = render(<PetProfileScreen />);
+
+    fireEvent.press(getByTestId("stat-Followers"));
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: "/follows",
+        params: expect.objectContaining({ petId: "7", rel: "followers" }),
+      }),
+    );
+
+    fireEvent.press(getByTestId("stat-Following"));
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: "/follows",
+        params: expect.objectContaining({ rel: "following" }),
+      }),
+    );
   });
 
   test("embedded falls back to the viewer's own pet (no route param)", () => {

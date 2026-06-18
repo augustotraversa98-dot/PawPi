@@ -22,6 +22,28 @@ export function usePetSocialProfile(petId, viewerPetId) {
   });
 }
 
+// Followers / Following list for a pet (ticket 2.61). rel = "followers" |
+// "following". Returns public pet cards each with an `is_following` flag for the
+// viewer's active pet, so the row toggle renders correct in one round-trip.
+export function useFollowList(petId, rel, viewerPetId) {
+  return useQuery({
+    queryKey: ["follows", petId, rel, viewerPetId],
+    queryFn: async () => {
+      if (!petId) return [];
+      const qs = new URLSearchParams({ rel });
+      if (viewerPetId) qs.set("viewerPetId", String(viewerPetId));
+      const response = await fetch(`/api/pets/${petId}/follows?${qs.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to load follows");
+      }
+      const data = await response.json();
+      return data.pets ?? [];
+    },
+    enabled: !!petId,
+    staleTime: 1000 * 30,
+  });
+}
+
 // Follow / unfollow the profile pet. Mirrors useTogglePaw's optimistic pattern:
 // flip isFollowing and bump stats.followers on the ["petProfile", petId] cache
 // immediately, roll back on error, and invalidate on settle so the server count

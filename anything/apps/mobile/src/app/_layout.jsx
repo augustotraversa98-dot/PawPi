@@ -72,6 +72,7 @@ export default function RootLayout() {
           <Stack.Screen name="vet-business-access" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="pet-profile" />
+          <Stack.Screen name="follows" />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           {/* Shared service screens — a root-level stack OVER the tabs, so opening a
               service from any tab never buries the More tab root (ticket 2.19). */}
