@@ -44,6 +44,7 @@ as the RLS migrations 0019–0026.)
 0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ✅ APPLIED + VERIFIED 2026-06-18
 0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ⏳ HAND-APPLY (Wave 6)
 0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ⏳ HAND-APPLY (Wave 6)
+0053_vet_prescriptions.sql            (2.53 — prescriptions + rx_refill_requests; STRICTEST clinical append-only RLS)       ⏳ HAND-APPLY (Wave 6)
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -140,6 +141,20 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   app_is_active_staff_of (no new helper). `transport` was already in ALLOWED_CAPABILITIES + the
   provider_capabilities/vet_appointments capability CHECKs (0027/0030) — no CHECK widen needed.
   Proven as pawpi_app in `transport-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
+
+**⏳ HAND-APPLY (Wave 6):** `0053_vet_prescriptions.sql` (ticket 2.53) — harness-proven, NOT yet applied.
+- New `prescriptions` + `rx_refill_requests` — STRICTEST clinical RLS, modeled on vet_notes append-only.
+  prescriptions: OWNER **read-only** (no insert/update/delete — can never write/forge); active staff of
+  the issuing provider READ + INSERT (via `app_provider_can_rx(provider_id, pet_id)` = active staff +
+  medical_write grant OR booking); **NO provider UPDATE/DELETE policy** — the refill decrement + cancel
+  flow ONLY through SECURITY DEFINER helpers so clinical fields are never silently rewritten.
+- rx_refill_requests: owner files on their OWN active Rx with refills remaining (`app_owns_active_rx`);
+  the issuing provider's staff READ requests (`app_staff_of_rx_provider`); the DECISION is `decide_rx_refill(
+  request_id, approve, note)` (DEFINER — staff-gated; decrements `refills_remaining` on approve). `cancel_rx(
+  prescription_id)` (DEFINER) cancels (status only). All 5 helpers: pinned search_path, GRANT EXECUTE to
+  pawpi_app. Proven as pawpi_app in `prescriptions-rls.integration.test.ts` (vet-with-access issues; owner
+  read-only/can't forge; cross-provider zero; refill decrement via the safe path; owner can't approve own)
+  + the completeness guard. Hand-apply after merge.
 
 No further migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token

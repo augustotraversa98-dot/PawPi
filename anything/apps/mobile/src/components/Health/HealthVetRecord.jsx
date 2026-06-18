@@ -42,6 +42,7 @@ import { AddDocumentModal } from "./VetRecord/AddDocumentModal";
 import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
+import { PrescriptionsSection } from "./VetRecord/PrescriptionsSection";
 import EditMedicalProfileModal from "./VetRecord/EditMedicalProfileModal";
 
 const C = {
@@ -663,6 +664,9 @@ export default function HealthVetRecord() {
 
         {/* Vet Summary Feature */}
         <VetSummaryDashboard />
+
+        {/* Prescriptions (ticket 2.53) — owner read-only Rx a vet issued + request refill. */}
+        <PrescriptionsSection petId={currentPet?.id} />
 
         {/* Pet Medical Profile */}
         <SectionHeader

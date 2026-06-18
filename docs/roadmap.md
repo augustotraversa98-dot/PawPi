@@ -131,7 +131,11 @@ Logged as a follow-up fix:
   (`transport`); a trip IS a generalized booking (2.4) so it surfaces in the existing inbox/calendar;
   fare via payments (2.3), chat via 2.5. Mobile transport screen (discovery + map-picker booking form +
   trips list + cancel/message). Harness-proven; migration flagged in test-backlog.
-- ☐ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS).
+- ✅ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS). `prescriptions`
+  (owner READ-ONLY, append-only — vet issues, owner can't forge) + `rx_refill_requests` (owner files,
+  vet decides via `decide_rx_refill` DEFINER which decrements refills; no provider UPDATE policy). Web:
+  vet issue/list/cancel + refill queue/decision; owner read + request-refill. Mobile: Vet Record
+  Prescriptions section ("Prescribed by {clinic}", request refill, no owner edit). Harness-proven; flagged.
 - ☐ **2.54** insurance marketplace — migration **0054**.
 - ☐ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56.
 - ☐ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; build LAST.
