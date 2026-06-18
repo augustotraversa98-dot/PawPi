@@ -42,6 +42,7 @@ as the RLS migrations 0019–0026.)
 0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ✅ APPLIED + VERIFIED 2026-06-18
 0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ✅ APPLIED + VERIFIED 2026-06-18
 0050_lost_and_found.sql               (2.48 — lost_reports + lost_sightings + widen notifications type)       ✅ APPLIED + VERIFIED 2026-06-18
+0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ⏳ HAND-APPLY (Wave 6)
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -111,7 +112,25 @@ as the RLS migrations 0019–0026.)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
 Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIFIED on Supabase (2026-06-18).
-No migrations remain pending. Future tickets that add tables append here.
+
+**⏳ HAND-APPLY (Wave 6):** `0051_emergency_medical_card.sql` (ticket 2.51) — harness-proven, NOT yet applied.
+- New `pet_emergency_cards` (one row per pet; permanent `tag_token`, `show_medical_on_tag` default
+  FALSE, `contact_mode` relay|phone|email|none, `blood_type`, `active`) + `pet_emergency_share_links`
+  (revocable/expiring vet links; `scope` full|basic, `expires_at`, `revoked_at`). Both ENABLE+FORCE RLS,
+  **OWNER FOR ALL only** — everyone else gets ZERO direct table access.
+- The PUBLIC reads are NOT an RLS hole: three SECURITY DEFINER fns (pinned search_path, GRANT EXECUTE to
+  pawpi_app) are the SOLE public path — `app_emergency_card_by_tag(text)` (BASIC fields for an ACTIVE
+  card; medical ONLY when `show_medical_on_tag`), `app_emergency_card_by_link(text)` (scoped full|basic
+  for a non-revoked, non-expired link on an active card; ZERO otherwise), `app_emergency_relay_contact(
+  text,text)` (best-effort owner notify for relay tags). The internal `app_emergency_card_json(int,bool)`
+  assembler is DEFINER and NOT granted to pawpi_app. Medical sources read live (pet_medical_profiles /
+  pet_allergies / pet_conditions / lost_reports) — no medical duplicated.
+- WIDENS the 0044/0050 `notifications_type_check` additively to admit `'emergency_contact'` (drop+re-add).
+  Proven as pawpi_app in `emergency-card-rls.integration.test.ts` (owner manages own; non-owner ZERO +
+  can't create/revoke; tag basic-vs-medical toggle; link full/basic + revoked/expired → ZERO; relay
+  notify) + the completeness guard. Hand-apply after merge.
+
+No further migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
