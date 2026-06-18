@@ -99,7 +99,7 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
 - ✅ **2.64** double-tap image → Paw/like (brand-color animation).
 - ✅ **2.65** edit own daily-update caption (owner-only PATCH posts/[id]).
 - ✅ **2.66** Health → Today "Today's Progress" on real logged data (kills hardcoded chips).
-- ☐ **2.59** floating IG-style tab bar (edits `(tabs)/_layout.jsx`).
+- ✅ **2.59** floating IG-style tab bar (edits `(tabs)/_layout.jsx`).
 - ☐ **2.60** Profile tab → active pet's social profile + pet-photo icon — ⛔ after 2.59 + 2.55.
 - ☐ **2.61** followers/following lists + paw follow/unfollow + search — ⛔ after 2.60 (no migration).
 
