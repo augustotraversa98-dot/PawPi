@@ -45,6 +45,7 @@ as the RLS migrations 0019–0026.)
 0051_emergency_medical_card.sql       (2.51 — pet_emergency_cards + pet_emergency_share_links + DEFINER public-read fns)  ⏳ HAND-APPLY (Wave 6)
 0052_transport_trips.sql              (2.52 — transport_trips on the spine; owner + provider-staff RLS)                    ⏳ HAND-APPLY (Wave 6)
 0053_vet_prescriptions.sql            (2.53 — prescriptions + rx_refill_requests; STRICTEST clinical append-only RLS)       ⏳ HAND-APPLY (Wave 6)
+0054_insurance_marketplace.sql        (2.54 — widen capability CHECKs +insurance; insurance_plans + insurance_leads RLS)     ⏳ HAND-APPLY (Wave 6)
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -155,6 +156,16 @@ Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIF
   pawpi_app. Proven as pawpi_app in `prescriptions-rls.integration.test.ts` (vet-with-access issues; owner
   read-only/can't forge; cross-provider zero; refill decrement via the safe path; owner can't approve own)
   + the completeness guard. Hand-apply after merge.
+
+**⏳ HAND-APPLY (Wave 6):** `0054_insurance_marketplace.sql` (ticket 2.54) — harness-proven, NOT yet applied.
+- WIDENS the provider_capabilities + vet_appointments capability CHECKs additively to admit `'insurance'`
+  (drop+re-add, like 0040 added 'telehealth'); the app-side ALLOWED_CAPABILITIES gained `'insurance'` too.
+- New `insurance_plans` (catalog — admin-managed write via `app_is_provider_admin`; read = active staff
+  see all, anyone authed sees a PUBLISHED plan of a PUBLISHED provider — two-tier like provider_services
+  0024) + `insurance_leads` (owner-or-provider scoped, like a booking: owner reads/creates own; the
+  targeted provider's active staff read + status-update; other-provider/outsider zero). Lead-gen only —
+  no payment/underwriting; no medical data beyond what the owner types. Proven as pawpi_app in
+  `insurance-rls.integration.test.ts` + the completeness guard. Hand-apply after merge.
 
 No further migrations remain pending. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token

@@ -38,6 +38,7 @@ export const ALLOWED_CAPABILITIES = [
   'transport',
   'pharmacy',
   'telehealth',
+  'insurance',
 ];
 
 /**

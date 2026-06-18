@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   PawPrint,
   Car,
+  ShieldCheck,
   ChevronRight,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
@@ -110,6 +111,14 @@ const CATEGORIES = [
     icon: Car,
     live: true,
     route: "/service/transport",
+  },
+  {
+    key: "insurance",
+    title: "Insurance",
+    subtitle: "Compare plans and get a quote",
+    icon: ShieldCheck,
+    live: true,
+    route: "/service/insurance",
   },
 ];
 
