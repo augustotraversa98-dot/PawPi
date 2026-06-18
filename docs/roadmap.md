@@ -158,6 +158,40 @@ Logged as a follow-up fix:
 
 ---
 
+## 🌊 WAVE 7 — money/transport loops + discovery/community/health add-ons (tickets 2.68–2.75) — QUEUED
+
+Authoritative spec + build order: [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md) (Wave 7
+section). Scoped + ticketed with Tats 2026-06-18 from the un-ticketed post-core list (memorials dropped;
+widgets/Apple-Watch deferred to a dedicated attended effort). Cross-cutting requirement: **Apple Maps in
+every section that captures/shows a location** — 2.68 builds the shared component first; the rest reuse it.
+Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
+
+- ☐ **2.68** Shared Apple-Maps location component — mobile, no migration. **Build FIRST** (foundation).
+- ☐ **2.69** Provider Sales / payouts + reconciliation UI — web, expected no migration (surfaces 2.3 money).
+- ☐ **2.70** Transport live-GPS tracking — migration **0056**; ⛔ after 2.68; the planned 2.52 follow-up.
+- ☐ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057**; new `pharmacy` capability.
+- ☐ **2.72** Insurance in-app binding + payment — migration **0058**; extends 2.54 lead-gen.
+- ☐ **2.73** Pet-friendly places directory — migration **0059**; ⛔ after 2.68; Google Places data + Apple map.
+- ☐ **2.74** Events / meetups — migration **0060**; ⛔ after 2.68; community (forum/social-walk patterns).
+- ☐ **2.75** Nutrition plans + food-recall alerts — migration **0061**; owner+pet health, non-diagnostic.
+
+Migrations 0056–0061 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as each merges
+(Code hand-applies per the usual harness-only pattern). 2.69/2.71/2.72/2.75 are parallel-safe; the
+map-dependent trio (2.70/2.73/2.74) wait on 2.68.
+
+## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
+
+- **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**
+  on draft **PR #187** (2026-06; mobile 979/979 + web suites green in CI; code dormant until the Apple
+  Developer account lands ~2 days out). Used `@bacons/apple-targets`; added the `pawpi://` deep-link scheme;
+  finish-checklist in `docs/native-widgets.md`. Phases 2 (Live Activity) + 3 (Apple Watch) are later PRs,
+  ⛔ after the account + Phase 1 merge (Phase 2's transport half soft-needs 2.70). **Held** while CC builds
+  Wave 7 (decided 2026-06).
+- **2.77 iOS 27 "Liquid Glass" redesign (cross-cutting).** Ticketed; **DO LAST**, after Wave 7 + 2.76 reach
+  a clean point — visual/motion only, foundation-first then small per-screen PRs.
+
+---
+
 ## ★ PREVIOUS PRIORITY — Phase 2: the pet-services super-app (now done; reference below)
 
 From the master plan's sequenced roadmap (§6). Surface-what's-live first, then the cross-cutting

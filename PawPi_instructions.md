@@ -736,21 +736,39 @@ not a hand-maintained log here:
   gone; family/caregiver sharing; lost & found; memories/Wrapped), the community forum, the self-training
   curriculum, walks-with-buddies, unified messaging, Instagram-style nav, password rules, the
   Apple/Google social-login scaffold, and the feed/profile bug fixes.
-- **Every migration through 0050 is applied + verified on live Supabase. None pending.**
-- **Wave 6 — IN PROGRESS.** Tickets 2.51–2.66 in `docs/phase2-tickets/00-README.md`. Two parts:
-  **Part A** = a mobile UX/UI fix-pack (2.55, 2.59–2.66) — NO migrations; **Part B** = trust + new
-  capabilities + loose ends (2.51–2.54, 2.56–2.58) — migrations **0051–0055**.
-  - **Part A — ✅ COMPLETE & merged.** All 9 built unattended (⚡ autonomy preamble), CI-green,
-    squash-merged to `origin/main` (planning #167; tickets #168–#176). NO migrations (as designed). Net
-    test baselines after Part A: **mobile jest 122 suites / 934**, **web vitest 135 files / 896** (+ the
-    real-Postgres integration job unchanged). Highlights: removed the demo name "Phoebe" + shared avatar
-    fallback (2.55); load-gated share frame (2.62); app-wide tap-to-focus keyboard (2.63); double-tap-Paw
-    (2.64); owner-only caption edit (2.65, PATCH `posts/[id]`); real Today's-Progress (2.66); floating tab
-    bar (2.59); Profile tab → pet social profile + photo icon (2.60); followers/following lists (2.61, read
-    routes only, no RLS change). Owes a device pass.
-  - **Part B — QUEUED (next).** 2.56 + 2.51–2.54, 2.57 (migrations 0051–0055), 2.58 last (docs). Headline:
-    emergency mode / printable medical-card tag QR (2.51), transport (2.52), vet Rx inside Veterinary
-    (2.53), insurance marketplace (2.54).
+- **Migrations 0001–0055 are applied + verified on live Supabase (0051–0055 hand-applied + verified all-PASS
+  2026-06-18). None pending; the live DB is at 0055.**
+- **Wave 6 — ✅ COMPLETE & merged.** Tickets 2.51–2.67 in `docs/phase2-tickets/00-README.md`. Built in two
+  parts (⚡ autonomy preamble), all CI-green, squash-merged to `origin/main`.
+  - **Part A (mobile UX fix-pack: 2.55, 2.59–2.66) — done, NO migrations** (planning #167; #168–#176):
+    removed the demo name "Phoebe" + shared avatar fallback (2.55); load-gated share frame (2.62); app-wide
+    tap-to-focus keyboard (2.63); double-tap-Paw (2.64); owner-only caption edit (2.65); real
+    Today's-Progress (2.66); floating tab bar (2.59); Profile tab → pet social profile + photo icon (2.60);
+    followers/following lists (2.61).
+  - **2.67 (device fix) — done, no migration** (#178): hardened the `/follows` nav (the Followers/Following
+    +not-found was a stale Metro route tree; code was correct — fixes are robustness: absolute-href + active
+    pet fallback in the embedded tab).
+  - **Part B (capabilities + loose ends) — done** (#179–#185), migrations **0051–0055** (✅ applied + verified):
+    adoption public single-listing GET (2.56, no migration); **emergency medical card** — 2 owner tables +
+    3 SECURITY DEFINER public-read fns + two no-login web pages `/p/tag` + `/p/card` + printable QR (2.51,
+    **0051**); **transport/pet-taxi** on the spine (2.52, **0052**); **vet Rx** owner-read-only append-only
+    (2.53, **0053**); **insurance marketplace** new `insurance` capability (2.54, **0054**); adoption
+    foster/urgent flags (2.57, **0055**); feed Suggested divider + docs refresh (2.58, no migration).
+  - Final test baselines: **mobile jest 967 · web vitest 977 · integration 516 (55 migrations)**.
+  - **Decisions of record:** added `react-native-qrcode-svg` (mobile) for the printable tag QR; 2.53 clinical
+    mutations go through DEFINER helpers with NO provider UPDATE policy (Rx history can't be rewritten);
+    2.51/2.54 owner routes never attach the Vet Record. Owes a device pass across the new surfaces.
+- **Wave 7 — SCOPED + TICKETED (queued, not built).** Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
+  section of `00-README.md`); status mirror in `docs/roadmap.md`; planned migrations 0056–0061 pre-flagged in
+  `docs/test-backlog.md` ACTION 1. From the un-ticketed post-core list: 2.68 shared Apple-Maps component
+  (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
+  `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +
+  Apple map), 2.74 events/meetups, 2.75 nutrition plans + food-recall alerts. **Decisions of record (Tats
+  2026-06-18):** memorials dropped; widgets/Apple-Watch deferred to a dedicated attended effort (native, not
+  CI-verifiable); insurance goes FULL in-app bind+pay (insurer is party-of-record, disclaimers, not
+  underwriting); places data = Google Places via a server route; **new cross-cutting rule — Apple Maps
+  (`react-native-maps` `PROVIDER_DEFAULT`) in EVERY section that captures/shows a location, via the shared
+  2.68 component.**
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
