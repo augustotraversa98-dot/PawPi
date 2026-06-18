@@ -762,7 +762,10 @@ not a hand-maintained log here:
   section of `00-README.md`); status mirror in `docs/roadmap.md`; planned migrations 0056–0061 pre-flagged in
   `docs/test-backlog.md` ACTION 1. **✅ 2.68 shared Apple-Maps component MERGED** —
   `src/components/Map/{MapLocationPicker,MapLocationView,LocationField}.jsx` (Apple via `PROVIDER_DEFAULT`);
-  `WalkMapPicker` is a thin wrapper; transport adopts `MapLocationPicker`; i18n `map.*` EN+ES. From the
+  `WalkMapPicker` is a thin wrapper; transport adopts `MapLocationPicker`; i18n `map.*` EN+ES.
+  **✅ 2.69 provider Sales/payouts/reconciliation MERGED** — read-only `GET /api/providers/[id]/sales`
+  (active-staff-scoped) surfaces revenue/ledger/payouts/reconciliation from the 2.3 money tables; enabled the
+  `Sales` dashboard section (recharts + empty states); **no migration, no money mutated.** From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +

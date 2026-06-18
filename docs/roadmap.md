@@ -170,7 +170,10 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   `src/components/Map/{MapLocationPicker,MapLocationView,LocationField}.jsx` (Apple Maps via
   `PROVIDER_DEFAULT`); `WalkMapPicker` is now a thin wrapper over the shared picker, transport adopts
   `MapLocationPicker` directly; i18n `map.*` EN+ES; mobile jest +7.
-- ☐ **2.69** Provider Sales / payouts + reconciliation UI — web, expected no migration (surfaces 2.3 money).
+- ✅ **2.69** Provider Sales / payouts + reconciliation UI — web, **no migration** (read-only surfacing of
+  2.3 money): `GET /api/providers/[id]/sales` (active-staff-scoped: revenue net/gross series + ledger
+  [payments × orders] + payouts/pending + aggregate reconciliation, no money mutated) → enabled `Sales`
+  dashboard section (`provider/sales/page.jsx` + `ProviderSales.jsx`, recharts + empty states). web vitest +6.
 - ☐ **2.70** Transport live-GPS tracking — migration **0056**; ⛔ after 2.68; the planned 2.52 follow-up.
 - ☐ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057**; new `pharmacy` capability.
 - ☐ **2.72** Insurance in-app binding + payment — migration **0058**; extends 2.54 lead-gen.
