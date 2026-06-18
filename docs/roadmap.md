@@ -86,13 +86,14 @@ Built unattended per the Wave 5 autonomy preamble in `00-README.md`. Status mirr
 
 ---
 
-## 🌊 WAVE 6 — UX fix-pack + trust + new capabilities (tickets 2.51–2.66) — QUEUED
+## 🌊 WAVE 6 — UX fix-pack + trust + new capabilities (tickets 2.51–2.66) — IN PROGRESS
 
 Authoritative spec + build order: [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md)
 (Wave 6 section). Decided with Tats 2026-06-18 (+ an on-device UX fix-pack). Built per the ⚡ Wave 5
 autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
 
-**Part A — mobile UX fix-pack (do FIRST; NO migrations):**
+**Part A — mobile UX fix-pack (do FIRST; NO migrations): ✅ COMPLETE** — all 9 built unattended, CI-green,
+squash-merged to `origin/main` (PRs #168–#176; planning #167). No migrations (as expected). Next: Part B.
 - ✅ **2.55** remove "Phoebe" + avatar fallback — do first (avatar fallback reused by 2.60).
 - ✅ **2.62** share frame attaches the real daily-moment photo (capture was firing before image load).
 - ✅ **2.63** app-wide keyboard: tap field first, then keyboard (kill auto-focus on bark/comments).

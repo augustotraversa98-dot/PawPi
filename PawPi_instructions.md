@@ -737,11 +737,20 @@ not a hand-maintained log here:
   curriculum, walks-with-buddies, unified messaging, Instagram-style nav, password rules, the
   Apple/Google social-login scaffold, and the feed/profile bug fixes.
 - **Every migration through 0050 is applied + verified on live Supabase. None pending.**
-- **Wave 6 — QUEUED (not built yet).** Tickets 2.51–2.66 written + ordered in `docs/phase2-tickets/00-README.md`.
-  Built in two parts: **Part A** = a mobile UX/UI fix-pack (2.55, 2.59–2.66) — NO migrations; **Part B** =
-  trust + new capabilities + loose ends (2.51–2.54, 2.56–2.58) — migrations **0051–0055**. Part A runs first
-  (all mobile, migration-free), then Part B. Headline features: emergency mode / printable medical-card tag
-  QR (2.51), transport (2.52), vet Rx inside Veterinary (2.53), insurance marketplace (2.54).
+- **Wave 6 — IN PROGRESS.** Tickets 2.51–2.66 in `docs/phase2-tickets/00-README.md`. Two parts:
+  **Part A** = a mobile UX/UI fix-pack (2.55, 2.59–2.66) — NO migrations; **Part B** = trust + new
+  capabilities + loose ends (2.51–2.54, 2.56–2.58) — migrations **0051–0055**.
+  - **Part A — ✅ COMPLETE & merged.** All 9 built unattended (⚡ autonomy preamble), CI-green,
+    squash-merged to `origin/main` (planning #167; tickets #168–#176). NO migrations (as designed). Net
+    test baselines after Part A: **mobile jest 122 suites / 934**, **web vitest 135 files / 896** (+ the
+    real-Postgres integration job unchanged). Highlights: removed the demo name "Phoebe" + shared avatar
+    fallback (2.55); load-gated share frame (2.62); app-wide tap-to-focus keyboard (2.63); double-tap-Paw
+    (2.64); owner-only caption edit (2.65, PATCH `posts/[id]`); real Today's-Progress (2.66); floating tab
+    bar (2.59); Profile tab → pet social profile + photo icon (2.60); followers/following lists (2.61, read
+    routes only, no RLS change). Owes a device pass.
+  - **Part B — QUEUED (next).** 2.56 + 2.51–2.54, 2.57 (migrations 0051–0055), 2.58 last (docs). Headline:
+    emergency mode / printable medical-card tag QR (2.51), transport (2.52), vet Rx inside Veterinary
+    (2.53), insurance marketplace (2.54).
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
