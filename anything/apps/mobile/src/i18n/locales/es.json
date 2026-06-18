@@ -126,5 +126,17 @@
     "couldNotPay": "No se pudo iniciar el pago",
     "payUnavailable": "Pagos no disponibles aún",
     "payUnavailableBody": "Tu solicitud quedó guardada; podrás pagar cuando los pagos estén configurados."
+  },
+  "places": {
+    "title": "Lugares pet-friendly",
+    "nearby": "Cerca",
+    "saved": "Guardados",
+    "notSetUp": "El directorio de lugares aún no está configurado.",
+    "locationDenied": "Permite la ubicación para encontrar lugares cerca de ti.",
+    "noResults": "No se encontraron lugares pet-friendly aquí.",
+    "noSaved": "Aún no hay lugares guardados.",
+    "openNow": "Abierto ahora",
+    "closed": "Cerrado",
+    "directions": "Cómo llegar"
   }
 }

@@ -779,7 +779,12 @@ not a hand-maintained log here:
   accepts terms but can't self-issue number/premium or self-activate; insurer issues/advances but can't set
   `active`; `activate_insurance_policy` DEFINER requires an approved 2.3 payment; harness-proven, **PENDING
   hand-apply**). `insurance` already in CHECK (0054). Owner apply/pay/hub + provider `Policies` dashboard;
-  non-underwriting disclaimer. From the
+  non-underwriting disclaimer.
+  **✅ 2.73 pet-friendly places MERGED** — migration **0059** `saved_places` (owner-FOR-ALL RLS; no cache
+  table — the key-gated Google Places web proxy fetches live and degrades clean to `configured:false`, key
+  never shipped to the client; harness-proven, **PENDING hand-apply**). Mobile Places screen (2.68 Apple map
+  + list + category filter + Saved favorites + Apple-Maps directions hand-off). Reuses `GOOGLE_PLACES_API_KEY`.
+  From the
   un-ticketed post-core list: 2.68 shared Apple-Maps component
   (FIRST), 2.69 provider Sales/payouts/reconciliation UI, 2.70 transport live-GPS, 2.71 Rx fulfillment (new
   `pharmacy` capability), 2.72 insurance in-app binding+payment, 2.73 pet-friendly places (Google Places +

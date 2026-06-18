@@ -190,7 +190,11 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   set `active`; `activate_insurance_policy` DEFINER is the only path to active, requiring an approved 2.3
   payment; harness-proven + completeness guard). `insurance` already in the CHECK (0054). Owner apply/pay/hub
   + provider dashboard `Policies` view; non-underwriting disclaimer (insurer = party-of-record). i18n EN+ES.
-- ☐ **2.73** Pet-friendly places directory — migration **0059**; ⛔ after 2.68; Google Places data + Apple map.
+- ✅ **2.73** Pet-friendly places directory — migration **0059** (`saved_places` owner-FOR-ALL RLS; NO cache
+  table — the proxy fetches live; harness-proven + completeness guard). Server-side key-gated Google Places
+  proxy (`/api/places/search|[placeId]`, degrades clean to `configured:false`, key never reaches the client)
+  + owner favorites; mobile Places screen (2.68 Apple map + list + category chips + Saved tab + directions
+  hand-off, permission/empty/not-set-up states). i18n EN+ES. Reuses `GOOGLE_PLACES_API_KEY`.
 - ☐ **2.74** Events / meetups — migration **0060**; ⛔ after 2.68; community (forum/social-walk patterns).
 - ☐ **2.75** Nutrition plans + food-recall alerts — migration **0061**; owner+pet health, non-diagnostic.
 

@@ -126,5 +126,17 @@
     "couldNotPay": "Couldn't start payment",
     "payUnavailable": "Payments not available yet",
     "payUnavailableBody": "Your application is saved; you can pay once payments are set up."
+  },
+  "places": {
+    "title": "Pet-friendly places",
+    "nearby": "Nearby",
+    "saved": "Saved",
+    "notSetUp": "The places directory isn't set up yet.",
+    "locationDenied": "Allow location to find places near you.",
+    "noResults": "No pet-friendly places found here.",
+    "noSaved": "No saved places yet.",
+    "openNow": "Open now",
+    "closed": "Closed",
+    "directions": "Directions"
   }
 }
