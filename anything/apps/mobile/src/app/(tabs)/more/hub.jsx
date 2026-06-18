@@ -11,6 +11,7 @@ import {
   Heart,
   ChevronRight,
   Clock,
+  MapPin,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -254,6 +255,15 @@ export default function MyHubScreen() {
                 ))}
               </>
             )}
+          </SectionCard>
+
+          {/* Pet-friendly places directory (ticket 2.73) */}
+          <SectionCard
+            title="Pet-friendly places"
+            Icon={MapPin}
+            onPress={() => router.push("/service/places")}
+          >
+            <Empty text="Find parks, cafés, hotels and more near you." />
           </SectionCard>
 
           {/* My orders — shop history */}
