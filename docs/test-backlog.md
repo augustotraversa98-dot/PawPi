@@ -40,6 +40,7 @@ as the RLS migrations 0019–0026.)
 0046_walks_with_buddies.sql           (2.43 — social_walks lat/lng/location_name + social_walk_invites)    ⏳ PENDING — apply after merge
 0047_community_forum.sql              (2.44 — forum_threads + forum_comments + forum_votes + forum_vote fn) ⏳ PENDING — apply after merge
 0048_training_progress_self.sql       (2.45 — training_progress_self, owner-scoped DIY training completion)  ⏳ PENDING — apply after merge
+0049_family_caregiver_sharing.sql     (2.47 — pet_caregivers + audit + person-access RLS on pet data tables) ⏳ PENDING — apply after merge
 ```
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
 
@@ -71,13 +72,31 @@ as the RLS migrations 0019–0026.)
   OWNER-SCOPED FOR ALL (owner reads/writes own; others zero). Named distinctly so it never collides with
   2.10's provider `training_progress`. Proven as pawpi_app in `training-self-rls.integration.test.ts` +
   the completeness guard. Hand-apply after merge.
+
+**⏳ PENDING (Wave 5):** `0049_family_caregiver_sharing.sql` (ticket 2.47) — harness-proven, NOT yet applied.
+- New `pet_caregivers` (person↔person grant: pet, owner, grantee, role family|caregiver, scopes[],
+  status, expires_at) + append-only `pet_caregiver_audit`. Both ENABLE+FORCE RLS (owner manages /
+  grantee sees grants naming them; audit owner-or-actor read, actor-insert append-only).
+- Three SECURITY DEFINER helpers: `app_owns_pet(pet_id)`, `app_user_has_pet_access(pet_id)` (any active
+  unexpired grantee → READ gate), `app_user_has_pet_family(pet_id)` (active FAMILY grantee → WRITE gate);
+  plus `respond_pet_caregiver(grant_id, accept)` (grantee accept/decline, no role/scope escalation).
+- ADDITIVE per-table RLS so a grantee gets scoped access WITHOUT changing owner/provider access: `pets`
+  (grantee read + family update), `routines` + `pet_medical_profiles` (any-grantee read, family write),
+  and a FOR-ALL family policy on the 12 health_* + vet-record-extras + reminder_dismissals (family
+  read+write; caregivers get NONE of these — their scope is feeding+emergency). A BEFORE-UPDATE trigger
+  `pets_guard_owner_transfer` blocks a non-owner from re-pointing `owner_user_id` (the OR-of-WITH-CHECK
+  takeover hole). Expiry + revoke are instant (helpers gate on status+expires_at). Proven hard as pawpi_app
+  in `family-caregiver-rls.integration.test.ts` (family co-manage in scope; caregiver read-only scoped;
+  expired/revoked → zero; non-grantee → zero on private data; owner-only delete) + the completeness guard.
+  Hand-apply after merge. NOTE: `pets` rows stay any-authed-readable (0021 social) — this gates the PRIVATE
+  data (routines/health/medical), not the public pet profile row.
 - 0039 cron function present + granted; 0040 telehealth_sessions RLS on+forced (owner-ALL + staff
   read/insert/update) + both capability CHECKs include `'telehealth'`; 0041 the four provider link columns.
 - 0042 provider_posts RLS (read=SELECT, staff_all=ALL) + providers.cover_image_url; 0043
   provider_services.image_urls; 0044 notifications RLS (select/update; inserts only via app_notify DEFINER)
   + app_notify present; 0045 dm_threads (participant ALL) + dm_messages (sender INSERT + participant
   read/update/delete) + app_is_dm_participant present.
-Wave-5 migrations `0046` (2.43) + `0047` (2.44) + `0048` (2.45) are PENDING — see above. Future tickets that add tables append here.
+Wave-5 migrations `0046` (2.43) + `0047` (2.44) + `0048` (2.45) + `0049` (2.47) are PENDING — see above. Future tickets that add tables append here.
 (2.13 feed + 2.14 dashboards added NO migration — read-only. 2.15 mobile multi-select + 2.16 token
 encryption add NO migration either. Wave-4 NO-migration tickets: 2.19 nav fix, 2.21 enrichment, 2.24
 calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)

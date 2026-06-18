@@ -344,6 +344,13 @@ export default function MoreScreen() {
           onPress={() => goMenu("/(tabs)/more/profile")}
         />
 
+        <MenuItem
+          title="Family & Caregivers"
+          emoji="👨‍👩‍👧"
+          color={C.sageDark}
+          onPress={() => goMenu("/pet-sharing")}
+        />
+
         {/* NEW: Reminders & Routines */}
         <TouchableOpacity
           onPress={() => goMenu("/(tabs)/more/reminders")}
