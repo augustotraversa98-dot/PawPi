@@ -33,6 +33,7 @@ jest.mock("@tanstack/react-query", () => ({
   // Generic stub for the screen's per-section queries (summary, allergies, …).
   // summaryLoading must be false so the screen renders past its loading gate.
   useQuery: () => ({ data: {}, isLoading: false }),
+  useMutation: () => ({ mutate: jest.fn(), mutateAsync: jest.fn(), isPending: false }),
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
 }));
 jest.mock("@/hooks/usePetProfile", () => ({
