@@ -179,7 +179,12 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   owner+driver+staff via `app_can_read_trip_location`; harness-proven as pawpi_app + completeness guard).
   Driver ping POST + owner/staff `/track` GET; owner live Apple-map screen (`transport-track.jsx`, reuses 2.68
   `MapLocationView`, 5s polling) + driver "Share live location" (`expo-location`, en_route-only). i18n EN+ES.
-- ☐ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057**; new `pharmacy` capability.
+- ✅ **2.71** Rx fulfillment (delivery/pickup + charging) — migration **0057** (`rx_fulfillment_orders`;
+  owner-creates-only-on-owned-refillable-Rx via `app_owns_fulfillable_rx`, pharmacy-staff advance, the
+  `fulfill_rx_order` DEFINER consumes a refill on the 2.53 safe path — prescriptions stay append-only;
+  harness-proven + completeness guard). `pharmacy` already in the CHECK (0040) — no widen. Owner routes +
+  provider queue routes; mobile request flow (delivery via 2.68 `LocationField` / pickup, pay via 2.3) +
+  provider dashboard `Rx Fulfillment` queue. i18n EN+ES.
 - ☐ **2.72** Insurance in-app binding + payment — migration **0058**; extends 2.54 lead-gen.
 - ☐ **2.73** Pet-friendly places directory — migration **0059**; ⛔ after 2.68; Google Places data + Apple map.
 - ☐ **2.74** Events / meetups — migration **0060**; ⛔ after 2.68; community (forum/social-walk patterns).
