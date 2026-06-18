@@ -104,6 +104,17 @@ squash-merged to `origin/main` (PRs #168–#176; planning #167). No migrations (
 - ✅ **2.60** Profile tab → active pet's social profile + pet-photo icon — ⛔ after 2.59 + 2.55.
 - ✅ **2.61** followers/following lists + paw follow/unfollow + search — ⛔ after 2.60 (no migration).
 
+**Part A device feedback (Tats, 2026-06-18):** tests pass; one device bug found — tapping Followers/
+Following lands on expo-router **+not-found** (the 2.61 `/follows` route doesn't resolve on the running
+build; likely a stale Metro route tree needing `expo start --clear`, plus an embedded empty-`petId` edge).
+Logged as a follow-up fix:
+- ✅ **2.67** fix Followers/Following → +not-found (robust nav + embedded petId fallback) — no migration.
+  Absolute-href nav to the root `/follows` route + active-pet fallback so the tab never pushes an empty
+  petId; counts non-interactive while the pet loads (no dead tap). `follows` falls back to the active pet
+  on a paramless open. Reproduction finding: route file + `_layout` registration are correct on main, so
+  the device +not-found is a stale Metro route tree (clean `expo start --clear` resolves it) — the code
+  fixes are hardening for the embedded entry point.
+
 **Part B — capabilities + loose ends (migrations 0051–0055):**
 - ☐ **2.56** adoption public single-listing GET — no migration.
 - ☐ **2.51** emergency mode + printable medical-card tag QR + revocable vet link — migration **0051**.

@@ -13,9 +13,10 @@ let mockProfile;
 let mockViewer;
 let mockParams;
 const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: mockPush }),
+  useRouter: () => ({ back: jest.fn(), push: mockPush, navigate: mockNavigate }),
   useLocalSearchParams: () => mockParams,
 }));
 jest.mock("lucide-react-native", () =>
@@ -60,6 +61,7 @@ import PetProfileScreen from "./pet-profile";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockNavigate.mockReset();
   mockParams = { petId: "7", dogName: "Buddy", ownerName: "Alice" };
   mockProfile = {
     pet: {
@@ -146,25 +148,50 @@ describe("Profile tab — embedded mode (ticket 2.60)", () => {
     expect(getByText("Profile")).toBeTruthy();
   });
 
-  test("tapping the Followers / Following counts opens the lists (2.61)", () => {
+  test("tapping the Followers / Following counts opens the lists (2.61/2.67)", () => {
     mockViewer = { id: 4 };
     const { getByTestId } = render(<PetProfileScreen />);
 
+    // 2.67: navigates to the ROOT `follows` route via an absolute href string,
+    // with a NON-empty petId + the right rel.
     fireEvent.press(getByTestId("stat-Followers"));
-    expect(mockPush).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pathname: "/follows",
-        params: expect.objectContaining({ petId: "7", rel: "followers" }),
-      }),
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("/follows?petId=7"),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("rel=followers"),
     );
 
     fireEvent.press(getByTestId("stat-Following"));
-    expect(mockPush).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pathname: "/follows",
-        params: expect.objectContaining({ rel: "following" }),
-      }),
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("rel=following"),
     );
+  });
+
+  test("2.67: embedded tap resolves a non-empty petId from the active pet (no param)", () => {
+    // Embedded Profile tab: no route param, the viewer's active pet drives it.
+    mockParams = {};
+    mockViewer = { id: 7 };
+    const { getByTestId } = render(<PetProfileScreen embedded />);
+
+    fireEvent.press(getByTestId("stat-Followers"));
+    // Never an empty petId — it resolves from the active pet.
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("/follows?petId=7"),
+    );
+    const href = mockNavigate.mock.calls[0][0];
+    expect(href).not.toContain("petId=&");
+  });
+
+  test("2.67: no dead tap while the current pet is loading", () => {
+    // Embedded tab, no param, current pet not loaded yet → the counts are not
+    // tappable (rendered as plain text), so there's no dead tap / empty nav.
+    mockParams = {};
+    mockViewer = null;
+    const { getByText, queryByTestId } = render(<PetProfileScreen embedded />);
+    expect(getByText("Followers")).toBeTruthy(); // count still shows
+    expect(queryByTestId("stat-Followers")).toBeNull(); // but not interactive
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   test("embedded falls back to the viewer's own pet (no route param)", () => {

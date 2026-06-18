@@ -310,3 +310,4 @@ memorials. All slot onto the same spine/capability/discovery patterns when prior
 - 2.64-double-tap-paw.md                   (Wave 6 fix-pack — double-tap image → Paw/like; no migration)
 - 2.65-edit-daily-update-caption.md        (Wave 6 fix-pack — edit own post caption; owner-only PATCH; no migration)
 - 2.66-health-today-real-progress.md       (Wave 6 fix-pack — Today's Progress on real logged data; no migration)
+- 2.67-followers-following-route-fix.md     (Wave 6 — device fix: Followers/Following → +not-found; follow-up to 2.61; no migration)
