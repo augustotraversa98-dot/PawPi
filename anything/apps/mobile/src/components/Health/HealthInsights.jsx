@@ -61,7 +61,7 @@ export default function HealthInsights() {
               title: "Lower appetite",
               subtitle: "2 days this week",
               details:
-                "Tuesday and Wednesday showed 'poor' appetite at breakfast. Phoebe ate only half her meal both mornings.",
+                "Tuesday and Wednesday showed 'poor' appetite at breakfast. your pet ate only half her meal both mornings.",
               icon: AlertCircle,
               color: "#FFB74D",
             },
@@ -264,7 +264,7 @@ export default function HealthInsights() {
   const vetQuestions = [
     "Should I be concerned about recurring soft stool?",
     "Could appetite changes be related to diet?",
-    "Should we review Phoebe's weight trend?",
+    "Should we review your pet's weight trend?",
     "Should we review the paw photos from the last month?",
   ];
 

@@ -64,13 +64,13 @@ function getFeedingNotification(reminder) {
   const mealName = reminder.title || "Meal";
 
   let title = "Feeding o'clock 🍽️";
-  let message = `Time to feed Phoebe ${mealName.toLowerCase()}.`;
+  let message = `Time to feed your pet ${mealName.toLowerCase()}.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Phoebe's ${mealName.toLowerCase()} starts in ${timeToGo}.`;
+    message = `Your pet's ${mealName.toLowerCase()} starts in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Phoebe's ${mealName.toLowerCase()} is overdue.`;
+    message = `Your pet's ${mealName.toLowerCase()} is overdue.`;
   }
 
   return {
@@ -85,13 +85,13 @@ function getWalkNotification(reminder) {
   const walkName = reminder.title || "Walk";
 
   let title = "Walk time 🚶";
-  let message = `Time for Phoebe's ${walkName.toLowerCase()}.`;
+  let message = `Time for your pet's ${walkName.toLowerCase()}.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Phoebe's ${walkName.toLowerCase()} starts in ${timeToGo}.`;
+    message = `Your pet's ${walkName.toLowerCase()} starts in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Phoebe's ${walkName.toLowerCase()} is overdue.`;
+    message = `Your pet's ${walkName.toLowerCase()} is overdue.`;
   }
 
   return {
@@ -106,13 +106,13 @@ function getMedicationNotification(reminder) {
   const medName = reminder.title || "medication";
 
   let title = "Medication due 💊";
-  let message = `Phoebe's ${medName} is due now.`;
+  let message = `Your pet's ${medName} is due now.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Phoebe's ${medName} is due in ${timeToGo}.`;
+    message = `Your pet's ${medName} is due in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Phoebe's ${medName} is overdue.`;
+    message = `Your pet's ${medName} is overdue.`;
   }
 
   return {
@@ -129,7 +129,7 @@ function getPhotoCheckNotification(reminder) {
 
   return {
     title: `${bodyAreaLabel} photo due 📸`,
-    message: `Upload Phoebe's weekly ${bodyArea.replace("_", "/")} photo to compare visible changes over time.`,
+    message: `Upload your pet's weekly ${bodyArea.replace("_", "/")} photo to compare visible changes over time.`,
     actionLabel: "Take photo",
   };
 }
@@ -137,7 +137,7 @@ function getPhotoCheckNotification(reminder) {
 function getGeneralCheckNotification(reminder) {
   return {
     title: "General check due ✅",
-    message: "Time for Phoebe's weekly general health check.",
+    message: "Time for your pet's weekly general health check.",
     actionLabel: "Start check",
   };
 }
@@ -145,7 +145,7 @@ function getGeneralCheckNotification(reminder) {
 function getWeightCheckNotification(reminder) {
   return {
     title: "Weight check due ⚖️",
-    message: "Time to log Phoebe's weight for this week.",
+    message: "Time to log your pet's weight for this week.",
     actionLabel: "Log weight",
   };
 }
@@ -155,7 +155,7 @@ function getPreventiveNotification(reminder) {
 
   return {
     title: "Preventive care due 🛡️",
-    message: `Time for Phoebe's ${treatment}.`,
+    message: `Time for your pet's ${treatment}.`,
     actionLabel: "Mark as given",
   };
 }
@@ -165,7 +165,7 @@ function getVaccineNotification(reminder) {
 
   return {
     title: "Vaccine due 💉",
-    message: `Phoebe's ${vaccine} is due.`,
+    message: `Your pet's ${vaccine} is due.`,
     actionLabel: "View vaccine record",
   };
 }
@@ -174,11 +174,11 @@ function getVetAppointmentNotification(reminder) {
   const appointment = reminder.title || "vet appointment";
   const status = getReminderStatus(reminder);
 
-  let message = `Phoebe has a ${appointment} today.`;
+  let message = `Your pet has a ${appointment} today.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Phoebe's ${appointment} is in ${timeToGo}.`;
+    message = `Your pet's ${appointment} is in ${timeToGo}.`;
   }
 
   return {

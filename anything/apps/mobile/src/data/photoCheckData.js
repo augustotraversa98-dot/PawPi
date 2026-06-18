@@ -46,7 +46,7 @@ export const PHOTO_CHECK_SCHEDULES = {
 export const PHOTO_CHECK_HISTORY = [
   {
     id: "pc001",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "paws",
     imageUrl:
       "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400",
@@ -56,7 +56,7 @@ export const PHOTO_CHECK_HISTORY = [
   },
   {
     id: "pc002",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "eyes",
     imageUrl:
       "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400",
@@ -66,7 +66,7 @@ export const PHOTO_CHECK_HISTORY = [
   },
   {
     id: "pc003",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "teeth",
     imageUrl: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400",
     notes: "Some tartar buildup on back molars",
@@ -75,7 +75,7 @@ export const PHOTO_CHECK_HISTORY = [
   },
   {
     id: "pc004",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "ears",
     imageUrl:
       "https://images.unsplash.com/photo-1529472119196-cb724127a98e?w=400",
@@ -85,7 +85,7 @@ export const PHOTO_CHECK_HISTORY = [
   },
   {
     id: "pc005",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "skin_fur",
     imageUrl:
       "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400",
@@ -95,7 +95,7 @@ export const PHOTO_CHECK_HISTORY = [
   },
   {
     id: "pc006",
-    petId: "phoebe",
+    petId: "sample-pet",
     bodyArea: "full_body",
     imageUrl:
       "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=400",

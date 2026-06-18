@@ -24,6 +24,7 @@ import WalkActivityModal from "./WalkActivity/WalkActivityModal";
 import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 
 const C = {
   cream: "#FFF7EF",
@@ -135,6 +136,8 @@ const TRACKERS = [
 ];
 
 export default function HealthTrack() {
+  const { data: currentPet } = useCurrentPet();
+  const petName = currentPet?.name || "your pet";
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
   const [foodWaterModalVisible, setFoodWaterModalVisible] = useState(false);
   const [foodWaterModalType, setFoodWaterModalType] = useState("food");
@@ -193,7 +196,7 @@ export default function HealthTrack() {
             Track Health Data
           </Text>
           <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-            Choose what you'd like to track for Phoebe
+            Choose what you'd like to track for {petName}
           </Text>
         </View>
 

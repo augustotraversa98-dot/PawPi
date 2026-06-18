@@ -3,7 +3,12 @@ import { View, Text, TouchableOpacity, Modal } from "react-native";
 import { X } from "lucide-react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
 
-export default function WalkCountSelector({ visible, onClose, onSelectCount }) {
+export default function WalkCountSelector({
+  visible,
+  onClose,
+  onSelectCount,
+  petName = "your pet",
+}) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View
@@ -43,7 +48,7 @@ export default function WalkCountSelector({ visible, onClose, onSelectCount }) {
                 🚶 Walk Routine
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                How often does Phoebe usually walk?
+                How often does {petName} usually walk?
               </Text>
             </View>
             <TouchableOpacity

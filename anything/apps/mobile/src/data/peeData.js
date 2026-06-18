@@ -4,7 +4,7 @@
 export const peeLogs = [
   {
     id: "pee001",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T09:15:00Z",
     volume: "normal",
     color: "yellow",
@@ -18,7 +18,7 @@ export const peeLogs = [
   },
   {
     id: "pee002",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-06T06:45:00Z",
     volume: "normal",
     color: "yellow",
@@ -32,7 +32,7 @@ export const peeLogs = [
   },
   {
     id: "pee003",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T20:30:00Z",
     volume: "large",
     color: "pale",
@@ -46,7 +46,7 @@ export const peeLogs = [
   },
   {
     id: "pee004",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T14:20:00Z",
     volume: "small",
     color: "dark",
@@ -60,7 +60,7 @@ export const peeLogs = [
   },
   {
     id: "pee005",
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: "2026-05-05T07:00:00Z",
     volume: "normal",
     color: "yellow",
@@ -165,7 +165,7 @@ export const getConcernMessage = (concerns) => {
 export const addPeeLog = (logData) => {
   const newLog = {
     id: `pee${Date.now()}`,
-    petId: "phoebe",
+    petId: "sample-pet",
     timestamp: new Date().toISOString(),
     ...logData,
   };

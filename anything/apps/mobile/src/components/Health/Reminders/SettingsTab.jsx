@@ -63,7 +63,7 @@ export default function SettingsTab() {
     if (finalStatus === "granted") {
       Alert.alert(
         "✅ Notifications Enabled",
-        "Social Pet can now remind you about feeding, walks, medication, and photo checks so Phoebe's care routine stays on track.",
+        "Social Pet can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
       );
     } else {
       Alert.alert(
@@ -217,7 +217,7 @@ export default function SettingsTab() {
             }}
           >
             {isGranted
-              ? "You'll receive reminders for Phoebe's care routine"
+              ? "You'll receive reminders for your pet's care routine"
               : "Enable notifications to receive reminders"}
           </Text>
         </View>
@@ -303,7 +303,7 @@ export default function SettingsTab() {
         </Text>
         <Text style={{ fontSize: 13, color: "#1976D2", lineHeight: 19 }}>
           Social Pet can remind you about feeding, walks, medication, and photo
-          checks so Phoebe's care routine stays on track. Routines you create
+          checks so your pet's care routine stays on track. Routines you create
           automatically generate reminders.
         </Text>
       </View>

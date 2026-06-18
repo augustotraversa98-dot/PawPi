@@ -229,7 +229,7 @@ export default function MedicalCareRoutineModal({
     }
     const routine = {
       type: ROUTINE_TYPES.MEDICAL_CARE,
-      petId: editingRoutine?.petId || "phoebe",
+      petId: editingRoutine?.petId ?? null,
       isActive: editingRoutine?.isActive ?? true,
       medicalCareItems: items,
       title: "Medical Care",

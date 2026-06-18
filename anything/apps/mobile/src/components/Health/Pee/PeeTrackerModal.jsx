@@ -405,7 +405,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginBottom: 4,
                   }}
                 >
-                  How was Phoebe's pee?
+                  How was your pet's pee?
                 </Text>
                 <Text
                   style={{
