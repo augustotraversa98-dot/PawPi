@@ -136,7 +136,11 @@ Logged as a follow-up fix:
   vet decides via `decide_rx_refill` DEFINER which decrements refills; no provider UPDATE policy). Web:
   vet issue/list/cancel + refill queue/decision; owner read + request-refill. Mobile: Vet Record
   Prescriptions section ("Prescribed by {clinic}", request refill, no owner edit). Harness-proven; flagged.
-- ☐ **2.54** insurance marketplace — migration **0054**.
+- ✅ **2.54** insurance marketplace — migration **0054**. New `insurance` capability (CHECKs widened
+  +ALLOWED_CAPABILITIES). `insurance_plans` (published-public read, admin-managed) + `insurance_leads`
+  (owner-or-provider scoped). Lead-gen v1 (no binding/payment, no Vet Record sent). Web: plans editor +
+  leads inbox/status. Mobile: marketplace (discovery → plans → compare → quote form prefilled from the
+  pet → lead). Harness-proven; migration flagged.
 - ☐ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56.
 - ☐ **2.58** feed "Suggested" divider + ARCHITECTURE.md/SCHEMA_NOTES.md — no migration; build LAST.
 
