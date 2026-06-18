@@ -126,7 +126,11 @@ Logged as a follow-up fix:
   vet link; relay contact). Two PUBLIC no-login web pages (`/p/tag/[token]`, `/p/card/[token]`); mobile
   Emergency Card screen (assembled card + image share reusing 2.28 + printable tag QR + create/revoke vet
   links). LOST banner from 2.48. Harness-proven RLS + completeness guard. Migration flagged in test-backlog.
-- ☐ **2.52** transport / pet-taxi — migration **0052**.
+- ✅ **2.52** transport / pet-taxi — migration **0052**. `transport_trips` on the spine (owner +
+  provider-staff + assigned-driver RLS; owner can't self-advance status). Capability-gated
+  (`transport`); a trip IS a generalized booking (2.4) so it surfaces in the existing inbox/calendar;
+  fare via payments (2.3), chat via 2.5. Mobile transport screen (discovery + map-picker booking form +
+  trips list + cancel/message). Harness-proven; migration flagged in test-backlog.
 - ☐ **2.53** vet Rx (inside Veterinary) — migration **0053** (strictest medical RLS).
 - ☐ **2.54** insurance marketplace — migration **0054**.
 - ☐ **2.57** adoption foster/urgent flags — migration **0055**; ⛔ after 2.56.

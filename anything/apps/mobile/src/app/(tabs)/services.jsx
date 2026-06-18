@@ -12,6 +12,7 @@ import {
   GraduationCap,
   ShoppingBag,
   PawPrint,
+  Car,
   ChevronRight,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
@@ -101,6 +102,14 @@ const CATEGORIES = [
     icon: PawPrint,
     live: true,
     route: "/service/adoption",
+  },
+  {
+    key: "transport",
+    title: "Transport",
+    subtitle: "Book a pet-taxi: pickup and dropoff",
+    icon: Car,
+    live: true,
+    route: "/service/transport",
   },
 ];
 
