@@ -34,6 +34,9 @@ const mockVet = { data: [] };
 jest.mock("@/hooks/useVetAppointmentReminders", () => ({
   useVetAppointmentReminders: () => mockVet,
 }));
+jest.mock("@/hooks/useTodayProgress", () => ({
+  useTodayProgress: () => ({ chips: [], isEmpty: true }),
+}));
 
 // Controlled per-test store state (reminders + snooze map).
 const mockStore = {
