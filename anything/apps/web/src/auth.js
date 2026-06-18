@@ -6,6 +6,7 @@
 import CreateAuth from "@auth/create"
 import Credentials from "@auth/core/providers/credentials"
 import { CredentialsSignin } from '@auth/core/errors'
+import { socialProviders } from './app/api/utils/oauthProviders.js'
 import pg from 'pg'
 import { hash, verify } from 'argon2'
 import { validatePassword } from './app/api/utils/passwordStrength.js'
@@ -374,7 +375,11 @@ export const { auth } = CreateAuth({
     }
     return null;
   },
-})],
+}),
+  // Additive, env-gated social sign-in (ticket 2.46). socialProviders() returns [] unless
+  // the AUTH_GOOGLE_* / AUTH_APPLE_* keys are present, so with no keys this spreads nothing
+  // and the Credentials path above is byte-for-byte unchanged. Never lock anyone out.
+  ...socialProviders()],
   pages: {
     signIn: '/account/signin',
     signOut: '/account/logout',

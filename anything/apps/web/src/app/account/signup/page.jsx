@@ -5,6 +5,7 @@ import {
   passwordStrength,
   PASSWORD_MIN_LENGTH,
 } from "@/app/api/utils/passwordStrength";
+import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 
 const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
 
@@ -252,22 +253,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-4 py-3 text-base font-semibold text-[#7A6254] opacity-50"
-            >
-              Continue with Google (Coming soon)
-            </button>
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-4 py-3 text-base font-semibold text-[#7A6254] opacity-50"
-            >
-              Continue with Apple (Coming soon)
-            </button>
-          </div>
+          <SocialSignInButtons callbackUrl="/provider" />
 
           {/* Login Link */}
           <p className="text-center text-sm text-[#7A6254]">

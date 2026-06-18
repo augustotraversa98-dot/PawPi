@@ -91,6 +91,13 @@ calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
   "not set up yet" message; nothing crashes).
 - `2.21` set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready (until then "Import from the web"
   shows a clean "not set up yet"; nothing auto-fills).
+- `2.46` **Social sign-in (Apple + Google)** — ADDITIVE + ENV-GATED, no migration. To turn ON: create a
+  Google OAuth 2.0 Web client + an Apple Services ID / Sign in with Apple key, register the callback URLs
+  `<origin>/api/auth/callback/google` and `<origin>/api/auth/callback/apple`, then set in the web `.env`:
+  `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET`, and `AUTH_APPLE_ID` + `AUTH_APPLE_SECRET` (the Apple secret is a
+  GENERATED client-secret JWT, not a static string). A provider appears ONLY when BOTH its keys are set;
+  until then the "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password
+  login is byte-for-byte unchanged. Placeholders + the callback URL pattern are documented in `.env.example`.
 
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Set up a MercadoPago marketplace app (OAuth client) + a Binance Pay merchant account, set the env keys
