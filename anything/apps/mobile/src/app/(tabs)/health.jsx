@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Heart, Activity, TrendingUp, FileText, Utensils } from "lucide-react-native";
 
 // Import the 4 section components (removed HealthReminders)
@@ -27,10 +27,17 @@ const SECTIONS = [
   { id: "vet-record", label: "Vet Record", icon: FileText },
 ];
 
+const VALID_SECTIONS = SECTIONS.map((s) => s.id);
+
 export default function HealthScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("today");
+  // Honor a `?section=` deep link (e.g. from the iOS widget, ticket 2.76);
+  // ignore anything unknown and default to Today.
+  const { section } = useLocalSearchParams();
+  const initialSection =
+    typeof section === "string" && VALID_SECTIONS.includes(section) ? section : "today";
+  const [activeSection, setActiveSection] = useState(initialSection);
 
   const renderContent = () => {
     switch (activeSection) {
