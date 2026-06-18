@@ -153,11 +153,8 @@ Logged as a follow-up fix:
   migration-order line advanced to 0055.
 
 **Wave 6 COMPLETE (2026-06-18).** Part A (2.55, 2.59–2.66) + 2.67 fix + Part B (2.56, 2.51–2.54, 2.57,
-2.58) all built, CI-green, squash-merged. Migrations **0051–0055** pending hand-apply to Supabase
-(test-backlog ACTION 1).
-
-Migrations 0051–0055 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as Code builds
-each (Tats hand-applies). Part A adds none.
+2.58) all built, CI-green, squash-merged. Migrations **0051–0055** are **APPLIED + VERIFIED on Supabase
+(2026-06-18)** — see [`docs/test-backlog.md`](test-backlog.md) ACTION 1. Part A added none.
 
 ---
 
