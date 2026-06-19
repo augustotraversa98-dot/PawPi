@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
@@ -22,6 +21,14 @@ import {
   X,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
@@ -64,48 +71,50 @@ export default function TrainingServiceScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Training 🎓
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Hire a trainer — 1:1, group classes, and programs
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.push("/provider-messages")}
           accessibilityLabel="Messages"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: RADIUS.chip,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           <MessageSquare size={20} color={COLORS.coral} />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* The pet's enrollments — progress + video lessons, owner-readable. */}
         {activePrograms.length > 0 ? (
@@ -117,7 +126,7 @@ export default function TrainingServiceScreen() {
           </>
         ) : null}
 
-        <SectionLabel style={{ marginTop: activePrograms.length ? 24 : 0 }}>
+        <SectionLabel style={{ marginTop: activePrograms.length ? SPACING.xxl : 0 }}>
           TRAINERS NEAR YOU
         </SectionLabel>
 
@@ -169,15 +178,10 @@ function ProgramCard({ program }) {
     : [];
 
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View
         style={{
@@ -186,18 +190,18 @@ function ProgramCard({ program }) {
           justifyContent: "space-between",
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
           {program.title || "Program"}
         </Text>
         <StatusPill status={program.status} />
       </View>
       {program.provider_name ? (
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
           {program.provider_name}
         </Text>
       ) : null}
 
-      <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 8 }}>
+      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: SPACING.sm }]}>
         {completed} of {program.total_sessions} sessions completed
       </Text>
 
@@ -205,7 +209,7 @@ function ProgramCard({ program }) {
       {progress.map((s) => (
         <View
           key={s.id}
-          style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10 }}
+          style={{ flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm, marginTop: SPACING.sm + 2 }}
         >
           {s.status === "completed" ? (
             <CheckCircle2 size={18} color="#3FA34D" />
@@ -213,11 +217,11 @@ function ProgramCard({ program }) {
             <Circle size={18} color={COLORS.peach} />
           )}
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.warmBrown }}>
+            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.warmBrown }]}>
               {s.session_title || "Session"}
             </Text>
             {s.progress_note ? (
-              <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
                 {s.progress_note}
               </Text>
             ) : null}
@@ -230,14 +234,14 @@ function ProgramCard({ program }) {
 
       {/* Program-level async video lessons. */}
       {programVideos.length > 0 ? (
-        <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 12, fontWeight: "800", color: COLORS.mutedBrown }}>
+        <View style={{ marginTop: SPACING.md }}>
+          <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.mutedBrown }]}>
             VIDEO LESSONS
           </Text>
           <VideoLink count={programVideos.length} />
         </View>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -245,7 +249,7 @@ function VideoLink({ count }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
       <PlayCircle size={14} color={COLORS.coral} />
-      <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700" }}>
+      <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
         Watch {count} video lesson{count > 1 ? "s" : ""}
       </Text>
     </View>
@@ -263,49 +267,38 @@ function StatusPill({ status }) {
     <View
       style={{
         backgroundColor: s.color + "22",
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm + 2,
         paddingVertical: 3,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "800", color: s.color }}>{s.label}</Text>
+      <Text style={[TYPE.caption, { fontWeight: "800", color: s.color, letterSpacing: 0 }]}>{s.label}</Text>
     </View>
   );
 }
 
 function ProviderCard({ provider, onOpen, onBook }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 14,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="md"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md + 2 }}
     >
-      <TouchableOpacity
+      <PressableScale
         onPress={onOpen}
-        activeOpacity={0.85}
-        style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+        style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md + 2 }}
       >
         {provider.logo_url ? (
           <Image
             source={{ uri: provider.logo_url }}
-            style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: COLORS.sand }}
+            style={{ width: 52, height: 52, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
           />
         ) : (
           <View
             style={{
               width: 52,
               height: 52,
-              borderRadius: 14,
+              borderRadius: RADIUS.control,
               backgroundColor: COLORS.sand,
               justifyContent: "center",
               alignItems: "center",
@@ -316,12 +309,12 @@ function ProviderCard({ provider, onOpen, onBook }) {
         )}
         <View style={{ flex: 1 }}>
           <Text
-            style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
+            style={[TYPE.title2, { fontSize: 17, lineHeight: 22, color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
             {provider.name}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: 2 }}>
             <RatingBadge
               avgRating={provider.avg_rating}
               reviewCount={provider.review_count}
@@ -329,7 +322,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
           </View>
           {provider.bio ? (
             <Text
-              style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}
               numberOfLines={2}
             >
               {provider.bio}
@@ -337,24 +330,23 @@ function ProviderCard({ provider, onOpen, onBook }) {
           ) : null}
         </View>
         <ChevronRight size={20} color={COLORS.mutedBrown} />
-      </TouchableOpacity>
+      </PressableScale>
 
-      <TouchableOpacity
+      <PressableScale
         onPress={onBook}
-        activeOpacity={0.9}
         style={{
-          marginTop: 12,
+          marginTop: SPACING.md,
           backgroundColor: COLORS.coral,
-          borderRadius: 14,
-          paddingVertical: 11,
+          borderRadius: RADIUS.control,
+          paddingVertical: SPACING.md - 1,
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>
+        <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
           Book training
         </Text>
-      </TouchableOpacity>
-    </View>
+      </PressableScale>
+    </Card>
   );
 }
 
@@ -438,66 +430,67 @@ function BookTrainingModal({ provider, petId, onClose }) {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 16,
+            padding: SPACING.lg,
             borderBottomWidth: 1,
             borderBottomColor: COLORS.peach,
             backgroundColor: COLORS.card,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
             Book training
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
+        <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.lg }}>
           {provider ? (
-            <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
               {provider.name}
             </Text>
           ) : null}
 
           <FieldLabel>Service</FieldLabel>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
             {SERVICE_TYPES.map((t) => {
               const selected = serviceType === t.key;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={t.key}
                   onPress={() => setServiceType(t.key)}
-                  activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   style={{
-                    paddingHorizontal: 14,
+                    paddingHorizontal: SPACING.md + 2,
                     paddingVertical: 9,
-                    borderRadius: 999,
+                    borderRadius: RADIUS.chip,
                     borderWidth: 1,
                     borderColor: selected ? COLORS.coral : COLORS.peach,
                     backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
                   }}
                 >
                   <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: selected ? COLORS.coral : COLORS.warmBrown,
-                    }}
+                    style={[
+                      TYPE.subhead,
+                      {
+                        fontWeight: "700",
+                        color: selected ? COLORS.coral : COLORS.warmBrown,
+                      },
+                    ]}
                   >
                     {t.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               );
             })}
           </View>
 
           {serviceType === "group_class" ? (
             <>
-              <FieldLabel style={{ marginTop: 16 }}>Pick a class</FieldLabel>
+              <FieldLabel style={{ marginTop: SPACING.lg }}>Pick a class</FieldLabel>
               {!classes || classes.length === 0 ? (
-                <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
                   This trainer has no group classes yet.
                 </Text>
               ) : (
@@ -506,43 +499,38 @@ function BookTrainingModal({ provider, petId, onClose }) {
                   const full =
                     c.capacity != null && (c.attendee_count ?? 0) >= c.capacity;
                   return (
-                    <TouchableOpacity
+                    <PressableScale
                       key={c.id}
                       disabled={full}
                       onPress={() => setSelectedClassId(c.id)}
-                      activeOpacity={0.85}
                       style={{
-                        padding: 12,
-                        borderRadius: 12,
+                        padding: SPACING.md,
+                        borderRadius: RADIUS.control,
                         borderWidth: 1,
                         borderColor: selected ? COLORS.coral : COLORS.peach,
                         backgroundColor: selected ? COLORS.coral + "12" : COLORS.card,
-                        marginTop: 8,
+                        marginTop: SPACING.sm,
                         opacity: full ? 0.5 : 1,
                       }}
                     >
                       <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "700",
-                          color: COLORS.warmBrown,
-                        }}
+                        style={[TYPE.callout, { fontWeight: "700", color: COLORS.warmBrown }]}
                       >
                         {c.title || "Group class"}
                       </Text>
-                      <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+                      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
                         {c.capacity != null
                           ? `${c.attendee_count ?? 0} / ${c.capacity} seats${full ? " · Full" : ""}`
                           : `${c.attendee_count ?? 0} enrolled`}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   );
                 })
               )}
             </>
           ) : (
             <>
-              <FieldLabel style={{ marginTop: 16 }}>Title</FieldLabel>
+              <FieldLabel style={{ marginTop: SPACING.lg }}>Title</FieldLabel>
               <TextInput
                 value={title}
                 onChangeText={setTitle}
@@ -556,7 +544,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
               />
               {serviceType === "program" ? (
                 <>
-                  <FieldLabel style={{ marginTop: 16 }}>Number of sessions</FieldLabel>
+                  <FieldLabel style={{ marginTop: SPACING.lg }}>Number of sessions</FieldLabel>
                   <TextInput
                     value={totalSessions}
                     onChangeText={setTotalSessions}
@@ -570,23 +558,22 @@ function BookTrainingModal({ provider, petId, onClose }) {
             </>
           )}
 
-          <TouchableOpacity
+          <PressableScale
             onPress={submit}
             disabled={pending}
-            activeOpacity={0.9}
             style={{
-              marginTop: 24,
+              marginTop: SPACING.xxl,
               backgroundColor: COLORS.coral,
-              borderRadius: 16,
-              paddingVertical: 15,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg - 1,
               alignItems: "center",
               opacity: pending ? 0.6 : 1,
             }}
           >
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
               {pending ? "Booking…" : "Confirm booking"}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </KeyboardAwareScrollView>
       </View>
     </Modal>
@@ -595,10 +582,10 @@ function BookTrainingModal({ provider, petId, onClose }) {
 
 const inputStyle = {
   backgroundColor: COLORS.card,
-  borderRadius: 12,
+  borderRadius: RADIUS.control,
   borderWidth: 1,
   borderColor: COLORS.peach,
-  padding: 12,
+  padding: SPACING.md,
   fontSize: 14,
   color: COLORS.warmBrown,
   minHeight: 48,
@@ -608,7 +595,8 @@ function FieldLabel({ children, style }) {
   return (
     <Text
       style={[
-        { fontSize: 13, fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
+        TYPE.subhead,
+        { fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
         style,
       ]}
     >
@@ -621,11 +609,11 @@ function SectionLabel({ children, style }) {
   return (
     <Text
       style={[
+        TYPE.subhead,
         {
-          fontSize: 13,
           fontWeight: "800",
           color: COLORS.mutedBrown,
-          marginBottom: 14,
+          marginBottom: SPACING.md + 2,
           letterSpacing: 0.6,
         },
         style,
@@ -638,32 +626,30 @@ function SectionLabel({ children, style }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.xxl + 4, alignItems: "center" }}
     >
       <GraduationCap size={32} color={COLORS.mutedBrown} />
       <Text
-        style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}
+        style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}
       >
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginTop: 6,
+            textAlign: "center",
+          },
+        ]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }

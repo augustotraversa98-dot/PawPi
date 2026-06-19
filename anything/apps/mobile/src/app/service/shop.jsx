@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
@@ -23,6 +22,8 @@ import {
   Pill,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useDiscoverProviders,
@@ -65,61 +66,58 @@ export default function ShopScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Shop 🛍️
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Food, toys, and supplies — delivered
           </Text>
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Tab switcher */}
-      <View style={{ flexDirection: "row", gap: 8, padding: 16, paddingBottom: 4 }}>
+      <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.lg, paddingBottom: SPACING.xs }}>
         {TABS.map((t) => {
           const selected = tab === t.key;
           return (
-            <TouchableOpacity
+            <PressableScale
               key={t.key}
               onPress={() => setTab(t.key)}
-              activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               style={{
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 999,
+                paddingHorizontal: SPACING.lg - 2,
+                paddingVertical: SPACING.sm,
+                borderRadius: RADIUS.chip,
                 borderWidth: 1,
                 borderColor: selected ? COLORS.coral : COLORS.peach,
                 backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
               }}
             >
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: selected ? COLORS.coral : COLORS.warmBrown,
-                }}
+                style={[
+                  TYPE.subhead,
+                  { color: selected ? COLORS.coral : COLORS.warmBrown },
+                ]}
               >
                 {t.label}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
       </View>
@@ -175,59 +173,58 @@ function BrowseTab({ onOpenShop }) {
 
 function ShopCard({ shop, onPress }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      {shop.logo_url ? (
-        <Image
-          source={{ uri: shop.logo_url }}
-          style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: COLORS.sand }}
-        />
-      ) : (
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <ShoppingBag size={24} color={COLORS.coral} />
-        </View>
-      )}
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
-          numberOfLines={1}
-        >
-          {shop.name}
-        </Text>
-        <RatingBadge avgRating={shop.avg_rating} reviewCount={shop.review_count} />
-        {shop.bio ? (
-          <Text
-            style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
-            numberOfLines={2}
+    <PressableScale onPress={onPress}>
+      <Card
+        level="sm"
+        radius={RADIUS.card}
+        borderColor={COLORS.peach}
+        style={{
+          padding: SPACING.lg,
+          marginBottom: SPACING.lg - 2,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.lg - 2,
+        }}
+      >
+        {shop.logo_url ? (
+          <Image
+            source={{ uri: shop.logo_url }}
+            style={{ width: 52, height: 52, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: RADIUS.control,
+              backgroundColor: COLORS.sand,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            {shop.bio}
+            <ShoppingBag size={24} color={COLORS.coral} />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[TYPE.headline, { fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }]}
+            numberOfLines={1}
+          >
+            {shop.name}
           </Text>
-        ) : null}
-      </View>
-      <ChevronRight size={20} color={COLORS.mutedBrown} />
-    </TouchableOpacity>
+          <RatingBadge avgRating={shop.avg_rating} reviewCount={shop.review_count} />
+          {shop.bio ? (
+            <Text
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}
+              numberOfLines={2}
+            >
+              {shop.bio}
+            </Text>
+          ) : null}
+        </View>
+        <ChevronRight size={20} color={COLORS.mutedBrown} />
+      </Card>
+    </PressableScale>
   );
 }
 
@@ -302,29 +299,28 @@ function ShopCatalogModal({ shop, petId, onClose }) {
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-        <View
-          style={{
+        <GlassSurface
+          intensity={BLUR.thick}
+          style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+          contentStyle={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.peach,
-            backgroundColor: COLORS.card,
+            padding: SPACING.lg,
           }}
         >
           <Text
-            style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}
+            style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
             {shop?.name || "Shop"}
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </GlassSurface>
 
-        <RefreshableScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140 }}>
+        <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 140 }}>
           {isLoading ? (
             <View style={{ paddingVertical: 48, alignItems: "center" }}>
               <ActivityIndicator color={COLORS.coral} />
@@ -349,37 +345,36 @@ function ShopCatalogModal({ shop, petId, onClose }) {
 
         {/* Cart bar */}
         {cartLines.length > 0 ? (
-          <View
+          <GlassSurface
+            intensity={BLUR.thick}
             style={{
               position: "absolute",
               left: 0,
               right: 0,
               bottom: 0,
-              padding: 16,
-              backgroundColor: COLORS.card,
               borderTopWidth: 1,
-              borderTopColor: COLORS.peach,
+              borderColor: MATERIALS.glassBorder,
             }}
+            contentStyle={{ padding: SPACING.lg }}
           >
-            <TouchableOpacity
+            <PressableScale
               onPress={doCheckout}
               disabled={checkout.isPending}
-              activeOpacity={0.9}
               style={{
                 backgroundColor: COLORS.coral,
-                borderRadius: 16,
+                borderRadius: RADIUS.control,
                 paddingVertical: 15,
                 alignItems: "center",
                 opacity: checkout.isPending ? 0.6 : 1,
               }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
                 {checkout.isPending
                   ? "Checking out…"
                   : `Checkout · ${money(total, shop?.currency)}`}
               </Text>
-            </TouchableOpacity>
-          </View>
+            </PressableScale>
+          </GlassSurface>
         ) : null}
       </View>
     </Modal>
@@ -389,31 +384,30 @@ function ShopCatalogModal({ shop, petId, onClose }) {
 function ProductRow({ product, qty, onAdd, onRemove }) {
   const soldOut = product.stock_qty <= 0;
   return (
-    <View
+    <Card
+      level="sm"
+      radius={RADIUS.md}
+      borderColor={COLORS.peach}
       style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 12,
+        padding: SPACING.lg - 2,
+        marginBottom: SPACING.md,
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
+        gap: SPACING.md,
         opacity: soldOut ? 0.6 : 1,
       }}
     >
       {Array.isArray(product.image_urls) && product.image_urls[0] ? (
         <Image
           source={{ uri: product.image_urls[0] }}
-          style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.sand }}
+          style={{ width: 56, height: 56, borderRadius: RADIUS.sm, backgroundColor: COLORS.sand }}
         />
       ) : (
         <View
           style={{
             width: 56,
             height: 56,
-            borderRadius: 12,
+            borderRadius: RADIUS.sm,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
@@ -425,39 +419,39 @@ function ProductRow({ product, qty, onAdd, onRemove }) {
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
-            style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown, flexShrink: 1 }}
+            style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown, flexShrink: 1 }]}
             numberOfLines={1}
           >
             {product.name}
           </Text>
           {product.is_rx ? <RxBadge /> : null}
         </View>
-        <Text style={{ fontSize: 13, color: COLORS.coral, fontWeight: "700", marginTop: 2 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}>
           {money(product.price_cents, product.currency)}
         </Text>
-        <Text style={{ fontSize: 11, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 2 }]}>
           {soldOut ? "Sold out" : `${product.stock_qty} in stock`}
         </Text>
       </View>
 
       {soldOut ? null : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
           {qty > 0 ? (
             <>
-              <TouchableOpacity onPress={onRemove} accessibilityLabel="Remove one">
+              <PressableScale onPress={onRemove} accessibilityLabel="Remove one">
                 <Minus size={20} color={COLORS.warmBrown} />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+              </PressableScale>
+              <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
                 {qty}
               </Text>
             </>
           ) : null}
-          <TouchableOpacity onPress={onAdd} accessibilityLabel="Add to cart">
+          <PressableScale onPress={onAdd} accessibilityLabel="Add to cart">
             <Plus size={20} color={COLORS.coral} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -469,13 +463,13 @@ function RxBadge() {
         alignItems: "center",
         gap: 3,
         backgroundColor: COLORS.terracotta + "22",
-        borderRadius: 999,
+        borderRadius: RADIUS.chip,
         paddingHorizontal: 7,
         paddingVertical: 2,
       }}
     >
       <Pill size={11} color={COLORS.terracotta} />
-      <Text style={{ fontSize: 10, fontWeight: "800", color: COLORS.terracotta }}>Rx</Text>
+      <Text style={[TYPE.caption, { fontSize: 10, fontWeight: "800", color: COLORS.terracotta, letterSpacing: 0 }]}>Rx</Text>
     </View>
   );
 }
@@ -509,15 +503,11 @@ function OrdersTab() {
 function OrderCard({ order }) {
   const items = Array.isArray(order.items) ? order.items : [];
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.md}
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View
         style={{
@@ -526,23 +516,23 @@ function OrderCard({ order }) {
           justifyContent: "space-between",
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+        <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
           {order.provider_name || "Shop"}
         </Text>
         <StatusPill status={order.fulfillment_status || order.status} />
       </View>
-      <Text style={{ fontSize: 13, color: COLORS.coral, fontWeight: "700", marginTop: 4 }}>
+      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "700", marginTop: SPACING.xs }]}>
         {money(order.amount_cents, order.currency)}
       </Text>
       {items.map((it) => (
-        <Text key={it.id} style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+        <Text key={it.id} style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
           {it.quantity} × {it.name}
         </Text>
       ))}
-      <Text style={{ fontSize: 11, color: COLORS.mutedBrown, marginTop: 8 }}>
+      <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm }]}>
         Payment: {order.status}
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -589,15 +579,11 @@ function SubscriptionsTab() {
 
 function SubscriptionCard({ sub, onCancel }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.md}
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View
         style={{
@@ -606,10 +592,10 @@ function SubscriptionCard({ sub, onCancel }) {
           justifyContent: "space-between",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, flex: 1 }}>
           <RefreshCw size={16} color={COLORS.coral} />
           <Text
-            style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}
+            style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
             {sub.product_name || "Product"}
@@ -617,21 +603,20 @@ function SubscriptionCard({ sub, onCancel }) {
         </View>
         <StatusPill status={sub.status} />
       </View>
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
         {sub.quantity} × · {sub.plan} · {sub.provider_name || ""}
       </Text>
       {sub.status !== "cancelled" ? (
-        <TouchableOpacity
+        <PressableScale
           onPress={onCancel}
-          activeOpacity={0.85}
-          style={{ marginTop: 12, alignSelf: "flex-start" }}
+          style={{ marginTop: SPACING.md, alignSelf: "flex-start" }}
         >
-          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.terracotta }}>
+          <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.terracotta }]}>
             Cancel auto-reorder
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -652,12 +637,12 @@ function StatusPill({ status }) {
     <View
       style={{
         backgroundColor: s.color + "22",
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm + 2,
         paddingVertical: 3,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "800", color: s.color }}>{s.label}</Text>
+      <Text style={[TYPE.caption, { fontWeight: "800", color: s.color, letterSpacing: 0 }]}>{s.label}</Text>
     </View>
   );
 }
@@ -666,11 +651,11 @@ function SectionLabel({ children, style }) {
   return (
     <Text
       style={[
+        TYPE.subhead,
         {
-          fontSize: 13,
           fontWeight: "800",
           color: COLORS.mutedBrown,
-          marginBottom: 14,
+          marginBottom: SPACING.lg - 2,
           letterSpacing: 0.6,
         },
         style,
@@ -683,30 +668,32 @@ function SectionLabel({ children, style }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      borderColor={COLORS.peach}
       style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
+        padding: SPACING.xxl + SPACING.xs,
         alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
       }}
     >
       <ShoppingBag size={32} color={COLORS.mutedBrown} />
-      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}>
+      <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}>
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginTop: SPACING.xs + 2,
+            textAlign: "center",
+          },
+        ]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }
