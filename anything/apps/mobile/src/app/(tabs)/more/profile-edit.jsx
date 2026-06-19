@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Camera } from "lucide-react-native";
@@ -56,6 +57,32 @@ export default function ProfileEditScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Pick a new pet photo from the library (the save handler uploads it). Replaces the previous
+  // "coming soon" placeholder (App Store readiness 2.78 — no no-op buttons).
+  const pickPhoto = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access to change your pet's photo.",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setFormData((prev) => ({ ...prev, photo: result.assets[0].uri }));
+      }
+    } catch (e) {
+      Alert.alert("Couldn't pick a photo", e?.message || "Please try again.");
+    }
+  };
 
   // Pre-fill form with current pet data
   useEffect(() => {
@@ -280,7 +307,8 @@ export default function ProfileEditScreen() {
               </View>
             )}
             <TouchableOpacity
-              onPress={() => Alert.alert("Info", "Photo upload coming soon!")}
+              testID="change-photo"
+              onPress={pickPhoto}
               style={{
                 marginTop: 12,
                 paddingVertical: 10,

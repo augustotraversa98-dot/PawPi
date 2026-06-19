@@ -102,8 +102,47 @@ async function POST(request) {
   }
 }
 
+// DELETE /api/health/weight-logs?id= — owner removes one of their own weight entries (App Store
+// readiness 2.78: completes the previously no-op delete button). Owner-scoped; a non-owner deletes
+// ZERO → 404.
+async function DELETE(request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userProfileRows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
+    if (userProfileRows.length === 0) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+    const userProfileId = userProfileRows[0].id;
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return Response.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const deleted = await sql`
+      DELETE FROM health_weight_logs
+      WHERE id = ${parseInt(id)} AND owner_user_id = ${userProfileId}
+      RETURNING id
+    `;
+    if (deleted.length === 0) {
+      return Response.json({ error: "Weight entry not found" }, { status: 404 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("Error deleting weight log:", error);
+    return Response.json({ error: "Failed to delete weight log" }, { status: 500 });
+  }
+}
+
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
 const wrappedGET = withRequestContext(GET);
 const wrappedPOST = withRequestContext(POST);
-export { wrappedGET as GET, wrappedPOST as POST };
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedGET as GET, wrappedPOST as POST, wrappedDELETE as DELETE };

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import {
   X,
@@ -201,10 +202,29 @@ export default function WeightModal({ visible, onClose }) {
     setShowVetFields(false);
   };
 
-  const handleDelete = async (entryId) => {
-    // TODO: Implement delete endpoint
-    console.log("[WeightTracker] Delete not yet implemented:", entryId);
-    alert("Delete functionality coming soon");
+  const handleDelete = (entryId) => {
+    Alert.alert("Delete this entry?", "This weight entry will be removed.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const res = await fetch(
+              `/api/health/weight-logs?id=${encodeURIComponent(entryId)}`,
+              { method: "DELETE" },
+            );
+            if (!res.ok) throw new Error("Failed to delete entry");
+            await queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+            await queryClient.invalidateQueries({
+              queryKey: ["health", "weight-logs"],
+            });
+          } catch (e) {
+            Alert.alert("Couldn't delete", e.message || "Please try again.");
+          }
+        },
+      },
+    ]);
   };
 
   const weightEntries = weightHistory?.logs || [];
