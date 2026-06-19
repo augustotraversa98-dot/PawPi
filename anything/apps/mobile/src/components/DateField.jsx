@@ -7,13 +7,16 @@ import {
   initialPickerDate,
   toCanonicalDate,
 } from "../utils/canonicalDateTime";
+import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
 
+// 2.77: sourced from the design tokens (was a local hex map) — same hues, softer
+// radius + the shared input look.
 const C = {
-  card: "#FFFBF7",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  peach: "#FFE5D9",
-  coral: "#FF6F61",
+  card: MATERIALS.surface,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
+  peach: MATERIALS.hairline,
+  coral: COLORS.coral,
 };
 
 /**
@@ -58,8 +61,8 @@ export default function DateField({
         style={[
           {
             backgroundColor: C.card,
-            borderRadius: 12,
-            padding: 12,
+            borderRadius: RADIUS.control,
+            padding: SPACING.md,
             borderWidth: 1,
             borderColor: C.peach,
             flexDirection: "row",
@@ -71,8 +74,8 @@ export default function DateField({
       >
         <Text
           style={[
+            TYPE.body,
             {
-              fontSize: 15,
               color: display ? C.warmBrown : C.mutedBrown,
             },
             textStyle,

@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useEffect } from "react";
-import { View } from "react-native";
+import { View, StyleSheet } from "react-native";
 import {
   Home,
   HeartPulse,
@@ -11,6 +11,14 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
+import { GlassSurface } from "@/components/ui";
+import {
+  COLORS,
+  RADIUS,
+  MATERIALS,
+  ELEVATION,
+  BLUR,
+} from "@/constants/theme";
 import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
 
 // The Profile tab icon is the active pet's PHOTO (ticket 2.60) — a small circular
@@ -22,7 +30,7 @@ function ProfileTabIcon({ focused }) {
     <View
       style={{
         borderWidth: 2,
-        borderColor: focused ? "#FF6F61" : "transparent",
+        borderColor: focused ? COLORS.coral : "transparent",
         borderRadius: 16,
         padding: 1,
       }}
@@ -73,29 +81,43 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         // Floating Instagram-style pill (ticket 2.59): a rounded bar with side
-        // margins lifted off the bottom edge (above the home indicator) with a
-        // soft shadow and no top hairline. Kept IN-FLOW (margins reserve its
-        // footprint) rather than position:absolute, so it never covers the last
-        // row of scrolling content — no per-screen padding needed. Routes, tabs
-        // and navigation behavior are unchanged (purely visual).
+        // margins lifted off the bottom edge (above the home indicator). Kept
+        // IN-FLOW (margins reserve its footprint) rather than position:absolute,
+        // so it never covers the last row of scrolling content. Routes, tabs and
+        // navigation behavior are unchanged (purely visual).
+        //
+        // Liquid Glass (2.77): the fill is now a translucent expo-blur surface
+        // (tabBarBackground) so content diffuses softly behind the bar, with a
+        // lighter hairline + softer shadow. The frame itself is transparent so
+        // the blur shows; GlassSurface falls back to a solid cream fill under
+        // Reduce Transparency.
         tabBarStyle: {
           marginHorizontal: 16,
           marginBottom: Math.max(insets.bottom, 12),
           height: 62,
-          borderRadius: 28,
-          backgroundColor: "#FFF7EF",
+          borderRadius: RADIUS.bar,
+          backgroundColor: "transparent",
           borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: "#FFD9B3",
+          borderWidth: 0,
           paddingBottom: 0,
           paddingTop: 8,
-          shadowColor: "#B75D32",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.14,
-          shadowRadius: 16,
-          elevation: 12,
+          // Softer, warmer lift than the old chunky shadow.
+          ...ELEVATION.lg,
         },
-        tabBarActiveTintColor: "#FF6F61",
+        tabBarBackground: () => (
+          <GlassSurface
+            intensity={BLUR.thick}
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                borderRadius: RADIUS.bar,
+                borderWidth: 1,
+                borderColor: MATERIALS.glassBorder,
+              },
+            ]}
+          />
+        ),
+        tabBarActiveTintColor: COLORS.coral,
         tabBarInactiveTintColor: "#B5947F",
         tabBarItemStyle: {
           paddingVertical: 4,
