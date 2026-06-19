@@ -22,6 +22,11 @@ export function GlassSurface({
   // Opaque color used when Reduce Transparency is on.
   solidColor = MATERIALS.solidFallback,
   borderColor = MATERIALS.glassBorder,
+  // Android blur method. Default 'none' renders a flat translucent overlay (no
+  // real blur); pass "dimezisBlurView" when you need an actual translucent blur
+  // of the content behind (e.g. the locked-feed tease). Ignored on iOS, which
+  // always uses the native translucent effect.
+  experimentalBlurMethod,
   style,
   contentStyle,
   // Test/override escape hatch; defaults to the live OS setting.
@@ -47,6 +52,7 @@ export function GlassSurface({
       <BlurView
         intensity={intensity}
         tint={tint}
+        experimentalBlurMethod={experimentalBlurMethod}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />

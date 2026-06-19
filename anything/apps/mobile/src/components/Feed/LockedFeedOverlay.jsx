@@ -8,26 +8,40 @@ import {
   SPACING,
   MATERIALS,
   ELEVATION,
-  BLUR,
 } from "@/constants/theme";
 import { GlassSurface, Card, PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
 
+// How many posts to render behind the lock so the area below the lock card
+// doesn't look empty (BeReal-style tease).
+const PREVIEW_COUNT = 6;
+
+// The frosted "tease" scrim. Posts render at FULL opacity behind it and the
+// blur + a light cream wash do the obscuring — NOT opacity — so the content is
+// always clearly present-but-blurred (the old stack of BlurView(40) + a 72%
+// tint over a 0.35 preview read as opaque/empty on device). The wash alone
+// (rgba ~0.5) keeps the tease working even if the platform's blur is weak —
+// correctness (posts visibly there, but not readable) beats a perfect blur.
+const LOCK_BLUR_INTENSITY = 16;
+const LOCK_WASH = "rgba(255, 247, 239, 0.5)"; // cream @ 50%
+
 export function LockedFeedOverlay({ posts, petName, onPostPress }) {
   return (
     <View>
-      {/* Blurred / dimmed preview of 2 posts */}
-      <View pointerEvents="none" style={{ opacity: 0.35 }}>
-        {posts.slice(0, 2).map((post) => (
+      {/* Full-opacity preview of the top posts — the blur/wash obscures them,
+          not opacity, so they stay clearly visible behind the lock. */}
+      <View pointerEvents="none">
+        {posts.slice(0, PREVIEW_COUNT).map((post) => (
           <PostCard key={post.id} post={post} liked={false} locked />
         ))}
       </View>
 
-      {/* Lock overlay — a frosted-glass scrim (2.77) over the dimmed preview;
+      {/* Lock overlay — a frosted-glass scrim (2.77) over the visible preview;
           falls back to a solid cream wash under Reduce Transparency. */}
       <GlassSurface
-        intensity={BLUR.regular}
-        glassColor={MATERIALS.glassTint}
+        intensity={LOCK_BLUR_INTENSITY}
+        glassColor={LOCK_WASH}
+        experimentalBlurMethod="dimezisBlurView"
         style={StyleSheet.absoluteFill}
         contentStyle={{
           flex: 1,
