@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // NOT re-test the throw; it pins the resulting anonymous contract instead. The
 // throw->500 end-to-end through the live stack stays deferred to Phase C.
 
-import { GET } from './route';
+import { GET, PATCH } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
@@ -60,5 +60,31 @@ describe('GET /api/pets — authenticated path', () => {
     expect(res.status).not.toBe(500);
     expect(await res.json()).toEqual({ error: 'Unauthorized' });
     expect(sql).not.toHaveBeenCalled();
+  });
+});
+
+// The legacy owner_user_id REPAIR handler is DORMANT under the RLS model and gated OFF by default
+// (ENABLE_PET_OWNERSHIP_REPAIR). It must short-circuit to 410 before touching auth or the DB.
+describe('PATCH /api/pets — repair gate', () => {
+  const patch = () => new Request('http://localhost/api/pets', { method: 'PATCH' });
+
+  it('disabled by default -> 410, never touches auth or the DB', async () => {
+    delete process.env.ENABLE_PET_OWNERSHIP_REPAIR;
+    const res = await PATCH(patch());
+    expect(res.status).toBe(410);
+    expect(auth).not.toHaveBeenCalled();
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('enabled but anonymous -> 401', async () => {
+    process.env.ENABLE_PET_OWNERSHIP_REPAIR = 'true';
+    auth.mockResolvedValue(undefined);
+    try {
+      const res = await PATCH(patch());
+      expect(res.status).toBe(401);
+      expect(sql).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.ENABLE_PET_OWNERSHIP_REPAIR;
+    }
   });
 });
