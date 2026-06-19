@@ -77,6 +77,20 @@ describe('food_recalls reference data', () => {
     await asApp(B.profileId, async (tx) => expect((await tx`select id from food_recalls`).length).toBe(1));
     await asApp(null, async (tx) => expect((await tx`select id from food_recalls`).length).toBe(0));
   });
+
+  it('ingest is idempotent on (source, external_ref) — same id, no duplicate, fields refreshed', async () => {
+    const [{ id: id1 }] = await asApp(null, (tx) => tx`
+      select ingest_food_recall('FDA', 'R-9', 'Acme', 'Chicken', 'salmonella', null, null, '{}'::jsonb) as id
+    `);
+    // Re-ingest the SAME (source, external_ref) with an updated reason → upsert, not a new row.
+    const [{ id: id2 }] = await asApp(null, (tx) => tx`
+      select ingest_food_recall('FDA', 'R-9', 'Acme', 'Chicken', 'listeria', null, null, '{}'::jsonb) as id
+    `);
+    expect(id2).toBe(id1); // same row
+    const rows = await raw`select id, reason from food_recalls where source = 'FDA' and external_ref = 'R-9'`;
+    expect(rows.length).toBe(1); // exactly one row, no duplicate
+    expect(rows[0].reason).toBe('listeria'); // fields refreshed
+  });
 });
 
 describe('match_food_recall DEFINER', () => {
@@ -114,6 +128,28 @@ describe('match_food_recall DEFINER', () => {
     const [{ n }] = await asApp(null, (tx) => tx`select match_food_recall(${recallId}) as n`);
     expect(n).toBe(0); // already matched → no new row
     const [{ c }] = await raw`select count(*)::int as c from pet_food_recall_matches`;
+    expect(c).toBe(1);
+  });
+});
+
+describe('pet_food_recall_matches dismiss (owner-scoped UPDATE)', () => {
+  beforeEach(async () => {
+    const [{ id: recallId }] = await asApp(null, (tx) => tx`
+      select ingest_food_recall('FDA', 'R-5', 'Acme', 'Chicken', 'salmonella', null, null, '{}'::jsonb) as id
+    `);
+    await asApp(null, (tx) => tx`select match_food_recall(${recallId})`); // creates A's match
+  });
+
+  it('the owner can dismiss their own alert; another owner dismisses ZERO', async () => {
+    // B cannot dismiss A's alert — RLS scopes the UPDATE to the owner, so it touches no rows.
+    await asApp(B.profileId, async (tx) =>
+      expect(await tx`update pet_food_recall_matches set dismissed_at = now() where dismissed_at is null returning id`).toHaveLength(0),
+    );
+    // A dismisses their own alert.
+    await asApp(A.profileId, async (tx) =>
+      expect(await tx`update pet_food_recall_matches set dismissed_at = now() where dismissed_at is null returning id`).toHaveLength(1),
+    );
+    const [{ c }] = await raw`select count(*)::int as c from pet_food_recall_matches where dismissed_at is not null`;
     expect(c).toBe(1);
   });
 });

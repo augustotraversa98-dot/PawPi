@@ -244,6 +244,15 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
   `nutrition-plans/[id]` (owner edit/delete), and `recall-matches` + `recall-matches/[id]` (owner
   list/dismiss). Each pins 401/404/400 correctness, owner-vs-non-owner ZERO-row → 404, the DEFINER
   result codes, and clean-degrade paths. **web vitest 1068 → 1130 (+62).**
+- **Coverage — real-Postgres integration deepening (test-only).** Closed gaps the existing Wave 7
+  RLS suites named but never asserted: `account-deletion` now proves the **ON DELETE SET NULL survival**
+  (another user's `lost_sightings` row that references the deleted account survives with reporter nulled,
+  their `lost_report` intact), a **no-pet profile** deletes cleanly, and a **repeat call is a harmless
+  no-op** (idempotent); `nutrition-recalls` adds **ingest_food_recall idempotency** (same
+  source/external_ref upserts one row, refreshes fields) + **owner-only dismiss** isolation;
+  `rx-fulfillment` adds **fulfill_rx_order double-call → already_done, no double-decrement** + not_found;
+  `insurance-policies` adds **activate_insurance_policy double-call → not_bindable, bound once** +
+  not_found. **web integration 567 → 576 (+9).** Completeness guard still green.
 
 ---
 

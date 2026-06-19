@@ -201,4 +201,25 @@ describe('fulfill_rx_order safe path consumes a refill', () => {
       expect(await tx`update prescriptions set refills_remaining = 99 where id = ${RX_ID} returning id`).toHaveLength(0);
     });
   });
+
+  it('fulfilling twice is idempotent — second call returns already_done, no double-decrement', async () => {
+    await asApp(PH.profileId, async (tx) => {
+      const [{ result }] = await tx`select fulfill_rx_order(${FUL_ID}) as result`;
+      expect(result).toBe('fulfilled');
+    });
+    // Second fulfill on the now-'fulfilled' order: guarded, no further refill consumed.
+    await asApp(PH.profileId, async (tx) => {
+      const [{ result }] = await tx`select fulfill_rx_order(${FUL_ID}) as result`;
+      expect(result).toBe('already_done');
+    });
+    const [{ refills_remaining }] = await raw`select refills_remaining from prescriptions where id = ${RX_ID}`;
+    expect(refills_remaining).toBe(1); // decremented exactly once (2→1), not twice
+  });
+
+  it('fulfilling an unknown order returns not_found', async () => {
+    await asApp(PH.profileId, async (tx) => {
+      const [{ result }] = await tx`select fulfill_rx_order(999999) as result`;
+      expect(result).toBe('not_found');
+    });
+  });
 });
