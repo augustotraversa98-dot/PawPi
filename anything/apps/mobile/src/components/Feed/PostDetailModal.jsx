@@ -13,7 +13,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PawPrint, Megaphone, Trash2, X, Pencil } from "lucide-react-native";
-import { COLORS, TAG_COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TAG_COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+} from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { DailyShareButton } from "./DailyShareButton";
@@ -82,6 +90,7 @@ export const PostDetailModal = memo(function PostDetailModal({
   // Edit-my-caption (ticket 2.65): shown only on the owner's own post (same
   // signal as delete) and when a save handler is wired. Text only.
   const displayCaption = localCaption ?? caption;
+  const hasCaption = !!(displayCaption && String(displayCaption).trim());
   const canEditCaption = canEdit && typeof onSaveCaption === "function";
 
   const startEditCaption = () => {
@@ -129,19 +138,17 @@ export const PostDetailModal = memo(function PostDetailModal({
             borderBottomColor: COLORS.peach,
           }}
         >
-          <TouchableOpacity onPress={onClose}>
+          <PressableScale onPress={onClose} accessibilityRole="button">
             <X size={22} color={COLORS.mutedBrown} />
-          </TouchableOpacity>
-          <Text
-            style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
-          >
+          </PressableScale>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             Pet moment
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.lg }}>
             {canDelete ? (
-              <TouchableOpacity onPress={onDelete} accessibilityLabel="Delete post">
+              <PressableScale onPress={onDelete} accessibilityLabel="Delete post" accessibilityRole="button">
                 <Trash2 size={20} color={COLORS.coral} />
-              </TouchableOpacity>
+              </PressableScale>
             ) : null}
             {/* Real share: reuses the 2.28 branded capture + system share sheet. */}
             <DailyShareButton petName={dogName} photoUri={photo} />
@@ -178,21 +185,15 @@ export const PostDetailModal = memo(function PostDetailModal({
                 <PetAvatar uri={avatar || undefined} name={dogName} size={41} />
               </View>
               <View>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "800",
-                    color: COLORS.warmBrown,
-                  }}
-                >
+                <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
                   {dogName}
                 </Text>
                 {petHandle ? (
-                  <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
                     @{petHandle}
                   </Text>
                 ) : null}
-                <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
                   by {ownerName} · {timestamp}
                 </Text>
               </View>
@@ -200,18 +201,12 @@ export const PostDetailModal = memo(function PostDetailModal({
             <View
               style={{
                 backgroundColor: tagStyle.bg,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 20,
+                paddingHorizontal: SPACING.md,
+                paddingVertical: SPACING.xs,
+                borderRadius: RADIUS.chip,
               }}
             >
-              <Text
-                style={{
-                  color: tagStyle.text,
-                  fontSize: 11,
-                  fontWeight: "700",
-                }}
-              >
+              <Text style={[TYPE.caption, { color: tagStyle.text }]}>
                 {tag}
               </Text>
             </View>
@@ -237,48 +232,52 @@ export const PostDetailModal = memo(function PostDetailModal({
                   maxLength={2000}
                   placeholder="Write a caption…"
                   placeholderTextColor={COLORS.mutedBrown}
-                  style={{
-                    minHeight: 72,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 14,
-                    borderWidth: 1.5,
-                    borderColor: COLORS.peach,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    fontSize: 15,
-                    color: COLORS.warmBrown,
-                    textAlignVertical: "top",
-                  }}
+                  style={[
+                    TYPE.body,
+                    {
+                      minHeight: 72,
+                      backgroundColor: COLORS.card,
+                      borderRadius: RADIUS.sm,
+                      borderWidth: 1.5,
+                      borderColor: MATERIALS.hairline,
+                      paddingHorizontal: SPACING.md,
+                      paddingVertical: SPACING.sm,
+                      color: COLORS.warmBrown,
+                      textAlignVertical: "top",
+                    },
+                  ]}
                 />
                 <View
                   style={{
                     flexDirection: "row",
                     justifyContent: "flex-end",
-                    gap: 18,
-                    marginTop: 10,
+                    gap: SPACING.lg,
+                    marginTop: SPACING.sm,
                   }}
                 >
-                  <TouchableOpacity
+                  <PressableScale
                     testID="cancel-caption"
                     onPress={() => setEditing(false)}
                     disabled={savingCaption}
+                    accessibilityRole="button"
                   >
-                    <Text style={{ fontWeight: "700", color: COLORS.mutedBrown }}>
+                    <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                       Cancel
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                  </PressableScale>
+                  <PressableScale
                     testID="save-caption"
                     onPress={saveEditCaption}
                     disabled={savingCaption}
+                    accessibilityRole="button"
                   >
-                    <Text style={{ fontWeight: "800", color: COLORS.coral }}>
+                    <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral }]}>
                       {savingCaption ? "Saving…" : "Save"}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               </View>
-            ) : (
+            ) : hasCaption ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -286,43 +285,59 @@ export const PostDetailModal = memo(function PostDetailModal({
                   marginBottom: 16,
                 }}
               >
-                <Text
-                  style={{
-                    flex: 1,
-                    fontSize: 15,
-                    color: COLORS.warmBrown,
-                    lineHeight: 23,
-                  }}
-                >
+                <Text style={[TYPE.body, { flex: 1, color: COLORS.warmBrown, lineHeight: 23 }]}>
                   <Text style={{ fontWeight: "800" }}>{dogName} </Text>
                   {displayCaption}
                 </Text>
                 {canEditCaption ? (
-                  <TouchableOpacity
+                  <PressableScale
                     testID="edit-caption"
                     onPress={startEditCaption}
                     accessibilityLabel="Edit caption"
-                    style={{ paddingLeft: 10, paddingTop: 2 }}
+                    accessibilityRole="button"
+                    style={{ paddingLeft: SPACING.sm, paddingTop: 2 }}
                   >
                     <Pencil size={16} color={COLORS.mutedBrown} />
-                  </TouchableOpacity>
+                  </PressableScale>
                 ) : null}
               </View>
-            )}
+            ) : canEditCaption ? (
+              // Empty caption + owner: an explicit "Add a caption" affordance that
+              // opens the same 2.65 editor. Without this an empty-caption post had
+              // no discoverable way to ADD a caption (only a tiny inline pencil).
+              <PressableScale
+                testID="add-caption"
+                onPress={startEditCaption}
+                accessibilityLabel="Add caption"
+                accessibilityRole="button"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm,
+                  marginBottom: 16,
+                }}
+              >
+                <Pencil size={16} color={COLORS.coral} />
+                <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>
+                  Add a caption ✍️
+                </Text>
+              </PressableScale>
+            ) : null}
 
             {/* Action row */}
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                paddingTop: 14,
+                paddingTop: SPACING.md,
                 borderTopWidth: 1,
-                borderTopColor: COLORS.peach,
-                gap: 22,
+                borderTopColor: MATERIALS.hairline,
+                gap: SPACING.xl,
               }}
             >
-              <TouchableOpacity
+              <PressableScale
                 onPress={onToggleLike}
+                accessibilityRole="button"
                 style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
               >
                 <PawPrint
@@ -331,68 +346,48 @@ export const PostDetailModal = memo(function PostDetailModal({
                   fill={liked ? COLORS.coral : "none"}
                 />
                 <Text
-                  style={{
-                    fontWeight: "700",
-                    color: liked ? COLORS.coral : COLORS.mutedBrown,
-                    fontSize: 14,
-                  }}
+                  style={[
+                    TYPE.callout,
+                    { fontWeight: "700", color: liked ? COLORS.coral : COLORS.mutedBrown },
+                  ]}
                 >
                   {pawsCount} paws
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
 
-              <TouchableOpacity
+              <PressableScale
                 onPress={onOpenBarks}
+                accessibilityRole="button"
                 style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
               >
                 <Megaphone size={22} color={COLORS.mutedBrown} />
-                <Text
-                  style={{
-                    fontWeight: "700",
-                    color: COLORS.mutedBrown,
-                    fontSize: 14,
-                  }}
-                >
+                <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                   {barksCount} barks
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
           </View>
 
           {/* Comment previews */}
           <View
             style={{
-              paddingHorizontal: 18,
+              paddingHorizontal: SPACING.lg,
               borderTopWidth: 1,
-              borderTopColor: COLORS.peach,
-              paddingTop: 16,
+              borderTopColor: MATERIALS.hairline,
+              paddingTop: SPACING.lg,
             }}
           >
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "800",
-                color: COLORS.warmBrown,
-                marginBottom: 14,
-              }}
-            >
+            <Text style={[TYPE.callout, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.md }]}>
               Barks ({barksCount})
             </Text>
             {loadingBarks ? (
-              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <View style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
                 <ActivityIndicator size="small" color={COLORS.coral} />
               </View>
             ) : barks.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <View style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
                 <Text style={{ fontSize: 28 }}>🐾</Text>
-                <Text
-                  style={{
-                    color: COLORS.mutedBrown,
-                    fontSize: 13,
-                    fontWeight: "600",
-                    marginTop: 8,
-                  }}
-                >
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: SPACING.sm }]}>
                   No barks yet
                 </Text>
               </View>
@@ -402,8 +397,8 @@ export const PostDetailModal = memo(function PostDetailModal({
                   key={bark.id}
                   style={{
                     flexDirection: "row",
-                    marginBottom: 14,
-                    gap: 10,
+                    marginBottom: SPACING.md,
+                    gap: SPACING.sm,
                     alignItems: "flex-start",
                   }}
                 >
@@ -412,53 +407,39 @@ export const PostDetailModal = memo(function PostDetailModal({
                     style={{
                       flex: 1,
                       backgroundColor: COLORS.card,
-                      borderRadius: 14,
-                      padding: 12,
+                      borderRadius: RADIUS.sm,
+                      padding: SPACING.md,
                       borderWidth: 1,
-                      borderColor: COLORS.peach,
+                      borderColor: MATERIALS.hairline,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "800",
-                        color: COLORS.coral,
-                        marginBottom: 3,
-                      }}
-                    >
+                    <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.coral, marginBottom: 3 }]}>
                       {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
                     </Text>
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        color: COLORS.warmBrown,
-                        lineHeight: 19,
-                      }}
-                    >
+                    <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", lineHeight: 19 }]}>
                       {bark.text}
                     </Text>
                   </View>
                 </View>
               ))
             )}
-            <TouchableOpacity
+            <PressableScale
               onPress={onOpenBarks}
+              accessibilityRole="button"
               style={{
-                borderRadius: 16,
-                padding: 14,
+                borderRadius: RADIUS.control,
+                padding: SPACING.md,
                 backgroundColor: COLORS.sand,
                 alignItems: "center",
                 borderWidth: 1,
-                borderColor: COLORS.peach,
-                marginTop: 4,
+                borderColor: MATERIALS.hairline,
+                marginTop: SPACING.xs,
               }}
             >
-              <Text
-                style={{ color: COLORS.coral, fontWeight: "700", fontSize: 14 }}
-              >
+              <Text style={[TYPE.callout, { color: COLORS.coral, fontWeight: "700" }]}>
                 Add a bark 🐾
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </ScrollView>
       </View>

@@ -1,7 +1,15 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { Camera, Sparkles, PawPrint } from "lucide-react-native";
-import { COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 export function DailyPromptCard({
   petName,
@@ -11,26 +19,16 @@ export function DailyPromptCard({
   onViewTodayPost,
 }) {
   return (
-    <View
-      style={{
-        margin: 16,
-        backgroundColor: COLORS.card,
-        borderRadius: 24,
-        padding: 20,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="md"
+      radius={RADIUS.card}
+      style={{ margin: SPACING.lg, padding: SPACING.xl }}
     >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          marginBottom: 14,
+          marginBottom: SPACING.md,
         }}
       >
         <View
@@ -51,19 +49,10 @@ export function DailyPromptCard({
           <Sparkles size={22} color="#FFF" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 17,
-              fontWeight: "800",
-              color: COLORS.warmBrown,
-              letterSpacing: -0.3,
-            }}
-          >
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             Today's pet moment
           </Text>
-          <Text
-            style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}
-          >
+          <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: 2 }]}>
             What is {petName} up to right now? 🐶
           </Text>
         </View>
@@ -71,34 +60,32 @@ export function DailyPromptCard({
 
       {!hasPostedToday ? (
         <>
-          <TouchableOpacity
+          <PressableScale
             onPress={onPostPress}
+            accessibilityRole="button"
             style={{
-              borderRadius: 16,
-              padding: 16,
+              borderRadius: RADIUS.control,
+              padding: SPACING.lg,
               alignItems: "center",
               flexDirection: "row",
               justifyContent: "center",
-              gap: 10,
+              gap: SPACING.sm,
               backgroundColor: COLORS.coral,
               shadowColor: COLORS.coral,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.32,
-              shadowRadius: 10,
-              elevation: 5,
+              ...ELEVATION.sm,
             }}
           >
             <Camera size={20} color="#FFF" />
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+            <Text style={[TYPE.headline, { color: "#FFF" }]}>
               Post today's photo
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
           <View
             style={{
-              marginTop: 12,
-              padding: 10,
+              marginTop: SPACING.md,
+              padding: SPACING.sm,
               backgroundColor: COLORS.sand,
-              borderRadius: 12,
+              borderRadius: RADIUS.sm,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
@@ -106,13 +93,7 @@ export function DailyPromptCard({
             }}
           >
             <PawPrint size={13} color={COLORS.terracotta} />
-            <Text
-              style={{
-                color: COLORS.terracotta,
-                fontSize: 12,
-                fontWeight: "600",
-              }}
-            >
+            <Text style={[TYPE.footnote, { color: COLORS.terracotta, fontWeight: "600" }]}>
               Don't forget {petName}'s daily update!
             </Text>
           </View>
@@ -121,45 +102,44 @@ export function DailyPromptCard({
         <View
           style={{
             backgroundColor: "#E8F5E9",
-            borderRadius: 16,
-            padding: 16,
+            borderRadius: RADIUS.control,
+            padding: SPACING.lg,
             alignItems: "center",
-            gap: 4,
+            gap: SPACING.xs,
             borderWidth: 1,
             borderColor: "#C8E6C9",
           }}
         >
           <Text style={{ fontSize: 22 }}>✨</Text>
-          <Text style={{ color: "#2E7D32", fontWeight: "800", fontSize: 15 }}>
+          <Text style={[TYPE.body, { color: "#2E7D32", fontWeight: "800" }]}>
             Today's update posted
           </Text>
           <Text
-            style={{
-              color: "#388E3C",
-              fontSize: 12,
-              textAlign: "center",
-              marginBottom: 8,
-            }}
+            style={[
+              TYPE.footnote,
+              { color: "#388E3C", textAlign: "center", marginBottom: SPACING.sm },
+            ]}
           >
             Come back tomorrow for {petName}'s next daily moment.
           </Text>
           {todayPostId && onViewTodayPost && (
-            <TouchableOpacity
+            <PressableScale
               onPress={onViewTodayPost}
+              accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.sage,
-                borderRadius: 12,
-                paddingVertical: 10,
-                paddingHorizontal: 18,
+                borderRadius: RADIUS.sm,
+                paddingVertical: SPACING.sm,
+                paddingHorizontal: SPACING.lg,
               }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 13 }}>
+              <Text style={[TYPE.subhead, { color: "#FFF" }]}>
                 View today's post
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
         </View>
       )}
-    </View>
+    </Card>
   );
 }

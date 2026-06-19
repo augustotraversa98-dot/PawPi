@@ -1,11 +1,32 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { Bell, Search, MessageCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { COLORS } from "@/constants/colors";
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { GlassSurface, PressableScale } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+
+// A small glassy icon button used for the header actions (search/messages/bell).
+function HeaderIconButton({ onPress, children }) {
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="button"
+      style={{
+        padding: 9,
+        backgroundColor: MATERIALS.glassTintLight,
+        borderRadius: RADIUS.control,
+        borderWidth: 1,
+        borderColor: MATERIALS.hairline,
+        position: "relative",
+      }}
+    >
+      {children}
+    </PressableScale>
+  );
+}
 
 export function FeedHeader() {
   const insets = useSafeAreaInsets();
@@ -15,14 +36,16 @@ export function FeedHeader() {
   );
 
   return (
-    <View
+    <GlassSurface
+      intensity={BLUR.thick}
       style={{
-        paddingTop: insets.top,
-        paddingHorizontal: 20,
-        paddingBottom: 14,
-        backgroundColor: COLORS.card,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.peach,
+        borderColor: MATERIALS.glassBorder,
+      }}
+      contentStyle={{
+        paddingTop: insets.top,
+        paddingHorizontal: SPACING.xl,
+        paddingBottom: SPACING.md,
       }}
     >
       <View
@@ -32,93 +55,52 @@ export function FeedHeader() {
           alignItems: "center",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "800",
-            color: COLORS.coral,
-            letterSpacing: -0.5,
-          }}
-        >
-          Social Pet
-        </Text>
-        <Text style={{ fontSize: 22 }}>🐾</Text>
-      </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
+          <Text style={[TYPE.largeTitle, { color: COLORS.coral }]}>
+            Social Pet
+          </Text>
+          <Text style={{ fontSize: 22 }}>🐾</Text>
+        </View>
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <TouchableOpacity
-          onPress={() => router.push("/search")}
-          style={{
-            padding: 9,
-            backgroundColor: COLORS.sand,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: COLORS.peach,
-          }}
-        >
-          <Search size={20} color={COLORS.terracotta} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
+          <HeaderIconButton onPress={() => router.push("/search")}>
+            <Search size={20} color={COLORS.terracotta} />
+          </HeaderIconButton>
 
-        <TouchableOpacity
-          onPress={() => router.push("/messages")}
-          style={{
-            padding: 9,
-            backgroundColor: COLORS.sand,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: COLORS.peach,
-          }}
-        >
-          <MessageCircle size={20} color={COLORS.terracotta} />
-        </TouchableOpacity>
+          <HeaderIconButton onPress={() => router.push("/messages")}>
+            <MessageCircle size={20} color={COLORS.terracotta} />
+          </HeaderIconButton>
 
-        <TouchableOpacity
-          onPress={() => router.push("/notifications")}
-          style={{
-            padding: 9,
-            backgroundColor: COLORS.sand,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: COLORS.peach,
-            position: "relative",
-          }}
-        >
-          <Bell size={20} color={COLORS.terracotta} />
-          {unreadNotificationCount > 0 && (
-            <View
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                backgroundColor: COLORS.coral,
-                borderRadius: 10,
-                minWidth: 18,
-                height: 18,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2,
-                borderColor: COLORS.card,
-              }}
-            >
-              <Text
+          <HeaderIconButton onPress={() => router.push("/notifications")}>
+            <Bell size={20} color={COLORS.terracotta} />
+            {unreadNotificationCount > 0 && (
+              <View
                 style={{
-                  color: "#FFF",
-                  fontSize: 10,
-                  fontWeight: "800",
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  backgroundColor: COLORS.coral,
+                  borderRadius: 10,
+                  minWidth: 18,
+                  height: 18,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderWidth: 2,
+                  borderColor: COLORS.card,
                 }}
               >
-                {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+                <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "800" }}>
+                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                </Text>
+              </View>
+            )}
+          </HeaderIconButton>
+        </View>
       </View>
 
-      <View style={{ marginTop: 12 }}>
+      <View style={{ marginTop: SPACING.md }}>
         <PetSwitcher variant="pill" />
       </View>
-    </View>
+    </GlassSurface>
   );
 }

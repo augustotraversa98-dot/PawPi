@@ -129,3 +129,51 @@ describe("edit own caption (ticket 2.65)", () => {
     expect(getByText(/\bhi\b/)).toBeTruthy(); // original caption intact
   });
 });
+
+// Bug fix: an own post with NO caption gave the owner no discoverable way to ADD
+// a caption (only a tiny inline pencil that didn't render with empty text), and
+// we re-confirm delete stays reachable regardless of caption.
+describe("own post with no caption", () => {
+  const noCaption = { ...post, caption: "" };
+
+  it("shows an explicit 'Add a caption' affordance for the owner", () => {
+    const { getByLabelText, queryByLabelText } = render(
+      <PostDetailModal visible post={noCaption} canEdit onSaveCaption={jest.fn()} />,
+    );
+    expect(getByLabelText("Add caption")).toBeTruthy();
+    // The inline "edit" pencil is for the has-caption case, not this one.
+    expect(queryByLabelText("Edit caption")).toBeNull();
+  });
+
+  it("'Add a caption' opens the empty editor and saves the new caption", async () => {
+    const onSaveCaption = jest.fn().mockResolvedValue();
+    const { getByLabelText, getByTestId } = render(
+      <PostDetailModal visible post={noCaption} canEdit onSaveCaption={onSaveCaption} />,
+    );
+    fireEvent.press(getByLabelText("Add caption"));
+    const input = getByTestId("edit-caption-input");
+    expect(input.props.value).toBe(""); // starts empty (nothing to prefill)
+
+    fireEvent.changeText(input, "first caption");
+    fireEvent.press(getByTestId("save-caption"));
+    await waitFor(() =>
+      expect(onSaveCaption).toHaveBeenCalledWith("first caption"),
+    );
+  });
+
+  it("does NOT show the add affordance for a non-owner", () => {
+    const { queryByLabelText } = render(
+      <PostDetailModal visible post={noCaption} canEdit={false} onSaveCaption={jest.fn()} />,
+    );
+    expect(queryByLabelText("Add caption")).toBeNull();
+  });
+
+  it("keeps the owner delete reachable even with no caption", () => {
+    const onDelete = jest.fn();
+    const { getByLabelText } = render(
+      <PostDetailModal visible post={noCaption} canDelete onDelete={onDelete} />,
+    );
+    fireEvent.press(getByLabelText("Delete post"));
+    expect(onDelete).toHaveBeenCalled();
+  });
+});

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Image,
   TextInput,
   Modal,
@@ -16,7 +15,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Camera, ChevronLeft, ImageIcon, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -126,25 +133,22 @@ export const PostComposerModal = memo(function PostComposerModal({
           }}
         >
           {step === "compose" ? (
-            <TouchableOpacity
+            <PressableScale
               onPress={() => setStep("picker")}
+              accessibilityRole="button"
               style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
             >
               <ChevronLeft size={20} color={COLORS.coral} />
-              <Text
-                style={{ color: COLORS.coral, fontWeight: "700", fontSize: 15 }}
-              >
+              <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>
                 Back
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ) : (
-            <TouchableOpacity onPress={onClose}>
+            <PressableScale onPress={onClose} accessibilityRole="button">
               <X size={22} color={COLORS.mutedBrown} />
-            </TouchableOpacity>
+            </PressableScale>
           )}
-          <Text
-            style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
-          >
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             {step === "picker" ? "Add a photo" : "Daily update"}
           </Text>
           <View style={{ width: 40 }} />
@@ -152,79 +156,68 @@ export const PostComposerModal = memo(function PostComposerModal({
 
         {step === "picker" ? (
           // ── STEP 1: Photo picker ──
-          <View style={{ flex: 1, justifyContent: "center", padding: 28 }}>
-            <View style={{ alignItems: "center", marginBottom: 40 }}>
+          <View style={{ flex: 1, justifyContent: "center", padding: SPACING.xxl }}>
+            <View style={{ alignItems: "center", marginBottom: SPACING.huge }}>
               <Text style={{ fontSize: 48 }}>🐾</Text>
               <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: "800",
-                  color: COLORS.warmBrown,
-                  marginTop: 14,
-                  textAlign: "center",
-                  letterSpacing: -0.4,
-                }}
+                style={[
+                  TYPE.title,
+                  { color: COLORS.warmBrown, marginTop: SPACING.md, textAlign: "center" },
+                ]}
               >
                 Today's pet moment
               </Text>
               <Text
-                style={{
-                  fontSize: 14,
-                  color: COLORS.mutedBrown,
-                  marginTop: 8,
-                  textAlign: "center",
-                  lineHeight: 21,
-                }}
+                style={[
+                  TYPE.callout,
+                  { color: COLORS.mutedBrown, marginTop: SPACING.sm, textAlign: "center" },
+                ]}
               >
                 What is {petName} up to right now?{"\n"}Share today's daily
                 update with your pet friends!
               </Text>
             </View>
 
-            <TouchableOpacity
+            <PressableScale
               onPress={takePhoto}
+              accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.coral,
-                borderRadius: 18,
-                padding: 18,
+                borderRadius: RADIUS.lg,
+                padding: SPACING.lg,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 12,
-                marginBottom: 14,
+                gap: SPACING.md,
+                marginBottom: SPACING.md,
                 shadowColor: COLORS.coral,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 10,
+                ...ELEVATION.sm,
               }}
             >
               <Camera size={22} color="#FFF" />
-              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-                Take a photo
-              </Text>
-            </TouchableOpacity>
+              <Text style={[TYPE.headline, { color: "#FFF" }]}>Take a photo</Text>
+            </PressableScale>
 
-            <TouchableOpacity
+            <PressableScale
               onPress={pickFromGallery}
+              accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.card,
-                borderRadius: 18,
-                padding: 18,
+                borderRadius: RADIUS.lg,
+                padding: SPACING.lg,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 12,
-                borderWidth: 2,
-                borderColor: COLORS.peach,
+                gap: SPACING.md,
+                borderWidth: 1.5,
+                borderColor: MATERIALS.hairline,
               }}
             >
               <ImageIcon size={22} color={COLORS.coral} />
-              <Text
-                style={{ color: COLORS.coral, fontWeight: "800", fontSize: 16 }}
-              >
+              <Text style={[TYPE.headline, { color: COLORS.coral }]}>
                 Choose from gallery
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         ) : (
           // ── STEP 2: Preview + caption ──
@@ -240,51 +233,52 @@ export const PostComposerModal = memo(function PostComposerModal({
                 style={{
                   width: "100%",
                   height: SCREEN_W - 40,
-                  borderRadius: 22,
+                  borderRadius: RADIUS.lg,
                 }}
                 resizeMode="cover"
               />
-              <TouchableOpacity
+              <PressableScale
                 onPress={() => setStep("picker")}
+                accessibilityRole="button"
+                accessibilityLabel="Change photo"
                 style={{
                   position: "absolute",
-                  top: 12,
-                  right: 12,
-                  backgroundColor: "rgba(59,36,27,0.55)",
-                  borderRadius: 20,
-                  padding: 8,
+                  top: SPACING.md,
+                  right: SPACING.md,
+                  backgroundColor: MATERIALS.overlay,
+                  borderRadius: RADIUS.chip,
+                  padding: SPACING.sm,
                 }}
               >
                 <ImageIcon size={18} color="#FFF" />
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
             {/* Caption */}
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "800",
-                color: COLORS.warmBrown,
-                marginBottom: 10,
-              }}
+              style={[
+                TYPE.callout,
+                { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+              ]}
             >
               Add a caption for {petName} ✍️
             </Text>
             <TextInput
               ref={captionRef}
-              style={{
-                backgroundColor: COLORS.sand,
-                borderRadius: 16,
-                padding: 16,
-                minHeight: 100,
-                textAlignVertical: "top",
-                marginBottom: 22,
-                color: COLORS.warmBrown,
-                fontSize: 15,
-                lineHeight: 22,
-                borderWidth: 1.5,
-                borderColor: COLORS.peach,
-              }}
+              style={[
+                TYPE.body,
+                {
+                  backgroundColor: MATERIALS.surfaceSunken,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.lg,
+                  minHeight: 100,
+                  textAlignVertical: "top",
+                  marginBottom: SPACING.xxl,
+                  color: COLORS.warmBrown,
+                  borderWidth: 1.5,
+                  borderColor: MATERIALS.hairline,
+                },
+              ]}
               testID="composer-caption"
               placeholder={`What's ${petName} doing today? 🐶`}
               placeholderTextColor={COLORS.mutedBrown}
@@ -293,23 +287,22 @@ export const PostComposerModal = memo(function PostComposerModal({
               onChangeText={setCaption}
             />
 
-            <TouchableOpacity
+            <PressableScale
               onPress={handleSubmit}
+              accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.coral,
-                borderRadius: 18,
-                padding: 18,
+                borderRadius: RADIUS.lg,
+                padding: SPACING.lg,
                 alignItems: "center",
                 shadowColor: COLORS.coral,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.35,
-                shadowRadius: 10,
+                ...ELEVATION.sm,
               }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 17 }}>
+              <Text style={[TYPE.headline, { color: "#FFF" }]}>
                 Post daily update 🐾
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </ScrollView>
         )}
       </KeyboardAvoidingView>

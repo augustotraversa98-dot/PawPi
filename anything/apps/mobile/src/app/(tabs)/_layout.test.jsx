@@ -73,15 +73,29 @@ test("Services is a primary bottom tab; Community is not", () => {
 test("the other primary tabs are intact", () => {
   render(<TabLayout />);
   const names = screens.map((s) => s.name);
-  expect(names).toEqual(["index", "health", "training", "services", "more/index"]);
+  expect(names).toEqual(["index", "health", "training", "services", "more"]);
 });
 
 test("the bottom-right tab is now Profile, not More (ticket 2.39)", () => {
   render(<TabLayout />);
   const titles = screens.map((s) => s.title);
-  // Same route slot (more/index) but presented as the owner's Profile.
+  // Same route slot (the `more` folder) but presented as the owner's Profile.
   expect(titles[titles.length - 1]).toBe("Profile");
   expect(titles).not.toContain("More");
+});
+
+// Regression guard (device bug): the `more/` route is a FOLDER (it has its own
+// _layout), so its tab route segment is "more" — NOT "more/index". Declaring
+// "more/index" matched no tab route, so expo-router dropped the Profile title +
+// avatar icon + popToTopOnBlur and the tab fell back to the segment label "more"
+// with a default icon. The 5th tab's options MUST be attached to name "more".
+test("the Profile tab targets the real `more` folder route (not more/index)", () => {
+  render(<TabLayout />);
+  const profile = screens[screens.length - 1];
+  expect(profile.name).toBe("more");
+  expect(profile.name).not.toBe("more/index");
+  // The Profile title + icon must ride on that same matched route.
+  expect(profile.title).toBe("Profile");
 });
 
 test("the tab bar is a floating pill, lifted off the bottom (ticket 2.59)", () => {

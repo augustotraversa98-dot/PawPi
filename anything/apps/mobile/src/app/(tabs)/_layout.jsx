@@ -25,6 +25,9 @@ import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 
 // avatar with an active-state coral ring; falls back to the neutral paw/dog glyph
 // (2.55) when there's no photo or no pet.
 function ProfileTabIcon({ focused }) {
+  // useCurrentPet may be loading / have no pet — that's fine: PetAvatar always
+  // renders (photo → initials → paw glyph), so this never returns null or throws
+  // and the tab always has a valid icon regardless of pet/loading state.
   const { data: currentPet } = useCurrentPet();
   return (
     <View
@@ -35,7 +38,11 @@ function ProfileTabIcon({ focused }) {
         padding: 1,
       }}
     >
-      <PetAvatar uri={currentPet?.avatar_url || undefined} size={24} />
+      <PetAvatar
+        uri={currentPet?.avatar_url || undefined}
+        name={currentPet?.name}
+        size={24}
+      />
     </View>
   );
 }
@@ -161,7 +168,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="more/index"
+        // The route for the `more/` FOLDER (it has its own _layout) is the folder
+        // segment "more" — NOT "more/index". Declaring "more/index" matched no tab
+        // route, so expo-router silently dropped these options and auto-rendered
+        // the `more` tab with its default label ("more") + default icon, and the
+        // 2.19 popToTopOnBlur safety net never attached. Using the real segment
+        // makes the title (Profile), the avatar icon, and popToTopOnBlur apply.
+        name="more"
         options={{
           title: t("tabs.profile"),
           tabBarIcon: ({ focused }) => <ProfileTabIcon focused={focused} />,

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import { PawPrint } from "lucide-react-native";
-import { COLORS } from "@/constants/colors";
+import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
@@ -50,21 +50,14 @@ export function UnlockedFeed({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.xl,
         paddingTop: 6,
-        paddingBottom: 14,
+        paddingBottom: SPACING.md,
         gap: 6,
       }}
     >
       <PawPrint size={14} color={COLORS.terracotta} />
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "800",
-          color: COLORS.mutedBrown,
-          letterSpacing: 0.7,
-        }}
-      >
+      <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
         SUGGESTED FOR YOU
       </Text>
     </View>
@@ -77,25 +70,23 @@ export function UnlockedFeed({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 20,
-          paddingBottom: 14,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           gap: 6,
         }}
       >
         <PawPrint size={14} color={COLORS.terracotta} />
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "800",
-            color: COLORS.mutedBrown,
-            letterSpacing: 0.7,
-          }}
-        >
+        <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
           PET FRIENDS' MOMENTS
         </Text>
       </View>
 
       {items.map((item) => {
+        // Items render at full opacity with NO entrance animation — content
+        // visibility must never depend on a layout animation completing (see
+        // src/constants/motion.js). Motion here is limited to PostCard's
+        // PressableScale press + the 2.64 double-tap paw, which can't hide rows.
+        //
         // Suggestion cards carry a `kind` discriminator; pet posts never do, so they can never
         // be confused (no fake pet posts).
         if (item.kind === "provider") {
@@ -136,23 +127,14 @@ export function UnlockedFeed({
       {posts.length === 0 && (
         <View style={{ alignItems: "center", padding: 50 }}>
           <Text style={{ fontSize: 40 }}>🐾</Text>
-          <Text
-            style={{
-              color: COLORS.mutedBrown,
-              fontSize: 16,
-              fontWeight: "600",
-              marginTop: 12,
-            }}
-          >
+          <Text style={[TYPE.headline, { color: COLORS.mutedBrown, marginTop: SPACING.md }]}>
             No pet moments yet!
           </Text>
           <Text
-            style={{
-              color: COLORS.mutedBrown,
-              fontSize: 13,
-              marginTop: 4,
-              textAlign: "center",
-            }}
+            style={[
+              TYPE.subhead,
+              { color: COLORS.mutedBrown, marginTop: 4, textAlign: "center", fontWeight: "500" },
+            ]}
           >
             Be the first to share today's moment.
           </Text>

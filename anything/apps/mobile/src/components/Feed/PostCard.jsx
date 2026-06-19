@@ -2,7 +2,15 @@ import React, { memo } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Image } from "expo-image";
 import { PawPrint, Megaphone } from "lucide-react-native";
-import { COLORS, TAG_COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TAG_COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
@@ -69,20 +77,15 @@ export const PostCard = memo(function PostCard({
   );
 
   return (
-    <View
+    <Card
+      level="md"
+      radius={RADIUS.card}
+      borderColor={isBirthday ? COLORS.coral : MATERIALS.hairline}
       style={{
-        backgroundColor: COLORS.card,
-        marginHorizontal: 16,
-        marginBottom: 16,
-        borderRadius: 24,
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.lg,
         overflow: "hidden",
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 3,
         borderWidth: isBirthday ? 2.5 : 1,
-        borderColor: isBirthday ? COLORS.coral : COLORS.peach,
       }}
     >
       {/* Header */}
@@ -92,7 +95,7 @@ export const PostCard = memo(function PostCard({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          padding: 14,
+          padding: SPACING.lg,
           justifyContent: "space-between",
         }}
       >
@@ -112,13 +115,7 @@ export const PostCard = memo(function PostCard({
           </View>
           <View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <Text
-                style={{
-                  fontWeight: "800",
-                  fontSize: 15,
-                  color: COLORS.warmBrown,
-                }}
-              >
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
                 {dogName}
               </Text>
               {isBirthday ? (
@@ -133,11 +130,11 @@ export const PostCard = memo(function PostCard({
               ) : null}
             </View>
             {petHandle ? (
-              <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
                 @{petHandle}
               </Text>
             ) : null}
-            <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
               by {ownerName}
             </Text>
           </View>
@@ -146,18 +143,16 @@ export const PostCard = memo(function PostCard({
           <View
             style={{
               backgroundColor: tagStyle.bg,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 20,
+              paddingHorizontal: SPACING.md,
+              paddingVertical: SPACING.xs,
+              borderRadius: RADIUS.chip,
             }}
           >
-            <Text
-              style={{ color: tagStyle.text, fontSize: 11, fontWeight: "700" }}
-            >
+            <Text style={[TYPE.caption, { color: tagStyle.text }]}>
               {tag}
             </Text>
           </View>
-          <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
+          <Text style={[TYPE.caption, { color: COLORS.mutedBrown }]}>
             {formatRelativeTime(post.created_at) || post.timestamp || "just now"}
           </Text>
         </View>
@@ -174,7 +169,7 @@ export const PostCard = memo(function PostCard({
       />
 
       {/* Caption + Actions */}
-      <View style={{ padding: 14 }}>
+      <View style={{ padding: SPACING.lg }}>
         {post.caption && (
           <TouchableOpacity
             testID="feed-post-caption"
@@ -182,12 +177,7 @@ export const PostCard = memo(function PostCard({
             activeOpacity={locked ? 1 : 0.8}
           >
             <Text
-              style={{
-                fontSize: 14,
-                color: COLORS.warmBrown,
-                lineHeight: 21,
-                marginBottom: 14,
-              }}
+              style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}
               numberOfLines={2}
             >
               <Text style={{ fontWeight: "800" }}>{dogName} </Text>
@@ -201,13 +191,13 @@ export const PostCard = memo(function PostCard({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingTop: post.caption ? 12 : 0,
+            paddingTop: post.caption ? SPACING.md : 0,
             borderTopWidth: post.caption ? 1 : 0,
-            borderTopColor: COLORS.peach,
-            gap: 20,
+            borderTopColor: MATERIALS.hairline,
+            gap: SPACING.xl,
           }}
         >
-          <TouchableOpacity
+          <PressableScale
             onPress={handlePawPress}
             style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             disabled={locked || togglePawMutation.isPending}
@@ -218,32 +208,25 @@ export const PostCard = memo(function PostCard({
               fill={liked && !locked ? COLORS.coral : "none"}
             />
             <Text
-              style={{
-                fontWeight: "700",
-                color: liked && !locked ? COLORS.coral : COLORS.mutedBrown,
-                fontSize: 13,
-              }}
+              style={[
+                TYPE.subhead,
+                { color: liked && !locked ? COLORS.coral : COLORS.mutedBrown },
+              ]}
             >
               {pawsCount} paws
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
 
-          <TouchableOpacity
+          <PressableScale
             onPress={locked ? undefined : onOpenBarks}
             style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             disabled={locked}
           >
             <Megaphone size={20} color={COLORS.mutedBrown} />
-            <Text
-              style={{
-                fontWeight: "700",
-                color: COLORS.mutedBrown,
-                fontSize: 13,
-              }}
-            >
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
               {barksCount} barks
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
 
           <View style={{ flex: 1 }} />
 
@@ -252,6 +235,6 @@ export const PostCard = memo(function PostCard({
           <DailyShareButton petName={dogName} photoUri={photo} locked={locked} />
         </View>
       </View>
-    </View>
+    </Card>
   );
 });
