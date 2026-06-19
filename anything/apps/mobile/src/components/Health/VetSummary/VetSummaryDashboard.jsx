@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { FileText, AlertCircle } from "lucide-react-native";
+import { RADIUS } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import VetSummaryModal from "./VetSummaryModal";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useVetSummary } from "@/hooks/useVetSummary";
@@ -38,7 +40,7 @@ export default function VetSummaryDashboard() {
 
   return (
     <>
-      <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 16 }}>
+      <View style={{ backgroundColor: "#fff", borderRadius: RADIUS.card, padding: 20, marginBottom: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
           <View
             style={{
@@ -63,7 +65,7 @@ export default function VetSummaryDashboard() {
         {/* Real recent activity */}
         <View
           style={{
-            backgroundColor: "#F0FDF4", borderRadius: 12, padding: 16, marginBottom: 16,
+            backgroundColor: "#F0FDF4", borderRadius: RADIUS.control, padding: 16, marginBottom: 16,
             borderWidth: 1, borderColor: "#BBF7D0",
           }}
         >
@@ -85,17 +87,17 @@ export default function VetSummaryDashboard() {
           )}
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           testID="open-vetsummary"
           onPress={() => setShowModal(true)}
           style={{
-            backgroundColor: "#10B981", borderRadius: 12, paddingVertical: 14,
+            backgroundColor: "#10B981", borderRadius: RADIUS.control, paddingVertical: 14,
             alignItems: "center", flexDirection: "row", justifyContent: "center",
           }}
         >
           <FileText color="#fff" size={20} style={{ marginRight: 8 }} />
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Create Vet Summary</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       <VetSummaryModal visible={showModal} onClose={() => setShowModal(false)} />

@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { View, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Pill, Truck } from "lucide-react-native";
-import { COLORS } from "@/constants/colors";
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 import { usePrescriptions, useRequestRefill } from "@/hooks/usePrescriptions";
 
 // Prescriptions section in the Vet Record (ticket 2.53). OWNER read-only: a list of Rx a vet
@@ -16,7 +17,7 @@ const STATUS_LABEL = { active: "Active", completed: "Completed", cancelled: "Can
 function Field({ label, value }) {
   if (value == null || value === "") return null;
   return (
-    <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
+    <Text style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown, marginTop: 2 }]}>
       <Text style={{ fontWeight: "700", color: COLORS.warmBrown }}>{label}: </Text>
       {String(value)}
     </Text>
@@ -48,14 +49,14 @@ export function PrescriptionsSection({ petId }) {
   };
 
   return (
-    <View style={{ marginBottom: 16 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+    <View style={{ marginBottom: SPACING.lg }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginBottom: SPACING.sm }}>
         <Pill size={18} color={COLORS.coral} />
-        <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>Prescriptions</Text>
+        <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>Prescriptions</Text>
       </View>
 
       {isLoading ? null : prescriptions.length === 0 ? (
-        <Text testID="rx-empty" style={{ color: COLORS.mutedBrown, fontSize: 13 }}>
+        <Text testID="rx-empty" style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown }]}>
           No prescriptions yet.
         </Text>
       ) : (
@@ -63,28 +64,25 @@ export function PrescriptionsSection({ petId }) {
           const pending = pendingFor(rx.id);
           const canRefill = rx.status === "active" && rx.refills_remaining > 0 && !pending;
           return (
-            <View
+            <Card
               key={rx.id}
               testID={`rx-${rx.id}`}
+              level="sm"
               style={{
-                backgroundColor: COLORS.card,
-                borderRadius: 14,
-                padding: 14,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: COLORS.peach,
+                padding: SPACING.lg - 2,
+                marginBottom: SPACING.sm,
               }}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+                <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
                   {rx.drug_name}
                   {rx.strength ? ` · ${rx.strength}` : ""}
                 </Text>
-                <Text style={{ fontWeight: "700", color: COLORS.coral }}>
+                <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral }]}>
                   {STATUS_LABEL[rx.status] || rx.status}
                 </Text>
               </View>
-              <Text style={{ fontSize: 12, color: COLORS.mutedBrown, fontStyle: "italic", marginTop: 2 }}>
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontStyle: "italic", marginTop: 2 }]}>
                 Prescribed by {rx.clinic_name || "a clinic"}
               </Text>
               <Field label="Dose" value={rx.dose} />
@@ -96,36 +94,34 @@ export function PrescriptionsSection({ petId }) {
               <Field label="Instructions" value={rx.instructions} />
 
               {pending && (
-                <Text testID={`rx-pending-${rx.id}`} style={{ marginTop: 8, color: COLORS.sageDark, fontWeight: "700", fontSize: 13 }}>
+                <Text testID={`rx-pending-${rx.id}`} style={[TYPE.subhead, { marginTop: SPACING.sm, color: COLORS.sageDark, fontWeight: "700" }]}>
                   Refill requested — awaiting the vet
                 </Text>
               )}
               {canRefill && (
-                <TouchableOpacity
+                <PressableScale
                   testID={`rx-refill-${rx.id}`}
                   onPress={() => onRequestRefill(rx)}
-                  activeOpacity={0.85}
-                  style={{ marginTop: 10, backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 9, alignItems: "center" }}
+                  style={{ marginTop: SPACING.md - 2, backgroundColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 9, alignItems: "center" }}
                 >
-                  <Text style={{ color: "#fff", fontWeight: "800" }}>Request refill</Text>
-                </TouchableOpacity>
+                  <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>Request refill</Text>
+                </PressableScale>
               )}
               {rx.status === "active" && rx.refills_remaining > 0 && (
-                <TouchableOpacity
+                <PressableScale
                   testID={`rx-fulfill-${rx.id}`}
                   onPress={() =>
                     router.push(
                       `/rx-fulfillment?prescriptionId=${rx.id}&petId=${petId}&drugName=${encodeURIComponent(rx.drug_name || "")}`,
                     )
                   }
-                  activeOpacity={0.85}
-                  style={{ marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: COLORS.card, borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: 12, paddingVertical: 9 }}
+                  style={{ marginTop: SPACING.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: SPACING.xs + 2, backgroundColor: MATERIALS.surface, borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 9 }}
                 >
                   <Truck size={15} color={COLORS.coral} />
-                  <Text style={{ color: COLORS.coral, fontWeight: "800" }}>Request fulfillment</Text>
-                </TouchableOpacity>
+                  <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>Request fulfillment</Text>
+                </PressableScale>
               )}
-            </View>
+            </Card>
           );
         })
       )}

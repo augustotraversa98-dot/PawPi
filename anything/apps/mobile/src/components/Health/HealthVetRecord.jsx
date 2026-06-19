@@ -44,18 +44,15 @@ import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import { PrescriptionsSection } from "./VetRecord/PrescriptionsSection";
 import EditMedicalProfileModal from "./VetRecord/EditMedicalProfileModal";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 export default function HealthVetRecord() {
   const insets = useSafeAreaInsets();
@@ -359,55 +356,43 @@ export default function HealthVetRecord() {
   };
 
   const SectionHeader = ({ title, icon: Icon, section, count }) => (
-    <TouchableOpacity
+    <PressableScale
       onPress={() => toggleSection(section)}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: C.card,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: expandedSections[section] ? 12 : 16,
-        borderWidth: 1.5,
-        borderColor: expandedSections[section] ? C.coral : C.peach,
-        shadowColor: C.terracotta,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-      }}
+      style={[
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: MATERIALS.surface,
+          borderRadius: RADIUS.control,
+          padding: SPACING.lg,
+          marginBottom: expandedSections[section] ? SPACING.md : SPACING.lg,
+          borderWidth: 1.5,
+          borderColor: expandedSections[section] ? COLORS.coral : MATERIALS.hairline,
+        },
+        ELEVATION.sm,
+      ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
         <View
           style={{
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: C.coral + "20",
+            backgroundColor: COLORS.coral + "20",
             justifyContent: "center",
             alignItems: "center",
           }}
         >
-          <Icon size={18} color={C.coral} />
+          <Icon size={18} color={COLORS.coral} />
         </View>
         <View>
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-            }}
-          >
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             {title}
           </Text>
           {count !== undefined && (
             <Text
-              style={{
-                fontSize: 12,
-                color: C.mutedBrown,
-                marginTop: 2,
-              }}
+              style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}
             >
               {count} {count === 1 ? "item" : "items"}
             </Text>
@@ -415,22 +400,20 @@ export default function HealthVetRecord() {
         </View>
       </View>
       {expandedSections[section] ? (
-        <ChevronUp size={20} color={C.mutedBrown} />
+        <ChevronUp size={20} color={COLORS.mutedBrown} />
       ) : (
-        <ChevronDown size={20} color={C.mutedBrown} />
+        <ChevronDown size={20} color={COLORS.mutedBrown} />
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   const EmptyState = ({ icon: Icon, title, description }) => (
-    <View
+    <Card
+      level="none"
       style={{
-        backgroundColor: C.card,
-        borderRadius: 16,
-        padding: 24,
-        marginBottom: 16,
+        padding: SPACING.xxl,
+        marginBottom: SPACING.lg,
         borderWidth: 1.5,
-        borderColor: C.peach,
         alignItems: "center",
       }}
     >
@@ -439,36 +422,31 @@ export default function HealthVetRecord() {
           width: 64,
           height: 64,
           borderRadius: 32,
-          backgroundColor: C.sand,
+          backgroundColor: MATERIALS.surfaceSunken,
           justifyContent: "center",
           alignItems: "center",
-          marginBottom: 16,
+          marginBottom: SPACING.lg,
         }}
       >
-        <Icon size={28} color={C.mutedBrown} />
+        <Icon size={28} color={COLORS.mutedBrown} />
       </View>
       <Text
-        style={{
-          fontSize: 16,
-          fontWeight: "700",
-          color: C.warmBrown,
-          marginBottom: 8,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.headline,
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, textAlign: "center" },
+        ]}
       >
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: C.mutedBrown,
-          textAlign: "center",
-          lineHeight: 19,
-        }}
+        style={[
+          TYPE.subhead,
+          { color: COLORS.mutedBrown, textAlign: "center", lineHeight: 19 },
+        ]}
       >
         {description}
       </Text>
-    </View>
+    </Card>
   );
 
   const formatDate = (dateStr) => {
@@ -495,8 +473,8 @@ export default function HealthVetRecord() {
           padding: 40,
         }}
       >
-        <ActivityIndicator size="large" color={C.sage} />
-        <Text style={{ marginTop: 16, fontSize: 14, color: C.mutedBrown }}>
+        <ActivityIndicator size="large" color={COLORS.sage} />
+        <Text style={{ marginTop: 16, fontSize: 14, color: COLORS.mutedBrown }}>
           Loading vet record...
         </Text>
       </View>
@@ -514,7 +492,7 @@ export default function HealthVetRecord() {
         }}
       >
         <Text
-          style={{ fontSize: 16, color: C.mutedBrown, textAlign: "center" }}
+          style={{ fontSize: 16, color: COLORS.mutedBrown, textAlign: "center" }}
         >
           No pet selected
         </Text>
@@ -530,19 +508,13 @@ export default function HealthVetRecord() {
     >
       <View style={{ padding: 16 }}>
         {/* Header */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: SPACING.xl }}>
           <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "800",
-              color: C.warmBrown,
-              marginBottom: 6,
-              letterSpacing: -0.5,
-            }}
+            style={[TYPE.title, { color: COLORS.warmBrown, marginBottom: SPACING.xs + 2 }]}
           >
             Vet Record
           </Text>
-          <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
+          <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
             Complete medical history for {currentPet.name}
           </Text>
         </View>
@@ -555,19 +527,19 @@ export default function HealthVetRecord() {
             marginBottom: 24,
           }}
         >
-          <TouchableOpacity
+          <PressableScale
             onPress={handleAddRecord}
             style={{
               flex: 1,
-              backgroundColor: C.coral,
-              borderRadius: 16,
+              backgroundColor: COLORS.coral,
+              borderRadius: RADIUS.control,
               paddingVertical: 14,
-              paddingHorizontal: 16,
+              paddingHorizontal: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
-              shadowColor: C.coral,
+              gap: SPACING.sm,
+              shadowColor: COLORS.coral,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.25,
               shadowRadius: 8,
@@ -575,65 +547,53 @@ export default function HealthVetRecord() {
             }}
           >
             <Plus size={18} color="#FFF" />
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "800",
-                color: "#FFF",
-              }}
-            >
+            <Text style={[TYPE.callout, { fontWeight: "800", color: "#FFF" }]}>
               Add Record
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressableScale>
+          <PressableScale
             onPress={handleShare}
             style={{
               flex: 1,
-              backgroundColor: C.card,
-              borderRadius: 16,
+              backgroundColor: MATERIALS.surface,
+              borderRadius: RADIUS.control,
               paddingVertical: 14,
-              paddingHorizontal: 16,
+              paddingHorizontal: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: SPACING.sm,
               borderWidth: 1.5,
-              borderColor: C.peach,
+              borderColor: MATERIALS.hairline,
             }}
           >
-            <Share2 size={18} color={C.terracotta} />
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-              }}
-            >
+            <Share2 size={18} color={COLORS.terracotta} />
+            <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.warmBrown }]}>
               Share
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Emergency Card entry (ticket 2.51) */}
-        <TouchableOpacity
+        <PressableScale
           testID="open-emergency-card"
           onPress={handleEmergencyCard}
           style={{
-            backgroundColor: C.coral,
-            borderRadius: 16,
+            backgroundColor: COLORS.coral,
+            borderRadius: RADIUS.control,
             paddingVertical: 14,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            gap: 8,
-            marginBottom: 16,
+            gap: SPACING.sm,
+            marginBottom: SPACING.lg,
           }}
         >
           <Heart size={18} color="#FFFFFF" />
-          <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+          <Text style={[TYPE.callout, { fontWeight: "800", color: "#FFFFFF" }]}>
             Emergency Card
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
 
         {/* Access Control Message */}
         <View
@@ -677,12 +637,12 @@ export default function HealthVetRecord() {
         {expandedSections.profile && (
           <View
             style={{
-              backgroundColor: C.card,
+              backgroundColor: MATERIALS.surface,
               borderRadius: 16,
               padding: 18,
               marginBottom: 16,
               borderWidth: 1.5,
-              borderColor: C.peach,
+              borderColor: MATERIALS.hairline,
             }}
           >
             {!medicalProfileData?.medicalProfile &&
@@ -695,19 +655,19 @@ export default function HealthVetRecord() {
                     width: 64,
                     height: 64,
                     borderRadius: 32,
-                    backgroundColor: C.sand,
+                    backgroundColor: MATERIALS.surfaceSunken,
                     justifyContent: "center",
                     alignItems: "center",
                     marginBottom: 16,
                   }}
                 >
-                  <User size={28} color={C.mutedBrown} />
+                  <User size={28} color={COLORS.mutedBrown} />
                 </View>
                 <Text
                   style={{
                     fontSize: 16,
                     fontWeight: "700",
-                    color: C.warmBrown,
+                    color: COLORS.warmBrown,
                     marginBottom: 8,
                     textAlign: "center",
                   }}
@@ -717,7 +677,7 @@ export default function HealthVetRecord() {
                 <Text
                   style={{
                     fontSize: 13,
-                    color: C.mutedBrown,
+                    color: COLORS.mutedBrown,
                     textAlign: "center",
                     lineHeight: 19,
                     marginBottom: 20,
@@ -729,7 +689,7 @@ export default function HealthVetRecord() {
                 <TouchableOpacity
                   onPress={() => setShowEditMedicalProfile(true)}
                   style={{
-                    backgroundColor: C.coral,
+                    backgroundColor: COLORS.coral,
                     borderRadius: 12,
                     paddingVertical: 14,
                     paddingHorizontal: 24,
@@ -763,7 +723,7 @@ export default function HealthVetRecord() {
                       style={{
                         fontSize: 13,
                         fontWeight: "700",
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         marginBottom: 10,
                         textTransform: "uppercase",
                         letterSpacing: 0.5,
@@ -807,13 +767,13 @@ export default function HealthVetRecord() {
                             flexDirection: "row",
                             paddingVertical: 10,
                             borderBottomWidth: 1,
-                            borderBottomColor: C.sand,
+                            borderBottomColor: MATERIALS.surfaceSunken,
                           }}
                         >
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.mutedBrown,
+                              color: COLORS.mutedBrown,
                               fontWeight: "600",
                               width: 140,
                             }}
@@ -823,7 +783,7 @@ export default function HealthVetRecord() {
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.warmBrown,
+                              color: COLORS.warmBrown,
                               flex: 1,
                               fontWeight: "500",
                             }}
@@ -842,7 +802,7 @@ export default function HealthVetRecord() {
                       style={{
                         fontSize: 13,
                         fontWeight: "700",
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         marginBottom: 10,
                         textTransform: "uppercase",
                         letterSpacing: 0.5,
@@ -917,13 +877,13 @@ export default function HealthVetRecord() {
                             flexDirection: "row",
                             paddingVertical: 10,
                             borderBottomWidth: idx === arr.length - 1 ? 0 : 1,
-                            borderBottomColor: C.sand,
+                            borderBottomColor: MATERIALS.surfaceSunken,
                           }}
                         >
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.mutedBrown,
+                              color: COLORS.mutedBrown,
                               fontWeight: "600",
                               width: 140,
                             }}
@@ -933,7 +893,7 @@ export default function HealthVetRecord() {
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.warmBrown,
+                              color: COLORS.warmBrown,
                               flex: 1,
                               fontWeight: "500",
                             }}
@@ -952,7 +912,7 @@ export default function HealthVetRecord() {
                       style={{
                         fontSize: 13,
                         fontWeight: "700",
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         marginBottom: 10,
                         textTransform: "uppercase",
                         letterSpacing: 0.5,
@@ -962,7 +922,7 @@ export default function HealthVetRecord() {
                     </Text>
                     <View
                       style={{
-                        backgroundColor: C.sand,
+                        backgroundColor: MATERIALS.surfaceSunken,
                         borderRadius: 12,
                         padding: 14,
                       }}
@@ -970,7 +930,7 @@ export default function HealthVetRecord() {
                       <Text
                         style={{
                           fontSize: 13,
-                          color: C.warmBrown,
+                          color: COLORS.warmBrown,
                           lineHeight: 19,
                         }}
                       >
@@ -983,7 +943,7 @@ export default function HealthVetRecord() {
                 <TouchableOpacity
                   onPress={() => setShowEditMedicalProfile(true)}
                   style={{
-                    backgroundColor: C.sand,
+                    backgroundColor: MATERIALS.surfaceSunken,
                     borderRadius: 12,
                     paddingVertical: 12,
                     flexDirection: "row",
@@ -992,12 +952,12 @@ export default function HealthVetRecord() {
                     gap: 8,
                   }}
                 >
-                  <Edit size={16} color={C.terracotta} />
+                  <Edit size={16} color={COLORS.terracotta} />
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "700",
-                      color: C.terracotta,
+                      color: COLORS.terracotta,
                     }}
                   >
                     Edit Medical Profile
@@ -1028,19 +988,19 @@ export default function HealthVetRecord() {
                 <View
                   key={appt.id}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.sage,
+                    borderColor: COLORS.sage,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 4,
                     }}
                   >
@@ -1049,7 +1009,7 @@ export default function HealthVetRecord() {
                   <Text
                     style={{
                       fontSize: 12,
-                      color: C.mutedBrown,
+                      color: COLORS.mutedBrown,
                       marginBottom: 3,
                     }}
                   >
@@ -1060,7 +1020,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 12,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                       }}
                     >
                       {appt.clinic}
@@ -1106,7 +1066,7 @@ export default function HealthVetRecord() {
                 <View
                   key={allergy.id}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
@@ -1120,7 +1080,7 @@ export default function HealthVetRecord() {
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 6,
                     }}
                   >
@@ -1152,7 +1112,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 12,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         marginBottom: 4,
                       }}
                     >
@@ -1163,7 +1123,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 11,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                       }}
                     >
                       Diagnosed: {formatDate(allergy.diagnosed_date)}
@@ -1195,19 +1155,19 @@ export default function HealthVetRecord() {
                 <View
                   key={condition.id}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 6,
                     }}
                   >
@@ -1227,7 +1187,7 @@ export default function HealthVetRecord() {
                           backgroundColor:
                             condition.status.toLowerCase() === "active"
                               ? "#FFE0B2"
-                              : C.sage + "20",
+                              : COLORS.sage + "20",
                           borderRadius: 8,
                           paddingHorizontal: 10,
                           paddingVertical: 4,
@@ -1240,7 +1200,7 @@ export default function HealthVetRecord() {
                             color:
                               condition.status.toLowerCase() === "active"
                                 ? "#E65100"
-                                : C.sage,
+                                : COLORS.sage,
                           }}
                         >
                           {condition.status}
@@ -1250,7 +1210,7 @@ export default function HealthVetRecord() {
                         <Text
                           style={{
                             fontSize: 11,
-                            color: C.mutedBrown,
+                            color: COLORS.mutedBrown,
                           }}
                         >
                           Diagnosed: {formatDate(condition.diagnosed_date)}
@@ -1262,7 +1222,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 12,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         lineHeight: 18,
                       }}
                     >
@@ -1302,31 +1262,31 @@ export default function HealthVetRecord() {
             {vaccinationsLoading ? (
               <View
                 style={{
-                  backgroundColor: C.card,
+                  backgroundColor: MATERIALS.surface,
                   borderRadius: 16,
                   padding: 24,
                   borderWidth: 1.5,
-                  borderColor: C.peach,
+                  borderColor: MATERIALS.hairline,
                   alignItems: "center",
                 }}
               >
-                <ActivityIndicator size="small" color={C.sage} />
+                <ActivityIndicator size="small" color={COLORS.sage} />
               </View>
             ) : vaccinationsError ? (
               <View
                 style={{
-                  backgroundColor: C.card,
+                  backgroundColor: MATERIALS.surface,
                   borderRadius: 16,
                   padding: 24,
                   borderWidth: 1.5,
-                  borderColor: C.peach,
+                  borderColor: MATERIALS.hairline,
                   alignItems: "center",
                 }}
               >
                 <Text
                   style={{
                     fontSize: 13,
-                    color: C.mutedBrown,
+                    color: COLORS.mutedBrown,
                     textAlign: "center",
                   }}
                 >
@@ -1344,19 +1304,19 @@ export default function HealthVetRecord() {
                 <View
                   key={vaccine.id}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 6,
                     }}
                   >
@@ -1365,7 +1325,7 @@ export default function HealthVetRecord() {
                   <Text
                     style={{
                       fontSize: 12,
-                      color: C.mutedBrown,
+                      color: COLORS.mutedBrown,
                       marginBottom: vaccine.expires_on || vaccine.lot ? 4 : 0,
                     }}
                   >
@@ -1377,7 +1337,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 11,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                         marginBottom: vaccine.lot ? 4 : 0,
                       }}
                     >
@@ -1388,7 +1348,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 11,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                       }}
                     >
                       Lot {vaccine.lot}
@@ -1436,19 +1396,19 @@ export default function HealthVetRecord() {
                   key={surgery.id}
                   onPress={() => setSelectedSurgery(surgery)}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 6,
                     }}
                   >
@@ -1457,7 +1417,7 @@ export default function HealthVetRecord() {
                   <Text
                     style={{
                       fontSize: 12,
-                      color: C.mutedBrown,
+                      color: COLORS.mutedBrown,
                       marginBottom: 4,
                     }}
                   >
@@ -1467,7 +1427,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 12,
-                        color: C.mutedBrown,
+                        color: COLORS.mutedBrown,
                       }}
                     >
                       {surgery.surgeon} • {surgery.clinic}
@@ -1500,19 +1460,19 @@ export default function HealthVetRecord() {
                   key={lab.id}
                   onPress={() => setSelectedLab(lab)}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       marginBottom: 6,
                     }}
                   >
@@ -1521,7 +1481,7 @@ export default function HealthVetRecord() {
                   <Text
                     style={{
                       fontSize: 12,
-                      color: C.mutedBrown,
+                      color: COLORS.mutedBrown,
                       marginBottom: 4,
                     }}
                   >
@@ -1531,7 +1491,7 @@ export default function HealthVetRecord() {
                     <Text
                       style={{
                         fontSize: 13,
-                        color: C.warmBrown,
+                        color: COLORS.warmBrown,
                         fontWeight: "600",
                         marginTop: 6,
                       }}
@@ -1563,17 +1523,17 @@ export default function HealthVetRecord() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                backgroundColor: C.coral + "15",
+                backgroundColor: COLORS.coral + "15",
                 borderRadius: 14,
                 paddingVertical: 14,
                 marginBottom: 12,
                 borderWidth: 1.5,
-                borderColor: C.coral,
+                borderColor: COLORS.coral,
                 borderStyle: "dashed",
               }}
             >
-              <Plus size={18} color={C.coral} />
-              <Text style={{ color: C.coral, fontWeight: "700", fontSize: 14 }}>
+              <Plus size={18} color={COLORS.coral} />
+              <Text style={{ color: COLORS.coral, fontWeight: "700", fontSize: 14 }}>
                 Add document
               </Text>
             </TouchableOpacity>
@@ -1592,12 +1552,12 @@ export default function HealthVetRecord() {
                   onPress={() => openDocument(doc)}
                   activeOpacity={0.85}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 12,
@@ -1608,19 +1568,19 @@ export default function HealthVetRecord() {
                       width: 40,
                       height: 40,
                       borderRadius: 20,
-                      backgroundColor: C.coral + "20",
+                      backgroundColor: COLORS.coral + "20",
                       justifyContent: "center",
                       alignItems: "center",
                     }}
                   >
-                    <FileText size={18} color={C.coral} />
+                    <FileText size={18} color={COLORS.coral} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
                         fontSize: 13,
                         fontWeight: "600",
-                        color: C.warmBrown,
+                        color: COLORS.warmBrown,
                         marginBottom: 3,
                       }}
                     >
@@ -1637,7 +1597,7 @@ export default function HealthVetRecord() {
                         <Text
                           style={{
                             fontSize: 11,
-                            color: C.mutedBrown,
+                            color: COLORS.mutedBrown,
                           }}
                         >
                           {formatDate(doc.document_date)}
@@ -1645,7 +1605,7 @@ export default function HealthVetRecord() {
                       )}
                       <View
                         style={{
-                          backgroundColor: C.sand,
+                          backgroundColor: MATERIALS.surfaceSunken,
                           borderRadius: 6,
                           paddingHorizontal: 8,
                           paddingVertical: 2,
@@ -1655,7 +1615,7 @@ export default function HealthVetRecord() {
                           style={{
                             fontSize: 10,
                             fontWeight: "600",
-                            color: C.mutedBrown,
+                            color: COLORS.mutedBrown,
                           }}
                         >
                           {doc.document_type}
@@ -1668,7 +1628,7 @@ export default function HealthVetRecord() {
                     onPress={() => deleteDocument(doc)}
                     hitSlop={8}
                   >
-                    <Trash2 size={18} color={C.mutedBrown} />
+                    <Trash2 size={18} color={COLORS.mutedBrown} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))
@@ -1686,12 +1646,12 @@ export default function HealthVetRecord() {
         {expandedSections.photoHistory && (
           <View
             style={{
-              backgroundColor: C.card,
+              backgroundColor: MATERIALS.surface,
               borderRadius: 16,
               padding: 12,
               marginBottom: 16,
               borderWidth: 1.5,
-              borderColor: C.peach,
+              borderColor: MATERIALS.hairline,
             }}
           >
             {summary?.photoChecksCount === 0 ? (
@@ -1699,7 +1659,7 @@ export default function HealthVetRecord() {
                 <Text
                   style={{
                     fontSize: 13,
-                    color: C.mutedBrown,
+                    color: COLORS.mutedBrown,
                     textAlign: "center",
                   }}
                 >
@@ -1726,18 +1686,18 @@ export default function HealthVetRecord() {
             {historyNotes.length > 0 && (
               <View
                 style={{
-                  backgroundColor: C.sand,
+                  backgroundColor: MATERIALS.surfaceSunken,
                   borderRadius: 14,
                   padding: 14,
                   marginBottom: 12,
                   borderWidth: 1,
-                  borderColor: C.peach,
+                  borderColor: MATERIALS.hairline,
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: "800", color: C.mutedBrown, letterSpacing: 0.6 }}>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: COLORS.mutedBrown, letterSpacing: 0.6 }}>
                   GENERAL SUMMARY
                 </Text>
-                <Text style={{ fontSize: 13, color: C.warmBrown, marginTop: 4, fontWeight: "600" }}>
+                <Text style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 4, fontWeight: "600" }}>
                   {`${historyNotes.length} ${historyNotes.length === 1 ? "entry" : "entries"} · last updated ${formatDate(historyNotes[0].note_date)}${historyNotes[0].vet_name ? ` by ${historyNotes[0].vet_name}` : ""}`}
                 </Text>
               </View>
@@ -1752,17 +1712,17 @@ export default function HealthVetRecord() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                backgroundColor: C.coral + "15",
+                backgroundColor: COLORS.coral + "15",
                 borderRadius: 14,
                 paddingVertical: 14,
                 marginBottom: 12,
                 borderWidth: 1.5,
-                borderColor: C.coral,
+                borderColor: COLORS.coral,
                 borderStyle: "dashed",
               }}
             >
-              <Plus size={18} color={C.coral} />
-              <Text style={{ color: C.coral, fontWeight: "700", fontSize: 14 }}>
+              <Plus size={18} color={COLORS.coral} />
+              <Text style={{ color: COLORS.coral, fontWeight: "700", fontSize: 14 }}>
                 Add to history
               </Text>
             </TouchableOpacity>
@@ -1778,12 +1738,12 @@ export default function HealthVetRecord() {
                 <View
                   key={note.id}
                   style={{
-                    backgroundColor: C.card,
+                    backgroundColor: MATERIALS.surface,
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: MATERIALS.hairline,
                   }}
                 >
                   <View
@@ -1799,7 +1759,7 @@ export default function HealthVetRecord() {
                       style={{
                         fontSize: 13,
                         fontWeight: "700",
-                        color: C.warmBrown,
+                        color: COLORS.warmBrown,
                       }}
                     >
                       {note.vet_name || "You"}
@@ -1808,7 +1768,7 @@ export default function HealthVetRecord() {
                       <Text
                         style={{
                           fontSize: 11,
-                          color: C.mutedBrown,
+                          color: COLORS.mutedBrown,
                         }}
                       >
                         {formatDate(note.note_date)}
@@ -1818,14 +1778,14 @@ export default function HealthVetRecord() {
                         onPress={() => deleteVetNote(note)}
                         hitSlop={8}
                       >
-                        <Trash2 size={15} color={C.mutedBrown} />
+                        <Trash2 size={15} color={COLORS.mutedBrown} />
                       </TouchableOpacity>
                     </View>
                   </View>
                   <Text
                     style={{
                       fontSize: 12,
-                      color: C.mutedBrown,
+                      color: COLORS.mutedBrown,
                       lineHeight: 18,
                     }}
                   >
@@ -1840,17 +1800,17 @@ export default function HealthVetRecord() {
         {/* Bottom Info */}
         <View
           style={{
-            backgroundColor: C.sand,
+            backgroundColor: MATERIALS.surfaceSunken,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: C.peach,
+            borderColor: MATERIALS.hairline,
           }}
         >
           <Text
             style={{
               fontSize: 12,
-              color: C.mutedBrown,
+              color: COLORS.mutedBrown,
               lineHeight: 18,
               textAlign: "center",
             }}
@@ -1877,7 +1837,7 @@ export default function HealthVetRecord() {
         >
           <View
             style={{
-              backgroundColor: C.cream,
+              backgroundColor: COLORS.cream,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -1896,7 +1856,7 @@ export default function HealthVetRecord() {
                 style={{
                   fontSize: 20,
                   fontWeight: "800",
-                  color: C.warmBrown,
+                  color: COLORS.warmBrown,
                 }}
               >
                 Add Record
@@ -1907,12 +1867,12 @@ export default function HealthVetRecord() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: C.sand,
+                  backgroundColor: MATERIALS.surfaceSunken,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
               >
-                <X size={20} color={C.warmBrown} />
+                <X size={20} color={COLORS.warmBrown} />
               </TouchableOpacity>
             </View>
 
@@ -1941,11 +1901,11 @@ export default function HealthVetRecord() {
                       flexDirection: "row",
                       alignItems: "center",
                       padding: 16,
-                      backgroundColor: C.card,
+                      backgroundColor: MATERIALS.surface,
                       borderRadius: 12,
                       marginBottom: 10,
                       borderWidth: 1,
-                      borderColor: C.peach,
+                      borderColor: MATERIALS.hairline,
                     }}
                   >
                     <View
@@ -1953,19 +1913,19 @@ export default function HealthVetRecord() {
                         width: 40,
                         height: 40,
                         borderRadius: 20,
-                        backgroundColor: C.coral + "20",
+                        backgroundColor: COLORS.coral + "20",
                         justifyContent: "center",
                         alignItems: "center",
                         marginRight: 12,
                       }}
                     >
-                      <Icon size={20} color={C.coral} />
+                      <Icon size={20} color={COLORS.coral} />
                     </View>
                     <Text
                       style={{
                         fontSize: 15,
                         fontWeight: "600",
-                        color: C.warmBrown,
+                        color: COLORS.warmBrown,
                       }}
                     >
                       {record.type}
@@ -1994,7 +1954,7 @@ export default function HealthVetRecord() {
         >
           <View
             style={{
-              backgroundColor: C.cream,
+              backgroundColor: COLORS.cream,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -2014,7 +1974,7 @@ export default function HealthVetRecord() {
                     style={{
                       fontSize: 20,
                       fontWeight: "800",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       flex: 1,
                     }}
                   >
@@ -2026,12 +1986,12 @@ export default function HealthVetRecord() {
                       width: 36,
                       height: 36,
                       borderRadius: 18,
-                      backgroundColor: C.sand,
+                      backgroundColor: MATERIALS.surfaceSunken,
                       justifyContent: "center",
                       alignItems: "center",
                     }}
                   >
-                    <X size={20} color={C.warmBrown} />
+                    <X size={20} color={COLORS.warmBrown} />
                   </TouchableOpacity>
                 </View>
 
@@ -2061,7 +2021,7 @@ export default function HealthVetRecord() {
                           style={{
                             fontSize: 12,
                             fontWeight: "700",
-                            color: C.mutedBrown,
+                            color: COLORS.mutedBrown,
                             marginBottom: 6,
                             textTransform: "uppercase",
                             letterSpacing: 0.5,
@@ -2071,17 +2031,17 @@ export default function HealthVetRecord() {
                         </Text>
                         <View
                           style={{
-                            backgroundColor: C.card,
+                            backgroundColor: MATERIALS.surface,
                             borderRadius: 12,
                             padding: 14,
                             borderWidth: 1,
-                            borderColor: C.peach,
+                            borderColor: MATERIALS.hairline,
                           }}
                         >
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.warmBrown,
+                              color: COLORS.warmBrown,
                               lineHeight: 19,
                             }}
                           >
@@ -2095,7 +2055,7 @@ export default function HealthVetRecord() {
                 <TouchableOpacity
                   onPress={() => setSelectedSurgery(null)}
                   style={{
-                    backgroundColor: C.coral,
+                    backgroundColor: COLORS.coral,
                     borderRadius: 16,
                     paddingVertical: 16,
                     marginTop: 10,
@@ -2134,7 +2094,7 @@ export default function HealthVetRecord() {
         >
           <View
             style={{
-              backgroundColor: C.cream,
+              backgroundColor: COLORS.cream,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -2154,7 +2114,7 @@ export default function HealthVetRecord() {
                     style={{
                       fontSize: 20,
                       fontWeight: "800",
-                      color: C.warmBrown,
+                      color: COLORS.warmBrown,
                       flex: 1,
                     }}
                   >
@@ -2166,12 +2126,12 @@ export default function HealthVetRecord() {
                       width: 36,
                       height: 36,
                       borderRadius: 18,
-                      backgroundColor: C.sand,
+                      backgroundColor: MATERIALS.surfaceSunken,
                       justifyContent: "center",
                       alignItems: "center",
                     }}
                   >
-                    <X size={20} color={C.warmBrown} />
+                    <X size={20} color={COLORS.warmBrown} />
                   </TouchableOpacity>
                 </View>
 
@@ -2193,7 +2153,7 @@ export default function HealthVetRecord() {
                           style={{
                             fontSize: 12,
                             fontWeight: "700",
-                            color: C.mutedBrown,
+                            color: COLORS.mutedBrown,
                             marginBottom: 6,
                             textTransform: "uppercase",
                             letterSpacing: 0.5,
@@ -2203,17 +2163,17 @@ export default function HealthVetRecord() {
                         </Text>
                         <View
                           style={{
-                            backgroundColor: C.card,
+                            backgroundColor: MATERIALS.surface,
                             borderRadius: 12,
                             padding: 14,
                             borderWidth: 1,
-                            borderColor: C.peach,
+                            borderColor: MATERIALS.hairline,
                           }}
                         >
                           <Text
                             style={{
                               fontSize: 13,
-                              color: C.warmBrown,
+                              color: COLORS.warmBrown,
                               lineHeight: 19,
                             }}
                           >
@@ -2227,7 +2187,7 @@ export default function HealthVetRecord() {
                 <TouchableOpacity
                   onPress={() => setSelectedLab(null)}
                   style={{
-                    backgroundColor: C.coral,
+                    backgroundColor: COLORS.coral,
                     borderRadius: 16,
                     paddingVertical: 16,
                     marginTop: 10,

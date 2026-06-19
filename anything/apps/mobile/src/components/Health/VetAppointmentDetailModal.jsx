@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  TouchableOpacity,
   Alert,
   TextInput,
   ActivityIndicator,
@@ -14,18 +13,8 @@ import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, CheckCircle, Edit, Trash2, FileText, Star } from "lucide-react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 export default function VetAppointmentDetailModal({
   visible,
@@ -163,7 +152,7 @@ export default function VetAppointmentDetailModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: C.cream }}
+        style={{ flex: 1, backgroundColor: COLORS.cream }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
@@ -175,38 +164,33 @@ export default function VetAppointmentDetailModal({
             padding: 20,
             paddingTop: 60,
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
           }}
         >
           <View style={{ flex: 1 }}>
             <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
+              style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}
             >
               🩺 Vet Appointment
             </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
               Appointment details
             </Text>
           </View>
-          <TouchableOpacity
+          <PressableScale
             onPress={onClose}
             disabled={isPending}
             style={{
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: C.sand,
+              backgroundColor: MATERIALS.surfaceSunken,
               justifyContent: "center",
               alignItems: "center",
             }}
           >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
+            <X size={20} color={COLORS.warmBrown} />
+          </PressableScale>
         </View>
 
         <KeyboardAwareScrollView
@@ -228,7 +212,7 @@ export default function VetAppointmentDetailModal({
               style={{
                 fontSize: 18,
                 fontWeight: "700",
-                color: C.warmBrown,
+                color: COLORS.warmBrown,
                 marginBottom: 8,
               }}
             >
@@ -237,7 +221,7 @@ export default function VetAppointmentDetailModal({
             <Text
               style={{
                 fontSize: 14,
-                color: C.mutedBrown,
+                color: COLORS.mutedBrown,
                 fontWeight: "600",
               }}
             >
@@ -246,16 +230,7 @@ export default function VetAppointmentDetailModal({
           </View>
 
           {/* Appointment Info */}
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 16,
-            }}
-          >
+          <Card level="sm" style={{ padding: SPACING.lg, marginBottom: SPACING.lg }}>
             {appointment.clinic && (
               <InfoRow label="Clinic" value={appointment.clinic} />
             )}
@@ -268,18 +243,18 @@ export default function VetAppointmentDetailModal({
             {appointment.notes && (
               <InfoRow label="Notes" value={appointment.notes} multiline />
             )}
-          </View>
+          </Card>
 
           {/* Visit Notes Input (shown when preparing to complete) */}
           {showNotesInput && (
             <View
               style={{
-                backgroundColor: C.sand,
+                backgroundColor: MATERIALS.surfaceSunken,
                 borderRadius: 16,
                 padding: 16,
                 marginBottom: 16,
                 borderWidth: 1,
-                borderColor: C.peach,
+                borderColor: MATERIALS.hairline,
               }}
             >
               <View
@@ -289,12 +264,12 @@ export default function VetAppointmentDetailModal({
                   marginBottom: 12,
                 }}
               >
-                <FileText size={18} color={C.sage} />
+                <FileText size={18} color={COLORS.sage} />
                 <Text
                   style={{
                     fontSize: 15,
                     fontWeight: "700",
-                    color: C.warmBrown,
+                    color: COLORS.warmBrown,
                     marginLeft: 8,
                   }}
                 >
@@ -305,15 +280,15 @@ export default function VetAppointmentDetailModal({
                 value={visitNotes}
                 onChangeText={setVisitNotes}
                 placeholder="e.g., Rabies vaccine administered, next visit in 1 year..."
-                placeholderTextColor={C.mutedBrown}
+                placeholderTextColor={COLORS.mutedBrown}
                 multiline
                 numberOfLines={4}
                 style={{
-                  backgroundColor: C.card,
+                  backgroundColor: MATERIALS.surface,
                   borderRadius: 12,
                   padding: 12,
                   fontSize: 14,
-                  color: C.warmBrown,
+                  color: COLORS.warmBrown,
                   textAlignVertical: "top",
                   minHeight: 90,
                 }}
@@ -332,47 +307,47 @@ export default function VetAppointmentDetailModal({
             padding: 20,
             paddingBottom: 30,
             borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
+            borderTopColor: MATERIALS.hairline,
+            backgroundColor: COLORS.cream,
           }}
         >
           {/* Write a review — shown ONLY after a completed provider appointment */}
           {canReview && !showNotesInput && (
-            <TouchableOpacity
+            <PressableScale
               onPress={() => setShowReview(true)}
               disabled={isPending}
               style={{
-                backgroundColor: C.coral,
-                borderRadius: 14,
-                paddingVertical: 16,
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.lg,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
-                marginBottom: 10,
+                gap: SPACING.sm,
+                marginBottom: SPACING.md - 2,
               }}
             >
               <Star size={18} color="#FFF" fill="#FFF" />
-              <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}>
+              <Text style={[TYPE.headline, { fontWeight: "700", color: "#FFF" }]}>
                 Write a review
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
 
           {/* Mark Completed — hidden once already completed */}
           {appointment.status !== "completed" && (
-            <TouchableOpacity
+            <PressableScale
               onPress={handleMarkCompleted}
               disabled={isPending}
               style={{
-                backgroundColor: isPending ? C.mutedBrown : C.sage,
-                borderRadius: 14,
-                paddingVertical: 16,
+                backgroundColor: isPending ? COLORS.mutedBrown : COLORS.sage,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.lg,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
-                marginBottom: 10,
+                gap: SPACING.sm,
+                marginBottom: SPACING.md - 2,
               }}
             >
               {completeMutation.isPending ? (
@@ -380,73 +355,67 @@ export default function VetAppointmentDetailModal({
               ) : (
                 <>
                   <CheckCircle size={18} color="#FFF" />
-                  <Text
-                    style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}
-                  >
+                  <Text style={[TYPE.headline, { fontWeight: "700", color: "#FFF" }]}>
                     {showNotesInput
                       ? "Confirm & mark completed"
                       : "Mark as completed"}
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           )}
 
           {/* Delete */}
           {!showNotesInput && (
-            <TouchableOpacity
+            <PressableScale
               onPress={handleDelete}
               disabled={isPending}
               style={{
-                backgroundColor: C.sand,
-                borderRadius: 14,
-                paddingVertical: 14,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.lg - 2,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
+                gap: SPACING.sm,
                 borderWidth: 1,
-                borderColor: C.coral,
+                borderColor: COLORS.coral,
               }}
             >
               {deleteMutation.isPending ? (
-                <ActivityIndicator color={C.coral} />
+                <ActivityIndicator color={COLORS.coral} />
               ) : (
                 <>
-                  <Trash2 size={16} color={C.coral} />
-                  <Text
-                    style={{ fontSize: 14, fontWeight: "700", color: C.coral }}
-                  >
+                  <Trash2 size={16} color={COLORS.coral} />
+                  <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
                     Delete appointment
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           )}
 
           {/* Cancel (when showing notes input) */}
           {showNotesInput && (
-            <TouchableOpacity
+            <PressableScale
               onPress={() => {
                 setShowNotesInput(false);
                 setVisitNotes("");
               }}
               disabled={isPending}
               style={{
-                backgroundColor: C.sand,
-                borderRadius: 14,
-                paddingVertical: 14,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.lg - 2,
                 alignItems: "center",
                 borderWidth: 1,
-                borderColor: C.peach,
+                borderColor: MATERIALS.hairline,
               }}
             >
-              <Text
-                style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
-              >
+              <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                 Cancel
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
         </View>
 
@@ -467,28 +436,25 @@ function InfoRow({ label, value, multiline }) {
   return (
     <View
       style={{
-        paddingVertical: 10,
+        paddingVertical: SPACING.sm + 2,
         borderBottomWidth: 1,
-        borderBottomColor: "#FFE5D9" + "60",
+        borderBottomColor: MATERIALS.hairline,
       }}
     >
       <Text
-        style={{
-          fontSize: 12,
-          color: "#8B7355",
-          marginBottom: 4,
-          fontWeight: "600",
-        }}
+        style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.xs, fontWeight: "600" }]}
       >
         {label}
       </Text>
       <Text
-        style={{
-          fontSize: 14,
-          fontWeight: "600",
-          color: "#3B241B",
-          lineHeight: multiline ? 20 : undefined,
-        }}
+        style={[
+          TYPE.callout,
+          {
+            fontWeight: "600",
+            color: COLORS.warmBrown,
+            lineHeight: multiline ? 20 : undefined,
+          },
+        ]}
       >
         {value}
       </Text>

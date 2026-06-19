@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, ImagePlus, FileText } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { COLORS as C } from "@/constants/colors";
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { useUpload } from "@/utils/useUpload";
 import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -117,24 +117,24 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       presentationStyle="pageSheet"
       onRequestClose={close}
     >
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
         <View
           style={{
             paddingTop: insets.top + 6,
             paddingHorizontal: 20,
             paddingBottom: 14,
-            backgroundColor: C.card,
+            backgroundColor: MATERIALS.surface,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
           }}
         >
           <TouchableOpacity onPress={close} accessibilityLabel="Close">
-            <X size={22} color={C.mutedBrown} />
+            <X size={22} color={COLORS.mutedBrown} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
+          <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
             Add document
           </Text>
           <View style={{ width: 22 }} />
@@ -151,14 +151,14 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
             activeOpacity={0.9}
             style={{
               height: 180,
-              borderRadius: 16,
+              borderRadius: RADIUS.control,
               borderWidth: 2,
               borderStyle: "dashed",
-              borderColor: C.peach,
-              backgroundColor: C.card,
+              borderColor: MATERIALS.hairline,
+              backgroundColor: MATERIALS.surface,
               justifyContent: "center",
               alignItems: "center",
-              marginBottom: 20,
+              marginBottom: SPACING.xl,
               overflow: "hidden",
             }}
           >
@@ -170,35 +170,35 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
               />
             ) : (
               <>
-                <ImagePlus size={32} color={C.coral} />
-                <Text style={{ color: C.mutedBrown, marginTop: 8, fontWeight: "600" }}>
+                <ImagePlus size={32} color={COLORS.coral} />
+                <Text style={[TYPE.body, { color: COLORS.mutedBrown, marginTop: SPACING.sm, fontWeight: "600" }]}>
                   Choose a photo of the paperwork
                 </Text>
               </>
             )}
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 13, fontWeight: "700", color: C.mutedBrown, marginBottom: 6 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 6 }}>
             Name
           </Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Rabies certificate"
-            placeholderTextColor={C.mutedBrown}
+            placeholderTextColor={COLORS.mutedBrown}
             style={{
               backgroundColor: "#FFF",
               borderRadius: 14,
               padding: 14,
               fontSize: 15,
-              color: C.warmBrown,
+              color: COLORS.warmBrown,
               borderWidth: 2,
-              borderColor: name ? C.coral : C.sand,
+              borderColor: name ? COLORS.coral : MATERIALS.hairline,
               marginBottom: 20,
             }}
           />
 
-          <Text style={{ fontSize: 13, fontWeight: "700", color: C.mutedBrown, marginBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 8 }}>
             Type
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
@@ -212,16 +212,16 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
                     paddingHorizontal: 14,
                     paddingVertical: 8,
                     borderRadius: 16,
-                    backgroundColor: active ? C.coral : C.sand,
+                    backgroundColor: active ? COLORS.coral : MATERIALS.surfaceSunken,
                     borderWidth: 1,
-                    borderColor: active ? C.coral : C.peach,
+                    borderColor: active ? COLORS.coral : MATERIALS.hairline,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "700",
-                      color: active ? "#FFF" : C.mutedBrown,
+                      color: active ? "#FFF" : COLORS.mutedBrown,
                     }}
                   >
                     {type}
@@ -231,7 +231,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
             })}
           </View>
 
-          <Text style={{ fontSize: 13, fontWeight: "700", color: C.mutedBrown, marginBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 8 }}>
             Date
           </Text>
           <DateField
@@ -243,7 +243,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
               borderRadius: 14,
               padding: 14,
               borderWidth: 2,
-              borderColor: documentDate ? C.coral : C.sand,
+              borderColor: documentDate ? COLORS.coral : MATERIALS.hairline,
             }}
           />
 
@@ -251,27 +251,26 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
             onPress={handleSave}
             disabled={!canSave}
             style={{
-              marginTop: 28,
-              backgroundColor: canSave ? C.coral : C.sand,
-              borderRadius: 16,
+              marginTop: SPACING.xxl + SPACING.xs,
+              backgroundColor: canSave ? COLORS.coral : MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.control,
               height: 54,
               flexDirection: "row",
               justifyContent: "center",
               alignItems: "center",
-              gap: 8,
+              gap: SPACING.sm,
             }}
           >
             {saving || uploading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <FileText size={18} color={canSave ? "#FFF" : C.mutedBrown} />
+                <FileText size={18} color={canSave ? "#FFF" : COLORS.mutedBrown} />
                 <Text
-                  style={{
-                    color: canSave ? "#FFF" : C.mutedBrown,
-                    fontWeight: "800",
-                    fontSize: 16,
-                  }}
+                  style={[
+                    TYPE.headline,
+                    { color: canSave ? "#FFF" : COLORS.mutedBrown, fontWeight: "800" },
+                  ]}
                 >
                   Save document
                 </Text>

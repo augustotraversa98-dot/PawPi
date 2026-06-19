@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Plus } from "lucide-react-native";
-import { COLORS as C } from "@/constants/colors";
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { getLocalPostDateString } from "@/utils/dateUtils";
@@ -64,24 +65,24 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
       presentationStyle="pageSheet"
       onRequestClose={close}
     >
-      <View style={{ flex: 1, backgroundColor: C.cream }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
         <View
           style={{
             paddingTop: insets.top + 6,
             paddingHorizontal: 20,
             paddingBottom: 14,
-            backgroundColor: C.card,
+            backgroundColor: MATERIALS.surface,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
           }}
         >
           <TouchableOpacity onPress={close} accessibilityLabel="Close">
-            <X size={22} color={C.mutedBrown} />
+            <X size={22} color={COLORS.mutedBrown} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
+          <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
             Add to history
           </Text>
           <View style={{ width: 22 }} />
@@ -91,7 +92,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         >
-          <Text style={{ fontSize: 13, fontWeight: "700", color: C.mutedBrown, marginBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 8 }}>
             Date
           </Text>
           <DateField
@@ -103,62 +104,62 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
               borderRadius: 14,
               padding: 14,
               borderWidth: 2,
-              borderColor: noteDate ? C.coral : C.sand,
+              borderColor: noteDate ? COLORS.coral : MATERIALS.hairline,
             }}
           />
 
-          <Text style={{ fontSize: 13, fontWeight: "700", color: C.mutedBrown, marginTop: 20, marginBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginTop: 20, marginBottom: 8 }}>
             Note
           </Text>
           <TextInput
             value={note}
             onChangeText={setNote}
             placeholder="What happened? (symptoms, visit summary, questions for the vet…)"
-            placeholderTextColor={C.mutedBrown}
+            placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={{
               backgroundColor: "#FFF",
               borderRadius: 14,
               padding: 14,
               fontSize: 15,
-              color: C.warmBrown,
+              color: COLORS.warmBrown,
               minHeight: 120,
               textAlignVertical: "top",
               borderWidth: 2,
-              borderColor: note ? C.coral : C.sand,
+              borderColor: note ? COLORS.coral : MATERIALS.hairline,
             }}
           />
 
-          <Text style={{ fontSize: 11, color: C.mutedBrown, marginTop: 12, lineHeight: 16 }}>
+          <Text style={[TYPE.caption, { fontWeight: "500", letterSpacing: 0, color: COLORS.mutedBrown, marginTop: SPACING.md, lineHeight: 16 }]}>
             History is append-only: entries are kept with their date. Vets can add
             entries but can't edit or delete them — only you can.
           </Text>
 
-          <TouchableOpacity
+          <PressableScale
             onPress={handleSave}
             disabled={!canSave}
             style={{
-              marginTop: 24,
-              backgroundColor: canSave ? C.coral : C.sand,
-              borderRadius: 16,
+              marginTop: SPACING.xxl,
+              backgroundColor: canSave ? COLORS.coral : MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.control,
               height: 54,
               flexDirection: "row",
               justifyContent: "center",
               alignItems: "center",
-              gap: 8,
+              gap: SPACING.sm,
             }}
           >
             {saving ? (
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Plus size={18} color={canSave ? "#FFF" : C.mutedBrown} />
-                <Text style={{ color: canSave ? "#FFF" : C.mutedBrown, fontWeight: "800", fontSize: 16 }}>
+                <Plus size={18} color={canSave ? "#FFF" : COLORS.mutedBrown} />
+                <Text style={[TYPE.headline, { color: canSave ? "#FFF" : COLORS.mutedBrown, fontWeight: "800" }]}>
                   Add entry
                 </Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         </KeyboardAwareScrollView>
       </View>
     </Modal>
