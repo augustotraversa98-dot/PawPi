@@ -1,4 +1,5 @@
 import React from "react";
+import { AccessibilityInfo } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import { UnlockedFeed } from "./UnlockedFeed";
 
@@ -124,5 +125,65 @@ describe("UnlockedFeed — Suggested divider (2.58)", () => {
     const posts = [fpost(1, "suggested"), fpost(2, "suggested")];
     const { queryByTestId } = render(<UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />);
     expect(queryByTestId("suggested-divider")).toBeNull();
+  });
+});
+
+// Regression guard (2.77 fix): after the Liquid Glass restyle, feed items had
+// been wrapped in <Animated.View entering={FadeInDown…}> — which starts at
+// opacity 0 — so when reanimated worklets weren't active, later posts stayed
+// invisible (only the first showed; Reduce Motion ON masked it). The rule now:
+// content renders at full opacity with NO entrance animation, so EVERY pet's
+// post is visible regardless of the Reduce Motion setting.
+describe("UnlockedFeed — all items visible regardless of motion (2.77)", () => {
+  const distinctPosts = [
+    { id: 1, pet_id: 11, pet_name: "Rex", username: "Ana", pet_avatar: "a", image_url: "p", caption: "rex caption" },
+    { id: 2, pet_id: 22, pet_name: "Milo", username: "Bob", pet_avatar: "a", image_url: "p", caption: "milo caption" },
+    { id: 3, pet_id: 33, pet_name: "Luna", username: "Cy", pet_avatar: "a", image_url: "p", caption: "luna caption" },
+  ];
+
+  afterEach(() => jest.restoreAllMocks());
+
+  function expectAllThreeRendered() {
+    const { getByText, getAllByText } = render(
+      <UnlockedFeed {...baseProps} posts={distinctPosts} suggestions={undefined} />,
+    );
+    // Each name shows up (header + bold caption prefix), and every unique
+    // caption renders — so all three pets' posts are visible, not just the first.
+    expect(getAllByText("Rex").length).toBeGreaterThan(0);
+    expect(getAllByText("Milo").length).toBeGreaterThan(0);
+    expect(getAllByText("Luna").length).toBeGreaterThan(0);
+    // Captions render as a composite Text ("<Name> <caption>"); match the
+    // unique caption substring within each.
+    expect(getByText(/rex caption/)).toBeTruthy();
+    expect(getByText(/milo caption/)).toBeTruthy();
+    expect(getByText(/luna caption/)).toBeTruthy();
+  }
+
+  it("renders every pet's post with Reduce Motion OFF", () => {
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+    expectAllThreeRendered();
+  });
+
+  it("renders every pet's post with Reduce Motion ON", () => {
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+    expectAllThreeRendered();
+  });
+
+  it("does not wrap items in a reanimated entering animation (no visibility-gating motion)", () => {
+    // The fix removed the only `entering` usage in the feed. Guard against it
+    // (or any opacity:0 resting style) creeping back into the rendered tree.
+    const { UNSAFE_root } = render(
+      <UnlockedFeed {...baseProps} posts={distinctPosts} suggestions={undefined} />,
+    );
+    UNSAFE_root.findAll((node) => {
+      expect(node.props?.entering).toBeUndefined();
+      const flat = Array.isArray(node.props?.style)
+        ? Object.assign({}, ...node.props.style.filter(Boolean))
+        : node.props?.style;
+      if (flat && typeof flat === "object") {
+        expect(flat.opacity).not.toBe(0);
+      }
+      return false;
+    });
   });
 });

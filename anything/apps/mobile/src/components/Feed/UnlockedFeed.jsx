@@ -1,9 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text } from "react-native";
-import Animated from "react-native-reanimated";
 import { PawPrint } from "lucide-react-native";
-import { COLORS, TYPE, SPACING, listEntering } from "@/constants/theme";
-import { useReducedMotion } from "@/hooks/useAccessibilityPrefs";
+import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
@@ -46,8 +44,6 @@ export function UnlockedFeed({
     };
   }, [items]);
 
-  const reduceMotion = useReducedMotion();
-
   const SuggestedDivider = () => (
     <View
       testID="suggested-divider"
@@ -85,48 +81,45 @@ export function UnlockedFeed({
         </Text>
       </View>
 
-      {items.map((item, index) => {
-        // Each item springs in on mount (cross-fades under Reduce Motion) — the
-        // staggered list-enter motion from the design system.
-        const entering = listEntering(reduceMotion, index);
-
+      {items.map((item) => {
+        // Items render at full opacity with NO entrance animation — content
+        // visibility must never depend on a layout animation completing (see
+        // src/constants/motion.js). Motion here is limited to PostCard's
+        // PressableScale press + the 2.64 double-tap paw, which can't hide rows.
+        //
         // Suggestion cards carry a `kind` discriminator; pet posts never do, so they can never
         // be confused (no fake pet posts).
         if (item.kind === "provider") {
           return (
-            <Animated.View key={`provider-${item.id}`} entering={entering}>
-              <ProviderFeedCard
-                provider={item}
-                onPress={() => onOpenProvider?.(item)}
-              />
-            </Animated.View>
+            <ProviderFeedCard
+              key={`provider-${item.id}`}
+              provider={item}
+              onPress={() => onOpenProvider?.(item)}
+            />
           );
         }
         if (item.kind === "adoption") {
           return (
-            <Animated.View key={`adoption-${item.id}`} entering={entering}>
-              <AdoptionFeedCard
-                listing={item}
-                onPress={() => onOpenAdoption?.(item)}
-              />
-            </Animated.View>
+            <AdoptionFeedCard
+              key={`adoption-${item.id}`}
+              listing={item}
+              onPress={() => onOpenAdoption?.(item)}
+            />
           );
         }
         return (
           <React.Fragment key={item.id}>
             {item.id === dividerBeforeId && <SuggestedDivider />}
-            <Animated.View entering={entering}>
-              <PostCard
-                post={item}
-                liked={!!likedPosts[item.id]}
-                locked={false}
-                streak={streakByPetId[item.pet_id] || 0}
-                onToggleLike={() => onToggleLike(item.id)}
-                onOpenBarks={() => onOpenBarks(item)}
-                onOpenDetail={() => onOpenDetail(item)}
-                onOpenProfile={() => onOpenProfile(item)}
-              />
-            </Animated.View>
+            <PostCard
+              post={item}
+              liked={!!likedPosts[item.id]}
+              locked={false}
+              streak={streakByPetId[item.pet_id] || 0}
+              onToggleLike={() => onToggleLike(item.id)}
+              onOpenBarks={() => onOpenBarks(item)}
+              onOpenDetail={() => onOpenDetail(item)}
+              onOpenProfile={() => onOpenProfile(item)}
+            />
           </React.Fragment>
         );
       })}

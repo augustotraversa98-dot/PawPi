@@ -9,14 +9,4 @@ export { COLORS, TAG_COLORS } from "./colors";
 export { SPACING, RADII, RADIUS } from "./spacing";
 export { TYPE, WEIGHT } from "./typography";
 export { ELEVATION, MATERIALS, BLUR } from "./elevation";
-export {
-  SPRINGS,
-  DURATIONS,
-  SCALE,
-  selectByMotion,
-  listEntering,
-  listExiting,
-  sheetEntering,
-  sheetExiting,
-  screenEntering,
-} from "./motion";
+export { SPRINGS, DURATIONS, SCALE, selectByMotion } from "./motion";
