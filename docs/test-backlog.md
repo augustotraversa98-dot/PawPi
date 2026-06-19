@@ -54,6 +54,8 @@ as the RLS migrations 0019–0026.)
 0059_pet_friendly_places.sql          (2.73 — saved_places owner-FOR-ALL RLS; NO cache table [proxy fetches live]; Google Places via key-gated web route) 🟡 BUILT + harness-proven (PR 2.73) — PENDING hand-apply
 0060_events_meetups.sql               (2.74 — events + event_rsvps; published public read, host-only writes, own-only rsvp; no DEFINER/notify) 🟡 BUILT + harness-proven (PR 2.74) — PENDING hand-apply
 0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans owner-RLS + food_recalls [public read, DEFINER ingest] + pet_food_recall_matches owner-RLS + match/ingest DEFINERs + notifications 'food_recall' widen) 🟡 BUILT + harness-proven (PR 2.75) — PENDING hand-apply
+--- APP STORE READINESS (2.78) ---
+0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) 🟡 BUILT + harness-proven (PR 2.78) — PENDING hand-apply
 ```
 **Wave 7 (tickets 2.68–2.75, scoped 2026-06-18) — ✅ ALL BUILT.** Migrations **0056–0061** are harness-proven
 and PENDING hand-apply (last applied on Supabase = 0055). **2.68** (shared Apple-Maps component) + **2.69**

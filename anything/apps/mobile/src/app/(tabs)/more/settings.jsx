@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,9 @@ import {
   PawPrint,
   Activity,
   Check,
+  Trash2,
 } from "lucide-react-native";
+import { useAuth } from "@/utils/auth/useAuth";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
 import {
   getLocalePreference,
@@ -81,9 +83,55 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
+  const { setAuth } = useAuth();
+  const [deleting, setDeleting] = useState(false);
   const [feedReminder, setFeedReminder] = useState(true);
   const [healthAlerts, setHealthAlerts] = useState(true);
   const [communityUpdates, setCommunityUpdates] = useState(false);
+
+  // In-app account deletion (App Store 5.1.1(v)). Two-step confirm → DELETE /api/account
+  // (irreversibly removes the account + owner-scoped data server-side) → clear local session → welcome.
+  const performDelete = async () => {
+    try {
+      setDeleting(true);
+      const res = await fetch("/api/account", { method: "DELETE" });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Failed to delete account");
+      }
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      await AsyncStorage.clear();
+      if (setAuth) setAuth(null);
+      router.replace("/welcome");
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert("Couldn't delete account", e.message || "Please try again.");
+    }
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      "Delete account?",
+      "This permanently deletes your account and all your pets, health records, posts and other data. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () =>
+            Alert.alert(
+              "This is permanent",
+              "Are you absolutely sure? Your account and data will be erased.",
+              [
+                { text: "Keep my account", style: "cancel" },
+                { text: "Delete forever", style: "destructive", onPress: performDelete },
+              ],
+            ),
+        },
+      ],
+    );
+  };
 
   const SettingRow = ({
     label,
@@ -277,6 +325,55 @@ export default function SettingsScreen() {
         <SectionCard>
           <SettingRow label="Help Center" icon={HelpCircle} value="→" />
           <SettingRow label="Contact Us" icon={Globe} value="→" />
+        </SectionCard>
+
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "800",
+            color: C.mutedBrown,
+            marginBottom: 10,
+            letterSpacing: 0.8,
+          }}
+        >
+          ACCOUNT
+        </Text>
+        <SectionCard>
+          <TouchableOpacity
+            testID="delete-account"
+            onPress={confirmDeleteAccount}
+            disabled={deleting}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 14,
+              opacity: deleting ? 0.5 : 1,
+            }}
+          >
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                backgroundColor: "#FBE7E4",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 14,
+                borderWidth: 1,
+                borderColor: "#F3B5AD",
+              }}
+            >
+              <Trash2 size={18} color="#B23A2E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, color: "#B23A2E", fontWeight: "700" }}>
+                {deleting ? "Deleting…" : "Delete account"}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+                Permanently delete your account and all data.
+              </Text>
+            </View>
+          </TouchableOpacity>
         </SectionCard>
 
         <View style={{ alignItems: "center", marginTop: 12, gap: 6 }}>
