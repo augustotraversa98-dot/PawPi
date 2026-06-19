@@ -764,7 +764,15 @@ not a hand-maintained log here:
   (public read, DEFINER `ingest_food_recall`) + `pet_food_recall_matches` (owner-RLS) + `match_food_recall`
   DEFINER (recall→plan match + `food_recall` notify) + notifications CHECK widen; secret-gated idempotent
   ingest (`/api/recalls/ingest`, needs `CRON_SECRET` + external scheduler); mobile Nutrition card +
-  dismissible recall alerts (non-diagnostic). Next: the 2.78 App Store readiness pass.
+  dismissible recall alerts (non-diagnostic).
+  **✅ 2.78 App Store readiness pass DONE** (PRs #197–#199): iOS permission strings + privacy manifest +
+  metadata (name PawPi, bundle id placeholder); removed the `wrongPets` debug query; privacy/terms config
+  slot; **in-app account deletion** (migration **0062** `delete_my_account()` DEFINER + `DELETE /api/account`
+  + Settings danger-zone, harness-proven, PENDING hand-apply); wired two "coming soon" no-ops (weight-log
+  delete, profile photo) to real functionality. Sign in with Apple parity + medical disclaimers verified.
+  Handoff: **`docs/app-store-readiness.md`** (FIXED / FLAGGED policy items / account-gated submission
+  checklist). Code+config is submission-ready; the actual EAS build + App Store Connect upload need the
+  Apple Developer account.
   Tickets 2.68–2.75 in `docs/phase2-tickets/` (Wave 7
   section of `00-README.md`); status mirror in `docs/roadmap.md`; planned migrations 0056–0061 pre-flagged in
   `docs/test-backlog.md` ACTION 1. **✅ 2.68 shared Apple-Maps component MERGED** —

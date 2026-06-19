@@ -208,9 +208,20 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   mobile Nutrition card (non-diagnostic disclaimer) + dismissible recall alerts. i18n EN+ES. Needs `CRON_SECRET`
   + an external scheduler to post the feed.
 
-Migrations 0056–0061 will be flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 as each merges
-(Code hand-applies per the usual harness-only pattern). 2.69/2.71/2.72/2.75 are parallel-safe; the
-map-dependent trio (2.70/2.73/2.74) wait on 2.68.
+Migrations 0056–0061 are flagged in [`docs/test-backlog.md`](test-backlog.md) ACTION 1 (Code hand-applies
+per the usual harness-only pattern). 2.69/2.71/2.72/2.75 are parallel-safe; the map-dependent trio
+(2.70/2.73/2.74) wait on 2.68.
+
+### ✅ 2.78 — App Store readiness pass (final step of the autonomous run; PRs #197–#199)
+Pre-submission hardening against Apple's current guidelines: iOS permission usage strings + privacy manifest
++ metadata (name PawPi, placeholder bundle id); removed the `wrongPets` debug query (2.3.1); privacy/terms
+config slot wired into welcome (5.1.1); **in-app account deletion** (migration **0062** `delete_my_account()`
+DEFINER + `DELETE /api/account` + Settings danger-zone; FK-clean cascade, self-only; harness-proven) per
+5.1.1(v); wired two "coming soon" no-ops (weight-log delete + profile photo) to real functionality (2.1).
+Sign in with Apple parity (4.8) + non-diagnostic disclaimers (1.4.1) verified. The handoff —
+FIXED / FLAGGED policy items / account-gated submission checklist — is in
+[`docs/app-store-readiness.md`](app-store-readiness.md). Code+config is submission-ready; the EAS build +
+App Store Connect upload need the Apple Developer account.
 
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
