@@ -54,6 +54,17 @@ describe("LockedFeedOverlay — visible blurred preview", () => {
     expect(onPostPress).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a tasteful (non-blank) lock state when there are NO posts to preview", () => {
+    // Brand-new account / no friends posting yet: no preview posts, but the lock
+    // card + CTA must still render (not a blank strip).
+    const { queryAllByTestId, getByText } = render(
+      <LockedFeedOverlay posts={[]} petName="Rex" onPostPress={() => {}} />,
+    );
+    expect(queryAllByTestId("feed-post-photo")).toHaveLength(0); // nothing to preview
+    expect(getByText("Post today's photo")).toBeTruthy(); // …but the lock card shows
+    expect(getByText(/unlock the feed/i)).toBeTruthy();
+  });
+
   it("the preview is NOT dimmed to near-invisible (blur/wash obscures, not opacity)", () => {
     // Guard the specific regression: the preview wrapper must not be rendered at
     // a tiny opacity (the old 0.35 made posts vanish under the scrim). Any post

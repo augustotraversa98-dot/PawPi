@@ -25,9 +25,15 @@ const PREVIEW_COUNT = 6;
 const LOCK_BLUR_INTENSITY = 16;
 const LOCK_WASH = "rgba(255, 247, 239, 0.5)"; // cream @ 50%
 
+// Floor for the tease area so the scrim + lock card are always visible — even
+// with NO posts to preview (brand-new account / no friends posting yet), where
+// the preview is empty and an absoluteFill scrim would otherwise collapse to a
+// blank strip. With posts, the preview is taller and the container grows past it.
+const MIN_TEASE_HEIGHT = 520;
+
 export function LockedFeedOverlay({ posts, petName, onPostPress }) {
   return (
-    <View>
+    <View style={{ minHeight: MIN_TEASE_HEIGHT }}>
       {/* Full-opacity preview of the top posts — the blur/wash obscures them,
           not opacity, so they stay clearly visible behind the lock. */}
       <View pointerEvents="none">

@@ -90,6 +90,7 @@ export const PostDetailModal = memo(function PostDetailModal({
   // Edit-my-caption (ticket 2.65): shown only on the owner's own post (same
   // signal as delete) and when a save handler is wired. Text only.
   const displayCaption = localCaption ?? caption;
+  const hasCaption = !!(displayCaption && String(displayCaption).trim());
   const canEditCaption = canEdit && typeof onSaveCaption === "function";
 
   const startEditCaption = () => {
@@ -276,7 +277,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                   </PressableScale>
                 </View>
               </View>
-            ) : (
+            ) : hasCaption ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -300,7 +301,28 @@ export const PostDetailModal = memo(function PostDetailModal({
                   </PressableScale>
                 ) : null}
               </View>
-            )}
+            ) : canEditCaption ? (
+              // Empty caption + owner: an explicit "Add a caption" affordance that
+              // opens the same 2.65 editor. Without this an empty-caption post had
+              // no discoverable way to ADD a caption (only a tiny inline pencil).
+              <PressableScale
+                testID="add-caption"
+                onPress={startEditCaption}
+                accessibilityLabel="Add caption"
+                accessibilityRole="button"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm,
+                  marginBottom: 16,
+                }}
+              >
+                <Pencil size={16} color={COLORS.coral} />
+                <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>
+                  Add a caption ✍️
+                </Text>
+              </PressableScale>
+            ) : null}
 
             {/* Action row */}
             <View

@@ -10,8 +10,6 @@ import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 
-import { BUILD_MARKER } from "@/constants/buildMarker";
-
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
@@ -27,15 +25,6 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const { initiate, isReady } = useAuth();
-
-  // TEMP diagnostic (2.77 tab fix): prove which bundle the device runs.
-  useEffect(() => {
-    if (__DEV__) {
-      console.log(
-        `🐾 [PAWPI-BOOT] build=${BUILD_MARKER} — bottom tabs: index, health, training, services, more (5th tab = Profile). If you see an expo-router warning "No route named ... exists in nested children", a tab name is mismatched.`,
-      );
-    }
-  }, []);
 
   useEffect(() => {
     initiate();
