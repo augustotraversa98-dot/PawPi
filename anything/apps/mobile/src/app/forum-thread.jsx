@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
 } from "react-native";
@@ -17,16 +16,15 @@ import {
 import VoteControl from "@/components/Forum/VoteControl";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, GlassSurface, PressableScale } from "@/components/ui";
 
 export default function ForumThreadScreen() {
   const insets = useSafeAreaInsets();
@@ -55,44 +53,48 @@ export default function ForumThreadScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
-      <View
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 20,
-          paddingVertical: 14,
-          borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          paddingTop: insets.top + SPACING.sm,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
         }}
       >
-        <TouchableOpacity
+        <PressableScale
           testID="thread-back"
           onPress={() => router.back()}
-          style={{ marginRight: 12 }}
+          style={{ marginRight: SPACING.md }}
         >
-          <ArrowLeft size={22} color={C.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
+          <ArrowLeft size={22} color={COLORS.warmBrown} />
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           Discussion
         </Text>
-      </View>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: SPACING.xxl }}
       >
         {isLoading && (
-          <View style={{ alignItems: "center", padding: 40 }}>
-            <ActivityIndicator size="large" color={C.coral} />
+          <View style={{ alignItems: "center", padding: SPACING.huge }}>
+            <ActivityIndicator size="large" color={COLORS.coral} />
           </View>
         )}
 
         {!isLoading && !thread && (
           <View style={{ alignItems: "center", padding: 50 }}>
             <Text style={{ fontSize: 32 }}>🐾</Text>
-            <Text style={{ color: C.mutedBrown, marginTop: 10, fontWeight: "700" }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.sm, fontWeight: "700" }]}>
               This discussion is no longer available.
             </Text>
           </View>
@@ -101,16 +103,13 @@ export default function ForumThreadScreen() {
         {!isLoading && thread && (
           <>
             {/* Thread */}
-            <View
+            <Card
+              radius={RADIUS.card}
               style={{
-                backgroundColor: C.card,
-                borderRadius: 18,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: C.peach,
+                padding: SPACING.lg,
                 flexDirection: "row",
-                gap: 12,
-                marginBottom: 16,
+                gap: SPACING.md,
+                marginBottom: SPACING.lg,
               }}
             >
               <VoteControl
@@ -121,7 +120,12 @@ export default function ForumThreadScreen() {
               />
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-                  <Text style={{ flex: 1, fontSize: 11, color: C.mutedBrown, fontWeight: "700" }}>
+                  <Text
+                    style={[
+                      TYPE.caption,
+                      { flex: 1, color: COLORS.mutedBrown, fontWeight: "700", letterSpacing: 0 },
+                    ]}
+                  >
                     {thread.category} · 🐾 {thread.author_username || "someone"}
                   </Text>
                   {/* Report/Block the thread author (T4) — hidden on your own thread. */}
@@ -132,50 +136,49 @@ export default function ForumThreadScreen() {
                     iconSize={18}
                   />
                 </View>
-                <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, lineHeight: 25 }}>
+                <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
                   {thread.title}
                 </Text>
                 {thread.body ? (
-                  <Text style={{ fontSize: 14, color: C.warmBrown, marginTop: 8, lineHeight: 20 }}>
+                  <Text style={[TYPE.callout, { color: COLORS.warmBrown, marginTop: SPACING.sm }]}>
                     {thread.body}
                   </Text>
                 ) : null}
               </View>
-            </View>
+            </Card>
 
             {/* Comments */}
             <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "800",
-                color: C.mutedBrown,
-                letterSpacing: 0.8,
-                marginBottom: 10,
-              }}
+              style={[
+                TYPE.footnote,
+                {
+                  fontWeight: "800",
+                  color: COLORS.mutedBrown,
+                  letterSpacing: 0.8,
+                  marginBottom: SPACING.sm,
+                },
+              ]}
             >
               {comments.length} {comments.length === 1 ? "COMMENT" : "COMMENTS"}
             </Text>
 
             {comments.length === 0 && (
-              <Text style={{ fontSize: 13, color: C.mutedBrown, marginBottom: 12 }}>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginBottom: SPACING.md }]}>
                 No comments yet — start the conversation.
               </Text>
             )}
 
             {comments.map((c) => (
-              <View
+              <Card
                 key={c.id}
                 testID={`comment-${c.id}`}
+                radius={RADIUS.control}
                 style={{
-                  backgroundColor: C.card,
-                  borderRadius: 14,
-                  padding: 14,
-                  marginBottom: 10,
-                  marginLeft: c.parent_comment_id ? 20 : 0,
-                  borderWidth: 1,
-                  borderColor: C.peach,
+                  padding: SPACING.md,
+                  marginBottom: SPACING.sm,
+                  marginLeft: c.parent_comment_id ? SPACING.xl : 0,
                   flexDirection: "row",
-                  gap: 10,
+                  gap: SPACING.sm,
                 }}
               >
                 <VoteControl
@@ -186,7 +189,9 @@ export default function ForumThreadScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
-                    <Text style={{ flex: 1, fontSize: 12, color: C.mutedBrown, fontWeight: "700" }}>
+                    <Text
+                      style={[TYPE.footnote, { flex: 1, color: COLORS.mutedBrown, fontWeight: "700" }]}
+                    >
                       🐾 {c.author_username || "someone"}
                     </Text>
                     {/* Report/Block the comment author (T4) — hidden on your own comment. */}
@@ -197,11 +202,11 @@ export default function ForumThreadScreen() {
                       iconSize={16}
                     />
                   </View>
-                  <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 19 }}>
+                  <Text style={[TYPE.callout, { color: COLORS.warmBrown }]}>
                     {c.body}
                   </Text>
                 </View>
-              </View>
+              </Card>
             ))}
           </>
         )}
@@ -209,17 +214,19 @@ export default function ForumThreadScreen() {
 
       {/* Comment composer */}
       {thread && (
-        <View
+        <GlassSurface
+          intensity={BLUR.thick}
           style={{
+            borderTopWidth: 1,
+            borderColor: MATERIALS.glassBorder,
+          }}
+          contentStyle={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 10,
-            paddingHorizontal: 16,
-            paddingTop: 10,
-            paddingBottom: insets.bottom + 10,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.card,
+            gap: SPACING.sm,
+            paddingHorizontal: SPACING.lg,
+            paddingTop: SPACING.sm,
+            paddingBottom: insets.bottom + SPACING.sm,
           }}
         >
           <TextInput
@@ -227,26 +234,28 @@ export default function ForumThreadScreen() {
             value={commentText}
             onChangeText={setCommentText}
             placeholder="Add a comment..."
-            placeholderTextColor={C.mutedBrown + "90"}
+            placeholderTextColor={COLORS.mutedBrown + "90"}
             style={{
               flex: 1,
-              backgroundColor: C.sand,
-              borderRadius: 20,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              fontSize: 14,
-              color: C.warmBrown,
+              backgroundColor: MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.chip,
+              paddingHorizontal: SPACING.lg,
+              paddingVertical: SPACING.sm,
+              borderWidth: 1,
+              borderColor: MATERIALS.hairline,
+              ...TYPE.callout,
+              color: COLORS.warmBrown,
             }}
           />
-          <TouchableOpacity
+          <PressableScale
             testID="comment-submit"
             onPress={submitComment}
             disabled={createComment.isPending || !commentText.trim()}
             style={{
               width: 42,
               height: 42,
-              borderRadius: 21,
-              backgroundColor: commentText.trim() ? C.coral : C.sand,
+              borderRadius: RADIUS.chip,
+              backgroundColor: commentText.trim() ? COLORS.coral : MATERIALS.surfaceSunken,
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -254,10 +263,10 @@ export default function ForumThreadScreen() {
             {createComment.isPending ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
-              <Send size={18} color={commentText.trim() ? "#FFF" : C.mutedBrown} />
+              <Send size={18} color={commentText.trim() ? "#FFF" : COLORS.mutedBrown} />
             )}
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </GlassSurface>
       )}
     </View>
   );

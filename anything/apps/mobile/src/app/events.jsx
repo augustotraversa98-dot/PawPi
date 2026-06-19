@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   Linking,
   Platform,
@@ -12,9 +11,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ArrowLeft, Plus, MapPin, Users, Navigation, CalendarDays } from "lucide-react-native";
+import { ArrowLeft, Plus, Users, Navigation, CalendarDays } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, GlassSurface, PressableScale } from "@/components/ui";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useEvents, useRsvpEvent, useCancelEvent } from "@/hooks/useEvents";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
@@ -138,61 +145,67 @@ export default function EventsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
-          paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
+          paddingTop: insets.top + SPACING.sm,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.title2, { flex: 1, color: COLORS.warmBrown }]}>
           {t("events.title")}
         </Text>
-        <TouchableOpacity
+        <PressableScale
           testID="event-create-button"
           onPress={() => router.push("/event-create")}
-          style={{ backgroundColor: COLORS.coral, width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" }}
+          style={{ backgroundColor: COLORS.coral, width: 40, height: 40, borderRadius: RADIUS.chip, justifyContent: "center", alignItems: "center" }}
         >
           <Plus size={22} color="#fff" />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
         {isLoading ? (
-          <ActivityIndicator color={COLORS.coral} style={{ marginTop: 24 }} />
+          <ActivityIndicator color={COLORS.coral} style={{ marginTop: SPACING.xxl }} />
         ) : events.length === 0 ? (
-          <View
+          <Card
             testID="events-empty"
-            style={{ backgroundColor: COLORS.card, borderRadius: 18, padding: 28, alignItems: "center", borderWidth: 1, borderColor: COLORS.peach, marginTop: 8 }}
+            radius={RADIUS.card}
+            style={{ padding: 28, alignItems: "center", marginTop: SPACING.sm }}
           >
             <CalendarDays size={28} color={COLORS.mutedBrown} />
-            <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 10, textAlign: "center" }}>
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.sm, textAlign: "center" }]}>
               {t("events.empty")}
             </Text>
-          </View>
+          </Card>
         ) : (
           <>
             {markers.length > 0 && (
-              <View style={{ marginBottom: 16 }}>
+              <View style={{ marginBottom: SPACING.lg }}>
                 <MapLocationView points={markers} height={200} />
               </View>
             )}
             {events.map((e) => (
-              <View
+              <Card
                 key={e.id}
                 testID={`event-${e.id}`}
-                style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: COLORS.peach }}
+                radius={RADIUS.control}
+                style={{ padding: SPACING.md, marginBottom: SPACING.sm }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text style={{ flex: 1, fontWeight: "800", color: COLORS.warmBrown, fontSize: 15 }}>{e.title}</Text>
+                  <Text style={[TYPE.headline, { flex: 1, color: COLORS.warmBrown, fontWeight: "800" }]}>
+                    {e.title}
+                  </Text>
                   {/* Report this event / block the host (T4) — hidden on your own event. */}
                   <ModerationMenu
                     targetType="event"
@@ -202,62 +215,62 @@ export default function EventsScreen() {
                     iconSize={18}
                   />
                 </View>
-                <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 2 }}>
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
                   {fmtWhen(e.starts_at)}
                   {e.location_name ? ` · ${e.location_name}` : ""}
                 </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.xs }}>
                   <Users size={13} color={COLORS.mutedBrown} />
-                  <Text style={{ color: COLORS.mutedBrown, fontSize: 12 }}>
+                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
                     {e.attendee_count ?? 0} {t("events.going")}
                     {e.host_username ? ` · ${t("events.by")} @${e.host_username}` : ""}
                   </Text>
                 </View>
 
-                <View style={{ flexDirection: "row", gap: 14, marginTop: 10, alignItems: "center" }}>
-                  <TouchableOpacity
+                <View style={{ flexDirection: "row", gap: SPACING.md, marginTop: SPACING.sm, alignItems: "center" }}>
+                  <PressableScale
                     testID={`event-rsvp-${e.id}`}
                     onPress={() => toggleRsvp(e)}
                     style={{
                       backgroundColor: e.my_rsvp === "going" ? COLORS.sageDark : COLORS.coral,
-                      borderRadius: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
+                      borderRadius: RADIUS.control,
+                      paddingHorizontal: SPACING.lg,
+                      paddingVertical: SPACING.sm,
                     }}
                   >
-                    <Text style={{ color: "#fff", fontWeight: "800" }}>
+                    <Text style={[TYPE.callout, { color: "#fff", fontWeight: "800" }]}>
                       {e.my_rsvp === "going" ? t("events.goingYes") : t("events.rsvp")}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                   {e.my_rsvp === "going" && (
-                    <TouchableOpacity
+                    <PressableScale
                       testID={`event-add-calendar-${e.id}`}
                       onPress={() => addToCalendar(e)}
                       style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                     >
                       <CalendarDays size={15} color={COLORS.sageDark} />
-                      <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>
+                      <Text style={[TYPE.subhead, { color: COLORS.sageDark, fontWeight: "700" }]}>
                         {e.my_calendar_event_id ? t("calendar.added") : t("calendar.addToCalendar")}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   )}
                   {isValidCoord(e.lat, e.lng) && (
-                    <TouchableOpacity
+                    <PressableScale
                       testID={`event-directions-${e.id}`}
                       onPress={() => openDirections(e)}
                       style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                     >
                       <Navigation size={15} color={COLORS.sageDark} />
-                      <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>{t("events.directions")}</Text>
-                    </TouchableOpacity>
+                      <Text style={[TYPE.callout, { color: COLORS.sageDark, fontWeight: "700" }]}>{t("events.directions")}</Text>
+                    </PressableScale>
                   )}
                   {e.is_host && (
-                    <TouchableOpacity testID={`event-cancel-${e.id}`} onPress={() => confirmCancel(e)}>
-                      <Text style={{ color: "#C2410C", fontWeight: "700" }}>{t("events.cancel")}</Text>
-                    </TouchableOpacity>
+                    <PressableScale testID={`event-cancel-${e.id}`} onPress={() => confirmCancel(e)}>
+                      <Text style={[TYPE.callout, { color: "#C2410C", fontWeight: "700" }]}>{t("events.cancel")}</Text>
+                    </PressableScale>
                   )}
                 </View>
-              </View>
+              </Card>
             ))}
           </>
         )}
