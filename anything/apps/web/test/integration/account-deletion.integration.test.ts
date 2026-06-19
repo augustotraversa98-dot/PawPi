@@ -9,10 +9,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { inject } from 'vitest';
 import postgres from 'postgres';
 import type { Sql } from 'postgres';
-import { makeTestSql, resetDb, seedOwnerWithPet } from './db';
+import { makeTestSql, resetDb, seedOwnerWithPet, seedUser, seedLostReport } from './db';
 
 const A = { authUserId: 1, profileId: 1, username: 'ownera', petId: 1, petName: 'Rex' };
 const B = { authUserId: 2, profileId: 2, username: 'ownerb', petId: 2, petName: 'Fido' };
+const C = { authUserId: 3, profileId: 3, username: 'noPetC' }; // profile, no pet
 
 let raw: Sql;
 let app: Sql;
@@ -71,6 +72,42 @@ describe('delete_my_account', () => {
   it('deleting A does not touch B even when called as A', async () => {
     await asApp(A.profileId, (tx) => tx`select delete_my_account()`);
     expect((await raw`select id from auth_users where id = ${B.authUserId}`).length).toBe(1);
+    expect((await raw`select id from pets where owner_user_id = ${B.profileId}`).length).toBe(1);
+  });
+
+  it('ON DELETE SET NULL: another user\'s row that REFERENCES A survives (reporter nulled)', async () => {
+    // B owns an active lost report; A reported a sighting on it. lost_sightings.reporter_user_id is
+    // ON DELETE SET NULL (0050) — deleting A must NOT delete B's report or the sighting row; it only
+    // nulls the reporter pointer. This is the "provider's record of a past interaction survives" class.
+    await seedLostReport(raw, { id: 700, petId: B.petId, ownerUserId: B.profileId, status: 'active' });
+    await raw`insert into lost_sightings (id, lost_report_id, reporter_user_id, note)
+              values (800, 700, ${A.profileId}, 'spotted near the park')`;
+
+    const [{ ok }] = await asApp(A.profileId, (tx) => tx`select delete_my_account() as ok`);
+    expect(ok).toBe(true);
+
+    const sighting = await raw`select id, reporter_user_id from lost_sightings where id = 800`;
+    expect(sighting.length).toBe(1); // the row SURVIVES
+    expect(sighting[0].reporter_user_id).toBeNull(); // pointer to A nulled out
+    expect((await raw`select id from lost_reports where id = 700`).length).toBe(1); // B's report intact
+  });
+
+  it('a profile with NO pets is still deleted cleanly (auth + profile gone)', async () => {
+    await seedUser(raw, C);
+    const [{ ok }] = await asApp(C.profileId, (tx) => tx`select delete_my_account() as ok`);
+    expect(ok).toBe(true);
+    expect((await raw`select id from auth_users where id = ${C.authUserId}`).length).toBe(0);
+    expect((await raw`select id from user_profiles where id = ${C.profileId}`).length).toBe(0);
+    // A and B untouched.
+    expect((await raw`select id from user_profiles where id in (${A.profileId}, ${B.profileId})`).length).toBe(2);
+  });
+
+  it('a repeat call after the account is gone is a harmless no-op (idempotent)', async () => {
+    await asApp(A.profileId, (tx) => tx`select delete_my_account()`);
+    // Second call with A's (now-stale) identity: nothing left to delete, B stays intact, no throw.
+    const [{ ok }] = await asApp(A.profileId, (tx) => tx`select delete_my_account() as ok`);
+    expect(ok).toBe(true);
+    expect((await raw`select id from user_profiles where id = ${B.profileId}`).length).toBe(1);
     expect((await raw`select id from pets where owner_user_id = ${B.profileId}`).length).toBe(1);
   });
 });

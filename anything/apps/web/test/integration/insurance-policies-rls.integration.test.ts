@@ -175,4 +175,26 @@ describe('activate_insurance_policy safe path', () => {
       expect(result).toBe('forbidden');
     });
   });
+
+  it('activating twice is idempotent — second call returns not_bindable, no re-bind', async () => {
+    await asApp(O.profileId, async (tx) => {
+      const [{ result }] = await tx`select activate_insurance_policy(${POL_ID}, ${PAY_ID}) as result`;
+      expect(result).toBe('active');
+    });
+    // Already-active policy is no longer bindable — a re-trigger can't double-bind/re-pay.
+    await asApp(O.profileId, async (tx) => {
+      const [{ result }] = await tx`select activate_insurance_policy(${POL_ID}, ${PAY_ID}) as result`;
+      expect(result).toBe('not_bindable');
+    });
+    const [{ status, payment_id }] = await raw`select status, payment_id from insurance_policies where id = ${POL_ID}`;
+    expect(status).toBe('active');
+    expect(payment_id).toBe(PAY_ID); // bound once
+  });
+
+  it('activating an unknown policy returns not_found', async () => {
+    await asApp(O.profileId, async (tx) => {
+      const [{ result }] = await tx`select activate_insurance_policy(999999, ${PAY_ID}) as result`;
+      expect(result).toBe('not_found');
+    });
+  });
 });
