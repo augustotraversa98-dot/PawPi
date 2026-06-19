@@ -110,7 +110,6 @@ async function POST(request, { params }) {
       RETURNING *
     `;
 
-    console.log("[social-walks] Join request created:", result[0]);
 
     // Create notification for walk owner
     // This will be handled via a notification system

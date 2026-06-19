@@ -60,7 +60,6 @@ async function GET(request) {
       `;
     }
 
-    console.log("[routines] Fetched routines:", routines.length);
     return Response.json({ routines }, { status: 200 });
   } catch (error) {
     console.error("[routines] Error fetching routines:", error);
@@ -187,7 +186,6 @@ async function POST(request) {
       RETURNING *
     `;
 
-    console.log("[routines] Routine created:", result[0]);
     return Response.json({ routine: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[routines] Error creating routine:", error);
@@ -307,7 +305,6 @@ async function PUT(request) {
       RETURNING *
     `;
 
-    console.log("[routines] Routine updated:", result[0]);
     return Response.json({ routine: result[0] }, { status: 200 });
   } catch (error) {
     console.error("[routines] Error updating routine:", error);
@@ -371,7 +368,6 @@ async function DELETE(request) {
       );
     }
 
-    console.log("[routines] Routine soft-deleted:", id);
     return Response.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("[routines] Error deleting routine:", error);

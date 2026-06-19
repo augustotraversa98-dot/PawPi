@@ -17,19 +17,9 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
  */
 async function GET(request) {
   try {
-    console.log(
-      "[GET /api/posts/today-daily-update] ========================================",
-    );
-    console.log(
-      "[GET /api/posts/today-daily-update] Checking for today's daily update",
-    );
 
     // Get authenticated user
     const session = await auth();
-    console.log(
-      "[GET /api/posts/today-daily-update] Session user ID:",
-      session?.user?.id,
-    );
 
     if (!session?.user?.id) {
       console.error(
@@ -41,17 +31,12 @@ async function GET(request) {
     const authUserId = session.user.id;
 
     // Get user profile
-    console.log("[GET /api/posts/today-daily-update] Fetching user profile...");
     const userProfile = await sql`
       SELECT id FROM user_profiles 
       WHERE auth_user_id = ${authUserId}
       LIMIT 1
     `;
 
-    console.log(
-      "[GET /api/posts/today-daily-update] User profile result:",
-      userProfile,
-    );
 
     if (userProfile.length === 0) {
       console.error(
@@ -65,16 +50,12 @@ async function GET(request) {
     }
 
     const userId = userProfile[0].id;
-    console.log("[GET /api/posts/today-daily-update] User profile ID:", userId);
 
     // Get pet_id from query params or use first pet
     const { searchParams } = new URL(request.url);
     let petId = searchParams.get("pet_id");
 
     if (!petId) {
-      console.log(
-        "[GET /api/posts/today-daily-update] No pet_id provided, fetching first pet...",
-      );
       const pets = await sql`
         SELECT id FROM pets 
         WHERE owner_user_id = ${userId}
@@ -83,9 +64,6 @@ async function GET(request) {
       `;
 
       if (pets.length === 0) {
-        console.log(
-          "[GET /api/posts/today-daily-update] No pets found for user",
-        );
         return Response.json({
           post: null,
           hasPostedToday: false,
@@ -94,16 +72,8 @@ async function GET(request) {
       }
 
       petId = pets[0].id;
-      console.log(
-        "[GET /api/posts/today-daily-update] Using first pet ID:",
-        petId,
-      );
     } else {
       petId = parseInt(petId);
-      console.log(
-        "[GET /api/posts/today-daily-update] Using provided pet ID:",
-        petId,
-      );
 
       // Validate pet ownership
       const pet = await sql`
@@ -125,18 +95,6 @@ async function GET(request) {
 
     // Get today's date in YYYY-MM-DD format (local date on server)
     const todayDate = new Date().toISOString().split("T")[0];
-    console.log("[GET /api/posts/today-daily-update] Today's date:", todayDate);
-    console.log(
-      "[GET /api/posts/today-daily-update] Searching for daily update with:",
-    );
-    console.log("[GET /api/posts/today-daily-update]   - pet_id:", petId);
-    console.log(
-      "[GET /api/posts/today-daily-update]   - is_daily_update: true",
-    );
-    console.log(
-      "[GET /api/posts/today-daily-update]   - post_date:",
-      todayDate,
-    );
 
     // Query for today's daily update
     const todayPost = await sql`
@@ -169,33 +127,14 @@ async function GET(request) {
       LIMIT 1
     `;
 
-    console.log("[GET /api/posts/today-daily-update] Query result:", todayPost);
 
     const post = todayPost.length > 0 ? todayPost[0] : null;
     const hasPostedToday = !!post;
 
     if (hasPostedToday) {
-      console.log(
-        "[GET /api/posts/today-daily-update] ✅ Today's daily update found!",
-      );
-      console.log("[GET /api/posts/today-daily-update] Post ID:", post.id);
-      console.log(
-        "[GET /api/posts/today-daily-update] Post caption:",
-        post.caption,
-      );
-      console.log(
-        "[GET /api/posts/today-daily-update] Post date:",
-        post.post_date,
-      );
     } else {
-      console.log(
-        "[GET /api/posts/today-daily-update] ❌ No daily update found for today",
-      );
     }
 
-    console.log(
-      "[GET /api/posts/today-daily-update] ========================================",
-    );
 
     return Response.json({
       post,

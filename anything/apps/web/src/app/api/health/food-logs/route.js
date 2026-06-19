@@ -79,7 +79,6 @@ async function POST(request) {
       RETURNING *
     `;
 
-    console.log("[health/food-logs] Log created:", result[0]);
     return Response.json({ log: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[health/food-logs] Error creating log:", error);
