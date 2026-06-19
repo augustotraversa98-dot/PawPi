@@ -7,6 +7,7 @@ import { COLORS, TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/them
 import { GlassSurface, PressableScale } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+import { BUILD_MARKER } from "@/constants/buildMarker";
 
 // A small glassy icon button used for the header actions (search/messages/bell).
 function HeaderIconButton({ onPress, children }) {
@@ -60,6 +61,15 @@ export function FeedHeader() {
             Social Pet
           </Text>
           <Text style={{ fontSize: 22 }}>🐾</Text>
+          {/* TEMP dev-only build tag (2.77 tab fix) — confirms the running bundle
+              on-device. Never shown in production. Remove once verified. */}
+          {__DEV__ ? (
+            <Text
+              style={{ fontSize: 9, color: COLORS.mutedBrown, opacity: 0.6, marginLeft: 4 }}
+            >
+              {BUILD_MARKER}
+            </Text>
+          ) : null}
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
