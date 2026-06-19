@@ -275,11 +275,35 @@ order, take the next free sequential number and update `docs/test-backlog.md` AC
 this wave: the food-recall feed key + an external scheduler (2.75, like 2.17's CRON_SECRET); 2.73 also
 consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
 
+## 🌊 WAVE 8 — calendar integration (2.79–2.80)
+Decided with Tats (2026-06-20) from the un-ticketed post-core list — the buildable, CI-verifiable half of
+calendar integration (true two-way EventKit sync stays a later ATTENDED device pass). Built per the ⚡ Wave 5
+autonomy preamble (no questions; CI-green → auto squash-merge; no fake data; migration left at the next free
+number for Tats to hand-apply). **Foundation-first**, mirroring 2.68: build the shared layer, then wire every
+surface onto it.
+
+Key fact: add-to-device calendar ALREADY exists but only for walks + vet appointments
+(`calendarIntegration.js`, two near-duplicate blocks); `expo-calendar` is already a dep. The booking spine is
+`vet_appointments` — every booking (grooming/walking/daycare/sitting/transport/telehealth) is a row there and
+already has `calendar_event_id` (0005), so the only new column needed is on `event_rsvps` (per-attendee).
+
+Build order (⛔ = hard blocker, must be merged to `origin/main` first):
+1. **2.79** Calendar foundation — mobile refactor + web ICS route, **NO migration**. **Do FIRST.** De-dupes
+   `calendarIntegration.js` into one generic layer + an expo-free `calendarFormat` module (jest-covered);
+   keeps the walk/vet wrappers + call-sites unchanged; adds owner-scoped `GET /api/calendar/booking/[id].ics`
+   (CI-testable since native expo-calendar can't run in CI).
+2. **2.80** Calendar everywhere — mobile + web + migration **0063**. ⛔ **after 2.79.** Wires add /
+   update-on-edit / remove-on-cancel into generalized bookings, transport trips, telehealth, and RSVP'd
+   events; persists the device event id (bookings/transport/telehealth → `vet_appointments.calendar_event_id`;
+   events → new `event_rsvps.calendar_event_id`); adds the events ICS route. Migration = one additive column,
+   no RLS policy change (rides existing own-row policies). Flag in `docs/test-backlog.md` ACTION 1.
+
 ## POST-CORE ADD-ONS (not ticketed — note when relevant)
-Un-ticketed after Wave 7 (deferred by choice): **widgets / Apple Watch + Live Activities** (native iOS;
-deferred to a dedicated attended effort — can't be CI-verified, needs a dev build + app-store config),
-calendar integration, weather-aware nudges, memorials (2.68–2.75 dropped memorials per Tats 2026-06-18). All
-slot onto the same spine/capability/discovery patterns when prioritized.
+Un-ticketed after Wave 8 (deferred by choice): **widgets / Apple Watch + Live Activities** (native iOS;
+ticketed as 2.76, ATTENDED — Phase 1 staged on draft PR #187, blocked on the Apple Developer account),
+**true two-way calendar/EventKit sync** (the device-bound half beyond Wave 8's add-to-calendar + ICS),
+**weather-aware nudges**, **memorials** (dropped per Tats 2026-06-18). The **iOS 27 "Liquid Glass" redesign**
+is ticketed as 2.77 — DO LAST. All slot onto the same spine/capability/discovery patterns when prioritized.
 
 ## INDEX
 - 2.0-surface-nav.md
@@ -361,3 +385,5 @@ slot onto the same spine/capability/discovery patterns when prioritized.
 - 2.76-widgets-watch-live-activities.md        (NATIVE track — Widgets + Live Activities + Apple Watch; ATTENDED, no auto-merge; no migration)
 - 2.77-ios27-liquid-glass-redesign.md          (CROSS-CUTTING redesign — iOS 27 Liquid Glass + smoother motion; keep palette; DO LAST, after Wave 7 + 2.76; no migration)
 - 2.78-app-store-readiness.md                   (FINAL STEP of the Wave 7 autonomous run — debugging + App Store compliance hardening; auto-fix + flag; aims at submission)
+- 2.79-calendar-foundation-ics.md               (Wave 8 — unify calendarIntegration.js + web ICS export; no migration; build FIRST)
+- 2.80-calendar-everywhere.md                   (Wave 8 — calendar on bookings/transport/telehealth/events; migration 0063; ⛔ after 2.79)

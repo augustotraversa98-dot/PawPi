@@ -272,6 +272,23 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ## To test
 
+### ▸ WAVE 8 device-test queue (2026-06-20) — calendar integration
+
+### [ ] 2.79 — Calendar foundation (unified layer + ICS export)  ·  ticket/calendar-foundation (2026-06-20)
+- **What shipped:** internal de-dup of `calendarIntegration.js` (one `getOrCreatePawPiCalendar` + generic
+  `upsertCalendarEvent`/`deleteCalendarEvent`) + an expo-free, jest-covered `calendarFormat` module; the
+  walk/vet wrappers + every call-site are unchanged. New owner-scoped `GET /api/calendar/booking/[id].ics`.
+  **No migration.**
+- **NEEDS A DEVICE PASS** — jest can't run native expo-calendar:
+  - On a walk (WalkItem / WalkCountdownCard / RoutineCard) tap **Add to calendar** → the event lands in the
+    "Social Pet - Walks" calendar exactly as before (recurring when the walk repeats).
+  - On a **vet appointment**: add → it appears in "Social Pet - Vet Appointments"; **edit** → the event moves;
+    **delete** → choose "delete appointment and calendar event" → it's removed. (Round-trip via
+    `calendar_event_id`, unchanged behavior.)
+  - From web, hit `GET /api/calendar/booking/<your-booking-id>.ics` while signed in → the downloaded `.ics`
+    opens cleanly in Apple Calendar / Google Calendar (correct title, time, clinic as location). Confirm you
+    **cannot** download another owner's booking (returns 404).
+
 ### ▸ WAVE 6 device-test queue (2026-06-18) — all merged + migrations 0051–0055 applied; owes a real-device pass
 
 Run these on a real device. For the share/QR ones use a **dev build** (native modules don't work in Expo Go),

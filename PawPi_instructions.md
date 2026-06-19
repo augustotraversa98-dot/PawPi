@@ -813,6 +813,13 @@ not a hand-maintained log here:
   underwriting); places data = Google Places via a server route; **new cross-cutting rule — Apple Maps
   (`react-native-maps` `PROVIDER_DEFAULT`) in EVERY section that captures/shows a location, via the shared
   2.68 component.**
+- **Wave 8 — 🔨 IN PROGRESS (calendar integration, tickets 2.79–2.80).** Scoped with Tats 2026-06-20: the
+  buildable, CI-verifiable half of calendar integration (true two-way EventKit sync stays a later attended
+  device pass). Foundation-first (mirrors 2.68). **✅ 2.79 calendar foundation MERGED** — de-duped
+  `calendarIntegration.js` into one generic layer (`getOrCreatePawPiCalendar` + `upsertCalendarEvent` +
+  `deleteCalendarEvent`) + an expo-free, jest-covered `calendarFormat` module; the walk/vet wrappers and all
+  call-sites are byte-for-byte unchanged; owner-scoped `GET /api/calendar/booking/[id].ics` (RFC 5545,
+  harness-proven owner-scoped read). **No migration.** 2.80 (calendar everywhere + migration **0063**) next.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

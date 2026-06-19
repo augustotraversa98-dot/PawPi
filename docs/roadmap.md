@@ -223,6 +223,28 @@ FIXED / FLAGGED policy items / account-gated submission checklist — is in
 [`docs/app-store-readiness.md`](app-store-readiness.md). Code+config is submission-ready; the EAS build +
 App Store Connect upload need the Apple Developer account.
 
+## 🌊 WAVE 8 — calendar integration (tickets 2.79–2.80) — 🔨 IN PROGRESS
+
+Scoped with Tats 2026-06-20 from the un-ticketed post-core list: the buildable, CI-verifiable half of
+calendar integration (true two-way EventKit sync deferred to a later attended device pass). Authoritative
+spec + build order: [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md) (Wave 8 section). Built
+per the ⚡ Wave 5 autonomy preamble. Foundation-first (mirrors 2.68). Status mirror (☐ queued · 🔨 building ·
+✅ merged):
+
+- ✅ **2.79** Calendar foundation — mobile refactor + web ICS route, **no migration**. De-duped
+  `calendarIntegration.js` into one generic layer (`getOrCreatePawPiCalendar` + `upsertCalendarEvent` +
+  `deleteCalendarEvent`) + an expo-free, jest-covered `calendarFormat` module; walk/vet wrappers + call-sites
+  unchanged; owner-scoped `GET /api/calendar/booking/[id].ics` (RFC 5545, harness-proven owner-scoped read).
+- ☐ **2.80** Calendar everywhere — mobile + web, migration **0063**; ⛔ after 2.79. Add/update/remove on
+  generalized bookings, transport, telehealth, and RSVP'd events; persist the device event id
+  (bookings/transport/telehealth → `vet_appointments.calendar_event_id`; events → new
+  `event_rsvps.calendar_event_id`); events ICS route. One additive column, no RLS policy change.
+
+Migration **0063** (2.80) will be left at the next free number for hand-apply — flag in
+[`docs/test-backlog.md`](test-backlog.md) ACTION 1. 2.79 adds none.
+
+---
+
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
 - **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**
