@@ -229,6 +229,24 @@ go-live checklist in `PawPi_instructions.md`.
 
 ---
 
+## 🧪 Pre-launch backend quality pass (2026-06-19, deepens 2.78)
+
+A pure-backend hardening + test-deepening sweep over the Wave 7 surfaces and the sensitive systems
+(transport live-GPS, Rx fulfillment, insurance binding/activation, places proxy, events/RSVP, nutrition
++ food-recall ingest/match, account deletion, payments, money/medical RLS). **No migration.** Web-only
+(no mobile screen/component touched — the six redesign PRs #204–#209 own those). Running test baselines
+at the start of the pass: **web vitest 1068 · web integration 567 · mobile jest 1032 (untouched).**
+
+- **Coverage — Wave 7 mocked route tests (test-only).** Added vitest unit tests for the nine Wave 7
+  routes that previously had none: `transport-trips` (owner list), `rx-fulfillment-orders/[id]` (owner
+  cancel/link), `insurance-policies/[id]` (activate-DEFINER + cancel), `places/[placeId]` (auth + key
+  degrade), `events/[id]` (GET/PATCH/DELETE host-only), `saved-places/[id]` (owner delete),
+  `nutrition-plans/[id]` (owner edit/delete), and `recall-matches` + `recall-matches/[id]` (owner
+  list/dismiss). Each pins 401/404/400 correctness, owner-vs-non-owner ZERO-row → 404, the DEFINER
+  result codes, and clean-degrade paths. **web vitest 1068 → 1130 (+62).**
+
+---
+
 ## To test
 
 ### ▸ WAVE 6 device-test queue (2026-06-18) — all merged + migrations 0051–0055 applied; owes a real-device pass
