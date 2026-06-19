@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Modal } from "react-native";
+import { View, Text, ScrollView, Modal } from "react-native";
 import {
   TrendingUp,
   TrendingDown,
@@ -17,18 +17,14 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+} from "@/constants/theme";
+import { Card, Sheet, PressableScale } from "@/components/ui";
 
 const TIME_RANGES = [
   { id: "7days", label: "7 Days" },
@@ -146,7 +142,7 @@ export default function HealthInsights() {
               details:
                 "Weight remained consistent between 14.1-14.3 kg throughout the month.",
               icon: CheckCircle,
-              color: C.sage,
+              color: COLORS.sage,
             },
             {
               type: "positive",
@@ -201,7 +197,7 @@ export default function HealthInsights() {
               details:
                 "Remained within 14.0-14.4 kg range throughout all 3 months.",
               icon: CheckCircle,
-              color: C.sage,
+              color: COLORS.sage,
             },
           ],
         };
@@ -239,7 +235,7 @@ export default function HealthInsights() {
               details:
                 "Excellent weight stability throughout the year, ranging only 14.0-14.5 kg.",
               icon: CheckCircle,
-              color: C.sage,
+              color: COLORS.sage,
             },
             {
               type: "change",
@@ -272,28 +268,13 @@ export default function HealthInsights() {
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: SPACING.lg }}>
         {/* Header */}
-        <View style={{ marginBottom: 24 }}>
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "800",
-              color: C.warmBrown,
-              marginBottom: 6,
-              letterSpacing: -0.5,
-            }}
-          >
+        <View style={{ marginBottom: SPACING.xxl }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown, marginBottom: 6 }]}>
             Health Insights
           </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: C.mutedBrown,
-              lineHeight: 20,
-              fontStyle: "italic",
-            }}
-          >
+          <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontStyle: "italic" }]}>
             Patterns from your logs to help conversations with your vet.
           </Text>
         </View>
@@ -302,24 +283,17 @@ export default function HealthInsights() {
         <View
           style={{
             backgroundColor: "#FFF4E6",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 24,
+            borderRadius: RADIUS.card,
+            padding: SPACING.lg,
+            marginBottom: SPACING.xxl,
             borderWidth: 1.5,
             borderColor: "#FFE4C4",
             flexDirection: "row",
-            gap: 12,
+            gap: SPACING.md,
           }}
         >
           <Info size={18} color="#FFB74D" style={{ marginTop: 2 }} />
-          <Text
-            style={{
-              fontSize: 12,
-              color: C.mutedBrown,
-              lineHeight: 18,
-              flex: 1,
-            }}
-          >
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, flex: 1 }]}>
             This is not a diagnosis. Social Pet helps identify patterns from
             your logs so you can have better conversations with your
             veterinarian.
@@ -327,167 +301,109 @@ export default function HealthInsights() {
         </View>
 
         {/* Time Range Selector - MOVED TO TOP */}
-        <View style={{ marginBottom: 24 }}>
-          <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 12,
-            }}
-          >
+        <View style={{ marginBottom: SPACING.xxl }}>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.md }]}>
             View Period
           </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 8,
-            }}
-          >
-            {TIME_RANGES.map((range) => (
-              <TouchableOpacity
-                key={range.id}
-                onPress={() => setSelectedRange(range.id)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor:
-                    selectedRange === range.id ? C.coral : C.sand,
-                  borderWidth: 1.5,
-                  borderColor: selectedRange === range.id ? C.coral : C.peach,
-                  alignItems: "center",
-                }}
-              >
-                <Text
+          <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+            {TIME_RANGES.map((range) => {
+              const isActive = selectedRange === range.id;
+              return (
+                <PressableScale
+                  key={range.id}
+                  onPress={() => setSelectedRange(range.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
                   style={{
-                    fontSize: 12,
-                    fontWeight: selectedRange === range.id ? "800" : "600",
-                    color: selectedRange === range.id ? "#FFF" : C.warmBrown,
+                    flex: 1,
+                    paddingVertical: SPACING.md,
+                    borderRadius: RADIUS.control,
+                    backgroundColor: isActive ? COLORS.coral : MATERIALS.surfaceSunken,
+                    borderWidth: 1.5,
+                    borderColor: isActive ? COLORS.coral : MATERIALS.hairline,
+                    alignItems: "center",
                   }}
                 >
-                  {range.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      TYPE.footnote,
+                      {
+                        fontWeight: isActive ? "800" : "600",
+                        color: isActive ? "#FFF" : COLORS.warmBrown,
+                      },
+                    ]}
+                  >
+                    {range.label}
+                  </Text>
+                </PressableScale>
+              );
+            })}
           </View>
         </View>
 
         {/* Insights & Patterns - GRID LAYOUT */}
-        <View style={{ marginBottom: 24 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 14,
-            }}
-          >
+        <View style={{ marginBottom: SPACING.xxl }}>
+          <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.md + 2 }]}>
             Insights & Patterns
           </Text>
 
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm + 2 }}>
             {data.insights.map((insight, idx) => {
               const Icon = insight.icon;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={idx}
                   onPress={() => setExpandedInsight(insight)}
-                  style={{
-                    width: "48.5%",
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: C.peach,
-                    shadowColor: C.terracotta,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 8,
-                    elevation: 2,
-                  }}
+                  accessibilityRole="button"
+                  style={{ width: "48.5%" }}
                 >
-                  <View
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      backgroundColor: insight.color + "20",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Icon size={18} color={insight.color} />
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: C.warmBrown,
-                      marginBottom: 4,
-                      lineHeight: 18,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {insight.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: C.mutedBrown,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {insight.subtitle}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Text
+                  <Card level="sm" radius={RADIUS.card} style={{ padding: SPACING.lg - 2 }}>
+                    <View
                       style={{
-                        fontSize: 10,
-                        color: C.coral,
-                        fontWeight: "600",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: insight.color + "20",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: SPACING.sm + 2,
                       }}
                     >
-                      View details
+                      <Icon size={18} color={insight.color} />
+                    </View>
+                    <Text
+                      style={[TYPE.subhead, { color: COLORS.warmBrown, marginBottom: SPACING.xs, lineHeight: 18 }]}
+                      numberOfLines={2}
+                    >
+                      {insight.title}
                     </Text>
-                    <ChevronRight size={10} color={C.coral} />
-                  </View>
-                </TouchableOpacity>
+                    <Text style={[TYPE.caption, { color: COLORS.mutedBrown, marginBottom: SPACING.sm, letterSpacing: 0, fontWeight: "500" }]}>
+                      {insight.subtitle}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs }}>
+                      <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "600", letterSpacing: 0 }]}>
+                        View details
+                      </Text>
+                      <ChevronRight size={10} color={COLORS.coral} />
+                    </View>
+                  </Card>
+                </PressableScale>
               );
             })}
           </View>
         </View>
 
         {/* Summary Chart */}
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 14,
+              marginBottom: SPACING.md + 2,
             }}
           >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: C.warmBrown,
-              }}
-            >
+            <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
               {selectedRange === "7days"
                 ? "Weekly Summary"
                 : selectedRange === "30days"
@@ -498,38 +414,19 @@ export default function HealthInsights() {
             </Text>
             <View
               style={{
-                backgroundColor: C.sage + "20",
-                borderRadius: 12,
-                paddingHorizontal: 12,
+                backgroundColor: COLORS.sage + "20",
+                borderRadius: RADIUS.control,
+                paddingHorizontal: SPACING.md,
                 paddingVertical: 6,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  color: C.sage,
-                }}
-              >
+              <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.sage }]}>
                 {completionRate}% logged
               </Text>
             </View>
           </View>
 
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 20,
-              padding: 18,
-              borderWidth: 1.5,
-              borderColor: C.peach,
-              shadowColor: C.terracotta,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
+          <Card level="sm" radius={RADIUS.lg} style={{ padding: 18 }}>
             {/* Chart */}
             <View
               style={{
@@ -537,7 +434,7 @@ export default function HealthInsights() {
                 alignItems: "flex-end",
                 justifyContent: "space-between",
                 height: 100,
-                marginBottom: 12,
+                marginBottom: SPACING.md,
                 gap: 6,
               }}
             >
@@ -550,7 +447,7 @@ export default function HealthInsights() {
                     <View
                       style={{
                         width: "100%",
-                        backgroundColor: stat.logged ? C.sage : C.sand,
+                        backgroundColor: stat.logged ? COLORS.sage : MATERIALS.surfaceSunken,
                         borderRadius: 6,
                         height: stat.logged
                           ? (stat.count / maxCount) * 80 + 20
@@ -561,23 +458,20 @@ export default function HealthInsights() {
                       }}
                     >
                       {stat.logged && (
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
+                        <Text style={[TYPE.caption, { color: "#FFF", letterSpacing: 0 }]}>
                           {stat.count}
                         </Text>
                       )}
                     </View>
                     <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "600",
-                        color: stat.logged ? C.warmBrown : C.mutedBrown,
-                      }}
+                      style={[
+                        TYPE.caption,
+                        {
+                          fontWeight: "600",
+                          letterSpacing: 0,
+                          color: stat.logged ? COLORS.warmBrown : COLORS.mutedBrown,
+                        },
+                      ]}
                     >
                       {stat.day}
                     </Text>
@@ -589,19 +483,12 @@ export default function HealthInsights() {
             {/* Summary Stats */}
             <View
               style={{
-                backgroundColor: C.sand,
-                borderRadius: 14,
-                padding: 14,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.sm,
+                padding: SPACING.lg - 2,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: C.mutedBrown,
-                  lineHeight: 19,
-                  textAlign: "center",
-                }}
-              >
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, lineHeight: 19, textAlign: "center", fontWeight: "500" }]}>
                 You logged {daysLogged} of {totalDays}{" "}
                 {selectedRange === "7days"
                   ? "days"
@@ -624,164 +511,96 @@ export default function HealthInsights() {
                 .
               </Text>
             </View>
-          </View>
+          </Card>
         </View>
 
         {/* Suggested Vet Questions */}
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              marginBottom: 14,
+              gap: SPACING.sm,
+              marginBottom: SPACING.md + 2,
             }}
           >
-            <MessageCircle size={20} color={C.coral} />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: C.warmBrown,
-              }}
-            >
+            <MessageCircle size={20} color={COLORS.coral} />
+            <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
               Suggested Vet Questions
             </Text>
           </View>
 
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 20,
-              padding: 18,
-              borderWidth: 1.5,
-              borderColor: C.peach,
-              shadowColor: C.terracotta,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 12,
-                color: C.mutedBrown,
-                marginBottom: 16,
-                lineHeight: 18,
-              }}
-            >
+          <Card level="sm" radius={RADIUS.lg} style={{ padding: 18 }}>
+            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.lg, lineHeight: 18 }]}>
               Based on recent patterns, consider asking your vet:
             </Text>
-            <View style={{ gap: 14 }}>
+            <View style={{ gap: SPACING.md + 2 }}>
               {vetQuestions.map((question, idx) => (
                 <View
                   key={idx}
-                  style={{
-                    flexDirection: "row",
-                    gap: 12,
-                    alignItems: "flex-start",
-                  }}
+                  style={{ flexDirection: "row", gap: SPACING.md, alignItems: "flex-start" }}
                 >
                   <View
                     style={{
                       width: 24,
                       height: 24,
                       borderRadius: 12,
-                      backgroundColor: C.coral + "20",
+                      backgroundColor: COLORS.coral + "20",
                       justifyContent: "center",
                       alignItems: "center",
                       marginTop: 1,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color: C.coral,
-                      }}
-                    >
+                    <Text style={[TYPE.caption, { fontWeight: "800", color: COLORS.coral, letterSpacing: 0 }]}>
                       {idx + 1}
                     </Text>
                   </View>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 14,
-                      color: C.warmBrown,
-                      lineHeight: 20,
-                      fontWeight: "500",
-                    }}
-                  >
+                  <Text style={[TYPE.callout, { flex: 1, color: COLORS.warmBrown, lineHeight: 20 }]}>
                     {question}
                   </Text>
                 </View>
               ))}
             </View>
 
-            <TouchableOpacity
+            <PressableScale
+              accessibilityRole="button"
               style={{
-                marginTop: 16,
-                backgroundColor: C.coral,
-                borderRadius: 14,
+                marginTop: SPACING.lg,
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.sm,
                 paddingVertical: 13,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
+                gap: SPACING.sm,
               }}
             >
               <FileText size={16} color="#FFF" />
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "800",
-                  color: "#FFF",
-                }}
-              >
+              <Text style={[TYPE.callout, { fontWeight: "800", color: "#FFF" }]}>
                 Prepare Vet Visit Report
               </Text>
-            </TouchableOpacity>
-          </View>
+            </PressableScale>
+          </Card>
         </View>
 
         {/* Data Completeness */}
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              marginBottom: 14,
+              gap: SPACING.sm,
+              marginBottom: SPACING.md + 2,
             }}
           >
-            <BarChart3 size={20} color={C.sage} />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: C.warmBrown,
-              }}
-            >
+            <BarChart3 size={20} color={COLORS.sage} />
+            <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
               Data Completeness
             </Text>
           </View>
 
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 20,
-              padding: 18,
-              borderWidth: 1.5,
-              borderColor: C.peach,
-              shadowColor: C.terracotta,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
-            <View style={{ gap: 16 }}>
+          <Card level="sm" radius={RADIUS.lg} style={{ padding: 18 }}>
+            <View style={{ gap: SPACING.lg }}>
               {[
                 { label: "Food & Water", logged: 6, total: 7, percent: 86 },
                 { label: "Bathroom", logged: 5, total: 7, percent: 71 },
@@ -794,32 +613,20 @@ export default function HealthInsights() {
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
-                      marginBottom: 8,
+                      marginBottom: SPACING.sm,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "600",
-                        color: C.warmBrown,
-                      }}
-                    >
+                    <Text style={[TYPE.subhead, { fontWeight: "600", color: COLORS.warmBrown }]}>
                       {item.label}
                     </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "700",
-                        color: C.mutedBrown,
-                      }}
-                    >
+                    <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                       {item.logged}/{item.total} days
                     </Text>
                   </View>
                   <View
                     style={{
                       height: 8,
-                      backgroundColor: C.sand,
+                      backgroundColor: MATERIALS.surfaceSunken,
                       borderRadius: 4,
                       overflow: "hidden",
                     }}
@@ -830,10 +637,10 @@ export default function HealthInsights() {
                         height: "100%",
                         backgroundColor:
                           item.percent >= 70
-                            ? C.sage
+                            ? COLORS.sage
                             : item.percent >= 40
                               ? "#FFB74D"
-                              : C.coral,
+                              : COLORS.coral,
                         borderRadius: 4,
                       }}
                     />
@@ -844,45 +651,32 @@ export default function HealthInsights() {
 
             <View
               style={{
-                marginTop: 16,
-                backgroundColor: C.sand,
-                borderRadius: 14,
-                padding: 14,
+                marginTop: SPACING.lg,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.sm,
+                padding: SPACING.lg - 2,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: C.mutedBrown,
-                  lineHeight: 18,
-                  textAlign: "center",
-                }}
-              >
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, textAlign: "center" }]}>
                 More consistent logging helps identify meaningful patterns over
                 time.
               </Text>
             </View>
-          </View>
+          </Card>
         </View>
 
         {/* Photo History Highlights */}
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              marginBottom: 14,
+              gap: SPACING.sm,
+              marginBottom: SPACING.md + 2,
             }}
           >
             <Camera size={20} color="#64B5F6" />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: C.warmBrown,
-              }}
-            >
+            <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
               Photo Check Highlights
             </Text>
           </View>
@@ -890,7 +684,7 @@ export default function HealthInsights() {
           <View
             style={{
               backgroundColor: "#E3F2FD",
-              borderRadius: 20,
+              borderRadius: RADIUS.lg,
               padding: 18,
               borderWidth: 1.5,
               borderColor: "#BBDEFB",
@@ -899,15 +693,15 @@ export default function HealthInsights() {
               shadowOpacity: 0.05,
               shadowRadius: 8,
               elevation: 2,
-              marginBottom: 16,
+              marginBottom: SPACING.lg,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 14,
-                marginBottom: 14,
+                gap: SPACING.md + 2,
+                marginBottom: SPACING.md + 2,
               }}
             >
               <View
@@ -923,23 +717,10 @@ export default function HealthInsights() {
                 <CheckCircle size={26} color="#64B5F6" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: C.warmBrown,
-                    marginBottom: 4,
-                  }}
-                >
+                <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
                   {photoCheckStreak} weeks in a row! 🎉
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: C.mutedBrown,
-                    lineHeight: 17,
-                  }}
-                >
+                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
                   Paws photo check completed consistently
                 </Text>
               </View>
@@ -947,17 +728,11 @@ export default function HealthInsights() {
             <View
               style={{
                 backgroundColor: "#FFF",
-                borderRadius: 14,
-                padding: 14,
+                borderRadius: RADIUS.sm,
+                padding: SPACING.lg - 2,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: C.mutedBrown,
-                  lineHeight: 18,
-                }}
-              >
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18 }]}>
                 Regular photo checks help you spot subtle changes in skin, coat,
                 eyes, paws, and more. Keep up the great work!
               </Text>
@@ -969,55 +744,39 @@ export default function HealthInsights() {
         </View>
 
         {/* Export for Vet */}
-        <TouchableOpacity
-          style={{
-            backgroundColor: C.card,
-            borderRadius: 18,
-            padding: 18,
-            borderWidth: 1.5,
-            borderColor: C.peach,
-            shadowColor: C.terracotta,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            marginBottom: 20,
-          }}
+        <PressableScale
+          accessibilityRole="button"
+          style={{ marginBottom: SPACING.xl }}
         >
-          <FileText size={20} color={C.terracotta} />
-          <Text
+          <Card
+            level="sm"
+            radius={RADIUS.card}
             style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.warmBrown,
+              padding: 18,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: SPACING.sm + 2,
             }}
           >
-            Export All Insights for Vet
-          </Text>
-        </TouchableOpacity>
+            <FileText size={20} color={COLORS.terracotta} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+              Export All Insights for Vet
+            </Text>
+          </Card>
+        </PressableScale>
 
         {/* Bottom Disclaimer */}
         <View
           style={{
-            backgroundColor: C.sand,
-            borderRadius: 16,
-            padding: 16,
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.card,
+            padding: SPACING.lg,
             borderWidth: 1,
-            borderColor: C.peach,
+            borderColor: MATERIALS.hairline,
           }}
         >
-          <Text
-            style={{
-              fontSize: 12,
-              color: C.mutedBrown,
-              lineHeight: 18,
-              textAlign: "center",
-            }}
-          >
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, textAlign: "center" }]}>
             These insights help you notice patterns. Share them with your vet to
             provide meaningful context during appointments. This does not
             replace professional veterinary diagnosis or care.
@@ -1035,19 +794,12 @@ export default function HealthInsights() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >
-          <View
-            style={{
-              backgroundColor: C.cream,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 24,
-              maxHeight: "80%",
-            }}
-          >
+          <Sheet style={{ flex: 0, maxHeight: "80%" }}>
+            <View style={{ padding: SPACING.xxl, paddingTop: SPACING.md }}>
             {expandedInsight && (
               <>
                 <View
@@ -1055,7 +807,7 @@ export default function HealthInsights() {
                     flexDirection: "row",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: 20,
+                    marginBottom: SPACING.xl,
                   }}
                 >
                   <View
@@ -1073,86 +825,56 @@ export default function HealthInsights() {
                       color: expandedInsight.color,
                     })}
                   </View>
-                  <TouchableOpacity
+                  <PressableScale
                     onPress={() => setExpandedInsight(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close"
                     style={{
                       width: 36,
                       height: 36,
                       borderRadius: 18,
-                      backgroundColor: C.sand,
+                      backgroundColor: MATERIALS.surfaceSunken,
                       justifyContent: "center",
                       alignItems: "center",
                     }}
                   >
-                    <X size={20} color={C.warmBrown} />
-                  </TouchableOpacity>
+                    <X size={20} color={COLORS.warmBrown} />
+                  </PressableScale>
                 </View>
 
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontWeight: "800",
-                    color: C.warmBrown,
-                    marginBottom: 8,
-                  }}
-                >
+                <Text style={[TYPE.title, { color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>
                   {expandedInsight.title}
                 </Text>
 
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: expandedInsight.color,
-                    fontWeight: "600",
-                    marginBottom: 16,
-                  }}
-                >
+                <Text style={[TYPE.callout, { color: expandedInsight.color, fontWeight: "600", marginBottom: SPACING.lg }]}>
                   {expandedInsight.subtitle}
                 </Text>
 
-                <View
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 18,
-                    borderWidth: 1.5,
-                    borderColor: C.peach,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: C.warmBrown,
-                      lineHeight: 22,
-                    }}
-                  >
+                <Card level="none" radius={RADIUS.card} style={{ padding: 18, borderWidth: 1.5 }}>
+                  <Text style={[TYPE.callout, { color: COLORS.warmBrown, lineHeight: 22 }]}>
                     {expandedInsight.details}
                   </Text>
-                </View>
+                </Card>
 
-                <TouchableOpacity
+                <PressableScale
                   onPress={() => setExpandedInsight(null)}
+                  accessibilityRole="button"
                   style={{
-                    backgroundColor: C.coral,
-                    borderRadius: 16,
-                    paddingVertical: 16,
-                    marginTop: 20,
+                    backgroundColor: COLORS.coral,
+                    borderRadius: RADIUS.card,
+                    paddingVertical: SPACING.lg,
+                    marginTop: SPACING.xl,
                     alignItems: "center",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "800",
-                      color: "#FFF",
-                    }}
-                  >
+                  <Text style={[TYPE.headline, { fontWeight: "800", color: "#FFF" }]}>
                     Got it
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               </>
             )}
-          </View>
+            </View>
+          </Sheet>
         </View>
       </Modal>
     </ScrollView>

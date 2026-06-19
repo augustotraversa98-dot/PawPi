@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Heart, Activity, TrendingUp, FileText, Utensils } from "lucide-react-native";
@@ -10,18 +10,15 @@ import HealthTrack from "../../components/Health/HealthTrack";
 import HealthInsights from "../../components/Health/HealthInsights";
 import HealthVetRecord from "../../components/Health/HealthVetRecord";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { GlassSurface, PressableScale } from "@/components/ui";
 
 const SECTIONS = [
   { id: "today", label: "Today", icon: Heart },
@@ -57,140 +54,129 @@ export default function HealthScreen() {
     activeSection === "today" || activeSection === "vet-record";
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 16,
-          backgroundColor: C.card,
-          borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.lg,
         }}
       >
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 8,
-            marginBottom: 12,
+            gap: SPACING.sm,
+            marginBottom: SPACING.md,
           }}
         >
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: "800",
-              color: C.coral,
-              letterSpacing: -0.5,
-            }}
-          >
+          <Text style={[TYPE.largeTitle, { color: COLORS.coral }]}>
             Health Hub
           </Text>
           <Text style={{ fontSize: 22 }}>🩺</Text>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity
+          <PressableScale
             testID="nutrition-button"
             onPress={() => router.push("/nutrition")}
+            accessibilityRole="button"
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
-              backgroundColor: C.sand,
-              borderRadius: 999,
-              paddingHorizontal: 12,
+              backgroundColor: MATERIALS.glassTintLight,
+              borderRadius: RADIUS.chip,
+              paddingHorizontal: SPACING.md,
               paddingVertical: 7,
               borderWidth: 1,
-              borderColor: C.peach,
+              borderColor: MATERIALS.hairline,
             }}
           >
-            <Utensils size={15} color={C.coral} />
-            <Text style={{ fontWeight: "800", color: C.coral, fontSize: 13 }}>
+            <Utensils size={15} color={COLORS.coral} />
+            <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
               Nutrition
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Pet switcher */}
-        <View style={{ marginBottom: 12 }}>
+        <View style={{ marginBottom: SPACING.md }}>
           <PetSwitcher variant="pill" />
         </View>
 
         {/* Disclaimer */}
         <View
           style={{
-            backgroundColor: C.sand,
-            borderRadius: 12,
-            padding: 12,
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.md,
             borderWidth: 1,
-            borderColor: C.peach,
+            borderColor: MATERIALS.hairline,
           }}
         >
-          <Text
-            style={{
-              fontSize: 11,
-              color: C.mutedBrown,
-              lineHeight: 16,
-              textAlign: "center",
-            }}
-          >
+          <Text style={[TYPE.caption, { color: COLORS.mutedBrown, lineHeight: 16, textAlign: "center", letterSpacing: 0 }]}>
             Social Pet helps you track changes and prepare better conversations
             with your veterinarian. It does not diagnose or replace professional
             veterinary care.
           </Text>
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Top Segmented Navigation */}
-      <View
-        style={{
-          backgroundColor: C.card,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+      <GlassSurface
+        intensity={BLUR.regular}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
+          paddingHorizontal: SPACING.md,
+          paddingVertical: SPACING.md,
         }}
       >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ flexGrow: 0 }}
-          contentContainerStyle={{ gap: 8 }}
+          contentContainerStyle={{ gap: SPACING.sm }}
         >
           {SECTIONS.map((section) => {
             const isActive = activeSection === section.id;
             const Icon = section.icon;
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={section.id}
                 onPress={() => setActiveSection(section.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 6,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 16,
-                  backgroundColor: isActive ? C.coral : C.sand,
-                  borderWidth: 1.5,
-                  borderColor: isActive ? C.coral : C.peach,
+                  paddingHorizontal: SPACING.lg,
+                  paddingVertical: SPACING.sm + 2,
+                  borderRadius: RADIUS.control,
+                  backgroundColor: isActive ? COLORS.coral : MATERIALS.glassTintLight,
+                  borderWidth: 1,
+                  borderColor: isActive ? COLORS.coral : MATERIALS.hairline,
                 }}
               >
-                <Icon size={16} color={isActive ? "#FFF" : C.terracotta} />
+                <Icon size={16} color={isActive ? "#FFF" : COLORS.terracotta} />
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: isActive ? "800" : "600",
-                    color: isActive ? "#FFF" : C.warmBrown,
-                  }}
+                  style={[
+                    TYPE.callout,
+                    {
+                      fontWeight: isActive ? "800" : "600",
+                      color: isActive ? "#FFF" : COLORS.warmBrown,
+                    },
+                  ]}
                 >
                   {section.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             );
           })}
         </ScrollView>
-      </View>
+      </GlassSurface>
 
       {/* Content Area */}
       {selfScrolling ? (

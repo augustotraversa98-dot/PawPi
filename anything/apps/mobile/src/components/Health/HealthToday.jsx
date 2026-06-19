@@ -2,6 +2,15 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
+import {
   Calendar,
   TrendingUp,
   AlertCircle,
@@ -47,18 +56,6 @@ import {
   buildMedicalCareLogPayload,
   buildQuickFoodLogPayload,
 } from "@/utils/reminderLogFlow";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
 
 // When Overdue holds more than this many items it defaults to collapsed so it
 // doesn't push "Due Soon"/"Next Up" off-screen; the user can still expand it.
@@ -514,22 +511,15 @@ export default function HealthToday() {
   return (
     <RefreshableScrollView
       refetch={handleRefresh}
-      contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+      contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Section Title */}
-      <View style={{ marginBottom: 20 }}>
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "800",
-            color: C.warmBrown,
-            marginBottom: 4,
-          }}
-        >
+      <View style={{ marginBottom: SPACING.xl }}>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
           Health Today
         </Text>
-        <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
+        <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
             month: "long",
@@ -540,7 +530,7 @@ export default function HealthToday() {
 
       {/* Overdue — past-due persistent items, distinct + above everything else */}
       {overdueReminders.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <TouchableOpacity
             onPress={() => setOverdueExpanded(!isOverdueExpanded)}
             activeOpacity={0.7}
@@ -548,72 +538,56 @@ export default function HealthToday() {
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <AlertCircle
                 size={18}
-                color={C.coral}
-                style={{ marginRight: 8 }}
+                color={COLORS.coral}
+                style={{ marginRight: SPACING.sm }}
               />
-              <Text style={{ fontSize: 16, fontWeight: "700", color: C.coral }}>
+              <Text style={[TYPE.headline, { color: COLORS.coral }]}>
                 Overdue ({overdueReminders.length})
               </Text>
             </View>
             {isOverdueExpanded ? (
-              <ChevronDown size={20} color={C.coral} />
+              <ChevronDown size={20} color={COLORS.coral} />
             ) : (
-              <ChevronRight size={20} color={C.coral} />
+              <ChevronRight size={20} color={COLORS.coral} />
             )}
           </TouchableOpacity>
 
           {isOverdueExpanded && (
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: SPACING.sm + 2 }}>
               {overdueReminders.map((reminder) => {
               const config = REMINDER_TYPE_CONFIG[reminder.type];
               const action = getReminderAction(reminder);
               const ActionIcon = action.icon;
 
               return (
-                <View
+                <Card
                   key={reminder.id}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: C.coral + "55",
-                  }}
+                  level="none"
+                  radius={RADIUS.card}
+                  borderColor={COLORS.coral + "55"}
+                  style={{ padding: SPACING.lg - 2, borderWidth: 1.5 }}
                 >
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      marginBottom: 10,
+                      marginBottom: SPACING.sm + 2,
                     }}
                   >
-                    <Text style={{ fontSize: 22, marginRight: 12 }}>
+                    <Text style={{ fontSize: 22, marginRight: SPACING.md }}>
                       {config?.icon || "📌"}
                     </Text>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "700",
-                          color: C.warmBrown,
-                          marginBottom: 2,
-                        }}
-                      >
+                      <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 2 }]}>
                         {reminder.title}
                       </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: C.coral,
-                          fontWeight: "700",
-                        }}
-                      >
+                      <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
                         {formatScheduledTime(
                           reminder.scheduledAt ?? reminder.nextTriggerAt,
                           reminderNowMs,
@@ -622,14 +596,15 @@ export default function HealthToday() {
                     </View>
                   </View>
 
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity
+                  <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+                    <PressableScale
                       onPress={() => handleComplete(reminder)}
+                      accessibilityRole="button"
                       style={{
                         flex: 1,
-                        backgroundColor: config?.color || C.sage,
-                        borderRadius: 12,
-                        paddingVertical: 10,
+                        backgroundColor: config?.color || COLORS.sage,
+                        borderRadius: RADIUS.control,
+                        paddingVertical: SPACING.sm + 2,
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
@@ -637,42 +612,31 @@ export default function HealthToday() {
                       }}
                     >
                       <ActionIcon size={16} color="#FFF" strokeWidth={2.5} />
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "700",
-                          color: "#FFF",
-                        }}
-                      >
+                      <Text style={[TYPE.callout, { fontWeight: "700", color: "#FFF" }]}>
                         {action.label}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </PressableScale>
+                    <PressableScale
                       onPress={() => handleSkipOverdue(reminder)}
+                      accessibilityRole="button"
                       style={{
-                        paddingHorizontal: 14,
-                        borderRadius: 12,
+                        paddingHorizontal: SPACING.lg - 2,
+                        borderRadius: RADIUS.control,
                         borderWidth: 1.5,
-                        borderColor: C.peach,
+                        borderColor: MATERIALS.hairline,
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: 4,
+                        gap: SPACING.xs,
                       }}
                     >
-                      <X size={15} color={C.mutedBrown} strokeWidth={2.5} />
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "700",
-                          color: C.mutedBrown,
-                        }}
-                      >
+                      <X size={15} color={COLORS.mutedBrown} strokeWidth={2.5} />
+                      <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                         Skip
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   </View>
-                </View>
+                </Card>
               );
             })}
           </View>
@@ -683,7 +647,7 @@ export default function HealthToday() {
       {/* Snoozed — actively snoozed items keep a visible home so they can be
           logged/skipped during the snooze window instead of disappearing */}
       {snoozedReminders.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <TouchableOpacity
             onPress={() => setSnoozedExpanded(!isSnoozedExpanded)}
             activeOpacity={0.7}
@@ -691,74 +655,56 @@ export default function HealthToday() {
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Clock
                 size={18}
-                color={C.terracotta}
-                style={{ marginRight: 8 }}
+                color={COLORS.terracotta}
+                style={{ marginRight: SPACING.sm }}
               />
-              <Text
-                style={{ fontSize: 16, fontWeight: "700", color: C.terracotta }}
-              >
+              <Text style={[TYPE.headline, { color: COLORS.terracotta }]}>
                 Snoozed ({snoozedReminders.length})
               </Text>
             </View>
             {isSnoozedExpanded ? (
-              <ChevronDown size={20} color={C.terracotta} />
+              <ChevronDown size={20} color={COLORS.terracotta} />
             ) : (
-              <ChevronRight size={20} color={C.terracotta} />
+              <ChevronRight size={20} color={COLORS.terracotta} />
             )}
           </TouchableOpacity>
 
           {isSnoozedExpanded && (
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: SPACING.sm + 2 }}>
               {snoozedReminders.map((reminder) => {
                 const config = REMINDER_TYPE_CONFIG[reminder.type];
                 const action = getReminderAction(reminder);
                 const ActionIcon = action.icon;
 
                 return (
-                  <View
+                  <Card
                     key={reminder.id}
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 16,
-                      padding: 14,
-                      borderWidth: 1.5,
-                      borderColor: C.terracotta + "55",
-                    }}
+                    level="none"
+                    radius={RADIUS.card}
+                    borderColor={COLORS.terracotta + "55"}
+                    style={{ padding: SPACING.lg - 2, borderWidth: 1.5 }}
                   >
                     <View
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        marginBottom: 10,
+                        marginBottom: SPACING.sm + 2,
                       }}
                     >
-                      <Text style={{ fontSize: 22, marginRight: 12 }}>
+                      <Text style={{ fontSize: 22, marginRight: SPACING.md }}>
                         {config?.icon || "📌"}
                       </Text>
                       <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                            marginBottom: 2,
-                          }}
-                        >
+                        <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 2 }]}>
                           {reminder.title}
                         </Text>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: C.terracotta,
-                            fontWeight: "700",
-                          }}
-                        >
+                        <Text style={[TYPE.footnote, { color: COLORS.terracotta, fontWeight: "700" }]}>
                           {formatScheduledTime(
                             reminder.scheduledAt ?? reminder.nextTriggerAt,
                             reminderNowMs,
@@ -772,14 +718,15 @@ export default function HealthToday() {
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      <TouchableOpacity
+                    <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+                      <PressableScale
                         onPress={() => handleComplete(reminder)}
+                        accessibilityRole="button"
                         style={{
                           flex: 1,
-                          backgroundColor: config?.color || C.sage,
-                          borderRadius: 12,
-                          paddingVertical: 10,
+                          backgroundColor: config?.color || COLORS.sage,
+                          borderRadius: RADIUS.control,
+                          paddingVertical: SPACING.sm + 2,
                           flexDirection: "row",
                           alignItems: "center",
                           justifyContent: "center",
@@ -787,42 +734,31 @@ export default function HealthToday() {
                         }}
                       >
                         <ActionIcon size={16} color="#FFF" strokeWidth={2.5} />
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
+                        <Text style={[TYPE.callout, { fontWeight: "700", color: "#FFF" }]}>
                           {action.label}
                         </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
+                      </PressableScale>
+                      <PressableScale
                         onPress={() => handleSkipOverdue(reminder)}
+                        accessibilityRole="button"
                         style={{
-                          paddingHorizontal: 14,
-                          borderRadius: 12,
+                          paddingHorizontal: SPACING.lg - 2,
+                          borderRadius: RADIUS.control,
                           borderWidth: 1.5,
-                          borderColor: C.peach,
+                          borderColor: MATERIALS.hairline,
                           flexDirection: "row",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 4,
+                          gap: SPACING.xs,
                         }}
                       >
-                        <X size={15} color={C.mutedBrown} strokeWidth={2.5} />
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "700",
-                            color: C.mutedBrown,
-                          }}
-                        >
+                        <X size={15} color={COLORS.mutedBrown} strokeWidth={2.5} />
+                        <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
                           Skip
                         </Text>
-                      </TouchableOpacity>
+                      </PressableScale>
                     </View>
-                  </View>
+                  </Card>
                 );
               })}
             </View>
@@ -832,30 +768,28 @@ export default function HealthToday() {
 
       {/* Time-Sensitive Countdown Cards */}
       {timeSensitiveReminders.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
-            <AlertCircle size={18} color={C.coral} style={{ marginRight: 8 }} />
-            <Text
-              style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
-            >
+            <AlertCircle size={18} color={COLORS.coral} style={{ marginRight: SPACING.sm }} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
               Due Soon
             </Text>
             <View
               style={{
-                backgroundColor: C.coral,
-                borderRadius: 12,
-                paddingHorizontal: 8,
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.sm,
                 paddingVertical: 2,
-                marginLeft: 8,
+                marginLeft: SPACING.sm,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFF" }}>
+              <Text style={[TYPE.caption, { color: "#FFF", letterSpacing: 0 }]}>
                 {timeSensitiveReminders.length}
               </Text>
             </View>
@@ -867,36 +801,34 @@ export default function HealthToday() {
       {/* Upcoming — heads-up for early (lead-time) reminders. Distinct, NON-actionable
           cards covering the whole early window, regardless of the 6h Next Up horizon. */}
       {headsUpReminders.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
-            <Bell size={18} color={C.terracotta} style={{ marginRight: 8 }} />
-            <Text
-              style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
-            >
+            <Bell size={18} color={COLORS.terracotta} style={{ marginRight: SPACING.sm }} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
               Upcoming
             </Text>
             <View
               style={{
-                backgroundColor: C.terracotta,
-                borderRadius: 12,
-                paddingHorizontal: 8,
+                backgroundColor: COLORS.terracotta,
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.sm,
                 paddingVertical: 2,
-                marginLeft: 8,
+                marginLeft: SPACING.sm,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFF" }}>
+              <Text style={[TYPE.caption, { color: "#FFF", letterSpacing: 0 }]}>
                 {headsUpReminders.length}
               </Text>
             </View>
           </View>
 
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: SPACING.sm + 2 }}>
             {headsUpReminders.map((reminder) => (
               <HeadsUpReminderCard
                 key={reminder.id}
@@ -912,45 +844,42 @@ export default function HealthToday() {
 
       {/* Next Up - Actionable Reminders */}
       {nextUpReminders.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Calendar
                 size={18}
-                color={C.terracotta}
-                style={{ marginRight: 8 }}
+                color={COLORS.terracotta}
+                style={{ marginRight: SPACING.sm }}
               />
-              <Text
-                style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
-              >
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
                 Next Up
               </Text>
             </View>
-            <TouchableOpacity
+            <PressableScale
               onPress={() => router.push("/(tabs)/more/reminders")}
+              accessibilityRole="button"
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 4,
+                gap: SPACING.xs,
               }}
             >
-              <Text
-                style={{ fontSize: 13, fontWeight: "600", color: C.terracotta }}
-              >
+              <Text style={[TYPE.subhead, { color: COLORS.terracotta }]}>
                 Manage routines
               </Text>
-              <ChevronRight size={14} color={C.terracotta} />
-            </TouchableOpacity>
+              <ChevronRight size={14} color={COLORS.terracotta} />
+            </PressableScale>
           </View>
 
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: SPACING.sm + 2 }}>
             {nextUpReminders.map((reminder) => {
               const config = REMINDER_TYPE_CONFIG[reminder.type];
               // Scheduled clock time first (the card's anchor), relative
@@ -967,60 +896,40 @@ export default function HealthToday() {
               const ActionIcon = action.icon;
 
               return (
-                <View
+                <Card
                   key={reminder.id}
-                  style={{
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: (config?.color || C.sage) + "40",
-                    shadowColor: C.terracotta,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 6,
-                    elevation: 1,
-                  }}
+                  level="sm"
+                  radius={RADIUS.card}
+                  borderColor={(config?.color || COLORS.sage) + "40"}
+                  style={{ padding: SPACING.lg - 2, borderWidth: 1.5 }}
                 >
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      marginBottom: 10,
+                      marginBottom: SPACING.sm + 2,
                     }}
                   >
-                    <Text style={{ fontSize: 22, marginRight: 12 }}>
+                    <Text style={{ fontSize: 22, marginRight: SPACING.md }}>
                       {config?.icon || "📌"}
                     </Text>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "700",
-                          color: C.warmBrown,
-                          marginBottom: 2,
-                        }}
-                      >
+                      <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 2 }]}>
                         {reminder.title}
                       </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: C.mutedBrown,
-                          fontWeight: "600",
-                        }}
-                      >
+                      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
                         {timeDisplay}
                       </Text>
                     </View>
                   </View>
 
-                  <TouchableOpacity
+                  <PressableScale
                     onPress={() => handleComplete(reminder)}
+                    accessibilityRole="button"
                     style={{
-                      backgroundColor: config?.color || C.sage,
-                      borderRadius: 12,
-                      paddingVertical: 10,
+                      backgroundColor: config?.color || COLORS.sage,
+                      borderRadius: RADIUS.control,
+                      paddingVertical: SPACING.sm + 2,
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1028,13 +937,11 @@ export default function HealthToday() {
                     }}
                   >
                     <ActionIcon size={16} color="#FFF" strokeWidth={2.5} />
-                    <Text
-                      style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}
-                    >
+                    <Text style={[TYPE.callout, { fontWeight: "700", color: "#FFF" }]}>
                       {action.label}
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                  </PressableScale>
+                </Card>
               );
             })}
           </View>
@@ -1047,132 +954,102 @@ export default function HealthToday() {
         overdueReminders.length === 0 &&
         snoozedReminders.length === 0 &&
         headsUpReminders.length === 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Calendar
                 size={18}
-                color={C.terracotta}
-                style={{ marginRight: 8 }}
+                color={COLORS.terracotta}
+                style={{ marginRight: SPACING.sm }}
               />
-              <Text
-                style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
-              >
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
                 Next Up
               </Text>
             </View>
-            <TouchableOpacity
+            <PressableScale
               onPress={() => router.push("/(tabs)/more/reminders")}
+              accessibilityRole="button"
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 4,
+                gap: SPACING.xs,
               }}
             >
-              <Text
-                style={{ fontSize: 13, fontWeight: "600", color: C.terracotta }}
-              >
+              <Text style={[TYPE.subhead, { color: COLORS.terracotta }]}>
                 Manage routines
               </Text>
-              <ChevronRight size={14} color={C.terracotta} />
-            </TouchableOpacity>
+              <ChevronRight size={14} color={COLORS.terracotta} />
+            </PressableScale>
           </View>
 
-          <View
-            style={{
-              backgroundColor: C.sand,
-              borderRadius: 16,
-              padding: 20,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: C.peach,
-            }}
+          <Card
+            level="none"
+            radius={RADIUS.card}
+            color={MATERIALS.surfaceSunken}
+            borderColor={MATERIALS.hairline}
+            style={{ padding: SPACING.xl, alignItems: "center" }}
           >
-            <Text style={{ fontSize: 40, marginBottom: 8 }}>📅</Text>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
+            <Text style={{ fontSize: 40, marginBottom: SPACING.sm }}>📅</Text>
+            <Text style={[TYPE.callout, { fontWeight: "600", color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
               All clear for now
             </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: C.mutedBrown,
-                textAlign: "center",
-                lineHeight: 18,
-              }}
-            >
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, textAlign: "center", fontWeight: "500" }]}>
               No reminders scheduled in the next few hours
             </Text>
-          </View>
+          </Card>
         </View>
       )}
 
       {/* Quick Stats */}
-      <View
-        style={{
-          backgroundColor: C.card,
-          borderRadius: 16,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: C.peach,
-        }}
-      >
+      <Card level="sm" radius={RADIUS.card} style={{ padding: SPACING.lg }}>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 12,
+            marginBottom: SPACING.md,
           }}
         >
-          <TrendingUp size={18} color={C.sage} style={{ marginRight: 8 }} />
-          <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
+          <TrendingUp size={18} color={COLORS.sage} style={{ marginRight: SPACING.sm }} />
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             Today's Progress
           </Text>
         </View>
         {todayProgress.isEmpty ? (
           <Text
             testID="today-progress-empty"
-            style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}
+            style={[TYPE.subhead, { color: COLORS.mutedBrown, lineHeight: 19, fontWeight: "500" }]}
           >
             Nothing logged yet today — log a meal, walk, or check-in and it'll
             show up here.
           </Text>
         ) : (
-          <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
+          <View style={{ flexDirection: "row", gap: SPACING.md, flexWrap: "wrap" }}>
             {todayProgress.chips.map((chip) => (
               <View
                 key={chip.key}
                 testID={`progress-chip-${chip.key}`}
                 style={{
-                  backgroundColor: C.sage + "20",
-                  borderRadius: 12,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
+                  backgroundColor: COLORS.sage + "20",
+                  borderRadius: RADIUS.control,
+                  paddingVertical: SPACING.sm,
+                  paddingHorizontal: SPACING.md,
                 }}
               >
-                <Text
-                  style={{ fontSize: 12, fontWeight: "600", color: C.sage }}
-                >
+                <Text style={[TYPE.footnote, { fontWeight: "600", color: COLORS.sage }]}>
                   {chip.emoji} {chip.label}
                 </Text>
               </View>
             ))}
           </View>
         )}
-      </View>
+      </Card>
 
       {/* Snooze Modal */}
       <SnoozeModal
