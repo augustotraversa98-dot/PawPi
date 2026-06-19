@@ -759,7 +759,8 @@ not a hand-maintained log here:
     mutations go through DEFINER helpers with NO provider UPDATE policy (Rx history can't be rewritten);
     2.51/2.54 owner routes never attach the Vet Record. Owes a device pass across the new surfaces.
 - **Wave 7 — ✅ COMPLETE (autonomous run).** All of 2.68–2.75 built, CI-green, squash-merged (PRs #189–#196).
-  Migrations **0056–0061** harness-proven + PENDING hand-apply (last applied = 0055). **✅ 2.75 nutrition +
+  Migrations **0056–0062 APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
+  `supabase/verify_0056_0062.sql`; live DB now at **0062**, none pending). **✅ 2.75 nutrition +
   food-recalls MERGED** — migration **0061** `nutrition_plans` (owner-RLS, family follow-up) + `food_recalls`
   (public read, DEFINER `ingest_food_recall`) + `pet_food_recall_matches` (owner-RLS) + `match_food_recall`
   DEFINER (recall→plan match + `food_recall` notify) + notifications CHECK widen; secret-gated idempotent
@@ -768,7 +769,7 @@ not a hand-maintained log here:
   **✅ 2.78 App Store readiness pass DONE** (PRs #197–#199): iOS permission strings + privacy manifest +
   metadata (name PawPi, bundle id placeholder); removed the `wrongPets` debug query; privacy/terms config
   slot; **in-app account deletion** (migration **0062** `delete_my_account()` DEFINER + `DELETE /api/account`
-  + Settings danger-zone, harness-proven, PENDING hand-apply); wired two "coming soon" no-ops (weight-log
+  + Settings danger-zone, harness-proven, ✅ migration 0062 APPLIED + VERIFIED 2026-06-19); wired two "coming soon" no-ops (weight-log
   delete, profile photo) to real functionality. Sign in with Apple parity + medical disclaimers verified.
   Handoff: **`docs/app-store-readiness.md`** (FIXED / FLAGGED policy items / account-gated submission
   checklist). Code+config is submission-ready; the actual EAS build + App Store Connect upload need the
