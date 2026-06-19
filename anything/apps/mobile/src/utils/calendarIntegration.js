@@ -1,8 +1,43 @@
 import * as Calendar from "expo-calendar";
 import { Platform, Alert } from "react-native";
-import { ROUTINE_FREQUENCY } from "@/data/routinesData";
+import {
+  getRecurrenceRule,
+  parseWalkTime,
+  formatFrequency,
+  buildEventNotes,
+} from "@/utils/calendarFormat";
 
-// Request calendar permissions
+// Calendar integration (ticket 2.79 unified layer).
+//
+// This file is the ONLY one that imports `expo-calendar`. The pure mapping/formatting
+// logic lives in calendarFormat.js (jest-covered). Here we keep:
+//   - the permission flow,
+//   - ONE generic getOrCreatePawPiCalendar({ title, color, name }) that de-dupes the two
+//     near-identical getters that used to exist (Walks + Vet Appointments),
+//   - generic upsertCalendarEvent / deleteCalendarEvent primitives,
+//   - thin walk + vet wrappers over them, with IDENTICAL exported names, signatures and
+//     return shapes so every call site is unchanged.
+//
+// 2.80 reuses getOrCreatePawPiCalendar / upsertCalendarEvent / deleteCalendarEvent for
+// the remaining scheduled surfaces (bookings / transport / telehealth / events).
+
+// Re-export the pure display helper so existing imports
+// (`import { formatFrequency } from "@/utils/calendarIntegration"`) keep working.
+export { formatFrequency };
+
+// Per-feature calendar identities (title is the lookup key; color/name set on create).
+const WALK_CALENDAR = {
+  title: "Social Pet - Walks",
+  color: "#A7BFA3", // Sage green
+  name: "socialPetWalks",
+};
+const VET_CALENDAR = {
+  title: "Social Pet - Vet Appointments",
+  color: "#4DB8E8", // Blue
+  name: "socialPetVetAppointments",
+};
+
+// Request calendar permissions (with a rationale prompt before the OS dialog).
 export async function requestCalendarPermission() {
   try {
     const { status: existingStatus } =
@@ -40,23 +75,31 @@ export async function requestCalendarPermission() {
   }
 }
 
-// Get or create the Social Pet calendar
-async function getSocialPetCalendar() {
+// Check if calendar access is currently granted.
+export async function isCalendarAvailable() {
+  try {
+    const { status } = await Calendar.getCalendarPermissionsAsync();
+    return status === "granted";
+  } catch (error) {
+    console.error("[Calendar] Error checking calendar availability:", error);
+    return false;
+  }
+}
+
+// Generic: get (by title) or create a dedicated PawPi calendar. Replaces the two
+// previously-duplicated getters. Returns the calendar id, or null on failure.
+export async function getOrCreatePawPiCalendar({ title, color, name }) {
   try {
     const calendars = await Calendar.getCalendarsAsync(
       Calendar.EntityTypes.EVENT,
     );
 
-    // Check if Social Pet calendar already exists
-    const existingCalendar = calendars.find(
-      (cal) => cal.title === "Social Pet - Walks",
-    );
-
+    const existingCalendar = calendars.find((cal) => cal.title === title);
     if (existingCalendar) {
       return existingCalendar.id;
     }
 
-    // Create new calendar
+    // Pick a writable source for a new calendar (iCloud/Google preferred, else LOCAL).
     let defaultCalendarSource;
 
     if (Platform.OS === "ios") {
@@ -90,12 +133,12 @@ async function getSocialPetCalendar() {
     }
 
     const calendarId = await Calendar.createCalendarAsync({
-      title: "Social Pet - Walks",
-      color: "#A7BFA3", // Sage green
+      title,
+      color,
       entityType: Calendar.EntityTypes.EVENT,
       sourceId: defaultCalendarSource.id,
       source: defaultCalendarSource,
-      name: "socialPetWalks",
+      name,
       ownerAccount: "social-pet",
       accessLevel: Calendar.CalendarAccessLevel.OWNER,
     });
@@ -107,53 +150,56 @@ async function getSocialPetCalendar() {
   }
 }
 
-// Convert walk schedule to recurrence rule
-function getRecurrenceRule(walk) {
-  if (walk.frequency === ROUTINE_FREQUENCY.DAILY) {
-    return {
-      frequency: Calendar.Frequency.DAILY,
-      interval: 1,
-    };
+// Generic create-OR-update primitive. With `existingEventId` → update that event and
+// return its id; otherwise create a new event and return the new id.
+//
+// On CREATE it applies the shared defaults the app has always used: BUSY availability
+// and, on iOS, PRIVATE accessLevel. On UPDATE it patches only the fields the caller
+// passes (matching the previous vet-update behavior, which set neither availability nor
+// accessLevel). Throws on native failure so callers' try/catch report it unchanged.
+export async function upsertCalendarEvent(calendarId, details, existingEventId) {
+  if (existingEventId) {
+    await Calendar.updateEventAsync(existingEventId, details);
+    return existingEventId;
   }
 
-  if (walk.frequency === ROUTINE_FREQUENCY.WEEKLY && walk.days?.length > 0) {
-    // Convert days (0 = Sunday) to Calendar format
-    const daysOfWeek = walk.days.map((day) => {
-      // walk.days uses 0 = Sunday, Calendar uses same format
-      return day;
-    });
-
-    return {
-      frequency: Calendar.Frequency.WEEKLY,
-      interval: 1,
-      daysOfTheWeek: daysOfWeek.map((day) => ({ dayOfTheWeek: day })),
-    };
+  const createDetails = {
+    ...details,
+    availability: details.availability ?? Calendar.Availability.BUSY,
+  };
+  if (Platform.OS === "ios") {
+    createDetails.accessLevel = Calendar.EventAccessLevel.PRIVATE;
   }
 
-  if (walk.frequency === ROUTINE_FREQUENCY.MONTHLY && walk.preferredDay) {
-    return {
-      frequency: Calendar.Frequency.MONTHLY,
-      interval: 1,
-      daysOfTheMonth: [walk.preferredDay],
-    };
-  }
-
-  // Default to no recurrence for one-time events
-  return null;
+  return await Calendar.createEventAsync(calendarId, createDetails);
 }
 
-// Parse time string (HH:mm) to today's date with that time
-function parseWalkTime(timeString) {
-  const [hours, minutes] = timeString.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return date;
+// Generic delete primitive. No-op-safe (no eventId → success). Mirrors the previous
+// deleteVetAppointmentFromCalendar return shape so callers are unchanged.
+export async function deleteCalendarEvent(eventId) {
+  try {
+    if (!eventId) {
+      return { success: true }; // Nothing to delete.
+    }
+
+    const hasPermission = await isCalendarAvailable();
+    if (!hasPermission) {
+      return { success: false, error: "permission_denied" };
+    }
+
+    await Calendar.deleteEventAsync(eventId);
+    return { success: true };
+  } catch (error) {
+    console.error("[Calendar] Error deleting event from calendar:", error);
+    return { success: false, error: error.message };
+  }
 }
 
-// Add walk to calendar
+// ===== WALK CALENDAR (thin wrappers — unchanged return shape: boolean) =====
+
+// Add a (possibly recurring) walk block to the Walks calendar. Returns true on success.
 export async function addWalkToCalendar(walk, petName = "Your pet") {
   try {
-    // Check permission
     const hasPermission = await requestCalendarPermission();
     if (!hasPermission) {
       Alert.alert(
@@ -163,8 +209,7 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
       return false;
     }
 
-    // Get or create calendar
-    const calendarId = await getSocialPetCalendar();
+    const calendarId = await getOrCreatePawPiCalendar(WALK_CALENDAR);
     if (!calendarId) {
       Alert.alert(
         "Calendar unavailable",
@@ -173,37 +218,27 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
       return false;
     }
 
-    // Parse walk time
     const startDate = parseWalkTime(walk.time);
     const durationMinutes = walk.durationMinutes || 30;
     const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
 
-    // Get recurrence rule
     const recurrenceRule = getRecurrenceRule(walk);
 
-    // Create event details
-    const eventDetails = {
+    const details = {
       title: "Busy", // Private title
       startDate,
       endDate,
       timeZone: "default",
       calendarId,
-      notes: "Dog walk scheduled in Social Pet",
+      notes: buildEventNotes("walk"),
       alarms: [],
       availability: Calendar.Availability.BUSY,
     };
-
-    // Add recurrence if applicable
     if (recurrenceRule) {
-      eventDetails.recurrenceRule = recurrenceRule;
+      details.recurrenceRule = recurrenceRule;
     }
 
-    // iOS supports accessLevel for privacy
-    if (Platform.OS === "ios") {
-      eventDetails.accessLevel = Calendar.EventAccessLevel.PRIVATE;
-    }
-
-    const eventId = await Calendar.createEventAsync(calendarId, eventDetails);
+    const eventId = await upsertCalendarEvent(calendarId, details);
 
     if (eventId) {
       Alert.alert(
@@ -221,18 +256,7 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
   }
 }
 
-// Check if calendar is available
-export async function isCalendarAvailable() {
-  try {
-    const { status } = await Calendar.getCalendarPermissionsAsync();
-    return status === "granted";
-  } catch (error) {
-    console.error("[Calendar] Error checking calendar availability:", error);
-    return false;
-  }
-}
-
-// Get all walk events from Social Pet calendar
+// Read the next 30 days of events from the Walks calendar.
 export async function getWalkEvents() {
   try {
     const hasPermission = await isCalendarAvailable();
@@ -240,12 +264,11 @@ export async function getWalkEvents() {
       return [];
     }
 
-    const calendarId = await getSocialPetCalendar();
+    const calendarId = await getOrCreatePawPiCalendar(WALK_CALENDAR);
     if (!calendarId) {
       return [];
     }
 
-    // Get events for the next 30 days
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 30);
@@ -263,149 +286,44 @@ export async function getWalkEvents() {
   }
 }
 
-// Format frequency for display
-export function formatFrequency(walk) {
-  if (walk.frequency === ROUTINE_FREQUENCY.DAILY) {
-    return "daily";
-  }
+// ===== VET APPOINTMENT CALENDAR (thin wrappers — unchanged return shapes) =====
 
-  if (walk.frequency === ROUTINE_FREQUENCY.WEEKLY && walk.days?.length > 0) {
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const selectedDays = walk.days.map((d) => dayNames[d]).join(", ");
-    return `every ${selectedDays}`;
-  }
-
-  if (walk.frequency === ROUTINE_FREQUENCY.MONTHLY && walk.preferredDay) {
-    return `monthly on day ${walk.preferredDay}`;
-  }
-
-  return "one time";
-}
-
-// ===== VET APPOINTMENT CALENDAR FUNCTIONS =====
-
-// Get or create the Social Pet Vet Appointments calendar
-async function getVetAppointmentsCalendar() {
-  try {
-    const calendars = await Calendar.getCalendarsAsync(
-      Calendar.EntityTypes.EVENT,
-    );
-
-    // Check if calendar exists
-    const existingCalendar = calendars.find(
-      (cal) => cal.title === "Social Pet - Vet Appointments",
-    );
-
-    if (existingCalendar) {
-      return existingCalendar.id;
-    }
-
-    // Create new calendar
-    let defaultCalendarSource;
-
-    if (Platform.OS === "ios") {
-      defaultCalendarSource = calendars.find(
-        (cal) => cal.source && cal.source.name === "iCloud",
-      )?.source;
-
-      if (!defaultCalendarSource) {
-        defaultCalendarSource = calendars.find(
-          (cal) => cal.source && cal.source.type === Calendar.SourceType.LOCAL,
-        )?.source;
-      }
-    } else if (Platform.OS === "android") {
-      defaultCalendarSource = calendars.find(
-        (cal) =>
-          cal.source &&
-          cal.source.name &&
-          cal.source.name.toLowerCase().includes("google"),
-      )?.source;
-
-      if (!defaultCalendarSource) {
-        defaultCalendarSource = calendars.find(
-          (cal) => cal.source && cal.source.type === Calendar.SourceType.LOCAL,
-        )?.source;
-      }
-    }
-
-    if (!defaultCalendarSource) {
-      console.error("[Calendar] No calendar source found");
-      return null;
-    }
-
-    const calendarId = await Calendar.createCalendarAsync({
-      title: "Social Pet - Vet Appointments",
-      color: "#4DB8E8", // Blue
-      entityType: Calendar.EntityTypes.EVENT,
-      sourceId: defaultCalendarSource.id,
-      source: defaultCalendarSource,
-      name: "socialPetVetAppointments",
-      ownerAccount: "social-pet",
-      accessLevel: Calendar.CalendarAccessLevel.OWNER,
-    });
-
-    return calendarId;
-  } catch (error) {
-    console.error("[Calendar] Error getting/creating vet calendar:", error);
-    return null;
-  }
-}
-
-// Add vet appointment to calendar
+// Add a vet appointment to the Vet Appointments calendar.
+// Returns { success, eventId } / { success: false, error }.
 export async function addVetAppointmentToCalendar(
   appointment,
   petName = "Your pet",
 ) {
   try {
-    // Check permission
     const hasPermission = await requestCalendarPermission();
     if (!hasPermission) {
       return { success: false, error: "permission_denied" };
     }
 
-    // Get or create calendar
-    const calendarId = await getVetAppointmentsCalendar();
+    const calendarId = await getOrCreatePawPiCalendar(VET_CALENDAR);
     if (!calendarId) {
       return { success: false, error: "calendar_unavailable" };
     }
 
-    // Parse appointment date and time
     const appointmentDateTime = new Date(
       `${appointment.appointmentDate}T${appointment.appointmentTime}:00`,
     );
-
     // Default 30 min duration
     const endDate = new Date(appointmentDateTime.getTime() + 30 * 60 * 1000);
 
-    // Build notes
-    let notes = `Vet appointment for ${petName}\n\n`;
-    if (appointment.title) notes += `Appointment: ${appointment.title}\n`;
-    if (appointment.reasonForVisit)
-      notes += `Reason: ${appointment.reasonForVisit}\n`;
-    if (appointment.veterinarian)
-      notes += `Veterinarian: ${appointment.veterinarian}\n`;
-    if (appointment.notes) notes += `\nNotes: ${appointment.notes}\n`;
-    notes += `\nManaged by Social Pet`;
-
-    // Create event details
-    const eventDetails = {
+    const details = {
       title: `Vet appointment for ${petName}`,
       startDate: appointmentDateTime,
       endDate,
       timeZone: "default",
       calendarId,
       location: appointment.clinic || undefined,
-      notes,
+      notes: buildEventNotes("vet", { ...appointment, petName }),
       alarms: [],
       availability: Calendar.Availability.BUSY,
     };
 
-    // iOS supports accessLevel for privacy
-    if (Platform.OS === "ios") {
-      eventDetails.accessLevel = Calendar.EventAccessLevel.PRIVATE;
-    }
-
-    const eventId = await Calendar.createEventAsync(calendarId, eventDetails);
+    const eventId = await upsertCalendarEvent(calendarId, details);
 
     if (eventId) {
       return { success: true, eventId };
@@ -421,7 +339,7 @@ export async function addVetAppointmentToCalendar(
   }
 }
 
-// Update vet appointment in calendar
+// Update an existing vet-appointment calendar event. Returns { success } / { success: false, error }.
 export async function updateVetAppointmentInCalendar(
   eventId,
   appointment,
@@ -432,38 +350,25 @@ export async function updateVetAppointmentInCalendar(
       return { success: false, error: "no_event_id" };
     }
 
-    // Check permission
     const hasPermission = await isCalendarAvailable();
     if (!hasPermission) {
       return { success: false, error: "permission_denied" };
     }
 
-    // Parse appointment date and time
     const appointmentDateTime = new Date(
       `${appointment.appointmentDate}T${appointment.appointmentTime}:00`,
     );
     const endDate = new Date(appointmentDateTime.getTime() + 30 * 60 * 1000);
 
-    // Build notes
-    let notes = `Vet appointment for ${petName}\n\n`;
-    if (appointment.title) notes += `Appointment: ${appointment.title}\n`;
-    if (appointment.reasonForVisit)
-      notes += `Reason: ${appointment.reasonForVisit}\n`;
-    if (appointment.veterinarian)
-      notes += `Veterinarian: ${appointment.veterinarian}\n`;
-    if (appointment.notes) notes += `\nNotes: ${appointment.notes}\n`;
-    notes += `\nManaged by Social Pet`;
-
-    // Update event details
-    const eventDetails = {
+    const details = {
       title: `Vet appointment for ${petName}`,
       startDate: appointmentDateTime,
       endDate,
       location: appointment.clinic || undefined,
-      notes,
+      notes: buildEventNotes("vet", { ...appointment, petName }),
     };
 
-    await Calendar.updateEventAsync(eventId, eventDetails);
+    await upsertCalendarEvent(null, details, eventId);
 
     return { success: true };
   } catch (error) {
@@ -475,25 +380,7 @@ export async function updateVetAppointmentInCalendar(
   }
 }
 
-// Delete vet appointment from calendar
+// Delete a vet-appointment calendar event (thin wrapper over the generic primitive).
 export async function deleteVetAppointmentFromCalendar(eventId) {
-  try {
-    if (!eventId) {
-      return { success: true }; // No event to delete
-    }
-
-    const hasPermission = await isCalendarAvailable();
-    if (!hasPermission) {
-      return { success: false, error: "permission_denied" };
-    }
-
-    await Calendar.deleteEventAsync(eventId);
-    return { success: true };
-  } catch (error) {
-    console.error(
-      "[Calendar] Error deleting vet appointment from calendar:",
-      error,
-    );
-    return { success: false, error: error.message };
-  }
+  return deleteCalendarEvent(eventId);
 }
