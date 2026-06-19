@@ -52,7 +52,6 @@ async function POST(request, { params }) {
       );
     }
 
-    console.log("[social-walks] Join request declined:", result[0]);
 
     // Create notification for requester (polite decline notification)
     // This will be handled via a notification system

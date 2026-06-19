@@ -132,7 +132,6 @@ async function POST(request) {
       // Don't fail the whole request if timeline fails
     }
 
-    console.log("[health/walk-logs] Log created:", walkLog);
     return Response.json({ log: walkLog }, { status: 201 });
   } catch (error) {
     console.error("[health/walk-logs] Error creating log:", error);

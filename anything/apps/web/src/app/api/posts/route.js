@@ -32,8 +32,6 @@ export function mergeFeed(following, suggested, { limit, offset }) {
 // Get feed posts
 async function GET(request) {
   try {
-    console.log("[GET /api/posts] ========================================");
-    console.log("[GET /api/posts] Fetching posts from database");
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -46,10 +44,6 @@ async function GET(request) {
       ? parsedViewerPetId
       : null;
 
-    console.log("[GET /api/posts] Query params:");
-    console.log("[GET /api/posts]   - limit:", limit);
-    console.log("[GET /api/posts]   - offset:", offset);
-    console.log("[GET /api/posts]   - viewerPetId:", viewerPetId);
 
     // Cap each group's fetch at the far edge of the requested page so we never
     // pull the whole table; mergeFeed then slices the exact window.
@@ -141,22 +135,10 @@ async function GET(request) {
 
     const posts = mergeFeed(following, suggested, { limit, offset });
 
-    console.log(
-      "[GET /api/posts] Following:",
-      following.length,
-      "Suggested:",
-      suggested.length,
-      "-> page:",
-      posts.length,
-    );
 
     // Check if current user has pawed each post
     const session = await auth();
     if (session?.user?.id) {
-      console.log(
-        "[GET /api/posts] Checking user paws for auth_user_id:",
-        session.user.id,
-      );
 
       const userProfile = await sql`
         SELECT id FROM user_profiles 
@@ -166,7 +148,6 @@ async function GET(request) {
 
       if (userProfile.length > 0) {
         const userId = userProfile[0].id;
-        console.log("[GET /api/posts] User profile ID:", userId);
 
         const postIds = posts.map((p) => p.id);
 
@@ -187,14 +168,8 @@ async function GET(request) {
       }
     }
 
-    console.log("[GET /api/posts] ✅ Returning", posts.length, "posts");
-    console.log("[GET /api/posts] Posts summary:");
     posts.forEach((post, index) => {
-      console.log(
-        `[GET /api/posts]   ${index + 1}. ID: ${post.id}, Pet: ${post.pet_name}, Daily: ${post.is_daily_update}, Date: ${post.post_date}`,
-      );
     });
-    console.log("[GET /api/posts] ========================================");
 
     return Response.json({ posts });
   } catch (error) {
@@ -210,11 +185,8 @@ async function GET(request) {
 // Create a new post
 async function POST(request) {
   try {
-    console.log("[POST /api/posts] ========================================");
-    console.log("[POST /api/posts] Starting post creation");
 
     const session = await auth();
-    console.log("[POST /api/posts] Session:", session);
 
     if (!session?.user?.id) {
       console.error("[POST /api/posts] ERROR: No session or user ID");
@@ -222,17 +194,14 @@ async function POST(request) {
     }
 
     const authUserId = session.user.id;
-    console.log("[POST /api/posts] Auth user ID:", authUserId);
 
     // Get user profile
-    console.log("[POST /api/posts] Fetching user profile...");
     const userProfile = await sql`
       SELECT id FROM user_profiles 
       WHERE auth_user_id = ${authUserId}
       LIMIT 1
     `;
 
-    console.log("[POST /api/posts] User profile query result:", userProfile);
 
     if (userProfile.length === 0) {
       console.error(
@@ -246,13 +215,8 @@ async function POST(request) {
     }
 
     const userId = userProfile[0].id;
-    console.log("[POST /api/posts] User profile ID:", userId);
 
     const body = await request.json();
-    console.log(
-      "[POST /api/posts] Request body:",
-      JSON.stringify(body, null, 2),
-    );
 
     const {
       pet_id,
@@ -262,22 +226,14 @@ async function POST(request) {
       post_date,
     } = body;
 
-    console.log("[POST /api/posts] Extracted fields:");
-    console.log("[POST /api/posts]   - pet_id:", pet_id);
-    console.log("[POST /api/posts]   - image_url:", image_url);
-    console.log("[POST /api/posts]   - caption:", caption);
-    console.log("[POST /api/posts]   - is_daily_update:", is_daily_update);
-    console.log("[POST /api/posts]   - post_date:", post_date);
 
     // Validate pet ownership
-    console.log("[POST /api/posts] Validating pet ownership...");
     const pet = await sql`
       SELECT id FROM pets 
       WHERE id = ${pet_id} AND owner_user_id = ${userId}
       LIMIT 1
     `;
 
-    console.log("[POST /api/posts] Pet ownership query result:", pet);
 
     if (pet.length === 0) {
       console.error("[POST /api/posts] ERROR: Pet not found or unauthorized");
@@ -289,13 +245,10 @@ async function POST(request) {
       );
     }
 
-    console.log("[POST /api/posts] ✅ Pet ownership validated");
 
     // If daily update, check if one already exists today
     if (is_daily_update) {
-      console.log("[POST /api/posts] Checking for existing daily update...");
       const today = new Date().toISOString().split("T")[0];
-      console.log("[POST /api/posts] Today's date:", today);
 
       const existingDaily = await sql`
         SELECT id FROM posts
@@ -305,10 +258,6 @@ async function POST(request) {
         LIMIT 1
       `;
 
-      console.log(
-        "[POST /api/posts] Existing daily query result:",
-        existingDaily,
-      );
 
       if (existingDaily.length > 0) {
         console.error(
@@ -322,14 +271,11 @@ async function POST(request) {
         );
       }
 
-      console.log("[POST /api/posts] ✅ No existing daily update found");
     }
 
     // Create post
-    console.log("[POST /api/posts] Inserting post into database...");
 
     const finalPostDate = post_date || new Date().toISOString().split("T")[0];
-    console.log("[POST /api/posts] Final post_date for insert:", finalPostDate);
 
     const insertedPost = await sql`
       INSERT INTO posts (user_id, pet_id, image_url, caption, is_daily_update, post_date)
@@ -344,12 +290,8 @@ async function POST(request) {
       RETURNING id
     `;
 
-    console.log("[POST /api/posts] ✅ Post inserted successfully");
-    console.log("[POST /api/posts] Post ID:", insertedPost[0].id);
-    console.log("[POST /api/posts] Post date:", finalPostDate);
 
     // Fetch the complete post with all joined data (same format as GET endpoint)
-    console.log("[POST /api/posts] Fetching complete post data...");
     const fullPost = await sql`
       SELECT 
         p.*,
@@ -368,9 +310,6 @@ async function POST(request) {
       LIMIT 1
     `;
 
-    console.log("[POST /api/posts] ✅ Full post data fetched");
-    console.log("[POST /api/posts] Full post:", fullPost[0]);
-    console.log("[POST /api/posts] ========================================");
 
     return Response.json({ post: fullPost[0] }, { status: 201 });
   } catch (error) {

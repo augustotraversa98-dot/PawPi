@@ -74,7 +74,6 @@ async function POST(request) {
       RETURNING *
     `;
 
-    console.log("[health/photo-checks] Photo check created:", result[0]);
     return Response.json({ photoCheck: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[health/photo-checks] Error creating photo check:", error);

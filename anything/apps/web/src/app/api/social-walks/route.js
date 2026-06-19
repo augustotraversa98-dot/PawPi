@@ -115,7 +115,6 @@ async function POST(request) {
     `;
 
     const socialWalk = result[0];
-    console.log("[social-walks] Social walk created:", socialWalk);
 
     // Private walk → record the explicit invitations (owner-issued). Only valid
     // user_profiles ids that are not the owner are invited; deduped.
@@ -139,9 +138,6 @@ async function POST(request) {
           ON CONFLICT (social_walk_id, invited_user_id) DO NOTHING
         `;
       }
-      console.log(
-        `[social-walks] Invited ${cleanIds.length} user(s) to private walk ${socialWalk.id}`,
-      );
     }
 
     // If friends_only, notify mutual friends
@@ -163,9 +159,6 @@ async function POST(request) {
           AND pf.status = 'accepted'
       `;
 
-      console.log(
-        `[social-walks] Notifying ${mutualFriends.length} mutual friends`,
-      );
       // Notifications will be created via a separate endpoint or background job
     }
 

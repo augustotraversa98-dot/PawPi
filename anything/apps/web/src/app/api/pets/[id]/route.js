@@ -5,13 +5,8 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // Update a specific pet
 async function PATCH(request, { params }) {
   try {
-    console.log(
-      "[PATCH /api/pets/[id]] ========================================",
-    );
-    console.log("[PATCH /api/pets/[id]] Updating pet");
 
     const session = await auth();
-    console.log("[PATCH /api/pets/[id]] Session:", session);
 
     if (!session?.user?.id) {
       console.error("[PATCH /api/pets/[id]] ERROR: No session or user ID");
@@ -20,11 +15,8 @@ async function PATCH(request, { params }) {
 
     const authUserId = session.user.id;
     const petId = params.id;
-    console.log("[PATCH /api/pets/[id]] Auth user ID:", authUserId);
-    console.log("[PATCH /api/pets/[id]] Pet ID:", petId);
 
     // Get user profile
-    console.log("[PATCH /api/pets/[id]] Fetching user profile...");
     const userProfile = await sql`
       SELECT id, auth_user_id 
       FROM user_profiles 
@@ -41,10 +33,8 @@ async function PATCH(request, { params }) {
     }
 
     const userId = userProfile[0].id;
-    console.log("[PATCH /api/pets/[id]] User profile ID:", userId);
 
     // Check if pet exists and belongs to user
-    console.log("[PATCH /api/pets/[id]] Checking pet ownership...");
     const existingPet = await sql`
       SELECT * FROM pets 
       WHERE id = ${petId} AND owner_user_id = ${userId}
@@ -58,10 +48,8 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
-    console.log("[PATCH /api/pets/[id]] ✅ Pet found:", existingPet[0].name);
 
     const body = await request.json();
-    console.log("[PATCH /api/pets/[id]] Request body:", body);
 
     const {
       name,
@@ -86,7 +74,6 @@ async function PATCH(request, { params }) {
 
     // Check handle uniqueness if provided and different from current
     if (handle && handle !== existingPet[0].handle) {
-      console.log("[PATCH /api/pets/[id]] Checking handle uniqueness:", handle);
 
       const existing = await sql`
         SELECT id FROM pets 
@@ -162,12 +149,9 @@ async function PATCH(request, { params }) {
 
     if (updates.length === 1) {
       // Only updated_at, no real changes
-      console.log("[PATCH /api/pets/[id]] No fields to update");
       return Response.json({ pet: existingPet[0] });
     }
 
-    console.log("[PATCH /api/pets/[id]] Updating fields:", updates);
-    console.log("[PATCH /api/pets/[id]] Values:", values);
 
     // Add petId as the last parameter for WHERE clause
     values.push(petId);
@@ -180,15 +164,9 @@ async function PATCH(request, { params }) {
       RETURNING *
     `;
 
-    console.log("[PATCH /api/pets/[id]] Update query:", updateQuery);
 
     const result = await sql.unsafe(updateQuery, values);
 
-    console.log("[PATCH /api/pets/[id]] ✅ Pet updated successfully");
-    console.log("[PATCH /api/pets/[id]] Updated pet:", result[0]);
-    console.log(
-      "[PATCH /api/pets/[id]] ========================================",
-    );
 
     return Response.json({ pet: result[0] });
   } catch (error) {
@@ -208,10 +186,6 @@ async function PATCH(request, { params }) {
 // Get a specific pet
 async function GET(request, { params }) {
   try {
-    console.log(
-      "[GET /api/pets/[id]] ========================================",
-    );
-    console.log("[GET /api/pets/[id]] Fetching pet");
 
     const session = await auth();
 
@@ -221,8 +195,6 @@ async function GET(request, { params }) {
 
     const petId = params.id;
     const authUserId = session.user.id;
-    console.log("[GET /api/pets/[id]] Pet ID:", petId);
-    console.log("[GET /api/pets/[id]] Auth user ID:", authUserId);
 
     // Get user profile
     const userProfile = await sql`
@@ -251,10 +223,6 @@ async function GET(request, { params }) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
-    console.log("[GET /api/pets/[id]] ✅ Pet found:", pet[0].name);
-    console.log(
-      "[GET /api/pets/[id]] ========================================",
-    );
 
     return Response.json({ pet: pet[0] });
   } catch (error) {

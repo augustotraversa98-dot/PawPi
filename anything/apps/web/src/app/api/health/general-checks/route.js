@@ -80,7 +80,6 @@ async function POST(request) {
       RETURNING *
     `;
 
-    console.log("[health/general-checks] Check created:", result[0]);
     return Response.json({ check: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[health/general-checks] Error creating check:", error);

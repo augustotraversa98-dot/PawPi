@@ -65,7 +65,6 @@ async function POST(request, { params }) {
       );
     }
 
-    console.log("[social-walks] Join request approved:", result[0]);
 
     // Create notification for requester
     // This will be handled via a notification system

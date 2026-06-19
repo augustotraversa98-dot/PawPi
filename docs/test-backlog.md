@@ -253,6 +253,20 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
   `rx-fulfillment` adds **fulfill_rx_order double-call → already_done, no double-decrement** + not_found;
   `insurance-policies` adds **activate_insurance_policy double-call → not_bindable, bound once** +
   not_found. **web integration 567 → 576 (+9).** Completeness guard still green.
+- **Cleanup — backend debug logging removed (clearly-safe).** Stripped ~173 lines of `console.log/
+  info/warn/debug` spam (incl. the `[POST /api/pets] ====` banners that flooded server + CI logs) from
+  13 base-schema API routes — `posts`, `posts/today-daily-update`, `pets/[id]`, five `health/*-logs`,
+  `routines`, and the `social-walks` join-request set. One concise `console.error` per catch is kept;
+  no control-flow change (all unit + integration suites unchanged: vitest 1130, integration 576).
+- **Cleanup — PATCH /api/pets repair handler (DRAFT, behavior change).** The legacy `owner_user_id`
+  repair tool (ARCHITECTURE.md §3) is dead under RLS (reads are already scoped to the profile id, so its
+  `WHERE owner_user_id = <auth id>` lookup matches nothing). Gated OFF behind `ENABLE_PET_OWNERSHIP_REPAIR`
+  (disabled → clean 410, no DB) + its own debug spam stripped. Left as a **DRAFT PR** for Augusto since
+  it changes the endpoint's prod behavior. **⚠️ FOLLOW-UP:** its mobile caller `RepairPetsButton.jsx`
+  lives in open redesign PR #209 (Profile) — remove the button + this handler together once #209 lands.
+- **Hardening:** none required — every deepened test passed as written; the DEFINER safe-paths, RLS
+  isolation, idempotency, and clean-degrade paths all behave correctly. No server-side gap surfaced.
+- **No migration** introduced by this pass. (Next free number stays **0063** if one is ever needed.)
 
 ---
 
