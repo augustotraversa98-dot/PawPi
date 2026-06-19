@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { COLORS } from "@/constants/colors";
+import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
@@ -171,14 +171,7 @@ export default function FeedScreen() {
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
           <ActivityIndicator size="large" color={COLORS.coral} />
-          <Text
-            style={{
-              color: COLORS.mutedBrown,
-              marginTop: 12,
-              fontSize: 14,
-              fontWeight: "600",
-            }}
-          >
+          <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.md, fontWeight: "600" }]}>
             Loading posts...
           </Text>
         </View>
@@ -279,21 +272,18 @@ export default function FeedScreen() {
           <View
             style={{
               backgroundColor: COLORS.warmBrown,
-              paddingVertical: 12,
-              paddingHorizontal: 24,
-              borderRadius: 24,
+              paddingVertical: SPACING.md,
+              paddingHorizontal: SPACING.xxl,
+              borderRadius: RADIUS.chip,
               flexDirection: "row",
               alignItems: "center",
-              gap: 12,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
+              gap: SPACING.md,
+              ...ELEVATION.lg,
+              shadowColor: COLORS.warmBrown,
             }}
           >
             <ActivityIndicator size="small" color="#FFF" />
-            <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 14 }}>
+            <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "700" }]}>
               Uploading photo...
             </Text>
           </View>

@@ -1,7 +1,9 @@
 import React, { useMemo } from "react";
 import { View, Text } from "react-native";
+import Animated from "react-native-reanimated";
 import { PawPrint } from "lucide-react-native";
-import { COLORS } from "@/constants/colors";
+import { COLORS, TYPE, SPACING, listEntering } from "@/constants/theme";
+import { useReducedMotion } from "@/hooks/useAccessibilityPrefs";
 import { PostCard } from "./PostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
@@ -44,27 +46,22 @@ export function UnlockedFeed({
     };
   }, [items]);
 
+  const reduceMotion = useReducedMotion();
+
   const SuggestedDivider = () => (
     <View
       testID="suggested-divider"
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.xl,
         paddingTop: 6,
-        paddingBottom: 14,
+        paddingBottom: SPACING.md,
         gap: 6,
       }}
     >
       <PawPrint size={14} color={COLORS.terracotta} />
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "800",
-          color: COLORS.mutedBrown,
-          letterSpacing: 0.7,
-        }}
-      >
+      <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
         SUGGESTED FOR YOU
       </Text>
     </View>
@@ -77,58 +74,59 @@ export function UnlockedFeed({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 20,
-          paddingBottom: 14,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           gap: 6,
         }}
       >
         <PawPrint size={14} color={COLORS.terracotta} />
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "800",
-            color: COLORS.mutedBrown,
-            letterSpacing: 0.7,
-          }}
-        >
+        <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
           PET FRIENDS' MOMENTS
         </Text>
       </View>
 
-      {items.map((item) => {
+      {items.map((item, index) => {
+        // Each item springs in on mount (cross-fades under Reduce Motion) — the
+        // staggered list-enter motion from the design system.
+        const entering = listEntering(reduceMotion, index);
+
         // Suggestion cards carry a `kind` discriminator; pet posts never do, so they can never
         // be confused (no fake pet posts).
         if (item.kind === "provider") {
           return (
-            <ProviderFeedCard
-              key={`provider-${item.id}`}
-              provider={item}
-              onPress={() => onOpenProvider?.(item)}
-            />
+            <Animated.View key={`provider-${item.id}`} entering={entering}>
+              <ProviderFeedCard
+                provider={item}
+                onPress={() => onOpenProvider?.(item)}
+              />
+            </Animated.View>
           );
         }
         if (item.kind === "adoption") {
           return (
-            <AdoptionFeedCard
-              key={`adoption-${item.id}`}
-              listing={item}
-              onPress={() => onOpenAdoption?.(item)}
-            />
+            <Animated.View key={`adoption-${item.id}`} entering={entering}>
+              <AdoptionFeedCard
+                listing={item}
+                onPress={() => onOpenAdoption?.(item)}
+              />
+            </Animated.View>
           );
         }
         return (
           <React.Fragment key={item.id}>
             {item.id === dividerBeforeId && <SuggestedDivider />}
-            <PostCard
-              post={item}
-              liked={!!likedPosts[item.id]}
-              locked={false}
-              streak={streakByPetId[item.pet_id] || 0}
-              onToggleLike={() => onToggleLike(item.id)}
-              onOpenBarks={() => onOpenBarks(item)}
-              onOpenDetail={() => onOpenDetail(item)}
-              onOpenProfile={() => onOpenProfile(item)}
-            />
+            <Animated.View entering={entering}>
+              <PostCard
+                post={item}
+                liked={!!likedPosts[item.id]}
+                locked={false}
+                streak={streakByPetId[item.pet_id] || 0}
+                onToggleLike={() => onToggleLike(item.id)}
+                onOpenBarks={() => onOpenBarks(item)}
+                onOpenDetail={() => onOpenDetail(item)}
+                onOpenProfile={() => onOpenProfile(item)}
+              />
+            </Animated.View>
           </React.Fragment>
         );
       })}
@@ -136,23 +134,14 @@ export function UnlockedFeed({
       {posts.length === 0 && (
         <View style={{ alignItems: "center", padding: 50 }}>
           <Text style={{ fontSize: 40 }}>🐾</Text>
-          <Text
-            style={{
-              color: COLORS.mutedBrown,
-              fontSize: 16,
-              fontWeight: "600",
-              marginTop: 12,
-            }}
-          >
+          <Text style={[TYPE.headline, { color: COLORS.mutedBrown, marginTop: SPACING.md }]}>
             No pet moments yet!
           </Text>
           <Text
-            style={{
-              color: COLORS.mutedBrown,
-              fontSize: 13,
-              marginTop: 4,
-              textAlign: "center",
-            }}
+            style={[
+              TYPE.subhead,
+              { color: COLORS.mutedBrown, marginTop: 4, textAlign: "center", fontWeight: "500" },
+            ]}
           >
             Be the first to share today's moment.
           </Text>
