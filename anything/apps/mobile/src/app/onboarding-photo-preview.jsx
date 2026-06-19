@@ -1,12 +1,14 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Alert, Platform } from "react-native";
+import { View, Text, Alert, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Check, RefreshCw, Image as ImageIcon, X } from "lucide-react-native";
+import { RefreshCw, Image as ImageIcon } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
+import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 
 // On web, expo-image-picker returns a transient blob: URL (URL.createObjectURL)
 // that is revoked on page reload and can't be turned into an upload file. Convert
@@ -25,15 +27,6 @@ async function toPersistentPhotoUri(uri) {
     reader.readAsDataURL(blob);
   });
 }
-
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-  peach: "#FFD9B3",
-};
 
 export default function OnboardingPhotoPreviewScreen() {
   const insets = useSafeAreaInsets();
@@ -183,35 +176,39 @@ export default function OnboardingPhotoPreviewScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.cream,
-        paddingTop: insets.top + 20,
-        paddingBottom: insets.bottom + 40,
-        paddingHorizontal: 24,
+        backgroundColor: COLORS.cream,
+        paddingTop: insets.top + SPACING.xl,
+        paddingBottom: insets.bottom + SPACING.huge,
+        paddingHorizontal: SPACING.xxl,
       }}
     >
       {/* Photo Preview */}
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         {/* Title */}
         <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "900",
-            color: C.warmBrown,
-            textAlign: "center",
-            marginBottom: 8,
-            letterSpacing: -0.5,
-          }}
+          style={[
+            TYPE.title,
+            {
+              fontSize: 28,
+              color: COLORS.warmBrown,
+              textAlign: "center",
+              marginBottom: SPACING.sm,
+              letterSpacing: -0.5,
+            },
+          ]}
         >
           Cute! Use this photo?
         </Text>
 
         <Text
-          style={{
-            fontSize: 15,
-            color: C.mutedBrown,
-            textAlign: "center",
-            marginBottom: 40,
-          }}
+          style={[
+            TYPE.body,
+            {
+              color: COLORS.mutedBrown,
+              textAlign: "center",
+              marginBottom: SPACING.huge,
+            },
+          ]}
         >
           Choose how you'd like to use it
         </Text>
@@ -224,8 +221,8 @@ export default function OnboardingPhotoPreviewScreen() {
             borderRadius: 140,
             overflow: "hidden",
             borderWidth: 4,
-            borderColor: C.coral,
-            shadowColor: C.coral,
+            borderColor: COLORS.coral,
+            shadowColor: COLORS.coral,
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.3,
             shadowRadius: 16,
@@ -242,169 +239,184 @@ export default function OnboardingPhotoPreviewScreen() {
       </View>
 
       {/* Action Buttons */}
-      <View style={{ gap: 12 }}>
+      <View style={{ gap: SPACING.md }}>
         {/* Post as daily + use as profile photo - Primary */}
-        <TouchableOpacity
+        <PressableScale
           onPress={() => handleUsePhoto(true)}
+          accessibilityRole="button"
           style={{
-            backgroundColor: C.coral,
-            borderRadius: 18,
-            paddingVertical: 18,
+            backgroundColor: COLORS.coral,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.lg,
             alignItems: "center",
-            shadowColor: C.coral,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 6,
+            shadowColor: COLORS.coral,
+            ...ELEVATION.sm,
           }}
         >
           <Text
-            style={{
-              fontSize: 17,
-              fontWeight: "800",
-              color: "#FFF",
-              marginBottom: 4,
-            }}
+            style={[
+              TYPE.headline,
+              {
+                fontSize: 17,
+                color: "#FFF",
+                marginBottom: SPACING.xs,
+              },
+            ]}
           >
             Post as daily + use as profile photo
           </Text>
           <Text
-            style={{
-              fontSize: 13,
-              fontWeight: "600",
-              color: "#FFF",
-              opacity: 0.9,
-            }}
+            style={[
+              TYPE.subhead,
+              {
+                color: "#FFF",
+                opacity: 0.9,
+              },
+            ]}
           >
             Share this moment with friends
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
 
         {/* Only use as profile photo - Secondary */}
-        <TouchableOpacity
+        <PressableScale
           onPress={() => handleUsePhoto(false)}
+          accessibilityRole="button"
           style={{
-            backgroundColor: C.sand,
-            borderRadius: 18,
-            paddingVertical: 18,
+            backgroundColor: COLORS.sand,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.lg,
             alignItems: "center",
             borderWidth: 2,
-            borderColor: C.peach,
+            borderColor: COLORS.peach,
           }}
         >
           <Text
-            style={{
-              fontSize: 17,
-              fontWeight: "800",
-              color: C.coral,
-            }}
+            style={[
+              TYPE.headline,
+              {
+                fontSize: 17,
+                color: COLORS.coral,
+              },
+            ]}
           >
             Only use as profile photo
           </Text>
           <Text
-            style={{
-              fontSize: 13,
-              fontWeight: "600",
-              color: C.mutedBrown,
-            }}
+            style={[
+              TYPE.subhead,
+              {
+                color: COLORS.mutedBrown,
+              },
+            ]}
           >
             Don't post to feed
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
 
         {/* Secondary Actions Row */}
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", gap: SPACING.md, marginTop: SPACING.sm }}>
           {/* Retake */}
-          <TouchableOpacity
+          <PressableScale
             onPress={handleRetake}
             disabled={isPickingImage.current}
+            accessibilityRole="button"
             style={{
               flex: 1,
-              backgroundColor: C.sand,
-              borderRadius: 16,
-              paddingVertical: 16,
+              backgroundColor: COLORS.sand,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: SPACING.sm,
               borderWidth: 2,
-              borderColor: C.peach,
+              borderColor: COLORS.peach,
               opacity: isPickingImage.current ? 0.5 : 1,
             }}
           >
-            <RefreshCw size={20} color={C.mutedBrown} />
+            <RefreshCw size={20} color={COLORS.mutedBrown} />
             <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.mutedBrown,
-              }}
+              style={[
+                TYPE.body,
+                {
+                  fontWeight: "700",
+                  color: COLORS.mutedBrown,
+                },
+              ]}
             >
               Retake
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
 
           {/* Choose Another */}
-          <TouchableOpacity
+          <PressableScale
             onPress={handleChooseAnother}
             disabled={isPickingImage.current}
+            accessibilityRole="button"
             style={{
               flex: 1,
-              backgroundColor: C.sand,
-              borderRadius: 16,
-              paddingVertical: 16,
+              backgroundColor: COLORS.sand,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: SPACING.sm,
               borderWidth: 2,
-              borderColor: C.peach,
+              borderColor: COLORS.peach,
               opacity: isPickingImage.current ? 0.5 : 1,
             }}
           >
-            <ImageIcon size={20} color={C.mutedBrown} />
+            <ImageIcon size={20} color={COLORS.mutedBrown} />
             <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.mutedBrown,
-              }}
+              style={[
+                TYPE.body,
+                {
+                  fontWeight: "700",
+                  color: COLORS.mutedBrown,
+                },
+              ]}
             >
               Choose
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Skip Photo */}
-        <TouchableOpacity
+        <PressableScale
           onPress={handleSkip}
           style={{
-            paddingVertical: 14,
+            paddingVertical: SPACING.md,
             alignItems: "center",
           }}
         >
           <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.mutedBrown,
-              textDecorationLine: "underline",
-            }}
+            style={[
+              TYPE.body,
+              {
+                fontWeight: "700",
+                color: COLORS.mutedBrown,
+                textDecorationLine: "underline",
+              },
+            ]}
           >
             Skip photo
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       {/* Footer Helper Text */}
       <Text
-        style={{
-          fontSize: 13,
-          color: C.mutedBrown,
-          textAlign: "center",
-          marginTop: 24,
-          opacity: 0.8,
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            color: COLORS.mutedBrown,
+            textAlign: "center",
+            marginTop: SPACING.xxl,
+            opacity: 0.8,
+          },
+        ]}
       >
         Don't worry, you can change this later.
       </Text>

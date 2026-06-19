@@ -1,21 +1,15 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthModal } from "@/utils/auth/store";
+import { COLORS, TYPE, SPACING } from "@/constants/theme";
+import { Button, PressableScale } from "@/components/ui";
 import {
   didForceStartupFallback,
   didLastBootStall,
   lastBootSummary,
 } from "../../__create/boot-trace";
-
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-  sand: "#F8EBDD",
-};
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
@@ -47,46 +41,49 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          paddingTop: insets.top + 20,
-          paddingBottom: insets.bottom + 40,
-          paddingHorizontal: 24,
+          paddingTop: insets.top + SPACING.xl,
+          paddingBottom: insets.bottom + SPACING.huge,
+          paddingHorizontal: SPACING.xxl,
         }}
         showsVerticalScrollIndicator={false}
       >
         {/* Vet/Business Access Link */}
-        <TouchableOpacity
+        <PressableScale
           onPress={handleVetAccess}
           style={{
             alignSelf: "flex-end",
-            marginBottom: 40,
+            marginBottom: SPACING.huge,
           }}
         >
           <Text
-            style={{
-              fontSize: 13,
-              fontWeight: "600",
-              color: C.coral,
-              textDecorationLine: "underline",
-            }}
+            style={[
+              TYPE.subhead,
+              {
+                color: COLORS.coral,
+                textDecorationLine: "underline",
+              },
+            ]}
           >
             Access for vets & businesses
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
 
         {/* Logo/Icon */}
-        <View style={{ alignItems: "center", marginTop: 60, marginBottom: 40 }}>
-          <Text style={{ fontSize: 80, marginBottom: 20 }}>🐾</Text>
+        <View style={{ alignItems: "center", marginTop: 60, marginBottom: SPACING.huge }}>
+          <Text style={{ fontSize: 80, marginBottom: SPACING.xl }}>🐾</Text>
           <Text
-            style={{
-              fontSize: 36,
-              fontWeight: "900",
-              color: C.warmBrown,
-              letterSpacing: -1,
-            }}
+            style={[
+              TYPE.largeTitle,
+              {
+                fontSize: 36,
+                color: COLORS.warmBrown,
+                letterSpacing: -1,
+              },
+            ]}
           >
             Social Pet
           </Text>
@@ -94,15 +91,17 @@ export default function WelcomeScreen() {
 
         {/* Tagline */}
         <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "500",
-            color: C.mutedBrown,
-            textAlign: "center",
-            lineHeight: 28,
-            marginBottom: 60,
-            paddingHorizontal: 20,
-          }}
+          style={[
+            TYPE.body,
+            {
+              fontSize: 18,
+              color: COLORS.mutedBrown,
+              textAlign: "center",
+              lineHeight: 28,
+              marginBottom: 60,
+              paddingHorizontal: SPACING.xl,
+            },
+          ]}
         >
           Your pet's daily care, moments, and community — all in one place.
         </Text>
@@ -111,56 +110,22 @@ export default function WelcomeScreen() {
         <View style={{ flex: 1 }} />
 
         {/* Buttons */}
-        <View style={{ gap: 16, marginTop: 20 }}>
+        <View style={{ gap: SPACING.lg, marginTop: SPACING.huge }}>
           {/* Create Account Button */}
-          <TouchableOpacity
+          <Button
+            title="Create account"
+            variant="primary"
+            size="lg"
             onPress={handleCreateAccount}
-            accessibilityLabel="Create account"
-            style={{
-              backgroundColor: C.coral,
-              borderRadius: 18,
-              paddingVertical: 18,
-              alignItems: "center",
-              shadowColor: C.coral,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 6,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "800",
-                color: "#FFF",
-              }}
-            >
-              Create account
-            </Text>
-          </TouchableOpacity>
+          />
 
           {/* Log In Button */}
-          <TouchableOpacity
+          <Button
+            title="Log in"
+            variant="secondary"
+            size="lg"
             onPress={handleLogin}
-            style={{
-              backgroundColor: C.sand,
-              borderRadius: 18,
-              paddingVertical: 18,
-              alignItems: "center",
-              borderWidth: 2,
-              borderColor: C.coral,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "800",
-                color: C.coral,
-              }}
-            >
-              Log in
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {startupDiagnostic ? (

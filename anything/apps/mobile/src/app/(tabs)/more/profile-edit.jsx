@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TextInput,
-  TouchableOpacity,
   Platform,
   ActivityIndicator,
   Alert,
@@ -20,18 +19,28 @@ import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+} from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 
-const C = {
-  coral: "#FF6F61",
-  apricot: "#FFB37A",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+// Shared form field styling (Liquid Glass, ticket 2.77): sunken well + hairline
+// edge + body type. Behavior of each input (value/onChange/keyboard) is unchanged.
+const inputStyle = {
+  backgroundColor: MATERIALS.surfaceSunken,
+  borderRadius: RADIUS.control,
+  padding: SPACING.md + 2,
+  ...TYPE.body,
+  color: COLORS.warmBrown,
+  borderWidth: 1,
+  borderColor: MATERIALS.hairline,
 };
+
+const fieldLabelStyle = { ...TYPE.callout, fontWeight: "700", color: COLORS.warmBrown };
 
 export default function ProfileEditScreen() {
   const insets = useSafeAreaInsets();
@@ -215,12 +224,12 @@ export default function ProfileEditScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: C.cream,
+          backgroundColor: COLORS.cream,
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <ActivityIndicator size="large" color={C.coral} />
+        <ActivityIndicator size="large" color={COLORS.coral} />
       </View>
     );
   }
@@ -230,15 +239,13 @@ export default function ProfileEditScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: C.cream,
+          backgroundColor: COLORS.cream,
           justifyContent: "center",
           alignItems: "center",
-          padding: 20,
+          padding: SPACING.xl,
         }}
       >
-        <Text
-          style={{ fontSize: 16, color: C.mutedBrown, textAlign: "center" }}
-        >
+        <Text style={[TYPE.headline, { color: COLORS.mutedBrown, fontWeight: "500", textAlign: "center" }]}>
           No pet profile found
         </Text>
       </View>
@@ -247,27 +254,27 @@ export default function ProfileEditScreen() {
 
   return (
     <KeyboardAvoidingAnimatedView
-      style={{ flex: 1, backgroundColor: C.cream }}
+      style={{ flex: 1, backgroundColor: COLORS.cream }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={{ flex: 1, paddingTop: insets.top }}>
         {/* Header */}
         <View
           style={{
-            paddingHorizontal: 20,
-            paddingBottom: 14,
-            backgroundColor: C.card,
+            paddingHorizontal: SPACING.xl,
+            paddingBottom: SPACING.md + 2,
+            backgroundColor: MATERIALS.surface,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={22} color={C.warmBrown} />
-          </TouchableOpacity>
-          <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
+          <PressableScale onPress={() => router.back()}>
+            <ArrowLeft size={22} color={COLORS.warmBrown} />
+          </PressableScale>
+          <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
             Edit Profile
           </Text>
           <View style={{ width: 22 }} />
@@ -285,7 +292,7 @@ export default function ProfileEditScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Photo */}
-          <View style={{ alignItems: "center", marginBottom: 30 }}>
+          <View style={{ alignItems: "center", marginBottom: SPACING.xxxl - 2 }}>
             {formData.photo ? (
               <Image
                 source={{ uri: formData.photo }}
@@ -298,7 +305,7 @@ export default function ProfileEditScreen() {
                   width: 120,
                   height: 120,
                   borderRadius: 60,
-                  backgroundColor: C.sand,
+                  backgroundColor: MATERIALS.surfaceSunken,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
@@ -306,25 +313,26 @@ export default function ProfileEditScreen() {
                 <Text style={{ fontSize: 60 }}>🐕</Text>
               </View>
             )}
-            <TouchableOpacity
+            <PressableScale
               testID="change-photo"
               onPress={pickPhoto}
+              accessibilityRole="button"
               style={{
-                marginTop: 12,
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                backgroundColor: C.sand,
-                borderRadius: 12,
+                marginTop: SPACING.md,
+                paddingVertical: SPACING.sm + 2,
+                paddingHorizontal: SPACING.xl,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 8,
+                gap: SPACING.sm,
               }}
             >
-              <Camera size={16} color={C.coral} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: C.coral }}>
+              <Camera size={16} color={COLORS.coral} />
+              <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
                 Change Photo
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           {/* Name */}
@@ -360,36 +368,18 @@ export default function ProfileEditScreen() {
           />
 
           {/* Age */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
-          >
+          <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
             Age
           </Text>
-          <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", gap: SPACING.md, marginBottom: SPACING.xl }}>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontSize: 12, color: C.mutedBrown, marginBottom: 6 }}
-              >
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 }]}>
                 Years
               </Text>
               <TextInput
-                style={{
-                  backgroundColor: "#FFF",
-                  borderRadius: 12,
-                  padding: 14,
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.sand,
-                }}
+                style={inputStyle}
                 placeholder="0"
-                placeholderTextColor={C.mutedBrown}
+                placeholderTextColor={COLORS.mutedBrown}
                 value={formData.ageYears}
                 onChangeText={(text) =>
                   setFormData((prev) => ({
@@ -401,24 +391,13 @@ export default function ProfileEditScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontSize: 12, color: C.mutedBrown, marginBottom: 6 }}
-              >
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 }]}>
                 Months
               </Text>
               <TextInput
-                style={{
-                  backgroundColor: "#FFF",
-                  borderRadius: 12,
-                  padding: 14,
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.sand,
-                }}
+                style={inputStyle}
                 placeholder="0"
-                placeholderTextColor={C.mutedBrown}
+                placeholderTextColor={COLORS.mutedBrown}
                 value={formData.ageMonths}
                 onChangeText={(text) =>
                   setFormData((prev) => ({
@@ -432,81 +411,58 @@ export default function ProfileEditScreen() {
           </View>
 
           {/* Gender */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
-          >
+          <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
             Gender
           </Text>
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", gap: SPACING.sm + 2, marginBottom: SPACING.xl }}>
             {["male", "female", "unknown"].map((option) => (
-              <TouchableOpacity
+              <PressableScale
                 key={option}
                 onPress={() =>
                   setFormData((prev) => ({ ...prev, gender: option }))
                 }
+                accessibilityRole="button"
                 style={{
                   flex: 1,
-                  paddingVertical: 12,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
+                  paddingVertical: SPACING.md,
+                  paddingHorizontal: SPACING.md,
+                  borderRadius: RADIUS.control,
                   backgroundColor:
-                    formData.gender === option ? C.coral : C.sand,
+                    formData.gender === option ? COLORS.coral : MATERIALS.surfaceSunken,
                   borderWidth: 1,
-                  borderColor: formData.gender === option ? C.coral : C.peach,
+                  borderColor: formData.gender === option ? COLORS.coral : COLORS.peach,
                   alignItems: "center",
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: formData.gender === option ? "#FFF" : C.warmBrown,
-                  }}
+                  style={[
+                    TYPE.callout,
+                    { fontWeight: "700", color: formData.gender === option ? "#FFF" : COLORS.warmBrown },
+                  ]}
                 >
                   {option.charAt(0).toUpperCase() + option.slice(1)}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             ))}
           </View>
 
           {/* Weight */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
-          >
+          <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
             Weight
           </Text>
           <View
             style={{
               flexDirection: "row",
-              gap: 12,
-              marginBottom: 20,
+              gap: SPACING.md,
+              marginBottom: SPACING.xl,
               alignItems: "flex-end",
             }}
           >
             <View style={{ flex: 1 }}>
               <TextInput
-                style={{
-                  backgroundColor: "#FFF",
-                  borderRadius: 12,
-                  padding: 14,
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.sand,
-                }}
+                style={inputStyle}
                 placeholder="0"
-                placeholderTextColor={C.mutedBrown}
+                placeholderTextColor={COLORS.mutedBrown}
                 value={formData.weight}
                 onChangeText={(text) =>
                   setFormData((prev) => ({
@@ -517,49 +473,41 @@ export default function ProfileEditScreen() {
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flexDirection: "row", gap: SPACING.sm }}>
               {["lbs", "kg"].map((unit) => (
-                <TouchableOpacity
+                <PressableScale
                   key={unit}
                   onPress={() =>
                     setFormData((prev) => ({ ...prev, weightUnit: unit }))
                   }
+                  accessibilityRole="button"
                   style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 20,
-                    borderRadius: 12,
+                    paddingVertical: SPACING.md + 2,
+                    paddingHorizontal: SPACING.xl,
+                    borderRadius: RADIUS.control,
                     backgroundColor:
-                      formData.weightUnit === unit ? C.coral : C.sand,
+                      formData.weightUnit === unit ? COLORS.coral : MATERIALS.surfaceSunken,
                     borderWidth: 1,
                     borderColor:
-                      formData.weightUnit === unit ? C.coral : C.peach,
+                      formData.weightUnit === unit ? COLORS.coral : COLORS.peach,
                   }}
                 >
                   <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "700",
-                      color:
-                        formData.weightUnit === unit ? "#FFF" : C.warmBrown,
-                    }}
+                    style={[
+                      TYPE.callout,
+                      { fontWeight: "700", color: formData.weightUnit === unit ? "#FFF" : COLORS.warmBrown },
+                    ]}
                   >
                     {unit}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               ))}
             </View>
           </View>
 
           {/* Birthday */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 8,
-              }}
-            >
+          <View style={{ marginBottom: SPACING.xl }}>
+            <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
               Birthday
             </Text>
             <DateField
@@ -569,24 +517,17 @@ export default function ProfileEditScreen() {
               }
               maximumDate={new Date()}
               fieldStyle={{
-                backgroundColor: "#FFF",
-                padding: 14,
-                borderColor: C.sand,
+                backgroundColor: MATERIALS.surfaceSunken,
+                padding: SPACING.md + 2,
+                borderColor: MATERIALS.hairline,
               }}
-              textStyle={{ fontSize: 16, fontWeight: "600" }}
+              textStyle={{ ...TYPE.body }}
             />
           </View>
 
           {/* Adoption Date */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 8,
-              }}
-            >
+          <View style={{ marginBottom: SPACING.xl }}>
+            <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
               Adoption Date
             </Text>
             <DateField
@@ -596,39 +537,28 @@ export default function ProfileEditScreen() {
               }
               maximumDate={new Date()}
               fieldStyle={{
-                backgroundColor: "#FFF",
-                padding: 14,
-                borderColor: C.sand,
+                backgroundColor: MATERIALS.surfaceSunken,
+                padding: SPACING.md + 2,
+                borderColor: MATERIALS.hairline,
               }}
-              textStyle={{ fontSize: 16, fontWeight: "600" }}
+              textStyle={{ ...TYPE.body }}
             />
           </View>
 
           {/* Notes */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
-          >
+          <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
             Notes
           </Text>
           <TextInput
             style={{
-              backgroundColor: "#FFF",
-              borderRadius: 12,
-              padding: 14,
-              fontSize: 14,
-              color: C.warmBrown,
-              borderWidth: 1,
-              borderColor: C.sand,
+              ...inputStyle,
+              ...TYPE.callout,
+              color: COLORS.warmBrown,
               minHeight: 120,
               textAlignVertical: "top",
             }}
             placeholder="Allergies, food preferences, medical conditions..."
-            placeholderTextColor={C.mutedBrown}
+            placeholderTextColor={COLORS.mutedBrown}
             value={formData.notes}
             onChangeText={(text) =>
               setFormData((prev) => ({ ...prev, notes: text }))
@@ -644,40 +574,39 @@ export default function ProfileEditScreen() {
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: C.cream,
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: insets.bottom + 16,
+            backgroundColor: COLORS.cream,
+            paddingHorizontal: SPACING.xl,
+            paddingTop: SPACING.lg,
+            paddingBottom: insets.bottom + SPACING.lg,
             borderTopWidth: 1,
-            borderTopColor: C.sand,
+            borderTopColor: MATERIALS.hairline,
           }}
         >
-          <TouchableOpacity
+          <PressableScale
             onPress={handleSave}
             disabled={isSubmitting || !formData.name.trim()}
+            accessibilityRole="button"
             style={{
-              backgroundColor: formData.name.trim() ? C.coral : C.sand,
-              borderRadius: 18,
+              backgroundColor: formData.name.trim() ? COLORS.coral : MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.control,
               height: 56,
               flexDirection: "row",
               justifyContent: "center",
               alignItems: "center",
-              gap: 8,
+              gap: SPACING.sm,
             }}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Text
-                  style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
-                >
+                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
                   Save Changes
                 </Text>
                 <Check size={20} color="#FFF" />
               </>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </View>
     </KeyboardAvoidingAnimatedView>
@@ -693,30 +622,14 @@ const FormField = ({
   keyboardType = "default",
   autoCapitalize = "words",
 }) => (
-  <View style={{ marginBottom: 20 }}>
-    <Text
-      style={{
-        fontSize: 14,
-        fontWeight: "700",
-        color: C.warmBrown,
-        marginBottom: 8,
-      }}
-    >
-      {label} {required && <Text style={{ color: C.coral }}>*</Text>}
+  <View style={{ marginBottom: SPACING.xl }}>
+    <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
+      {label} {required && <Text style={{ color: COLORS.coral }}>*</Text>}
     </Text>
     <TextInput
-      style={{
-        backgroundColor: "#FFF",
-        borderRadius: 12,
-        padding: 14,
-        fontSize: 16,
-        fontWeight: "600",
-        color: C.warmBrown,
-        borderWidth: 1,
-        borderColor: C.sand,
-      }}
+      style={inputStyle}
       placeholder={placeholder}
-      placeholderTextColor={C.mutedBrown}
+      placeholderTextColor={COLORS.mutedBrown}
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType}

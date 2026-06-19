@@ -26,18 +26,15 @@ import {
   handleErrorMessage,
   isHandleAcceptable,
 } from "@/utils/validateHandle";
-
-const C = {
-  coral: "#FF6F61",
-  apricot: "#FFB37A",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 const TOTAL_STEPS = 9;
 
@@ -472,28 +469,28 @@ export default function OnboardingScreen() {
 
   return (
     <KeyboardAvoidingAnimatedView
-      style={{ flex: 1, backgroundColor: C.cream }}
+      style={{ flex: 1, backgroundColor: COLORS.cream }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={{ flex: 1, paddingTop: insets.top + 10 }}>
         {/* Header with progress */}
-        <View style={{ paddingHorizontal: 24, marginBottom: 20 }}>
+        <View style={{ paddingHorizontal: SPACING.xxl, marginBottom: SPACING.xl }}>
           {/* Back button and step counter */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: SPACING.md,
             }}
           >
-            <TouchableOpacity
+            <PressableScale
               onPress={prevStep}
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: C.sand,
+                backgroundColor: MATERIALS.surfaceSunken,
                 justifyContent: "center",
                 alignItems: "center",
               }}
@@ -501,17 +498,11 @@ export default function OnboardingScreen() {
             >
               <ChevronLeft
                 size={24}
-                color={currentStep === 0 ? C.mutedBrown : C.warmBrown}
+                color={currentStep === 0 ? COLORS.mutedBrown : COLORS.warmBrown}
               />
-            </TouchableOpacity>
+            </PressableScale>
 
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: C.mutedBrown,
-              }}
-            >
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
               Step {currentStep + 1} of {TOTAL_STEPS}
             </Text>
           </View>
@@ -520,7 +511,7 @@ export default function OnboardingScreen() {
           <View
             style={{
               height: 6,
-              backgroundColor: C.sand,
+              backgroundColor: MATERIALS.surfaceSunken,
               borderRadius: 3,
               overflow: "hidden",
             }}
@@ -528,7 +519,7 @@ export default function OnboardingScreen() {
             <View
               style={{
                 height: "100%",
-                backgroundColor: C.coral,
+                backgroundColor: COLORS.coral,
                 width: `${progressPercent}%`,
               }}
             />
@@ -540,7 +531,7 @@ export default function OnboardingScreen() {
         <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
-            paddingHorizontal: 24,
+            paddingHorizontal: SPACING.xxl,
             paddingBottom: insets.bottom + 180, // room for the pinned button + keyboard
           }}
           showsVerticalScrollIndicator={false}
@@ -556,77 +547,70 @@ export default function OnboardingScreen() {
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: C.cream,
-            paddingHorizontal: 24,
-            paddingTop: 16,
-            paddingBottom: insets.bottom + 16,
+            backgroundColor: COLORS.cream,
+            paddingHorizontal: SPACING.xxl,
+            paddingTop: SPACING.lg,
+            paddingBottom: insets.bottom + SPACING.lg,
             borderTopWidth: 1,
-            borderTopColor: C.sand,
+            borderTopColor: MATERIALS.hairline,
           }}
         >
           {currentStep === 8 ? (
             // Review step - show "Create Profile" button
-            <TouchableOpacity
+            <PressableScale
               onPress={handleComplete}
               disabled={isSubmitting}
               style={{
-                backgroundColor: C.coral,
-                borderRadius: 18,
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.control,
                 height: 56,
                 flexDirection: "row",
                 justifyContent: "center",
                 alignItems: "center",
-                shadowColor: C.coral,
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-                elevation: 6,
-                gap: 8,
+                shadowColor: COLORS.coral,
+                ...ELEVATION.sm,
+                gap: SPACING.sm,
               }}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <>
-                  <Text
-                    style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
-                  >
+                  <Text style={[TYPE.headline, { color: "#FFF" }]}>
                     Create {formData.name || "your dog"}'s profile
                   </Text>
                   <Check size={22} color="#FFF" />
                 </>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           ) : (
             <>
               {/* Next button */}
-              <TouchableOpacity
+              <PressableScale
                 onPress={nextStep}
                 disabled={!canGoNext()}
                 style={{
-                  backgroundColor: canGoNext() ? C.coral : C.sand,
-                  borderRadius: 18,
+                  backgroundColor: canGoNext()
+                    ? COLORS.coral
+                    : MATERIALS.surfaceSunken,
+                  borderRadius: RADIUS.control,
                   height: 56,
                   justifyContent: "center",
                   alignItems: "center",
-                  shadowColor: canGoNext() ? C.coral : "transparent",
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 12,
-                  elevation: canGoNext() ? 6 : 0,
-                  marginBottom: isOptionalStep ? 12 : 0,
+                  shadowColor: canGoNext() ? COLORS.coral : "transparent",
+                  ...(canGoNext() ? ELEVATION.sm : ELEVATION.none),
+                  marginBottom: isOptionalStep ? SPACING.md : 0,
                 }}
               >
                 <Text
-                  style={{
-                    color: canGoNext() ? "#FFF" : C.mutedBrown,
-                    fontSize: 17,
-                    fontWeight: "800",
-                  }}
+                  style={[
+                    TYPE.headline,
+                    { color: canGoNext() ? "#FFF" : COLORS.mutedBrown },
+                  ]}
                 >
                   Next
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
 
               {/* Skip button for optional steps */}
               {isOptionalStep && (
@@ -638,12 +622,13 @@ export default function OnboardingScreen() {
                   }}
                 >
                   <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: C.mutedBrown,
-                      textDecorationLine: "underline",
-                    }}
+                    style={[
+                      TYPE.headline,
+                      {
+                        color: COLORS.mutedBrown,
+                        textDecorationLine: "underline",
+                      },
+                    ]}
                   >
                     Skip
                   </Text>
@@ -664,51 +649,53 @@ const StepName = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
       <Text
         style={{
           fontSize: 72,
           textAlign: "center",
-          marginBottom: 32,
+          marginBottom: SPACING.xxxl,
         }}
       >
         🐕
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         What's your dog's name?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 40,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: SPACING.huge,
+            lineHeight: 24,
+          },
+        ]}
       >
         This is the only required field. Everything else is optional!
       </Text>
       <TextInput
         ref={inputRef}
-        style={{
-          backgroundColor: "#FFF",
-          borderRadius: 16,
-          padding: 20,
-          fontSize: 24,
-          fontWeight: "600",
-          color: C.warmBrown,
-          borderWidth: 2,
-          borderColor: formData.name ? C.coral : C.sand,
-        }}
+        style={[
+          TYPE.title,
+          {
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.xl,
+            fontWeight: "600",
+            color: COLORS.warmBrown,
+            borderWidth: 2,
+            borderColor: formData.name ? COLORS.coral : MATERIALS.hairline,
+          },
+        ]}
         placeholder="e.g. Buddy"
-        placeholderTextColor={C.mutedBrown}
+        placeholderTextColor={COLORS.mutedBrown}
         value={formData.name}
         onChangeText={(text) =>
           setFormData((prev) => ({ ...prev, name: text }))
@@ -730,48 +717,46 @@ const StepHandle = ({
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         @
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         Choose {dogName}'s pet handle
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         This is how other pets will find {dogName}
       </Text>
 
       {/* Suggested handles */}
       {suggestedHandles.length > 0 && (
-        <View style={{ marginBottom: 24 }}>
+        <View style={{ marginBottom: SPACING.xxl }}>
           <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.mutedBrown,
-              marginBottom: 12,
-            }}
+            style={[
+              TYPE.callout,
+              { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.md },
+            ]}
           >
             Suggested handles:
           </Text>
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: SPACING.sm }}>
             {suggestedHandles.map((handle, index) => (
-              <TouchableOpacity
+              <PressableScale
                 key={index}
                 onPress={() => {
                   setFormData((prev) => ({ ...prev, handle }));
@@ -779,24 +764,26 @@ const StepHandle = ({
                 }}
                 style={{
                   backgroundColor:
-                    formData.handle === handle ? C.coral : C.sand,
+                    formData.handle === handle ? COLORS.coral : MATERIALS.surfaceSunken,
                   paddingVertical: 14,
-                  paddingHorizontal: 18,
-                  borderRadius: 14,
+                  paddingHorizontal: SPACING.lg,
+                  borderRadius: RADIUS.control,
                   borderWidth: 2,
-                  borderColor: formData.handle === handle ? C.coral : C.peach,
+                  borderColor:
+                    formData.handle === handle ? COLORS.coral : MATERIALS.hairline,
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: formData.handle === handle ? "#FFF" : C.warmBrown,
-                  }}
+                  style={[
+                    TYPE.headline,
+                    {
+                      color: formData.handle === handle ? "#FFF" : COLORS.warmBrown,
+                    },
+                  ]}
                 >
                   @{handle}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             ))}
           </View>
         </View>
@@ -804,32 +791,32 @@ const StepHandle = ({
 
       {/* Custom handle input */}
       <Text
-        style={{
-          fontSize: 14,
-          fontWeight: "700",
-          color: C.mutedBrown,
-          marginBottom: 8,
-        }}
+        style={[
+          TYPE.callout,
+          { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.sm },
+        ]}
       >
         Or create your own:
       </Text>
       <TextInput
-        style={{
-          backgroundColor: "#FFF",
-          borderRadius: 16,
-          padding: 18,
-          fontSize: 18,
-          fontWeight: "600",
-          color: C.warmBrown,
-          borderWidth: 2,
-          borderColor: handleError
-            ? "#FF4444"
-            : formData.handle
-              ? C.coral
-              : C.sand,
-        }}
+        style={[
+          TYPE.title2,
+          {
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.lg,
+            fontWeight: "600",
+            color: COLORS.warmBrown,
+            borderWidth: 2,
+            borderColor: handleError
+              ? "#FF4444"
+              : formData.handle
+                ? COLORS.coral
+                : MATERIALS.hairline,
+          },
+        ]}
         placeholder="custom_handle"
-        placeholderTextColor={C.mutedBrown}
+        placeholderTextColor={COLORS.mutedBrown}
         value={formData.handle}
         onChangeText={(text) => {
           const cleanText = text.toLowerCase().replace(/[^a-z0-9_.]/g, "");
@@ -839,7 +826,7 @@ const StepHandle = ({
         autoCapitalize="none"
       />
       {handleError ? (
-        <Text style={{ color: "#FF4444", fontSize: 14, marginTop: 8 }}>
+        <Text style={[TYPE.callout, { color: "#FF4444", marginTop: SPACING.sm }]}>
           {handleError}
         </Text>
       ) : null}
@@ -852,78 +839,81 @@ const StepBreed = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         🐾
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         What breed is {dogName}?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         This helps us personalize care recommendations
       </Text>
 
       {/* Quick options */}
-      <View style={{ gap: 10, marginBottom: 20 }}>
+      <View style={{ gap: SPACING.sm, marginBottom: SPACING.xl }}>
         {["Mixed Breed", "I'm not sure"].map((option) => (
-          <TouchableOpacity
+          <PressableScale
             key={option}
             onPress={() => setFormData((prev) => ({ ...prev, breed: option }))}
             style={{
-              backgroundColor: formData.breed === option ? C.coral : C.sand,
+              backgroundColor:
+                formData.breed === option ? COLORS.coral : MATERIALS.surfaceSunken,
               paddingVertical: 14,
-              paddingHorizontal: 18,
-              borderRadius: 14,
+              paddingHorizontal: SPACING.lg,
+              borderRadius: RADIUS.control,
               borderWidth: 2,
-              borderColor: formData.breed === option ? C.coral : C.peach,
+              borderColor:
+                formData.breed === option ? COLORS.coral : MATERIALS.hairline,
             }}
           >
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: formData.breed === option ? "#FFF" : C.warmBrown,
-              }}
+              style={[
+                TYPE.headline,
+                { color: formData.breed === option ? "#FFF" : COLORS.warmBrown },
+              ]}
             >
               {option}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
 
       {/* Custom breed input */}
       <TextInput
-        style={{
-          backgroundColor: "#FFF",
-          borderRadius: 16,
-          padding: 18,
-          fontSize: 18,
-          fontWeight: "600",
-          color: C.warmBrown,
-          borderWidth: 2,
-          borderColor:
-            formData.breed &&
-            !["Mixed Breed", "I'm not sure"].includes(formData.breed)
-              ? C.coral
-              : C.sand,
-        }}
+        style={[
+          TYPE.title2,
+          {
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.lg,
+            fontWeight: "600",
+            color: COLORS.warmBrown,
+            borderWidth: 2,
+            borderColor:
+              formData.breed &&
+              !["Mixed Breed", "I'm not sure"].includes(formData.breed)
+                ? COLORS.coral
+                : MATERIALS.hairline,
+          },
+        ]}
         placeholder="e.g. Golden Retriever"
-        placeholderTextColor={C.mutedBrown}
+        placeholderTextColor={COLORS.mutedBrown}
         value={
           ["Mixed Breed", "I'm not sure"].includes(formData.breed)
             ? ""
@@ -943,57 +933,57 @@ const StepAge = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         🎂
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         How old is {dogName}?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         Age helps us suggest the right activities and health checks
       </Text>
 
-      <View style={{ gap: 16 }}>
+      <View style={{ gap: SPACING.lg }}>
         <View>
           <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
+            style={[
+              TYPE.callout,
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+            ]}
           >
             Years
           </Text>
           <TextInput
-            style={{
-              backgroundColor: "#FFF",
-              borderRadius: 16,
-              padding: 18,
-              fontSize: 24,
-              fontWeight: "600",
-              color: C.warmBrown,
-              borderWidth: 2,
-              borderColor: formData.ageYears ? C.coral : C.sand,
-            }}
+            style={[
+              TYPE.title,
+              {
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
+                padding: SPACING.lg,
+                fontWeight: "600",
+                color: COLORS.warmBrown,
+                borderWidth: 2,
+                borderColor: formData.ageYears ? COLORS.coral : MATERIALS.hairline,
+              },
+            ]}
             placeholder="0"
-            placeholderTextColor={C.mutedBrown}
+            placeholderTextColor={COLORS.mutedBrown}
             value={formData.ageYears}
             onChangeText={(text) =>
               setFormData((prev) => ({
@@ -1007,28 +997,28 @@ const StepAge = ({ formData, setFormData }) => {
 
         <View>
           <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
+            style={[
+              TYPE.callout,
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+            ]}
           >
             Months
           </Text>
           <TextInput
-            style={{
-              backgroundColor: "#FFF",
-              borderRadius: 16,
-              padding: 18,
-              fontSize: 24,
-              fontWeight: "600",
-              color: C.warmBrown,
-              borderWidth: 2,
-              borderColor: formData.ageMonths ? C.coral : C.sand,
-            }}
+            style={[
+              TYPE.title,
+              {
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
+                padding: SPACING.lg,
+                fontWeight: "600",
+                color: COLORS.warmBrown,
+                borderWidth: 2,
+                borderColor: formData.ageMonths ? COLORS.coral : MATERIALS.hairline,
+              },
+            ]}
             placeholder="0"
-            placeholderTextColor={C.mutedBrown}
+            placeholderTextColor={COLORS.mutedBrown}
             value={formData.ageMonths}
             onChangeText={(text) =>
               setFormData((prev) => ({
@@ -1040,27 +1030,23 @@ const StepAge = ({ formData, setFormData }) => {
           />
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           onPress={() =>
             setFormData((prev) => ({ ...prev, ageYears: "", ageMonths: "" }))
           }
           style={{
             paddingVertical: 14,
             alignItems: "center",
-            backgroundColor: C.sand,
-            borderRadius: 14,
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
           }}
         >
           <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "700",
-              color: C.mutedBrown,
-            }}
+            style={[TYPE.headline, { fontWeight: "700", color: COLORS.mutedBrown }]}
           >
             I don't know exactly
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </View>
   );
@@ -1077,72 +1063,74 @@ const StepGender = ({ formData, setFormData }) => {
   ];
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         💙
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         What's {dogName}'s gender?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 40,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: SPACING.huge,
+            lineHeight: 24,
+          },
+        ]}
       >
         Select one option below
       </Text>
 
-      <View style={{ gap: 14 }}>
-        {genderOptions.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            onPress={() =>
-              setFormData((prev) => ({ ...prev, gender: option.value }))
-            }
-            style={{
-              backgroundColor:
-                formData.gender === option.value ? C.coral : "#FFF",
-              paddingVertical: 20,
-              paddingHorizontal: 20,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: formData.gender === option.value ? C.coral : C.sand,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+      <View style={{ gap: SPACING.md }}>
+        {genderOptions.map((option) => {
+          const selected = formData.gender === option.value;
+          return (
+            <PressableScale
+              key={option.value}
+              onPress={() =>
+                setFormData((prev) => ({ ...prev, gender: option.value }))
+              }
             >
-              <Text style={{ fontSize: 32 }}>{option.emoji}</Text>
-              <Text
+              <Card
+                level={selected ? "none" : "sm"}
+                radius={RADIUS.control}
+                color={selected ? COLORS.coral : MATERIALS.surface}
+                borderColor={selected ? COLORS.coral : MATERIALS.hairline}
                 style={{
-                  fontSize: 18,
-                  fontWeight: "700",
-                  color:
-                    formData.gender === option.value ? "#FFF" : C.warmBrown,
+                  paddingVertical: SPACING.xl,
+                  paddingHorizontal: SPACING.xl,
+                  borderWidth: 2,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
-                {option.label}
-              </Text>
-            </View>
-            {formData.gender === option.value && (
-              <Check size={24} color="#FFF" />
-            )}
-          </TouchableOpacity>
-        ))}
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+                >
+                  <Text style={{ fontSize: 32 }}>{option.emoji}</Text>
+                  <Text
+                    style={[
+                      TYPE.title2,
+                      { fontWeight: "700", color: selected ? "#FFF" : COLORS.warmBrown },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </View>
+                {selected && <Check size={24} color="#FFF" />}
+              </Card>
+            </PressableScale>
+          );
+        })}
       </View>
     </View>
   );
@@ -1156,48 +1144,49 @@ const StepWeight = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         ⚖️
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         How much does {dogName} weigh?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         This helps track their health over time
       </Text>
 
       <TextInput
         ref={inputRef}
-        style={{
-          backgroundColor: "#FFF",
-          borderRadius: 16,
-          padding: 18,
-          fontSize: 32,
-          fontWeight: "700",
-          color: C.warmBrown,
-          borderWidth: 2,
-          borderColor: formData.weight ? C.coral : C.sand,
-          marginBottom: 16,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.largeTitle,
+          {
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.lg,
+            color: COLORS.warmBrown,
+            borderWidth: 2,
+            borderColor: formData.weight ? COLORS.coral : MATERIALS.hairline,
+            marginBottom: SPACING.lg,
+            textAlign: "center",
+          },
+        ]}
         placeholder="0"
-        placeholderTextColor={C.mutedBrown}
+        placeholderTextColor={COLORS.mutedBrown}
         value={formData.weight}
         onChangeText={(text) =>
           setFormData((prev) => ({
@@ -1212,35 +1201,36 @@ const StepWeight = ({ formData, setFormData }) => {
       <View
         style={{
           flexDirection: "row",
-          gap: 12,
+          gap: SPACING.md,
           justifyContent: "center",
         }}
       >
         {["lbs", "kg"].map((unit) => (
-          <TouchableOpacity
+          <PressableScale
             key={unit}
             onPress={() =>
               setFormData((prev) => ({ ...prev, weightUnit: unit }))
             }
             style={{
-              paddingVertical: 12,
-              paddingHorizontal: 32,
-              borderRadius: 14,
-              backgroundColor: formData.weightUnit === unit ? C.coral : C.sand,
+              paddingVertical: SPACING.md,
+              paddingHorizontal: SPACING.xxxl,
+              borderRadius: RADIUS.control,
+              backgroundColor:
+                formData.weightUnit === unit ? COLORS.coral : MATERIALS.surfaceSunken,
               borderWidth: 2,
-              borderColor: formData.weightUnit === unit ? C.coral : C.peach,
+              borderColor:
+                formData.weightUnit === unit ? COLORS.coral : MATERIALS.hairline,
             }}
           >
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: formData.weightUnit === unit ? "#FFF" : C.warmBrown,
-              }}
+              style={[
+                TYPE.headline,
+                { color: formData.weightUnit === unit ? "#FFF" : COLORS.warmBrown },
+              ]}
             >
               {unit}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
     </View>
@@ -1258,64 +1248,64 @@ const StepBirthday = ({ formData, setFormData }) => {
   ];
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         📅
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         When is {dogName}'s birthday or adoption day?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         We'll remind you to celebrate!
       </Text>
 
       {/* Date type selection */}
-      <View style={{ gap: 12, marginBottom: 24 }}>
+      <View style={{ gap: SPACING.md, marginBottom: SPACING.xxl }}>
         {dateTypes.map((type) => (
-          <TouchableOpacity
+          <PressableScale
             key={type.value}
             onPress={() =>
               setFormData((prev) => ({ ...prev, dateType: type.value }))
             }
             style={{
               backgroundColor:
-                formData.dateType === type.value ? C.coral : C.sand,
-              paddingVertical: 16,
-              paddingHorizontal: 18,
-              borderRadius: 14,
+                formData.dateType === type.value ? COLORS.coral : MATERIALS.surfaceSunken,
+              paddingVertical: SPACING.lg,
+              paddingHorizontal: SPACING.lg,
+              borderRadius: RADIUS.control,
               borderWidth: 2,
-              borderColor: formData.dateType === type.value ? C.coral : C.peach,
+              borderColor:
+                formData.dateType === type.value ? COLORS.coral : MATERIALS.hairline,
               flexDirection: "row",
               alignItems: "center",
-              gap: 12,
+              gap: SPACING.md,
             }}
           >
             <Text style={{ fontSize: 28 }}>{type.emoji}</Text>
             <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "700",
-                color: formData.dateType === type.value ? "#FFF" : C.warmBrown,
-              }}
+              style={[
+                TYPE.headline,
+                { color: formData.dateType === type.value ? "#FFF" : COLORS.warmBrown },
+              ]}
             >
               {type.label}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
 
@@ -1323,12 +1313,10 @@ const StepBirthday = ({ formData, setFormData }) => {
       {formData.dateType && formData.dateType !== "unknown" && (
         <View>
           <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: C.warmBrown,
-              marginBottom: 8,
-            }}
+            style={[
+              TYPE.callout,
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+            ]}
           >
             Date:
           </Text>
@@ -1337,13 +1325,13 @@ const StepBirthday = ({ formData, setFormData }) => {
             onChange={(date) => setFormData((prev) => ({ ...prev, date }))}
             maximumDate={new Date()}
             fieldStyle={{
-              backgroundColor: "#FFF",
-              borderRadius: 16,
-              padding: 18,
+              backgroundColor: MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.control,
+              padding: SPACING.lg,
               borderWidth: 2,
-              borderColor: formData.date ? C.coral : C.sand,
+              borderColor: formData.date ? COLORS.coral : MATERIALS.hairline,
             }}
-            textStyle={{ fontSize: 18, fontWeight: "600" }}
+            textStyle={[TYPE.title2, { fontWeight: "600" }]}
           />
         </View>
       )}
@@ -1356,47 +1344,49 @@ const StepNotes = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: 40 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 32 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
         📝
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-        }}
+        style={[
+          TYPE.largeTitle,
+          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+        ]}
       >
         Anything important we should remember about {dogName}?
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 30,
-          lineHeight: 24,
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: 30,
+            lineHeight: 24,
+          },
+        ]}
       >
         This can include allergies, food preferences, medical conditions,
         behavior notes, or anything useful
       </Text>
 
       <TextInput
-        style={{
-          backgroundColor: "#FFF",
-          borderRadius: 16,
-          padding: 18,
-          fontSize: 16,
-          color: C.warmBrown,
-          borderWidth: 2,
-          borderColor: formData.notes ? C.coral : C.sand,
-          minHeight: 160,
-          textAlignVertical: "top",
-        }}
+        style={[
+          TYPE.body,
+          {
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            padding: SPACING.lg,
+            color: COLORS.warmBrown,
+            borderWidth: 2,
+            borderColor: formData.notes ? COLORS.coral : MATERIALS.hairline,
+            minHeight: 160,
+            textAlignVertical: "top",
+          },
+        ]}
         placeholder="e.g. Allergic to chicken, loves long walks, nervous around loud noises..."
-        placeholderTextColor={C.mutedBrown}
+        placeholderTextColor={COLORS.mutedBrown}
         value={formData.notes}
         onChangeText={(text) =>
           setFormData((prev) => ({ ...prev, notes: text }))
@@ -1412,45 +1402,49 @@ const StepReview = ({ formData, goToStep }) => {
   const dogName = formData.name || "Your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: 20 }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: 24 }}>
+    <View style={{ flex: 1, paddingTop: SPACING.xl }}>
+      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxl }}>
         ✨
       </Text>
       <Text
-        style={{
-          fontSize: 32,
-          fontWeight: "800",
-          color: C.warmBrown,
-          marginBottom: 12,
-          lineHeight: 40,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.largeTitle,
+          {
+            color: COLORS.warmBrown,
+            marginBottom: SPACING.md,
+            lineHeight: 40,
+            textAlign: "center",
+          },
+        ]}
       >
         {dogName}'s profile
       </Text>
       <Text
-        style={{
-          fontSize: 16,
-          color: C.mutedBrown,
-          marginBottom: 32,
-          lineHeight: 24,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.headline,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginBottom: SPACING.xxxl,
+            lineHeight: 24,
+            textAlign: "center",
+          },
+        ]}
       >
         Review and edit before creating the profile
       </Text>
 
       {/* Profile card */}
-      <View
+      <Card
+        level="md"
+        radius={RADIUS.card}
         style={{
-          backgroundColor: "#FFF",
-          borderRadius: 20,
-          padding: 24,
-          gap: 20,
+          padding: SPACING.xxl,
+          gap: SPACING.xl,
         }}
       >
         {/* Photo */}
-        <View style={{ alignItems: "center", marginBottom: 10 }}>
+        <View style={{ alignItems: "center", marginBottom: SPACING.sm }}>
           {formData.photo ? (
             <Image
               source={{ uri: formData.photo }}
@@ -1463,7 +1457,7 @@ const StepReview = ({ formData, goToStep }) => {
                 width: 120,
                 height: 120,
                 borderRadius: 60,
-                backgroundColor: C.sand,
+                backgroundColor: MATERIALS.surfaceSunken,
                 justifyContent: "center",
                 alignItems: "center",
               }}
@@ -1536,7 +1530,7 @@ const StepReview = ({ formData, goToStep }) => {
           onEdit={() => goToStep(7)}
           multiline
         />
-      </View>
+      </Card>
     </View>
   );
 };
@@ -1545,8 +1539,8 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
   <View
     style={{
       borderBottomWidth: 1,
-      borderBottomColor: C.sand,
-      paddingBottom: 16,
+      borderBottomColor: MATERIALS.hairline,
+      paddingBottom: SPACING.lg,
     }}
   >
     <View
@@ -1558,34 +1552,32 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
       }}
     >
       <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "700",
-          color: C.mutedBrown,
-          textTransform: "uppercase",
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            fontWeight: "700",
+            color: COLORS.mutedBrown,
+            textTransform: "uppercase",
+          },
+        ]}
       >
         {label}
       </Text>
       <TouchableOpacity onPress={onEdit}>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: "700",
-            color: C.coral,
-          }}
-        >
+        <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
           Edit
         </Text>
       </TouchableOpacity>
     </View>
     <Text
-      style={{
-        fontSize: 16,
-        fontWeight: "600",
-        color: C.warmBrown,
-        lineHeight: multiline ? 22 : undefined,
-      }}
+      style={[
+        TYPE.headline,
+        {
+          fontWeight: "600",
+          color: COLORS.warmBrown,
+          lineHeight: multiline ? 22 : undefined,
+        },
+      ]}
       numberOfLines={multiline ? undefined : 1}
     >
       {value}
@@ -1602,88 +1594,75 @@ const StepSuccess = ({ formData, goToRoutines, goToFeed }) => {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.cream,
+        backgroundColor: COLORS.cream,
         paddingTop: insets.top + 60,
-        paddingBottom: insets.bottom + 40,
-        paddingHorizontal: 24,
+        paddingBottom: insets.bottom + SPACING.huge,
+        paddingHorizontal: SPACING.xxl,
         justifyContent: "space-between",
       }}
     >
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ fontSize: 100, marginBottom: 24 }}>🎉</Text>
+        <Text style={{ fontSize: 100, marginBottom: SPACING.xxl }}>🎉</Text>
         <Text
-          style={{
-            fontSize: 36,
-            fontWeight: "900",
-            color: C.warmBrown,
-            textAlign: "center",
-            marginBottom: 16,
-            letterSpacing: -0.5,
-          }}
+          style={[
+            TYPE.largeTitle,
+            {
+              fontSize: 36,
+              fontWeight: "900",
+              color: COLORS.warmBrown,
+              textAlign: "center",
+              marginBottom: SPACING.lg,
+              letterSpacing: -0.5,
+            },
+          ]}
         >
           {dogName} is ready!
         </Text>
         <Text
-          style={{
-            fontSize: 18,
-            color: C.mutedBrown,
-            textAlign: "center",
-            lineHeight: 28,
-            paddingHorizontal: 20,
-          }}
+          style={[
+            TYPE.title2,
+            {
+              fontWeight: "500",
+              color: COLORS.mutedBrown,
+              textAlign: "center",
+              lineHeight: 28,
+              paddingHorizontal: SPACING.xl,
+            },
+          ]}
         >
           Now you can start tracking care, sharing moments, and meeting pet
           friends.
         </Text>
       </View>
 
-      <View style={{ gap: 14 }}>
-        <TouchableOpacity
+      <View style={{ gap: SPACING.md }}>
+        <PressableScale
           onPress={goToRoutines}
           style={{
-            backgroundColor: C.coral,
-            borderRadius: 18,
-            paddingVertical: 18,
+            backgroundColor: COLORS.coral,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.lg,
             alignItems: "center",
-            shadowColor: C.coral,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 6,
+            shadowColor: COLORS.coral,
+            ...ELEVATION.sm,
           }}
         >
-          <Text
-            style={{
-              fontSize: 17,
-              fontWeight: "800",
-              color: "#FFF",
-            }}
-          >
-            Set care routine
-          </Text>
-        </TouchableOpacity>
+          <Text style={[TYPE.headline, { color: "#FFF" }]}>Set care routine</Text>
+        </PressableScale>
 
-        <TouchableOpacity
+        <PressableScale
           onPress={goToFeed}
           style={{
-            backgroundColor: C.sand,
-            borderRadius: 18,
-            paddingVertical: 18,
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.lg,
             alignItems: "center",
             borderWidth: 2,
-            borderColor: C.peach,
+            borderColor: MATERIALS.hairline,
           }}
         >
-          <Text
-            style={{
-              fontSize: 17,
-              fontWeight: "800",
-              color: C.coral,
-            }}
-          >
-            Go to Feed
-          </Text>
-        </TouchableOpacity>
+          <Text style={[TYPE.headline, { color: COLORS.coral }]}>Go to Feed</Text>
+        </PressableScale>
       </View>
     </View>
   );

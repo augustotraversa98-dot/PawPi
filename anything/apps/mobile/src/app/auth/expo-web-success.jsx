@@ -4,13 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useUser from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
-
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
+import { COLORS, TYPE, SPACING } from "@/constants/theme";
 
 /**
  * Auth redirect handler
@@ -134,34 +128,38 @@ export default function AuthSuccessRedirect() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.cream,
+        backgroundColor: COLORS.cream,
         justifyContent: "center",
         alignItems: "center",
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
-        paddingHorizontal: 24,
+        paddingHorizontal: SPACING.xxl,
       }}
     >
-      <View style={{ alignItems: "center", gap: 20 }}>
+      <View style={{ alignItems: "center", gap: SPACING.xl }}>
         <Text style={{ fontSize: 72 }}>🐾</Text>
-        <ActivityIndicator size="large" color={C.coral} />
+        <ActivityIndicator size="large" color={COLORS.coral} />
         <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "700",
-            color: C.warmBrown,
-            textAlign: "center",
-          }}
+          style={[
+            TYPE.headline,
+            {
+              fontSize: 18,
+              color: COLORS.warmBrown,
+              textAlign: "center",
+            },
+          ]}
         >
           {statusMessage}
         </Text>
         <Text
-          style={{
-            fontSize: 14,
-            color: C.mutedBrown,
-            textAlign: "center",
-            marginTop: -10,
-          }}
+          style={[
+            TYPE.callout,
+            {
+              color: COLORS.mutedBrown,
+              textAlign: "center",
+              marginTop: -10,
+            },
+          ]}
         >
           This will only take a moment...
         </Text>
