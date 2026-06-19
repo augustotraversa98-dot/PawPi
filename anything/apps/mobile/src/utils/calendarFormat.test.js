@@ -4,6 +4,11 @@ import {
   parseWalkTime,
   formatFrequency,
   buildEventNotes,
+  combineDateAndTime,
+  buildBookingCalendarDetails,
+  buildTelehealthCalendarDetails,
+  buildTransportCalendarDetails,
+  buildEventCalendarDetails,
 } from "./calendarFormat";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 
@@ -126,5 +131,118 @@ describe("buildEventNotes", () => {
 
   it("unknown kind → empty string", () => {
     expect(buildEventNotes("nope")).toBe("");
+  });
+});
+
+// ===== 2.80 surface detail builders =====
+
+const MINUTES = (a, b) => Math.round((b.getTime() - a.getTime()) / 60000);
+
+describe("combineDateAndTime", () => {
+  it("builds a local Date from date + HH:MM", () => {
+    const d = combineDateAndTime("2026-07-01", "09:30");
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6);
+    expect(d.getDate()).toBe(1);
+    expect(d.getHours()).toBe(9);
+    expect(d.getMinutes()).toBe(30);
+  });
+  it("tolerates HH:MM:SS", () => {
+    const d = combineDateAndTime("2026-07-01", "23:15:45");
+    expect(d.getHours()).toBe(23);
+    expect(d.getSeconds()).toBe(45);
+  });
+});
+
+describe("buildBookingCalendarDetails", () => {
+  it("uses date+time with a 30-min default window", () => {
+    const det = buildBookingCalendarDetails(
+      {
+        title: "Grooming",
+        appointment_date: "2026-07-01",
+        appointment_time: "10:00",
+        provider_name: "PawCare",
+        reason_for_visit: "Full groom",
+      },
+      "Rex",
+    );
+    expect(det.summary).toBe("Grooming");
+    expect(det.location).toBe("PawCare");
+    expect(MINUTES(det.startDate, det.endDate)).toBe(30);
+    expect(det.notes).toContain("Full groom");
+    expect(det.notes).toContain("Managed by Social Pet");
+  });
+
+  it("prefers an explicit start_at/end_at slot", () => {
+    const det = buildBookingCalendarDetails({
+      title: "Walk",
+      start_at: "2026-07-01T09:00:00Z",
+      end_at: "2026-07-01T10:00:00Z",
+    });
+    expect(MINUTES(det.startDate, det.endDate)).toBe(60);
+  });
+
+  it("falls back to a generic summary using the pet name", () => {
+    const det = buildBookingCalendarDetails(
+      { appointment_date: "2026-07-01", appointment_time: "10:00" },
+      "Lola",
+    );
+    expect(det.summary).toBe("Appointment for Lola");
+  });
+});
+
+describe("buildTelehealthCalendarDetails", () => {
+  it("notes a video consult and has no location", () => {
+    const det = buildTelehealthCalendarDetails(
+      { appointment_date: "2026-07-01", appointment_time: "14:00", provider_name: "TeleVet" },
+      "Rex",
+    );
+    expect(det.summary).toBe("Telehealth consult for Rex");
+    expect(det.location).toBe("");
+    expect(det.notes).toContain("Video consult");
+    expect(det.notes).toContain("Provider: TeleVet");
+    expect(MINUTES(det.startDate, det.endDate)).toBe(30);
+  });
+});
+
+describe("buildTransportCalendarDetails", () => {
+  it("maps scheduled_at + pickup/dropoff with a 60-min default", () => {
+    const det = buildTransportCalendarDetails({
+      scheduled_at: "2026-07-01T08:00:00Z",
+      pickup_address: "1 Main St",
+      dropoff_address: "Vet Clinic",
+      provider_name: "PetTaxi",
+    });
+    expect(det.summary).toBe("Pet transport — PetTaxi");
+    expect(det.location).toBe("1 Main St");
+    expect(det.notes).toContain("Pickup: 1 Main St");
+    expect(det.notes).toContain("Dropoff: Vet Clinic");
+    expect(MINUTES(det.startDate, det.endDate)).toBe(60);
+  });
+});
+
+describe("buildEventCalendarDetails", () => {
+  it("maps starts_at/ends_at + location_name", () => {
+    const det = buildEventCalendarDetails({
+      title: "Puppy Social",
+      starts_at: "2026-08-01T15:00:00Z",
+      ends_at: "2026-08-01T17:00:00Z",
+      location_name: "Central Park",
+      description: "Bring water",
+    });
+    expect(det.summary).toBe("Puppy Social");
+    expect(det.location).toBe("Central Park");
+    expect(det.notes).toBe("Bring water");
+    expect(MINUTES(det.startDate, det.endDate)).toBe(120);
+  });
+
+  it("defaults to a 60-min window and address fallback when no end/location_name", () => {
+    const det = buildEventCalendarDetails({
+      title: "Meetup",
+      starts_at: "2026-08-01T15:00:00Z",
+      address: "42 Park Ave",
+    });
+    expect(det.location).toBe("42 Park Ave");
+    expect(MINUTES(det.startDate, det.endDate)).toBe(60);
   });
 });

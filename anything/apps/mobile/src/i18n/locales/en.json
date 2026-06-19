@@ -183,5 +183,15 @@
     "recallTitle": "Food recall alert",
     "recallBody": "A product matching {{pet}}'s food was recalled: {{reason}}. Check with your vet.",
     "recallLink": "View the recall notice"
+  },
+  "calendar": {
+    "addToCalendar": "Add to calendar",
+    "added": "Added to your calendar",
+    "updated": "Calendar event updated",
+    "removed": "Removed from your calendar",
+    "permissionTitle": "Calendar access",
+    "permissionBody": "Calendar access is needed to add this. It's optional — your booking is still saved.",
+    "couldNotAdd": "Couldn't add to calendar, but it's still saved.",
+    "rsvpFirst": "RSVP \"going\" to add this event to your calendar"
   }
 }

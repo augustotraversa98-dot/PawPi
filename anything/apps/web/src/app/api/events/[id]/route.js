@@ -23,7 +23,8 @@ async function GET(request, { params }) {
       SELECT
         e.*, up.username AS host_username,
         (SELECT COUNT(*) FROM event_rsvps r WHERE r.event_id = e.id AND r.status = 'going') AS attendee_count,
-        (SELECT r.status FROM event_rsvps r WHERE r.event_id = e.id AND r.user_profile_id = ${userId}) AS my_rsvp
+        (SELECT r.status FROM event_rsvps r WHERE r.event_id = e.id AND r.user_profile_id = ${userId}) AS my_rsvp,
+        (SELECT r.calendar_event_id FROM event_rsvps r WHERE r.event_id = e.id AND r.user_profile_id = ${userId}) AS my_calendar_event_id
       FROM events e
       JOIN user_profiles up ON up.id = e.host_user_id
       WHERE e.id = ${params.id}

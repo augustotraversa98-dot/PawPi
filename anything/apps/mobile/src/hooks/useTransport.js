@@ -57,6 +57,25 @@ export function useCancelTransport() {
   });
 }
 
+// Persist (or clear) the device calendar event id for a trip's underlying booking (2.80).
+// A transport trip IS a vet_appointments booking (booking_id); the id rides
+// vet_appointments.calendar_event_id via the owner PUT. Pass calendarEventId: null to clear.
+export function useSetTripCalendarEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookingId, calendarEventId }) => {
+      const res = await fetch(`/api/vet-appointments`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: bookingId, calendarEventId }),
+      });
+      if (!res.ok) throw new Error("Failed to save calendar link");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["transport-trips"] }),
+  });
+}
+
 // Live-GPS track for a trip (ticket 2.70) — { trip, locations }. Serves owner + staff; RLS scopes.
 // `live` enables 5s polling (the walk-live shape) so the route grows in real time.
 export function useTripTrack(tripId, { live = false } = {}) {

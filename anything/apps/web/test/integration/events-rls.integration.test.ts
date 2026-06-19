@@ -109,3 +109,34 @@ describe('event_rsvps RLS', () => {
     expect(n).toBe(1);
   });
 });
+
+// Ticket 2.80 — the new event_rsvps.calendar_event_id column (migration 0063) rides the
+// existing own-row INSERT/UPDATE policies: a user can set + read their OWN device calendar
+// event id, but can never write another user's.
+describe('event_rsvps.calendar_event_id (2.80) — per-attendee, own-row write', () => {
+  it('a user sets + reads their OWN rsvp calendar_event_id', async () => {
+    await asApp(A.profileId, async (tx) => {
+      await tx`insert into event_rsvps (event_id, user_profile_id, status, calendar_event_id) values (${EV}, ${A.profileId}, 'going', 'evt-A')`;
+      const r = await tx`select calendar_event_id from event_rsvps where event_id = ${EV} and user_profile_id = ${A.profileId}`;
+      expect(r[0].calendar_event_id).toBe('evt-A');
+    });
+  });
+
+  it("a user CANNOT INSERT an rsvp (with a calendar_event_id) for another user", async () => {
+    await expect(
+      asApp(B.profileId, (tx) =>
+        tx`insert into event_rsvps (event_id, user_profile_id, status, calendar_event_id) values (${EV}, ${A.profileId}, 'going', 'evt-x')`,
+      ),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it("a user CANNOT UPDATE another user's calendar_event_id (own-row UPDATE → zero rows)", async () => {
+    await raw`insert into event_rsvps (event_id, user_profile_id, status) values (${EV}, ${A.profileId}, 'going')`;
+    await asApp(B.profileId, async (tx) => {
+      const upd = await tx`update event_rsvps set calendar_event_id = 'hacked' where event_id = ${EV} and user_profile_id = ${A.profileId} returning id`;
+      expect(upd).toHaveLength(0);
+    });
+    const [{ calendar_event_id }] = await raw`select calendar_event_id from event_rsvps where event_id = ${EV} and user_profile_id = ${A.profileId}`;
+    expect(calendar_event_id).toBeNull();
+  });
+});

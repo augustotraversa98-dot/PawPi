@@ -42,6 +42,8 @@ describe("GET /api/transport-trips", () => {
     const q = sql.mock.calls[0][0].join(" ");
     expect(q).toContain("t.owner_user_id =");
     expect(q).not.toContain("t.pet_id =");
+    // surfaces the linked booking's device calendar event id (2.80)
+    expect(q).toContain("va.calendar_event_id");
   });
 
   it("?petId= narrows to one pet → 200", async () => {

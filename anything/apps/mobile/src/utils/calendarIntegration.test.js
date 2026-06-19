@@ -51,6 +51,11 @@ import {
   upsertCalendarEvent,
   deleteCalendarEvent,
   formatFrequency,
+  addBookingToCalendar,
+  addTransportToCalendar,
+  addTelehealthToCalendar,
+  addEventToCalendar,
+  removeSurfaceEventFromCalendar,
 } from "./calendarIntegration";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 
@@ -196,6 +201,67 @@ describe("generic primitives", () => {
       "evt-9",
       expect.objectContaining({ title: "Y" }),
     );
+  });
+});
+
+describe("2.80 surface wrappers", () => {
+  const BOOKING = {
+    title: "Grooming",
+    appointment_date: "2026-07-01",
+    appointment_time: "10:00",
+    provider_name: "PawCare",
+  };
+  const TRIP = {
+    scheduled_at: "2026-07-01T08:00:00Z",
+    pickup_address: "1 Main St",
+    dropoff_address: "Vet",
+    provider_name: "PetTaxi",
+  };
+  const EVENT = {
+    title: "Puppy Social",
+    starts_at: "2026-08-01T15:00:00Z",
+    ends_at: "2026-08-01T17:00:00Z",
+    location_name: "Park",
+  };
+
+  it("addBookingToCalendar creates an event in the Bookings calendar", async () => {
+    const r = await addBookingToCalendar(BOOKING, "Rex");
+    expect(r).toEqual({ success: true, eventId: "evt-created" });
+    expect(Calendar.createEventAsync).toHaveBeenCalledWith(
+      "new-cal", // Bookings calendar doesn't exist in the mock → created
+      expect.objectContaining({ title: "Grooming", availability: "busy" }),
+    );
+  });
+
+  it("addTransportToCalendar / addTelehealthToCalendar / addEventToCalendar return eventId", async () => {
+    expect(await addTransportToCalendar(TRIP)).toEqual({ success: true, eventId: "evt-created" });
+    expect(await addTelehealthToCalendar(BOOKING, "Rex")).toEqual({ success: true, eventId: "evt-created" });
+    expect(await addEventToCalendar(EVENT)).toEqual({ success: true, eventId: "evt-created" });
+  });
+
+  it("with an existingEventId it UPDATES (no new create) and returns that id", async () => {
+    const r = await addEventToCalendar(EVENT, "evt-7");
+    expect(r).toEqual({ success: true, eventId: "evt-7" });
+    expect(Calendar.updateEventAsync).toHaveBeenCalledWith(
+      "evt-7",
+      expect.objectContaining({ title: "Puppy Social" }),
+    );
+  });
+
+  it("degrades cleanly when permission is denied (does not create an event)", async () => {
+    Calendar.getCalendarPermissionsAsync.mockResolvedValue({ status: "denied" });
+    Calendar.requestCalendarPermissionsAsync.mockResolvedValue({ status: "denied" });
+    Alert.alert.mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.text === "Allow calendar access")?.onPress?.();
+    });
+    const r = await addBookingToCalendar(BOOKING, "Rex");
+    expect(r).toEqual({ success: false, error: "permission_denied" });
+    expect(Calendar.createEventAsync).not.toHaveBeenCalled();
+  });
+
+  it("removeSurfaceEventFromCalendar deletes the device event", async () => {
+    expect(await removeSurfaceEventFromCalendar("evt-1")).toEqual({ success: true });
+    expect(Calendar.deleteEventAsync).toHaveBeenCalledWith("evt-1");
   });
 });
 

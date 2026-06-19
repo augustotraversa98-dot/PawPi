@@ -22,16 +22,20 @@ async function GET(request) {
 
     const trips = petId
       ? await sql`
-          SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug
+          SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug,
+                 va.calendar_event_id AS calendar_event_id
           FROM transport_trips t
           LEFT JOIN providers pr ON pr.id = t.provider_id
+          LEFT JOIN vet_appointments va ON va.id = t.booking_id
           WHERE t.owner_user_id = ${userId} AND t.pet_id = ${petId}
           ORDER BY t.scheduled_at DESC NULLS LAST, t.id DESC
         `
       : await sql`
-          SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug
+          SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug,
+                 va.calendar_event_id AS calendar_event_id
           FROM transport_trips t
           LEFT JOIN providers pr ON pr.id = t.provider_id
+          LEFT JOIN vet_appointments va ON va.id = t.booking_id
           WHERE t.owner_user_id = ${userId}
           ORDER BY t.scheduled_at DESC NULLS LAST, t.id DESC
         `;

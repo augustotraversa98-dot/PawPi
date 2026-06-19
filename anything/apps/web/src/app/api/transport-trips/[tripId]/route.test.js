@@ -35,6 +35,9 @@ it("owner cancels their own trip and mirrors the booking", async () => {
   const res = await PATCH(patch({ status: "cancelled" }), PARAMS);
   expect(res.status).toBe(200);
   expect((await res.json()).trip.status).toBe("cancelled");
+  // Cancelling clears the linked booking's device calendar event id (2.80).
+  const bookingUpdate = sql.mock.calls[2][0].join(" ");
+  expect(bookingUpdate).toContain("calendar_event_id = NULL");
 });
 
 it("404 when the trip is not the caller's", async () => {

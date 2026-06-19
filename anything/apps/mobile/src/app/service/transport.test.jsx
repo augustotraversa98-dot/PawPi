@@ -11,9 +11,17 @@ const mockDiscover = jest.fn(() => ({ data: mockProviders, isLoading: false, isE
 const mockBook = jest.fn(() => Promise.resolve({ trip: { id: 1 } }));
 const mockCancel = jest.fn();
 const mockStartThread = jest.fn();
+const mockSetTripCal = jest.fn();
+const mockAddTransportToCalendar = jest.fn();
+const mockRemoveSurfaceEvent = jest.fn();
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+jest.mock("@/utils/calendarIntegration", () => ({
+  addTransportToCalendar: (...a) => mockAddTransportToCalendar(...a),
+  removeSurfaceEventFromCalendar: (...a) => mockRemoveSurfaceEvent(...a),
+}));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -53,6 +61,7 @@ jest.mock("@/hooks/useTransport", () => ({
   useTransportTrips: () => ({ data: mockTrips }),
   useBookTransport: () => ({ mutateAsync: mockBook, isPending: false }),
   useCancelTransport: () => ({ mutate: mockCancel }),
+  useSetTripCalendarEvent: () => ({ mutate: mockSetTripCal }),
 }));
 
 import TransportScreen from "./transport";
@@ -61,6 +70,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockProviders = [{ id: 100, name: "Pet Taxi Co" }];
   mockTrips = [];
+  mockAddTransportToCalendar.mockResolvedValue({ success: true, eventId: "evt-1" });
+  mockRemoveSurfaceEvent.mockResolvedValue({ success: true });
 });
 
 test("discovery is filtered to the transport capability", () => {
@@ -118,6 +129,40 @@ test("cancelling a trip calls the cancel mutation (confirmed)", () => {
   const { getByTestId } = render(<TransportScreen />);
   fireEvent.press(getByTestId("cancel-7"));
   expect(mockCancel).toHaveBeenCalledWith(7);
+});
+
+test("add-to-calendar adds the trip and persists the id on the booking (2.80)", async () => {
+  mockTrips = [
+    {
+      id: 7, booking_id: 900, provider_id: 100, provider_name: "Pet Taxi Co",
+      pickup_address: "A", dropoff_address: "B", scheduled_at: "2026-08-01T09:00:00Z",
+      status: "confirmed",
+    },
+  ];
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  const { getByTestId } = render(<TransportScreen />);
+  fireEvent.press(getByTestId("add-calendar-7"));
+  await waitFor(() => expect(mockAddTransportToCalendar).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(mockSetTripCal).toHaveBeenCalledWith({ bookingId: 900, calendarEventId: "evt-1" }),
+  );
+});
+
+test("cancelling a trip with a calendar event removes it from the device", async () => {
+  mockTrips = [
+    {
+      id: 7, booking_id: 900, provider_id: 100, provider_name: "X",
+      pickup_address: "A", dropoff_address: "B", status: "confirmed",
+      calendar_event_id: "evt-1",
+    },
+  ];
+  jest.spyOn(Alert, "alert").mockImplementation((t, m, buttons) =>
+    buttons.find((b) => b.style === "destructive").onPress(),
+  );
+  const { getByTestId } = render(<TransportScreen />);
+  fireEvent.press(getByTestId("cancel-7"));
+  await waitFor(() => expect(mockRemoveSurfaceEvent).toHaveBeenCalledWith("evt-1"));
+  await waitFor(() => expect(mockCancel).toHaveBeenCalledWith(7));
 });
 
 test("message opens a provider chat thread", () => {

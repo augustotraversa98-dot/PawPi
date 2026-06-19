@@ -102,3 +102,78 @@ export function buildEventNotes(kind, data = {}) {
 
   return "";
 }
+
+// ===== 2.80 surface detail builders (pure) =====
+//
+// Each turns a surface's data shape (booking / transport trip / telehealth consult /
+// event) into the generic event detail { summary, startDate, endDate, location, notes }
+// that calendarIntegration.addSurfaceEventToCalendar feeds to the native API. Pure +
+// jest-covered; the native Calendar calls stay in calendarIntegration.js.
+
+// Combine a date ("YYYY-MM-DD") + time ("HH:MM" or "HH:MM:SS") into a LOCAL Date.
+export function combineDateAndTime(dateStr, timeStr) {
+  const [y, m, d] = String(dateStr).slice(0, 10).split("-").map(Number);
+  const [hh = 0, mm = 0, ss = 0] = String(timeStr || "00:00").split(":").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, hh, mm, ss, 0);
+}
+
+// Resolve { startDate, endDate } from an item that may carry an ISO slot
+// (start_at/end_at or starts_at/ends_at) or a date+time pair, defaulting the duration
+// when no end is given.
+function resolveStartEnd(item, defaultMinutes) {
+  const startIso = item.start_at || item.starts_at;
+  const endIso = item.end_at || item.ends_at;
+  const startDate = startIso
+    ? new Date(startIso)
+    : combineDateAndTime(item.appointment_date, item.appointment_time);
+  const endDate = endIso
+    ? new Date(endIso)
+    : new Date(startDate.getTime() + defaultMinutes * 60 * 1000);
+  return { startDate, endDate };
+}
+
+// Generalized service booking (grooming / walking / daycare / sitting). 30-min default.
+export function buildBookingCalendarDetails(booking, petName = "Your pet") {
+  const { startDate, endDate } = resolveStartEnd(booking, 30);
+  const summary =
+    booking.title || booking.service_name || `Appointment for ${petName}`;
+  const location = booking.clinic || booking.provider_name || "";
+  const parts = [];
+  if (booking.reason_for_visit) parts.push(booking.reason_for_visit);
+  if (booking.notes) parts.push(booking.notes);
+  parts.push("Managed by Social Pet");
+  return { summary, startDate, endDate, location, notes: parts.join("\n") };
+}
+
+// Telehealth video consult — no physical location. 30-min default.
+export function buildTelehealthCalendarDetails(consult, petName = "Your pet") {
+  const { startDate, endDate } = resolveStartEnd(consult, 30);
+  const summary = consult.title || `Telehealth consult for ${petName}`;
+  const parts = ["Video consult — no physical location."];
+  if (consult.provider_name) parts.push(`Provider: ${consult.provider_name}`);
+  parts.push("Managed by Social Pet");
+  return { summary, startDate, endDate, location: "", notes: parts.join("\n") };
+}
+
+// Transport / pet-taxi trip — pickup/dropoff as location/notes. 60-min default.
+export function buildTransportCalendarDetails(trip) {
+  const { startDate, endDate } = resolveStartEnd({ starts_at: trip.scheduled_at }, 60);
+  const summary = trip.provider_name
+    ? `Pet transport — ${trip.provider_name}`
+    : "Pet transport";
+  const location = trip.pickup_address || "";
+  const parts = [];
+  if (trip.pickup_address) parts.push(`Pickup: ${trip.pickup_address}`);
+  if (trip.dropoff_address) parts.push(`Dropoff: ${trip.dropoff_address}`);
+  parts.push("Managed by Social Pet");
+  return { summary, startDate, endDate, location, notes: parts.join("\n") };
+}
+
+// Community event / meetup. 60-min default.
+export function buildEventCalendarDetails(event) {
+  const { startDate, endDate } = resolveStartEnd(event, 60);
+  const summary = event.title || "Event";
+  const location = event.location_name || event.address || "";
+  const notes = event.description || "";
+  return { summary, startDate, endDate, location, notes };
+}

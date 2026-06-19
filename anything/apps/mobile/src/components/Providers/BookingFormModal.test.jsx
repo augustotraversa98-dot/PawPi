@@ -19,6 +19,13 @@ jest.mock("@/hooks/usePetProfile", () => ({
 jest.mock("@/hooks/useProviders", () => ({
   useBookProvider: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
+jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+const mockAddBookingToCalendar = jest.fn();
+const mockAddTelehealthToCalendar = jest.fn();
+jest.mock("@/utils/calendarIntegration", () => ({
+  addBookingToCalendar: (...a) => mockAddBookingToCalendar(...a),
+  addTelehealthToCalendar: (...a) => mockAddTelehealthToCalendar(...a),
+}));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -54,6 +61,8 @@ const LOCATIONS = [{ id: 8, name: "Main St", address: "1 Main" }];
 
 beforeEach(() => {
   mockMutateAsync.mockClear();
+  mockAddBookingToCalendar.mockReset().mockResolvedValue({ success: true, eventId: "evt-1" });
+  mockAddTelehealthToCalendar.mockReset().mockResolvedValue({ success: true, eventId: "evt-2" });
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
 
@@ -126,6 +135,62 @@ test("only sends service/location ids that belong to this provider", async () =>
   const arg = mockMutateAsync.mock.calls[0][0];
   expect(arg.service_id).toBe(5);
   expect(arg.provider_location_id).toBe(8);
+});
+
+// ── Ticket 2.80: optional add-to-calendar ─────────────────────────────────────
+test("does NOT add to calendar unless the toggle is on (calendar_event_id undefined)", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = renderForm();
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByText("Confirm appointment"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockAddBookingToCalendar).not.toHaveBeenCalled();
+  expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBeUndefined();
+});
+
+test("toggling add-to-calendar creates the event and persists the id on the booking", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = renderForm();
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-add-calendar"));
+  fireEvent.press(getByText("Confirm appointment"));
+  await waitFor(() => expect(mockAddBookingToCalendar).toHaveBeenCalled());
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBe("evt-1");
+});
+
+test("a denied calendar permission still books (no calendar_event_id)", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  mockAddBookingToCalendar.mockResolvedValue({ success: false, error: "permission_denied" });
+  const { getByText, getByTestId } = renderForm();
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-add-calendar"));
+  fireEvent.press(getByText("Confirm appointment"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBeUndefined();
+});
+
+test("telehealth capability uses the telehealth calendar builder", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = render(
+    <BookingFormModal
+      visible
+      onClose={jest.fn()}
+      provider={{ id: 3, name: "TeleVet" }}
+      locations={[]}
+      services={[]}
+      capability="telehealth"
+    />,
+  );
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-add-calendar"));
+  fireEvent.press(getByText("Confirm service"));
+  await waitFor(() => expect(mockAddTelehealthToCalendar).toHaveBeenCalled());
+  expect(mockAddBookingToCalendar).not.toHaveBeenCalled();
 });
 
 // ── Ticket 2.4: generalized to any capability ─────────────────────────────────

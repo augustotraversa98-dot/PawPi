@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useBookProvider } from "@/hooks/useProviders";
+import {
+  addBookingToCalendar,
+  addTelehealthToCalendar,
+} from "@/utils/calendarIntegration";
 
 // Per-capability copy so the SAME modal serves vet / grooming / walking / daycare /
 // sitting / training (ticket 2.4 — generalize the book flow to any capability). Falls
@@ -85,6 +90,7 @@ export default function BookingFormModal({
 }) {
   const { data: currentPet } = useCurrentPet();
   const book = useBookProvider();
+  const { t } = useTranslation();
 
   // The capability this booking is for: explicit prop, else the provider's primary
   // type, else 'vet' (the pre-2.4 default). Drives the copy + the booking payload.
@@ -98,6 +104,7 @@ export default function BookingFormModal({
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [repeat, setRepeat] = useState(false); // recurring cycle (2.6 grooming)
+  const [addCal, setAddCal] = useState(false); // add to phone calendar (2.80)
 
   const resetAndClose = () => {
     setServiceId(null);
@@ -107,6 +114,7 @@ export default function BookingFormModal({
     setReason("");
     setNotes("");
     setRepeat(false);
+    setAddCal(false);
     onClose?.();
   };
 
@@ -127,6 +135,27 @@ export default function BookingFormModal({
       return;
     }
 
+    // Add-to-calendar (2.80): OPTIONAL and best-effort. Create the device event up front
+    // so its id is persisted with the booking; a denied permission or failure must NEVER
+    // block the booking — we simply book without a calendar_event_id.
+    let calendarEventId;
+    if (addCal) {
+      const selectedService = services.find((s) => s.id === serviceId);
+      const item = {
+        title: selectedService?.name,
+        appointment_date: date,
+        appointment_time: time,
+        provider_name: provider?.name,
+        reason_for_visit: reason || undefined,
+        notes: notes || undefined,
+      };
+      const result =
+        resolvedCapability === "telehealth"
+          ? await addTelehealthToCalendar(item, currentPet.name)
+          : await addBookingToCalendar(item, currentPet.name);
+      if (result.success) calendarEventId = result.eventId;
+    }
+
     try {
       await book.mutateAsync({
         providerId: provider.id,
@@ -144,6 +173,8 @@ export default function BookingFormModal({
         // the booking recurs and the existing reminder engine nudges a re-book.
         recurrence_rule:
           repeat && copy.recurrence ? copy.recurrence.rule : undefined,
+        // Device calendar event id (2.80) — persisted on the booking row when added.
+        calendar_event_id: calendarEventId,
       });
       resetAndClose();
       Alert.alert(
@@ -336,6 +367,40 @@ export default function BookingFormModal({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Add to phone calendar (2.80) — optional opt-in; the device event id is persisted
+          on the booking so an edit/cancel can update/remove it. Never blocks the booking. */}
+      <View style={{ marginTop: 18 }}>
+        <SectionLabel>{t("calendar.addToCalendar")}</SectionLabel>
+        <TouchableOpacity
+          testID="booking-add-calendar"
+          onPress={() => setAddCal((v) => !v)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: addCal ? COLORS.coral : COLORS.sand,
+            borderRadius: 12,
+            borderWidth: 1.5,
+            borderColor: addCal ? COLORS.coral : COLORS.peach,
+            paddingHorizontal: 14,
+            paddingVertical: 13,
+          }}
+        >
+          <Text
+            style={{
+              fontWeight: "700",
+              fontSize: 14,
+              color: addCal ? "#FFF" : COLORS.mutedBrown,
+            }}
+          >
+            {t("calendar.addToCalendar")}
+          </Text>
+          <Text style={{ fontSize: 16, color: addCal ? "#FFF" : COLORS.mutedBrown }}>
+            {addCal ? "✓" : ""}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </KeyboardSafeFormModal>
   );
 }

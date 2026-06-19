@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Car, MapPin, MessageCircle, Navigation } from "lucide-react-native";
+import { ArrowLeft, Car, MapPin, MessageCircle, Navigation, CalendarDays } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import DateField from "@/components/DateField";
@@ -22,7 +23,12 @@ import {
   useTransportTrips,
   useBookTransport,
   useCancelTransport,
+  useSetTripCalendarEvent,
 } from "@/hooks/useTransport";
+import {
+  addTransportToCalendar,
+  removeSurfaceEventFromCalendar,
+} from "@/utils/calendarIntegration";
 
 const STATUS_LABEL = {
   requested: "Requested",
@@ -62,7 +68,10 @@ export default function TransportScreen() {
   const { data: trips = [] } = useTransportTrips(currentPet?.id ?? null);
   const book = useBookTransport();
   const cancel = useCancelTransport();
+  const setTripCal = useSetTripCalendarEvent();
   const startThread = useStartThread();
+  // aliased to `tr` — this screen already uses `t` as the trip variable in trips.map/messageProvider
+  const { t: tr } = useTranslation();
 
   const [provider, setProvider] = useState(null);
   const [date, setDate] = useState("");
@@ -105,6 +114,39 @@ export default function TransportScreen() {
     } catch (e) {
       Alert.alert("Couldn't book", e.message || "Please try again.");
     }
+  };
+
+  // Add (or update) the trip in the device calendar and persist the id on the underlying
+  // booking (2.80). Calendar is optional — a denied permission shows a clean message and
+  // never blocks. Requires the trip's booking_id to persist.
+  const addTripToCalendar = async (trip) => {
+    const result = await addTransportToCalendar(trip, trip.calendar_event_id);
+    if (result.success) {
+      if (trip.booking_id) {
+        setTripCal.mutate({ bookingId: trip.booking_id, calendarEventId: result.eventId });
+      }
+      Alert.alert(
+        trip.calendar_event_id ? tr("calendar.updated") : tr("calendar.added"),
+        trip.provider_name || "",
+      );
+    } else if (result.error === "permission_denied") {
+      Alert.alert(tr("calendar.permissionTitle"), tr("calendar.permissionBody"));
+    } else {
+      Alert.alert(tr("calendar.permissionTitle"), tr("calendar.couldNotAdd"));
+    }
+  };
+
+  // Cancel a trip; first remove any device calendar event (the server also clears the
+  // stored id on cancel). Calendar removal is best-effort and never blocks the cancel.
+  const cancelTrip = async (trip) => {
+    if (trip.calendar_event_id) {
+      try {
+        await removeSurfaceEventFromCalendar(trip.calendar_event_id);
+      } catch {
+        /* best-effort */
+      }
+    }
+    cancel.mutate(trip.id);
   };
 
   const messageProvider = (t) => {
@@ -337,6 +379,18 @@ export default function TransportScreen() {
                   <MessageCircle size={16} color={COLORS.sageDark} />
                   <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>Message</Text>
                 </TouchableOpacity>
+                {(t.status === "requested" || t.status === "confirmed" || t.status === "en_route") && (
+                  <TouchableOpacity
+                    testID={`add-calendar-${t.id}`}
+                    onPress={() => addTripToCalendar(t)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                  >
+                    <CalendarDays size={16} color={COLORS.sageDark} />
+                    <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>
+                      {t.calendar_event_id ? tr("calendar.added") : tr("calendar.addToCalendar")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 {t.status === "en_route" && (
                   <TouchableOpacity
                     testID={`track-${t.id}`}
@@ -353,7 +407,7 @@ export default function TransportScreen() {
                     onPress={() =>
                       Alert.alert("Cancel trip?", "", [
                         { text: "Keep", style: "cancel" },
-                        { text: "Cancel trip", style: "destructive", onPress: () => cancel.mutate(t.id) },
+                        { text: "Cancel trip", style: "destructive", onPress: () => cancelTrip(t) },
                       ])
                     }
                   >

@@ -18,6 +18,10 @@ import { COLORS } from "@/constants/colors";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useEvents, useRsvpEvent, useCancelEvent } from "@/hooks/useEvents";
 import { isValidCoord } from "@/utils/walkBuddies";
+import {
+  addEventToCalendar,
+  removeSurfaceEventFromCalendar,
+} from "@/utils/calendarIntegration";
 
 // Community Events / meetups (ticket 2.74). Upcoming published events on a 2.68 Apple map + a list;
 // RSVP toggle (going/not_going) with a live attendee count; "Directions" to Apple Maps; hosts can
@@ -78,12 +82,46 @@ export default function EventsScreen() {
     .filter((e) => isValidCoord(e.lat, e.lng))
     .map((e) => ({ lat: Number(e.lat), lng: Number(e.lng), title: e.title }));
 
-  const toggleRsvp = (e) => {
+  const toggleRsvp = async (e) => {
     const next = e.my_rsvp === "going" ? "not_going" : "going";
+    // Un-RSVP: remove any device calendar event and clear the stored id (2.80).
+    if (next === "not_going" && e.my_calendar_event_id) {
+      try {
+        await removeSurfaceEventFromCalendar(e.my_calendar_event_id);
+      } catch {
+        /* calendar removal is best-effort — never block the RSVP change */
+      }
+      rsvp.mutate(
+        { eventId: e.id, status: next, calendar_event_id: null },
+        { onError: (err) => Alert.alert(t("events.couldNotRsvp"), err.message || "") },
+      );
+      return;
+    }
     rsvp.mutate(
       { eventId: e.id, status: next },
       { onError: (err) => Alert.alert(t("events.couldNotRsvp"), err.message || "") },
     );
+  };
+
+  // Add (or update) the event in the device calendar — only meaningful once "going" (2.80).
+  // Calendar is optional: a denied permission shows a clean message and never blocks.
+  const addToCalendar = async (e) => {
+    if (e.my_rsvp !== "going") {
+      Alert.alert(t("calendar.permissionTitle"), t("calendar.rsvpFirst"));
+      return;
+    }
+    const result = await addEventToCalendar(e, e.my_calendar_event_id);
+    if (result.success) {
+      rsvp.mutate({ eventId: e.id, status: "going", calendar_event_id: result.eventId });
+      Alert.alert(
+        e.my_calendar_event_id ? t("calendar.updated") : t("calendar.added"),
+        e.title,
+      );
+    } else if (result.error === "permission_denied") {
+      Alert.alert(t("calendar.permissionTitle"), t("calendar.permissionBody"));
+    } else {
+      Alert.alert(t("calendar.permissionTitle"), t("calendar.couldNotAdd"));
+    }
   };
 
   const confirmCancel = (e) => {
@@ -180,6 +218,18 @@ export default function EventsScreen() {
                       {e.my_rsvp === "going" ? t("events.goingYes") : t("events.rsvp")}
                     </Text>
                   </TouchableOpacity>
+                  {e.my_rsvp === "going" && (
+                    <TouchableOpacity
+                      testID={`event-add-calendar-${e.id}`}
+                      onPress={() => addToCalendar(e)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                    >
+                      <CalendarDays size={15} color={COLORS.sageDark} />
+                      <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>
+                        {e.my_calendar_event_id ? t("calendar.added") : t("calendar.addToCalendar")}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {isValidCoord(e.lat, e.lng) && (
                     <TouchableOpacity
                       testID={`event-directions-${e.id}`}

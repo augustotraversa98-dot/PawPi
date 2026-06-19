@@ -200,6 +200,22 @@ describe('POST /api/providers/[id]/book', () => {
     expect(lastValues()).toContain('vet'); // default capability
   });
 
+  it('persists calendar_event_id when provided (ticket 2.80)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([{ id: 1, calendar_event_id: 'evt-abc' }]); // insert
+
+    const res = await POST(bookReq({ ...VALID, calendar_event_id: 'evt-abc' }), PARAMS);
+
+    expect(res.status).toBe(201);
+    const text = lastQueryText();
+    expect(text).toContain('calendar_event_id');
+    expect(lastValues()).toContain('evt-abc');
+  });
+
   it('invalid capability → 400, no insert', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup only
