@@ -59,6 +59,7 @@ async function POST(request, { params }) {
       recurrence_rule,
       order_id,
       meet_and_greet,
+      calendar_event_id,
     } = body;
 
     if (!petId || !appointment_date || !appointment_time) {
@@ -251,6 +252,7 @@ async function POST(request, { params }) {
         recurrence_rule,
         order_id,
         meet_and_greet,
+        calendar_event_id,
         source,
         booking_status,
         status
@@ -272,6 +274,7 @@ async function POST(request, { params }) {
         ${recurrence_rule ?? null},
         ${order_id ?? null},
         ${meet_and_greet === true},
+        ${calendar_event_id ?? null},
         ${"owner"},
         ${"requested"},
         ${"scheduled"}

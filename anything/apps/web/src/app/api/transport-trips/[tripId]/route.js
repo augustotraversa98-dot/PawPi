@@ -37,8 +37,12 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Trip not found" }, { status: 404 });
     }
     if (updated[0].booking_id) {
+      // Cancel the linked booking AND clear any device calendar event id (2.80): the
+      // mobile client deletes the device event before cancelling, so the stored id is
+      // now stale — null it server-side.
       await sql`
-        UPDATE vet_appointments SET booking_status = 'cancelled', updated_at = now()
+        UPDATE vet_appointments
+        SET booking_status = 'cancelled', calendar_event_id = NULL, updated_at = now()
         WHERE id = ${updated[0].booking_id} AND owner_user_id = ${userId}
       `;
     }

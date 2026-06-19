@@ -183,5 +183,15 @@
     "recallTitle": "Alerta de retiro de alimento",
     "recallBody": "Un producto que coincide con la comida de {{pet}} fue retirado: {{reason}}. Consulta con tu veterinario.",
     "recallLink": "Ver el aviso de retiro"
+  },
+  "calendar": {
+    "addToCalendar": "Añadir al calendario",
+    "added": "Añadido a tu calendario",
+    "updated": "Evento de calendario actualizado",
+    "removed": "Eliminado de tu calendario",
+    "permissionTitle": "Acceso al calendario",
+    "permissionBody": "Se necesita acceso al calendario para añadir esto. Es opcional: tu reserva se guarda igual.",
+    "couldNotAdd": "No se pudo añadir al calendario, pero se guardó igual.",
+    "rsvpFirst": "Confirma \"voy\" para añadir este evento a tu calendario"
   }
 }

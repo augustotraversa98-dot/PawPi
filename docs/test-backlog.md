@@ -56,7 +56,14 @@ as the RLS migrations 0019–0026.)
 0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans owner-RLS + food_recalls [public read, DEFINER ingest] + pet_food_recall_matches owner-RLS + match/ingest DEFINERs + notifications 'food_recall' widen) BUILT + harness-proven (PR 2.75) — ✅ APPLIED + VERIFIED 2026-06-19
 --- APP STORE READINESS (2.78) ---
 0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) BUILT + harness-proven (PR 2.78) — ✅ APPLIED + VERIFIED 2026-06-19
+--- WAVE 8 (calendar integration) ---
+0063_event_rsvp_calendar_event_id.sql (2.80 — ADDITIVE `event_rsvps.calendar_event_id text` for the per-attendee device calendar event id; idempotent; NO RLS policy change — rides the existing event_rsvps own-row policies [0060]) BUILT + harness-proven (PR 2.80) — ⏳ PENDING HAND-APPLY (last applied = 0062)
 ```
+**⏳ Wave 8 (ticket 2.80) — migration 0063 PENDING HAND-APPLY.** Apply `0063_event_rsvp_calendar_event_id.sql`
+on Supabase: one additive nullable column, no policy change (rides the existing `event_rsvps` own-row policies).
+Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event_id` (0005) — no DB change there.
+**2.79 added no migration.**
+
 **Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
 **0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
 `supabase/verify_0056_0062.sql` — RLS on+forced, policy counts, 8 DEFINER fns + EXECUTE-to-pawpi_app, the
@@ -273,6 +280,27 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 ## To test
 
 ### ▸ WAVE 8 device-test queue (2026-06-20) — calendar integration
+
+### [ ] 2.80 — Calendar everywhere (bookings / transport / telehealth / events)  ·  ticket/calendar-everywhere (2026-06-20)
+- **What shipped:** add-to-calendar on every remaining scheduled surface, reusing the 2.79 layer. Booking
+  (grooming/walking/daycare/sitting **and telehealth**) gets an "Add to phone calendar" toggle in
+  `BookingFormModal` → the device event id is saved on `vet_appointments.calendar_event_id`. Transport trips
+  get an "Add to calendar" button (persists to the linked booking; cleared on cancel). Events get an
+  "Add to calendar" action **gated on a "going" RSVP** → the id is saved per-attendee on
+  `event_rsvps.calendar_event_id` (migration **0063**, pending hand-apply). New `GET /api/calendar/event/[id].ics`.
+- **⚠️ Needs migration 0063 applied** before the events calendar id persists on the live DB (ACTION 1).
+- **NEEDS A DEVICE PASS** — jest can't run native expo-calendar:
+  - Book a grooming/walking/daycare/sitting service with "Add to phone calendar" on → the event appears in the
+    "Social Pet - Bookings" calendar; book a telehealth consult the same way → "Social Pet - Telehealth"
+    (noted as a video consult, no location).
+  - Book a transport trip, then tap **Add to calendar** on the trip → "Social Pet - Transport" with pickup/
+    dropoff in the notes; **cancel** the trip → the calendar event is removed.
+  - RSVP "going" to an event → **Add to calendar** appears (hidden until going) → adds to "Social Pet - Events";
+    un-RSVP → it's removed.
+  - **Deny** calendar permission on any of the above → the booking/RSVP still saves with a clean message
+    (calendar is optional, never blocks).
+  - Download an event `.ics` from `GET /api/calendar/event/<id>.ics` while signed in → opens cleanly; confirm a
+    non-visible (cancelled/other-host) event 404s.
 
 ### [ ] 2.79 — Calendar foundation (unified layer + ICS export)  ·  ticket/calendar-foundation (2026-06-20)
 - **What shipped:** internal de-dup of `calendarIntegration.js` (one `getOrCreatePawPiCalendar` + generic

@@ -5,6 +5,10 @@ import {
   parseWalkTime,
   formatFrequency,
   buildEventNotes,
+  buildBookingCalendarDetails,
+  buildTelehealthCalendarDetails,
+  buildTransportCalendarDetails,
+  buildEventCalendarDetails,
 } from "@/utils/calendarFormat";
 
 // Calendar integration (ticket 2.79 unified layer).
@@ -382,5 +386,119 @@ export async function updateVetAppointmentInCalendar(
 
 // Delete a vet-appointment calendar event (thin wrapper over the generic primitive).
 export async function deleteVetAppointmentFromCalendar(eventId) {
+  return deleteCalendarEvent(eventId);
+}
+
+// ===== 2.80 SURFACES — bookings / transport / telehealth / events =====
+//
+// Each surface adds (or, with existingEventId, updates) a device calendar event via the
+// 2.79 generics, using a per-feature calendar and the pure detail builders. All return
+// { success, eventId } / { success: false, error } so callers degrade cleanly and NEVER
+// block the underlying save (mirrors addVetAppointmentToCalendar). Removal reuses the
+// generic deleteCalendarEvent.
+
+const BOOKING_CALENDAR = {
+  title: "Social Pet - Bookings",
+  color: "#FF6F61", // Coral
+  name: "socialPetBookings",
+};
+const TRANSPORT_CALENDAR = {
+  title: "Social Pet - Transport",
+  color: "#B75D32", // Terracotta
+  name: "socialPetTransport",
+};
+const TELEHEALTH_CALENDAR = {
+  title: "Social Pet - Telehealth",
+  color: "#4DB8E8", // Blue
+  name: "socialPetTelehealth",
+};
+const EVENT_CALENDAR = {
+  title: "Social Pet - Events",
+  color: "#A7BFA3", // Sage green
+  name: "socialPetEvents",
+};
+
+// Generic add/update for a 2.80 surface. `details` = { summary, startDate, endDate,
+// location?, notes? } (from the pure calendarFormat builders). With `existingEventId` it
+// updates that event; otherwise it creates a new one and returns its id.
+export async function addSurfaceEventToCalendar(calendar, details, existingEventId) {
+  try {
+    const hasPermission = existingEventId
+      ? await isCalendarAvailable()
+      : await requestCalendarPermission();
+    if (!hasPermission) {
+      return { success: false, error: "permission_denied" };
+    }
+
+    const calendarId = await getOrCreatePawPiCalendar(calendar);
+    if (!calendarId) {
+      return { success: false, error: "calendar_unavailable" };
+    }
+
+    const eventDetails = {
+      title: details.summary,
+      startDate: details.startDate,
+      endDate: details.endDate,
+      timeZone: "default",
+      calendarId,
+      location: details.location || undefined,
+      notes: details.notes || undefined,
+      alarms: [],
+      availability: Calendar.Availability.BUSY,
+    };
+
+    const eventId = await upsertCalendarEvent(calendarId, eventDetails, existingEventId);
+    if (eventId) {
+      return { success: true, eventId };
+    }
+    return { success: false, error: "creation_failed" };
+  } catch (error) {
+    console.error("[Calendar] Error adding surface event to calendar:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function addBookingToCalendar(
+  booking,
+  petName = "Your pet",
+  existingEventId,
+) {
+  return addSurfaceEventToCalendar(
+    BOOKING_CALENDAR,
+    buildBookingCalendarDetails(booking, petName),
+    existingEventId,
+  );
+}
+
+export async function addTransportToCalendar(trip, existingEventId) {
+  return addSurfaceEventToCalendar(
+    TRANSPORT_CALENDAR,
+    buildTransportCalendarDetails(trip),
+    existingEventId,
+  );
+}
+
+export async function addTelehealthToCalendar(
+  consult,
+  petName = "Your pet",
+  existingEventId,
+) {
+  return addSurfaceEventToCalendar(
+    TELEHEALTH_CALENDAR,
+    buildTelehealthCalendarDetails(consult, petName),
+    existingEventId,
+  );
+}
+
+export async function addEventToCalendar(event, existingEventId) {
+  return addSurfaceEventToCalendar(
+    EVENT_CALENDAR,
+    buildEventCalendarDetails(event),
+    existingEventId,
+  );
+}
+
+// Remove any 2.80 surface calendar event (thin wrapper over the generic primitive).
+export async function removeSurfaceEventFromCalendar(eventId) {
   return deleteCalendarEvent(eventId);
 }

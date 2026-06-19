@@ -42,12 +42,14 @@ export function useCreateEvent() {
 export function useRsvpEvent() {
   const qc = useQueryClient();
   return useMutation({
-    // mutateAsync({ eventId, status, pet_id? }) → { rsvp, attendee_count }
-    mutationFn: async ({ eventId, status, pet_id }) => {
+    // mutateAsync({ eventId, status, pet_id?, calendar_event_id? }) → { rsvp, attendee_count }
+    // calendar_event_id persists the per-attendee device calendar event id (2.80); pass
+    // null to clear it (e.g. on un-RSVP).
+    mutationFn: async ({ eventId, status, pet_id, calendar_event_id }) => {
       const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, pet_id }),
+        body: JSON.stringify({ status, pet_id, calendar_event_id }),
       });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));

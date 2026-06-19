@@ -813,13 +813,21 @@ not a hand-maintained log here:
   underwriting); places data = Google Places via a server route; **new cross-cutting rule — Apple Maps
   (`react-native-maps` `PROVIDER_DEFAULT`) in EVERY section that captures/shows a location, via the shared
   2.68 component.**
-- **Wave 8 — 🔨 IN PROGRESS (calendar integration, tickets 2.79–2.80).** Scoped with Tats 2026-06-20: the
+- **Wave 8 — ✅ COMPLETE (calendar integration, tickets 2.79–2.80).** Scoped with Tats 2026-06-20: the
   buildable, CI-verifiable half of calendar integration (true two-way EventKit sync stays a later attended
-  device pass). Foundation-first (mirrors 2.68). **✅ 2.79 calendar foundation MERGED** — de-duped
-  `calendarIntegration.js` into one generic layer (`getOrCreatePawPiCalendar` + `upsertCalendarEvent` +
-  `deleteCalendarEvent`) + an expo-free, jest-covered `calendarFormat` module; the walk/vet wrappers and all
-  call-sites are byte-for-byte unchanged; owner-scoped `GET /api/calendar/booking/[id].ics` (RFC 5545,
-  harness-proven owner-scoped read). **No migration.** 2.80 (calendar everywhere + migration **0063**) next.
+  device pass). Foundation-first (mirrors 2.68). Built unattended per the ⚡ Wave 5 autonomy preamble.
+  **✅ 2.79 calendar foundation MERGED** — de-duped `calendarIntegration.js` into one generic layer
+  (`getOrCreatePawPiCalendar` + `upsertCalendarEvent` + `deleteCalendarEvent`) + an expo-free, jest-covered
+  `calendarFormat` module; the walk/vet wrappers and all call-sites are byte-for-byte unchanged; owner-scoped
+  `GET /api/calendar/booking/[id].ics` (RFC 5545). **No migration.**
+  **✅ 2.80 calendar everywhere MERGED** — add/update/remove wired into generalized bookings (a
+  `BookingFormModal` "Add to phone calendar" toggle, also covers telehealth), transport trips, and RSVP'd
+  events; the device event id persists on `vet_appointments.calendar_event_id` (bookings/transport/telehealth,
+  existing column) or `event_rsvps.calendar_event_id` (events, new); added `GET /api/calendar/event/[id].ics`;
+  calendar is always optional and degrades clean when permission is denied. **Migration 0063**
+  (`event_rsvps.calendar_event_id`, one additive column, no RLS change) is harness-proven, **PENDING
+  hand-apply** (test-backlog ACTION 1; live DB still at 0062). Final test baselines: **mobile jest 1085 ·
+  web vitest 1163 · integration 583.**
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
