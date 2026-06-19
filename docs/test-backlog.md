@@ -48,21 +48,21 @@ as the RLS migrations 0019–0026.)
 0054_insurance_marketplace.sql        (2.54 — widen capability CHECKs +insurance; insurance_plans + insurance_leads RLS)     ✅ APPLIED + VERIFIED 2026-06-18
 0055_adoption_foster_urgent_flags.sql (2.57 — additive columns on adoptable_listings + adoption_applications; ride 0038 RLS) ✅ APPLIED + VERIFIED 2026-06-18
 --- WAVE 7 (planned numbers; each created at build time = next free, then flagged here on merge) ---
-0056_transport_trip_locations.sql     (2.70 — live driver GPS pings on transport_trips; owner+driver+staff RLS)        🟡 BUILT + harness-proven (PR 2.70) — PENDING hand-apply
-0057_rx_fulfillment.sql               (2.71 — rx_fulfillment_orders; owner/pharmacy-staff RLS + fulfill_rx_order safe path; `pharmacy` already in CHECK since 0040 — no widen) 🟡 BUILT + harness-proven (PR 2.71) — PENDING hand-apply
-0058_insurance_policies.sql           (2.72 — insurance_policies; in-app bind+pay; owner can't self-issue/activate; activate_insurance_policy safe path) 🟡 BUILT + harness-proven (PR 2.72) — PENDING hand-apply
-0059_pet_friendly_places.sql          (2.73 — saved_places owner-FOR-ALL RLS; NO cache table [proxy fetches live]; Google Places via key-gated web route) 🟡 BUILT + harness-proven (PR 2.73) — PENDING hand-apply
-0060_events_meetups.sql               (2.74 — events + event_rsvps; published public read, host-only writes, own-only rsvp; no DEFINER/notify) 🟡 BUILT + harness-proven (PR 2.74) — PENDING hand-apply
-0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans owner-RLS + food_recalls [public read, DEFINER ingest] + pet_food_recall_matches owner-RLS + match/ingest DEFINERs + notifications 'food_recall' widen) 🟡 BUILT + harness-proven (PR 2.75) — PENDING hand-apply
+0056_transport_trip_locations.sql     (2.70 — live driver GPS pings on transport_trips; owner+driver+staff RLS)        BUILT + harness-proven (PR 2.70) — ✅ APPLIED + VERIFIED 2026-06-19
+0057_rx_fulfillment.sql               (2.71 — rx_fulfillment_orders; owner/pharmacy-staff RLS + fulfill_rx_order safe path; `pharmacy` already in CHECK since 0040 — no widen) BUILT + harness-proven (PR 2.71) — ✅ APPLIED + VERIFIED 2026-06-19
+0058_insurance_policies.sql           (2.72 — insurance_policies; in-app bind+pay; owner can't self-issue/activate; activate_insurance_policy safe path) BUILT + harness-proven (PR 2.72) — ✅ APPLIED + VERIFIED 2026-06-19
+0059_pet_friendly_places.sql          (2.73 — saved_places owner-FOR-ALL RLS; NO cache table [proxy fetches live]; Google Places via key-gated web route) BUILT + harness-proven (PR 2.73) — ✅ APPLIED + VERIFIED 2026-06-19
+0060_events_meetups.sql               (2.74 — events + event_rsvps; published public read, host-only writes, own-only rsvp; no DEFINER/notify) BUILT + harness-proven (PR 2.74) — ✅ APPLIED + VERIFIED 2026-06-19
+0061_nutrition_food_recalls.sql       (2.75 — nutrition_plans owner-RLS + food_recalls [public read, DEFINER ingest] + pet_food_recall_matches owner-RLS + match/ingest DEFINERs + notifications 'food_recall' widen) BUILT + harness-proven (PR 2.75) — ✅ APPLIED + VERIFIED 2026-06-19
 --- APP STORE READINESS (2.78) ---
-0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) 🟡 BUILT + harness-proven (PR 2.78) — PENDING hand-apply
+0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) BUILT + harness-proven (PR 2.78) — ✅ APPLIED + VERIFIED 2026-06-19
 ```
-**Wave 7 (tickets 2.68–2.75, scoped 2026-06-18) — ✅ ALL BUILT.** Migrations **0056–0061** are harness-proven
-and PENDING hand-apply (last applied on Supabase = 0055). **2.68** (shared Apple-Maps component) + **2.69**
-(provider Sales/payouts/reconciliation UI) add NO migration. **2.70** (transport live-GPS, **0056**) +
-**2.71** (Rx fulfillment, **0057**) + **2.72** (insurance binding, **0058**) + **2.73** (places, **0059**) +
-**2.74** (events, **0060**) + **2.75** (nutrition + food-recalls, **0061**) are BUILT + harness-proven and
-PENDING hand-apply. New go-live env keys this wave: the **food-recall feed key + an external
+**Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
+**0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
+`supabase/verify_0056_0062.sql` — RLS on+forced, policy counts, 8 DEFINER fns + EXECUTE-to-pawpi_app, the
+`food_recall` CHECK widen, food_recalls read-only). **The live DB is now at 0062; none pending.** **2.68**
+(shared Apple-Maps component) + **2.69** (provider Sales/payouts/reconciliation UI) added NO migration. New
+go-live env keys this wave (each degrades cleanly until set): the **food-recall feed key + an external
 scheduler** (2.75, like 2.17's CRON_SECRET); **2.73** also consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
 
 **Status (2026-06-17):** ALL Wave 3/4 migrations 0039–0045 are hand-applied to live Supabase and verified.
