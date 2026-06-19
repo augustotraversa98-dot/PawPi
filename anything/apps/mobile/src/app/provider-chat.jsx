@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,8 @@ import { ArrowLeft, Send, ImageIcon } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { PressableScale, GlassSurface } from "@/components/ui";
 import {
   useThreadMessages,
   useSendMessage,
@@ -99,25 +100,28 @@ export default function ProviderChatScreen() {
       style={{ flex: 1, backgroundColor: COLORS.cream }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={{ marginRight: SPACING.md }}
+        >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
           {providerName || "Provider"}
         </Text>
-      </View>
+      </GlassSurface>
 
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -131,7 +135,12 @@ export default function ProviderChatScreen() {
         >
           {ordered.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 60 }}>
-              <Text style={{ fontSize: 14, color: COLORS.mutedBrown, textAlign: "center" }}>
+              <Text
+                style={[
+                  TYPE.callout,
+                  { color: COLORS.mutedBrown, textAlign: "center" },
+                ]}
+              >
                 No messages yet. Say hello.
               </Text>
             </View>
@@ -144,17 +153,17 @@ export default function ProviderChatScreen() {
                   style={{
                     alignSelf: mine ? "flex-end" : "flex-start",
                     maxWidth: "78%",
-                    marginBottom: 10,
+                    marginBottom: SPACING.sm,
                   }}
                 >
                   <View
                     style={{
                       backgroundColor: mine ? COLORS.coral : COLORS.card,
-                      borderRadius: 16,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
+                      borderRadius: RADIUS.control,
+                      paddingHorizontal: SPACING.md,
+                      paddingVertical: SPACING.sm,
                       borderWidth: mine ? 0 : 1,
-                      borderColor: COLORS.peach,
+                      borderColor: MATERIALS.hairline,
                     }}
                   >
                     {msg.attachment_url ? (
@@ -166,11 +175,10 @@ export default function ProviderChatScreen() {
                     ) : null}
                     {msg.body ? (
                       <Text
-                        style={{
-                          fontSize: 15,
-                          color: mine ? "#FFF" : COLORS.warmBrown,
-                          lineHeight: 20,
-                        }}
+                        style={[
+                          TYPE.body,
+                          { color: mine ? "#FFF" : COLORS.warmBrown, lineHeight: 20 },
+                        ]}
                       >
                         {msg.body}
                       </Text>
@@ -193,27 +201,27 @@ export default function ProviderChatScreen() {
         </ScrollView>
       )}
 
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderTopWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 8,
-          paddingHorizontal: 12,
-          paddingTop: 8,
-          paddingBottom: insets.bottom + 8,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.peach,
-          backgroundColor: COLORS.card,
+          gap: SPACING.sm,
+          paddingHorizontal: SPACING.md,
+          paddingTop: SPACING.sm,
+          paddingBottom: insets.bottom + SPACING.sm,
         }}
       >
-        <TouchableOpacity
+        <PressableScale
           onPress={onAttachImage}
           disabled={uploading}
+          accessibilityRole="button"
           style={{
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: COLORS.sand,
+            backgroundColor: MATERIALS.surfaceSunken,
             justifyContent: "center",
             alignItems: "center",
             opacity: uploading ? 0.5 : 1,
@@ -224,27 +232,30 @@ export default function ProviderChatScreen() {
           ) : (
             <ImageIcon size={20} color={COLORS.mutedBrown} />
           )}
-        </TouchableOpacity>
+        </PressableScale>
         <TextInput
           value={draft}
           onChangeText={setDraft}
           placeholder="Type a message…"
           placeholderTextColor={COLORS.mutedBrown}
-          style={{
-            flex: 1,
-            backgroundColor: COLORS.sand,
-            borderRadius: 20,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            fontSize: 15,
-            color: COLORS.warmBrown,
-            maxHeight: 100,
-          }}
+          style={[
+            TYPE.body,
+            {
+              flex: 1,
+              backgroundColor: MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.chip,
+              paddingHorizontal: SPACING.md,
+              paddingVertical: SPACING.sm,
+              color: COLORS.warmBrown,
+              maxHeight: 100,
+            },
+          ]}
           multiline
         />
-        <TouchableOpacity
+        <PressableScale
           onPress={onSendText}
           disabled={isPending || !draft.trim()}
+          accessibilityRole="button"
           style={{
             width: 40,
             height: 40,
@@ -260,8 +271,8 @@ export default function ProviderChatScreen() {
           ) : (
             <Send size={18} color="#FFF" />
           )}
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
     </KeyboardAvoidingView>
   );
 }

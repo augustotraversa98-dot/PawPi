@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   X,
@@ -13,6 +13,8 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import {
   handleNotificationTap,
@@ -149,14 +151,13 @@ export default function NotificationsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top + 6,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
         }}
       >
         <View
@@ -166,32 +167,19 @@ export default function NotificationsScreen() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
+          <PressableScale onPress={() => router.back()} accessibilityRole="button">
             <X size={22} color={COLORS.mutedBrown} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "800",
-              color: COLORS.warmBrown,
-              letterSpacing: -0.3,
-            }}
-          >
+          </PressableScale>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             Notifications
           </Text>
-          <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: COLORS.coral,
-              }}
-            >
+          <PressableScale onPress={handleMarkAllRead} accessibilityRole="button">
+            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral }]}>
               Mark all read
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Filter chips */}
       <ScrollView
@@ -199,42 +187,42 @@ export default function NotificationsScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           alignItems: "center",
-          paddingHorizontal: 20,
-          paddingVertical: 16,
-          gap: 10,
+          paddingHorizontal: SPACING.xl,
+          paddingVertical: SPACING.lg,
+          gap: SPACING.sm,
         }}
         style={{
           flexGrow: 0,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
+          borderBottomColor: MATERIALS.hairline,
           backgroundColor: COLORS.card,
         }}
       >
         {FILTER_OPTIONS.map((filter) => {
           const isSelected = selectedFilter === filter;
           return (
-            <TouchableOpacity
+            <PressableScale
               key={filter}
               onPress={() => setSelectedFilter(filter)}
+              accessibilityRole="button"
               style={{
-                paddingHorizontal: 18,
-                paddingVertical: 8,
-                borderRadius: 20,
-                backgroundColor: isSelected ? COLORS.coral : COLORS.sand,
+                paddingHorizontal: SPACING.lg,
+                paddingVertical: SPACING.sm,
+                borderRadius: RADIUS.chip,
+                backgroundColor: isSelected ? COLORS.coral : MATERIALS.surfaceSunken,
                 borderWidth: 1,
-                borderColor: isSelected ? COLORS.coral : COLORS.peach,
+                borderColor: isSelected ? COLORS.coral : MATERIALS.hairline,
               }}
             >
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: isSelected ? "#FFF" : COLORS.mutedBrown,
-                }}
+                style={[
+                  TYPE.subhead,
+                  { fontWeight: "700", color: isSelected ? "#FFF" : COLORS.mutedBrown },
+                ]}
               >
                 {filter}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
       </ScrollView>
@@ -248,23 +236,23 @@ export default function NotificationsScreen() {
           <View style={{ alignItems: "center", paddingVertical: 80 }}>
             <Text style={{ fontSize: 48 }}>🐾</Text>
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: COLORS.warmBrown,
-                marginTop: 16,
-              }}
+              style={[
+                TYPE.headline,
+                { fontWeight: "700", color: COLORS.warmBrown, marginTop: SPACING.lg },
+              ]}
             >
               No new notifications yet
             </Text>
             <Text
-              style={{
-                fontSize: 14,
-                color: COLORS.mutedBrown,
-                marginTop: 8,
-                textAlign: "center",
-                paddingHorizontal: 40,
-              }}
+              style={[
+                TYPE.callout,
+                {
+                  color: COLORS.mutedBrown,
+                  marginTop: SPACING.sm,
+                  textAlign: "center",
+                  paddingHorizontal: SPACING.huge,
+                },
+              ]}
             >
               It's quiet here for now.
             </Text>
@@ -277,25 +265,27 @@ export default function NotificationsScreen() {
               : null;
 
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={notif.id}
                 onPress={() => handleNotifTap(notif)}
-                style={{
-                  marginHorizontal: 16,
-                  marginTop: 12,
-                  backgroundColor: notif.read ? COLORS.card : COLORS.sand,
-                  borderRadius: 18,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: notif.read ? COLORS.peach : COLORS.coral,
-                  shadowColor: notif.read ? "transparent" : COLORS.coral,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: notif.read ? 0 : 0.1,
-                  shadowRadius: 8,
-                  elevation: notif.read ? 0 : 2,
-                }}
+                accessibilityRole="button"
+                style={{ marginHorizontal: SPACING.lg, marginTop: SPACING.md }}
               >
-                <View style={{ flexDirection: "row", gap: 14 }}>
+                <Card
+                  level={notif.read ? "none" : "sm"}
+                  radius={RADIUS.card}
+                  color={notif.read ? COLORS.card : COLORS.sand}
+                  borderColor={notif.read ? MATERIALS.hairline : COLORS.coral}
+                  style={{
+                    padding: SPACING.lg,
+                    shadowColor: notif.read ? "transparent" : COLORS.coral,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: notif.read ? 0 : 0.1,
+                    shadowRadius: 8,
+                    elevation: notif.read ? 0 : 2,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", gap: SPACING.md }}>
                   {notif.avatar ? (
                     <Image
                       source={{ uri: notif.avatar }}
@@ -336,36 +326,41 @@ export default function NotificationsScreen() {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "flex-start",
-                        marginBottom: 4,
+                        marginBottom: SPACING.xs,
                       }}
                     >
                       <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "800",
-                          color: COLORS.warmBrown,
-                          flex: 1,
-                          marginRight: 8,
-                        }}
+                        style={[
+                          TYPE.callout,
+                          {
+                            fontWeight: "800",
+                            color: COLORS.warmBrown,
+                            flex: 1,
+                            marginRight: SPACING.sm,
+                          },
+                        ]}
                       >
                         {notif.title}
                       </Text>
                       <Text
-                        style={{
-                          fontSize: 11,
-                          color: COLORS.mutedBrown,
-                        }}
+                        style={[
+                          TYPE.caption,
+                          { letterSpacing: 0, fontWeight: "500", color: COLORS.mutedBrown },
+                        ]}
                       >
                         {formatTimestamp(notif.timestamp)}
                       </Text>
                     </View>
                     <Text
-                      style={{
-                        fontSize: 13,
-                        color: COLORS.mutedBrown,
-                        lineHeight: 19,
-                        marginBottom: isReminder && notif.actionLabel ? 10 : 0,
-                      }}
+                      style={[
+                        TYPE.subhead,
+                        {
+                          fontWeight: "500",
+                          color: COLORS.mutedBrown,
+                          lineHeight: 19,
+                          marginBottom: isReminder && notif.actionLabel ? SPACING.sm : 0,
+                        },
+                      ]}
                     >
                       {notif.message}
                     </Text>
@@ -377,19 +372,17 @@ export default function NotificationsScreen() {
                           flexDirection: "row",
                           alignItems: "center",
                           backgroundColor: displayInfo?.color || COLORS.sage,
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
+                          borderRadius: RADIUS.control,
+                          paddingHorizontal: SPACING.md,
+                          paddingVertical: SPACING.sm,
                           alignSelf: "flex-start",
                         }}
                       >
                         <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: "#FFF",
-                            marginRight: 4,
-                          }}
+                          style={[
+                            TYPE.footnote,
+                            { fontWeight: "700", color: "#FFF", marginRight: SPACING.xs },
+                          ]}
                         >
                           {notif.actionLabel}
                         </Text>
@@ -411,8 +404,9 @@ export default function NotificationsScreen() {
                       }}
                     />
                   )}
-                </View>
-              </TouchableOpacity>
+                  </View>
+                </Card>
+              </PressableScale>
             );
           })
         )}

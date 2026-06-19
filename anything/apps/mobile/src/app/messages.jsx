@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
 } from "react-native";
@@ -12,6 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Search, User, Store } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { useDMThreads, useStartDM } from "@/hooks/useDMs";
 import { useMyThreads } from "@/hooks/useProviders";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
@@ -146,14 +147,13 @@ export default function MessagesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top + 6,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
         }}
       >
         <View
@@ -161,20 +161,13 @@ export default function MessagesScreen() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 14,
+            marginBottom: SPACING.md,
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
+          <PressableScale onPress={() => router.back()} accessibilityRole="button">
             <X size={22} color={COLORS.mutedBrown} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "800",
-              color: COLORS.warmBrown,
-              letterSpacing: -0.3,
-            }}
-          >
+          </PressableScale>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             Messages
           </Text>
           <View style={{ width: 22 }} />
@@ -184,18 +177,18 @@ export default function MessagesScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: COLORS.sand,
-            borderRadius: 16,
-            paddingHorizontal: 14,
-            paddingVertical: 12,
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            paddingHorizontal: SPACING.md,
+            paddingVertical: SPACING.md,
             borderWidth: 1,
-            borderColor: COLORS.peach,
-            gap: 10,
+            borderColor: MATERIALS.hairline,
+            gap: SPACING.sm,
           }}
         >
           <Search size={18} color={COLORS.mutedBrown} />
           <TextInput
-            style={{ flex: 1, fontSize: 15, color: COLORS.warmBrown, padding: 0 }}
+            style={[TYPE.body, { flex: 1, color: COLORS.warmBrown, padding: 0 }]}
             placeholder="Search people or start a new chat…"
             placeholderTextColor={COLORS.mutedBrown}
             value={searchQuery}
@@ -203,43 +196,43 @@ export default function MessagesScreen() {
             autoCapitalize="none"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <PressableScale onPress={() => setSearchQuery("")} accessibilityRole="button">
               <X size={16} color={COLORS.mutedBrown} />
-            </TouchableOpacity>
+            </PressableScale>
           )}
         </View>
 
         {/* All / People / Businesses segmented filter */}
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+        <View style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }}>
           {FILTERS.map((f) => {
             const active = filter === f.key;
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={f.key}
                 onPress={() => setFilter(f.key)}
+                accessibilityRole="button"
                 style={{
-                  paddingHorizontal: 16,
+                  paddingHorizontal: SPACING.lg,
                   paddingVertical: 7,
-                  borderRadius: 18,
-                  backgroundColor: active ? COLORS.coral : COLORS.sand,
+                  borderRadius: RADIUS.chip,
+                  backgroundColor: active ? COLORS.coral : MATERIALS.surfaceSunken,
                   borderWidth: 1,
-                  borderColor: active ? COLORS.coral : COLORS.peach,
+                  borderColor: active ? COLORS.coral : MATERIALS.hairline,
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "700",
-                    color: active ? "#FFF" : COLORS.mutedBrown,
-                  }}
+                  style={[
+                    TYPE.subhead,
+                    { fontWeight: "700", color: active ? "#FFF" : COLORS.mutedBrown },
+                  ]}
                 >
                   {f.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             );
           })}
         </View>
-      </View>
+      </GlassSurface>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -248,82 +241,81 @@ export default function MessagesScreen() {
       >
         {/* Owner search results — tap to start a DM (people only). */}
         {q.length >= 2 && (
-          <View style={{ marginTop: 8 }}>
+          <View style={{ marginTop: SPACING.sm }}>
             <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "800",
-                color: COLORS.mutedBrown,
-                letterSpacing: 0.7,
-                marginLeft: 20,
-                marginBottom: 4,
-              }}
+              style={[
+                TYPE.overline,
+                { color: COLORS.mutedBrown, marginLeft: SPACING.xl, marginBottom: SPACING.xs },
+              ]}
             >
               START A NEW CHAT
             </Text>
             {searching && owners.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 16 }}>
+              <View style={{ alignItems: "center", paddingVertical: SPACING.lg }}>
                 <ActivityIndicator color={COLORS.coral} />
               </View>
             ) : owners.length === 0 ? (
               <Text
-                style={{
-                  fontSize: 13,
-                  color: COLORS.mutedBrown,
-                  marginLeft: 20,
-                  marginBottom: 8,
-                }}
+                style={[
+                  TYPE.subhead,
+                  {
+                    fontWeight: "500",
+                    color: COLORS.mutedBrown,
+                    marginLeft: SPACING.xl,
+                    marginBottom: SPACING.sm,
+                  },
+                ]}
               >
                 No pet parents found.
               </Text>
             ) : (
               owners.map((owner) => (
-                <TouchableOpacity
+                <PressableScale
                   key={`owner-${owner.id}`}
                   testID="owner-result"
                   onPress={() => startChatWithOwner(owner)}
-                  style={{
-                    marginHorizontal: 16,
-                    marginTop: 8,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 16,
-                    padding: 12,
-                    flexDirection: "row",
-                    gap: 12,
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                  }}
+                  accessibilityRole="button"
+                  style={{ marginHorizontal: SPACING.lg, marginTop: SPACING.sm }}
                 >
-                  {owner.avatar_url ? (
-                    <Image
-                      source={{ uri: owner.avatar_url }}
-                      style={{ width: 40, height: 40, borderRadius: 20 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
-                        backgroundColor: COLORS.sand,
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <User size={20} color={COLORS.coral} />
-                    </View>
-                  )}
-                  <Text
+                  <Card
+                    level="sm"
+                    radius={RADIUS.control}
                     style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: COLORS.warmBrown,
+                      padding: SPACING.md,
+                      flexDirection: "row",
+                      gap: SPACING.md,
+                      alignItems: "center",
                     }}
                   >
-                    {owner.full_name || owner.username || "Pet parent"}
-                  </Text>
-                </TouchableOpacity>
+                    {owner.avatar_url ? (
+                      <Image
+                        source={{ uri: owner.avatar_url }}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: COLORS.sand,
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <User size={20} color={COLORS.coral} />
+                      </View>
+                    )}
+                    <Text
+                      style={[
+                        TYPE.body,
+                        { fontWeight: "700", color: COLORS.warmBrown },
+                      ]}
+                    >
+                      {owner.full_name || owner.username || "Pet parent"}
+                    </Text>
+                  </Card>
+                </PressableScale>
               ))
             )}
           </View>
@@ -337,23 +329,23 @@ export default function MessagesScreen() {
           <View style={{ alignItems: "center", paddingVertical: 80 }}>
             <Text style={{ fontSize: 48 }}>💬</Text>
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: COLORS.warmBrown,
-                marginTop: 16,
-              }}
+              style={[
+                TYPE.headline,
+                { fontWeight: "700", color: COLORS.warmBrown, marginTop: SPACING.lg },
+              ]}
             >
               No conversations yet
             </Text>
             <Text
-              style={{
-                fontSize: 14,
-                color: COLORS.mutedBrown,
-                marginTop: 8,
-                textAlign: "center",
-                paddingHorizontal: 40,
-              }}
+              style={[
+                TYPE.callout,
+                {
+                  color: COLORS.mutedBrown,
+                  marginTop: SPACING.sm,
+                  textAlign: "center",
+                  paddingHorizontal: SPACING.huge,
+                },
+              ]}
             >
               Search a pet parent above to start a chat, or message a business
               from its profile.
@@ -368,114 +360,128 @@ export default function MessagesScreen() {
                 ? "📷 Photo"
                 : "Say hi 👋";
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={it.key}
                 testID={it.kind === "people" ? "dm-thread" : "biz-thread"}
                 onPress={() => it.open(router)}
-                style={{
-                  marginHorizontal: 16,
-                  marginTop: 12,
-                  backgroundColor: COLORS.card,
-                  borderRadius: 20,
-                  padding: 16,
-                  flexDirection: "row",
-                  gap: 14,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: unread ? COLORS.coral : COLORS.peach,
-                }}
+                accessibilityRole="button"
+                style={{ marginHorizontal: SPACING.lg, marginTop: SPACING.md }}
               >
-                {it.avatar ? (
-                  <Image
-                    source={{ uri: it.avatar }}
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 28,
-                      borderWidth: 2,
-                      borderColor: COLORS.coral,
-                    }}
-                    transition={100}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 28,
-                      backgroundColor: COLORS.sand,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {it.kind === "businesses" ? (
-                      <Store size={24} color={COLORS.coral} />
-                    ) : (
-                      <User size={24} color={COLORS.coral} />
-                    )}
-                  </View>
-                )}
-
-                <View style={{ flex: 1 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      marginBottom: 4,
-                    }}
-                  >
-                    <Text
+                <Card
+                  level="sm"
+                  radius={RADIUS.card}
+                  borderColor={unread ? COLORS.coral : MATERIALS.hairline}
+                  style={{
+                    padding: SPACING.lg,
+                    flexDirection: "row",
+                    gap: SPACING.md,
+                    alignItems: "center",
+                  }}
+                >
+                  {it.avatar ? (
+                    <Image
+                      source={{ uri: it.avatar }}
                       style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: COLORS.warmBrown,
-                        flex: 1,
-                        marginRight: 8,
+                        width: 56,
+                        height: 56,
+                        borderRadius: 28,
+                        borderWidth: 2,
+                        borderColor: COLORS.coral,
                       }}
+                      transition={100}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 28,
+                        backgroundColor: COLORS.sand,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      {it.kind === "businesses" ? (
+                        <Store size={24} color={COLORS.coral} />
+                      ) : (
+                        <User size={24} color={COLORS.coral} />
+                      )}
+                    </View>
+                  )}
+
+                  <View style={{ flex: 1 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: SPACING.xs,
+                      }}
+                    >
+                      <Text
+                        style={[
+                          TYPE.headline,
+                          {
+                            fontWeight: "800",
+                            color: COLORS.warmBrown,
+                            flex: 1,
+                            marginRight: SPACING.sm,
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {it.name}
+                      </Text>
+                      <Text
+                        style={[
+                          TYPE.caption,
+                          {
+                            letterSpacing: 0,
+                            color: COLORS.mutedBrown,
+                            fontWeight: unread ? "700" : "400",
+                          },
+                        ]}
+                      >
+                        {formatMessageTime(it.at)}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        TYPE.callout,
+                        {
+                          color: unread ? COLORS.warmBrown : COLORS.mutedBrown,
+                          fontWeight: unread ? "700" : "400",
+                        },
+                      ]}
                       numberOfLines={1}
                     >
-                      {it.name}
+                      {preview}
                     </Text>
-                    <Text
+                  </View>
+
+                  {unread && (
+                    <View
                       style={{
-                        fontSize: 11,
-                        color: COLORS.mutedBrown,
-                        fontWeight: unread ? "700" : "400",
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        paddingHorizontal: SPACING.xs,
+                        backgroundColor: COLORS.coral,
+                        justifyContent: "center",
+                        alignItems: "center",
                       }}
                     >
-                      {formatMessageTime(it.at)}
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: unread ? COLORS.warmBrown : COLORS.mutedBrown,
-                      fontWeight: unread ? "700" : "400",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {preview}
-                  </Text>
-                </View>
-
-                {unread && (
-                  <View
-                    style={{
-                      minWidth: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      paddingHorizontal: 6,
-                      backgroundColor: COLORS.coral,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "800" }}>
-                      {it.unread}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                      <Text
+                        style={[
+                          TYPE.caption,
+                          { letterSpacing: 0, color: "#FFF", fontWeight: "800" },
+                        ]}
+                      >
+                        {it.unread}
+                      </Text>
+                    </View>
+                  )}
+                </Card>
+              </PressableScale>
             );
           })
         )}

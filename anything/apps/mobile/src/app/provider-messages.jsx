@@ -2,7 +2,6 @@ import React from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
@@ -10,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, MessageSquare } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useMyThreads } from "@/hooks/useProviders";
 
@@ -54,25 +55,28 @@ export default function ProviderMessagesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={{ marginRight: SPACING.md }}
+        >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           Messages
         </Text>
-      </View>
+      </GlassSurface>
 
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -89,22 +93,23 @@ export default function ProviderMessagesScreen() {
         >
           <MessageSquare size={40} color={COLORS.mutedBrown} />
           <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "800",
-              color: COLORS.warmBrown,
-              marginTop: 14,
-            }}
+            style={[
+              TYPE.headline,
+              { fontWeight: "800", color: COLORS.warmBrown, marginTop: SPACING.md },
+            ]}
           >
             No conversations yet
           </Text>
           <Text
-            style={{
-              fontSize: 13,
-              color: COLORS.mutedBrown,
-              marginTop: 8,
-              textAlign: "center",
-            }}
+            style={[
+              TYPE.subhead,
+              {
+                fontWeight: "500",
+                color: COLORS.mutedBrown,
+                marginTop: SPACING.sm,
+                textAlign: "center",
+              },
+            ]}
           >
             Message a vet or service provider from their profile to start a
             conversation.
@@ -116,20 +121,22 @@ export default function ProviderMessagesScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
         >
           {list.map((thread) => (
-            <TouchableOpacity
+            <PressableScale
               key={thread.id}
               onPress={() => openThread(thread)}
-              style={{
-                backgroundColor: COLORS.card,
-                borderRadius: 18,
-                padding: 14,
-                marginBottom: 12,
-                flexDirection: "row",
-                gap: 12,
-                borderWidth: 1,
-                borderColor: thread.unread_count > 0 ? COLORS.coral : COLORS.peach,
-              }}
+              accessibilityRole="button"
+              style={{ marginBottom: SPACING.md }}
             >
+              <Card
+                level="sm"
+                radius={RADIUS.card}
+                borderColor={thread.unread_count > 0 ? COLORS.coral : MATERIALS.hairline}
+                style={{
+                  padding: SPACING.md,
+                  flexDirection: "row",
+                  gap: SPACING.md,
+                }}
+              >
               {thread.provider_logo_url ? (
                 <Image
                   source={{ uri: thread.provider_logo_url }}
@@ -158,12 +165,20 @@ export default function ProviderMessagesScreen() {
                   }}
                 >
                   <Text
-                    style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }}
+                    style={[
+                      TYPE.body,
+                      { fontWeight: "800", color: COLORS.warmBrown, flex: 1 },
+                    ]}
                     numberOfLines={1}
                   >
                     {thread.provider_name || "Provider"}
                   </Text>
-                  <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
+                  <Text
+                    style={[
+                      TYPE.caption,
+                      { letterSpacing: 0, fontWeight: "500", color: COLORS.mutedBrown },
+                    ]}
+                  >
                     {formatTime(thread.last_message_at)}
                   </Text>
                 </View>
@@ -172,16 +187,18 @@ export default function ProviderMessagesScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginTop: 4,
+                    marginTop: SPACING.xs,
                   }}
                 >
                   <Text
-                    style={{
-                      fontSize: 13,
-                      color: thread.unread_count > 0 ? COLORS.warmBrown : COLORS.mutedBrown,
-                      fontWeight: thread.unread_count > 0 ? "700" : "400",
-                      flex: 1,
-                    }}
+                    style={[
+                      TYPE.subhead,
+                      {
+                        color: thread.unread_count > 0 ? COLORS.warmBrown : COLORS.mutedBrown,
+                        fontWeight: thread.unread_count > 0 ? "700" : "400",
+                        flex: 1,
+                      },
+                    ]}
                     numberOfLines={1}
                   >
                     {thread.last_message_body ||
@@ -193,19 +210,25 @@ export default function ProviderMessagesScreen() {
                         backgroundColor: COLORS.coral,
                         borderRadius: 10,
                         minWidth: 20,
-                        paddingHorizontal: 6,
+                        paddingHorizontal: SPACING.xs,
                         paddingVertical: 2,
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "800" }}>
+                      <Text
+                        style={[
+                          TYPE.caption,
+                          { letterSpacing: 0, color: "#FFF", fontWeight: "800" },
+                        ]}
+                      >
                         {thread.unread_count}
                       </Text>
                     </View>
                   )}
                 </View>
               </View>
-            </TouchableOpacity>
+              </Card>
+            </PressableScale>
           ))}
         </RefreshableScrollView>
       )}

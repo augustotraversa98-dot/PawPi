@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft, Send, ImageIcon, User } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { PressableScale, GlassSurface } from "@/components/ui";
 import * as ImagePicker from "expo-image-picker";
 import { useDMMessages, useSendDM, useMarkDMRead } from "@/hooks/useDMs";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
@@ -87,22 +88,21 @@ export default function ChatScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top + 6,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
-          gap: 12,
+          gap: SPACING.md,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <PressableScale onPress={() => router.back()} accessibilityRole="button">
           <ChevronLeft size={24} color={COLORS.coral} />
-        </TouchableOpacity>
+        </PressableScale>
         {otherAvatar ? (
           <Image
             source={{ uri: otherAvatar }}
@@ -130,7 +130,7 @@ export default function ChatScreen() {
           </View>
         )}
         <Text
-          style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }}
+          style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown, flex: 1 }]}
           numberOfLines={1}
         >
           {otherName}
@@ -140,7 +140,7 @@ export default function ChatScreen() {
           authorUserId={otherUserId ? Number(otherUserId) : null}
           onBlocked={() => router.back()}
         />
-      </View>
+      </GlassSurface>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -159,7 +159,7 @@ export default function ChatScreen() {
             </View>
           ) : messages.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 40 }}>
-              <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+              <Text style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown }]}>
                 Say hello to start the conversation.
               </Text>
             </View>
@@ -171,15 +171,19 @@ export default function ChatScreen() {
                 !prev ||
                 new Date(m.created_at) - new Date(prev.created_at) > 5 * 60 * 1000;
               return (
-                <View key={m.id} style={{ marginBottom: 12 }}>
+                <View key={m.id} style={{ marginBottom: SPACING.md }}>
                   {showTime && (
                     <Text
-                      style={{
-                        textAlign: "center",
-                        fontSize: 11,
-                        color: COLORS.mutedBrown,
-                        marginBottom: 12,
-                      }}
+                      style={[
+                        TYPE.caption,
+                        {
+                          letterSpacing: 0,
+                          fontWeight: "500",
+                          textAlign: "center",
+                          color: COLORS.mutedBrown,
+                          marginBottom: SPACING.md,
+                        },
+                      ]}
                     >
                       {formatTime(m.created_at)}
                     </Text>
@@ -195,10 +199,10 @@ export default function ChatScreen() {
                         style={{
                           maxWidth: "70%",
                           backgroundColor: isMine ? COLORS.coral : COLORS.card,
-                          borderRadius: 18,
+                          borderRadius: RADIUS.card,
                           overflow: "hidden",
                           borderWidth: 1,
-                          borderColor: isMine ? COLORS.coral : COLORS.peach,
+                          borderColor: isMine ? COLORS.coral : MATERIALS.hairline,
                         }}
                       >
                         <Image
@@ -213,18 +217,17 @@ export default function ChatScreen() {
                         style={{
                           maxWidth: "70%",
                           backgroundColor: isMine ? COLORS.coral : COLORS.card,
-                          borderRadius: 18,
-                          padding: 14,
+                          borderRadius: RADIUS.card,
+                          padding: SPACING.md,
                           borderWidth: 1,
-                          borderColor: isMine ? COLORS.coral : COLORS.peach,
+                          borderColor: isMine ? COLORS.coral : MATERIALS.hairline,
                         }}
                       >
                         <Text
-                          style={{
-                            fontSize: 15,
-                            color: isMine ? "#FFF" : COLORS.warmBrown,
-                            lineHeight: 21,
-                          }}
+                          style={[
+                            TYPE.body,
+                            { color: isMine ? "#FFF" : COLORS.warmBrown, lineHeight: 21 },
+                          ]}
                         >
                           {m.body}
                         </Text>
@@ -237,31 +240,31 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            paddingBottom: insets.bottom + 12,
-            backgroundColor: COLORS.card,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.peach,
+        <GlassSurface
+          intensity={BLUR.thick}
+          style={{ borderTopWidth: 1, borderColor: MATERIALS.glassBorder }}
+          contentStyle={{
+            paddingHorizontal: SPACING.lg,
+            paddingVertical: SPACING.md,
+            paddingBottom: insets.bottom + SPACING.md,
             flexDirection: "row",
             alignItems: "center",
-            gap: 10,
+            gap: SPACING.sm,
           }}
         >
-          <TouchableOpacity
+          <PressableScale
             onPress={handleImagePick}
             disabled={uploading}
+            accessibilityRole="button"
             style={{
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: COLORS.sand,
+              backgroundColor: MATERIALS.surfaceSunken,
               justifyContent: "center",
               alignItems: "center",
               borderWidth: 1,
-              borderColor: COLORS.peach,
+              borderColor: MATERIALS.hairline,
             }}
           >
             {uploading ? (
@@ -269,21 +272,23 @@ export default function ChatScreen() {
             ) : (
               <ImageIcon size={18} color={COLORS.coral} />
             )}
-          </TouchableOpacity>
+          </PressableScale>
 
           <TextInput
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.sand,
-              borderRadius: 22,
-              paddingHorizontal: 16,
-              paddingVertical: 11,
-              fontSize: 15,
-              color: COLORS.warmBrown,
-              borderWidth: 1.5,
-              borderColor: COLORS.peach,
-              maxHeight: 90,
-            }}
+            style={[
+              TYPE.body,
+              {
+                flex: 1,
+                backgroundColor: MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.lg,
+                paddingVertical: 11,
+                color: COLORS.warmBrown,
+                borderWidth: 1.5,
+                borderColor: MATERIALS.hairline,
+                maxHeight: 90,
+              },
+            ]}
             placeholder="Send a message…"
             placeholderTextColor={COLORS.mutedBrown}
             value={text}
@@ -294,9 +299,10 @@ export default function ChatScreen() {
             blurOnSubmit={false}
           />
 
-          <TouchableOpacity
+          <PressableScale
             onPress={handleSend}
             disabled={!text.trim() || send.isPending}
+            accessibilityRole="button"
             style={{
               width: 40,
               height: 40,
@@ -307,8 +313,8 @@ export default function ChatScreen() {
             }}
           >
             <Send size={18} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </GlassSurface>
       </KeyboardAvoidingView>
     </View>
   );
