@@ -2,20 +2,30 @@ import React from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Modal,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
 import { X } from "lucide-react-native";
 import KeyboardAwareScrollView from "./KeyboardAwareScrollView";
+import { PressableScale } from "./ui";
+import {
+  COLORS,
+  MATERIALS,
+  RADIUS,
+  SPACING,
+  TYPE,
+  ELEVATION,
+} from "@/constants/theme";
 
+// Restyled to the 2.77 design tokens (was a local hex map). Same palette family,
+// now centralized + lighter chrome.
 const C = {
-  cream: "#FAF7F0",
-  warmBrown: "#4A3829",
-  mutedBrown: "#8B7355",
-  peach: "#FFE4D6",
-  sand: "#F5EFE7",
+  cream: MATERIALS.surfaceAlt,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
+  peach: MATERIALS.hairline,
+  sand: COLORS.sand,
 };
 
 /**
@@ -83,36 +93,31 @@ export default function KeyboardSafeFormModal({
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "800",
-                  color: C.warmBrown,
-                  marginBottom: 4,
-                }}
-              >
+              <Text style={[TYPE.title2, { color: C.warmBrown, marginBottom: 4 }]}>
                 {icon ? `${icon} ` : ""}
                 {title}
               </Text>
               {subtitle && (
-                <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                <Text style={[TYPE.callout, { color: C.mutedBrown }]}>
                   {subtitle}
                 </Text>
               )}
             </View>
-            <TouchableOpacity
+            <PressableScale
               onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 18,
+                borderRadius: RADIUS.chip,
                 backgroundColor: C.sand,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <X size={20} color={C.warmBrown} />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           {/* Scrollable Form Content */}
@@ -133,21 +138,24 @@ export default function KeyboardSafeFormModal({
               backgroundColor,
             }}
           >
-            <TouchableOpacity
+            <PressableScale
               onPress={onCtaPress}
               disabled={ctaDisabled}
+              accessibilityRole="button"
               style={{
                 backgroundColor: ctaColor,
-                borderRadius: 14,
-                paddingVertical: 16,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.lg,
                 alignItems: "center",
                 opacity: ctaDisabled ? 0.6 : 1,
+                shadowColor: ctaColor,
+                ...(ctaDisabled ? ELEVATION.none : ELEVATION.sm),
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+              <Text style={[TYPE.headline, { color: "#FFF" }]}>
                 {ctaLabel}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
       </KeyboardAvoidingView>
