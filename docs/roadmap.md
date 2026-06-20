@@ -209,7 +209,8 @@ Build per the ⚡ Wave 5 autonomy preamble. Status mirror (☐ queued · 🔨 bu
   + an external scheduler to post the feed.
 
 Migrations **0056–0061 (+ 0062 account-deletion) are APPLIED + VERIFIED on Supabase 2026-06-19** — all 30
-checks PASS via `supabase/verify_0056_0062.sql`; the live DB is at **0062**, none pending. 2.69/2.71/2.72/2.75
+checks PASS via `supabase/verify_0056_0062.sql`. (Wave 8/9 migrations **0063 + 0064** were applied next, on
+2026-06-20 — see below; the live DB is now at **0064**, none pending.) 2.69/2.71/2.72/2.75
 were parallel-safe; the map-dependent trio (2.70/2.73/2.74) rode on 2.68.
 
 ### ✅ 2.78 — App Store readiness pass (final step of the autonomous run; PRs #197–#199)
@@ -241,9 +242,9 @@ per the ⚡ Wave 5 autonomy preamble. Foundation-first (mirrors 2.68). Status mi
   `event_rsvps.calendar_event_id`); added `GET /api/calendar/event/[id].ics`. One additive column, no RLS
   policy change (rides existing own-row policies); degrade-clean when calendar permission is denied.
 
-Migration **0063** (`event_rsvps.calendar_event_id`) is left in `supabase/migrations/` at the next free
-number, harness-proven, **PENDING hand-apply** — flagged in [`docs/test-backlog.md`](test-backlog.md)
-ACTION 1. 2.79 added none. Last applied on Supabase = 0062.
+Migration **0063** (`event_rsvps.calendar_event_id`) is **APPLIED + VERIFIED on Supabase 2026-06-20**
+(all 6 checks PASS via `supabase/verify_0063.sql`) — see [`docs/test-backlog.md`](test-backlog.md)
+ACTION 1. 2.79 added none.
 
 ---
 
@@ -272,7 +273,8 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   DEFINER `app_sync_calendar_feed` writes it). Pure ICS parser; feed CRUD + "Refresh now" +
   CRON_SECRET sync endpoint; availability subtracts imported busy and the book route 409s on overlap
   (via `app_provider_busy_windows`). Web dashboard `/provider/calendar-import`. Provider mgmt is
-  web-primary, so no separate mobile screen. Migration 0064 PENDING hand-apply.
+  web-primary, so no separate mobile screen. Migration 0064 **APPLIED + VERIFIED on Supabase 2026-06-20**
+  (all 16 checks PASS via `supabase/verify_0064.sql`).
 - ✅ **2.85** Adoption listing image + video upload — provider editor, no migration. Create form +
   per-listing "Media" editor wire real uploads to `photo_urls[]` (reuses `ImageUploader`: reorder/
   remove, first = cover) + `video_url` (new `VideoUploader`) via the existing Storage path; cover
