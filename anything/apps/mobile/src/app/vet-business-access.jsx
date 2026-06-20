@@ -12,8 +12,14 @@ import { useRouter } from "expo-router";
 import { X, Building2, Check, ExternalLink } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import LocationField from "@/components/Map/LocationField";
 import { useAuth } from "@/utils/auth/useAuth";
-import { useMyProviders, useCreateProvider } from "@/hooks/useProviders";
+import {
+  useMyProviders,
+  useCreateProvider,
+  useCreateProviderLocation,
+} from "@/hooks/useProviders";
+import { isValidCoord } from "@/utils/walkBuddies";
 
 // The capabilities (services) a business can offer. A provider has MANY capabilities
 // (the CORE MODEL — see docs/phase2-tickets/00-README.md), so onboarding is MULTI-select:
@@ -119,10 +125,15 @@ function SignedOutGate({ signIn, signUp }) {
 function ProviderOnboarding() {
   const { data: myProviders = [], isLoading } = useMyProviders();
   const createProvider = useCreateProvider();
+  const createLocation = useCreateProviderLocation();
 
   const [name, setName] = useState("");
   const [selectedCapabilities, setSelectedCapabilities] = useState([]);
   const [bio, setBio] = useState("");
+  // Business location (ticket 2.81) — the shared map pin keeps address + lat/lng in sync. Optional:
+  // a manual address still saves when location permission is denied (LocationField's "My location"
+  // is the only thing that needs GPS; tap-to-drop + the address line work without it).
+  const [location, setLocation] = useState(null); // { lat, lng, address } | null
   // Optional public links (ticket 2.20) — onboarding stays fast; all optional.
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -204,6 +215,25 @@ function ProviderOnboarding() {
         facebook_url: facebookUrl.trim() || undefined,
         google_maps_url: googleMapsUrl.trim() || undefined,
       });
+
+      // Persist the map pin (ticket 2.81) as the provider's primary location, if set. Best-effort:
+      // the business is already created, so a location write failure must not block the success
+      // state — nearest-first adoption (2.86) just won't have coords for this provider until edited.
+      const hasCoord = location && isValidCoord(location.lat, location.lng);
+      if (provider?.id && (hasCoord || location?.address)) {
+        try {
+          await createLocation.mutateAsync({
+            providerId: provider.id,
+            name: trimmedName,
+            address: location?.address || undefined,
+            lat: hasCoord ? location.lat : undefined,
+            lng: hasCoord ? location.lng : undefined,
+          });
+        } catch {
+          // swallow — the provider still exists; the owner can add the location on the dashboard.
+        }
+      }
+
       setCreatedProvider(provider);
     } catch (err) {
       setErrorMessage(err?.message || "Something went wrong. Please try again.");
@@ -293,6 +323,16 @@ function ProviderOnboarding() {
         placeholderTextColor={COLORS.mutedBrown}
         multiline
         style={[inputStyle, { minHeight: 96, textAlignVertical: "top" }]}
+      />
+
+      {/* Business location (ticket 2.81) — shared map pin; address + lat/lng stay in sync.
+          Optional, and degrades cleanly: a typed address still saves when GPS is denied. */}
+      <View style={{ height: 24 }} />
+      <LocationField
+        testID="business-location"
+        label="Business location"
+        value={location}
+        onChange={setLocation}
       />
 
       {/* Public links (optional, ticket 2.20) — owners can add or edit these later. */}

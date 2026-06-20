@@ -12,6 +12,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 let mockProviders;
 const mockCreate = jest.fn();
+const mockCreateLocation = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
@@ -37,14 +38,37 @@ jest.mock("@/utils/auth/useAuth", () => ({
 jest.mock("@/hooks/useProviders", () => ({
   useMyProviders: () => mockProviders,
   useCreateProvider: () => ({ mutateAsync: mockCreate, isPending: false }),
+  useCreateProviderLocation: () => ({
+    mutateAsync: mockCreateLocation,
+    isPending: false,
+  }),
 }));
+// The shared map pin (ticket 2.81) is stubbed to a button that drops a fixed coord, so this
+// test stays focused on the onboarding flow + the location POST (no react-native-maps/expo-location).
+jest.mock("@/components/Map/LocationField", () => {
+  const { Text, TouchableOpacity } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ onChange }) => (
+      <TouchableOpacity
+        onPress={() =>
+          onChange({ lat: 40.7128, lng: -74.006, address: "123 Bark St" })
+        }
+      >
+        <Text>Drop pin</Text>
+      </TouchableOpacity>
+    ),
+  };
+});
 
 import VetBusinessAccessScreen from "./vet-business-access";
 
 beforeEach(() => {
   mockProviders = { data: [], isLoading: false };
   mockCreate.mockReset();
-  mockCreate.mockResolvedValue({ name: "Happy Paws" });
+  mockCreate.mockResolvedValue({ id: 7, name: "Happy Paws" });
+  mockCreateLocation.mockReset();
+  mockCreateLocation.mockResolvedValue({ id: 1 });
 });
 
 function fillName(screen) {
@@ -107,6 +131,45 @@ test("optional links submit through useCreateProvider (ticket 2.20)", async () =
       google_maps_url: "https://maps.example/hp",
     }),
   );
+});
+
+test("a dropped map pin persists as the provider's primary location (ticket 2.81)", async () => {
+  const screen = render(<VetBusinessAccessScreen />);
+  fillName(screen);
+  fireEvent.press(screen.getByText("Veterinary clinic"));
+  fireEvent.press(screen.getByText("Drop pin"));
+  fireEvent.press(screen.getByText("Create business"));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockCreateLocation).toHaveBeenCalledTimes(1));
+  expect(mockCreateLocation).toHaveBeenCalledWith({
+    providerId: 7,
+    name: "Happy Paws",
+    address: "123 Bark St",
+    lat: 40.7128,
+    lng: -74.006,
+  });
+});
+
+test("no location is posted when no pin/address was set", async () => {
+  const screen = render(<VetBusinessAccessScreen />);
+  fillName(screen);
+  fireEvent.press(screen.getByText("Veterinary clinic"));
+  fireEvent.press(screen.getByText("Create business"));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  expect(mockCreateLocation).not.toHaveBeenCalled();
+});
+
+test("a failed location write still shows the created-business success state (degrades clean)", async () => {
+  mockCreateLocation.mockRejectedValueOnce(new Error("boom"));
+  const screen = render(<VetBusinessAccessScreen />);
+  fillName(screen);
+  fireEvent.press(screen.getByText("Veterinary clinic"));
+  fireEvent.press(screen.getByText("Drop pin"));
+  fireEvent.press(screen.getByText("Create business"));
+
+  expect(await screen.findByText("Your business is created!")).toBeTruthy();
 });
 
 test("tapping a selected service again de-selects it", () => {

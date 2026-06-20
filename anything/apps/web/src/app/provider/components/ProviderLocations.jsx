@@ -19,6 +19,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { WEEKDAYS, hoursToRows, rowsToHours, hoursSummary } from "../lib/hours";
+import LocationMapPicker, { mapsConfigured } from "./LocationMapPicker";
 
 // Locations management (c2b). Lists the provider's locations with add / edit /
 // delete. NOTE the asymmetry vs services: a location DELETE is a HARD delete (the
@@ -222,11 +223,22 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: { name: "", address: "", phone: "", lat: "", lng: "" },
   });
   const [hourRows, setHourRows] = useState(() => hoursToRows(null));
+
+  // The pin (map) and the lat/lng inputs share state: watch the inputs to position the pin, and
+  // write a clicked/dragged pin back into the inputs via setValue — so both always stay in sync.
+  const watchedLat = Number(watch("lat"));
+  const watchedLng = Number(watch("lng"));
+  const onPick = ({ lat, lng }) => {
+    setValue("lat", String(lat), { shouldDirty: true });
+    setValue("lng", String(lng), { shouldDirty: true });
+  };
 
   useEffect(() => {
     reset({
@@ -321,6 +333,28 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
               className={inputCls}
             />
           </Field>
+
+          <div>
+            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
+              <MapPin className="h-4 w-4 text-[#B8A99D]" />
+              Pin on map
+              <span className="text-xs font-normal text-[#B8A99D]">
+                {mapsConfigured()
+                  ? "Click or drag to set the exact spot"
+                  : "Optional"}
+              </span>
+            </p>
+            <LocationMapPicker
+              lat={watchedLat}
+              lng={watchedLng}
+              onPick={onPick}
+            />
+            {mapsConfigured() && (
+              <p className="mb-3 mt-1.5 text-xs text-[#B8A99D]">
+                The pin keeps the coordinates below in sync.
+              </p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Latitude" hint="Optional" error={errors.lat?.message}>
