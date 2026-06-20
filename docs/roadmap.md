@@ -273,7 +273,10 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   CRON_SECRET sync endpoint; availability subtracts imported busy and the book route 409s on overlap
   (via `app_provider_busy_windows`). Web dashboard `/provider/calendar-import`. Provider mgmt is
   web-primary, so no separate mobile screen. Migration 0064 PENDING hand-apply.
-- ☐ **2.85** Adoption listing image + video upload — provider editor, no migration.
+- ✅ **2.85** Adoption listing image + video upload — provider editor, no migration. Create form +
+  per-listing "Media" editor wire real uploads to `photo_urls[]` (reuses `ImageUploader`: reorder/
+  remove, first = cover) + `video_url` (new `VideoUploader`) via the existing Storage path; cover
+  thumbnail + "N photos · video" in the list. Reuses 0038 columns + RLS — no migration.
 - ☐ **2.86** Adoption browse: gallery, nearest-first, filters — mobile + web, no migration. ⛔ after 2.85.
 - ☐ **2.87** Adoption detail page — mobile, no migration. ⛔ after 2.85.
 
