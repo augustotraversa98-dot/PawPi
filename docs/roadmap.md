@@ -263,7 +263,12 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   writes nothing) + a confirm-first `DocumentCatalogImport` panel that applies rows via the existing
   services/shop-products CRUD. Adds `xlsx` (lazy-loaded).
 - ☐ **2.83** Mobile "magic onboarding" wizard — mobile, no migration. ⛔ after 2.81 + 2.82.
-- ☐ **2.84** Business calendar import (ICS feed → busy blocks) — web + mobile, migration **0064**.
+- ✅ **2.84** Business calendar import (ICS feed → busy blocks) — web, migration **0064**.
+  `provider_calendar_feeds` + `provider_calendar_busy` (owner/staff RLS; busy is read-only — only the
+  DEFINER `app_sync_calendar_feed` writes it). Pure ICS parser; feed CRUD + "Refresh now" +
+  CRON_SECRET sync endpoint; availability subtracts imported busy and the book route 409s on overlap
+  (via `app_provider_busy_windows`). Web dashboard `/provider/calendar-import`. Provider mgmt is
+  web-primary, so no separate mobile screen. Migration 0064 PENDING hand-apply.
 - ☐ **2.85** Adoption listing image + video upload — provider editor, no migration.
 - ☐ **2.86** Adoption browse: gallery, nearest-first, filters — mobile + web, no migration. ⛔ after 2.85.
 - ☐ **2.87** Adoption detail page — mobile, no migration. ⛔ after 2.85.

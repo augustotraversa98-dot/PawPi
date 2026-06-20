@@ -206,6 +206,26 @@ async function POST(request, { params }) {
       }
     }
 
+    // IMPORTED CALENDAR busy (ticket 2.84). When a concrete slot is given, reject if it overlaps a
+    // block synced from the provider's external calendar (Google/Outlook/Apple). Provider-wide
+    // (no staff filter) — the busy rows are owner/staff RLS-scoped, so the booking owner reads them
+    // via the DEFINER app_provider_busy_windows. Runs whenever start_at/end_at are supplied.
+    if (
+      start_at !== undefined && start_at !== null &&
+      end_at !== undefined && end_at !== null &&
+      start_at < end_at
+    ) {
+      const busy = await sql`
+        SELECT 1 FROM app_provider_busy_windows(${providerId}, ${start_at}, ${end_at}) LIMIT 1
+      `;
+      if (busy.length > 0) {
+        return Response.json(
+          { error: "That time is blocked on the provider's calendar" },
+          { status: 409 },
+        );
+      }
+    }
+
     // If a deposit order is linked it must be the owner's OWN order for THIS provider
     // (a booking deposit from 2.3). Only checked when given.
     if (order_id !== undefined && order_id !== null) {

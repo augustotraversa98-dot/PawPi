@@ -126,7 +126,7 @@ async function GET(request, { params }) {
       end: t.end ? new Date(t.end).toISOString() : new Date(t.start).toISOString(),
     }));
 
-    // 2-way sync (inbound) — external busy windows to also subtract. Stub returns [].
+    // 2-way sync (inbound, live API) — external busy windows to also subtract. Stub returns [].
     let externalBusy = [];
     try {
       externalBusy = await getCalendarSync().pullBusy({
@@ -142,6 +142,26 @@ async function GET(request, { params }) {
       );
     }
 
+    // IMPORTED ICS busy blocks (ticket 2.84) — the provider's synced Google/Outlook/Apple feeds.
+    // Busy rows are owner/staff RLS-scoped, so the PUBLIC availability read goes through the DEFINER
+    // app_provider_busy_windows (exposes only free/busy ranges for the viewed provider). Non-fatal.
+    let importedBusy = [];
+    try {
+      const busyRows = await sql`
+        SELECT starts_at AS start, ends_at AS end
+        FROM app_provider_busy_windows(${providerId}, ${from}, ${rangeEnd})
+      `;
+      importedBusy = busyRows.map((r) => ({
+        start: new Date(r.start).toISOString(),
+        end: new Date(r.end).toISOString(),
+      }));
+    } catch (busyErr) {
+      console.error(
+        "[GET /api/providers/[id]/availability] imported busy (non-fatal):",
+        busyErr.message,
+      );
+    }
+
     // Walk each date in the (capped) range, generate slots, subtract taken + busy.
     const days = [];
     let cursor = from;
@@ -149,7 +169,7 @@ async function GET(request, { params }) {
     while (cursor <= to && guard < MAX_RANGE_DAYS) {
       const open = subtractTaken(
         generateSlotsForDate(cursor, windows),
-        [...takenSlots, ...externalBusy],
+        [...takenSlots, ...externalBusy, ...importedBusy],
       );
       days.push({ date: cursor, slots: open });
       cursor = addDays(cursor, 1);
