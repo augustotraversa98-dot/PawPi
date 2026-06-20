@@ -144,11 +144,39 @@ phase and is deliberately NOT included in any UGC PR.)
 - **DB changes:** none.
 - **Tests:** +5 jest (ModerationMenu). Suite: **mobile 1101 → 1106** ✓ · web unit 1239 ✓ (unchanged) ·
   integration 626 ✓ (unchanged — no web/SQL touched).
-- **CI result:** _pending push_
-- **Merge status:** _pending_
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #231, commit `33525fa`**, branch deleted.
 - **Device tests needed (T4) — DEVICE PASS REQUIRED:** walk each of the 9 surfaces with a 2nd account →
   Report (pick a reason) shows the success toast; Block shows the confirm → on success the user's content
   is gone on next fetch (relies on T3); your own post still shows Delete (not Report). Verify the sheet
   dismisses cleanly (tap-outside + Android back).
+
+---
+
+## T5 — EULA acceptance gate + zero-tolerance Terms
+
+- **Built:** a required, unchecked-by-default Terms/Privacy acceptance checkbox on BOTH account-creation
+  entry points, plus a zero-tolerance clause in the Terms.
+  - **Web signup** (`account/signup/page.jsx`): a required checkbox — *"I agree to the Terms of Service
+    and Privacy Policy … including PawPi's zero-tolerance policy"* with live links (env URLs, degrade to
+    plain text until set) — that disables **Create account** until checked (and a submit-time guard).
+  - **Mobile welcome** (`welcome.jsx`): the same required checkbox gates the **Create account** button
+    (alerts + refuses to open signup until checked); replaced the old passive "By continuing…" footer.
+  - **Terms** (`docs/legal/terms-of-service.md` §5): a "Zero-tolerance for objectionable content and
+    abusive users" section — defines objectionable content, the in-app Report/Block tools, **24-hour**
+    review/removal, **account ejection** for abusers, and the submission content filter.
+- **DB changes:** none (skipped the optional `terms_accepted_at` audit column — Deferred list).
+- **Decision (logged):** the EULA gate lives on the two account-creation surfaces (web signup rendered
+  in the mobile WebView + the Expo `welcome` entry). `onboarding.jsx` is the post-account pet-setup flow,
+  not an account-creation path, so it needs no separate gate.
+- **Files:** `account/signup/page.jsx` (+ test, 4 cases), `src/constants/legal.js` (web, new),
+  `welcome.jsx` (+ test, 2 cases), `docs/legal/terms-of-service.md`.
+- **Tests:** +4 web vitest, +2 mobile jest. Suite: **mobile 1106 → 1108** ✓ · **web unit 1239 → 1243** ✓
+  (1236 on CI) · integration 626 ✓ (unchanged).
+- **CI result:** _pending push_
+- **Merge status:** _pending_
+- **Device tests needed (T5):** web signup — Create account stays disabled until the box is checked;
+  device — the welcome Create-account flow refuses until the box is checked; the Terms/Privacy links open
+  once the URLs are set (T6).
 
 ---

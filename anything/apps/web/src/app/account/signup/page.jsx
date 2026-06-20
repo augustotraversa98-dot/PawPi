@@ -6,12 +6,30 @@ import {
   PASSWORD_MIN_LENGTH,
 } from "@/app/api/utils/passwordStrength";
 import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
+import { TERMS_OF_SERVICE_URL, PRIVACY_POLICY_URL } from "@/constants/legal";
 
 const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
+
+// A legal link that opens the hosted doc in a new tab when configured, else renders as plain
+// bold text (Guideline 1.2 — the checkbox still gates submit even before the URLs are published).
+function LegalLink({ href, children }) {
+  if (!href) return <span className="font-semibold text-[#3B241B]">{children}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-semibold text-[#FF6F61] hover:underline"
+    >
+      {children}
+    </a>
+  );
+}
 
 export default function SignUpPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,7 +47,8 @@ export default function SignUpPage() {
     formData.name.trim().length > 0 &&
     formData.email.trim().length > 0 &&
     passwordValid &&
-    formData.password === formData.confirmPassword;
+    formData.password === formData.confirmPassword &&
+    agreedToTerms;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +70,12 @@ export default function SignUpPage() {
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy to continue");
       setLoading(false);
       return;
     }
@@ -231,6 +256,24 @@ export default function SignUpPage() {
               {error}
             </div>
           )}
+
+          {/* Terms acceptance gate (Guideline 1.2) — required, unchecked by default. */}
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-[#7A6254]">
+            <input
+              type="checkbox"
+              name="agreeToTerms"
+              aria-label="I agree to the Terms of Service and Privacy Policy"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[#FF6F61]"
+            />
+            <span>
+              I agree to the{" "}
+              <LegalLink href={TERMS_OF_SERVICE_URL}>Terms of Service</LegalLink> and{" "}
+              <LegalLink href={PRIVACY_POLICY_URL}>Privacy Policy</LegalLink>, including PawPi's
+              zero-tolerance policy for objectionable content and abusive behavior.
+            </span>
+          </label>
 
           {/* Submit Button */}
           <button

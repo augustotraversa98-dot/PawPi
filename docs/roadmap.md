@@ -314,10 +314,11 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
 - ✅ **T3** Enforcement in read paths — merged (#230). `hidden_at IS NULL` + block filtering across
   feed/forum/DM/search/walks/reviews/events/lost-reports/pet-profile; blocked-pair interaction 403.
   Shared `utils/moderation.js`; real-handler-as-pawpi_app integration proof.
-- 🔨 **T4** Report/Block UI actions (mobile) — shared `<ModerationMenu>` + `useModeration` into 9 UGC
-  surfaces (feed post/bark, forum thread/comment, DM header, pet profile, provider review, adoption
-  listing, event, walk). DEVICE PASS required.
-- ☐ **T5** EULA acceptance gate (web + mobile signup) + zero-tolerance Terms clause.
+- ✅ **T4** Report/Block UI actions (mobile) — merged (#231). Shared `<ModerationMenu>` + `useModeration`
+  into 9 UGC surfaces (feed post/bark, forum thread/comment, DM header, pet profile, provider review,
+  adoption listing, event, walk). DEVICE PASS required.
+- 🔨 **T5** EULA acceptance gate (web signup + mobile welcome, required unchecked checkbox) +
+  zero-tolerance Terms clause (24h review, content removal, account ejection).
 - ☐ **T6** Contact info wiring (Contact Us mailto / Help Center) + hosted legal URLs.
 - ☐ **T7** Text content filter on submit (shared `moderateText` at the UGC write chokepoints).
 
