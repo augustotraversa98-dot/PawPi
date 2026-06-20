@@ -23,6 +23,14 @@ jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: () => Promise.resolve({ status: mockLocationStatus }),
   getCurrentPositionAsync: () => Promise.resolve({ coords: { latitude: 40.7, longitude: -74 } }),
 }));
+jest.mock("expo-av", () => {
+  const { View } = require("react-native");
+  return { Video: (props) => <View testID={props.testID} />, ResizeMode: { CONTAIN: "contain" } };
+});
+jest.mock("@/components/Map/MapLocationView", () => {
+  const { View } = require("react-native");
+  return { __esModule: true, default: (props) => <View testID={props.testID} /> };
+});
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -177,4 +185,39 @@ test("the filter sheet opens and applying a gender filter narrows the query", as
   fireEvent.press(getByTestId("filters-apply"));
   // Filter chip count reflects the applied filter.
   expect(getByText("Filters (1)")).toBeTruthy();
+});
+
+// ── Ticket 2.87 — rich detail page (gallery + facts + shelter map) ──
+test("detail shows a swipeable gallery (photos + video) and the shelter map", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = {
+    ...REX,
+    photo_urls: ["https://x/1.jpg", "https://x/2.jpg"],
+    video_url: "https://x/clip.mp4",
+    provider_name: "Happy Tails",
+    provider_lat: 40.71,
+    provider_lng: -74.0,
+    provider_address: "1 Bark St",
+  };
+  const { findByTestId, getByText } = render(<AdoptionScreen />);
+  expect(await findByTestId("gallery-photo-0")).toBeTruthy();
+  expect(await findByTestId("gallery-photo-1")).toBeTruthy();
+  expect(await findByTestId("gallery-video")).toBeTruthy();
+  expect(getByText("Happy Tails")).toBeTruthy();
+  expect(await findByTestId("shelter-map")).toBeTruthy();
+});
+
+test("detail omits unknown facts and the map when the shelter has no coords", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = {
+    id: 5,
+    name: "Rex",
+    photo_urls: [],
+    adoption_fee_cents: 0,
+    provider_name: "No-Geo Shelter",
+    // no coords, no breed/size/vaccination → those facts are omitted
+  };
+  const { findByText, queryByTestId } = render(<AdoptionScreen />);
+  await findByText("Apply to adopt");
+  expect(queryByTestId("shelter-map")).toBeNull(); // no coords → no map (no fake location)
 });

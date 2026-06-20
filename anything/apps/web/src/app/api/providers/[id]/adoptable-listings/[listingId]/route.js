@@ -49,9 +49,18 @@ async function GET(request, { params }) {
         al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
         al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.featured_until,
         al.created_at, al.updated_at,
-        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url
+        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+        loc.lat AS provider_lat, loc.lng AS provider_lng,
+        loc.address AS provider_address, loc.name AS provider_location_name
       FROM adoptable_listings al
       JOIN providers p ON p.id = al.provider_id
+      LEFT JOIN LATERAL (
+        SELECT lat, lng, address, name
+        FROM provider_locations pl
+        WHERE pl.provider_id = p.id
+        ORDER BY pl.created_at ASC
+        LIMIT 1
+      ) loc ON true
       WHERE al.id = ${listingId}
         AND al.provider_id = ${providerId}
         AND al.status = 'available'

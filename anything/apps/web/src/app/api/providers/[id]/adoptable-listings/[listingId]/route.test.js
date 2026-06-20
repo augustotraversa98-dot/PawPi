@@ -66,6 +66,20 @@ describe('GET single adoptable listing (public)', () => {
     expect(values).toContain('100'); // providerId
   });
 
+  it('joins the shelter primary location so the detail can map it (ticket 2.87)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([
+      { id: 7, status: 'available', provider_lat: 40.71, provider_lng: -74.0, provider_address: '1 Bark St' },
+    ]);
+    const res = await GET(req(), PARAMS);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.listing.provider_lat).toBe(40.71);
+    const text = queryText();
+    expect(text).toContain('provider_locations');
+    expect(text).toContain('provider_lat');
+  });
+
   it('unpublished/adopted/removed → 404 (no row matches the public filter)', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([]); // RLS + the status/published filter exclude it
