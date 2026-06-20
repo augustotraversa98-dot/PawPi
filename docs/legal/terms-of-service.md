@@ -55,6 +55,32 @@ You agree not to:
 
 We may remove content and suspend or terminate accounts that violate these Terms.
 
+### Zero-tolerance for objectionable content and abusive users
+
+**PawPi has a zero-tolerance policy for objectionable content and abusive behavior.** Objectionable
+content includes, without limitation: harassment, bullying, threats, hate speech, sexual or
+pornographic material, graphic violence, spam, scams, and any content that is unlawful, defamatory, or
+that endangers an animal or a person. Abusive users are those who target, threaten, or harass other
+users or providers.
+
+By using PawPi you agree to this policy, and you agree that:
+
+- **Every user can flag content and block other users.** A **Report** action is available on every
+  user-generated surface (posts, comments, forum threads, messages, reviews, profiles, listings,
+  events, and walks), and you can **block** any user so that you no longer see each other's content or
+  can contact one another.
+- **We review reports and act within 24 hours.** Content reported as objectionable is reviewed and, if
+  it violates these Terms, **removed**. We may also remove content proactively.
+- **We eject abusive users.** Accounts that post objectionable content or engage in abusive behavior
+  may be **suspended or permanently terminated**, and the offending content removed, at our sole
+  discretion and without prior notice. Repeat or severe violations result in permanent removal from the
+  Service.
+- **A content filter applies on submission.** PawPi screens submitted text for objectionable language
+  and may reject or hold it.
+
+You will not post objectionable content or behave abusively, and you accept that doing so is grounds
+for immediate content removal and account termination.
+
 ## 6. Marketplace, providers, and bookings
 
 PawPi connects you with **independent third-party providers** (vets, groomers, walkers, daycare and
