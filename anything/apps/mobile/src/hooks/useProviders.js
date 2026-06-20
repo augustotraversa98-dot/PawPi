@@ -343,6 +343,107 @@ export function useCreateProviderLocation() {
   });
 }
 
+// --- magic onboarding: enrichment + apply (Phase 2 ticket 2.83) --------------
+// The wizard creates the provider draft, then PROPOSES a profile from its links (+ an uploaded
+// price-list document) via the confirm-first enrichment seam (2.21 + 2.82). The /enrich routes write
+// NOTHING; the provider edits the draft and saves through these existing owner-identity routes. All
+// degrade cleanly: a 503 ("not set up yet") just yields an empty draft → fully manual onboarding.
+
+// POST /api/providers/[id]/enrich — proposed { draft, sources } from the provider's stored links.
+export function useEnrichProvider() {
+  return useMutation({
+    mutationFn: async (providerId) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/enrich`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const err = new Error(error.error || "Enrichment failed");
+        err.status = response.status;
+        throw err;
+      }
+      return response.json(); // { draft, sources, applied:false }
+    },
+  });
+}
+
+// POST /api/providers/[id]/enrich/document — proposed { draft:{services,products} } from an uploaded
+// price-list/menu (already stored via the Storage upload path; we pass { url, filename, mimeType }).
+export function useEnrichProviderDocument() {
+  return useMutation({
+    mutationFn: async ({ providerId, ...file }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/enrich/document`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(file),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const err = new Error(error.error || "Document enrichment failed");
+        err.status = response.status;
+        throw err;
+      }
+      return response.json(); // { draft:{services,products}, applied:false }
+    },
+  });
+}
+
+// PATCH /api/providers/[id] — apply edited profile fields (e.g. the enriched bio/description).
+export function useUpdateProvider() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ providerId, ...fields }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update your business");
+      }
+      const data = await response.json();
+      return data.provider;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["providers", "mine"] });
+    },
+  });
+}
+
+// POST /api/providers/[id]/services — create one accepted service from the proposed catalog.
+export function useCreateProviderService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ providerId, ...service }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/services`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(service),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to add service");
+      }
+      const data = await response.json();
+      return data.service;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["providers", "mine"] });
+    },
+  });
+}
+
 // --- telehealth — vet video consults (Phase 2 ticket 2.18) -------------------
 // The consult IS a normal booking (useBookProvider({ capability: 'telehealth' })) +
 // payment + chat; the only telehealth-specific owner surfaces are the consult LIST and

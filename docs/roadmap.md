@@ -262,7 +262,11 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   (dormant default). `POST .../enrich/document` (owner|admin, dormant behind `ENRICHMENT_LLM_KEY`,
   writes nothing) + a confirm-first `DocumentCatalogImport` panel that applies rows via the existing
   services/shop-products CRUD. Adds `xlsx` (lazy-loaded).
-- ☐ **2.83** Mobile "magic onboarding" wizard — mobile, no migration. ⛔ after 2.81 + 2.82.
+- ✅ **2.83** Mobile "magic onboarding" wizard — mobile, no migration. Service types → map pin → links
+  + optional price-list doc → "Build my profile" creates the draft + location, runs confirm-first
+  enrichment (`/enrich` + `/enrich/document`), shows ONE editable review (description + proposed
+  services), saves via the existing PATCH/services CRUD. Keyless → empty draft → fully manual, no dead
+  ends. New hooks + pure `enrichmentDraft` mapping util.
 - ✅ **2.84** Business calendar import (ICS feed → busy blocks) — web, migration **0064**.
   `provider_calendar_feeds` + `provider_calendar_busy` (owner/staff RLS; busy is read-only — only the
   DEFINER `app_sync_calendar_feed` writes it). Pure ICS parser; feed CRUD + "Refresh now" +
