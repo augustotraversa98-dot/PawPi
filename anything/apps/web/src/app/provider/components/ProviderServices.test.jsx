@@ -13,6 +13,9 @@ vi.mock("../hooks/useProviders", () => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
+// The document-import panel (ticket 2.82) is its own component with its own hooks; stub it here so
+// this suite stays focused on the services list/form (DocumentCatalogImport has its own test).
+vi.mock("./DocumentCatalogImport", () => ({ default: () => null }));
 
 import {
   useProviderServices,

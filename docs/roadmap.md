@@ -257,7 +257,11 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   `LocationField` and persists the pin as the provider's primary `provider_locations` row; web Locations form
   gets an interactive `LocationMapPicker` (reuses `@vis.gl/react-google-maps`) that degrades to manual lat/lng
   inputs when `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is unset. lat/lng already exist (0014) — no schema change.
-- ☐ **2.82** Enrichment: document catalog source (PDF/XLSX/CSV → services/products draft) — web, no migration.
+- ✅ **2.82** Enrichment: document catalog source — web, no migration. `fetchDocumentCatalog` (3rd
+  enrichment source): CSV/XLSX rows → catalog (plain parsing, no LLM); PDF text → LLM-structured
+  (dormant default). `POST .../enrich/document` (owner|admin, dormant behind `ENRICHMENT_LLM_KEY`,
+  writes nothing) + a confirm-first `DocumentCatalogImport` panel that applies rows via the existing
+  services/shop-products CRUD. Adds `xlsx` (lazy-loaded).
 - ☐ **2.83** Mobile "magic onboarding" wizard — mobile, no migration. ⛔ after 2.81 + 2.82.
 - ☐ **2.84** Business calendar import (ICS feed → busy blocks) — web + mobile, migration **0064**.
 - ☐ **2.85** Adoption listing image + video upload — provider editor, no migration.

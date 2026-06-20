@@ -426,6 +426,23 @@ export function useEnrichProvider(providerId) {
   });
 }
 
+// Document enrichment (ticket 2.82): POST .../enrich/document with an uploaded file's
+// { url, filename, mimeType } returns a PROPOSED { services, products } catalog. Writes NOTHING —
+// the provider reviews + applies each row via the existing services / shop-products CRUD. A clean
+// 503 surfaces when ENRICHMENT_LLM_KEY is unset.
+export function useEnrichProviderDocument(providerId) {
+  return useMutation({
+    mutationFn: async (file) => {
+      const data = await getJson(`/api/providers/${providerId}/enrich/document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(file ?? {}),
+      });
+      return data; // { draft: { services, products }, sources, applied:false }
+    },
+  });
+}
+
 // Publish / unpublish — the single status toggle (POST .../publish {status}).
 // status is 'draft' | 'published'. On success refresh the same caches so the
 // shell + profile reflect the new state.

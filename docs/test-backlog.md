@@ -71,6 +71,12 @@ Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event
   mobile pin uses Apple Maps via `PROVIDER_DEFAULT` (no key). DEVICE TEST: in mobile business onboarding,
   drop/drag the pin → the provider's primary location row saves with lat/lng; deny location permission →
   a typed address still saves.
+- **2.82 (document catalog enrichment) — no migration.** Reuses **`ENRICHMENT_LLM_KEY`** (already on
+  the go-live list): unset → `POST /api/providers/[id]/enrich/document` returns a clean 503 ("not set
+  up yet"). CSV/XLSX price lists structure WITHOUT the key (plain header parsing); PDF text needs the
+  key + a real LLM adapter (the default text structurer is dormant). Added `xlsx@0.18.5` (lazy-loaded;
+  CI never imports it). DEVICE/manual TEST: on the web Services dashboard → "Import from a price list
+  or menu" → upload a CSV/XLSX → proposed rows appear → edit + Apply saves real services/products.
 
 **Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
 **0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
