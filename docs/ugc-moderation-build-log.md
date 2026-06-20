@@ -44,8 +44,41 @@ phase and is deliberately NOT included in any UGC PR.)
 - **Decision:** skipped the optional `terms_accepted_at` audit column (Deferred list — acceptance is
   client-side in T5; not required for review).
 - **Local suite:** mobile 1101 ✓ · web unit 1210 ✓ (1203 on CI) · integration **613** ✓ (592 + 21).
+- **CI result:** ✅ all 3 green (mobile jest / web vitest / web integration).
+- **Merge status:** ✅ squash-merged to main — **PR #228, commit `a382077`**, branch deleted.
+- **Device tests needed:** none (pure DB). Augusto must hand-apply 0065 + run `verify_0065.sql`.
+
+---
+
+## T2 — Report / Block / admin-action APIs (backend, no UI)
+
+- **Built:** thin routes over the 0065 tables/helpers (RLS pins reporter/blocker = caller; admin
+  paths go through SECURITY DEFINER helpers).
+  - `POST /api/reports` (file; idempotent per open (reporter,target)) · `GET /api/reports` (own).
+  - `POST /api/blocks` (block; idempotent live pair) · `GET /api/blocks` (own live list) ·
+    `DELETE /api/blocks/[id]` (unblock = soft-delete).
+  - `GET /api/admin/reports?status=` (queue) · `POST /api/admin/reports/[id]/action`
+    `{action:'hide'|'remove'|'dismiss', ban?}`.
+- **DB decision (logged):** the admin queue runs under `pawpi_app` + FORCE RLS, where
+  `content_reports`' reporter-own SELECT hides other users' reports and there is no UPDATE policy —
+  so an admin literally cannot read the queue or change status directly. T1 shipped no admin
+  read/dismiss helper. Smallest correct fix: **extend the single phase migration `0065`** (still
+  the only schema change; not yet live-applied; `CREATE OR REPLACE` keeps it idempotent) with two
+  admin DEFINER helpers — `app_admin_list_reports(status)` and
+  `app_admin_action_report(report_id, action, ban)` (the latter resolves the content author for the
+  ban). Updated `supabase/verify_0065.sql` (fn count 5→7). **0065 should be (re)applied in its final
+  form after T2 merges** — idempotent, so re-applying over a T1-only 0065 is safe.
+- **Files:** `src/app/api/reports/route.js` (+ test), `src/app/api/blocks/route.js` (+ test),
+  `src/app/api/blocks/[id]/route.js` (+ test), `src/app/api/admin/reports/route.js` (+ test),
+  `src/app/api/admin/reports/[id]/action/route.js` (+ test); `supabase/migrations/0065_ugc_moderation.sql`
+  (+2 helpers), `supabase/verify_0065.sql`; extended `test/integration/ugc-moderation.integration.test.ts`
+  (+5 admin-helper cases, proven as pawpi_app).
+- **Tests:** +27 vitest route tests, +5 integration. All routes wrapped in `withRequestContext`
+  (route-wrap completeness guard green).
+- **Migration status:** 0065 extended — still PENDING hand-apply (now 7 DEFINER fns; `verify_0065.sql`).
+- **Local suite:** mobile 1101 ✓ · web unit 1237 ✓ (1230 on CI) · integration 613 → **618** ✓.
 - **CI result:** _pending push_
 - **Merge status:** _pending_
-- **Device tests needed:** none (pure DB). Augusto must hand-apply 0065 + run `verify_0065.sql`.
+- **Device tests needed:** none (curl-provable). Surfaces it powers get device tests in T4.
 
 ---

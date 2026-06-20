@@ -68,19 +68,20 @@ with checks as (
   where con.conname='notifications_type_check'
 
   union all
-  -- 8. the 5 SECURITY DEFINER moderation functions exist and are prosecdef=true
+  -- 8. the 7 SECURITY DEFINER moderation functions exist and are prosecdef=true
   select 8,
          'SECURITY DEFINER fn: '||f.fn,
          coalesce('prosecdef='||bool_or(p.prosecdef)::text, 'MISSING'),
          case when bool_or(p.prosecdef) then 'PASS' else 'FAIL' end
   from (values ('app_is_admin'),('app_user_is_blocked'),('app_moderate_hide'),
-               ('app_moderate_unhide'),('app_ban_user')) as f(fn)
+               ('app_moderate_unhide'),('app_ban_user'),
+               ('app_admin_list_reports'),('app_admin_action_report')) as f(fn)
   left join pg_proc p on p.proname=f.fn
        and p.pronamespace=(select oid from pg_namespace where nspname='public')
   group by f.fn
 
   union all
-  -- 9. pawpi_app has EXECUTE on each of the 5 functions
+  -- 9. pawpi_app has EXECUTE on each of the 7 functions
   select 9,
          'pawpi_app EXECUTE on '||p.proname,
          has_function_privilege('pawpi_app', p.oid, 'EXECUTE')::text,
@@ -88,7 +89,8 @@ with checks as (
   from pg_proc p
   where p.pronamespace=(select oid from pg_namespace where nspname='public')
     and p.proname in ('app_is_admin','app_user_is_blocked','app_moderate_hide',
-                      'app_moderate_unhide','app_ban_user')
+                      'app_moderate_unhide','app_ban_user',
+                      'app_admin_list_reports','app_admin_action_report')
 
   union all
   -- 10. pawpi_app has SELECT + INSERT on both new tables (rides 0019's blanket grant)

@@ -303,12 +303,14 @@ Plan: [`docs/phase-ugc-moderation-plan.md`](phase-ugc-moderation-plan.md) · bui
 review: EULA gate, content filter, report/flag, block, contact info. Order **T1 → T2 → T3 → T4**, then
 **T5, T6, T7**. (✅ merged · 🔨 building · ☐ queued.)
 
-- 🔨 **T1** Migration `0065` — moderation primitives (DB only). `content_reports` + `user_blocks`
-  (both FORCE-RLS), `hidden_at` on 11 peer-UGC content tables, `user_profiles.banned_at`, 5 DEFINER
-  helpers (`app_is_admin`/`app_user_is_blocked`/`app_moderate_hide`/`app_moderate_unhide`/
-  `app_ban_user`), `notifications` `report_received` widen. Harness-proven (21 integration tests +
-  completeness guard). Migration ⏳ PENDING hand-apply on Supabase (`verify_0065.sql`).
-- ☐ **T2** Report/Block/admin APIs (backend) — `/api/reports`, `/api/blocks`, `/api/admin/reports`.
+- ✅ **T1** Migration `0065` — moderation primitives (DB only) — merged (#228). `content_reports` +
+  `user_blocks` (both FORCE-RLS), `hidden_at` on 11 peer-UGC content tables, `user_profiles.banned_at`,
+  DEFINER helpers (`app_is_admin`/`app_user_is_blocked`/`app_moderate_hide`/`app_moderate_unhide`/
+  `app_ban_user`), `notifications` `report_received` widen. Migration ⏳ PENDING hand-apply on
+  Supabase (`verify_0065.sql`).
+- 🔨 **T2** Report/Block/admin APIs (backend) — `/api/reports`, `/api/blocks` (+`[id]`),
+  `/api/admin/reports` (+`[id]/action`). Extends `0065` with two admin DEFINER helpers
+  (`app_admin_list_reports`/`app_admin_action_report`) so the admin queue works under FORCE RLS.
 - ☐ **T3** Enforcement in read paths — `hidden_at IS NULL` + block filtering across feed/forum/DM/
   search/walks/reviews/events/lost-reports; blocked-pair interaction 403.
 - ☐ **T4** Report/Block UI actions (mobile) — shared `ReportAction`/`BlockAction` into each surface.
