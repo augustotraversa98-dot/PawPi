@@ -3,7 +3,7 @@
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
 const mockReplace = jest.fn();
 const mockSetAuth = jest.fn();
@@ -55,4 +55,21 @@ it("two-step confirm deletes the account, clears auth, and returns to welcome", 
   await waitFor(() => expect(mockSetAuth).toHaveBeenCalledWith(null));
   expect(mockClear).toHaveBeenCalled();
   expect(mockReplace).toHaveBeenCalledWith("/welcome");
+});
+
+// Contact info wiring (Guideline 1.2 / App Store Support URL, ticket T6).
+it("Contact Us opens the support email (mailto:)", () => {
+  jest.spyOn(Linking, "openURL").mockResolvedValue();
+  const { getByLabelText } = render(<SettingsScreen />);
+  fireEvent.press(getByLabelText("Contact Us"));
+  expect(Linking.openURL).toHaveBeenCalledTimes(1);
+  expect(Linking.openURL.mock.calls[0][0]).toMatch(/^mailto:.+@.+/);
+});
+
+it("Help Center falls back to the support email when no help URL is set", () => {
+  jest.spyOn(Linking, "openURL").mockResolvedValue();
+  const { getByLabelText } = render(<SettingsScreen />);
+  fireEvent.press(getByLabelText("Help Center"));
+  expect(Linking.openURL).toHaveBeenCalledTimes(1);
+  expect(Linking.openURL.mock.calls[0][0]).toMatch(/^mailto:/);
 });

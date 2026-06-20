@@ -11,3 +11,11 @@ export const TERMS_OF_SERVICE_URL =
 
 export const hasLegalUrls = () =>
   Boolean(PRIVACY_POLICY_URL) || Boolean(TERMS_OF_SERVICE_URL);
+
+// Support contact (Guideline 1.2 / App Store "Support URL"). The email always resolves (default
+// below) so "Contact Us" is never dead; the Help Center URL is optional and falls back to email.
+// ⚠️ Tats: set EXPO_PUBLIC_SUPPORT_EMAIL + EXPO_PUBLIC_HELP_URL to the real published values, and
+// make the App Store Connect "Support URL"/contact match EXPO_PUBLIC_SUPPORT_EMAIL.
+export const SUPPORT_EMAIL =
+  process.env.EXPO_PUBLIC_SUPPORT_EMAIL || "support@pawpi.app";
+export const HELP_CENTER_URL = process.env.EXPO_PUBLIC_HELP_URL || "";
