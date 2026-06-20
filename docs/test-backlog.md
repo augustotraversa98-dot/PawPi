@@ -58,6 +58,8 @@ as the RLS migrations 0019–0026.)
 0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) BUILT + harness-proven (PR 2.78) — ✅ APPLIED + VERIFIED 2026-06-19
 --- WAVE 8 (calendar integration) ---
 0063_event_rsvp_calendar_event_id.sql (2.80 — ADDITIVE `event_rsvps.calendar_event_id text` for the per-attendee device calendar event id; idempotent; NO RLS policy change — rides the existing event_rsvps own-row policies [0060]) BUILT + harness-proven (PR 2.80) — ⏳ PENDING HAND-APPLY (last applied = 0062)
+--- WAVE 9 (business onboarding + calendar import + adoption browse) ---
+0064_provider_calendar_import.sql     (2.84 — provider_calendar_feeds [owner/admin FOR ALL + active-staff SELECT] + provider_calendar_busy [active-staff SELECT only; READ-ONLY, no write policy]; 4 SECURITY DEFINER fns: app_active_calendar_feeds / app_sync_calendar_feed [the ONLY busy writer] / app_remove_calendar_feed / app_provider_busy_windows [public availability+book subtract]; both ENABLE+FORCE RLS) BUILT + harness-proven (PR 2.84) — ⏳ PENDING HAND-APPLY
 ```
 **⏳ Wave 8 (ticket 2.80) — migration 0063 PENDING HAND-APPLY.** Apply `0063_event_rsvp_calendar_event_id.sql`
 on Supabase: one additive nullable column, no policy change (rides the existing `event_rsvps` own-row policies).
@@ -77,6 +79,12 @@ Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event
   key + a real LLM adapter (the default text structurer is dormant). Added `xlsx@0.18.5` (lazy-loaded;
   CI never imports it). DEVICE/manual TEST: on the web Services dashboard → "Import from a price list
   or menu" → upload a CSV/XLSX → proposed rows appear → edit + Apply saves real services/products.
+- **2.84 (business calendar import) — migration 0064 PENDING HAND-APPLY.** Reuses **`CRON_SECRET`** +
+  needs an EXTERNAL scheduler to POST `/api/providers/calendar/sync` daily (like 2.17): unset → the
+  endpoint returns a clean 503; the per-feed "Refresh now" button still works without it. DEVICE/manual
+  TEST: web dashboard → Calendar import → paste a Google/Outlook/Apple ICS URL → Refresh now → busy
+  blocks appear and those slots become unbookable; remove the feed → blocks clear. Provider calendar
+  mgmt is web-primary (no mobile screen, like services/locations/staff).
 
 **Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
 **0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via

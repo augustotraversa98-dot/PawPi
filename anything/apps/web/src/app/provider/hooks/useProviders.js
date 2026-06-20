@@ -651,6 +651,73 @@ export function useDeleteLocation(providerId) {
   });
 }
 
+// --- calendar import feeds (ticket 2.84) ------------------------------------
+// A provider's external iCal/ICS feeds + their imported busy blocks. Feeds are managed by
+// owner/admin; busy blocks are read-only (written only by the sync DEFINER). Disabled until a
+// providerId is known.
+const calendarFeedsKey = (providerId) => ["provider-calendar-feeds", String(providerId)];
+const calendarFeedsUrl = (providerId) =>
+  `/api/providers/${providerId}/calendar-feeds`;
+
+export function useProviderCalendarFeeds(providerId) {
+  return useQuery({
+    queryKey: calendarFeedsKey(providerId),
+    enabled: providerId != null && providerId !== "",
+    queryFn: async () => {
+      const data = await getJson(calendarFeedsUrl(providerId));
+      return data.feeds ?? [];
+    },
+  });
+}
+
+// Add a feed (owner|admin). body { ics_url }.
+export function useAddCalendarFeed(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ics_url) => {
+      const data = await getJson(calendarFeedsUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ics_url }),
+      });
+      return data.feed;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarFeedsKey(providerId) });
+    },
+  });
+}
+
+// "Refresh now" — re-fetch + re-parse ONE feed (owner|admin). Returns { synced, ok }.
+export function useSyncCalendarFeed(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (feedId) => {
+      return getJson(`${calendarFeedsUrl(providerId)}/${feedId}/sync`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarFeedsKey(providerId) });
+    },
+  });
+}
+
+// Remove a feed (owner|admin) — soft-delete + clears its busy blocks.
+export function useRemoveCalendarFeed(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (feedId) => {
+      return getJson(`${calendarFeedsUrl(providerId)}/${feedId}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarFeedsKey(providerId) });
+    },
+  });
+}
+
 // --- staff (c2c) ------------------------------------------------------------
 
 // This provider's staff, JOINED to user_profiles for display names (the new
