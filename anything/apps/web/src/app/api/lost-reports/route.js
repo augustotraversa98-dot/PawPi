@@ -53,6 +53,9 @@ async function GET(request) {
       JOIN pets p ON p.id = r.pet_id
       JOIN user_profiles up ON up.id = r.owner_user_id
       WHERE r.status = 'active'
+        -- Moderation (T3): hide reports removed by us + reports from a blocked owner.
+        AND r.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, r.owner_user_id)
         AND (
           ${!hasBox}
           OR (

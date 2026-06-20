@@ -86,6 +86,9 @@ async function GET(request) {
               WHERE follower_pet_id = ${viewerPetId}
             )
           )
+          -- Moderation (T3): hide content removed by us + content from a blocked user.
+          AND p.hidden_at IS NULL
+          AND NOT app_user_is_blocked(current_app_user_id(), p.user_id)
           ORDER BY p.created_at DESC
           LIMIT ${groupLimit}
         `
@@ -129,6 +132,9 @@ async function GET(request) {
           )
         )
       )
+      -- Moderation (T3): hide content removed by us + content from a blocked user.
+      AND p.hidden_at IS NULL
+      AND NOT app_user_is_blocked(current_app_user_id(), p.user_id)
       ORDER BY p.created_at DESC
       LIMIT ${groupLimit}
     `;

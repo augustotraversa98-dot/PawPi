@@ -48,6 +48,9 @@ async function GET(request) {
       WHERE e.deleted_at IS NULL
         AND e.status = 'published'
         AND e.starts_at >= now() - interval '1 day'
+        -- Moderation (T3): hide events removed by us + events from a blocked host.
+        AND e.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, e.host_user_id)
         ${
           hasBox
             ? sql`AND e.lat BETWEEN ${centerLat - latDelta} AND ${centerLat + latDelta}

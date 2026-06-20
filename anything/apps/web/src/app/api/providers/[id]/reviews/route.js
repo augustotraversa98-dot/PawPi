@@ -72,6 +72,9 @@ async function GET(request, { params }) {
       LEFT JOIN user_profiles up ON up.id = r.owner_user_id
       LEFT JOIN pets p ON p.id = r.pet_id
       WHERE r.provider_id = ${providerId}
+        -- Moderation (T3): hide reviews removed by us + reviews from a blocked user.
+        AND r.hidden_at IS NULL
+        AND NOT app_user_is_blocked(current_app_user_id(), r.owner_user_id)
       ORDER BY r.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;

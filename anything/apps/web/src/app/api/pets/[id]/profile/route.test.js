@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Route-level contract for the social pet-profile read. Any authed user may read
 // any pet's profile. Session + DB mocked at the module boundary.
+//
+// Query order (T3 added the moderation guard at index 1):
+//   0 pet lookup · 1 guard (banned/blocked) · 2 owner · 3 stats ·
+//   [4 follow check — only with viewerPetId] · 4|5 posts.
 
 import { GET } from './route';
 import { auth } from '@/auth';
@@ -25,6 +29,8 @@ const PET_ROW = {
   gender: 'male',
   owner_user_id: 7,
 };
+// T3 moderation guard: owner not banned, caller not blocked → profile visible.
+const GUARD_OK = { banned: false, blocked: false };
 const OWNER_ROW = {
   id: 7,
   full_name: 'Pat Owner',
@@ -67,9 +73,10 @@ beforeEach(() => {
 describe('GET /api/pets/[id]/profile', () => {
   it('returns pet + owner + stats + posts; isFollowing false without viewerPetId', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1: pet, 2: owner, 3: stats, 4: posts (no viewerPetId -> follow check skipped)
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 posts (no viewerPetId -> follow check skipped)
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
@@ -96,9 +103,10 @@ describe('GET /api/pets/[id]/profile', () => {
 
   it('isFollowing flips true when viewerPetId follows the pet', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1: pet, 2: owner, 3: stats, 4: follow check (non-empty), 5: posts
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 follow check (non-empty), 5 posts
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce([{ '?column?': 1 }])
@@ -114,6 +122,7 @@ describe('GET /api/pets/[id]/profile', () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([
         { total_posts: 0, total_paws: 0, total_barks: 0, followers: 0, following: 0 },
@@ -136,6 +145,16 @@ describe('GET /api/pets/[id]/profile', () => {
     expect(res.status).toBe(404);
   });
 
+  it('404 when the owner is banned or the caller is blocked (T3)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([{ banned: false, blocked: true }]); // blocked → hidden
+
+    const res = await GET(req(), { params: { id: '2' } });
+    expect(res.status).toBe(404);
+  });
+
   it('401 when anonymous, and never touches the DB', async () => {
     auth.mockResolvedValue(undefined);
 
@@ -147,18 +166,19 @@ describe('GET /api/pets/[id]/profile', () => {
 
   it('each stat counts the right rows, scoped to the target pet', async () => {
     auth.mockResolvedValue(SESSION);
-    // pet, owner, stats, posts (no viewerPetId)
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 posts (no viewerPetId)
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '2' } });
 
-    // The single stats query (call index 2) sources each stat from the right
+    // The single stats query (call index 3) sources each stat from the right
     // table/column, all scoped to the target pet.
-    const statsSql = queryText(2).toLowerCase();
+    const statsSql = queryText(3).toLowerCase();
     expect(statsSql).toContain('from posts where pet_id'); // daily posts
     expect(statsSql).toContain('post_paws'); // paws
     expect(statsSql).toContain('post_barks'); // barks
@@ -167,13 +187,14 @@ describe('GET /api/pets/[id]/profile', () => {
     // No retired mutual-friendship stat.
     expect(statsSql).not.toContain('pet_friendship');
     // The resolved pet id (PET_ROW.id) is the only id bound into the stats query.
-    expect(queryValues(2)).toEqual([2, 2, 2, 2, 2]);
+    expect(queryValues(3)).toEqual([2, 2, 2, 2, 2]);
   });
 
   it('resolves a handle to the right pet, then scopes by the resolved id', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_ROW]) // pet looked up by handle -> id 2
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
@@ -185,15 +206,16 @@ describe('GET /api/pets/[id]/profile', () => {
     expect(queryText(0).toLowerCase()).toContain('where handle =');
     expect(queryValues(0)).toEqual(['rex']);
     // Downstream stats + moments bind the RESOLVED numeric id (2), never 'rex'.
-    expect(queryValues(2)).toEqual([2, 2, 2, 2, 2]);
-    expect(queryValues(3)).toContain(2);
-    expect(queryValues(3)).not.toContain('rex');
+    expect(queryValues(3)).toEqual([2, 2, 2, 2, 2]);
+    expect(queryValues(4)).toContain(2);
+    expect(queryValues(4)).not.toContain('rex');
   });
 
   it('tolerates a leading @ on a handle', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
@@ -209,6 +231,7 @@ describe('GET /api/pets/[id]/profile', () => {
     // Target pet A is id 2; pet B (id 99) must never leak into any query.
     sql
       .mockResolvedValueOnce([PET_ROW]) // id 2
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
@@ -218,37 +241,39 @@ describe('GET /api/pets/[id]/profile', () => {
     const everyBoundValue = sql.mock.calls.flatMap((call) => call.slice(1));
     expect(everyBoundValue).not.toContain(99);
     // Stats + moments are scoped strictly to pet 2.
-    expect(queryValues(2)).toEqual([2, 2, 2, 2, 2]);
-    expect(queryValues(3)).toContain(2);
+    expect(queryValues(3)).toEqual([2, 2, 2, 2, 2]);
+    expect(queryValues(4)).toContain(2);
   });
 
   it('paginates daily moments with explicit limit/offset', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req('?limit=2&offset=4'), { params: { id: '2' } });
 
-    const postsSql = queryText(3).toLowerCase();
+    const postsSql = queryText(4).toLowerCase();
     expect(postsSql).toContain('limit');
     expect(postsSql).toContain('offset');
     // resolved pet id + limit + offset are bound.
-    expect(queryValues(3)).toEqual([2, 2, 4]);
+    expect(queryValues(4)).toEqual([2, 2, 4]);
   });
 
   it('defaults the moments page to a grid-sized window (limit 24, offset 0)', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '2' } });
 
-    expect(queryValues(3)).toEqual([2, 24, 0]);
+    expect(queryValues(4)).toEqual([2, 24, 0]);
   });
 });

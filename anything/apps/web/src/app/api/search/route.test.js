@@ -64,8 +64,13 @@ describe("GET /api/search", () => {
     expect(text).toContain("FROM providers");
     // Providers are published-only.
     expect(text).toContain("status = 'published'");
-    // No private/medical leakage: pets projection excludes owner_user_id; no medical/auth.
-    expect(text).not.toContain("owner_user_id");
+    // Moderation (T3): blocked/banned authors filtered out of pets + owners results.
+    expect(text).toContain("app_user_is_blocked");
+    expect(text).toContain("banned_at");
+    // No private/medical leakage: the pets PROJECTION (before FROM) excludes owner_user_id
+    // (it now appears only in the moderation WHERE clause); no medical/auth columns anywhere.
+    const petsSelect = (sql.mock.calls[0]?.[0] ?? []).join(" ").split("FROM pets")[0];
+    expect(petsSelect).not.toContain("owner_user_id");
     expect(text).not.toContain("auth_user");
     expect(text).not.toContain("health_");
     expect(text).not.toContain("care_access");

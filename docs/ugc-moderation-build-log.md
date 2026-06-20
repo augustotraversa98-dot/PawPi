@@ -77,8 +77,44 @@ phase and is deliberately NOT included in any UGC PR.)
   (route-wrap completeness guard green).
 - **Migration status:** 0065 extended — still PENDING hand-apply (now 7 DEFINER fns; `verify_0065.sql`).
 - **Local suite:** mobile 1101 ✓ · web unit 1237 ✓ (1230 on CI) · integration 613 → **618** ✓.
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #229, commit `64c22ec`**, branch deleted.
+- **Device tests needed:** none (curl-provable). Surfaces it powers get device tests in T4.
+
+---
+
+## T3 — Enforcement in read paths (hidden + blocked filtering)
+
+- **Built:** the read-path enforcement that makes hide + block actually do something. Two primitives
+  (shared `src/app/api/utils/moderation.js`):
+  - **hidden_at IS NULL** — every list/detail read drops content "removed by us".
+  - **block exclusion** — feed/discovery/thread/review reads exclude content authored by a user in an
+    either-direction `user_blocks` relation with the caller, via the `app_user_is_blocked` DEFINER
+    helper. Wrapped routes carry `current_app_user_id()`, so no id threading.
+  - **interaction 403** — `isBlockedBetween()` gates the write chokepoints: bark, forum reply, and DM
+    send to a blocking/blocked user → 403.
+- **Surfaces edited (read):** feed `posts/route.js` (both queries), `posts/[id]/barks` (GET),
+  `forum/threads` (list), `forum/threads/[id]` (detail thread 404 + comments), `providers/[id]/reviews`,
+  `social-walks` (3 discovery variants), `events`, `lost-reports` (public list), `search` (pets +
+  owners; banned excluded), `pets/[id]/profile` (banned/blocked owner → 404; hidden moments dropped),
+  `dm-threads/[id]/messages` (GET hidden) + `threads/[id]/messages` (GET hidden, provider chat).
+- **Surfaces edited (write 403):** `posts/[id]/barks` POST, `forum/threads/[id]/comments` POST,
+  `dm-threads/[id]/messages` POST.
+- **Decision (logged):** provider chat (`threads/[id]/messages`, owner↔business) gets the `hidden_at`
+  filter only — the counterparty is a business entity, not a peer user, so user-block enforcement
+  doesn't apply there. The owner↔owner DM path (`dm-threads`) gets the full block 403.
+- **DB changes:** none (uses 0065).
+- **Files:** `utils/moderation.js` (new) + 12 edited route files; updated 4 existing route unit tests
+  whose mock sequences shifted (dm-threads, barks, pets/profile, search); new
+  `test/integration/ugc-enforcement.integration.test.ts` (8 cases) that runs the REAL feed/barks/
+  forum/dm handlers AS pawpi_app + FORCE RLS (the #108 pattern) and proves hidden + symmetric block
+  filtering + interaction 403.
+- **Tests:** +8 integration (real handlers), +2 unit. Suite: mobile 1101 ✓ · web unit 1237 → **1239** ✓
+  (1232 on CI) · integration 618 → **626** ✓.
 - **CI result:** _pending push_
 - **Merge status:** _pending_
-- **Device tests needed:** none (curl-provable). Surfaces it powers get device tests in T4.
+- **Device tests needed (T3):** with a 2nd test account — block them, confirm their feed/forum/DM/walk
+  content disappears from your views (and yours from theirs); confirm you can't DM/bark/reply to each
+  other; have an admin hide a post and confirm it vanishes + 404s.
 
 ---

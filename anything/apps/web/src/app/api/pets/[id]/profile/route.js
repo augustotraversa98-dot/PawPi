@@ -57,6 +57,17 @@ async function GET(request, { params }) {
     const { owner_user_id, ...pet } = petRows[0];
     const petId = pet.id;
 
+    // Moderation (T3): a banned owner's, or a blocked user's (either direction), pet
+    // profile is invisible — 404 like a missing pet (don't leak that it exists).
+    const guardRows = await sql`
+      SELECT (banned_at IS NOT NULL) AS banned,
+             app_user_is_blocked(current_app_user_id(), ${owner_user_id}) AS blocked
+      FROM user_profiles WHERE id = ${owner_user_id} LIMIT 1
+    `;
+    if (guardRows.length === 0 || guardRows[0].banned || guardRows[0].blocked) {
+      return Response.json({ error: "Pet not found" }, { status: 404 });
+    }
+
     // Owner (via pets.owner_user_id = user_profiles.id).
     const ownerRows = await sql`
       SELECT id, full_name, username, avatar_url
@@ -118,6 +129,7 @@ async function GET(request, { params }) {
         SELECT post_id, COUNT(*) as count FROM post_barks GROUP BY post_id
       ) bark ON p.id = bark.post_id
       WHERE p.pet_id = ${petId}
+        AND p.hidden_at IS NULL
       ORDER BY p.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;

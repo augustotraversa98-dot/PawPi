@@ -119,11 +119,13 @@ describe('POST /api/posts/[id]/barks', () => {
 
   it('notifies the post owner on a new bark (not the actor) — ticket 2.26', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1: profile (7), 2: owned-pet, 3: post owned by 9, 4: INSERT, 5: app_notify, 6: enriched
+    // 1: profile (7), 2: owned-pet, 3: post owned by 9, 4: block-check (T3, not blocked),
+    // 5: INSERT, 6: app_notify, 7: enriched
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([OWNED_PET])
       .mockResolvedValueOnce([{ id: 5, user_id: 9 }])
+      .mockResolvedValueOnce([{ blocked: false }])
       .mockResolvedValueOnce([{ id: 100 }])
       .mockResolvedValueOnce([{ app_notify: 1 }])
       .mockResolvedValueOnce([ENRICHED_BARK]);

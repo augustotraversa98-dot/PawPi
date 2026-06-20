@@ -53,6 +53,9 @@ async function GET(request) {
       FROM forum_threads t
       JOIN user_profiles up ON up.id = t.author_user_id
       WHERE t.deleted_at IS NULL
+        -- Moderation (T3): hide threads removed by us + threads from a blocked user.
+        AND t.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, t.author_user_id)
         ${category ? sql`AND t.category = ${category}` : sql``}
       ORDER BY ${order}
       LIMIT ${PAGE} OFFSET ${offset}

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // Get barks (comments) for a post
 async function GET(request, { params }) {
@@ -20,6 +21,9 @@ async function GET(request, { params }) {
       INNER JOIN user_profiles up ON pb.user_id = up.id
       LEFT JOIN pets p ON pb.pet_id = p.id
       WHERE pb.post_id = ${postId}
+        -- Moderation (T3): hide barks removed by us + barks from a blocked user.
+        AND pb.hidden_at IS NULL
+        AND NOT app_user_is_blocked(current_app_user_id(), pb.user_id)
       ORDER BY pb.created_at ASC
     `;
 
@@ -89,6 +93,15 @@ async function POST(request, { params }) {
 
     if (post.length === 0) {
       return Response.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Moderation (T3): a blocked pair can't interact — no barking on a blocking/blocked
+    // user's post (either direction).
+    if (await isBlockedBetween(userId, post[0].user_id)) {
+      return Response.json(
+        { error: "You can't interact with this user" },
+        { status: 403 },
+      );
     }
 
     // Create bark

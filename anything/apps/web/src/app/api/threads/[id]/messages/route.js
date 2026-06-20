@@ -48,6 +48,7 @@ async function GET(request, { params }) {
           FROM messages
           WHERE thread_id = ${threadId}
             AND id < ${before}
+            AND hidden_at IS NULL
           ORDER BY id DESC
           LIMIT ${limit + 1}
         `
@@ -55,6 +56,7 @@ async function GET(request, { params }) {
           SELECT id, thread_id, sender_user_id, body, attachment_url, created_at, read_at
           FROM messages
           WHERE thread_id = ${threadId}
+            AND hidden_at IS NULL
           ORDER BY id DESC
           LIMIT ${limit + 1}
         `;

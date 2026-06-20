@@ -33,23 +33,29 @@ async function GET(request) {
     const pattern = `%${q}%`;
 
     // Pets — public profile fields only (no owner_user_id, no medical columns).
+    // Moderation (T3): drop pets whose owner is blocked (either direction) or banned.
     const pets = await sql`
       SELECT id, name, handle, avatar_url, species, breed
       FROM pets
-      WHERE name ILIKE ${pattern}
+      WHERE (name ILIKE ${pattern}
          OR breed ILIKE ${pattern}
          OR handle ILIKE ${pattern}
-         OR species ILIKE ${pattern}
+         OR species ILIKE ${pattern})
+        AND NOT app_user_is_blocked(current_app_user_id(), owner_user_id)
+        AND owner_user_id NOT IN (SELECT id FROM user_profiles WHERE banned_at IS NOT NULL)
       ORDER BY name ASC
       LIMIT ${LIMIT}
     `;
 
     // Owners — public identity fields only.
+    // Moderation (T3): drop blocked (either direction) or banned users.
     const owners = await sql`
       SELECT id, username, full_name, avatar_url
       FROM user_profiles
-      WHERE username ILIKE ${pattern}
-         OR full_name ILIKE ${pattern}
+      WHERE (username ILIKE ${pattern}
+         OR full_name ILIKE ${pattern})
+        AND banned_at IS NULL
+        AND NOT app_user_is_blocked(current_app_user_id(), id)
       ORDER BY username ASC
       LIMIT ${LIMIT}
     `;
