@@ -1051,6 +1051,30 @@ export function useUpdateShopSubscription() {
 // FAVORITES, APPLIES, CHATS (reuse useStartThread), and pays the fee / donates (reuse the 2.3
 // payment layer). All real API; empty → empty states. RLS (0038) is the real guard.
 
+// The unified adoption BROWSE (ticket 2.86): every published shelter's AVAILABLE dogs in ONE flat,
+// filterable, NEAREST-FIRST list (GET /api/adoption/listings). `filters` is { lat, lng, radius_km,
+// gender, size, age_min, age_max, energy_level, good_with_kids, good_with_cats, good_with_dogs,
+// vaccination_status, provider_id }. Empty/undefined values are omitted. When lat/lng are present the
+// server sorts nearest-first and attaches distance_km; otherwise featured-then-recent. Empty → [].
+export function useAdoptableBrowse(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  }
+  const qs = params.toString();
+  return useQuery({
+    queryKey: ["adoption-browse", qs],
+    queryFn: async () => {
+      const response = await fetch(`/api/adoption/listings${qs ? `?${qs}` : ""}`);
+      if (!response.ok) {
+        throw new Error("Failed to load adoptable dogs");
+      }
+      const data = await response.json();
+      return { listings: data.listings ?? [], sort: data.sort };
+    },
+  });
+}
+
 // A place's adoptable dogs — its AVAILABLE listings (RLS: a published place's available
 // listings are readable by any authed). Disabled until a providerId is known. Empty → [].
 export function useAdoptableListings(providerId) {

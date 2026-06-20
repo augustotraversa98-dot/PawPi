@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import * as Location from "expo-location";
 import {
   ArrowLeft,
   PawPrint,
@@ -18,14 +19,15 @@ import {
   Heart,
   X,
   MessageSquare,
-  Home,
   Check,
+  SlidersHorizontal,
+  MapPin,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useDiscoverProviders,
-  useAdoptableListings,
+  useAdoptableBrowse,
   useAdoptableListing,
   useApplyForAdoption,
   useMyAdoptionApplications,
@@ -34,7 +36,7 @@ import {
   useAdoptionCheckout,
   useStartThread,
 } from "@/hooks/useProviders";
-import RatingBadge from "@/components/Providers/RatingBadge";
+import { isValidCoord } from "@/utils/walkBuddies";
 
 // ADOPTION (ticket 2.12) — REPLACES the old "Coming soon" Adoption signpost. The owner
 // discovers adoption PLACES (shelters/rescues = providers with the 'adoption' capability),
@@ -196,150 +198,377 @@ export default function AdoptionScreen() {
   );
 }
 
+// Empty filters = browse everything. Each key maps to a /api/adoption/listings query param.
+const EMPTY_FILTERS = {
+  gender: null,
+  size: null,
+  energy_level: null,
+  vaccination_status: null,
+  good_with_kids: null,
+  good_with_cats: null,
+  good_with_dogs: null,
+  age_min: null,
+  age_max: null,
+  provider_id: null,
+};
+
+function activeFilterCount(f) {
+  return Object.values(f).filter((v) => v !== null && v !== "").length;
+}
+
+// The unified browse (ticket 2.86): a responsive grid of adoptable dogs, NEAREST-FIRST using the
+// device location vs each shelter's primary lat/lng (2.81), with composable filters. Permission
+// denied / no coords → the server falls back to most-recent (no crash, no empty grid).
 function BrowseTab({ onOpenListing }) {
-  const { data: places, isLoading, isError, refetch } = useDiscoverProviders("adoption");
+  const [coords, setCoords] = useState(null); // { lat, lng } | null
+  const [located, setLocated] = useState(false); // attempted location yet?
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const pos = await Location.getCurrentPositionAsync({});
+          const lat = pos?.coords?.latitude;
+          const lng = pos?.coords?.longitude;
+          if (active && isValidCoord(lat, lng)) setCoords({ lat, lng });
+        }
+      } catch {
+        /* denied / unavailable → fall back to most-recent */
+      } finally {
+        if (active) setLocated(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const query = useMemo(
+    () => ({
+      ...filters,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+    }),
+    [filters, coords],
+  );
+
+  const { data, isLoading, isError, refetch } = useAdoptableBrowse(query);
+  const listings = data?.listings ?? [];
+  const nearest = data?.sort === "nearest";
+  const count = activeFilterCount(filters);
 
   return (
     <RefreshableScrollView
       refetch={refetch}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
     >
-      <SectionLabel>ADOPTION PLACES NEAR YOU</SectionLabel>
-      {isLoading ? (
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <MapPin size={14} color={COLORS.mutedBrown} />
+          <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.mutedBrown }}>
+            {nearest ? "NEAREST FIRST" : "RECENTLY ADDED"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          testID="open-filters"
+          onPress={() => setFiltersOpen(true)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: count > 0 ? COLORS.coral : COLORS.peach,
+            backgroundColor: count > 0 ? COLORS.coral + "18" : COLORS.card,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+          }}
+        >
+          <SlidersHorizontal size={15} color={count > 0 ? COLORS.coral : COLORS.warmBrown} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: count > 0 ? COLORS.coral : COLORS.warmBrown }}>
+            Filters{count > 0 ? ` (${count})` : ""}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {isLoading || !located ? (
         <Loading />
       ) : isError ? (
+        <EmptyState title="Couldn't load dogs" body="Something went wrong. Pull down to try again." />
+      ) : listings.length === 0 ? (
         <EmptyState
-          title="Couldn't load places"
-          body="Something went wrong. Pull down to try again."
-        />
-      ) : !places || places.length === 0 ? (
-        <EmptyState
-          title="No adoption places yet"
-          body="Check back soon — shelters and rescues are joining PawPi."
+          title={count > 0 ? "No matches" : "No dogs near you yet"}
+          body={
+            count > 0
+              ? "Try widening or clearing your filters."
+              : "Check back soon — shelters and rescues are joining PawPi."
+          }
         />
       ) : (
-        places.map((place) => (
-          <PlaceSection key={place.id} place={place} onOpenListing={onOpenListing} />
-        ))
+        <View
+          style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}
+        >
+          {listings.map((listing) => (
+            <View key={listing.id} style={{ width: "48.5%" }}>
+              <DogProfileCard
+                listing={listing}
+                grid
+                onPress={() =>
+                  onOpenListing({
+                    listing,
+                    place: {
+                      id: listing.provider_id,
+                      name: listing.provider_name,
+                      slug: listing.provider_slug,
+                      logo_url: listing.provider_logo_url,
+                    },
+                  })
+                }
+              />
+            </View>
+          ))}
+        </View>
       )}
+
+      <AdoptionFilterSheet
+        visible={filtersOpen}
+        filters={filters}
+        onApply={(next) => {
+          setFilters(next);
+          setFiltersOpen(false);
+        }}
+        onClear={() => {
+          setFilters(EMPTY_FILTERS);
+          setFiltersOpen(false);
+        }}
+        onClose={() => setFiltersOpen(false)}
+      />
     </RefreshableScrollView>
   );
 }
 
-// A place + its adoptable dogs, each rendered as a dog-profile card.
-function PlaceSection({ place, onOpenListing }) {
-  const { data: listings, isLoading } = useAdoptableListings(place.id);
-
-  return (
-    <View style={{ marginBottom: 22 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        {place.logo_url ? (
-          <Image
-            source={{ uri: place.logo_url }}
-            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.sand }}
-          />
-        ) : (
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: COLORS.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Home size={18} color={COLORS.coral} />
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
-            {place.name}
-          </Text>
-          <RatingBadge avgRating={place.avg_rating} reviewCount={place.review_count} />
-        </View>
-      </View>
-
-      {isLoading ? (
-        <Loading small />
-      ) : !listings || listings.length === 0 ? (
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, paddingLeft: 4 }}>
-          No dogs listed right now.
-        </Text>
-      ) : (
-        listings.map((listing) => (
-          <DogProfileCard
-            key={listing.id}
-            listing={listing}
-            onPress={() => onOpenListing({ listing, place })}
-          />
-        ))
-      )}
-    </View>
-  );
-}
-
-// The dog-profile card — the existing rich pet-profile format applied to an adoptable dog:
-// photo, name, breed, age, gender, size, energy + the good-with chips.
-function DogProfileCard({ listing, onPress }) {
+// The dog-profile card (ticket 2.86): the cover photo on TOP, then — BELOW it, so the dog is fully
+// visible (NOT overlaid) — the name, a basic-info row (age · size · gender), the distance, and a
+// "See more" affordance. `grid` renders the compact half-width variant for the browse grid.
+function DogProfileCard({ listing, onPress, grid = false }) {
   const photo = Array.isArray(listing.photo_urls) ? listing.photo_urls[0] : null;
+  const photoH = grid ? 140 : 180;
+  const info = [ageLabel(listing.age_years, listing.age_months), listing.size, listing.gender]
+    .filter(Boolean)
+    .join(" · ");
+  const km = listing.distance_km;
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
       style={{
         backgroundColor: COLORS.card,
-        borderRadius: 22,
+        borderRadius: grid ? 18 : 22,
         marginBottom: 14,
         borderWidth: 1,
         borderColor: COLORS.peach,
         overflow: "hidden",
       }}
     >
-      {photo ? (
-        <Image source={{ uri: photo }} style={{ width: "100%", height: 180, backgroundColor: COLORS.sand }} />
-      ) : (
+      <View>
+        {photo ? (
+          <Image source={{ uri: photo }} style={{ width: "100%", height: photoH, backgroundColor: COLORS.sand }} />
+        ) : (
+          <View
+            style={{
+              width: "100%",
+              height: photoH,
+              backgroundColor: COLORS.sand,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <PawPrint size={grid ? 30 : 40} color={COLORS.coral} />
+          </View>
+        )}
+        {listing.is_urgent ? (
+          <View
+            testID={`urgent-${listing.id}`}
+            style={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              backgroundColor: "#C2410C",
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 10 }}>URGENT</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={{ padding: grid ? 12 : 16 }}>
+        <Text style={{ fontSize: grid ? 16 : 19, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
+          {listing.name}
+        </Text>
+        <Text style={{ fontSize: 12.5, color: COLORS.mutedBrown, marginTop: 2 }} numberOfLines={1}>
+          {info || "Details inside"}
+        </Text>
+        {km != null ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
+            <MapPin size={12} color={COLORS.mutedBrown} />
+            <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+              {km < 1 ? "Less than 1 km away" : `${Math.round(km)} km away`}
+            </Text>
+          </View>
+        ) : null}
+        {!grid ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
+            {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
+            {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
+            {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
+          </View>
+        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+          <Text style={{ fontSize: 12.5, color: COLORS.coral, fontWeight: "700" }} numberOfLines={1}>
+            {money(listing.adoption_fee_cents, listing.currency)}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: "700", color: COLORS.warmBrown }}>See more</Text>
+            <ChevronRight size={16} color={COLORS.warmBrown} />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// Filter sheet (ticket 2.86): pet attributes (gender, size, age range, energy, good-with,
+// vaccination). Filters compose; "Clear all" resets. Distance/city are handled by the device
+// location + the radius default; provider filter is set from a listing's shelter elsewhere.
+const GENDERS = ["male", "female"];
+const SIZES = ["small", "medium", "large", "xlarge"];
+const ENERGY = ["low", "medium", "high"];
+const VACC = ["up_to_date", "partial", "unknown"];
+
+function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
+  const [draft, setDraft] = useState(filters);
+  useEffect(() => {
+    if (visible) setDraft(filters);
+  }, [visible, filters]);
+
+  const toggle = (key, value) =>
+    setDraft((d) => ({ ...d, [key]: d[key] === value ? null : value }));
+  const toggleBool = (key) =>
+    setDraft((d) => ({ ...d, [key]: d[key] === true ? null : true }));
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
         <View
           style={{
-            width: "100%",
-            height: 180,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
+            flexDirection: "row",
             alignItems: "center",
+            justifyContent: "space-between",
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.peach,
           }}
         >
-          <PawPrint size={40} color={COLORS.coral} />
+          <TouchableOpacity onPress={onClose} testID="filters-close">
+            <X size={22} color={COLORS.warmBrown} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>Filters</Text>
+          <TouchableOpacity onPress={onClear} testID="filters-clear">
+            <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}>Clear all</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 19, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
-            {listing.name}
-          </Text>
-          <ChevronRight size={20} color={COLORS.mutedBrown} />
+
+        <RefreshableScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          <FilterGroup label="Gender">
+            {GENDERS.map((g) => (
+              <FilterPill key={g} label={g} active={draft.gender === g} onPress={() => toggle("gender", g)} />
+            ))}
+          </FilterGroup>
+          <FilterGroup label="Size">
+            {SIZES.map((s) => (
+              <FilterPill key={s} label={s} active={draft.size === s} onPress={() => toggle("size", s)} />
+            ))}
+          </FilterGroup>
+          <FilterGroup label="Age">
+            <FilterPill label="Puppy (≤1y)" active={draft.age_max === 1} onPress={() => setDraft((d) => ({ ...d, age_min: null, age_max: d.age_max === 1 ? null : 1 }))} />
+            <FilterPill label="Young (1–3y)" active={draft.age_min === 1 && draft.age_max === 3} onPress={() => setDraft((d) => (d.age_min === 1 && d.age_max === 3 ? { ...d, age_min: null, age_max: null } : { ...d, age_min: 1, age_max: 3 }))} />
+            <FilterPill label="Adult (3y+)" active={draft.age_min === 3 && draft.age_max == null} onPress={() => setDraft((d) => (d.age_min === 3 && d.age_max == null ? { ...d, age_min: null } : { ...d, age_min: 3, age_max: null }))} />
+          </FilterGroup>
+          <FilterGroup label="Energy">
+            {ENERGY.map((e) => (
+              <FilterPill key={e} label={`${e} energy`} active={draft.energy_level === e} onPress={() => toggle("energy_level", e)} />
+            ))}
+          </FilterGroup>
+          <FilterGroup label="Good with">
+            <FilterPill label="Kids" active={draft.good_with_kids === true} onPress={() => toggleBool("good_with_kids")} />
+            <FilterPill label="Cats" active={draft.good_with_cats === true} onPress={() => toggleBool("good_with_cats")} />
+            <FilterPill label="Dogs" active={draft.good_with_dogs === true} onPress={() => toggleBool("good_with_dogs")} />
+          </FilterGroup>
+          <FilterGroup label="Vaccination">
+            {VACC.map((v) => (
+              <FilterPill key={v} label={v.replace(/_/g, " ")} active={draft.vaccination_status === v} onPress={() => toggle("vaccination_status", v)} />
+            ))}
+          </FilterGroup>
+        </RefreshableScrollView>
+
+        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: COLORS.peach }}>
+          <TouchableOpacity
+            testID="filters-apply"
+            onPress={() => onApply(draft)}
+            style={{ backgroundColor: COLORS.coral, borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>Show dogs</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 3 }} numberOfLines={1}>
-          {[listing.breed, ageLabel(listing.age_years, listing.age_months), listing.gender, listing.size]
-            .filter(Boolean)
-            .join(" · ")}
-        </Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-          {listing.is_urgent ? (
-            <View testID={`urgent-${listing.id}`} style={{ backgroundColor: "#C2410C", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 11 }}>URGENT</Text>
-            </View>
-          ) : null}
-          {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
-          {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
-          {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
-          {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
-          {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
-          {listing.good_with_dogs === true ? <Chip label="Good with dogs" /> : null}
-        </View>
-        <Text style={{ fontSize: 13, color: COLORS.coral, fontWeight: "700", marginTop: 10 }}>
-          Adoption fee: {money(listing.adoption_fee_cents, listing.currency)}
-        </Text>
       </View>
+    </Modal>
+  );
+}
+
+function FilterGroup({ label, children }) {
+  return (
+    <View style={{ marginBottom: 20 }}>
+      <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.warmBrown, marginBottom: 10 }}>
+        {label}
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{children}</View>
+    </View>
+  );
+}
+
+function FilterPill({ label, active, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={{
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: active ? COLORS.coral : COLORS.peach,
+        backgroundColor: active ? COLORS.coral + "18" : COLORS.card,
+      }}
+    >
+      <Text style={{ fontSize: 13, fontWeight: "700", color: active ? COLORS.coral : COLORS.warmBrown, textTransform: "capitalize" }}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }

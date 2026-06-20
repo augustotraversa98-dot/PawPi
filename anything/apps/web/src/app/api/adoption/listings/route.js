@@ -1,0 +1,151 @@
+import sql from "@/app/api/utils/sql";
+import { auth } from "@/auth";
+import { withRequestContext } from "@/app/api/utils/requestContext";
+
+// GET /api/adoption/listings — the OWNER-facing adoption browse (ticket 2.86). A single flat,
+// filterable, NEAREST-FIRST read across every PUBLISHED provider's AVAILABLE adoptable dogs, joined
+// to the provider + its primary location (lat/lng from 2.81). Distinct from the provider-scoped
+// management list (/api/providers/[id]/adoptable-listings): no ownership, public discovery only.
+//
+// Visibility reuses the discovery rule (published provider + available listing) — and rides the
+// existing RLS (0038 listings public-read + 0024 provider_locations public-read for published
+// providers), so the joined read is safe as any authed owner.
+//
+// Filters (all optional, compose): gender, size, age_min/age_max (years), energy_level,
+// good_with_kids/cats/dogs, vaccination_status, provider_id, and location (lat+lng+radius_km
+// bounding box) or city. Nearest-first when lat+lng are valid; else featured-first then recent.
+
+function num(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function bool(v) {
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return null;
+}
+
+// Haversine distance in km between two lat/lng points.
+function distanceKm(aLat, aLng, bLat, bLng) {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+async function GET(request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const gender = searchParams.get("gender") || null;
+    const size = searchParams.get("size") || null;
+    const energy = searchParams.get("energy_level") || null;
+    const vaccination = searchParams.get("vaccination_status") || null;
+    const city = searchParams.get("city") || null;
+    const providerId = num(searchParams.get("provider_id"));
+    const ageMin = num(searchParams.get("age_min"));
+    const ageMax = num(searchParams.get("age_max"));
+    const goodKids = bool(searchParams.get("good_with_kids"));
+    const goodCats = bool(searchParams.get("good_with_cats"));
+    const goodDogs = bool(searchParams.get("good_with_dogs"));
+
+    const lat = num(searchParams.get("lat"));
+    const lng = num(searchParams.get("lng"));
+    const radiusKm = num(searchParams.get("radius_km")) ?? 100;
+    const hasGeo =
+      lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+
+    // Bounding box for the radius pre-filter (1° lat ≈ 111km; lng shrinks by cos(lat)).
+    const latPad = hasGeo ? radiusKm / 111 : null;
+    const lngPad = hasGeo
+      ? radiusKm / (111 * Math.max(0.01, Math.cos((lat * Math.PI) / 180)))
+      : null;
+    const latMin = hasGeo ? lat - latPad : null;
+    const latMax = hasGeo ? lat + latPad : null;
+    const lngMin = hasGeo ? lng - lngPad : null;
+    const lngMax = hasGeo ? lng + lngPad : null;
+
+    // One joined read with COALESCE-style optional filters (all in a single tagged template — no
+    // sql(string,array) gotcha). The primary location is the provider's earliest location row.
+    const rows = await sql`
+      SELECT
+        al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+        al.gender, al.size, al.photo_urls, al.video_url, al.story,
+        al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+        al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+        al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
+        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+        loc.lat AS provider_lat, loc.lng AS provider_lng,
+        loc.address AS provider_address, loc.name AS provider_location_name
+      FROM adoptable_listings al
+      JOIN providers p ON p.id = al.provider_id AND p.status = 'published'
+      LEFT JOIN LATERAL (
+        SELECT lat, lng, address, name
+        FROM provider_locations pl
+        WHERE pl.provider_id = p.id
+        ORDER BY pl.created_at ASC
+        LIMIT 1
+      ) loc ON true
+      WHERE al.status = 'available'
+        AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
+        AND (${gender}::text IS NULL OR al.gender = ${gender})
+        AND (${size}::text IS NULL OR al.size = ${size})
+        AND (${energy}::text IS NULL OR al.energy_level = ${energy})
+        AND (${vaccination}::text IS NULL OR al.vaccination_status = ${vaccination})
+        AND (${ageMin}::int IS NULL OR al.age_years >= ${ageMin})
+        AND (${ageMax}::int IS NULL OR al.age_years <= ${ageMax})
+        AND (${goodKids}::bool IS NULL OR al.good_with_kids = ${goodKids})
+        AND (${goodCats}::bool IS NULL OR al.good_with_cats = ${goodCats})
+        AND (${goodDogs}::bool IS NULL OR al.good_with_dogs = ${goodDogs})
+        AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
+        AND (
+          ${hasGeo ? false : true}
+          OR (
+            loc.lat IS NOT NULL AND loc.lng IS NOT NULL
+            AND loc.lat BETWEEN ${latMin} AND ${latMax}
+            AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+          )
+        )
+      ORDER BY al.is_featured DESC, al.created_at DESC
+    `;
+
+    let listings = rows;
+    let sort = "featured_recent";
+    if (hasGeo) {
+      // Nearest-first: attach distance + sort ascending (rows lacking coords were already excluded
+      // by the bounding box above). Featured still bubbles up within the same proximity tie-break.
+      listings = rows
+        .map((r) => ({
+          ...r,
+          distance_km:
+            r.provider_lat != null && r.provider_lng != null
+              ? distanceKm(lat, lng, Number(r.provider_lat), Number(r.provider_lng))
+              : null,
+        }))
+        .sort((a, b) => {
+          const da = a.distance_km ?? Infinity;
+          const db = b.distance_km ?? Infinity;
+          if (da !== db) return da - db;
+          return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+        });
+      sort = "nearest";
+    }
+
+    return Response.json({ listings, sort });
+  } catch (error) {
+    console.error("[GET /api/adoption/listings] Error:", error.message);
+    return Response.json({ error: "Failed to load adoptable dogs" }, { status: 500 });
+  }
+}
+
+const wrappedGET = withRequestContext(GET);
+export { wrappedGET as GET };
