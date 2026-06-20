@@ -9,8 +9,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { X, Building2, Check, ExternalLink } from "lucide-react-native";
+import {
+  X,
+  Building2,
+  Check,
+  ExternalLink,
+  FileText,
+  Sparkles,
+} from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import * as DocumentPicker from "expo-document-picker";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import LocationField from "@/components/Map/LocationField";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -18,8 +26,14 @@ import {
   useMyProviders,
   useCreateProvider,
   useCreateProviderLocation,
+  useEnrichProvider,
+  useEnrichProviderDocument,
+  useUpdateProvider,
+  useCreateProviderService,
 } from "@/hooks/useProviders";
+import useUpload from "@/utils/useUpload";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { toServiceRows, rowToServiceBody } from "@/utils/enrichmentDraft";
 
 // The capabilities (services) a business can offer. A provider has MANY capabilities
 // (the CORE MODEL — see docs/phase2-tickets/00-README.md), so onboarding is MULTI-select:
@@ -121,15 +135,30 @@ function SignedOutGate({ signIn, signUp }) {
   );
 }
 
-// The real onboarding flow for a logged-in user.
+// The real onboarding flow for a logged-in user. The "magic onboarding" wizard (ticket 2.83): the
+// provider gives a little (name + services + map pin + links + an optional price-list doc), taps
+// "Build my profile", and the system PRE-FILLS the rest from the confirm-first enrichment seam (2.21
+// + 2.82). They review/edit ONE screen, then save through the existing owner-identity routes.
+// Degrades fully: with no enrichment keys, "Build my profile" returns an empty draft and onboarding
+// is exactly the manual flow.
 function ProviderOnboarding() {
   const { data: myProviders = [], isLoading } = useMyProviders();
   const createProvider = useCreateProvider();
   const createLocation = useCreateProviderLocation();
+  const enrich = useEnrichProvider();
+  const enrichDocument = useEnrichProviderDocument();
+  const updateProvider = useUpdateProvider();
+  const createService = useCreateProviderService();
+  const [upload, { loading: uploading }] = useUpload();
 
   const [name, setName] = useState("");
   const [selectedCapabilities, setSelectedCapabilities] = useState([]);
   const [bio, setBio] = useState("");
+  // Optional price-list/menu document (ticket 2.82) — transient input for the catalog proposal.
+  const [doc, setDoc] = useState(null); // { url, filename, mimeType } | null
+  const [building, setBuilding] = useState(false);
+  // Review phase (confirm-first): the created provider + the proposed, editable draft.
+  const [review, setReview] = useState(null); // { provider, description, serviceRows, photos } | null
   // Business location (ticket 2.81) — the shared map pin keeps address + lat/lng in sync. Optional:
   // a manual address still saves when location permission is denied (LocationField's "My location"
   // is the only thing that needs GPS; tap-to-drop + the address line work without it).
@@ -154,6 +183,160 @@ function ProviderOnboarding() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [createdProvider, setCreatedProvider] = useState(null);
 
+  // Pick a price-list/menu document (PDF/Excel/CSV) and upload it to the Storage path; we keep just
+  // the URL as transient input for the catalog proposal (ticket 2.82). Best-effort + optional.
+  const pickDocument = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "text/csv", "text/comma-separated-values",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel"],
+        copyToCacheDirectory: true,
+      });
+      const asset = res?.assets?.[0];
+      if (!asset) return;
+      const up = await upload({ reactNativeAsset: asset });
+      if (up?.error || !up?.url) {
+        setErrorMessage(up?.error || "Couldn't upload that document.");
+        return;
+      }
+      setDoc({ url: up.url, filename: asset.name, mimeType: asset.mimeType });
+    } catch (err) {
+      setErrorMessage(err?.message || "Couldn't pick that document.");
+    }
+  };
+
+  const handleBuildProfile = async () => {
+    setErrorMessage(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErrorMessage("Please enter your business name.");
+      return;
+    }
+    if (selectedCapabilities.length === 0) {
+      setErrorMessage("Please choose at least one service.");
+      return;
+    }
+    setBuilding(true);
+    try {
+      const provider = await createProvider.mutateAsync({
+        name: trimmedName,
+        // provider_type stays required server-side (now display-only per 2.1); send the
+        // FIRST/primary selected capability as the type. capabilities[] is the real
+        // multi-service set the backend persists into provider_capabilities.
+        provider_type: selectedCapabilities[0],
+        capabilities: selectedCapabilities,
+        bio: bio.trim() || undefined,
+        // Optional links (ticket 2.20) — only send non-empty ones. IG/FB carry through (links-only).
+        website_url: websiteUrl.trim() || undefined,
+        instagram_url: instagramUrl.trim() || undefined,
+        facebook_url: facebookUrl.trim() || undefined,
+        google_maps_url: googleMapsUrl.trim() || undefined,
+      });
+
+      // Persist the map pin (ticket 2.81) as the provider's primary location, if set. Best-effort.
+      const hasCoord = location && isValidCoord(location.lat, location.lng);
+      if (provider?.id && (hasCoord || location?.address)) {
+        try {
+          await createLocation.mutateAsync({
+            providerId: provider.id,
+            name: trimmedName,
+            address: location?.address || undefined,
+            lat: hasCoord ? location.lat : undefined,
+            lng: hasCoord ? location.lng : undefined,
+          });
+        } catch {
+          // swallow — the provider still exists; the owner can add the location on the dashboard.
+        }
+      }
+
+      // PROPOSE a profile from the links (+ the uploaded document). Both /enrich routes write NOTHING
+      // and degrade cleanly: a 503 (no keys) or any failure just yields an empty draft → manual.
+      let draftDescription = bio.trim();
+      let services = [];
+      const photos = [];
+      try {
+        const { draft } = await enrich.mutateAsync(provider.id);
+        if (draft?.description) draftDescription = draftDescription || draft.description;
+        if (Array.isArray(draft?.services)) services = services.concat(draft.services);
+        if (Array.isArray(draft?.photos)) photos.push(...draft.photos);
+      } catch {
+        /* enrichment unconfigured / failed → manual */
+      }
+      if (doc?.url) {
+        try {
+          const { draft } = await enrichDocument.mutateAsync({
+            providerId: provider.id,
+            url: doc.url,
+            filename: doc.filename,
+            mimeType: doc.mimeType,
+          });
+          if (Array.isArray(draft?.services)) services = services.concat(draft.services);
+        } catch {
+          /* document enrichment unconfigured / failed → manual */
+        }
+      }
+
+      const serviceRows = toServiceRows(services);
+      // Anything to review? (a proposed description beyond what they typed, or candidate services)
+      const hasProposal =
+        serviceRows.length > 0 ||
+        (draftDescription && draftDescription !== bio.trim());
+      if (hasProposal) {
+        setReview({ provider, description: draftDescription, serviceRows, photos });
+      } else {
+        setCreatedProvider(provider);
+      }
+    } catch (err) {
+      setErrorMessage(err?.message || "Something went wrong. Please try again.");
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  // Apply the reviewed draft through the existing owner routes, then finish (ticket 2.83). The
+  // description saves to the provider (bio); each SELECTED service row creates a real provider_service.
+  // Best-effort per service so one bad row doesn't abort the rest; the business already exists.
+  const saveReviewed = async () => {
+    if (!review?.provider?.id) return;
+    setBuilding(true);
+    try {
+      const desc = (review.description || "").trim();
+      if (desc && desc !== (bio.trim() || "")) {
+        try {
+          await updateProvider.mutateAsync({ providerId: review.provider.id, bio: desc });
+        } catch {
+          /* non-fatal — keep going to services */
+        }
+      }
+      for (const row of review.serviceRows.filter((r) => r.selected && r.name.trim())) {
+        try {
+          await createService.mutateAsync({
+            providerId: review.provider.id,
+            ...rowToServiceBody(row),
+          });
+        } catch {
+          /* skip a failed row */
+        }
+      }
+      setCreatedProvider(review.provider);
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  const setRow = (key, patch) =>
+    setReview((prev) =>
+      prev
+        ? {
+            ...prev,
+            serviceRows: prev.serviceRows.map((r) =>
+              r.key === key ? { ...r, ...patch } : r,
+            ),
+          }
+        : prev,
+    );
+
   if (isLoading) {
     return (
       <View style={{ paddingTop: 80, alignItems: "center" }}>
@@ -169,6 +352,21 @@ function ProviderOnboarding() {
         providerName={createdProvider.name}
         heading="Your business is created!"
         body={`"${createdProvider.name}" is set up as a draft. Finish setup — publish, add your services, and invite staff — from the PawPi web dashboard.`}
+      />
+    );
+  }
+
+  // Confirm-first review (ticket 2.83) — the provider exists as a draft; show the PROPOSED, editable
+  // profile. Rendered BEFORE the myProviders check so the freshly-created business doesn't flip us to
+  // the "already set up" state mid-review.
+  if (review) {
+    return (
+      <ReviewStep
+        review={review}
+        setDescription={(t) => setReview((prev) => (prev ? { ...prev, description: t } : prev))}
+        setRow={setRow}
+        onSave={saveReviewed}
+        saving={building}
       />
     );
   }
@@ -189,56 +387,6 @@ function ProviderOnboarding() {
     );
   }
 
-  const handleCreate = async () => {
-    setErrorMessage(null);
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setErrorMessage("Please enter your business name.");
-      return;
-    }
-    if (selectedCapabilities.length === 0) {
-      setErrorMessage("Please choose at least one service.");
-      return;
-    }
-    try {
-      const provider = await createProvider.mutateAsync({
-        name: trimmedName,
-        // provider_type stays required server-side (now display-only per 2.1); send the
-        // FIRST/primary selected capability as the type. capabilities[] is the real
-        // multi-service set the backend persists into provider_capabilities.
-        provider_type: selectedCapabilities[0],
-        capabilities: selectedCapabilities,
-        bio: bio.trim() || undefined,
-        // Optional links (ticket 2.20) — only send non-empty ones.
-        website_url: websiteUrl.trim() || undefined,
-        instagram_url: instagramUrl.trim() || undefined,
-        facebook_url: facebookUrl.trim() || undefined,
-        google_maps_url: googleMapsUrl.trim() || undefined,
-      });
-
-      // Persist the map pin (ticket 2.81) as the provider's primary location, if set. Best-effort:
-      // the business is already created, so a location write failure must not block the success
-      // state — nearest-first adoption (2.86) just won't have coords for this provider until edited.
-      const hasCoord = location && isValidCoord(location.lat, location.lng);
-      if (provider?.id && (hasCoord || location?.address)) {
-        try {
-          await createLocation.mutateAsync({
-            providerId: provider.id,
-            name: trimmedName,
-            address: location?.address || undefined,
-            lat: hasCoord ? location.lat : undefined,
-            lng: hasCoord ? location.lng : undefined,
-          });
-        } catch {
-          // swallow — the provider still exists; the owner can add the location on the dashboard.
-        }
-      }
-
-      setCreatedProvider(provider);
-    } catch (err) {
-      setErrorMessage(err?.message || "Something went wrong. Please try again.");
-    }
-  };
 
   return (
     <View>
@@ -382,6 +530,43 @@ function ProviderOnboarding() {
         style={inputStyle}
       />
 
+      {/* Optional price-list / menu document (ticket 2.82) — we propose a catalog you review. */}
+      <View style={{ height: 24 }} />
+      <FieldLabel label="Price list or menu" hint="Optional — PDF, Excel or CSV" />
+      <TouchableOpacity
+        onPress={pickDocument}
+        disabled={uploading}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          borderWidth: 2,
+          borderColor: COLORS.peach,
+          borderStyle: "dashed",
+          backgroundColor: COLORS.card,
+          borderRadius: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+        }}
+      >
+        {uploading ? (
+          <ActivityIndicator color={COLORS.coral} />
+        ) : (
+          <FileText size={18} color={doc ? COLORS.coral : COLORS.mutedBrown} />
+        )}
+        <Text
+          numberOfLines={1}
+          style={{ flex: 1, fontSize: 14, color: doc ? COLORS.warmBrown : COLORS.mutedBrown }}
+        >
+          {doc ? doc.filename : "Upload a price list to pre-fill your services"}
+        </Text>
+        {doc && (
+          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.coral }}>
+            Change
+          </Text>
+        )}
+      </TouchableOpacity>
+
       {errorMessage && (
         <Text
           style={{
@@ -397,9 +582,126 @@ function ProviderOnboarding() {
 
       <View style={{ height: 28 }} />
       <PrimaryButton
-        label={createProvider.isPending ? "Creating…" : "Create business"}
-        onPress={handleCreate}
-        loading={createProvider.isPending}
+        label={building ? "Building your profile…" : "Build my profile"}
+        onPress={handleBuildProfile}
+        loading={building}
+        icon={<Sparkles size={18} color="#FFF" />}
+      />
+      <Text
+        style={{
+          marginTop: 12,
+          fontSize: 13,
+          color: COLORS.mutedBrown,
+          textAlign: "center",
+          lineHeight: 19,
+        }}
+      >
+        We’ll pre-fill what we can from your links and document — you review and edit before anything
+        goes live.
+      </Text>
+    </View>
+  );
+}
+
+// The confirm-first review screen (ticket 2.83): the proposed profile, fully editable, before save.
+function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
+  const { description, serviceRows, photos } = review;
+  return (
+    <View>
+      <Header
+        title="Review your profile"
+        subtitle="We pre-filled this from your links and document. Edit anything, then save — nothing is published until you do."
+      />
+
+      <FieldLabel label="About your business" hint="Optional" />
+      <TextInput
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Tell pet owners about your business…"
+        placeholderTextColor={COLORS.mutedBrown}
+        multiline
+        style={[inputStyle, { minHeight: 96, textAlignVertical: "top" }]}
+      />
+
+      {serviceRows.length > 0 && (
+        <>
+          <View style={{ height: 24 }} />
+          <FieldLabel label="Proposed services" hint="Toggle off any you don't want" />
+          <View style={{ gap: 12 }}>
+            {serviceRows.map((row) => (
+              <View
+                key={row.key}
+                style={{
+                  backgroundColor: row.selected ? "#FFF" : COLORS.sand,
+                  borderRadius: 16,
+                  padding: 14,
+                  borderWidth: 2,
+                  borderColor: row.selected ? COLORS.coral : "transparent",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <TouchableOpacity
+                    onPress={() => setRow(row.key, { selected: !row.selected })}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: row.selected }}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 8,
+                      borderWidth: 2,
+                      borderColor: COLORS.coral,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: row.selected ? COLORS.coral : "transparent",
+                    }}
+                  >
+                    {row.selected && <Check size={16} color="#FFF" />}
+                  </TouchableOpacity>
+                  <TextInput
+                    value={row.name}
+                    onChangeText={(t) => setRow(row.key, { name: t })}
+                    placeholder="Service name"
+                    placeholderTextColor={COLORS.mutedBrown}
+                    style={[inputStyle, { flex: 1, paddingVertical: 10 }]}
+                  />
+                </View>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                  <TextInput
+                    value={row.price}
+                    onChangeText={(t) => setRow(row.key, { price: t })}
+                    placeholder="Price"
+                    placeholderTextColor={COLORS.mutedBrown}
+                    keyboardType="decimal-pad"
+                    style={[inputStyle, { flex: 1, paddingVertical: 10 }]}
+                  />
+                  <TextInput
+                    value={row.duration}
+                    onChangeText={(t) => setRow(row.key, { duration: t })}
+                    placeholder="Mins"
+                    placeholderTextColor={COLORS.mutedBrown}
+                    keyboardType="number-pad"
+                    style={[inputStyle, { width: 96, paddingVertical: 10 }]}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {photos?.length > 0 && (
+        <Text style={{ marginTop: 16, fontSize: 13, color: COLORS.mutedBrown }}>
+          {photos.length} candidate photo{photos.length === 1 ? "" : "s"} found — add them later from
+          the web dashboard.
+        </Text>
+      )}
+
+      <View style={{ height: 28 }} />
+      <PrimaryButton
+        label={saving ? "Saving…" : "Save & finish"}
+        onPress={onSave}
+        loading={saving}
+        icon={<Check size={18} color="#FFF" />}
       />
     </View>
   );
@@ -528,7 +830,7 @@ function FieldLabel({ label, required, hint }) {
   );
 }
 
-function PrimaryButton({ label, onPress, loading }) {
+function PrimaryButton({ label, onPress, loading, icon }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -549,7 +851,7 @@ function PrimaryButton({ label, onPress, loading }) {
         opacity: loading ? 0.7 : 1,
       }}
     >
-      {loading && <ActivityIndicator color="#FFF" />}
+      {loading ? <ActivityIndicator color="#FFF" /> : icon}
       <Text style={{ fontSize: 17, fontWeight: "800", color: "#FFF" }}>
         {label}
       </Text>
