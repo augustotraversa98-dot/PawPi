@@ -317,9 +317,11 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
 - ✅ **T4** Report/Block UI actions (mobile) — merged (#231). Shared `<ModerationMenu>` + `useModeration`
   into 9 UGC surfaces (feed post/bark, forum thread/comment, DM header, pet profile, provider review,
   adoption listing, event, walk). DEVICE PASS required.
-- 🔨 **T5** EULA acceptance gate (web signup + mobile welcome, required unchecked checkbox) +
-  zero-tolerance Terms clause (24h review, content removal, account ejection).
-- ☐ **T6** Contact info wiring (Contact Us mailto / Help Center) + hosted legal URLs.
+- ✅ **T5** EULA acceptance gate (web signup + mobile welcome, required unchecked checkbox) +
+  zero-tolerance Terms clause (24h review, content removal, account ejection) — merged (#232).
+- 🔨 **T6** Contact info wiring — Settings "Contact Us" → `mailto:` support; "Help Center" → hosted URL
+  (falls back to email). `SUPPORT_EMAIL`/`HELP_CENTER_URL` config slots. Hosting + env are Augusto's
+  go-live step.
 - ☐ **T7** Text content filter on submit (shared `moderateText` at the UGC write chokepoints).
 
 ---

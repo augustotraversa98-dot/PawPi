@@ -173,10 +173,34 @@ phase and is deliberately NOT included in any UGC PR.)
   `welcome.jsx` (+ test, 2 cases), `docs/legal/terms-of-service.md`.
 - **Tests:** +4 web vitest, +2 mobile jest. Suite: **mobile 1106 → 1108** ✓ · **web unit 1239 → 1243** ✓
   (1236 on CI) · integration 626 ✓ (unchanged).
-- **CI result:** _pending push_
-- **Merge status:** _pending_
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #232, commit `47b9233`**, branch deleted.
 - **Device tests needed (T5):** web signup — Create account stays disabled until the box is checked;
   device — the welcome Create-account flow refuses until the box is checked; the Terms/Privacy links open
   once the URLs are set (T6).
+
+---
+
+## T6 — Contact info wiring + hosted legal URLs
+
+- **Built:** made the dead "Help Center" / "Contact Us" rows real and added the support-contact config.
+  - `SettingRow` gained an optional `onPress` → renders a tappable `TouchableOpacity` (else a plain View).
+  - **Contact Us** → `mailto:${SUPPORT_EMAIL}` (always works; `SUPPORT_EMAIL` has a default).
+  - **Help Center** → `HELP_CENTER_URL` when set, else falls back to the support email.
+  - `constants/legal.js` += `SUPPORT_EMAIL` (`EXPO_PUBLIC_SUPPORT_EMAIL`, default `support@pawpi.app`)
+    and `HELP_CENTER_URL` (`EXPO_PUBLIC_HELP_URL`, optional).
+- **DB changes:** none.
+- **Files:** `app/(tabs)/more/settings.jsx` (+ 2 test cases), `src/constants/legal.js`.
+- **Tests:** +2 mobile jest. Suite: **mobile 1108 → 1110** ✓ · web unchanged (unit 1243 / integration 626).
+- **CI result:** _pending push_
+- **Merge status:** _pending_
+- **⚠️ Go-live env / hosting (Augusto — the code is ready, these are the manual publish steps):**
+  - Host `docs/legal/terms-of-service.md` + `docs/legal/privacy-policy.md` at stable public URLs.
+  - Set `EXPO_PUBLIC_TERMS_URL`, `EXPO_PUBLIC_PRIVACY_POLICY_URL` (mobile) and
+    `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_POLICY_URL` (web) to those URLs so the T5 signup
+    links resolve. Optionally set `EXPO_PUBLIC_SUPPORT_EMAIL` + `EXPO_PUBLIC_HELP_URL`.
+  - Make App Store Connect "Support URL"/contact match `EXPO_PUBLIC_SUPPORT_EMAIL`.
+- **Device tests needed (T6):** tap Contact Us → mail composer opens to the support address; tap Help
+  Center → opens the hosted help page (or mail) once `EXPO_PUBLIC_HELP_URL` is set.
 
 ---

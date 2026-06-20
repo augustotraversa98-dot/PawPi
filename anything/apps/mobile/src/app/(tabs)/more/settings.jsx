@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,7 @@ import {
   getLocalePreference,
   setLocalePreference,
 } from "@/i18n/localePreference";
+import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
 
 const C = {
   coral: "#FF6F61",
@@ -133,14 +134,40 @@ export default function SettingsScreen() {
     );
   };
 
+  // Contact Us → opens the user's mail app to the support address (Guideline 1.2 / App Store
+  // "Support URL"). Always works — SUPPORT_EMAIL has a default.
+  const openContactUs = () => {
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("PawPi support")}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Contact us", `Email us at ${SUPPORT_EMAIL}`),
+    );
+  };
+
+  // Help Center → the hosted help/contact page when configured, otherwise falls back to email.
+  const openHelpCenter = () => {
+    if (HELP_CENTER_URL) {
+      Linking.openURL(HELP_CENTER_URL).catch(() => openContactUs());
+    } else {
+      openContactUs();
+    }
+  };
+
   const SettingRow = ({
     label,
     icon: Icon,
     value,
     isSwitch = false,
     onValueChange,
-  }) => (
-    <View
+    onPress,
+  }) => {
+    // A row with an onPress becomes a real tappable link (Help Center / Contact Us); otherwise
+    // it stays a plain View. Switch rows are never pressable as a whole.
+    const RowContainer = onPress && !isSwitch ? TouchableOpacity : View;
+    return (
+    <RowContainer
+      {...(onPress && !isSwitch
+        ? { onPress, accessibilityRole: "button", accessibilityLabel: label }
+        : {})}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -181,8 +208,9 @@ export default function SettingsScreen() {
           {value}
         </Text>
       )}
-    </View>
-  );
+    </RowContainer>
+    );
+  };
 
   const SectionCard = ({ children }) => (
     <View
@@ -323,8 +351,8 @@ export default function SettingsScreen() {
           SUPPORT
         </Text>
         <SectionCard>
-          <SettingRow label="Help Center" icon={HelpCircle} value="→" />
-          <SettingRow label="Contact Us" icon={Globe} value="→" />
+          <SettingRow label="Help Center" icon={HelpCircle} value="→" onPress={openHelpCenter} />
+          <SettingRow label="Contact Us" icon={Globe} value="→" onPress={openContactUs} />
         </SectionCard>
 
         <Text
