@@ -296,6 +296,28 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
+## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T7) — IN PROGRESS
+
+Plan: [`docs/phase-ugc-moderation-plan.md`](phase-ugc-moderation-plan.md) · build log:
+[`docs/ugc-moderation-build-log.md`](ugc-moderation-build-log.md). The minimum 1.2 safeguards to pass
+review: EULA gate, content filter, report/flag, block, contact info. Order **T1 → T2 → T3 → T4**, then
+**T5, T6, T7**. (✅ merged · 🔨 building · ☐ queued.)
+
+- 🔨 **T1** Migration `0065` — moderation primitives (DB only). `content_reports` + `user_blocks`
+  (both FORCE-RLS), `hidden_at` on 11 peer-UGC content tables, `user_profiles.banned_at`, 5 DEFINER
+  helpers (`app_is_admin`/`app_user_is_blocked`/`app_moderate_hide`/`app_moderate_unhide`/
+  `app_ban_user`), `notifications` `report_received` widen. Harness-proven (21 integration tests +
+  completeness guard). Migration ⏳ PENDING hand-apply on Supabase (`verify_0065.sql`).
+- ☐ **T2** Report/Block/admin APIs (backend) — `/api/reports`, `/api/blocks`, `/api/admin/reports`.
+- ☐ **T3** Enforcement in read paths — `hidden_at IS NULL` + block filtering across feed/forum/DM/
+  search/walks/reviews/events/lost-reports; blocked-pair interaction 403.
+- ☐ **T4** Report/Block UI actions (mobile) — shared `ReportAction`/`BlockAction` into each surface.
+- ☐ **T5** EULA acceptance gate (web + mobile signup) + zero-tolerance Terms clause.
+- ☐ **T6** Contact info wiring (Contact Us mailto / Help Center) + hosted legal URLs.
+- ☐ **T7** Text content filter on submit (shared `moderateText` at the UGC write chokepoints).
+
+---
+
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
 - **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**
