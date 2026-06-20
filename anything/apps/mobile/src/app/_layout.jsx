@@ -3,7 +3,8 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/utils/queryClient";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
@@ -11,17 +12,6 @@ import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 
 SplashScreen.preventAutoHideAsync();
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 export default function RootLayout() {
   const { initiate, isReady } = useAuth();

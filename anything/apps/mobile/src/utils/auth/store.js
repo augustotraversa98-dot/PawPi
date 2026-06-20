@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { queryClient } from '@/utils/queryClient';
 
 export const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
 
@@ -46,6 +47,13 @@ export const useAuthStore = create((set) => ({
     } else {
       SecureStore.deleteItemAsync(authKey, secureStoreOptions).catch(() => {});
     }
+    // Every setAuth call is an identity change (login, account switch, or
+    // logout). Wipe the React Query cache so one account's server data (pets,
+    // posts, today-daily-update, vet record, …) can never bleed into the next
+    // session — the cause of the "logs in as demo but sees another account's
+    // pet + 403s" bug. The persisted selectedPetId self-corrects via
+    // useCurrentPet's find()-guard once ["pets"] is empty.
+    queryClient.clear();
     set({ auth });
   },
 }));
