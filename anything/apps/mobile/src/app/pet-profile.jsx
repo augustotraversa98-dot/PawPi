@@ -15,6 +15,7 @@ import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
@@ -258,7 +259,16 @@ export default function PetProfileScreen({ embedded = false }) {
         {embedded ? (
           <OwnerMenu />
         ) : (
-          <View style={{ width: 70 }} />
+          // Report this pet profile / block its owner (T4). Hidden on your own pet.
+          <View style={{ width: 70, alignItems: "flex-end" }}>
+            <ModerationMenu
+              targetType="pet_profile"
+              targetId={petId ? Number(petId) : null}
+              authorUserId={owner?.id}
+              isOwn={!canFollow}
+              onBlocked={() => router.back()}
+            />
+          </View>
         )}
       </View>
 

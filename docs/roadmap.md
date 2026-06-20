@@ -311,10 +311,12 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
 - ✅ **T2** Report/Block/admin APIs (backend) — merged (#229). `/api/reports`, `/api/blocks` (+`[id]`),
   `/api/admin/reports` (+`[id]/action`). Extended `0065` with two admin DEFINER helpers
   (`app_admin_list_reports`/`app_admin_action_report`) so the admin queue works under FORCE RLS.
-- 🔨 **T3** Enforcement in read paths — `hidden_at IS NULL` + block filtering across feed/forum/DM/
-  search/walks/reviews/events/lost-reports/pet-profile; blocked-pair interaction 403. Shared
-  `utils/moderation.js`; real-handler-as-pawpi_app integration proof.
-- ☐ **T4** Report/Block UI actions (mobile) — shared `ReportAction`/`BlockAction` into each surface.
+- ✅ **T3** Enforcement in read paths — merged (#230). `hidden_at IS NULL` + block filtering across
+  feed/forum/DM/search/walks/reviews/events/lost-reports/pet-profile; blocked-pair interaction 403.
+  Shared `utils/moderation.js`; real-handler-as-pawpi_app integration proof.
+- 🔨 **T4** Report/Block UI actions (mobile) — shared `<ModerationMenu>` + `useModeration` into 9 UGC
+  surfaces (feed post/bark, forum thread/comment, DM header, pet profile, provider review, adoption
+  listing, event, walk). DEVICE PASS required.
 - ☐ **T5** EULA acceptance gate (web + mobile signup) + zero-tolerance Terms clause.
 - ☐ **T6** Contact info wiring (Contact Us mailto / Help Center) + hosted legal URLs.
 - ☐ **T7** Text content filter on submit (shared `moderateText` at the UGC write chokepoints).
