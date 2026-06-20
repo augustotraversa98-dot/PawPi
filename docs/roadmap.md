@@ -247,7 +247,7 @@ ACTION 1. 2.79 added none. Last applied on Supabase = 0062.
 
 ---
 
-## 🌊 WAVE 9 — business magic-onboarding + calendar import + adoption browse (tickets 2.81–2.87) — IN PROGRESS
+## 🌊 WAVE 9 — business magic-onboarding + calendar import + adoption browse (tickets 2.81–2.87) — ✅ COMPLETE
 
 Scoped with Tats 2026-06-20. Authoritative spec + build order:
 [`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md) (Wave 9 section). Built per the ⚡ Wave 5
@@ -283,7 +283,11 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   recent). Mobile Browse redesigned to a 2-col grid of photo-top/info-below cards with distance label
   + a filter sheet; device location with clean fallback. Consumer UI is mobile; the endpoint is the
   shared layer for any future web view. RLS-proven (integration). No migration.
-- ☐ **2.87** Adoption detail page — mobile, no migration. ⛔ after 2.85.
+- ✅ **2.87** Adoption detail page — mobile, no migration. Extended the public single-listing GET
+  (2.56) to return the shelter's primary location; rewrote the detail into a rich profile: swipeable
+  media gallery (photos + `expo-av` video), key-facts grid (unknowns omitted), compatibility chips,
+  story, a shelter card with a `MapLocationView` pin (2.68), and the existing Apply/Foster CTA +
+  deep-link landing. Real fields only — no fake media/location.
 
 New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (2.81 web pin),
 `ENRICHMENT_LLM_KEY` (2.82, already listed), `CRON_SECRET` + external scheduler (2.84).

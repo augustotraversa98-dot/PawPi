@@ -8,10 +8,14 @@ import {
   Modal,
   Alert,
   Linking,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
+import { Video, ResizeMode } from "expo-av";
+import MapLocationView from "@/components/Map/MapLocationView";
 import {
   ArrowLeft,
   PawPrint,
@@ -775,57 +779,160 @@ function ListingDetailModal({ data, onClose, router }) {
   );
 }
 
-// The full dog-profile detail (reuses the dog-profile shape: hero photo, vitals, story, the
-// good-with + vaccination summary).
-function DogProfileDetail({ listing, place }) {
-  const photo = Array.isArray(listing.photo_urls) ? listing.photo_urls[0] : null;
+// Swipeable media gallery (ticket 2.87): all photo_urls[] as paged images + the intro video_url as a
+// final page (expo-av, native controls). Empty → a neutral paw placeholder (never fake media).
+function MediaGallery({ photos, video }) {
+  const [page, setPage] = useState(0);
+  const width = Dimensions.get("window").width;
+  const items = [
+    ...(Array.isArray(photos) ? photos.filter(Boolean).map((uri) => ({ type: "photo", uri })) : []),
+    ...(video ? [{ type: "video", uri: video }] : []),
+  ];
+
+  if (items.length === 0) {
+    return (
+      <View
+        style={{ width: "100%", height: 280, backgroundColor: COLORS.sand, justifyContent: "center", alignItems: "center" }}
+      >
+        <PawPrint size={56} color={COLORS.coral} />
+      </View>
+    );
+  }
+
   return (
     <View>
-      {photo ? (
-        <Image source={{ uri: photo }} style={{ width: "100%", height: 260, backgroundColor: COLORS.sand }} />
-      ) : (
-        <View
-          style={{
-            width: "100%",
-            height: 260,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <PawPrint size={56} color={COLORS.coral} />
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) =>
+          setPage(Math.round(e.nativeEvent.contentOffset.x / Math.max(1, width)))
+        }
+      >
+        {items.map((item, i) =>
+          item.type === "photo" ? (
+            <Image
+              key={`p${i}`}
+              testID={`gallery-photo-${i}`}
+              source={{ uri: item.uri }}
+              style={{ width, height: 300, backgroundColor: COLORS.sand }}
+            />
+          ) : (
+            <Video
+              key={`v${i}`}
+              testID="gallery-video"
+              source={{ uri: item.uri }}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              style={{ width, height: 300, backgroundColor: "#000" }}
+            />
+          ),
+        )}
+      </ScrollView>
+      {items.length > 1 ? (
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 8 }}>
+          {items.map((it, i) => (
+            <View
+              key={i}
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 999,
+                backgroundColor: i === page ? COLORS.coral : COLORS.peach,
+              }}
+            />
+          ))}
         </View>
-      )}
+      ) : null}
+    </View>
+  );
+}
+
+// One fact row in the key-facts grid. Renders only when a real value exists (unknowns are omitted).
+function Fact({ label, value }) {
+  if (value == null || value === "") return null;
+  return (
+    <View style={{ width: "50%", paddingVertical: 6 }}>
+      <Text style={{ fontSize: 11, color: COLORS.mutedBrown, textTransform: "uppercase", fontWeight: "700" }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 15, color: COLORS.warmBrown, fontWeight: "600", marginTop: 2 }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+// The full dog-profile detail (ticket 2.87): media gallery (photos + video) → key facts →
+// compatibility chips → story → shelter card with a map. Only real fields render; unknowns are
+// omitted gracefully (never shown as fake).
+function DogProfileDetail({ listing, place }) {
+  const hasCoord = isValidCoord(listing.provider_lat, listing.provider_lng);
+  const shelterAddr = listing.provider_address;
+  return (
+    <View>
+      <MediaGallery photos={listing.photo_urls} video={listing.video_url} />
       <View style={{ padding: 16 }}>
         <Text style={{ fontSize: 24, fontWeight: "800", color: COLORS.warmBrown }}>{listing.name}</Text>
-        <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginTop: 4 }}>
-          {[listing.breed, ageLabel(listing.age_years, listing.age_months), listing.gender, listing.size]
-            .filter(Boolean)
-            .join(" · ")}
-        </Text>
         <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
-          Listed by {place?.name}
+          Listed by {listing.provider_name || place?.name}
         </Text>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-          {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
-          {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
-          {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
-          {listing.good_with_dogs === true ? <Chip label="Good with dogs" /> : null}
-          {listing.vaccination_status ? (
-            <Chip label={`Vaccines: ${listing.vaccination_status.replace(/_/g, " ")}`} />
-          ) : null}
+        {/* Key facts — only the ones we actually know. */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 14 }}>
+          <Fact label="Age" value={ageLabel(listing.age_years, listing.age_months) !== "Age unknown" ? ageLabel(listing.age_years, listing.age_months) : null} />
+          <Fact label="Gender" value={listing.gender} />
+          <Fact label="Size" value={listing.size} />
+          <Fact label="Breed" value={listing.breed} />
+          <Fact label="Vaccination" value={listing.vaccination_status ? listing.vaccination_status.replace(/_/g, " ") : null} />
+          <Fact label="Adoption fee" value={money(listing.adoption_fee_cents, listing.currency)} />
         </View>
 
-        {listing.story ? (
-          <Text style={{ fontSize: 15, color: COLORS.warmBrown, lineHeight: 22, marginTop: 16 }}>
-            {listing.story}
-          </Text>
+        {/* Compatibility chips. */}
+        {(listing.energy_level || listing.good_with_kids === true || listing.good_with_cats === true || listing.good_with_dogs === true) ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
+            {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
+            {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
+            {listing.good_with_dogs === true ? <Chip label="Good with dogs" /> : null}
+          </View>
         ) : null}
 
-        <Text style={{ fontSize: 15, color: COLORS.coral, fontWeight: "800", marginTop: 16 }}>
-          Adoption fee: {money(listing.adoption_fee_cents, listing.currency)}
+        {listing.story ? (
+          <>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 20, marginBottom: 6 }}>
+              {listing.name}'s story
+            </Text>
+            <Text style={{ fontSize: 15, color: COLORS.warmBrown, lineHeight: 22 }}>
+              {listing.story}
+            </Text>
+          </>
+        ) : null}
+
+        {/* Shelter card — name + a map of its location (ticket 2.68 MapLocationView) when known. */}
+        <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 20, marginBottom: 8 }}>
+          Shelter
         </Text>
+        <View style={{ borderWidth: 1, borderColor: COLORS.peach, borderRadius: 16, padding: 14, backgroundColor: COLORS.card }}>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.warmBrown }}>
+            {listing.provider_name || place?.name}
+          </Text>
+          {shelterAddr ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+              <MapPin size={13} color={COLORS.mutedBrown} />
+              <Text style={{ fontSize: 13, color: COLORS.mutedBrown, flex: 1 }}>{shelterAddr}</Text>
+            </View>
+          ) : null}
+          {hasCoord ? (
+            <View style={{ marginTop: 10 }}>
+              <MapLocationView
+                testID="shelter-map"
+                points={{ lat: listing.provider_lat, lng: listing.provider_lng }}
+                height={160}
+              />
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
   );
