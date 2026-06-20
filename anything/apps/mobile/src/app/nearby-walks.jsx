@@ -25,6 +25,7 @@ import {
 } from "lucide-react-native";
 import { useSocialWalks, useJoinSocialWalk } from "@/hooks/useSocialWalks";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { isValidCoord } from "@/utils/walkBuddies";
 
@@ -373,6 +374,8 @@ export default function NearbyWalksPage() {
                       Hosted by {walk.owner_username || "Unknown"}
                     </Text>
                   </View>
+                  {/* Report this walk (T4) — discovery never lists your own walks. */}
+                  <ModerationMenu targetType="social_walk" targetId={walk.id} iconSize={18} />
                   {isFull && (
                     <View
                       style={{

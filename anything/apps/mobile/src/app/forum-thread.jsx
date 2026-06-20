@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useForum";
 import VoteControl from "@/components/Forum/VoteControl";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 
 const C = {
   cream: "#FFF7EF",
@@ -119,9 +120,18 @@ export default function ForumThreadScreen() {
                 testIDPrefix="thread-vote"
               />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: C.mutedBrown, fontWeight: "700", marginBottom: 6 }}>
-                  {thread.category} · 🐾 {thread.author_username || "someone"}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+                  <Text style={{ flex: 1, fontSize: 11, color: C.mutedBrown, fontWeight: "700" }}>
+                    {thread.category} · 🐾 {thread.author_username || "someone"}
+                  </Text>
+                  {/* Report/Block the thread author (T4) — hidden on your own thread. */}
+                  <ModerationMenu
+                    targetType="forum_thread"
+                    targetId={thread.id}
+                    authorUserId={thread.author_user_id}
+                    iconSize={18}
+                  />
+                </View>
                 <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, lineHeight: 25 }}>
                   {thread.title}
                 </Text>
@@ -175,9 +185,18 @@ export default function ForumThreadScreen() {
                   testIDPrefix={`comment-vote-${c.id}`}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: C.mutedBrown, fontWeight: "700", marginBottom: 3 }}>
-                    🐾 {c.author_username || "someone"}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
+                    <Text style={{ flex: 1, fontSize: 12, color: C.mutedBrown, fontWeight: "700" }}>
+                      🐾 {c.author_username || "someone"}
+                    </Text>
+                    {/* Report/Block the comment author (T4) — hidden on your own comment. */}
+                    <ModerationMenu
+                      targetType="forum_comment"
+                      targetId={c.id}
+                      authorUserId={c.author_user_id}
+                      iconSize={16}
+                    />
+                  </View>
                   <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 19 }}>
                     {c.body}
                   </Text>

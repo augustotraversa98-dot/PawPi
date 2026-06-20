@@ -33,6 +33,7 @@ import {
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 
 function formatPrice(cents) {
   if (cents == null) return null;
@@ -630,6 +631,8 @@ function ReviewCard({ review }) {
           <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.warmBrown }}>
             {review.rating}
           </Text>
+          {/* Report this review (T4). */}
+          <ModerationMenu targetType="review" targetId={review.id} iconSize={15} />
         </View>
       </View>
       {review.pet_name ? (

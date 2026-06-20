@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useEvents, useRsvpEvent, useCancelEvent } from "@/hooks/useEvents";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { isValidCoord } from "@/utils/walkBuddies";
 import {
   addEventToCalendar,
@@ -190,7 +191,17 @@ export default function EventsScreen() {
                 testID={`event-${e.id}`}
                 style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: COLORS.peach }}
               >
-                <Text style={{ fontWeight: "800", color: COLORS.warmBrown, fontSize: 15 }}>{e.title}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={{ flex: 1, fontWeight: "800", color: COLORS.warmBrown, fontSize: 15 }}>{e.title}</Text>
+                  {/* Report this event / block the host (T4) — hidden on your own event. */}
+                  <ModerationMenu
+                    targetType="event"
+                    targetId={e.id}
+                    authorUserId={e.host_user_id}
+                    isOwn={!!e.is_host}
+                    iconSize={18}
+                  />
+                </View>
                 <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 2 }}>
                   {fmtWhen(e.starts_at)}
                   {e.location_name ? ` · ${e.location_name}` : ""}

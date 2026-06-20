@@ -17,6 +17,7 @@ import { Megaphone, Send } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { usePostBarks, useCreateBark } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 
 export const BarkModal = memo(function BarkModal({
   visible,
@@ -234,9 +235,13 @@ export const BarkModal = memo(function BarkModal({
                       >
                         {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
                       </Text>
-                      <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
-                        {new Date(bark.created_at).toLocaleDateString()}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
+                          {new Date(bark.created_at).toLocaleDateString()}
+                        </Text>
+                        {/* Report this comment (T4). */}
+                        <ModerationMenu targetType="bark" targetId={bark.id} iconSize={15} />
+                      </View>
                     </View>
                     <Text
                       style={{

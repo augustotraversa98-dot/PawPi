@@ -22,6 +22,7 @@ import {
   MATERIALS,
 } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { DailyShareButton } from "./DailyShareButton";
@@ -152,6 +153,13 @@ export const PostDetailModal = memo(function PostDetailModal({
             ) : null}
             {/* Real share: reuses the 2.28 branded capture + system share sheet. */}
             <DailyShareButton petName={dogName} photoUri={photo} />
+            {/* Report/Block (T4) — only on someone else's post (own post shows Delete above). */}
+            <ModerationMenu
+              targetType="post"
+              targetId={post?.id}
+              authorUserId={post?.user_id}
+              isOwn={canDelete}
+            />
           </View>
         </View>
 

@@ -29,6 +29,7 @@ import {
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import {
   useDiscoverProviders,
   useAdoptableBrowse,
@@ -671,12 +672,16 @@ function ListingDetailModal({ data, onClose, router }) {
               backgroundColor: COLORS.card,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }} numberOfLines={1}>
               {listing.name}
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <X size={22} color={COLORS.warmBrown} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              {/* Report this adoption listing (T4). */}
+              <ModerationMenu targetType="adoption_listing" targetId={listing.id} iconSize={18} />
+              <TouchableOpacity onPress={onClose}>
+                <X size={22} color={COLORS.warmBrown} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <RefreshableScrollView contentContainerStyle={{ paddingBottom: 40 }}>

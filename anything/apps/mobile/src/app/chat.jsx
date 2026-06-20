@@ -16,6 +16,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { COLORS } from "@/constants/colors";
 import * as ImagePicker from "expo-image-picker";
 import { useDMMessages, useSendDM, useMarkDMRead } from "@/hooks/useDMs";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import useUpload from "@/utils/useUpload";
 
 // Owner↔owner conversation on REAL data (ticket 2.27). Messages come from the API
@@ -134,6 +135,11 @@ export default function ChatScreen() {
         >
           {otherName}
         </Text>
+        {/* Block the other participant (T4). Blocking stops messages both ways (T3). */}
+        <ModerationMenu
+          authorUserId={otherUserId ? Number(otherUserId) : null}
+          onBlocked={() => router.back()}
+        />
       </View>
 
       <KeyboardAvoidingView

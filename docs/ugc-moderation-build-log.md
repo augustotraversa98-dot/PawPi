@@ -111,10 +111,44 @@ phase and is deliberately NOT included in any UGC PR.)
   filtering + interaction 403.
 - **Tests:** +8 integration (real handlers), +2 unit. Suite: mobile 1101 ✓ · web unit 1237 → **1239** ✓
   (1232 on CI) · integration 618 → **626** ✓.
-- **CI result:** _pending push_
-- **Merge status:** _pending_
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #230, commit `1bce205`**, branch deleted.
 - **Device tests needed (T3):** with a 2nd test account — block them, confirm their feed/forum/DM/walk
   content disappears from your views (and yours from theirs); confirm you can't DM/bark/reply to each
   other; have an admin hide a post and confirm it vanishes + 404s.
+
+---
+
+## T4 — Report + Block UI actions (mobile)
+
+- **Built:** one shared `<ModerationMenu>` overflow ("···") + the moderation action layer, dropped
+  into every UGC surface. Opens a sheet → **Report** (reason picker → POST /api/reports, idempotent) and
+  **Block user** (confirm → POST /api/blocks). Own content renders nothing (the surface keeps its Delete).
+- **Files (new):** `src/components/moderation/ModerationMenu.jsx` (+ test, 5 cases),
+  `src/hooks/useModeration.js` (plain `reportContent` / `blockUser` — NOT react-query hooks, so the menu
+  needs no QueryClientProvider in a surface's tree; block invalidates the social caches via the shared
+  `queryClient` singleton), `__mocks__/@react-native-async-storage/async-storage.js` (auto-applied jest
+  mock so any tree pulling AsyncStorage renders in tests).
+- **Surfaces wired (9):** feed post detail (`PostDetailModal`, Report/Block — own shows Delete) + bark
+  (`BarkModal`, Report), forum thread + comment (`forum-thread`, Report/Block author), DM header
+  (`chat`, Block → leaves the thread), pet profile (`pet-profile`, Report profile / Block owner — hidden
+  on your own pet), provider review (`service/provider`, Report), adoption listing (`service/adoption`,
+  Report), event (`events`, Report/Block host — hidden on your own), nearby walk (`nearby-walks`, Report).
+- **Decision (logged):** the menu uses plain async functions + the `queryClient` singleton rather than
+  `useMutation`, because dropping a react-query hook into screens whose jest tests don't wrap a
+  `QueryClientProvider` broke 6 suites. Plain functions keep the component provider-free → every existing
+  screen test stays green untouched. Surfaces where the viewer's `user_profiles.id` isn't cheaply
+  available (forum, bark, review, walk) omit the `isOwn` short-circuit — self-block is still refused
+  server-side (400) and self-report is an idempotent no-op, so the only cost is the option showing on
+  your own content there (device-polish follow-up).
+- **DB changes:** none.
+- **Tests:** +5 jest (ModerationMenu). Suite: **mobile 1101 → 1106** ✓ · web unit 1239 ✓ (unchanged) ·
+  integration 626 ✓ (unchanged — no web/SQL touched).
+- **CI result:** _pending push_
+- **Merge status:** _pending_
+- **Device tests needed (T4) — DEVICE PASS REQUIRED:** walk each of the 9 surfaces with a 2nd account →
+  Report (pick a reason) shows the success toast; Block shows the confirm → on success the user's content
+  is gone on next fetch (relies on T3); your own post still shows Delete (not Report). Verify the sheet
+  dismisses cleanly (tap-outside + Android back).
 
 ---
