@@ -229,10 +229,39 @@ phase and is deliberately NOT included in any UGC PR.)
   (barks, forum threads, dm messages).
 - **Tests:** +12 unit, +3 route. Suite: mobile 1110 ✓ (unchanged) · **web unit 1243 → 1258** ✓
   (1251 on CI) · integration 626 ✓ (unchanged — benign seed text passes the filter).
-- **CI result:** _pending push_
-- **Merge status:** _pending_
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #234, commit `fbad7db`**, branch deleted.
 - **Device tests needed (T7):** post known-bad text on one surface (e.g. a feed caption or forum thread)
   → confirm the rejection copy ("Your text contains language that isn't allowed…"); clean text posts
   normally.
+
+---
+
+## ✅ PHASE COMPLETE — all 7 tickets merged (2026-06-21)
+
+| Ticket | PR | Merge commit |
+|---|---|---|
+| T1 — migration 0065 primitives | [#228](https://github.com/augustotraversa98-dot/PawPi/pull/228) | `a382077` |
+| T2 — report/block/admin APIs | [#229](https://github.com/augustotraversa98-dot/PawPi/pull/229) | `64c22ec` |
+| T3 — read-path enforcement | [#230](https://github.com/augustotraversa98-dot/PawPi/pull/230) | `1bce205` |
+| T4 — mobile report/block UI | [#231](https://github.com/augustotraversa98-dot/PawPi/pull/231) | `33525fa` |
+| T5 — EULA gate + Terms | [#232](https://github.com/augustotraversa98-dot/PawPi/pull/232) | `47b9233` |
+| T6 — contact + legal URLs | [#233](https://github.com/augustotraversa98-dot/PawPi/pull/233) | `ad92794` |
+| T7 — text content filter | [#234](https://github.com/augustotraversa98-dot/PawPi/pull/234) | `fbad7db` |
+
+**Final baselines:** mobile **1110** · web unit **1258** (CI 1251) · integration **626**.
+
+### ⚠️ Still required before App Store submission (Augusto — outside CI)
+1. **Apply migration `0065` to live Supabase** (the only DB change for the phase) and run
+   `supabase/verify_0065.sql` — every row should read PASS. Idempotent + additive; pre-launch DB →
+   safe. The build environment can't reach the DB / `DATABASE_URL` is the non-DDL `pawpi_app` role, so
+   this is the one hand-apply step. After apply, live DB moves 0064 → 0065.
+2. **Host + wire the legal/support URLs (T6):** publish `docs/legal/terms-of-service.md` +
+   `privacy-policy.md`; set `EXPO_PUBLIC_TERMS_URL` / `EXPO_PUBLIC_PRIVACY_POLICY_URL` /
+   `EXPO_PUBLIC_SUPPORT_EMAIL` / `EXPO_PUBLIC_HELP_URL` (mobile) + `NEXT_PUBLIC_TERMS_URL` /
+   `NEXT_PUBLIC_PRIVACY_POLICY_URL` (web); fill the `[BRACKETED]` placeholders in the Terms + have it
+   reviewed; make the App Store Connect Support URL/contact match.
+3. **Device pass** (the per-ticket "Device tests needed" above), especially **T4** (walk all 9 report/
+   block surfaces with a 2nd account) and **T3** (block round-trip + interaction 403).
 
 ---
