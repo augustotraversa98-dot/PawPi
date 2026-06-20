@@ -10,6 +10,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
+import DocumentCatalogImport from "./DocumentCatalogImport";
 import {
   centsToCurrency,
   centsToInput,
@@ -112,6 +113,9 @@ export default function ProviderServices({ providerId }) {
           Add service
         </button>
       </div>
+
+      {/* Document enrichment (ticket 2.82) — propose a catalog from an uploaded price list/menu. */}
+      <DocumentCatalogImport providerId={providerId} />
 
       <div className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
         {isLoading ? (
