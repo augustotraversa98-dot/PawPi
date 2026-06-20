@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Create a comment (or a one-level reply) on a forum thread (ticket 2.44). RLS pins the
 // author = caller; the thread must exist and not be deleted.
@@ -27,6 +28,10 @@ async function POST(request, { params }) {
     if (!text) {
       return Response.json({ error: "Comment cannot be empty" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable comment text before insert.
+    const blocked = moderationResponse(text);
+    if (blocked) return blocked;
 
     // The thread must exist (any-authed read RLS), be live, and not be hidden by us.
     const threads = await sql`

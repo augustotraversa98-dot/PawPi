@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Get barks (comments) for a post
 async function GET(request, { params }) {
@@ -67,6 +68,10 @@ async function POST(request, { params }) {
     if (!text || text.trim() === "") {
       return Response.json({ error: "Bark text is required" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable bark text before insert.
+    const blocked = moderationResponse(text);
+    if (blocked) return blocked;
 
     if (!petId) {
       return Response.json({ error: "petId is required" }, { status: 400 });

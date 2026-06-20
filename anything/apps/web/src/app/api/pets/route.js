@@ -4,6 +4,7 @@ import {
   withRequestContext,
   setCurrentUserId,
 } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -124,6 +125,10 @@ async function POST(request) {
     if (!name) {
       return Response.json({ error: "Pet name is required" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable pet name / breed / bio text before insert.
+    const blockedPet = moderationResponse(name, breed, notes);
+    if (blockedPet) return blockedPet;
 
     // Generate unique handle if not provided
     let finalHandle = handle;

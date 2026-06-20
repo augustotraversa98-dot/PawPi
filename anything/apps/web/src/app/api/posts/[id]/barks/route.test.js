@@ -143,6 +143,15 @@ describe('POST /api/posts/[id]/barks', () => {
     expect(values).toContain('bark');
   });
 
+  it('rejects objectionable bark text → 422 (T7), never inserts', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup; moderation rejects before the insert
+    const res = await POST(postReq({ text: 'you piece of shit', petId: 1 }), { params: { id: '5' } });
+    expect(res.status).toBe(422);
+    // only the profile lookup ran — no ownership check / insert
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
   it('400 when petId is missing — never inserts', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

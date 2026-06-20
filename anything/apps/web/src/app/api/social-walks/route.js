@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Create a social walk
 async function POST(request) {
@@ -50,6 +51,10 @@ async function POST(request) {
         { status: 400 },
       );
     }
+
+    // Content filter (T7): reject objectionable walk name / notes / location text before insert.
+    const blocked = moderationResponse(walkName, notesForGuests, meetingArea, locationName);
+    if (blocked) return blocked;
 
     // Coords (optional) — must be a valid lat/lng pair if either is provided.
     const latNum = lat === undefined || lat === null || lat === "" ? null : Number(lat);

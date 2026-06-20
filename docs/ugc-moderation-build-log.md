@@ -200,7 +200,39 @@ phase and is deliberately NOT included in any UGC PR.)
     `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_POLICY_URL` (web) to those URLs so the T5 signup
     links resolve. Optionally set `EXPO_PUBLIC_SUPPORT_EMAIL` + `EXPO_PUBLIC_HELP_URL`.
   - Make App Store Connect "Support URL"/contact match `EXPO_PUBLIC_SUPPORT_EMAIL`.
+- **CI result:** ✅ all 3 green.
+- **Merge status:** ✅ squash-merged to main — **PR #233, commit `ad92794`**, branch deleted.
 - **Device tests needed (T6):** tap Contact Us → mail composer opens to the support address; tap Help
   Center → opens the hosted help page (or mail) once `EXPO_PUBLIC_HELP_URL` is set.
+
+---
+
+## T7 — Text content filter on submit
+
+- **Built:** a shared server-side `moderateText` filter applied at every UGC write chokepoint — Apple's
+  "method to filter objectionable content." On a match the route rejects with **422** (no image
+  moderation in v1).
+  - `api/utils/moderateText.js`: normalizes text (lowercase, strip diacritics, fold leetspeak) then
+    tests each banned term with a regex tolerant of letter-repetition + 0–2 separators between letters
+    (catches `f u c k`, `f.u.c.k`, `fuuuck`, `sh1t`, `f@ggot`) AND requiring letter boundaries on both
+    ends (so `Scunthorpe` / `assignment` / `shiitake` pass — no Scunthorpe problem). Exposes
+    `moderateText(...fields)` + a `moderationResponse(...fields)` route helper (returns the 422 or null).
+- **Write routes guarded (13):** posts (caption), barks (text), forum threads (title+body), forum
+  comments (body), dm messages (body), provider messages (body), provider reviews (body), events
+  (title+description+location), social-walks (name+notes+area), lost-reports (notes+area), pets
+  (name+breed+bio), user-profile (name+username), adoptable-listings (name+breed+story).
+- **Decision (logged):** chose **reject (422)** over auto-`hidden_at`+report for v1 simplicity (the plan's
+  pick). The word-list is intentionally minimal/extensible — the launch bar, not an exhaustive list.
+  `moderateText` is a pure function (no SQL), so it added zero risk to existing route-test mock sequences.
+- **DB changes:** none.
+- **Files:** `api/utils/moderateText.js` (+ test, 12 cases) + 13 edited write routes; +3 route 422 tests
+  (barks, forum threads, dm messages).
+- **Tests:** +12 unit, +3 route. Suite: mobile 1110 ✓ (unchanged) · **web unit 1243 → 1258** ✓
+  (1251 on CI) · integration 626 ✓ (unchanged — benign seed text passes the filter).
+- **CI result:** _pending push_
+- **Merge status:** _pending_
+- **Device tests needed (T7):** post known-bad text on one surface (e.g. a feed caption or forum thread)
+  → confirm the rejection copy ("Your text contains language that isn't allowed…"); clean text posts
+  normally.
 
 ---

@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -231,6 +232,10 @@ async function POST(request) {
       is_daily_update = false,
       post_date,
     } = body;
+
+    // Content filter (T7): reject objectionable caption text before insert.
+    const blocked = moderationResponse(caption);
+    if (blocked) return blocked;
 
 
     // Validate pet ownership

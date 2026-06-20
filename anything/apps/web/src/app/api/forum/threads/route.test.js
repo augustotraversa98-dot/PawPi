@@ -82,4 +82,18 @@ describe("POST /api/forum/threads", () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it("rejects objectionable title/body text → 422 (T7), never inserts", async () => {
+    auth.mockResolvedValue(SESSION);
+    mockSql();
+    const res = await POST(
+      new Request("http://localhost/api/forum/threads", {
+        method: "POST",
+        body: JSON.stringify({ title: "fuck this forum", body: "x" }),
+      }),
+    );
+    expect(res.status).toBe(422);
+    const text = sql.mock.calls.map((c) => (c?.[0] ?? []).join(" ")).join(" | ");
+    expect(text).not.toContain("INSERT INTO forum_threads");
+  });
 });

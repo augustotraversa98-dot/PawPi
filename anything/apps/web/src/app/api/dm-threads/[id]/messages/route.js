@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // /api/dm-threads/[id]/messages — messages on one owner↔owner DM thread (ticket 2.27).
 //   GET  — newest-first, paginated (?limit=&before=<id>). RLS returns ZERO rows for a
@@ -84,6 +85,10 @@ async function POST(request, { params }) {
         { status: 400 },
       );
     }
+
+    // Content filter (T7): reject objectionable message text before insert.
+    const blockedText = moderationResponse(text);
+    if (blockedText) return blockedText;
 
     // Moderation (T3): a blocked pair can't DM. Find the OTHER participant of this thread
     // (RLS scopes the row to the caller — a non-participant gets nothing) and 403 if blocked
