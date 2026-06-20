@@ -296,7 +296,9 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
-## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T7) — IN PROGRESS
+## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T7) — ✅ COMPLETE (PRs #228–#234)
+> Migration `0065` PENDING hand-apply to Supabase + legal-URL hosting/env are Augusto's go-live steps
+> (see `docs/ugc-moderation-build-log.md` "Still required before App Store submission").
 
 Plan: [`docs/phase-ugc-moderation-plan.md`](phase-ugc-moderation-plan.md) · build log:
 [`docs/ugc-moderation-build-log.md`](ugc-moderation-build-log.md). The minimum 1.2 safeguards to pass
@@ -322,8 +324,8 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
 - ✅ **T6** Contact info wiring — merged (#233). Settings "Contact Us" → `mailto:` support; "Help Center"
   → hosted URL (falls back to email). `SUPPORT_EMAIL`/`HELP_CENTER_URL` config slots. Hosting + env are
   Augusto's go-live step.
-- 🔨 **T7** Text content filter — shared `moderateText` (leetspeak/spacing-tolerant, Scunthorpe-safe) at
-  13 UGC write chokepoints; rejects objectionable text with 422.
+- ✅ **T7** Text content filter — merged (#234). Shared `moderateText` (leetspeak/spacing-tolerant,
+  Scunthorpe-safe) at 13 UGC write chokepoints; rejects objectionable text with 422.
 
 ---
 
