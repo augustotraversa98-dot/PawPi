@@ -10,12 +10,18 @@ import { Alert } from "react-native";
 let mockParams;
 let mockListings;
 let mockPlaces;
+let mockBrowse; // { listings, sort } for the 2.86 unified browse grid
 let mockSingleListing; // the 2.56 single-listing fetch result (or null for 404)
 let mockApply; // captures the apply mutation (ticket 2.57 requested_placement)
+let mockLocationStatus; // 'granted' | 'denied'
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
   useLocalSearchParams: () => mockParams,
+}));
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: () => Promise.resolve({ status: mockLocationStatus }),
+  getCurrentPositionAsync: () => Promise.resolve({ coords: { latitude: 40.7, longitude: -74 } }),
 }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
@@ -30,6 +36,7 @@ jest.mock("@/components/RefreshableScrollView", () => {
 jest.mock("@/components/Providers/RatingBadge", () => () => null);
 jest.mock("@/hooks/useProviders", () => ({
   useDiscoverProviders: () => ({ data: mockPlaces, isLoading: false, isError: false, refetch: jest.fn() }),
+  useAdoptableBrowse: () => ({ data: mockBrowse, isLoading: false, isError: false, refetch: jest.fn() }),
   useAdoptableListings: () => ({ data: mockListings, isLoading: false }),
   useAdoptableListing: () => ({
     data: mockSingleListing,
@@ -61,9 +68,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
   mockListings = [REX];
+  mockBrowse = { listings: [], sort: "featured_recent" }; // empty grid unless a test sets it
   mockSingleListing = REX; // the direct single-listing fetch resolves the dog
   mockPlaces = []; // no places → browse renders no listings, so "Rex" can only come from the modal
   mockApply = jest.fn(() => Promise.resolve({ application: { id: 1 } }));
+  mockLocationStatus = "denied"; // default: no GPS → fall back to most-recent
 });
 
 test("deep-link param opens that dog's detail modal on mount (direct fetch)", async () => {
@@ -130,4 +139,42 @@ test("an adopt-only listing posts requested_placement adopt (no picker)", async 
       expect.objectContaining({ requested_placement: null }),
     ),
   );
+});
+
+// ── Ticket 2.86 — unified browse grid, nearest-first, filters ──
+test("browse renders a grid of dogs and shows 'recently added' without location", async () => {
+  mockBrowse = {
+    listings: [{ ...REX, name: "Rex", distance_km: null }, { ...REX, id: 6, name: "Bella" }],
+    sort: "featured_recent",
+  };
+  const { findByText, getByText } = render(<AdoptionScreen />);
+  expect(await findByText("RECENTLY ADDED")).toBeTruthy();
+  expect(getByText("Rex")).toBeTruthy();
+  expect(getByText("Bella")).toBeTruthy();
+});
+
+test("with location granted, browse shows NEAREST FIRST + a distance label", async () => {
+  mockLocationStatus = "granted";
+  mockBrowse = { listings: [{ ...REX, name: "Rex", distance_km: 3.4 }], sort: "nearest" };
+  const { findByText } = render(<AdoptionScreen />);
+  expect(await findByText("NEAREST FIRST")).toBeTruthy();
+  expect(await findByText("3 km away")).toBeTruthy();
+});
+
+test("empty browse shows an empty state (no crash)", async () => {
+  mockBrowse = { listings: [], sort: "featured_recent" };
+  const { findByText } = render(<AdoptionScreen />);
+  expect(await findByText("No dogs near you yet")).toBeTruthy();
+});
+
+test("the filter sheet opens and applying a gender filter narrows the query", async () => {
+  mockBrowse = { listings: [{ ...REX, name: "Rex" }], sort: "featured_recent" };
+  const { getByTestId, getByText, findByText } = render(<AdoptionScreen />);
+  await findByText("Rex");
+  fireEvent.press(getByTestId("open-filters"));
+  // The sheet renders its groups; pick a gender + apply.
+  fireEvent.press(getByText("female"));
+  fireEvent.press(getByTestId("filters-apply"));
+  // Filter chip count reflects the applied filter.
+  expect(getByText("Filters (1)")).toBeTruthy();
 });

@@ -277,7 +277,12 @@ autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
   per-listing "Media" editor wire real uploads to `photo_urls[]` (reuses `ImageUploader`: reorder/
   remove, first = cover) + `video_url` (new `VideoUploader`) via the existing Storage path; cover
   thumbnail + "N photos · video" in the list. Reuses 0038 columns + RLS — no migration.
-- ☐ **2.86** Adoption browse: gallery, nearest-first, filters — mobile + web, no migration. ⛔ after 2.85.
+- ✅ **2.86** Adoption browse: gallery, nearest-first, filters — mobile, no migration. New owner-facing
+  `GET /api/adoption/listings` (flat read across published shelters' available dogs, joined to provider
+  primary location; composable filters + bounding-box; nearest-first via haversine, else featured/
+  recent). Mobile Browse redesigned to a 2-col grid of photo-top/info-below cards with distance label
+  + a filter sheet; device location with clean fallback. Consumer UI is mobile; the endpoint is the
+  shared layer for any future web view. RLS-proven (integration). No migration.
 - ☐ **2.87** Adoption detail page — mobile, no migration. ⛔ after 2.85.
 
 New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (2.81 web pin),
