@@ -1,12 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import useSelectedPetStore from "@/store/selectedPetStore";
 
 // Get all pets for the current user
 export function usePetProfile() {
-  const queryClient = useQueryClient();
-  const repairAttempted = useRef(false);
-
   const query = useQuery({
     queryKey: ["pets"],
     queryFn: async () => {
@@ -38,77 +35,10 @@ export function usePetProfile() {
 
       return data.pets;
     },
-    staleTime: 1000 * 45, // 45s — shared by ~20 sites; create/repair still invalidate ["pets"] to refetch immediately
+    staleTime: 1000 * 45, // 45s — shared by ~20 sites; create still invalidates ["pets"] to refetch immediately
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
-
-  // Auto-repair if no pets found but repair not yet attempted
-  useEffect(() => {
-    if (
-      query.data?.length === 0 &&
-      !query.isLoading &&
-      !repairAttempted.current
-    ) {
-      console.log("[usePetProfile] ========================================");
-      console.log("[usePetProfile] No pets found - attempting auto-repair...");
-      console.log("[usePetProfile] ========================================");
-      repairAttempted.current = true;
-
-      // Attempt repair
-      fetch("/api/pets", { method: "PATCH" })
-        .then(async (response) => {
-          if (response.ok) {
-            const result = await response.json();
-            console.log(
-              "[usePetProfile] ========================================",
-            );
-            console.log("[usePetProfile] Auto-repair result:", result);
-
-            if (result.repaired > 0) {
-              console.log("[usePetProfile] ✅ AUTO-REPAIR SUCCESSFUL!");
-              console.log(
-                "[usePetProfile] Repaired",
-                result.repaired,
-                "pet(s)",
-              );
-              console.log(
-                "[usePetProfile] Pet IDs:",
-                result.details?.repaired_pet_ids,
-              );
-              console.log("[usePetProfile] Refetching pets...");
-              console.log(
-                "[usePetProfile] ========================================",
-              );
-              // Refetch pets after repair
-              queryClient.invalidateQueries({ queryKey: ["pets"] });
-            } else {
-              console.log(
-                "[usePetProfile] Auto-repair found no pets to repair",
-              );
-              console.log(
-                "[usePetProfile] ========================================",
-              );
-            }
-          } else {
-            const errorData = await response.json();
-            console.log("[usePetProfile] Auto-repair response:", errorData);
-            console.log(
-              "[usePetProfile] ========================================",
-            );
-          }
-        })
-        .catch((error) => {
-          console.error(
-            "[usePetProfile] ========================================",
-          );
-          console.error("[usePetProfile] Auto-repair error:", error);
-          console.error(
-            "[usePetProfile] ========================================",
-          );
-        });
-    }
-  }, [query.data, query.isLoading, queryClient]);
 
   return query;
 }
@@ -158,43 +88,6 @@ export function useCurrentPet() {
     // Persist a new active pet by id; reflected across every useCurrentPet consumer.
     setCurrentPet: setSelectedPetId,
   };
-}
-
-// Manual repair mutation (can be triggered by user)
-export function useRepairPets() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      console.log("[useRepairPets] ========================================");
-      console.log("[useRepairPets] Triggering manual pet ownership repair...");
-      console.log("[useRepairPets] ========================================");
-
-      const response = await fetch("/api/pets", {
-        method: "PATCH",
-      });
-
-      console.log("[useRepairPets] Response status:", response.status);
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("[useRepairPets] ERROR:", error);
-        throw new Error(error.error || "Failed to repair pets");
-      }
-
-      const result = await response.json();
-      console.log("[useRepairPets] ========================================");
-      console.log("[useRepairPets] ✅ Repair completed:", result);
-      console.log("[useRepairPets] Repaired", result.repaired, "pet(s)");
-      console.log("[useRepairPets] ========================================");
-
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("[useRepairPets] Repair successful, refetching pets...");
-      queryClient.invalidateQueries({ queryKey: ["pets"] });
-    },
-  });
 }
 
 export function useCreatePet() {
