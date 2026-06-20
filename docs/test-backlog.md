@@ -57,12 +57,13 @@ as the RLS migrations 0019–0026.)
 --- APP STORE READINESS (2.78) ---
 0062_account_deletion.sql             (2.78 — delete_my_account() SECURITY DEFINER for in-app account deletion [Apple 5.1.1(v)]; auth→profile→pets→owner-data cascade, clears no-cascade health_medical_care_logs first) BUILT + harness-proven (PR 2.78) — ✅ APPLIED + VERIFIED 2026-06-19
 --- WAVE 8 (calendar integration) ---
-0063_event_rsvp_calendar_event_id.sql (2.80 — ADDITIVE `event_rsvps.calendar_event_id text` for the per-attendee device calendar event id; idempotent; NO RLS policy change — rides the existing event_rsvps own-row policies [0060]) BUILT + harness-proven (PR 2.80) — ⏳ PENDING HAND-APPLY (last applied = 0062)
+0063_event_rsvp_calendar_event_id.sql (2.80 — ADDITIVE `event_rsvps.calendar_event_id text` for the per-attendee device calendar event id; idempotent; NO RLS policy change — rides the existing event_rsvps own-row policies [0060]) BUILT + harness-proven (PR 2.80) — ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran it; live DB now at 0063)
 --- WAVE 9 (business onboarding + calendar import + adoption browse) ---
-0064_provider_calendar_import.sql     (2.84 — provider_calendar_feeds [owner/admin FOR ALL + active-staff SELECT] + provider_calendar_busy [active-staff SELECT only; READ-ONLY, no write policy]; 4 SECURITY DEFINER fns: app_active_calendar_feeds / app_sync_calendar_feed [the ONLY busy writer] / app_remove_calendar_feed / app_provider_busy_windows [public availability+book subtract]; both ENABLE+FORCE RLS) BUILT + harness-proven (PR 2.84) — ⏳ PENDING HAND-APPLY
+0064_provider_calendar_import.sql     (2.84 — provider_calendar_feeds [owner/admin FOR ALL + active-staff SELECT] + provider_calendar_busy [active-staff SELECT only; READ-ONLY, no write policy]; 4 SECURITY DEFINER fns: app_active_calendar_feeds / app_sync_calendar_feed [the ONLY busy writer] / app_remove_calendar_feed / app_provider_busy_windows [public availability+book subtract]; both ENABLE+FORCE RLS) BUILT + harness-proven (PR 2.84) — ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran it; all 12 checks PASS via outputs/verify_0064.sql; live DB now at 0064)
 ```
-**⏳ Wave 8 (ticket 2.80) — migration 0063 PENDING HAND-APPLY.** Apply `0063_event_rsvp_calendar_event_id.sql`
-on Supabase: one additive nullable column, no policy change (rides the existing `event_rsvps` own-row policies).
+**✅ Wave 8 (ticket 2.80) — migration 0063 APPLIED + VERIFIED on Supabase 2026-06-20** (Tats ran
+`0063_event_rsvp_calendar_event_id.sql`; all 6 checks PASS via `supabase/verify_0063.sql`): one additive
+nullable column, no policy change (rides the existing `event_rsvps` own-row policies).
 Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event_id` (0005) — no DB change there.
 **2.79 added no migration.**
 
@@ -79,7 +80,10 @@ Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event
   key + a real LLM adapter (the default text structurer is dormant). Added `xlsx@0.18.5` (lazy-loaded;
   CI never imports it). DEVICE/manual TEST: on the web Services dashboard → "Import from a price list
   or menu" → upload a CSV/XLSX → proposed rows appear → edit + Apply saves real services/products.
-- **2.84 (business calendar import) — migration 0064 PENDING HAND-APPLY.** Reuses **`CRON_SECRET`** +
+- **2.84 (business calendar import) — migration 0064 ✅ APPLIED + VERIFIED on Supabase 2026-06-20**
+  (Tats ran `0064_provider_calendar_import.sql`; all 16 checks PASS via `supabase/verify_0064.sql` —
+  both tables ENABLE+FORCE RLS, feeds=2 policies, busy=1 SELECT-only, 4 SECURITY DEFINER fns prosecdef=true
+  + EXECUTE-to-pawpi_app, SELECT-to-pawpi_app on both tables). Reuses **`CRON_SECRET`** +
   needs an EXTERNAL scheduler to POST `/api/providers/calendar/sync` daily (like 2.17): unset → the
   endpoint returns a clean 503; the per-feed "Refresh now" button still works without it. DEVICE/manual
   TEST: web dashboard → Calendar import → paste a Google/Outlook/Apple ICS URL → Refresh now → busy
@@ -89,7 +93,9 @@ Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event
 **Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
 **0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
 `supabase/verify_0056_0062.sql` — RLS on+forced, policy counts, 8 DEFINER fns + EXECUTE-to-pawpi_app, the
-`food_recall` CHECK widen, food_recalls read-only). **The live DB is now at 0062; none pending.** **2.68**
+`food_recall` CHECK widen, food_recalls read-only). Wave 8 **0063** and Wave 9 **0064** were applied next
+(2026-06-20, verified above), so **the live DB is now at 0064 — migrations 0001–0064 are all applied, none
+pending.** **2.68**
 (shared Apple-Maps component) + **2.69** (provider Sales/payouts/reconciliation UI) added NO migration. New
 go-live env keys this wave (each degrades cleanly until set): the **food-recall feed key + an external
 scheduler** (2.75, like 2.17's CRON_SECRET); **2.73** also consumes the already-flagged `GOOGLE_PLACES_API_KEY`.
@@ -163,7 +169,9 @@ scheduler** (2.75, like 2.17's CRON_SECRET); **2.73** also consumes the already-
   read/update/delete) + app_is_dm_participant present.
 Wave-5 migrations 0046–0050 (2.43, 2.44, 2.45, 2.47, 2.48) are APPLIED + VERIFIED on Supabase (2026-06-18).
 **Wave-6 migrations 0051–0055 (2.51, 2.52, 2.53, 2.54, 2.57) are APPLIED + VERIFIED on Supabase (2026-06-18)
-— all checks PASS via the verification SQL. No migrations remain pending; the live DB is at 0055.**
+— all checks PASS via the verification SQL.** Waves 7–9 + account-deletion migrations **0056–0064** were
+applied later (0056–0062 on 2026-06-19; 0063 + 0064 on 2026-06-20), all verified all-PASS. **No migrations
+remain pending; the live DB is now at 0064 (0001–0064 all applied).**
 
 **✅ APPLIED + VERIFIED 2026-06-18 (Wave 6):** `0051_emergency_medical_card.sql` (ticket 2.51) — verification SQL all-PASS (2 tables RLS on+forced, 1+1 owner policies, the 3 DEFINER public-read fns SECURITY DEFINER + EXECUTE-granted to pawpi_app, notifications_type_check widened to admit 'emergency_contact').
 - New `pet_emergency_cards` (one row per pet; permanent `tag_token`, `show_medical_on_tag` default
