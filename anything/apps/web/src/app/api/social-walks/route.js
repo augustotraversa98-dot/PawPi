@@ -250,6 +250,8 @@ async function GET(request) {
         JOIN user_profiles up ON sw.owner_user_id = up.id
         WHERE sw.status = 'scheduled'
           AND sw.scheduled_at > NOW()
+          AND sw.hidden_at IS NULL
+          AND NOT app_user_is_blocked(${ownerUserId}, sw.owner_user_id)
         ORDER BY sw.scheduled_at ASC
         LIMIT 50
       `;
@@ -313,6 +315,8 @@ async function GET(request) {
             AND sw.status = 'scheduled'
             AND sw.scheduled_at > NOW()
             AND sw.owner_user_id != ${ownerUserId}
+            AND sw.hidden_at IS NULL
+            AND NOT app_user_is_blocked(${ownerUserId}, sw.owner_user_id)
             AND (
               ${!hasBox}
               OR (
@@ -373,6 +377,8 @@ async function GET(request) {
             AND sw.status = 'scheduled'
             AND sw.scheduled_at > NOW()
             AND sw.owner_user_id != ${ownerUserId}
+            AND sw.hidden_at IS NULL
+            AND NOT app_user_is_blocked(${ownerUserId}, sw.owner_user_id)
             AND pf.status = 'accepted'
           ORDER BY sw.scheduled_at ASC
           LIMIT 50

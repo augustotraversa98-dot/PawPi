@@ -32,6 +32,9 @@ async function GET(request, { params }) {
       FROM forum_threads t
       JOIN user_profiles up ON up.id = t.author_user_id
       WHERE t.id = ${threadId} AND t.deleted_at IS NULL
+        -- Moderation (T3): a hidden thread, or one from a blocked user, 404s.
+        AND t.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, t.author_user_id)
     `;
 
     if (threads.length === 0) {
@@ -51,6 +54,9 @@ async function GET(request, { params }) {
       FROM forum_comments c
       JOIN user_profiles up ON up.id = c.author_user_id
       WHERE c.thread_id = ${threadId} AND c.deleted_at IS NULL
+        -- Moderation (T3): hide comments removed by us + comments from a blocked user.
+        AND c.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, c.author_user_id)
       ORDER BY c.created_at ASC
     `;
 

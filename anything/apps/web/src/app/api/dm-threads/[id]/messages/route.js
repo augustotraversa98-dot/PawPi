@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // /api/dm-threads/[id]/messages — messages on one owner↔owner DM thread (ticket 2.27).
 //   GET  — newest-first, paginated (?limit=&before=<id>). RLS returns ZERO rows for a
@@ -35,6 +36,7 @@ async function GET(request, { params }) {
           SELECT id, thread_id, sender_user_id, body, image_url, read_at, created_at
           FROM dm_messages
           WHERE thread_id = ${threadId} AND id < ${before}
+            AND hidden_at IS NULL
           ORDER BY created_at DESC, id DESC
           LIMIT ${limit + 1}
         `
@@ -42,6 +44,7 @@ async function GET(request, { params }) {
           SELECT id, thread_id, sender_user_id, body, image_url, read_at, created_at
           FROM dm_messages
           WHERE thread_id = ${threadId}
+            AND hidden_at IS NULL
           ORDER BY created_at DESC, id DESC
           LIMIT ${limit + 1}
         `;
@@ -80,6 +83,23 @@ async function POST(request, { params }) {
         { error: "A message needs text or an image" },
         { status: 400 },
       );
+    }
+
+    // Moderation (T3): a blocked pair can't DM. Find the OTHER participant of this thread
+    // (RLS scopes the row to the caller — a non-participant gets nothing) and 403 if blocked
+    // either direction. existing threads stop accepting new messages between blocked users.
+    const threadRows = await sql`
+      SELECT user_a_id, user_b_id FROM dm_threads WHERE id = ${threadId} LIMIT 1
+    `;
+    if (threadRows.length > 0) {
+      const { user_a_id, user_b_id } = threadRows[0];
+      const otherUserId = user_a_id === userId ? user_b_id : user_a_id;
+      if (await isBlockedBetween(userId, otherUserId)) {
+        return Response.json(
+          { error: "You can't message this user" },
+          { status: 403 },
+        );
+      }
     }
 
     let created;

@@ -61,20 +61,34 @@ describe("POST message", () => {
     const CREATED = { id: 9, thread_id: 5, sender_user_id: 7, body: "hi" };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ user_a_id: 7, user_b_id: 99 }]) // thread participants (T3)
+      .mockResolvedValueOnce([{ blocked: false }]) // isBlockedBetween (T3)
       .mockResolvedValueOnce([CREATED]) // INSERT
       .mockResolvedValueOnce([]); // bump last_message_at
     const res = await POST(postReq({ body: "hi" }), PARAMS);
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ message: CREATED });
-    expect(queryTextOf(1)).toContain("INSERT INTO dm_messages");
-    expect(valuesOf(1)).toContain(7); // sender = caller
-    expect(queryTextOf(2)).toContain("UPDATE dm_threads");
+    expect(queryTextOf(3)).toContain("INSERT INTO dm_messages");
+    expect(valuesOf(3)).toContain(7); // sender = caller
+    expect(queryTextOf(4)).toContain("UPDATE dm_threads");
+  });
+
+  it("403 when a blocked pair tries to message (T3)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ user_a_id: 7, user_b_id: 99 }]) // participants
+      .mockResolvedValueOnce([{ blocked: true }]); // isBlockedBetween → blocked
+    const res = await POST(postReq({ body: "hi" }), PARAMS);
+    expect(res.status).toBe(403);
   });
 
   it("403 when RLS rejects a non-participant (42501)", async () => {
     auth.mockResolvedValue(SESSION);
     sql
-      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ user_a_id: 7, user_b_id: 99 }]) // participants
+      .mockResolvedValueOnce([{ blocked: false }]) // not blocked
       .mockRejectedValueOnce(Object.assign(new Error("rls"), { code: "42501" }));
     const res = await POST(postReq({ body: "hi" }), PARAMS);
     expect(res.status).toBe(403);
