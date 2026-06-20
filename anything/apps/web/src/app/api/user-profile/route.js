@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Get or create user profile
 async function GET(request) {
@@ -54,6 +55,10 @@ async function PATCH(request) {
     const authUserId = session.user.id;
     const body = await request.json();
     const { full_name, username, avatar_url, onboarding_completed } = body;
+
+    // Content filter (T7): reject objectionable display name / username before write.
+    const blockedProfile = moderationResponse(full_name, username);
+    if (blockedProfile) return blockedProfile;
 
     // Get user profile ID
     const existingProfile = await sql`

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Community forum threads (ticket 2.44). GET = browse (category filter + hot/new/top sort,
 // paginated); POST = create a thread. Any authed user can read; the author owns the row.
@@ -90,6 +91,10 @@ async function POST(request) {
     if (!title) {
       return Response.json({ error: "Title is required" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable title/body text before insert.
+    const blocked = moderationResponse(title, text);
+    if (blocked) return blocked;
 
     const result = await sql`
       INSERT INTO forum_threads (author_user_id, category, title, body, image_urls)

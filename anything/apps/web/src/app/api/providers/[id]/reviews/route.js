@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Reviews & ratings surfacing — Phase 2 ticket 2.2 (docs/phase2-tickets/2.2-reviews-surfacing.md,
 // master plan §2 item 3). Surfaces the EXISTING provider_reviews table (created in 0014,
@@ -106,6 +107,10 @@ async function POST(request, { params }) {
     const body = (await request.json()) ?? {};
     const { rating, pet_id } = body;
     const reviewBody = body.body;
+
+    // Content filter (T7): reject objectionable review text before insert.
+    const blocked = moderationResponse(reviewBody);
+    if (blocked) return blocked;
 
     // rating is required and must be an integer 1–5 (mirrors the table CHECK).
     if (

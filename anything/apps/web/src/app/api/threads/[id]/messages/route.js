@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // /api/threads/[id]/messages — the conversation view (Phase 2 ticket 2.5).
 //
@@ -96,6 +97,10 @@ async function POST(request, { params }) {
         { status: 400 },
       );
     }
+
+    // Content filter (T7): reject objectionable message text before insert.
+    const blockedText = moderationResponse(text);
+    if (blockedText) return blockedText;
 
     // The INSERT is participant-gated by RLS (WITH CHECK: sender = caller AND caller is
     // a thread participant). A non-participant's insert raises an RLS error → 403. We

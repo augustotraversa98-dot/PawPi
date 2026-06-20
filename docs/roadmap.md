@@ -319,10 +319,11 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
   adoption listing, event, walk). DEVICE PASS required.
 - ✅ **T5** EULA acceptance gate (web signup + mobile welcome, required unchecked checkbox) +
   zero-tolerance Terms clause (24h review, content removal, account ejection) — merged (#232).
-- 🔨 **T6** Contact info wiring — Settings "Contact Us" → `mailto:` support; "Help Center" → hosted URL
-  (falls back to email). `SUPPORT_EMAIL`/`HELP_CENTER_URL` config slots. Hosting + env are Augusto's
-  go-live step.
-- ☐ **T7** Text content filter on submit (shared `moderateText` at the UGC write chokepoints).
+- ✅ **T6** Contact info wiring — merged (#233). Settings "Contact Us" → `mailto:` support; "Help Center"
+  → hosted URL (falls back to email). `SUPPORT_EMAIL`/`HELP_CENTER_URL` config slots. Hosting + env are
+  Augusto's go-live step.
+- 🔨 **T7** Text content filter — shared `moderateText` (leetspeak/spacing-tolerant, Scunthorpe-safe) at
+  13 UGC write chokepoints; rejects objectionable text with 422.
 
 ---
 

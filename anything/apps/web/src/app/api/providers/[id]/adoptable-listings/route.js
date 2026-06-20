@@ -7,6 +7,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // /api/providers/[id]/adoptable-listings — an adoption place's adoptable dogs, in the
 // existing DOG-PROFILE format. Phase 2 ticket 2.12 (docs/phase2-tickets/2.12-adoption.md).
@@ -107,6 +108,10 @@ async function POST(request, { params }) {
     if (!name || typeof name !== "string") {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable listing name / breed / story text before insert.
+    const blockedListing = moderationResponse(name, breed, story);
+    if (blockedListing) return blockedListing;
     // Foster/urgent/featured flags (ticket 2.57). placement_type defaults to 'adopt'.
     const placementType = ["adopt", "foster", "both"].includes(body.placement_type)
       ? body.placement_type

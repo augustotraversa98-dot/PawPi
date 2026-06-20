@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // Lost & Found (ticket 2.48).
 //   GET            → browse ACTIVE alerts (optional lat/lng/radiusKm bounding box)
@@ -92,6 +93,10 @@ async function POST(request) {
     }
     const lat = body.lat == null || body.lat === "" ? null : Number(body.lat);
     const lng = body.lng == null || body.lng === "" ? null : Number(body.lng);
+
+    // Content filter (T7): reject objectionable notes / last-seen-area text before insert.
+    const blocked = moderationResponse(body.notes, body.lastSeenArea);
+    if (blocked) return blocked;
 
     // Verify ownership (RLS also enforces owner_user_id = me on the insert).
     const pets = await sql`

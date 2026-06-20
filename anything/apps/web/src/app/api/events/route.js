@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { moderationResponse } from "@/app/api/utils/moderateText";
 
 // /api/events — community events / meetups (Wave 7 ticket 2.74; forum-style public read).
 //   GET  — upcoming published events, optional ?lat&lng&radiusKm bounding box, with attendee_count
@@ -86,6 +87,10 @@ async function POST(request) {
     if (!startsAt) {
       return Response.json({ error: "A start date/time is required" }, { status: 400 });
     }
+
+    // Content filter (T7): reject objectionable title/description text before insert.
+    const blocked = moderationResponse(title, body.description, body.location_name);
+    if (blocked) return blocked;
     const lat = body.lat == null || body.lat === "" ? null : Number(body.lat);
     const lng = body.lng == null || body.lng === "" ? null : Number(body.lng);
     if (!validCoord(lat, 90) || !validCoord(lng, 180)) {

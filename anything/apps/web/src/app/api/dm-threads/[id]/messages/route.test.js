@@ -73,6 +73,14 @@ describe("POST message", () => {
     expect(queryTextOf(4)).toContain("UPDATE dm_threads");
   });
 
+  it("rejects objectionable message text → 422 (T7), never inserts", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // resolveUserId; moderation rejects before the insert
+    const res = await POST(postReq({ body: "you are a bitch" }), PARAMS);
+    expect(res.status).toBe(422);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
   it("403 when a blocked pair tries to message (T3)", async () => {
     auth.mockResolvedValue(SESSION);
     sql
