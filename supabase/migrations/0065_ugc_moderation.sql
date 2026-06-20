@@ -284,3 +284,110 @@ begin
 end;
 $$;
 grant execute on function app_ban_user(integer) to pawpi_app;
+
+-- ── 9. Admin queue helpers (T2 — extends the single phase migration) ────────────
+-- The admin moderation queue runs under pawpi_app + FORCE RLS, where content_reports'
+-- reporter-own SELECT policy hides other users' reports and there is no UPDATE policy.
+-- These two DEFINER helpers are the admin's read + act path: both raise unless app_is_admin().
+-- (Added with T2 so the single phase migration 0065 stays the only schema change; CREATE OR
+-- REPLACE keeps it idempotent — safe to re-apply over a 0065 already applied without them.)
+
+-- Read the moderation queue (admin only). p_status NULL = all; else filter by status.
+create or replace function app_admin_list_reports(p_status text default 'open')
+returns setof content_reports
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select r.*
+  from content_reports r
+  where app_is_admin()
+    and r.deleted_at is null
+    and (p_status is null or r.status = p_status)
+  order by r.created_at desc
+$$;
+grant execute on function app_admin_list_reports(text) to pawpi_app;
+
+-- Act on a report (admin only): 'dismiss' (close, no content change), 'hide'/'remove' (hide the
+-- content via app_moderate_hide → flips its open reports to 'actioned'), and optional ban of the
+-- content's author (p_ban). Reads the report + resolves the author AS DEFINER, so it works under
+-- RLS. For non-hideable target types (user_profile / pet_profile) it just flips the reports +
+-- (optionally) bans. Returns nothing; raises 'not authorized' / 'report not found' / 'invalid action'.
+create or replace function app_admin_action_report(
+  p_report_id integer,
+  p_action text,
+  p_ban boolean default false
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_type text;
+  v_target integer;
+  v_author integer;
+  v_table text;
+  v_col text;
+begin
+  if not app_is_admin() then
+    raise exception 'not authorized';
+  end if;
+  if p_action not in ('hide', 'remove', 'dismiss') then
+    raise exception 'invalid action: %', p_action;
+  end if;
+
+  select target_type, target_id into v_type, v_target
+  from content_reports where id = p_report_id;
+  if v_type is null then
+    raise exception 'report not found';
+  end if;
+
+  if p_action = 'dismiss' then
+    update content_reports set status = 'dismissed', updated_at = now() where id = p_report_id;
+    return;
+  end if;
+
+  -- hide / remove → take the content down (or just flip reports for non-hideable types)
+  if v_type in ('post','bark','forum_thread','forum_comment','provider_message','dm_message',
+                'review','adoption_listing','event','social_walk','lost_report') then
+    perform app_moderate_hide(v_type, v_target);
+  else
+    update content_reports set status = 'actioned', updated_at = now()
+    where target_type = v_type and target_id = v_target and status = 'open';
+  end if;
+
+  if p_ban then
+    if v_type = 'user_profile' then
+      v_author := v_target;
+    else
+      select case v_type
+               when 'post' then 'posts' when 'bark' then 'post_barks'
+               when 'forum_thread' then 'forum_threads' when 'forum_comment' then 'forum_comments'
+               when 'provider_message' then 'messages' when 'dm_message' then 'dm_messages'
+               when 'review' then 'provider_reviews' when 'event' then 'events'
+               when 'social_walk' then 'social_walks' when 'lost_report' then 'lost_reports'
+               when 'pet_profile' then 'pets' else null
+             end,
+             case v_type
+               when 'post' then 'user_id' when 'bark' then 'user_id'
+               when 'forum_thread' then 'author_user_id' when 'forum_comment' then 'author_user_id'
+               when 'provider_message' then 'sender_user_id' when 'dm_message' then 'sender_user_id'
+               when 'review' then 'owner_user_id' when 'event' then 'host_user_id'
+               when 'social_walk' then 'owner_user_id' when 'lost_report' then 'owner_user_id'
+               when 'pet_profile' then 'owner_user_id' else null
+             end
+        into v_table, v_col;
+      if v_table is not null then
+        execute format('select %I from %I where id = $1', v_col, v_table)
+          into v_author using v_target;
+      end if;
+    end if;
+    if v_author is not null then
+      update user_profiles set banned_at = now() where id = v_author;
+    end if;
+  end if;
+end;
+$$;
+grant execute on function app_admin_action_report(integer, text, boolean) to pawpi_app;

@@ -61,14 +61,16 @@ as the RLS migrations 0019–0026.)
 --- WAVE 9 (business onboarding + calendar import + adoption browse) ---
 0064_provider_calendar_import.sql     (2.84 — provider_calendar_feeds [owner/admin FOR ALL + active-staff SELECT] + provider_calendar_busy [active-staff SELECT only; READ-ONLY, no write policy]; 4 SECURITY DEFINER fns: app_active_calendar_feeds / app_sync_calendar_feed [the ONLY busy writer] / app_remove_calendar_feed / app_provider_busy_windows [public availability+book subtract]; both ENABLE+FORCE RLS) BUILT + harness-proven (PR 2.84) — ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran it; all 12 checks PASS via outputs/verify_0064.sql; live DB now at 0064)
 --- UGC MODERATION (App Store Guideline 1.2) ---
-0065_ugc_moderation.sql               (T1 — content_reports [reporter-own RLS] + user_blocks [blocker-own RLS, live-pair partial unique] + hidden_at on 11 peer-UGC content tables + user_profiles.banned_at + 5 SECURITY DEFINER fns: app_is_admin / app_user_is_blocked / app_moderate_hide [the ONLY hidden_at writer] / app_moderate_unhide / app_ban_user + notifications 'report_received' widen; both new tables ENABLE+FORCE RLS) BUILT + harness-proven (PR T1) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0065.sql in the SQL editor; every row should read PASS)
+0065_ugc_moderation.sql               (T1+T2 — content_reports [reporter-own RLS] + user_blocks [blocker-own RLS, live-pair partial unique] + hidden_at on 11 peer-UGC content tables + user_profiles.banned_at + 7 SECURITY DEFINER fns: app_is_admin / app_user_is_blocked / app_moderate_hide [the ONLY hidden_at writer] / app_moderate_unhide / app_ban_user / app_admin_list_reports / app_admin_action_report [T2 admin-queue helpers] + notifications 'report_received' widen; both new tables ENABLE+FORCE RLS) BUILT + harness-proven (PR T1 #228 + T2) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0065.sql in the SQL editor; every row should read PASS)
 ```
 
-**⏳ UGC moderation (T1) — migration 0065 PENDING hand-apply on Supabase.** Harness-proven (65
-migrations apply clean; 21 new integration tests + the completeness guard green). The build
-environment can't reach the DB and `DATABASE_URL` is the non-DDL `pawpi_app` role, so Augusto must
-run `0065_ugc_moderation.sql` then `supabase/verify_0065.sql` in the SQL editor. Additive tables +
-columns only; pre-launch DB with no real users → safe. After apply, the live DB moves 0064 → 0065.
+**⏳ UGC moderation — migration 0065 PENDING hand-apply on Supabase.** Harness-proven (65 migrations
+apply clean; 26 integration tests + the completeness guard green). The build environment can't reach
+the DB and `DATABASE_URL` is the non-DDL `pawpi_app` role, so Augusto must run `0065_ugc_moderation.sql`
+then `supabase/verify_0065.sql` in the SQL editor. **Apply the FINAL 0065** — T2 extended it with two
+admin DEFINER helpers (`app_admin_list_reports` / `app_admin_action_report`) so it now has **7** DEFINER
+fns; `verify_0065.sql` checks all of them. Idempotent (`CREATE OR REPLACE`) → re-applying over a T1-only
+0065 is safe. Additive tables + columns only; pre-launch DB → safe. After apply, the live DB moves 0064 → 0065.
 **✅ Wave 8 (ticket 2.80) — migration 0063 APPLIED + VERIFIED on Supabase 2026-06-20** (Tats ran
 `0063_event_rsvp_calendar_event_id.sql`; all 6 checks PASS via `supabase/verify_0063.sql`): one additive
 nullable column, no policy change (rides the existing `event_rsvps` own-row policies).

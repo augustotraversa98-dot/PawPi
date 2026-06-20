@@ -296,6 +296,58 @@ describe('UGC T1 — moderation helpers are admin-gated (DEFINER)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// T2 admin-queue DEFINER helpers (extends 0065). Under pawpi_app + FORCE RLS the admin can't
+// read other users' reports or change status directly — these helpers are the RLS-correct path.
+describe('UGC T2 — admin queue helpers (app_admin_list_reports / app_admin_action_report)', () => {
+  beforeEach(async () => {
+    await raw`
+      insert into content_reports (id, reporter_user_id, target_type, target_id, reason)
+      values (100, ${B.profileId}, 'post', ${POST_ID}, 'harassment')
+    `;
+  });
+
+  it('admin (C) lists the open queue via the DEFINER; a non-admin (B) gets nothing', async () => {
+    await asApp(C.profileId, async (tx) => {
+      const rows = await tx`select id from app_admin_list_reports('open')`;
+      expect(ids(rows)).toEqual([100]);
+    });
+    await asApp(B.profileId, async (tx) => {
+      expect(await tx`select id from app_admin_list_reports('open')`).toHaveLength(0);
+    });
+  });
+
+  it("admin 'hide' action hides the post and flips the report to actioned", async () => {
+    await asApp(C.profileId, (tx) => tx`select app_admin_action_report(100, 'hide', false)`);
+    const [{ hidden_at }] = await raw`select hidden_at from posts where id = ${POST_ID}`;
+    expect(hidden_at).not.toBeNull();
+    const [{ status }] = await raw`select status from content_reports where id = 100`;
+    expect(status).toBe('actioned');
+  });
+
+  it("admin 'dismiss' closes the report without hiding the post", async () => {
+    await asApp(C.profileId, (tx) => tx`select app_admin_action_report(100, 'dismiss', false)`);
+    const [{ status }] = await raw`select status from content_reports where id = 100`;
+    expect(status).toBe('dismissed');
+    const [{ hidden_at }] = await raw`select hidden_at from posts where id = ${POST_ID}`;
+    expect(hidden_at).toBeNull();
+  });
+
+  it("admin 'remove' + ban hides the post AND bans the content author (A)", async () => {
+    await asApp(C.profileId, (tx) => tx`select app_admin_action_report(100, 'remove', true)`);
+    const [{ hidden_at }] = await raw`select hidden_at from posts where id = ${POST_ID}`;
+    expect(hidden_at).not.toBeNull();
+    const [{ banned_at }] = await raw`select banned_at from user_profiles where id = ${A.profileId}`;
+    expect(banned_at).not.toBeNull();
+  });
+
+  it('a non-admin (B) calling app_admin_action_report is rejected', async () => {
+    await expect(
+      asApp(B.profileId, (tx) => tx`select app_admin_action_report(100, 'hide', false)`),
+    ).rejects.toThrow(/not authorized/i);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 describe('UGC T1 — completeness: the two new tables are FORCE-RLS with policies', () => {
   it('content_reports and user_blocks are ENABLE+FORCE RLS with >=1 policy each', async () => {
     const rows = await raw<{ table: string; enabled: boolean; forced: boolean; policies: number }[]>`
