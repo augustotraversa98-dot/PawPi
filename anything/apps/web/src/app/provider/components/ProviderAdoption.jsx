@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PawPrint, Loader2, Plus, Dog, Check, X } from "lucide-react";
+import { PawPrint, Loader2, Plus, Dog, Check, X, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   useAdoptableListings,
@@ -10,6 +10,8 @@ import {
   useReviewAdoptionApplication,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import ImageUploader from "./ImageUploader";
+import VideoUploader from "./VideoUploader";
 
 // /provider/adoption — the adoption PLACE's listing + application workspace (ticket 2.12).
 // Manage adoptable DOGS (in the dog-profile field shape) and REVIEW incoming APPLICATIONS
@@ -62,6 +64,9 @@ function CreateListingForm({ providerId }) {
   const [breed, setBreed] = useState("");
   const [fee, setFee] = useState("");
   const [story, setStory] = useState("");
+  // Media (ticket 2.85): photos → photo_urls[] (first = cover, reorder/remove); video → video_url.
+  const [photos, setPhotos] = useState([]);
+  const [videoUrl, setVideoUrl] = useState(null);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -76,12 +81,16 @@ function CreateListingForm({ providerId }) {
         breed: breed || null,
         adoption_fee_cents: Number.isFinite(feeCents) ? feeCents : 0,
         story: story || null,
+        photo_urls: photos,
+        video_url: videoUrl || null,
       });
       toast.success("Dog listed");
       setName("");
       setBreed("");
       setFee("");
       setStory("");
+      setPhotos([]);
+      setVideoUrl(null);
     } catch (err) {
       toast.error(err.message || "Couldn't list the dog");
     }
@@ -125,6 +134,15 @@ function CreateListingForm({ providerId }) {
         className="mt-3 w-full rounded-lg border px-3 py-2 text-sm"
         style={{ borderColor: COLORS.peach }}
       />
+
+      {/* Media (ticket 2.85) — photos[0] is the cover; one short intro video. Real uploads only. */}
+      <div className="mt-4">
+        <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+      </div>
+      <div className="mt-4">
+        <VideoUploader value={videoUrl} onChange={setVideoUrl} />
+      </div>
+
       <button
         type="submit"
         disabled={create.isPending}
@@ -142,6 +160,7 @@ function ListingList({ providerId }) {
   const { data: listings, isLoading, isError, error } = useAdoptableListings(providerId);
   const update = useUpdateAdoptableListing(providerId);
   const del = useDeleteAdoptableListing(providerId);
+  const [editingMedia, setEditingMedia] = useState(null); // the listing whose media is open
 
   if (isLoading) {
     return (
@@ -171,10 +190,14 @@ function ListingList({ providerId }) {
           }}
         >
           <div
-            className="flex h-12 w-12 items-center justify-center rounded-xl"
+            className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl"
             style={{ backgroundColor: COLORS.sand }}
           >
-            <Dog className="h-5 w-5" style={{ color: COLORS.coral }} />
+            {Array.isArray(l.photo_urls) && l.photo_urls[0] ? (
+              <img src={l.photo_urls[0]} alt={l.name} className="h-full w-full object-cover" />
+            ) : (
+              <Dog className="h-5 w-5" style={{ color: COLORS.coral }} />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -182,20 +205,108 @@ function ListingList({ providerId }) {
               <StatusTag status={l.status} />
             </div>
             <p className="text-sm text-[#7A6254]">
-              {[l.breed, money(l.adoption_fee_cents, l.currency)].filter(Boolean).join(" · ")}
+              {[
+                l.breed,
+                money(l.adoption_fee_cents, l.currency),
+                (l.photo_urls?.length || 0) > 0
+                  ? `${l.photo_urls.length} photo${l.photo_urls.length === 1 ? "" : "s"}`
+                  : null,
+                l.video_url ? "video" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           {l.status !== "adopted" ? (
-            <button
-              onClick={() => del.mutate(l.id)}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-              style={{ color: COLORS.terracotta }}
-            >
-              Remove
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditingMedia(l)}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                style={{ color: "#3B241B" }}
+              >
+                <ImageIcon className="h-3.5 w-3.5" /> Media
+              </button>
+              <button
+                onClick={() => del.mutate(l.id)}
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+                style={{ color: COLORS.terracotta }}
+              >
+                Remove
+              </button>
+            </div>
           ) : null}
         </div>
       ))}
+
+      {editingMedia && (
+        <ListingMediaModal
+          listing={editingMedia}
+          saving={update.isPending}
+          onClose={() => setEditingMedia(null)}
+          onSave={(photo_urls, video_url) =>
+            update.mutate(
+              { listingId: editingMedia.id, photo_urls, video_url },
+              {
+                onSuccess: () => {
+                  toast.success("Media updated");
+                  setEditingMedia(null);
+                },
+                onError: (err) => toast.error(err?.message || "Couldn't save media"),
+              },
+            )
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+// Edit the photos (reorder/remove, first = cover) + intro video of an existing listing (ticket 2.85).
+function ListingMediaModal({ listing, onClose, onSave, saving }) {
+  const [photos, setPhotos] = useState(
+    Array.isArray(listing.photo_urls) ? listing.photo_urls : [],
+  );
+  const [videoUrl, setVideoUrl] = useState(listing.video_url || null);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Edit media for ${listing.name}`}
+    >
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-[#3B241B]">Photos & video — {listing.name}</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 text-[#7A6254]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+        <div className="mt-4">
+          <VideoUploader value={videoUrl} onChange={setVideoUrl} />
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border-2 px-4 py-2.5 text-sm font-bold text-[#7A6254]"
+            style={{ borderColor: COLORS.peach }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(photos, videoUrl || null)}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+            style={{ backgroundColor: COLORS.coral }}
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save media
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

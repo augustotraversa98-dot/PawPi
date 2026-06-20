@@ -7,6 +7,11 @@ import { render, screen, fireEvent } from "@testing-library/react";
 // calls the review mutation with the right status (approval = the pet-transfer trigger).
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// The media uploaders (ticket 2.85) use the shared upload hook; stub it so render is fetch-free.
+vi.mock("@/utils/useUpload", () => ({
+  __esModule: true,
+  default: () => [vi.fn().mockResolvedValue({ url: "https://cdn/x.jpg" }), { loading: false }],
+}));
 vi.mock("../hooks/useProviders", () => ({
   useAdoptableListings: vi.fn(),
   useCreateAdoptableListing: vi.fn(),
@@ -76,7 +81,42 @@ describe("ProviderAdoption", () => {
     fireEvent.change(screen.getByPlaceholderText("Dog's name"), { target: { value: "Buddy" } });
     fireEvent.click(screen.getByText("List a dog"));
     expect(create.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Buddy" }),
+      expect.objectContaining({ name: "Buddy", photo_urls: [], video_url: null }),
+    );
+  });
+
+  it("the cover photo (first photo_url) renders as the listing thumbnail", () => {
+    useAdoptableListings.mockReturnValue(
+      queryStub([
+        {
+          id: 1,
+          name: "Rex",
+          status: "available",
+          photo_urls: ["https://cdn/cover.jpg", "https://cdn/2.jpg"],
+          video_url: "https://cdn/v.mp4",
+        },
+      ]),
+    );
+    render(<ProviderAdoption providerId={10} />);
+    expect(screen.getByAltText("Rex").getAttribute("src")).toBe("https://cdn/cover.jpg");
+    expect(screen.getByText(/2 photos · video/)).toBeTruthy();
+  });
+
+  it("editing media opens the modal and saves photo_urls + video_url via update", () => {
+    const update = mutationStub();
+    useUpdateAdoptableListing.mockReturnValue(update);
+    useAdoptableListings.mockReturnValue(
+      queryStub([
+        { id: 5, name: "Rex", status: "available", photo_urls: ["https://cdn/a.jpg"], video_url: null },
+      ]),
+    );
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByText("Media"));
+    expect(screen.getByText("Photos & video — Rex")).toBeTruthy();
+    fireEvent.click(screen.getByText("Save media"));
+    expect(update.mutate).toHaveBeenCalledWith(
+      { listingId: 5, photo_urls: ["https://cdn/a.jpg"], video_url: null },
+      expect.anything(),
     );
   });
 
