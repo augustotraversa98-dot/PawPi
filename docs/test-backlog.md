@@ -64,6 +64,14 @@ on Supabase: one additive nullable column, no policy change (rides the existing 
 Bookings/transport/telehealth ride the existing `vet_appointments.calendar_event_id` (0005) — no DB change there.
 **2.79 added no migration.**
 
+**🌊 Wave 9 (2.81–2.87) — env keys + device tests.**
+- **2.81 (provider location map pin) — no migration.** New OPTIONAL go-live env key
+  **`NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`** (web): the browser Google Maps JS API key that powers the
+  web provider-location pin. Unset → the web form degrades to manual lat/lng inputs (no crash). The
+  mobile pin uses Apple Maps via `PROVIDER_DEFAULT` (no key). DEVICE TEST: in mobile business onboarding,
+  drop/drag the pin → the provider's primary location row saves with lat/lng; deny location permission →
+  a typed address still saves.
+
 **Wave 7 (tickets 2.68–2.75) + account-deletion (2.78) — ✅ ALL BUILT + MIGRATIONS APPLIED.** Migrations
 **0056–0062** are **APPLIED + VERIFIED on Supabase 2026-06-19** (all 30 checks PASS via
 `supabase/verify_0056_0062.sql` — RLS on+forced, policy counts, 8 DEFINER fns + EXECUTE-to-pawpi_app, the

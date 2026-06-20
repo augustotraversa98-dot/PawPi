@@ -312,6 +312,37 @@ export function useCreateProvider() {
   });
 }
 
+// Create the provider's primary location (ticket 2.81) — POST /api/providers/[id]/locations.
+// Mobile onboarding drops a map pin (LocationField), so this persists { name?, address?, lat, lng }
+// on a real provider_locations row right after the provider is created. Owner|admin only server-side
+// (the creator is the owner). Best-effort from the caller: a failed location write must NOT undo a
+// successfully-created business, so callers swallow its error and still show the success state.
+export function useCreateProviderLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ providerId, name?, address?, lat?, lng? }) → location
+    mutationFn: async ({ providerId, ...body }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/locations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to save your location");
+      }
+      const data = await response.json();
+      return data.location;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["providers", "mine"] });
+    },
+  });
+}
+
 // --- telehealth — vet video consults (Phase 2 ticket 2.18) -------------------
 // The consult IS a normal booking (useBookProvider({ capability: 'telehealth' })) +
 // payment + chat; the only telehealth-specific owner surfaces are the consult LIST and

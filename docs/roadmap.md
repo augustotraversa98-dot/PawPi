@@ -247,6 +247,28 @@ ACTION 1. 2.79 added none. Last applied on Supabase = 0062.
 
 ---
 
+## 🌊 WAVE 9 — business magic-onboarding + calendar import + adoption browse (tickets 2.81–2.87) — IN PROGRESS
+
+Scoped with Tats 2026-06-20. Authoritative spec + build order:
+[`docs/phase2-tickets/00-README.md`](phase2-tickets/00-README.md) (Wave 9 section). Built per the ⚡ Wave 5
+autonomy preamble. Status mirror (☐ queued · 🔨 building · ✅ merged):
+
+- ✅ **2.81** Provider location map pin — mobile + web, **no migration**. Mobile onboarding shows the shared
+  `LocationField` and persists the pin as the provider's primary `provider_locations` row; web Locations form
+  gets an interactive `LocationMapPicker` (reuses `@vis.gl/react-google-maps`) that degrades to manual lat/lng
+  inputs when `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is unset. lat/lng already exist (0014) — no schema change.
+- ☐ **2.82** Enrichment: document catalog source (PDF/XLSX/CSV → services/products draft) — web, no migration.
+- ☐ **2.83** Mobile "magic onboarding" wizard — mobile, no migration. ⛔ after 2.81 + 2.82.
+- ☐ **2.84** Business calendar import (ICS feed → busy blocks) — web + mobile, migration **0064**.
+- ☐ **2.85** Adoption listing image + video upload — provider editor, no migration.
+- ☐ **2.86** Adoption browse: gallery, nearest-first, filters — mobile + web, no migration. ⛔ after 2.85.
+- ☐ **2.87** Adoption detail page — mobile, no migration. ⛔ after 2.85.
+
+New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (2.81 web pin),
+`ENRICHMENT_LLM_KEY` (2.82, already listed), `CRON_SECRET` + external scheduler (2.84).
+
+---
+
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
 - **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**

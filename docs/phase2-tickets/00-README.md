@@ -298,6 +298,34 @@ Build order (⛔ = hard blocker, must be merged to `origin/main` first):
    events → new `event_rsvps.calendar_event_id`); adds the events ICS route. Migration = one additive column,
    no RLS policy change (rides existing own-row policies). Flag in `docs/test-backlog.md` ACTION 1.
 
+## 🌊 WAVE 9 — business magic-onboarding + calendar import + adoption browse (2.81–2.87)
+Decided with Tats (2026-06-20). Built per the ⚡ Wave 5 autonomy preamble (no questions; CI-green → auto
+squash-merge; RLS + harness proofs + completeness guard on every new table; migrations left at the next free
+number for Tats to hand-apply; no fake data). **Last applied migration = 0062; 0063 pending; the only Wave 9
+migration is 0064 (ticket 2.84).** Always take the NEXT FREE number at build time and update
+`docs/test-backlog.md` ACTION 1.
+
+Build order (⛔ = hard blocker, must be merged to `origin/main` first):
+1. **2.81** Provider location map pin — mobile + web, NO migration. (no dep)
+2. **2.82** Enrichment: document catalog source (PDF/XLSX/CSV) — web, NO migration. (no dep, parallel-safe w/ 2.81)
+3. **2.83** Mobile "magic onboarding" wizard — mobile, NO migration. ⛔ **after 2.81 + 2.82.**
+4. **2.84** Business calendar import (ICS feed → busy blocks) — web + mobile, migration **0064**. (independent)
+5. **2.85** Adoption listing image + video upload — provider editor, NO migration. (no dep)
+6. **2.86** Adoption browse: gallery, nearest-first, filters — mobile + web, NO migration. ⛔ **after 2.85.**
+7. **2.87** Adoption detail page — mobile, NO migration. ⛔ **after 2.85.**
+
+New go-live env keys this wave (each degrades cleanly until set): **`NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`**
+(2.81 web pin), **`ENRICHMENT_LLM_KEY`** (2.82 — already on the go-live list), and **`CRON_SECRET` + an
+external scheduler** (2.84 calendar sync, like 2.17).
+
+- 2.81-provider-location-map-pin.md         (Wave 9 — provider location map pin; mobile + web; no migration)
+- 2.82-enrichment-document-catalog.md        (Wave 9 — document → services/products draft; web; no migration)
+- 2.83-mobile-magic-onboarding.md            (Wave 9 — magic onboarding wizard; mobile; ⛔ after 2.81+2.82)
+- 2.84-business-calendar-import.md            (Wave 9 — ICS feed → busy blocks; migration 0064)
+- 2.85-adoption-listing-media-upload.md       (Wave 9 — adoption photo/video upload; no migration)
+- 2.86-adoption-browse-nearest-filters.md     (Wave 9 — adoption browse gallery/nearest/filters; ⛔ after 2.85)
+- 2.87-adoption-detail-page.md                (Wave 9 — adoption rich detail page; ⛔ after 2.85)
+
 ## POST-CORE ADD-ONS (not ticketed — note when relevant)
 Un-ticketed after Wave 8 (deferred by choice): **widgets / Apple Watch + Live Activities** (native iOS;
 ticketed as 2.76, ATTENDED — Phase 1 staged on draft PR #187, blocked on the Apple Developer account),
