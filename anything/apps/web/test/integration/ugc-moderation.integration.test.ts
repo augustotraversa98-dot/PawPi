@@ -348,6 +348,82 @@ describe('UGC T2 — admin queue helpers (app_admin_list_reports / app_admin_act
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 0066 — provider storefront posts (provider_posts, ticket 2.22) join the moderation surface.
+// A is the provider owner + post author; B reports; C is the admin who hides/unhides.
+describe('UGC 0066 — provider_post moderation (as pawpi_app)', () => {
+  const PROVIDER_ID = 200;
+  const PPOST_ID = 50;
+
+  beforeEach(async () => {
+    await raw`
+      insert into providers (id, owner_user_profile_id, provider_type, name, slug, status)
+      values (${PROVIDER_ID}, ${A.profileId}, 'vet', 'Happy Paws', 'happy-paws', 'published')
+    `;
+    await raw`
+      insert into provider_posts (id, provider_id, author_user_id, body)
+      values (${PPOST_ID}, ${PROVIDER_ID}, ${A.profileId}, 'Open this weekend!')
+    `;
+  });
+
+  it("'provider_post' is an accepted content_reports target_type (CHECK widened)", async () => {
+    const created = await asApp(B.profileId, (tx) => tx`
+      insert into content_reports (reporter_user_id, target_type, target_id, reason)
+      values (${B.profileId}, 'provider_post', ${PPOST_ID}, 'spam')
+      returning id, target_type, status
+    `);
+    expect(created).toHaveLength(1);
+    expect(created[0].target_type).toBe('provider_post');
+    expect(created[0].status).toBe('open');
+  });
+
+  it('a non-admin (B) calling app_moderate_hide is rejected; the post stays visible', async () => {
+    await expect(
+      asApp(B.profileId, (tx) => tx`select app_moderate_hide('provider_post', ${PPOST_ID})`),
+    ).rejects.toThrow(/not authorized/i);
+    const [{ hidden_at }] = await raw`select hidden_at from provider_posts where id = ${PPOST_ID}`;
+    expect(hidden_at).toBeNull();
+  });
+
+  it('an admin (C) hides the provider_post: hidden_at set AND open reports flip to actioned', async () => {
+    await asApp(B.profileId, (tx) => tx`
+      insert into content_reports (reporter_user_id, target_type, target_id, reason)
+      values (${B.profileId}, 'provider_post', ${PPOST_ID}, 'harassment')
+    `);
+    const [{ app_moderate_hide: n }] = await asApp(C.profileId, (tx) =>
+      tx`select app_moderate_hide('provider_post', ${PPOST_ID})`,
+    );
+    expect(n).toBe(1);
+    const [{ hidden_at }] = await raw`select hidden_at from provider_posts where id = ${PPOST_ID}`;
+    expect(hidden_at).not.toBeNull();
+    const [{ status }] =
+      await raw`select status from content_reports where target_type = 'provider_post' and target_id = ${PPOST_ID} limit 1`;
+    expect(status).toBe('actioned');
+  });
+
+  it('an admin (C) can unhide the provider_post (clear hidden_at)', async () => {
+    await asApp(C.profileId, (tx) => tx`select app_moderate_hide('provider_post', ${PPOST_ID})`);
+    const [{ app_moderate_unhide: n }] = await asApp(C.profileId, (tx) =>
+      tx`select app_moderate_unhide('provider_post', ${PPOST_ID})`,
+    );
+    expect(n).toBe(1);
+    const [{ hidden_at }] = await raw`select hidden_at from provider_posts where id = ${PPOST_ID}`;
+    expect(hidden_at).toBeNull();
+  });
+
+  it("admin queue 'remove' + ban hides the provider_post AND bans the staff author (A)", async () => {
+    await raw`
+      insert into content_reports (id, reporter_user_id, target_type, target_id, reason)
+      values (200, ${B.profileId}, 'provider_post', ${PPOST_ID}, 'harassment')
+    `;
+    await asApp(C.profileId, (tx) => tx`select app_admin_action_report(200, 'remove', true)`);
+    const [{ hidden_at }] = await raw`select hidden_at from provider_posts where id = ${PPOST_ID}`;
+    expect(hidden_at).not.toBeNull();
+    const [{ banned_at }] = await raw`select banned_at from user_profiles where id = ${A.profileId}`;
+    expect(banned_at).not.toBeNull();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 describe('UGC T1 — completeness: the two new tables are FORCE-RLS with policies', () => {
   it('content_reports and user_blocks are ENABLE+FORCE RLS with >=1 policy each', async () => {
     const rows = await raw<{ table: string; enabled: boolean; forced: boolean; policies: number }[]>`
