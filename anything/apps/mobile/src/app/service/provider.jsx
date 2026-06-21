@@ -428,18 +428,38 @@ export default function ProviderScreen() {
                     borderColor: COLORS.peach,
                   }}
                 >
-                  {post.body ? (
-                    <Text style={{ fontSize: 14, color: COLORS.warmBrown, lineHeight: 20 }}>
-                      {post.body}
-                    </Text>
-                  ) : null}
+                  {/* Body + Report/Block menu (Guideline 1.2) — the menu hides Report on
+                      the staff author's own post (is_own); non-owners can Report + Block. */}
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                    {post.body ? (
+                      <Text
+                        style={{
+                          flex: 1,
+                          fontSize: 14,
+                          color: COLORS.warmBrown,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {post.body}
+                      </Text>
+                    ) : (
+                      <View style={{ flex: 1 }} />
+                    )}
+                    <ModerationMenu
+                      targetType="provider_post"
+                      targetId={post.id}
+                      authorUserId={post.author_user_id}
+                      isOwn={!!post.is_own}
+                      iconSize={18}
+                    />
+                  </View>
                   {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
                     <View
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
                         gap: 8,
-                        marginTop: post.body ? 10 : 0,
+                        marginTop: 10,
                       }}
                     >
                       {post.image_urls.map((uri, i) => (

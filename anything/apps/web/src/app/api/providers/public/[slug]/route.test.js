@@ -90,7 +90,7 @@ describe('GET /api/providers/public/[slug]', () => {
     expect(svcValues).toContain(100);
   });
 
-  it('ticket 2.22: posts are paginated and expose NO author identity', async () => {
+  it('ticket 2.22: posts are paginated, filter hidden_at, and expose author_user_id for Block (Guideline 1.2)', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }])
@@ -107,13 +107,16 @@ describe('GET /api/providers/public/[slug]', () => {
       PARAMS,
     );
 
-    // The posts query (call index 5) is LIMIT/OFFSET bound and never selects author_user_id.
+    // The posts query (call index 5) is LIMIT/OFFSET bound, hides moderated posts, and now
+    // surfaces author_user_id + is_own so the mobile ModerationMenu can Block/own-detect.
     const [postStrings, ...postValues] = sql.mock.calls[5];
     const postText = postStrings.join(' ');
     expect(postText).toContain('provider_posts');
     expect(postText).toContain('LIMIT');
     expect(postText).toContain('OFFSET');
-    expect(postText).not.toContain('author_user_id');
+    expect(postText).toContain('hidden_at IS NULL');
+    expect(postText).toContain('author_user_id');
+    expect(postText).toContain('is_own');
     expect(postValues).toContain(5); // bound limit
     expect(postValues).toContain(10); // bound offset
   });
