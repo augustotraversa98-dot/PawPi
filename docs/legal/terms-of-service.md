@@ -92,7 +92,7 @@ outcome of services or goods offered by providers. Reviews reflect users' own op
 ## 7. Payments
 
 Payments for real-world services and physical goods are processed by third-party payment processors
-([MercadoPago] and/or [Binance Pay]). By making a payment you agree to the applicable processor's
+(MercadoPago and/or Binance Pay). By making a payment you agree to the applicable processor's
 terms. Prices, taxes, fees, refunds, cancellations, and subscriptions are governed by the provider's
 stated policy and the processor's terms. PawPi does not store full payment credentials. Where PawPi
 charges platform or service fees, they will be disclosed before you pay.
