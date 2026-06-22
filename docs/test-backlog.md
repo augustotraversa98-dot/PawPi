@@ -63,6 +63,8 @@ as the RLS migrations 0019–0026.)
 --- UGC MODERATION (App Store Guideline 1.2) ---
 0065_ugc_moderation.sql               (T1+T2 — content_reports [reporter-own RLS] + user_blocks [blocker-own RLS, live-pair partial unique] + hidden_at on 11 peer-UGC content tables + user_profiles.banned_at + 7 SECURITY DEFINER fns: app_is_admin / app_user_is_blocked / app_moderate_hide [the ONLY hidden_at writer] / app_moderate_unhide / app_ban_user / app_admin_list_reports / app_admin_action_report [T2 admin-queue helpers] + notifications 'report_received' widen; both new tables ENABLE+FORCE RLS) BUILT + harness-proven (PR T1 #228 + T2) — ✅ APPLIED + VERIFIED on Supabase 2026-06-21 (all checks PASS via supabase/verify_0065.sql)
 0066_provider_post_moderation.sql     (1.2 follow-up — provider storefront posts [provider_posts, 2.22] join the moderation surface: 'provider_post' added to the content_reports target_type CHECK + hidden_at on provider_posts + the provider_post→provider_posts case in app_moderate_hide / app_moderate_unhide / app_admin_action_report [hideable list + ban-author author_user_id]; additive, no policy change — provider_posts is already ENABLE+FORCE RLS from 0042) BUILT + harness-proven — ✅ APPLIED + VERIFIED on Supabase 2026-06-21 (all 5 checks PASS via supabase/verify_0066.sql). Idempotent (CHECK drop+recreate; ADD COLUMN IF NOT EXISTS; CREATE OR REPLACE). Live DB now at 0066.
+--- LEGAL CONSENT AT SIGNUP (App Store readiness / Guideline 1.2 follow-up) ---
+0067_legal_consents.sql               (legal_consents — append-only Terms/Privacy consent ledger keyed to auth_users.id [user_profiles is lazy → no profile id at signup]; ENABLE+FORCE RLS, admin-only SELECT [reuses 0065 app_is_admin], NO owner write policy; the ONLY writer is the app_record_consent SECURITY DEFINER helper [server-authoritative versions, GRANT EXECUTE to pawpi_app]) BUILT + harness-proven (legal-consent.integration.test.ts, 7 tests) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0067.sql in the SQL editor; every row should read PASS)
 ```
 
 **✅ UGC moderation — migrations 0065 + 0066 APPLIED + VERIFIED on Supabase 2026-06-21.** Both ran in the
@@ -72,6 +74,20 @@ content tables, banned_at, 7 DEFINER fns incl. the two T2 admin-queue helpers `a
 `app_admin_action_report`); 0066 is the provider_post follow-up (storefront posts now reportable/hideable).
 Both additive + idempotent (`CREATE OR REPLACE`; CHECK drop+recreate; ADD COLUMN IF NOT EXISTS). The live
 DB moves 0064 → 0065 → 0066; no UGC-moderation migrations remain pending.
+
+**⏳ Legal consent — migration 0067 PENDING hand-apply on Supabase.** Records Terms/Privacy acceptance
+at account creation (POST `/api/legal/consent` → `app_record_consent` DEFINER → `legal_consents`). The
+web sign-up form now uses `redirect:false`, awaits the result, fires the consent POST (best-effort: one
+retry, then log + proceed — never blocks an already-created account), then redirects manually. Run
+`0067_legal_consents.sql` then `supabase/verify_0067.sql` in the SQL editor; additive (one table + one
+DEFINER fn), pre-launch → safe. 0066 is the UGC provider_post follow-up (above); consent took the next
+free integer 0067.
+
+**TODO — "consent backstop" follow-up ticket (OUT OF SCOPE here):** (1) social-login sign-ups
+(Apple/Google) record no consent — they don't pass through the credentials sign-up form, so wire a
+consent write into the OAuth `createAccount`/first-session path; (2) a startup gate that blocks any user
+lacking a `legal_consents` row for the CURRENT `TERMS_VERSION`/`PRIVACY_VERSION`, which also handles
+re-consent when either version is bumped (the version constants in `src/constants/legal.js` are the key).
 **✅ Wave 8 (ticket 2.80) — migration 0063 APPLIED + VERIFIED on Supabase 2026-06-20** (Tats ran
 `0063_event_rsvp_calendar_event_id.sql`; all 6 checks PASS via `supabase/verify_0063.sql`): one additive
 nullable column, no policy change (rides the existing `event_rsvps` own-row policies).
