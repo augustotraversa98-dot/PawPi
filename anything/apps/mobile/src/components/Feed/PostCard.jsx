@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, Pressable, StyleSheet, Alert } from "react-native";
 import { Image } from "expo-image";
+import { BlurView } from "expo-blur";
 import { PawPrint, Megaphone, Lock } from "lucide-react-native";
 import {
   COLORS,
@@ -10,7 +11,8 @@ import {
   SPACING,
   MATERIALS,
 } from "@/constants/theme";
-import { Card, PressableScale, GlassSurface } from "@/components/ui";
+import { Card, PressableScale } from "@/components/ui";
+import { useReduceTransparency } from "@/hooks/useAccessibilityPrefs";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
@@ -18,14 +20,14 @@ import { isBirthdayToday } from "@/utils/feedDelight";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 
-// Locked-photo obscuring (2.77 BeReal tease). The photo stays at full opacity;
-// a medium blur + a light cream wash do the obscuring so it reads as a clearly-
-// present pet photo that you just can't make out — NOT an empty/dim card. Under
-// Reduce Transparency the blur can't render, so GlassSurface falls back to a
-// near-opaque muted wash that keeps the content obscured (identity, which lives
-// in the header outside the photo, stays fully visible either way).
+// Locked-photo obscuring (2.77 BeReal tease). The photo stays at full opacity; a
+// plain expo-blur BlurView + a light CREAM wash do the obscuring so it reads as a
+// clearly-present pet photo you just can't make out — warm, not glassy, and NOT
+// an empty/dim card. Under Reduce Transparency the blur can't render, so we fall
+// back to a near-opaque muted wash that keeps the content obscured (identity,
+// which lives in the header outside the photo, stays fully visible either way).
 const LOCKED_PHOTO_BLUR = 45;
-const LOCKED_PHOTO_WASH = "rgba(248, 235, 221, 0.4)"; // sand @ 40% — recognizable-but-not-clear
+const LOCKED_PHOTO_WASH = "rgba(255, 247, 239, 0.4)"; // cream @ 40% — recognizable-but-not-clear
 const LOCKED_PHOTO_SOLID = "rgba(216, 197, 181, 0.97)"; // muted sand, near-opaque fallback
 
 export const PostCard = memo(function PostCard({
@@ -42,6 +44,7 @@ export const PostCard = memo(function PostCard({
   onLockedPress,
 }) {
   const togglePawMutation = useTogglePaw(post.id);
+  const reduceTransparency = useReduceTransparency();
 
   const handlePawPress = async () => {
     if (locked) return;
@@ -186,34 +189,50 @@ export const PostCard = memo(function PostCard({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
           />
-          <GlassSurface
-            intensity={LOCKED_PHOTO_BLUR}
-            glassColor={LOCKED_PHOTO_WASH}
-            solidColor={LOCKED_PHOTO_SOLID}
-            experimentalBlurMethod="dimezisBlurView"
-            style={StyleSheet.absoluteFill}
-            contentStyle={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
+          {reduceTransparency ? (
+            // Reduce Transparency: blur can't render — a near-opaque muted wash
+            // keeps the photo obscured.
+            <View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: LOCKED_PHOTO_SOLID }]}
+            />
+          ) : (
+            <>
+              <BlurView
+                intensity={LOCKED_PHOTO_BLUR}
+                tint="light"
+                experimentalBlurMethod="dimezisBlurView"
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              {/* Light cream wash so the tease reads warm (not glassy) and stays
+                  obscured even where the platform blur is weak. */}
+              <View
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { backgroundColor: LOCKED_PHOTO_WASH }]}
+              />
+            </>
+          )}
+          {/* Centered lock badge — a warm "post to reveal" cue. */}
+          <View
             pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { justifyContent: "center", alignItems: "center" }]}
           >
             <View
               style={{
                 width: 52,
                 height: 52,
                 borderRadius: 26,
-                backgroundColor: "rgba(255, 247, 239, 0.9)",
+                backgroundColor: COLORS.cream,
                 justifyContent: "center",
                 alignItems: "center",
                 borderWidth: 1,
-                borderColor: MATERIALS.hairline,
+                borderColor: COLORS.peach,
               }}
             >
               <Lock size={22} color={COLORS.terracotta} />
             </View>
-          </GlassSurface>
+          </View>
         </Pressable>
       ) : (
         <PawablePhoto
