@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Camera } from "lucide-react-native";
-import { COLORS, TYPE, RADIUS, SPACING, ELEVATION, MATERIALS } from "@/constants/theme";
+import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
@@ -296,7 +296,9 @@ export default function FeedScreen() {
 
       {/* Sticky unlock bar — pinned to the bottom of the Feed while locked, so it
           stays visible while scrolling the blurred tease. Rendered OUTSIDE the
-          scroll view (like the upload indicator). Tapping it opens the composer. */}
+          scroll view (like the upload indicator). Tapping it opens the composer.
+          Solid warm style (pre-glass): solid cream bar + peach hairline + a solid
+          coral button, NOT frosted glass. */}
       {!loadingPosts && !feedUnlocked && (
         <View
           style={{
@@ -309,7 +311,7 @@ export default function FeedScreen() {
             paddingBottom: SPACING.xl,
             backgroundColor: COLORS.cream,
             borderTopWidth: 1,
-            borderTopColor: MATERIALS.hairline,
+            borderTopColor: COLORS.peach,
           }}
         >
           <PressableScale
@@ -317,18 +319,20 @@ export default function FeedScreen() {
             accessibilityRole="button"
             style={{
               backgroundColor: COLORS.coral,
-              borderRadius: RADIUS.control,
+              borderRadius: 16,
               paddingVertical: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
               gap: SPACING.sm,
               shadowColor: COLORS.coral,
-              ...ELEVATION.md,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
             }}
           >
             <Camera size={18} color="#FFF" />
-            <Text style={[TYPE.body, { color: "#FFF", fontWeight: "800" }]}>
+            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
               Post today's photo to unlock
             </Text>
           </PressableScale>
