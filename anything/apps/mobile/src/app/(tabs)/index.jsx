@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
+import { Camera } from "lucide-react-native";
+import { COLORS, TYPE, RADIUS, SPACING, ELEVATION, MATERIALS } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
@@ -179,7 +181,9 @@ export default function FeedScreen() {
         <RefreshableScrollView
           refetch={[refetchPosts, refetchTodayDailyUpdate]}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 60 }}
+          // Extra bottom room while locked so the sticky unlock bar never covers
+          // the last blurred card.
+          contentContainerStyle={{ paddingBottom: feedUnlocked ? 60 : 120 }}
         >
           {/* ── Daily Prompt Card ── */}
           <DailyPromptCard
@@ -287,6 +291,47 @@ export default function FeedScreen() {
               Uploading photo...
             </Text>
           </View>
+        </View>
+      )}
+
+      {/* Sticky unlock bar — pinned to the bottom of the Feed while locked, so it
+          stays visible while scrolling the blurred tease. Rendered OUTSIDE the
+          scroll view (like the upload indicator). Tapping it opens the composer. */}
+      {!loadingPosts && !feedUnlocked && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingHorizontal: SPACING.lg,
+            paddingTop: SPACING.md,
+            paddingBottom: SPACING.xl,
+            backgroundColor: COLORS.cream,
+            borderTopWidth: 1,
+            borderTopColor: MATERIALS.hairline,
+          }}
+        >
+          <PressableScale
+            onPress={() => setComposerVisible(true)}
+            accessibilityRole="button"
+            style={{
+              backgroundColor: COLORS.coral,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: SPACING.sm,
+              shadowColor: COLORS.coral,
+              ...ELEVATION.md,
+            }}
+          >
+            <Camera size={18} color="#FFF" />
+            <Text style={[TYPE.body, { color: "#FFF", fontWeight: "800" }]}>
+              Post today's photo to unlock
+            </Text>
+          </PressableScale>
         </View>
       )}
     </View>
