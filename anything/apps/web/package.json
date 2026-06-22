@@ -7,7 +7,9 @@
 		"typecheck": "react-router typegen && tsc --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:integration": "vitest run --config vitest.integration.config.ts"
+		"test:integration": "vitest run --config vitest.integration.config.ts",
+		"seed:demo": "SEED_DEMO=1 node scripts/demo-seed/index.mjs",
+		"seed:demo:reset": "SEED_DEMO_RESET=1 node scripts/demo-seed/index.mjs"
 	},
 	"dependencies": {
 		"@auth/core": "^0.37.2",

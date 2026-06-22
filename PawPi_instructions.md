@@ -828,17 +828,48 @@ not a hand-maintained log here:
   (`event_rsvps.calendar_event_id`, one additive column, no RLS change) is harness-proven, **PENDING
   hand-apply** (test-backlog ACTION 1; live DB still at 0062). Final test baselines: **mobile jest 1085 ·
   web vitest 1163 · integration 583.**
+- **Wave 9 — ✅ COMPLETE (business magic-onboarding + calendar import + adoption browse, tickets 2.81–2.87).**
+  Scoped with Tats 2026-06-20; built unattended per the ⚡ autonomy preamble, all CI-green, squash-merged
+  (PRs #217–#223). Goal: fastest-possible business onboarding + a real adoption browse experience.
+  - **2.81 business map pin** (#217, no migration) — `provider_locations` already had `lat`/`lng`; mobile
+    onboarding `LocationField` + web `LocationMapPicker` (new key `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`,
+    degrades to manual lat/lng inputs when unset; mobile uses Apple Maps, no key).
+  - **2.82 document enrichment** (#218, no migration) — PDF/XLSX/CSV → proposed services/products catalog,
+    confirm-first; `/enrich/document` writes nothing directly; added lazy-loaded `xlsx`. Reuses `ENRICHMENT_LLM_KEY`.
+  - **2.83 mobile magic-onboarding wizard** (#220, no migration) — links + pin + doc → "Build my profile" →
+    one editable confirm-first review → save via existing owner-identity routes; keyless → fully manual.
+  - **2.84 calendar import** (#219, **migration 0064** `provider_calendar_feeds` + `provider_calendar_busy`,
+    owner-scoped RLS + 4 DEFINER fns + harness-proven) — paste an iCal/ICS feed URL → read-only busy blocks
+    make those slots unbookable; `CRON_SECRET`-guarded `POST /api/providers/calendar/sync` + manual refresh.
+    This is the IMPORT half only (device EventKit two-way sync stays the deferred native track).
+  - **2.85 adoption media** (#221, no migration) — photo + video upload on listings (reorder/remove, first=cover),
+    reusing the existing `photo_urls[]`/`video_url` columns.
+  - **2.86 adoption browse** (#222, no migration) — new `GET /api/adoption/listings`; 2-col photo-on-top grid
+    (info BELOW the photo), nearest-first by provider location, composable filters, clean fallback when location
+    is denied. Integration-proven.
+  - **2.87 adoption detail page** (#223, no migration) — swipeable media gallery, facts, compatibility chips,
+    story, shelter map (2.68 `MapLocationView`), Apply/Foster CTA via the existing application flow.
+  - **Decisions of record:** provider management stayed web-primary (calendar import lives on the web dashboard
+    like services/locations/staff; mobile onboarding hands off there). Final test baselines: **mobile jest 1099 ·
+    web vitest 1203 · integration 592.**
+  - **0063 + 0064 ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran both; 0064 all 12 checks PASS via
+    verify_0064.sql; live DB now at 0064 — none pending).** New env key this wave: `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
 - **Go-live env keys** (each feature degrades cleanly until its keys are set): Apple + Google OAuth
   (the sign-in buttons stay hidden until set); MercadoPago + Binance (payments); `CRON_SECRET` + an
   external scheduler (subscription auto-charge); the video-vendor keys (telehealth);
-  `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` (provider enrichment); `PAYMENTS_TOKEN_KEY`.
+  `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` (provider enrichment); `PAYMENTS_TOKEN_KEY`;
+  `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (web provider-location pin, 2.81); `CRON_SECRET` + scheduler →
+  `POST /api/providers/calendar/sync` daily (calendar import, 2.84).
+- **Pending migrations:** **0064** (calendar import, 2.84); confirm whether **0063** (Wave 8 calendar) is
+  already applied before applying 0064 — see the Wave 9 verify note above.
 - **Pre-launch security:** change the placeholder `pawpi_app` DB password.
 - **Device/browser test passes:** the accumulated "To test" entries in `docs/test-backlog.md` (provider
   passes deferred by choice; auth, native uploads, and the Wave 5 features still owe a device pass).
-- **Minor known cleanup:** gate/remove the `wrongPets` debug query in `pets/route.js`.
+- **Minor known cleanup:** the `wrongPets` debug query was removed in 2.78. The stray
+  `supabase/verify_0063.sql` (a Wave-8 artifact) is left untracked — tell Code to commit or delete it.
 
 ### How to keep this current
 
