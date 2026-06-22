@@ -10,6 +10,38 @@ import { TERMS_OF_SERVICE_URL, PRIVACY_POLICY_URL } from "@/constants/legal";
 
 const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
 
+// Auth.js error codes → friendly copy (with redirect:false, signIn RETURNS these in
+// result.error instead of throwing).
+const ERROR_MESSAGES = {
+  CredentialsSignin: "This email is already registered. Try logging in instead.",
+  EmailCreateAccount: "This email is already registered.",
+  OAuthCreateAccount: "Could not create account. Please try again.",
+  WeakPassword:
+    "That password is too weak. Use at least 8 characters and mix letters, numbers, and symbols.",
+};
+
+// Record Terms/Privacy consent server-side AFTER the account exists. Best-effort: retry once,
+// then log and proceed — we must NEVER block a user out of an already-created account because a
+// consent write failed (the versions are stamped server-side from the session). Versions are not
+// sent from here; the endpoint owns them.
+async function recordConsent(source) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch("/api/legal/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // carry the session cookie just set by sign-up
+        body: JSON.stringify({ source }),
+      });
+      if (res.ok) return true;
+    } catch {
+      // network error — fall through to the retry, then give up
+    }
+  }
+  console.error("[signup] consent POST failed after retry; proceeding to redirect");
+  return false;
+}
+
 // A legal link that opens the hosted doc in a new tab when configured, else renders as plain
 // bold text (Guideline 1.2 — the checkbox still gates submit even before the URLs are published).
 function LegalLink({ href, children }) {
@@ -88,7 +120,9 @@ export default function SignUpPage() {
     }
 
     try {
-      await signUpWithCredentials({
+      // redirect:false so we can persist consent on the freshly-created session BEFORE
+      // navigating. signIn then RESOLVES (instead of redirecting) with { ok, url, error }.
+      const result = await signUpWithCredentials({
         name: formData.name.trim(),
         email: formData.email,
         password: formData.password,
@@ -96,21 +130,32 @@ export default function SignUpPage() {
         // which takes precedence (see resolveCallbackUrl), so this only applies
         // to a business owner opening the page directly.
         callbackUrl: "/provider",
-        redirect: true,
+        redirect: false,
       });
-    } catch (err) {
-      const errorMessages = {
-        CredentialsSignin:
-          "This email is already registered. Try logging in instead.",
-        EmailCreateAccount: "This email is already registered.",
-        OAuthCreateAccount: "Could not create account. Please try again.",
-        WeakPassword:
-          "That password is too weak. Use at least 8 characters and mix letters, numbers, and symbols.",
-      };
 
+      if (!result || result.error) {
+        setError(
+          ERROR_MESSAGES[result?.error] ||
+            "Something went wrong. Please try again.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Account created. Record Terms/Privacy consent against the new session. The mobile
+      // web-auth bridge opens this page with an explicit ?callbackUrl= (see resolveCallbackUrl);
+      // its presence is what distinguishes a mobile sign-up from a standalone-web one.
+      const isMobileBridge =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).has("callbackUrl");
+      await recordConsent(isMobileBridge ? "mobile_signup" : "web_signup");
+
+      // Perform the redirect manually to the resolved callback url.
+      window.location.href = result.url || "/provider";
+    } catch (err) {
       setError(
-        errorMessages[err.code] ||
-          errorMessages[err.message] ||
+        ERROR_MESSAGES[err?.code] ||
+          ERROR_MESSAGES[err?.message] ||
           "Something went wrong. Please try again.",
       );
       setLoading(false);
