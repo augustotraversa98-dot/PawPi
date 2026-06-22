@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/legal";
 import * as DocumentPicker from "expo-document-picker";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import LocationField from "@/components/Map/LocationField";
@@ -120,7 +122,25 @@ export default function VetBusinessAccessScreen() {
 // Shown when the visitor isn't logged in yet. A provider can only be created from an
 // account (POST /api/providers needs auth), so we invite them to sign in / create one.
 // Once the auth modal completes, isAuthenticated flips and the form appears.
+//
+// EULA gate (Guideline 1.2): this is the SECOND account-creation entry point (alongside the
+// owner welcome), so it must gate "Create account" on Terms acceptance identically. The
+// checkbox + copy + "One more step" alert mirror welcome.jsx so both entry points match.
+// "Log in" stays ungated.
 function SignedOutGate({ signIn, signUp }) {
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const handleCreateAccount = () => {
+    if (!agreedToTerms) {
+      Alert.alert(
+        "One more step",
+        "Please agree to the Terms of Service and Privacy Policy to create an account.",
+      );
+      return;
+    }
+    signUp();
+  };
+
   return (
     <View>
       <Header
@@ -128,7 +148,77 @@ function SignedOutGate({ signIn, signUp }) {
         subtitle="Vets, walkers, daycares, shops, and groomers can create a business profile to reach pet owners. Log in or create an account to get started."
       />
 
-      <PrimaryButton label="Create account" onPress={signUp} />
+      {/* Terms acceptance gate (Guideline 1.2) — required, unchecked by default. */}
+      <TouchableOpacity
+        onPress={() => setAgreedToTerms((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: agreedToTerms }}
+        accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+        activeOpacity={0.8}
+        style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 24 }}
+      >
+        <View
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 7,
+            borderWidth: 2,
+            borderColor: COLORS.coral,
+            backgroundColor: agreedToTerms ? COLORS.coral : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {agreedToTerms ? <Check size={16} color="#FFF" /> : null}
+        </View>
+        <Text style={{ flex: 1, fontSize: 13, color: COLORS.mutedBrown, lineHeight: 19 }}>
+          I agree to the{" "}
+          <Text
+            style={{ fontWeight: "800", color: COLORS.coral }}
+            onPress={
+              TERMS_OF_SERVICE_URL ? () => Linking.openURL(TERMS_OF_SERVICE_URL) : undefined
+            }
+          >
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text
+            style={{ fontWeight: "800", color: COLORS.coral }}
+            onPress={
+              PRIVACY_POLICY_URL ? () => Linking.openURL(PRIVACY_POLICY_URL) : undefined
+            }
+          >
+            Privacy Policy
+          </Text>
+          , including PawPi's zero-tolerance policy for objectionable content and abusive behavior.
+        </Text>
+      </TouchableOpacity>
+
+      {/* Create account — gated on the Terms box (mirrors welcome.jsx). */}
+      <TouchableOpacity
+        onPress={handleCreateAccount}
+        accessibilityLabel="Create account"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          backgroundColor: COLORS.coral,
+          borderRadius: 18,
+          paddingVertical: 18,
+          opacity: agreedToTerms ? 1 : 0.5,
+          shadowColor: COLORS.coral,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+          elevation: 6,
+        }}
+      >
+        <Text style={{ fontSize: 17, fontWeight: "800", color: "#FFF" }}>
+          Create account
+        </Text>
+      </TouchableOpacity>
+
       <View style={{ height: 16 }} />
       <SecondaryButton label="Log in" onPress={signIn} />
     </View>

@@ -53,6 +53,17 @@ describe("POST /api/reports", () => {
     expect(sql.mock.calls[1][0].join(" ")).toContain("INSERT INTO content_reports");
   });
 
+  it("provider_post is an accepted target_type → 201 (Guideline 1.2 storefront posts)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]); // no existing open report
+    sql.mockResolvedValueOnce([
+      { id: 2, reporter_user_id: 7, target_type: "provider_post", target_id: 9 },
+    ]);
+    const res = await POST(post({ target_type: "provider_post", target_id: 9, reason: "spam" }));
+    expect(res.status).toBe(201);
+    expect((await res.json()).report).toMatchObject({ target_type: "provider_post" });
+  });
+
   it("a duplicate open report is idempotent → 200 already_reported", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 1, reporter_user_id: 7, status: "open" }]);

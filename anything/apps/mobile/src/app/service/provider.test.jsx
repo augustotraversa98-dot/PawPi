@@ -111,6 +111,31 @@ test("renders the storefront cover, items, and posts when present", () => {
   expect(getAllByTestId("storefront-post-image")).toHaveLength(1);
 });
 
+// Guideline 1.2 — storefront posts carry a Report/Block menu, hidden on your own post.
+test("storefront post shows a Report/Block menu for others, hidden on the author's own post", () => {
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      locations: [],
+      services: [],
+      products: [],
+      posts: [
+        { id: 40, body: "Theirs", image_urls: [], author_user_id: 99, is_own: false },
+        { id: 41, body: "Mine", image_urls: [], author_user_id: 7, is_own: true },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { getByText, queryAllByLabelText } = render(<ProviderScreen />);
+  expect(getByText("Theirs")).toBeTruthy();
+  expect(getByText("Mine")).toBeTruthy();
+  // Exactly one "More options" trigger — the non-own post. The author's own post hides it.
+  expect(queryAllByLabelText("More options")).toHaveLength(1);
+});
+
 test("storefront degrades cleanly: no cover/items/posts → those sections are absent", () => {
   mockProfile = {
     data: {

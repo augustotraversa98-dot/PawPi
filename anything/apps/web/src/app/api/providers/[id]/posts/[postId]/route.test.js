@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // never a row delete). Scoped by BOTH provider :id and postId, so a post of another
 // provider matches no row → 404. auth(), `sql`, providerAuth mocked.
 
-import { DELETE } from './route';
+import { DELETE, GET } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 import { requireProviderRole } from '@/app/api/utils/providerAuth';
@@ -69,6 +69,48 @@ describe('DELETE /api/providers/[id]/posts/[postId]', () => {
     requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
 
     const res = await DELETE(deleteReq(), PARAMS);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// GET — PUBLIC single-post view (Guideline 1.2): visible only when the provider is published
+// and the post is non-deleted AND non-hidden; a hidden/removed post 404s on direct view.
+describe('GET /api/providers/[id]/posts/[postId]', () => {
+  const getReq = () =>
+    new Request('http://localhost/api/providers/100/posts/9');
+
+  it('anonymous → 401, no query', async () => {
+    auth.mockResolvedValue(undefined);
+    const res = await GET(getReq(), PARAMS);
+    expect(res.status).toBe(401);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('published provider + visible post → 200 with author_user_id + is_own', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([
+      { id: 9, provider_id: 100, body: 'Hi', image_urls: [], author_user_id: 5, is_own: false },
+    ]);
+
+    const res = await GET(getReq(), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).post).toMatchObject({ id: 9, author_user_id: 5 });
+    // The visibility window is enforced in SQL: published provider + non-deleted + non-hidden.
+    const text = queryTextOf(0);
+    expect(text).toContain('provider_posts');
+    expect(text).toContain('hidden_at IS NULL');
+    expect(text).toContain('deleted_at IS NULL');
+    expect(text).toContain("status = 'published'");
+    expect(valuesOf(0)).toEqual(expect.arrayContaining([9, 100]));
+  });
+
+  it('hidden / removed / draft-provider post → 404 (no row matches the visibility window)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]); // hidden_at set (or deleted / unpublished) → no row
+
+    const res = await GET(getReq(), PARAMS);
 
     expect(res.status).toBe(404);
   });

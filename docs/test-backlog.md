@@ -61,26 +61,27 @@ as the RLS migrations 0019–0026.)
 --- WAVE 9 (business onboarding + calendar import + adoption browse) ---
 0064_provider_calendar_import.sql     (2.84 — provider_calendar_feeds [owner/admin FOR ALL + active-staff SELECT] + provider_calendar_busy [active-staff SELECT only; READ-ONLY, no write policy]; 4 SECURITY DEFINER fns: app_active_calendar_feeds / app_sync_calendar_feed [the ONLY busy writer] / app_remove_calendar_feed / app_provider_busy_windows [public availability+book subtract]; both ENABLE+FORCE RLS) BUILT + harness-proven (PR 2.84) — ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran it; all 12 checks PASS via outputs/verify_0064.sql; live DB now at 0064)
 --- UGC MODERATION (App Store Guideline 1.2) ---
-0065_ugc_moderation.sql               (T1+T2 — content_reports [reporter-own RLS] + user_blocks [blocker-own RLS, live-pair partial unique] + hidden_at on 11 peer-UGC content tables + user_profiles.banned_at + 7 SECURITY DEFINER fns: app_is_admin / app_user_is_blocked / app_moderate_hide [the ONLY hidden_at writer] / app_moderate_unhide / app_ban_user / app_admin_list_reports / app_admin_action_report [T2 admin-queue helpers] + notifications 'report_received' widen; both new tables ENABLE+FORCE RLS) BUILT + harness-proven (PR T1 #228 + T2) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0065.sql in the SQL editor; every row should read PASS)
+0065_ugc_moderation.sql               (T1+T2 — content_reports [reporter-own RLS] + user_blocks [blocker-own RLS, live-pair partial unique] + hidden_at on 11 peer-UGC content tables + user_profiles.banned_at + 7 SECURITY DEFINER fns: app_is_admin / app_user_is_blocked / app_moderate_hide [the ONLY hidden_at writer] / app_moderate_unhide / app_ban_user / app_admin_list_reports / app_admin_action_report [T2 admin-queue helpers] + notifications 'report_received' widen; both new tables ENABLE+FORCE RLS) BUILT + harness-proven (PR T1 #228 + T2) — ✅ APPLIED + VERIFIED on Supabase 2026-06-21 (all checks PASS via supabase/verify_0065.sql)
+0066_provider_post_moderation.sql     (1.2 follow-up — provider storefront posts [provider_posts, 2.22] join the moderation surface: 'provider_post' added to the content_reports target_type CHECK + hidden_at on provider_posts + the provider_post→provider_posts case in app_moderate_hide / app_moderate_unhide / app_admin_action_report [hideable list + ban-author author_user_id]; additive, no policy change — provider_posts is already ENABLE+FORCE RLS from 0042) BUILT + harness-proven — ✅ APPLIED + VERIFIED on Supabase 2026-06-21 (all 5 checks PASS via supabase/verify_0066.sql). Idempotent (CHECK drop+recreate; ADD COLUMN IF NOT EXISTS; CREATE OR REPLACE). Live DB now at 0066.
 --- LEGAL CONSENT AT SIGNUP (App Store readiness / Guideline 1.2 follow-up) ---
-(0066 is RESERVED by the UGC T8/T9 follow-up squash PRs — not in this checkout; consent took the next free integer 0067 to avoid a collision on merge.)
 0067_legal_consents.sql               (legal_consents — append-only Terms/Privacy consent ledger keyed to auth_users.id [user_profiles is lazy → no profile id at signup]; ENABLE+FORCE RLS, admin-only SELECT [reuses 0065 app_is_admin], NO owner write policy; the ONLY writer is the app_record_consent SECURITY DEFINER helper [server-authoritative versions, GRANT EXECUTE to pawpi_app]) BUILT + harness-proven (legal-consent.integration.test.ts, 7 tests) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0067.sql in the SQL editor; every row should read PASS)
 ```
 
-**⏳ UGC moderation — migration 0065 PENDING hand-apply on Supabase.** Harness-proven (65 migrations
-apply clean; 26 integration tests + the completeness guard green). The build environment can't reach
-the DB and `DATABASE_URL` is the non-DDL `pawpi_app` role, so Augusto must run `0065_ugc_moderation.sql`
-then `supabase/verify_0065.sql` in the SQL editor. **Apply the FINAL 0065** — T2 extended it with two
-admin DEFINER helpers (`app_admin_list_reports` / `app_admin_action_report`) so it now has **7** DEFINER
-fns; `verify_0065.sql` checks all of them. Idempotent (`CREATE OR REPLACE`) → re-applying over a T1-only
-0065 is safe. Additive tables + columns only; pre-launch DB → safe. After apply, the live DB moves 0064 → 0065.
+**✅ UGC moderation — migrations 0065 + 0066 APPLIED + VERIFIED on Supabase 2026-06-21.** Both ran in the
+SQL editor and every verification row reads PASS (`supabase/verify_0065.sql`, and `supabase/verify_0066.sql`
+— all 5 checks PASS). 0065 is the T1+T2 base (content_reports + user_blocks FORCE-RLS, hidden_at on 11
+content tables, banned_at, 7 DEFINER fns incl. the two T2 admin-queue helpers `app_admin_list_reports` /
+`app_admin_action_report`); 0066 is the provider_post follow-up (storefront posts now reportable/hideable).
+Both additive + idempotent (`CREATE OR REPLACE`; CHECK drop+recreate; ADD COLUMN IF NOT EXISTS). The live
+DB moves 0064 → 0065 → 0066; no UGC-moderation migrations remain pending.
 
 **⏳ Legal consent — migration 0067 PENDING hand-apply on Supabase.** Records Terms/Privacy acceptance
 at account creation (POST `/api/legal/consent` → `app_record_consent` DEFINER → `legal_consents`). The
 web sign-up form now uses `redirect:false`, awaits the result, fires the consent POST (best-effort: one
 retry, then log + proceed — never blocks an already-created account), then redirects manually. Run
 `0067_legal_consents.sql` then `supabase/verify_0067.sql` in the SQL editor; additive (one table + one
-DEFINER fn), pre-launch → safe.
+DEFINER fn), pre-launch → safe. 0066 is the UGC provider_post follow-up (above); consent took the next
+free integer 0067.
 
 **TODO — "consent backstop" follow-up ticket (OUT OF SCOPE here):** (1) social-login sign-ups
 (Apple/Google) record no consent — they don't pass through the credentials sign-up form, so wire a

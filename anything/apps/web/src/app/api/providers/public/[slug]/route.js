@@ -86,13 +86,15 @@ async function GET(request, { params }) {
       ORDER BY created_at DESC, id DESC
     `;
 
-    // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated. No author
-    // identity is exposed (author_user_id stays internal — the storefront shows the
-    // business voice, not a person).
+    // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated.
+    // Moderation (Guideline 1.2): hidden_at IS NULL drops posts "removed by us".
+    // author_user_id is surfaced so the mobile ModerationMenu can Block the author; is_own
+    // (author = the caller) lets that menu hide Report on the staff member's own post.
     const posts = await sql`
-      SELECT id, body, image_urls, created_at
+      SELECT id, body, image_urls, created_at, author_user_id,
+             (author_user_id = current_app_user_id()) AS is_own
       FROM provider_posts
-      WHERE provider_id = ${provider.id} AND deleted_at IS NULL
+      WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
       ORDER BY created_at DESC, id DESC
       LIMIT ${limit} OFFSET ${offset}
     `;

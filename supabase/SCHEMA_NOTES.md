@@ -6,8 +6,8 @@ The earlier version of this file documented *guesses* from a code-only reconstru
 
 Migration order: numeric, `0001` → current. **`supabase/migrations/` is the source of truth** for the
 full list (don't hand-maintain an enumeration here — it goes stale). Beyond 0055 the set continues through
-Waves 7–9 + App Store readiness (0056–0064), UGC moderation (0065; 0066 is the UGC T8/T9 follow-up, applied
-on Supabase but living in its own squash PRs), and **legal consent at signup (0067 — `legal_consents`
+Waves 7–9 + App Store readiness (0056–0064), UGC moderation (0065 base + 0066 the provider_post moderation
+follow-up), and **legal consent at signup (0067 — `legal_consents`
 append-only ledger keyed to `auth_users.id` + the `app_record_consent` SECURITY DEFINER insert helper;
 admin-only SELECT, DEFINER-only writes, server-authoritative versions). 0067 took the next free integer
 past the reserved 0066.** As of the original five-arc write-up the set ran `0001`–`0055`, in five arcs:
