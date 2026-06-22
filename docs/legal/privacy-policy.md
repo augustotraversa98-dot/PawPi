@@ -57,7 +57,7 @@ We collect only what the app needs to work. Specifically:
 **Payment information**
 
 - When you pay for a service or product, payment is processed by our third-party payment processors
-  (**[MercadoPago]** and/or **[Binance Pay]**). We do **not** store full card or wallet credentials
+  (**MercadoPago** and/or **Binance Pay**). We do **not** store full card or wallet credentials
   on our servers; we receive transaction status and references needed to fulfill your order.
 
 ## 3. How we use your information
@@ -96,7 +96,7 @@ We share information only as needed to run the Service:
   you. Sharing of pet health data with a provider happens through explicit in-app consent.
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
-- **With processors and infrastructure providers** — payment processors ([MercadoPago]/[Binance Pay]),
+- **With processors and infrastructure providers** — payment processors (MercadoPago/Binance Pay),
   our database/hosting provider (**Supabase**), authentication, and similar vendors that process data
   on our behalf under contract.
 - **For legal reasons** — to comply with the law, enforce our terms, or protect the rights, safety,
