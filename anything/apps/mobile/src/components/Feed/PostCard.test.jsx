@@ -148,6 +148,59 @@ describe("PostCard — photo/caption tap targets", () => {
   });
 });
 
+describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
+  it("obscures the caption while locked (identity stays, content hidden)", () => {
+    const { getByText, queryByText, getByTestId } = render(
+      <PostCard post={{ ...basePost, pet_handle: "phoebe" }} locked />,
+    );
+    // Identity is fully visible…
+    expect(getByText("Phoebe")).toBeTruthy();
+    expect(getByText("@phoebe")).toBeTruthy();
+    expect(getByText("by Agos")).toBeTruthy();
+    // …but the caption text is replaced by an obscured placeholder bar.
+    expect(queryByText("hi")).toBeNull();
+    expect(getByTestId("feed-post-caption-locked")).toBeTruthy();
+  });
+
+  it("tapping a locked photo invokes the composer callback", () => {
+    const onLockedPress = jest.fn();
+    const onOpenProfile = jest.fn();
+    const { getByTestId } = render(
+      <PostCard
+        post={basePost}
+        locked
+        onLockedPress={onLockedPress}
+        onOpenProfile={onOpenProfile}
+      />,
+    );
+    fireEvent.press(getByTestId("feed-post-photo"));
+    expect(onLockedPress).toHaveBeenCalledTimes(1);
+    expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+
+  it("tapping the locked header invokes the composer callback, not open-profile", () => {
+    const onLockedPress = jest.fn();
+    const onOpenProfile = jest.fn();
+    const { getByText } = render(
+      <PostCard
+        post={basePost}
+        locked
+        onLockedPress={onLockedPress}
+        onOpenProfile={onOpenProfile}
+      />,
+    );
+    fireEvent.press(getByText("Phoebe"));
+    expect(onLockedPress).toHaveBeenCalledTimes(1);
+    expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+
+  it("disables the paw button while locked (no mutation)", () => {
+    const { getByText } = render(<PostCard post={basePost} locked liked={false} />);
+    fireEvent.press(getByText("0 paws"));
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+});
+
 describe("PostCard — double-tap to Paw (2.64)", () => {
   it("double-tapping an un-pawed photo paws once and does not open profile", () => {
     const onOpenProfile = jest.fn();

@@ -1,7 +1,7 @@
 import React, { memo } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, Alert } from "react-native";
 import { Image } from "expo-image";
-import { PawPrint, Megaphone } from "lucide-react-native";
+import { PawPrint, Megaphone, Lock } from "lucide-react-native";
 import {
   COLORS,
   TAG_COLORS,
@@ -10,13 +10,23 @@ import {
   SPACING,
   MATERIALS,
 } from "@/constants/theme";
-import { Card, PressableScale } from "@/components/ui";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
 import { isBirthdayToday } from "@/utils/feedDelight";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+
+// Locked-photo obscuring (2.77 BeReal tease). The photo stays at full opacity;
+// a medium blur + a light cream wash do the obscuring so it reads as a clearly-
+// present pet photo that you just can't make out — NOT an empty/dim card. Under
+// Reduce Transparency the blur can't render, so GlassSurface falls back to a
+// near-opaque muted wash that keeps the content obscured (identity, which lives
+// in the header outside the photo, stays fully visible either way).
+const LOCKED_PHOTO_BLUR = 45;
+const LOCKED_PHOTO_WASH = "rgba(248, 235, 221, 0.4)"; // sand @ 40% — recognizable-but-not-clear
+const LOCKED_PHOTO_SOLID = "rgba(216, 197, 181, 0.97)"; // muted sand, near-opaque fallback
 
 export const PostCard = memo(function PostCard({
   post,
@@ -27,6 +37,9 @@ export const PostCard = memo(function PostCard({
   onOpenBarks,
   onOpenDetail,
   onOpenProfile,
+  // While locked, tapping anywhere on the card nudges the viewer to post (opens
+  // the composer) instead of doing nothing.
+  onLockedPress,
 }) {
   const togglePawMutation = useTogglePaw(post.id);
 
@@ -88,10 +101,11 @@ export const PostCard = memo(function PostCard({
         borderWidth: isBirthday ? 2.5 : 1,
       }}
     >
-      {/* Header */}
+      {/* Header — identity stays fully visible while locked; tapping it nudges
+          the viewer to post rather than opening the (hidden) profile. */}
       <TouchableOpacity
-        onPress={locked ? undefined : onOpenProfile}
-        activeOpacity={locked ? 1 : 0.8}
+        onPress={locked ? onLockedPress : onOpenProfile}
+        activeOpacity={0.8}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -158,32 +172,95 @@ export const PostCard = memo(function PostCard({
         </View>
       </TouchableOpacity>
 
-      {/* Photo — single tap opens the pet's profile, double tap gives a Paw (2.64) */}
-      <PawablePhoto
-        testID="feed-post-photo"
-        photoUri={photo}
-        disabled={locked}
-        onSingleTap={onOpenProfile}
-        onDoubleTap={handleDoubleTapPaw}
-        style={{ width: "100%", height: 340 }}
-      />
-
-      {/* Caption + Actions */}
-      <View style={{ padding: SPACING.lg }}>
-        {post.caption && (
-          <TouchableOpacity
-            testID="feed-post-caption"
-            onPress={locked ? undefined : onOpenDetail}
-            activeOpacity={locked ? 1 : 0.8}
+      {/* Photo. Unlocked: single tap opens the pet's profile, double tap gives a
+          Paw (2.64). Locked: the photo is blurred (you can tell WHO posted from
+          the header, but not WHAT) and tapping it opens the composer. */}
+      {locked ? (
+        <Pressable
+          testID="feed-post-photo"
+          onPress={onLockedPress}
+          style={{ width: "100%", height: 340 }}
+        >
+          <Image
+            source={{ uri: photo }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          <GlassSurface
+            intensity={LOCKED_PHOTO_BLUR}
+            glassColor={LOCKED_PHOTO_WASH}
+            solidColor={LOCKED_PHOTO_SOLID}
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFill}
+            contentStyle={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            pointerEvents="none"
           >
-            <Text
-              style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}
-              numberOfLines={2}
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: "rgba(255, 247, 239, 0.9)",
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: MATERIALS.hairline,
+              }}
             >
-              <Text style={{ fontWeight: "800" }}>{dogName} </Text>
-              {post.caption}
-            </Text>
-          </TouchableOpacity>
+              <Lock size={22} color={COLORS.terracotta} />
+            </View>
+          </GlassSurface>
+        </Pressable>
+      ) : (
+        <PawablePhoto
+          testID="feed-post-photo"
+          photoUri={photo}
+          disabled={false}
+          onSingleTap={onOpenProfile}
+          onDoubleTap={handleDoubleTapPaw}
+          style={{ width: "100%", height: 340 }}
+        />
+      )}
+
+      {/* Caption + Actions. The caption is CONTENT, so it's obscured while locked
+          (replaced by a muted placeholder bar — you can tell there's a caption,
+          but not read it); the action row stays disabled as before. Tapping this
+          region while locked opens the composer. */}
+      <Pressable
+        style={{ padding: SPACING.lg }}
+        onPress={locked ? onLockedPress : undefined}
+      >
+        {locked ? (
+          <View
+            testID="feed-post-caption-locked"
+            style={{
+              height: 13,
+              width: "65%",
+              borderRadius: 7,
+              backgroundColor: MATERIALS.surfaceSunken,
+              marginBottom: SPACING.lg,
+            }}
+          />
+        ) : (
+          post.caption && (
+            <TouchableOpacity
+              testID="feed-post-caption"
+              onPress={onOpenDetail}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}
+                numberOfLines={2}
+              >
+                <Text style={{ fontWeight: "800" }}>{dogName} </Text>
+                {post.caption}
+              </Text>
+            </TouchableOpacity>
+          )
         )}
 
         {/* Action Row */}
@@ -191,8 +268,8 @@ export const PostCard = memo(function PostCard({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingTop: post.caption ? SPACING.md : 0,
-            borderTopWidth: post.caption ? 1 : 0,
+            paddingTop: locked || post.caption ? SPACING.md : 0,
+            borderTopWidth: locked || post.caption ? 1 : 0,
             borderTopColor: MATERIALS.hairline,
             gap: SPACING.xl,
           }}
@@ -234,7 +311,7 @@ export const PostCard = memo(function PostCard({
               the daily-post flow + BeReal lock are untouched. */}
           <DailyShareButton petName={dogName} photoUri={photo} locked={locked} />
         </View>
-      </View>
+      </Pressable>
     </Card>
   );
 });
