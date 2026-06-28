@@ -2,7 +2,7 @@
 // viewer's own post and fires onDelete when tapped.
 
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -24,6 +24,24 @@ jest.mock("@/hooks/useFeedPosts", () => ({
 jest.mock("@/components/Pets/PetAvatar", () => ({
   PetAvatar: () => null,
 }));
+// expo-av's native Video doesn't render under jest-expo — mock it to a View that
+// drives play through the ref so the video-post test can assert playback.
+const mockPlayAsync = jest.fn(() => Promise.resolve());
+jest.mock("expo-av", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    ResizeMode: { COVER: "cover", CONTAIN: "contain" },
+    Video: React.forwardRef((props, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        playAsync: mockPlayAsync,
+        pauseAsync: jest.fn(() => Promise.resolve()),
+      }));
+      return React.createElement(View, { testID: props.testID });
+    }),
+  };
+});
 // DailyShareButton pulls in react-native-view-shot + expo-sharing; stub it to a
 // labelled pressable so we can assert the real share affordance is wired (2.38).
 jest.mock("./DailyShareButton", () => {
@@ -36,6 +54,8 @@ jest.mock("./DailyShareButton", () => {
 });
 
 import { PostDetailModal } from "./PostDetailModal";
+
+beforeEach(() => mockPlayAsync.mockClear());
 
 const post = {
   id: 5,
@@ -61,6 +81,43 @@ test("shows a real relative timestamp from created_at, not 'Just now' (2.38)", (
   );
   expect(getByText(/2h/)).toBeTruthy();
   expect(queryByText("Just now")).toBeNull();
+});
+
+describe("video posts (daily video moments, step 4)", () => {
+  const videoPost = {
+    ...post,
+    media_type: "video",
+    image_url: null,
+    video_url: "https://example.com/v.mp4",
+    video_thumbnail_url: "https://example.com/thumb.jpg",
+  };
+
+  it("plays a video post inline (poster + tap-to-play)", async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByTestId, queryByTestId } = render(
+        <PostDetailModal visible post={videoPost} />,
+      );
+      expect(getByTestId("detail-post-video")).toBeTruthy();
+      // It's a video, not the image path.
+      expect(queryByTestId("detail-post-photo")).toBeNull();
+      fireEvent.press(getByTestId("detail-post-video"));
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(mockPlayAsync).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("an image post still renders the photo, never the video player", () => {
+    const { getByTestId, queryByTestId } = render(
+      <PostDetailModal visible post={{ ...post, image_url: "u.jpg" }} />,
+    );
+    expect(getByTestId("detail-post-photo")).toBeTruthy();
+    expect(queryByTestId("detail-post-video")).toBeNull();
+  });
 });
 
 test("no delete button when canDelete is false", () => {

@@ -10,7 +10,43 @@ jest.mock("@/hooks/useFeedPosts", () => ({
   useTogglePaw: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
 
-beforeEach(() => mockMutateAsync.mockClear());
+// expo-av's native Video doesn't render under jest-expo — mock it to a View that
+// drives play/pause through the ref so the video-post tests can assert playback.
+const mockPlayAsync = jest.fn(() => Promise.resolve());
+const mockPauseAsync = jest.fn(() => Promise.resolve());
+jest.mock("expo-av", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    ResizeMode: { COVER: "cover", CONTAIN: "contain" },
+    Video: React.forwardRef((props, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        playAsync: mockPlayAsync,
+        pauseAsync: mockPauseAsync,
+      }));
+      return React.createElement(View, { testID: props.testID });
+    }),
+  };
+});
+
+beforeEach(() => {
+  mockMutateAsync.mockClear();
+  mockPlayAsync.mockClear();
+  mockPauseAsync.mockClear();
+});
+
+const videoPost = {
+  id: 2,
+  pet_name: "Phoebe",
+  username: "Agos",
+  pet_avatar: "https://example.com/a.jpg",
+  media_type: "video",
+  image_url: null,
+  video_url: "https://example.com/v.mp4",
+  video_thumbnail_url: "https://example.com/thumb.jpg",
+  caption: "clip",
+};
 
 // Pin "today" so the birthday helper is deterministic (ticket 2.37).
 jest.mock("@/utils/dateUtils", () => ({
@@ -238,5 +274,88 @@ describe("PostCard — double-tap to Paw (2.64)", () => {
     fireEvent.press(photo);
     fireEvent.press(photo);
     expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("PostCard — video posts (daily video moments, step 4)", () => {
+  it("an image post renders the photo, never the video player", () => {
+    const { getByTestId, queryByTestId } = render(<PostCard post={basePost} />);
+    expect(getByTestId("feed-post-photo")).toBeTruthy();
+    expect(queryByTestId("feed-post-video")).toBeNull();
+  });
+
+  it("unlocked video post renders the inline player (poster + play affordance)", () => {
+    const { getByTestId, queryByTestId } = render(<PostCard post={videoPost} />);
+    expect(getByTestId("feed-post-video")).toBeTruthy();
+    expect(getByTestId("feed-post-video-play")).toBeTruthy();
+    // It's a video, not a photo.
+    expect(queryByTestId("feed-post-photo")).toBeNull();
+  });
+
+  it("single-tapping an unlocked video plays it (deferred past the double-tap window)", async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByTestId } = render(<PostCard post={videoPost} />);
+      fireEvent.press(getByTestId("feed-post-video"));
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(mockPlayAsync).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("double-tapping an unlocked video Paws once and does not play", () => {
+    jest.useFakeTimers();
+    try {
+      const { getByTestId } = render(<PostCard post={videoPost} liked={false} />);
+      const target = getByTestId("feed-post-video");
+      fireEvent.press(target);
+      fireEvent.press(target);
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+      expect(mockMutateAsync).toHaveBeenCalledWith({ isPawed: false });
+      expect(mockPlayAsync).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("locked video blurs the POSTER (not a photo) and never plays", () => {
+    const { getByTestId, queryByTestId } = render(
+      <PostCard post={videoPost} locked />,
+    );
+    // No player while locked.
+    expect(queryByTestId("feed-post-video")).toBeNull();
+    // The blurred locked media is the video thumbnail (expo-image normalizes the
+    // source to an array).
+    expect(getByTestId("feed-post-locked-media").props.source).toEqual([
+      { uri: videoPost.video_thumbnail_url },
+    ]);
+    expect(getByTestId("feed-post-locked-blur")).toBeTruthy();
+    expect(queryByTestId("feed-post-locked-solid")).toBeNull();
+  });
+
+  it("locked video with NO thumbnail uses the solid fallback (nothing to blur)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <PostCard
+        post={{ ...videoPost, video_thumbnail_url: null }}
+        locked
+      />,
+    );
+    expect(getByTestId("feed-post-locked-solid")).toBeTruthy();
+    expect(queryByTestId("feed-post-locked-blur")).toBeNull();
+  });
+
+  it("tapping a locked video opens the composer (unchanged lock behavior)", () => {
+    const onLockedPress = jest.fn();
+    const { getByTestId } = render(
+      <PostCard post={videoPost} locked onLockedPress={onLockedPress} />,
+    );
+    fireEvent.press(getByTestId("feed-post-photo"));
+    expect(onLockedPress).toHaveBeenCalledTimes(1);
   });
 });

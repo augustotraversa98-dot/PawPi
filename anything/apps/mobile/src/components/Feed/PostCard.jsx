@@ -16,6 +16,7 @@ import { useReduceTransparency } from "@/hooks/useAccessibilityPrefs";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
+import { FeedVideo } from "./FeedVideo";
 import { isBirthdayToday } from "@/utils/feedDelight";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
@@ -80,6 +81,17 @@ export const PostCard = memo(function PostCard({
   const ownerName = post.username || post.ownerName;
   const avatar = post.pet_avatar || post.avatar;
   const photo = post.image_url || post.photo;
+  // Daily video moments (step 4): a video post renders its poster + inline player
+  // instead of a photo. image_url is null for video posts, so derive media type
+  // explicitly rather than from the (absent) photo.
+  const isVideo = post.media_type === "video";
+  const videoUri = post.video_url;
+  const posterUri = post.video_thumbnail_url;
+  // What the LOCKED branch obscures: the video poster for a video post, the photo
+  // otherwise. When there's nothing to blur (no poster/photo), fall back to the
+  // near-opaque solid wash — a blur over an empty image reads as a broken card.
+  const lockedMediaUri = isVideo ? posterUri : photo;
+  const useSolidFallback = reduceTransparency || !lockedMediaUri;
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
@@ -185,20 +197,23 @@ export const PostCard = memo(function PostCard({
           style={{ width: "100%", height: 340 }}
         >
           <Image
-            source={{ uri: photo }}
+            testID="feed-post-locked-media"
+            source={{ uri: lockedMediaUri }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
           />
-          {reduceTransparency ? (
-            // Reduce Transparency: blur can't render — a near-opaque muted wash
-            // keeps the photo obscured.
+          {useSolidFallback ? (
+            // Reduce Transparency (blur can't render) OR no poster/photo to blur:
+            // a near-opaque muted wash keeps the media obscured with nothing glassy.
             <View
+              testID="feed-post-locked-solid"
               pointerEvents="none"
               style={[StyleSheet.absoluteFill, { backgroundColor: LOCKED_PHOTO_SOLID }]}
             />
           ) : (
             <>
               <BlurView
+                testID="feed-post-locked-blur"
                 intensity={LOCKED_PHOTO_BLUR}
                 tint="light"
                 experimentalBlurMethod="dimezisBlurView"
@@ -234,6 +249,16 @@ export const PostCard = memo(function PostCard({
             </View>
           </View>
         </Pressable>
+      ) : isVideo ? (
+        // Unlocked video: poster + inline player. Single tap plays/pauses (with
+        // sound), double tap still gives a Paw. (No scroll-based autoplay.)
+        <FeedVideo
+          testID="feed-post-video"
+          videoUri={videoUri}
+          posterUri={posterUri}
+          onDoubleTap={handleDoubleTapPaw}
+          style={{ width: "100%", height: 340 }}
+        />
       ) : (
         <PawablePhoto
           testID="feed-post-photo"
