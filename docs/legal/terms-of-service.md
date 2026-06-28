@@ -1,22 +1,17 @@
 # PawPi Terms of Service
 
-> **Before you publish:** fill in every `[BRACKETED]` placeholder, have a lawyer review this for
-> your jurisdiction, then host it at a stable public URL and set `EXPO_PUBLIC_TERMS_URL` in the
-> mobile `.env`. This template reflects what the app does today; it is a starting point, not legal
-> advice.
-
-**Effective date:** [DATE]
-**Last updated:** [DATE]
+**Effective date:** June 22, 2026
+**Last updated:** June 22, 2026
 
 These Terms of Service ("Terms") govern your use of the PawPi mobile app and related services (the
-"Service"), provided by [LEGAL ENTITY NAME] ("PawPi," "we," "us"). By creating an account or using
-the Service, you agree to these Terms and to our [Privacy Policy]([PRIVACY POLICY URL]).
+"Service"), provided by Augusto Traversa ("PawPi," "we," "us"). By creating an account or using
+the Service, you agree to these Terms and to our [Privacy Policy](https://augustotraversa98-dot.github.io/pawpi-legal/privacy).
 
 ## 1. Eligibility and accounts
 
-You must be at least [13/16/18, per your jurisdiction] to use PawPi. You are responsible for the
+You must be at least 16 to use PawPi. You are responsible for the
 accuracy of the information you provide, for keeping your login credentials secure, and for all
-activity under your account. Notify us promptly at **[SUPPORT EMAIL]** if you suspect unauthorized use.
+activity under your account. Notify us promptly at **augusto@pawpi.info** if you suspect unauthorized use.
 
 ## 2. What PawPi is
 
@@ -128,8 +123,8 @@ secure, or that content (including health insights and provider information) is 
 To the maximum extent permitted by law, PawPi and its affiliates will not be liable for any indirect,
 incidental, special, consequential, or punitive damages, or for any loss of data, profits, or goodwill,
 arising from your use of the Service or from any provider transaction. Our total liability for any
-claim relating to the Service will not exceed [the greater of the amount you paid PawPi in the 12
-months before the claim, or USD 100], to the extent permitted by law. Some jurisdictions do not allow
+claim relating to the Service will not exceed the greater of the amount you paid PawPi in the 12
+months before the claim, or USD 100, to the extent permitted by law. Some jurisdictions do not allow
 certain limitations, so some may not apply to you.
 
 ## 13. Indemnification
@@ -146,10 +141,9 @@ accept the updated Terms.
 
 ## 15. Governing law and disputes
 
-These Terms are governed by the laws of [JURISDICTION], without regard to conflict-of-laws rules.
-Disputes will be resolved in the courts of [VENUE], unless mandatory local law provides otherwise.
-[Optional: add an arbitration/class-waiver clause only after legal review.]
+These Terms are governed by the laws of Argentina, without regard to conflict-of-laws rules.
+Disputes will be resolved in the courts of the City of Buenos Aires, Argentina, unless mandatory local law provides otherwise.
 
 ## 16. Contact
 
-Questions about these Terms: **[SUPPORT EMAIL]**, [LEGAL ENTITY NAME], [REGISTERED ADDRESS].
+Questions about these Terms: **augusto@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.
