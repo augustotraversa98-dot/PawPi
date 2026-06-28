@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { isVideoEligible } from "@/app/api/utils/videoEligibility";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -231,7 +232,18 @@ async function POST(request) {
       caption,
       is_daily_update = false,
       post_date,
+      media_type = "image",
+      video_url,
+      video_thumbnail_url,
     } = body;
+
+    // Daily video moments: a post is an 'image' (default, unchanged) or a 'video'.
+    if (media_type !== "image" && media_type !== "video") {
+      return Response.json(
+        { error: "Invalid media_type" },
+        { status: 400 },
+      );
+    }
 
     // Content filter (T7): reject objectionable caption text before insert.
     const blocked = moderationResponse(caption);
@@ -288,15 +300,39 @@ async function POST(request) {
 
     const finalPostDate = post_date || new Date().toISOString().split("T")[0];
 
+    // Video posts: require a playable URL and re-check eligibility SERVER-SIDE for
+    // the post's day. Never trust a client-sent eligibility flag — the gate is the
+    // deterministic server computation, computed against the SAME date we'll store.
+    if (media_type === "video") {
+      if (!video_url) {
+        return Response.json(
+          { error: "video_url is required for a video post" },
+          { status: 400 },
+        );
+      }
+      if (!isVideoEligible(userId, finalPostDate)) {
+        return Response.json(
+          { error: "Video posting isn't available for you today" },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Image posts store NULL video columns and behave exactly as before.
+    const isVideo = media_type === "video";
+
     const insertedPost = await sql`
-      INSERT INTO posts (user_id, pet_id, image_url, caption, is_daily_update, post_date)
+      INSERT INTO posts (user_id, pet_id, image_url, caption, is_daily_update, post_date, media_type, video_url, video_thumbnail_url)
       VALUES (
-        ${userId}, 
-        ${pet_id}, 
-        ${image_url || null}, 
-        ${caption || null}, 
+        ${userId},
+        ${pet_id},
+        ${image_url || null},
+        ${caption || null},
         ${is_daily_update},
-        ${finalPostDate}
+        ${finalPostDate},
+        ${media_type},
+        ${isVideo ? video_url : null},
+        ${isVideo ? video_thumbnail_url || null : null}
       )
       RETURNING id
     `;
