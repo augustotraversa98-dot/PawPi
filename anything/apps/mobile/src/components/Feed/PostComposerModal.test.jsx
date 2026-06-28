@@ -105,6 +105,8 @@ test("no video option for a non-eligible user (photo-only)", async () => {
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
   expect(getByTestId("composer-take-photo")).toBeTruthy();
   expect(queryByTestId("composer-take-video")).toBeNull();
+  // No celebratory treatment either — composer looks exactly as it does today.
+  expect(queryByTestId("composer-lucky-banner")).toBeNull();
 });
 
 test("a failed eligibility fetch stays photo-only (never blocks)", async () => {
@@ -115,6 +117,32 @@ test("a failed eligibility fetch stays photo-only (never blocks)", async () => {
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
   expect(getByTestId("composer-take-photo")).toBeTruthy();
   expect(queryByTestId("composer-take-video")).toBeNull();
+  // On error there is no celebratory flash — photo-only, unchanged.
+  expect(queryByTestId("composer-lucky-banner")).toBeNull();
+});
+
+test("eligible user sees the celebratory lucky-day treatment + emphasized video option", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ eligible: true, date: "2026-06-28" }),
+  });
+  const { getByTestId, getByText } = render(
+    <PostComposerModal visible petName="Rex" onClose={jest.fn()} onPost={jest.fn()} />,
+  );
+  // The treatment and the video affordance appear together once eligible.
+  await waitFor(() => expect(getByTestId("composer-lucky-banner")).toBeTruthy());
+  expect(getByTestId("composer-take-video")).toBeTruthy();
+  // Copy makes clear it's a today-only, optional bonus.
+  expect(getByText("🎉 You're one of today's lucky users!")).toBeTruthy();
+  expect(
+    getByText(
+      "You can share a short video today — just for today. A photo's always welcome too.",
+    ),
+  ).toBeTruthy();
+  // The video option carries a "Today only" tag marking it as special.
+  expect(getByText("Today only")).toBeTruthy();
+  // The photo option stays present and primary.
+  expect(getByText("Take a photo")).toBeTruthy();
 });
 
 test("eligible user can record a video → previews it and posts media_type 'video'", async () => {
