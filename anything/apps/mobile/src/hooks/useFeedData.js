@@ -9,6 +9,7 @@ import { useCurrentPet } from "./usePetProfile";
 import { useTodayDailyUpdate } from "./useTodayDailyUpdate";
 import { useOwnerPostedToday } from "./useOwnerPostedToday";
 import { useUpload } from "@/utils/useUpload";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import { Alert, Platform } from "react-native";
 import { getLocalPostDateString, normalizePostDate } from "@/utils/dateUtils";
 import useUser from "@/utils/auth/useUser";
@@ -147,35 +148,24 @@ export function useFeedData() {
   }, {});
 
   const handlePost = useCallback(
-    async ({ photo, caption }) => {
+    async ({ uri, caption, mediaType = "image" }) => {
+      const isVideo = mediaType === "video";
       console.log("[useFeedData] ========================================");
       console.log("[useFeedData] Starting handlePost");
-      console.log("[useFeedData] Photo URI:", photo);
+      console.log("[useFeedData] Media URI:", uri);
+      console.log("[useFeedData] Media type:", mediaType);
       console.log("[useFeedData] Caption:", caption);
-      console.log("[useFeedData] Current pet:", currentPet);
-      console.log("[useFeedData] Has pet:", hasPet);
       console.log("[useFeedData] ========================================");
 
       // Step 1: Check if pet exists
       if (!currentPet?.id) {
         console.error("[useFeedData] ERROR: No pet profile found");
-        console.error("[useFeedData] Current pet state:", currentPet);
-        console.error("[useFeedData] Has pet:", hasPet);
         Alert.alert("Error", "Please create your pet profile first.");
         return;
       }
 
-      console.log("[useFeedData] ✅ Pet profile ID:", currentPet.id);
-      console.log("[useFeedData] ✅ Pet name:", currentPet.name);
-
       // Step 2: Check if daily update already exists (BEFORE upload)
-      console.log(
-        "[useFeedData] Step 2: Checking for existing daily update...",
-      );
       const todayDate = getLocalPostDateString();
-      console.log("[useFeedData] Today's date (local):", todayDate);
-      console.log("[useFeedData] Current todayDailyUpdate:", todayDailyUpdate);
-      console.log("[useFeedData] Current hasPostedToday:", hasPostedToday);
 
       if (hasPostedToday && effectiveTodayDailyUpdate) {
         console.log(
@@ -189,105 +179,114 @@ export function useFeedData() {
         return;
       }
 
-      console.log(
-        "[useFeedData] ✅ No existing daily update found, proceeding...",
-      );
-
       try {
-        // Step 3: Upload the image
-        console.log("[useFeedData] Step 3: Starting image upload...");
-        console.log("[useFeedData] Upload input:", {
-          uri: photo,
-          name: `daily-${Date.now()}.jpg`,
-          mimeType: "image/jpeg",
-        });
-
-        const uploadResult = await upload({
+        // Step 3: Upload the captured media. /api/upload is mime-agnostic and
+        // useUpload streams the file straight from its uri (works for video).
+        const ext = (uri.split(".").pop() || "").toLowerCase();
+        const mediaUpload = await upload({
           reactNativeAsset: {
-            uri: photo,
-            name: `daily-${Date.now()}.jpg`,
-            mimeType: "image/jpeg",
+            uri,
+            name: isVideo
+              ? `daily-${Date.now()}.${ext || "mp4"}`
+              : `daily-${Date.now()}.jpg`,
+            mimeType: isVideo
+              ? ext === "mov"
+                ? "video/quicktime"
+                : "video/mp4"
+              : "image/jpeg",
           },
         });
 
-        console.log("[useFeedData] Upload result:", uploadResult);
-
-        if (uploadResult.error) {
-          console.error(
-            "[useFeedData] ERROR: Upload failed:",
-            uploadResult.error,
-          );
-          throw new Error(uploadResult.error);
+        if (mediaUpload.error) {
+          throw new Error(mediaUpload.error);
         }
-
-        if (!uploadResult.url) {
-          console.error(
-            "[useFeedData] ERROR: Upload succeeded but no URL returned",
-          );
-          console.error("[useFeedData] Upload result:", uploadResult);
+        if (!mediaUpload.url) {
           throw new Error("Upload succeeded but no URL was returned");
         }
 
-        const imageUrl = uploadResult.url;
-        console.log("[useFeedData] ✅ Image uploaded successfully");
-        console.log("[useFeedData] Image URL:", imageUrl);
+        const mediaUrl = mediaUpload.url;
+        console.log("[useFeedData] ✅ Media uploaded:", mediaUrl);
 
-        // Step 4: Prepare post data
-        const postData = {
-          pet_id: currentPet.id,
-          image_url: imageUrl,
-          caption: caption || null,
-          is_daily_update: true,
-          post_date: todayDate, // Include explicit post_date
-        };
+        // Step 4: Build the post payload. Image posts are unchanged (image_url);
+        // video posts send media_type + video_url (+ thumbnail when we can make one).
+        let postData;
+        if (isVideo) {
+          // Generate a poster frame for the feed + locked-blur. If thumbnail
+          // generation OR its upload fails, post with a null thumbnail rather
+          // than blocking the daily moment.
+          let videoThumbnailUrl = null;
+          try {
+            const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(
+              uri,
+              { time: 0, quality: 0.7 },
+            );
+            const thumbUpload = await upload({
+              reactNativeAsset: {
+                uri: thumbUri,
+                name: `daily-thumb-${Date.now()}.jpg`,
+                mimeType: "image/jpeg",
+              },
+            });
+            if (!thumbUpload.error && thumbUpload.url) {
+              videoThumbnailUrl = thumbUpload.url;
+            } else {
+              console.warn(
+                "[useFeedData] Thumbnail upload failed, posting without one:",
+                thumbUpload.error,
+              );
+            }
+          } catch (thumbErr) {
+            console.warn(
+              "[useFeedData] Thumbnail generation failed, posting without one:",
+              thumbErr?.message,
+            );
+          }
 
-        console.log("[useFeedData] Step 4: Creating post in database...");
-        console.log(
-          "[useFeedData] Post data payload:",
-          JSON.stringify(postData, null, 2),
-        );
-
-        // Step 5: Create post in database
-        const result = await createPostMutation.mutateAsync(postData);
-
-        console.log("[useFeedData] ✅ Post created successfully");
-        console.log("[useFeedData] Post result:", result);
-
-        // Step 6: Refetch both posts and today's daily update
-        console.log("[useFeedData] Step 6: Refetching data...");
-        await Promise.all([refetchPosts(), refetchTodayDailyUpdate()]);
-
-        console.log("[useFeedData] ✅ All data refetched successfully!");
-        console.log("[useFeedData] ========================================");
-
-        // Post saved successfully - Feed will update automatically
-      } catch (error) {
-        console.error("[useFeedData] ========================================");
-        console.error("[useFeedData] ERROR in handlePost:");
-        console.error("[useFeedData] Error message:", error.message);
-        console.error("[useFeedData] Error stack:", error.stack);
-        console.error("[useFeedData] Error object:", error);
-
-        // Log detailed error info
-        if (error.response) {
-          console.error(
-            "[useFeedData] Response status:",
-            error.response.status,
-          );
-          console.error("[useFeedData] Response data:", error.response.data);
+          postData = {
+            pet_id: currentPet.id,
+            media_type: "video",
+            video_url: mediaUrl,
+            video_thumbnail_url: videoThumbnailUrl,
+            caption: caption || null,
+            is_daily_update: true,
+            post_date: todayDate,
+          };
+        } else {
+          postData = {
+            pet_id: currentPet.id,
+            image_url: mediaUrl,
+            caption: caption || null,
+            is_daily_update: true,
+            post_date: todayDate, // Include explicit post_date
+          };
         }
 
-        console.error("[useFeedData] ========================================");
+        // Step 5: Create post in database
+        await createPostMutation.mutateAsync(postData);
+        console.log("[useFeedData] ✅ Post created successfully");
 
-        // Show detailed error message with the actual error
+        // Step 6: Refetch both posts and today's daily update
+        await Promise.all([refetchPosts(), refetchTodayDailyUpdate()]);
+        console.log("[useFeedData] ✅ All data refetched successfully!");
+      } catch (error) {
+        console.error("[useFeedData] ERROR in handlePost:", error.message);
+
+        // Surface the server's daily video gate (403) as a friendly message
+        // instead of a raw "Could not save: ..." crash line.
+        if (/available for you today/i.test(error.message || "")) {
+          Alert.alert(
+            "Daily video",
+            "Video posting isn't available for you today 🐾 — share a photo instead!",
+          );
+          return;
+        }
+
         Alert.alert("Error", `Could not save: ${error.message}`);
       }
     },
     [
       currentPet,
-      hasPet,
       hasPostedToday,
-      todayDailyUpdate,
       effectiveTodayDailyUpdate,
       upload,
       createPostMutation,
