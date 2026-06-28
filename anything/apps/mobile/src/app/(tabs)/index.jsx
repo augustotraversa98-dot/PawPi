@@ -1,13 +1,11 @@
 import React, { useState, useCallback } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { Camera } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
-import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
-import { LockedFeedOverlay } from "@/components/Feed/LockedFeedOverlay";
+import { LockedFeedOverlay, LockedFloatingCard } from "@/components/Feed/LockedFeedOverlay";
 import { UnlockedFeed } from "@/components/Feed/UnlockedFeed";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import { BarkModal } from "@/components/Feed/BarkModal";
@@ -53,6 +51,12 @@ export default function FeedScreen() {
   const [composerVisible, setComposerVisible] = useState(false);
   const [barkPost, setBarkPost] = useState(null);
   const [detailPost, setDetailPost] = useState(null);
+
+  // Height of the daily-prompt card, measured on layout. The locked floating
+  // card is pinned just below it so they never overlap at rest; once the user
+  // scrolls, the prompt slides away and the floating card stays put over the
+  // blurred feed.
+  const [promptHeight, setPromptHeight] = useState(0);
 
   // ── Navigate to pet profile ──
   const openProfile = useCallback(
@@ -178,46 +182,70 @@ export default function FeedScreen() {
           </Text>
         </View>
       ) : (
-        <RefreshableScrollView
-          refetch={[refetchPosts, refetchTodayDailyUpdate]}
-          showsVerticalScrollIndicator={false}
-          // Extra bottom room while locked so the sticky unlock bar never covers
-          // the last blurred card.
-          contentContainerStyle={{ paddingBottom: feedUnlocked ? 60 : 120 }}
-        >
-          {/* ── Daily Prompt Card ── */}
-          <DailyPromptCard
-            petName={petName}
-            hasPostedToday={hasPostedToday}
-            todayPostId={todayPostId}
-            onPostPress={() => setComposerVisible(true)}
-            onViewTodayPost={handleViewTodayPost}
-          />
+        // Relative container so the locked floating card can be an absolute
+        // SIBLING of the ScrollView — pinned over the blurred feed while it
+        // scrolls behind, rather than scrolling away inside the content.
+        <View style={{ flex: 1 }}>
+          <RefreshableScrollView
+            testID="feed-scroll"
+            // While locked the feed is a STATIC blurred backdrop behind the
+            // floating card — no scroll and no pull-to-refresh. Both come back
+            // fully once unlocked.
+            scrollEnabled={feedUnlocked}
+            refetch={feedUnlocked ? [refetchPosts, refetchTodayDailyUpdate] : []}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 60 }}
+          >
+            {/* ── Daily Prompt Card ── */}
+            <View onLayout={(e) => setPromptHeight(e.nativeEvent.layout.height)}>
+              <DailyPromptCard
+                petName={petName}
+                hasPostedToday={hasPostedToday}
+                todayPostId={todayPostId}
+                onPostPress={() => setComposerVisible(true)}
+                onViewTodayPost={handleViewTodayPost}
+              />
+            </View>
 
-          {/* ── Feed: locked or unlocked ──
-              Lock is per-OWNER: unlocked once any of the user's dogs posted
-              today. The DailyPromptCard above stays per-active-pet. */}
-          {!feedUnlocked ? (
-            <LockedFeedOverlay
-              posts={posts}
+            {/* ── Feed: locked or unlocked ──
+                Lock is per-OWNER: unlocked once any of the user's dogs posted
+                today. The DailyPromptCard above stays per-active-pet. While
+                locked this renders the blurred, scrollable background; the
+                floating lock card is pinned over it (below). */}
+            {!feedUnlocked ? (
+              <LockedFeedOverlay
+                posts={posts}
+                petName={petName}
+                onPostPress={() => setComposerVisible(true)}
+              />
+            ) : (
+              <UnlockedFeed
+                posts={posts}
+                likedPosts={likedPosts}
+                onToggleLike={handleToggleLike}
+                onOpenBarks={setBarkPost}
+                onOpenDetail={setDetailPost}
+                onOpenProfile={openProfile}
+                suggestions={suggestions}
+                onOpenProvider={openProvider}
+                onOpenAdoption={openAdoption}
+                streakByPetId={streakByPetId}
+              />
+            )}
+          </RefreshableScrollView>
+
+          {/* ── Locked: ONE floating lock card pinned over the blurred feed ──
+              Only when there are posts to blur behind it (the zero-post state
+              shows its own "be the first" card inside the scroll instead). */}
+          {!feedUnlocked && posts?.length > 0 && (
+            <LockedFloatingCard
+              count={posts.length}
               petName={petName}
               onPostPress={() => setComposerVisible(true)}
-            />
-          ) : (
-            <UnlockedFeed
-              posts={posts}
-              likedPosts={likedPosts}
-              onToggleLike={handleToggleLike}
-              onOpenBarks={setBarkPost}
-              onOpenDetail={setDetailPost}
-              onOpenProfile={openProfile}
-              suggestions={suggestions}
-              onOpenProvider={openProvider}
-              onOpenAdoption={openAdoption}
-              streakByPetId={streakByPetId}
+              top={promptHeight}
             />
           )}
-        </RefreshableScrollView>
+        </View>
       )}
 
       {/* ── POST COMPOSER MODAL ── */}
@@ -291,51 +319,6 @@ export default function FeedScreen() {
               Uploading photo...
             </Text>
           </View>
-        </View>
-      )}
-
-      {/* Sticky unlock bar — pinned to the bottom of the Feed while locked, so it
-          stays visible while scrolling the blurred tease. Rendered OUTSIDE the
-          scroll view (like the upload indicator). Tapping it opens the composer.
-          Solid warm style (pre-glass): solid cream bar + peach hairline + a solid
-          coral button, NOT frosted glass. */}
-      {!loadingPosts && !feedUnlocked && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingHorizontal: SPACING.lg,
-            paddingTop: SPACING.md,
-            paddingBottom: SPACING.xl,
-            backgroundColor: COLORS.cream,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.peach,
-          }}
-        >
-          <PressableScale
-            onPress={() => setComposerVisible(true)}
-            accessibilityRole="button"
-            style={{
-              backgroundColor: COLORS.coral,
-              borderRadius: 16,
-              paddingVertical: SPACING.lg,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: SPACING.sm,
-              shadowColor: COLORS.coral,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-            }}
-          >
-            <Camera size={18} color="#FFF" />
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
-              Post today's photo to unlock
-            </Text>
-          </PressableScale>
         </View>
       )}
     </View>

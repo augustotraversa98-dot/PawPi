@@ -1,13 +1,14 @@
-// LockedFeedOverlay — the BeReal-style "post to unlock" tease (2.77 redesign).
-// Product-critical: when locked, the feed must be a SCROLLABLE tease showing
-// WHO posted (clear identity) but not WHAT (blurred photo + obscured caption),
-// with a social-proof header and an unlock CTA. The earlier design capped the
-// preview at 6 and covered it with an opaque scrim, so the feed read as empty
-// and couldn't scroll. These tests pin the new behavior.
+// LockedFeedOverlay — the "post to unlock" tease.
+// Product-critical: when locked, the feed is a SCROLLABLE, blurred BACKGROUND
+// showing WHO posted (clear identity) but not WHAT (blurred photo + obscured
+// caption), with ONE floating lock card pinned over it. There is no 6-post cap,
+// no opaque scrim, no social-proof header card, and no bottom sticky bar — those
+// were removed when the original floating-card-over-blurred-feed look was
+// restored. These tests pin the current behavior.
 
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
-import { LockedFeedOverlay } from "./LockedFeedOverlay";
+import { LockedFeedOverlay, LockedFloatingCard } from "./LockedFeedOverlay";
 
 // PostCard pulls in react-query via useTogglePaw; stub it so the preview cards
 // render without a QueryClient.
@@ -25,14 +26,15 @@ const post = (id) => ({
   caption: "moment",
 });
 
-describe("LockedFeedOverlay — scrollable blurred tease", () => {
-  it("renders EVERY returned post (no 6-post cap)", () => {
+describe("LockedFeedOverlay — static blurred backdrop", () => {
+  it("caps the backdrop to the first few posts (locked feed doesn't scroll)", () => {
     const posts = Array.from({ length: 12 }, (_, i) => post(i + 1));
     const { getAllByTestId } = render(
       <LockedFeedOverlay posts={posts} petName="Rex" onPostPress={() => {}} />,
     );
-    // All 12 cards render — the feed scrolls through the whole query, uncapped.
-    expect(getAllByTestId("feed-post-photo")).toHaveLength(12);
+    // Off-screen posts are unreachable while locked, so only the first few
+    // render behind the floating card — less work, same look.
+    expect(getAllByTestId("feed-post-photo")).toHaveLength(3);
   });
 
   it("keeps each card's identity visible but obscures the caption", () => {
@@ -48,29 +50,14 @@ describe("LockedFeedOverlay — scrollable blurred tease", () => {
     expect(getAllByTestId("feed-post-caption-locked")).toHaveLength(1);
   });
 
-  it("shows the social-proof header counting the posts", () => {
-    const posts = [post(1), post(2), post(3)];
-    const { getByText } = render(
-      <LockedFeedOverlay posts={posts} petName="Rex" onPostPress={() => {}} />,
+  it("renders no social-proof header card and no inline CTA over the feed", () => {
+    const { queryByText } = render(
+      <LockedFeedOverlay posts={[post(1), post(2)]} petName="Rex" onPostPress={() => {}} />,
     );
-    expect(getByText("3 pet friends shared today")).toBeTruthy();
-    expect(getByText(/Post Rex's daily moment to see their day/)).toBeTruthy();
-  });
-
-  it("singularizes the social-proof header with exactly one post", () => {
-    const { getByText } = render(
-      <LockedFeedOverlay posts={[post(1)]} petName="Rex" onPostPress={() => {}} />,
-    );
-    expect(getByText("1 pet friend shared today")).toBeTruthy();
-  });
-
-  it("fires onPostPress from the inline unlock CTA", () => {
-    const onPostPress = jest.fn();
-    const { getByText } = render(
-      <LockedFeedOverlay posts={[post(1)]} petName="Rex" onPostPress={onPostPress} />,
-    );
-    fireEvent.press(getByText("Post today's photo"));
-    expect(onPostPress).toHaveBeenCalledTimes(1);
+    // The social-proof header card and its CTA are gone — the lock card is a
+    // separate, pinned overlay (LockedFloatingCard), not part of this content.
+    expect(queryByText(/pet friends? shared today/)).toBeNull();
+    expect(queryByText("Post today's photo")).toBeNull();
   });
 
   it("tapping a locked card opens the composer (nudge to post)", () => {
@@ -99,5 +86,38 @@ describe("LockedFeedOverlay — scrollable blurred tease", () => {
     );
     // Falls through to the empty 'be the first' state.
     expect(getByText("No pet friends have posted yet")).toBeTruthy();
+  });
+});
+
+describe("LockedFloatingCard — pinned unlock card", () => {
+  it("shows the lock headline and exactly one CTA", () => {
+    const { getByText, getAllByText } = render(
+      <LockedFloatingCard count={3} petName="Rex" onPostPress={() => {}} />,
+    );
+    expect(getByText("Share today's pet moment to unlock the feed")).toBeTruthy();
+    expect(getAllByText("Post today's photo")).toHaveLength(1);
+  });
+
+  it("folds the post count into the subtext (plural)", () => {
+    const { getByText } = render(
+      <LockedFloatingCard count={3} petName="Rex" onPostPress={() => {}} />,
+    );
+    expect(getByText(/3 pet friends shared today/)).toBeTruthy();
+  });
+
+  it("singularizes the count subtext with exactly one post", () => {
+    const { getByText } = render(
+      <LockedFloatingCard count={1} petName="Rex" onPostPress={() => {}} />,
+    );
+    expect(getByText(/1 pet friend shared today/)).toBeTruthy();
+  });
+
+  it("fires onPostPress from the CTA", () => {
+    const onPostPress = jest.fn();
+    const { getByText } = render(
+      <LockedFloatingCard count={2} petName="Rex" onPostPress={onPostPress} />,
+    );
+    fireEvent.press(getByText("Post today's photo"));
+    expect(onPostPress).toHaveBeenCalledTimes(1);
   });
 });
