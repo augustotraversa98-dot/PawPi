@@ -10,7 +10,9 @@ Waves 7–9 + App Store readiness (0056–0064), UGC moderation (0065 base + 006
 follow-up), and **legal consent at signup (0067 — `legal_consents`
 append-only ledger keyed to `auth_users.id` + the `app_record_consent` SECURITY DEFINER insert helper;
 admin-only SELECT, DEFINER-only writes, server-authoritative versions). 0067 took the next free integer
-past the reserved 0066.** As of the original five-arc write-up the set ran `0001`–`0055`, in five arcs:
+past the reserved 0066.** Then **daily video moments — step 1 (0068 — additive `posts.media_type` /
+`video_url` / `video_thumbnail_url`; schema only, no RLS/policy change)**. As of the original five-arc
+write-up the set ran `0001`–`0055`, in five arcs:
 - **0001–0011 — base schema:** auth, user_profiles, pets, social, vet_records, routines, social_walks,
   health_logs, the double-encoded-jsonb backfill (0009), the wellness `general` check-type widen (0010),
   and reminder_dismissals (0011).
@@ -39,6 +41,17 @@ ACTION 1).
 > **0010** widens `health_wellness_logs.check_type` to also allow `'general'` (Ticket 7 wellness-log slice) so a "General check" lands in `health_wellness_logs` with the same `routine_id` + `wellness_check_item_index` linkage as the other wellness checks. Weight intentionally stays on `health_weight_logs` (Insights path) and is **not** in this constraint. `supabase_schema.sql` (line ~574) was updated to match.
 
 > **0011** adds `reminder_dismissals` — a durable "skip/dismiss" record per scheduled reminder instance (Ticket 8 Today-Overdue slice). The reminders store is in-memory, so a skip would otherwise reappear after an app restart; this table lets the on-load reconciliation clear dismissed overdue items alongside the log-derived "resolved" set. `instance_key` is the reminder's deterministic id (`reminder_<routine>_<item>_<date>` or `vet_apt_<id>`); the `UNIQUE(owner_user_id, pet_id, instance_key)` makes a repeat dismissal idempotent. `routine_id` is nullable (vet-appointment reminders are not routine-backed) with `ON DELETE SET NULL`. Appended to `supabase_schema.sql` as a post-dump addendum.
+
+> **0068** adds video support to `posts` (foundation for the daily "lucky user" video moment) — three
+> PURELY ADDITIVE columns, no RLS/policy change (posts is already ENABLE+FORCE RLS from 0004 and in the
+> UGC-moderation surface — `hidden_at` + the `'post'` report type from 0065 — both untouched):
+> `media_type text NOT NULL DEFAULT 'image'` with a `posts_media_type_check` CHECK (`image`|`video`),
+> `video_url text` (the playable file; NULL for image posts), and `video_thumbnail_url text` (poster
+> frame for the feed + locked-blur; NULL for image posts). `image_url` is kept as-is (still the photo for
+> image posts) — nothing dropped or renamed. Existing rows default to `media_type='image'` with both video
+> columns NULL, so all current image posts are unaffected. Idempotent (`add column if not exists` +
+> drop-if-exists/re-add the constraint). Verify: `supabase/verify_0068.sql` (all rows PASS). HARNESS-ONLY
+> this ticket — hand-applied to Supabase after merge.
 
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
