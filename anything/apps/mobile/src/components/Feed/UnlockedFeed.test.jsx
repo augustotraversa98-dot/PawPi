@@ -9,6 +9,16 @@ import { UnlockedFeed } from "./UnlockedFeed";
 jest.mock("@/hooks/useFeedPosts", () => ({
   useTogglePaw: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
+// PostCard now imports expo-av (FeedVideo); its native module doesn't load under
+// jest-expo, so mock it to a plain View. These tests only use image posts.
+jest.mock("expo-av", () => {
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    Video: (props) => <View testID={props.testID} />,
+    ResizeMode: { COVER: "cover" },
+  };
+});
 
 const post = (id) => ({
   id,

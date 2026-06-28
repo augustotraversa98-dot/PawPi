@@ -27,6 +27,7 @@ import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
+import { FeedVideo } from "./FeedVideo";
 import { formatRelativeTime } from "@/utils/relativeTime";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -73,6 +74,11 @@ export const PostDetailModal = memo(function PostDetailModal({
   const ownerName = post.username || post.ownerName;
   const avatar = post.pet_avatar || post.avatar;
   const photo = post.image_url || post.photo;
+  // Daily video moments (step 4): play video posts inline (poster + tap-to-play),
+  // like the unlocked feed card. Image posts are unchanged.
+  const isVideo = post.media_type === "video";
+  const videoUri = post.video_url;
+  const posterUri = post.video_thumbnail_url;
   const caption = post.caption;
   // Real relative time from created_at (ticket 2.38) — no more fake "Just now".
   const timestamp =
@@ -220,13 +226,24 @@ export const PostDetailModal = memo(function PostDetailModal({
             </View>
           </TouchableOpacity>
 
-          {/* Photo — double tap gives a Paw (2.64) */}
-          <PawablePhoto
-            testID="detail-post-photo"
-            photoUri={photo}
-            onDoubleTap={handleDoubleTapPaw}
-            style={{ width: SCREEN_W, height: SCREEN_W }}
-          />
+          {/* Media — double tap gives a Paw (2.64). Video posts play inline
+              (poster + tap-to-play); image posts render exactly as before. */}
+          {isVideo ? (
+            <FeedVideo
+              testID="detail-post-video"
+              videoUri={videoUri}
+              posterUri={posterUri}
+              onDoubleTap={handleDoubleTapPaw}
+              style={{ width: SCREEN_W, height: SCREEN_W }}
+            />
+          ) : (
+            <PawablePhoto
+              testID="detail-post-photo"
+              photoUri={photo}
+              onDoubleTap={handleDoubleTapPaw}
+              style={{ width: SCREEN_W, height: SCREEN_W }}
+            />
+          )}
 
           {/* Caption */}
           <View style={{ padding: 18 }}>
