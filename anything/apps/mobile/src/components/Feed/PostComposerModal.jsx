@@ -7,13 +7,12 @@ import {
   TextInput,
   Modal,
   Platform,
-  ActionSheetIOS,
   Alert,
   KeyboardAvoidingView,
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Camera, ChevronLeft, ImageIcon, X } from "lucide-react-native";
+import { Camera, ChevronLeft, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
   COLORS,
@@ -48,19 +47,6 @@ export const PostComposerModal = memo(function PostComposerModal({
     }
   }, [visible]);
 
-  const pickFromGallery = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
-      setStep("compose");
-    }
-  }, []);
-
   const takePhoto = useCallback(async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -80,27 +66,6 @@ export const PostComposerModal = memo(function PostComposerModal({
       setStep("compose");
     }
   }, []);
-
-  const handlePickerChoice = useCallback(() => {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Cancel", "📷  Take a photo", "🖼️  Choose from gallery"],
-          cancelButtonIndex: 0,
-        },
-        (idx) => {
-          if (idx === 1) takePhoto();
-          if (idx === 2) pickFromGallery();
-        },
-      );
-    } else {
-      Alert.alert("Add a photo", "How would you like to add a photo?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Take a photo", onPress: takePhoto },
-        { text: "Choose from gallery", onPress: pickFromGallery },
-      ]);
-    }
-  }, [takePhoto, pickFromGallery]);
 
   const handleSubmit = useCallback(() => {
     if (!photo) return;
@@ -181,6 +146,7 @@ export const PostComposerModal = memo(function PostComposerModal({
             <PressableScale
               onPress={takePhoto}
               accessibilityRole="button"
+              testID="composer-take-photo"
               style={{
                 backgroundColor: COLORS.coral,
                 borderRadius: RADIUS.lg,
@@ -189,34 +155,12 @@ export const PostComposerModal = memo(function PostComposerModal({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: SPACING.md,
-                marginBottom: SPACING.md,
                 shadowColor: COLORS.coral,
                 ...ELEVATION.sm,
               }}
             >
               <Camera size={22} color="#FFF" />
               <Text style={[TYPE.headline, { color: "#FFF" }]}>Take a photo</Text>
-            </PressableScale>
-
-            <PressableScale
-              onPress={pickFromGallery}
-              accessibilityRole="button"
-              style={{
-                backgroundColor: COLORS.card,
-                borderRadius: RADIUS.lg,
-                padding: SPACING.lg,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: SPACING.md,
-                borderWidth: 1.5,
-                borderColor: MATERIALS.hairline,
-              }}
-            >
-              <ImageIcon size={22} color={COLORS.coral} />
-              <Text style={[TYPE.headline, { color: COLORS.coral }]}>
-                Choose from gallery
-              </Text>
             </PressableScale>
           </View>
         ) : (
@@ -250,7 +194,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                   padding: SPACING.sm,
                 }}
               >
-                <ImageIcon size={18} color="#FFF" />
+                <Camera size={18} color="#FFF" />
               </PressableScale>
             </View>
 
