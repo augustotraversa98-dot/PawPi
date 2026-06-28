@@ -12,8 +12,9 @@ import {
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Camera, ChevronLeft, X } from "lucide-react-native";
+import { Camera, ChevronLeft, Video as VideoIcon, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Video, ResizeMode } from "expo-av";
 import {
   COLORS,
   TYPE,
@@ -34,17 +35,39 @@ export const PostComposerModal = memo(function PostComposerModal({
 }) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState("picker"); // "picker" | "compose"
-  const [photo, setPhoto] = useState(null);
+  const [mediaUri, setMediaUri] = useState(null);
+  const [mediaType, setMediaType] = useState("image"); // "image" | "video"
   const [caption, setCaption] = useState("");
+  // Whether to OFFER the video option. Only the daily "lucky" user gets it; the
+  // server is the real gate (POST re-checks), this flag only decides the UI.
+  const [videoEligible, setVideoEligible] = useState(false);
   const captionRef = useRef(null);
 
-  // Reset every time modal opens
+  // Reset every time modal opens, then ask the server whether this user may
+  // record a video today. While loading / on error / when not eligible we leave
+  // videoEligible=false, so the composer stays photo-only (today's behavior).
   useEffect(() => {
-    if (visible) {
-      setStep("picker");
-      setPhoto(null);
-      setCaption("");
-    }
+    if (!visible) return;
+    setStep("picker");
+    setMediaUri(null);
+    setMediaType("image");
+    setCaption("");
+    setVideoEligible(false);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/posts/video-eligibility");
+        if (!res.ok) return; // treat any error as not eligible → photo only
+        const data = await res.json();
+        if (!cancelled) setVideoEligible(data?.eligible === true);
+      } catch {
+        // Network/parse failure → stay photo-only, never block posting.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [visible]);
 
   const takePhoto = useCallback(async () => {
@@ -62,16 +85,38 @@ export const PostComposerModal = memo(function PostComposerModal({
       quality: 0.85,
     });
     if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
+      setMediaUri(result.assets[0].uri);
+      setMediaType("image");
+      setStep("compose");
+    }
+  }, []);
+
+  const takeVideo = useCallback(async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        "Camera access needed",
+        "Please allow camera access to record a video.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["videos"],
+      videoMaxDuration: 15,
+      quality: 0.85,
+    });
+    if (!result.canceled) {
+      setMediaUri(result.assets[0].uri);
+      setMediaType("video");
       setStep("compose");
     }
   }, []);
 
   const handleSubmit = useCallback(() => {
-    if (!photo) return;
-    onPost({ photo, caption });
+    if (!mediaUri) return;
+    onPost({ uri: mediaUri, caption, mediaType });
     onClose();
-  }, [photo, caption, onPost, onClose]);
+  }, [mediaUri, caption, mediaType, onPost, onClose]);
 
   return (
     <Modal
@@ -162,6 +207,34 @@ export const PostComposerModal = memo(function PostComposerModal({
               <Camera size={22} color="#FFF" />
               <Text style={[TYPE.headline, { color: "#FFF" }]}>Take a photo</Text>
             </PressableScale>
+
+            {/* The daily "lucky" user also gets to record a short video. Only
+                shown when the server says they're eligible today (server still
+                re-checks on POST). */}
+            {videoEligible ? (
+              <PressableScale
+                onPress={takeVideo}
+                accessibilityRole="button"
+                testID="composer-take-video"
+                style={{
+                  marginTop: SPACING.md,
+                  backgroundColor: COLORS.card,
+                  borderRadius: RADIUS.lg,
+                  padding: SPACING.lg,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: SPACING.md,
+                  borderWidth: 1.5,
+                  borderColor: COLORS.coral,
+                }}
+              >
+                <VideoIcon size={22} color={COLORS.coral} />
+                <Text style={[TYPE.headline, { color: COLORS.coral }]}>
+                  Record a video
+                </Text>
+              </PressableScale>
+            ) : null}
           </View>
         ) : (
           // ── STEP 2: Preview + caption ──
@@ -170,21 +243,41 @@ export const PostComposerModal = memo(function PostComposerModal({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Photo preview */}
+            {/* Media preview — a looping muted video for video posts, the photo
+                as before for image posts. */}
             <View style={{ position: "relative", marginBottom: 18 }}>
-              <Image
-                source={{ uri: photo }}
-                style={{
-                  width: "100%",
-                  height: SCREEN_W - 40,
-                  borderRadius: RADIUS.lg,
-                }}
-                resizeMode="cover"
-              />
+              {mediaType === "video" ? (
+                <Video
+                  testID="composer-video-preview"
+                  source={{ uri: mediaUri }}
+                  style={{
+                    width: "100%",
+                    height: SCREEN_W - 40,
+                    borderRadius: RADIUS.lg,
+                    backgroundColor: "#000",
+                  }}
+                  resizeMode={ResizeMode.COVER}
+                  isLooping
+                  shouldPlay
+                  isMuted
+                />
+              ) : (
+                <Image
+                  source={{ uri: mediaUri }}
+                  style={{
+                    width: "100%",
+                    height: SCREEN_W - 40,
+                    borderRadius: RADIUS.lg,
+                  }}
+                  resizeMode="cover"
+                />
+              )}
               <PressableScale
                 onPress={() => setStep("picker")}
                 accessibilityRole="button"
-                accessibilityLabel="Change photo"
+                accessibilityLabel={
+                  mediaType === "video" ? "Change video" : "Change photo"
+                }
                 style={{
                   position: "absolute",
                   top: SPACING.md,
