@@ -105,8 +105,8 @@ and eject the user within 24h.
 | Requirement | Status | Evidence |
 |---|---|---|
 | **(A) EULA acceptance gate at signup** | ✗ **Missing** | Web signup `account/signup/page.jsx` has no terms checkbox. Mobile `welcome.jsx:159–181` shows a *passive* "By continuing, you agree to our Terms & Privacy Policy" line — no checkbox, no blocking acceptance. `onboarding.jsx` has no acceptance step. |
-| **Zero-tolerance language in EULA** | ✗ **Missing** | `docs/legal/terms-of-service.md` §5 "Acceptable use" lists prohibited behavior but has no "zero tolerance" / "objectionable content" / "no tolerance for abusive users" clause. Both legal docs are `[BRACKETED]` placeholders pending review. |
-| **Terms/Privacy hosted + reachable** | ✗ **Missing** | `constants/legal.js` URLs are empty (`PRIVACY_POLICY_URL`/`TERMS_OF_SERVICE_URL` default `""`); links degrade to no-op until env vars set. Docs exist as drafts only. |
+| **Zero-tolerance language in EULA** | ✓ **Present** | `docs/legal/terms-of-service.md` §5 now carries a dedicated "Zero-tolerance for objectionable content and abusive users" clause (report/block, 24h action, eject abusive users, submission filter). Both legal docs are finalized — all `[BRACKETED]` placeholders filled (effective June 22, 2026). |
+| **Terms/Privacy hosted + reachable** | ✓ **Done** | Both docs finalized (no placeholders) and **hosted live** (HTTP 200): Privacy → https://augustotraversa98-dot.github.io/pawpi-legal/privacy · Terms → https://augustotraversa98-dot.github.io/pawpi-legal/terms (public repo `augustotraversa98-dot/pawpi-legal`, GitHub Pages). In-app links wired: `EXPO_PUBLIC_PRIVACY_POLICY_URL`/`EXPO_PUBLIC_TERMS_URL` (mobile) + `NEXT_PUBLIC_*` (web) set in the gitignored `.env` files. |
 | **In-app developer contact info** | ◐ **Placeholder** | `settings.jsx:314–328` renders "Help Center" / "Contact Us" rows, but `SettingRow` is display-only (no `onPress`) — the "→" is decorative. No `mailto:`/support URL is wired. |
 
 The project already knows this is a blocker: `docs/app-store-connect-content.md:107–112` explicitly
@@ -154,6 +154,9 @@ flags Guideline 1.2 (filter + report + block + contact) as a required pre-submis
    *Cheapest fix:* wire the existing `settings.jsx` "Contact Us" row to a `mailto:` support address
    (and/or a hosted support URL), and host the Terms + Privacy docs and set
    `EXPO_PUBLIC_PRIVACY_POLICY_URL` / `EXPO_PUBLIC_TERMS_URL`. **Migration: NO.**
+   **UPDATE (2026-06-28):** the legal-docs half is done — both docs finalized and hosted live at
+   `https://augustotraversa98-dot.github.io/pawpi-legal/{privacy,terms}` (HTTP 200), with the
+   `EXPO_PUBLIC_*` (mobile) and `NEXT_PUBLIC_*` (web) URL env vars set so the in-app links open them.
 
 ### NICE-TO-HAVE (not required for 1.2 approval)
 - Hosted image/NSFW moderation on uploads (vs. reactive report-driven removal).

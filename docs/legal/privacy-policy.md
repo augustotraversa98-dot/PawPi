@@ -1,14 +1,9 @@
 # PawPi Privacy Policy
 
-> **Before you publish:** fill in every `[BRACKETED]` placeholder, have a lawyer review this for
-> your jurisdiction, then host it at a stable public URL and set `EXPO_PUBLIC_PRIVACY_POLICY_URL`
-> in the mobile `.env` and the Privacy Policy URL in App Store Connect. This template describes what
-> the app actually does today; it is a starting point, not legal advice.
+**Effective date:** June 22, 2026
+**Last updated:** June 22, 2026
 
-**Effective date:** [DATE]
-**Last updated:** [DATE]
-
-This Privacy Policy explains how [LEGAL ENTITY NAME] ("PawPi," "we," "us") collects, uses, and
+This Privacy Policy explains how Augusto Traversa ("PawPi," "we," "us") collects, uses, and
 shares information when you use the PawPi mobile app and related services (the "Service"). PawPi is
 an all-in-one app for dog owners: a social feed, dog profiles, health tracking, reminders, vet
 records, training, community, adoption, and a marketplace of pet services and products.
@@ -19,9 +14,9 @@ If you do not agree with this Policy, please do not use the Service.
 
 The data controller is:
 
-- **[LEGAL ENTITY NAME]**
-- [REGISTERED ADDRESS]
-- Contact: **[PRIVACY CONTACT EMAIL]**
+- **Augusto Traversa**
+- Matacos y Alborada S/N
+- Contact: **augusto@pawpi.info**
 
 ## 2. Information we collect
 
@@ -112,7 +107,7 @@ Section 8). We may retain limited records where required by law (for example, tr
 
 Depending on where you live, you may have rights to access, correct, export, or delete your personal
 information, and to object to or restrict certain processing. To exercise these rights, contact us at
-**[PRIVACY CONTACT EMAIL]**.
+**augusto@pawpi.info**.
 
 You can also:
 
@@ -128,7 +123,7 @@ to limited legal retention. This is separate from logging out or resetting local
 
 ## 9. Children's privacy
 
-PawPi is not directed to children under [13/16, per your jurisdiction], and we do not knowingly
+PawPi is not directed to children under 16, and we do not knowingly
 collect personal information from them. If you believe a child has provided us information, contact us
 and we will delete it.
 
@@ -150,5 +145,5 @@ changes, provide additional notice within the app.
 
 ## 13. Contact us
 
-Questions about this Policy or your data: **[PRIVACY CONTACT EMAIL]**, [LEGAL ENTITY NAME],
-[REGISTERED ADDRESS].
+Questions about this Policy or your data: **augusto@pawpi.info**, Augusto Traversa,
+Matacos y Alborada S/N.

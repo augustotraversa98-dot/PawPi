@@ -17,7 +17,7 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 | iOS Privacy Manifest | 5.1.1 / 5.1.2 | Added `ios.privacyManifests` → `NSPrivacyTracking: false`, empty tracking domains, and the **required-reason API** declarations the app + its Expo libs use (UserDefaults `CA92.1`, file timestamp `C617.1`, system boot time `35F9.1`, disk space `E174.1`). `app.json`. |
 | App identity / metadata | 2.1 | Set app `name` → **PawPi**, `slug` → `pawpi`, `ios.bundleIdentifier` → `com.pawpi.app` (**placeholder — confirm the real ID once the Apple account exists**, see below), `ios.buildNumber` → `1`, android `package` → `com.pawpi.app`. Icon, splash, portrait orientation already present. `app.json`. |
 | Debug surface removed | 2.3.1 | Removed the `wrongPets` owner-id **debug query + console spam** from `GET /api/pets` (flagged in `docs/test-backlog.md`); the handler is now a clean owner-scoped read. `anything/apps/web/src/app/api/pets/route.js`. |
-| Privacy / Terms links in-app | 5.1.1 | Added a config slot (`src/constants/legal.js`, `EXPO_PUBLIC_PRIVACY_POLICY_URL` / `EXPO_PUBLIC_TERMS_URL`) and wired the welcome-screen "Terms & Privacy Policy" line to open them when set (degrades cleanly to plain text until the URLs are supplied). `anything/apps/mobile/src/app/welcome.jsx`. |
+| Privacy / Terms links in-app | 5.1.1 | Added a config slot (`src/constants/legal.js`, `EXPO_PUBLIC_PRIVACY_POLICY_URL` / `EXPO_PUBLIC_TERMS_URL`) and wired the welcome-screen "Terms & Privacy Policy" line to open them when set (degrades cleanly to plain text until the URLs are supplied). `anything/apps/mobile/src/app/welcome.jsx`. **LIVE (2026-06-28):** docs finalized + hosted; the URL env vars are now set (mobile `EXPO_PUBLIC_*`, web `NEXT_PUBLIC_*`), so the links are no longer no-ops. See FLAGGED #2 for the live URLs. |
 | Placeholder / no-op buttons removed | 2.1 / 2.3.1 | Wired two "coming soon" no-ops to real functionality: the **Weight-entry delete** button now calls a new owner-scoped `DELETE /api/health/weight-logs?id=` (with a destructive confirm); the **Change Photo** button on Profile Edit now opens the image picker and feeds the existing upload-on-save path (it was an `Alert("coming soon")`). `WeightModal.jsx`, `profile-edit.jsx`, `api/health/weight-logs/route.js`. |
 | In-app account deletion | 5.1.1(v) | **Added** (migration 0062 + `DELETE /api/account`): Settings → "Delete account" → two-step destructive confirm → `delete_my_account()` SECURITY DEFINER irreversibly deletes the caller's account + all owner-scoped data (auth→profile→pets→data cascade; the no-cascade `health_medical_care_logs` is cleared first), then the client clears its session and returns to welcome. Self-only (keys off `current_app_user_id()`); harness-proven (FK-clean cascade + another account untouched). Distinct from "Reset App Data" (local logout). |
 
@@ -44,8 +44,17 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
    - **No digital-only content** (no premium-feature unlock, in-app currency, or app-exclusive media) is sold
      via external payment. ✅ Reads compliant. **Action:** confirm this mapping is still accurate at submission
      and that App Review notes describe the external-payment model.
-2. **Privacy Policy + Terms URLs (required for submission).** The in-app slots exist (`src/constants/legal.js`);
-   **Tats must supply the real hosted URLs** and set the Privacy Policy URL in App Store Connect.
+2. **Privacy Policy + Terms URLs (required for submission). ✅ RESOLVED (2026-06-28).** Both docs are
+   finalized (all placeholders filled; effective + last-updated **June 22, 2026**, matching the
+   `2026-06-22` consent version) and **hosted live** at:
+   - Privacy Policy: **https://augustotraversa98-dot.github.io/pawpi-legal/privacy**
+   - Terms of Service: **https://augustotraversa98-dot.github.io/pawpi-legal/terms**
+
+   Served from the public repo `augustotraversa98-dot/pawpi-legal` via GitHub Pages (both return HTTP 200).
+   The in-app URL env vars are set — mobile `EXPO_PUBLIC_PRIVACY_POLICY_URL`/`EXPO_PUBLIC_TERMS_URL`,
+   web `NEXT_PUBLIC_PRIVACY_POLICY_URL`/`NEXT_PUBLIC_TERMS_URL` (in the gitignored `.env` files). **Still
+   account-gated:** set the Privacy Policy URL in the App Store Connect metadata at submission (see the
+   account-gated checklist below).
 3. **`com.pawpi.app` bundle identifier is a placeholder.** Confirm/replace with the real registered App ID.
 4. **`PATCH /api/pets` repair handler.** A historical owner-id repair endpoint (`pets/route.js`), still
    invoked best-effort by `usePetProfile.js`. Not user-facing and harmless, but it is debug/maintenance
@@ -65,7 +74,7 @@ In rough order:
 3. **App Store Connect app record:** name, subtitle, primary category (Lifestyle or Medical?), age rating.
 4. **Privacy "nutrition labels"** in App Store Connect — declare the data collected (account email/name,
    pet/health content the owner enters, precise location for nearby features, photos, payment handled by the
-   processors) and link the **Privacy Policy URL**.
+   processors) and link the **Privacy Policy URL** (live: https://augustotraversa98-dot.github.io/pawpi-legal/privacy).
 5. **Sign in with Apple** service key + the OAuth env keys (`AUTH_APPLE_ID/SECRET`, `AUTH_GOOGLE_ID/SECRET`)
    so the buttons go live (2.46).
 6. **Go-live backend env keys** (see `docs/test-backlog.md`): payment rails (MercadoPago/Binance),
