@@ -27,6 +27,39 @@ import { PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
+// Celebratory treatment for the daily "lucky" user. Shown above the capture
+// buttons ONLY when the server says they're eligible today. Pure presentation —
+// it never gates capture/posting (the server re-checks on POST). Copy makes
+// clear it's a today-only, optional bonus; a photo is always still welcome.
+const LuckyDayBanner = memo(function LuckyDayBanner() {
+  return (
+    <View
+      testID="composer-lucky-banner"
+      style={{
+        backgroundColor: COLORS.peach,
+        borderRadius: RADIUS.card,
+        padding: SPACING.lg,
+        marginBottom: SPACING.xl,
+        borderWidth: 1,
+        borderColor: COLORS.honey,
+      }}
+    >
+      <Text style={[TYPE.headline, { color: COLORS.terracotta }]}>
+        🎉 You're one of today's lucky users!
+      </Text>
+      <Text
+        style={[
+          TYPE.callout,
+          { color: COLORS.warmBrown, marginTop: SPACING.xs },
+        ]}
+      >
+        You can share a short video today — just for today. A photo's always
+        welcome too.
+      </Text>
+    </View>
+  );
+});
+
 export const PostComposerModal = memo(function PostComposerModal({
   visible,
   petName,
@@ -188,6 +221,10 @@ export const PostComposerModal = memo(function PostComposerModal({
               </Text>
             </View>
 
+            {/* Celebratory treatment for the daily "lucky" user — only when the
+                server says they're eligible today. Nothing renders otherwise. */}
+            {videoEligible ? <LuckyDayBanner /> : null}
+
             <PressableScale
               onPress={takePhoto}
               accessibilityRole="button"
@@ -233,6 +270,20 @@ export const PostComposerModal = memo(function PostComposerModal({
                 <Text style={[TYPE.headline, { color: COLORS.coral }]}>
                   Record a video
                 </Text>
+                {/* "Today only" tag marks this as the special, time-limited
+                    option without overpowering the primary "Take a photo". */}
+                <View
+                  style={{
+                    backgroundColor: COLORS.coral,
+                    borderRadius: RADIUS.chip,
+                    paddingHorizontal: SPACING.sm,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text style={[TYPE.caption, { color: "#FFF" }]}>
+                    Today only
+                  </Text>
+                </View>
               </PressableScale>
             ) : null}
           </View>
