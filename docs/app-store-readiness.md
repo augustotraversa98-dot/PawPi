@@ -16,6 +16,8 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 | iOS permission strings | 5.1.1, 5.1.5, 2.5.14 | Added honest `NS*UsageDescription` for every permission the app actually uses — `NSLocationWhenInUseUsageDescription` (places/walks/transport/events + live pet-taxi GPS), `NSCameraUsageDescription` (pet photos / health checks / posts), `NSPhotoLibraryUsageDescription` + `NSPhotoLibraryAddUsageDescription` (uploads + saving the share frame), `NSMicrophoneUsageDescription` (telehealth video). No permission is declared that the app doesn't use; **no ATT / `NSUserTrackingUsageDescription`** (the app does not track users across apps). `anything/apps/mobile/app.json`. |
 | iOS Privacy Manifest | 5.1.1 / 5.1.2 | Added `ios.privacyManifests` → `NSPrivacyTracking: false`, empty tracking domains, and the **required-reason API** declarations the app + its Expo libs use (UserDefaults `CA92.1`, file timestamp `C617.1`, system boot time `35F9.1`, disk space `E174.1`). `app.json`. |
 | App identity / metadata | 2.1 | Set app `name` → **PawPi**, `slug` → `pawpi`, `ios.bundleIdentifier` → `com.pawpi.app` (**placeholder — confirm the real ID once the Apple account exists**, see below), `ios.buildNumber` → `1`, android `package` → `com.pawpi.app`. Icon, splash, portrait orientation already present. `app.json`. |
+| iPhone-only (v1) | 2.1 | Set `ios.supportsTablet` → **false** — v1 ships **iPhone-only**. Only iPhone 6.9"/6.7" screenshots are required at submission; no iPad assets needed. `app.json`. |
+| ASC content pack | 2.1 / 2.3 | `docs/app-store-connect-content.md` **finalized** — all confirmed values filled (name, subtitle "Care, track, connect for dogs" ≤30, bundle ID, primary language, copyright, SKU, URLs, category, App Privacy, UGC review note). Only the demo-account email/password remain as fill-at-submission. |
 | Debug surface removed | 2.3.1 | Removed the `wrongPets` owner-id **debug query + console spam** from `GET /api/pets` (flagged in `docs/test-backlog.md`); the handler is now a clean owner-scoped read. `anything/apps/web/src/app/api/pets/route.js`. |
 | Privacy / Terms links in-app | 5.1.1 | Added a config slot (`src/constants/legal.js`, `EXPO_PUBLIC_PRIVACY_POLICY_URL` / `EXPO_PUBLIC_TERMS_URL`) and wired the welcome-screen "Terms & Privacy Policy" line to open them when set (degrades cleanly to plain text until the URLs are supplied). `anything/apps/mobile/src/app/welcome.jsx`. **LIVE (2026-06-28):** docs finalized + hosted; the URL env vars are now set (mobile `EXPO_PUBLIC_*`, web `NEXT_PUBLIC_*`), so the links are no longer no-ops. See FLAGGED #2 for the live URLs. |
 | Placeholder / no-op buttons removed | 2.1 / 2.3.1 | Wired two "coming soon" no-ops to real functionality: the **Weight-entry delete** button now calls a new owner-scoped `DELETE /api/health/weight-logs?id=` (with a destructive confirm); the **Change Photo** button on Profile Edit now opens the image picker and feeds the existing upload-on-save path (it was an `Alert("coming soon")`). `WeightModal.jsx`, `profile-edit.jsx`, `api/health/weight-logs/route.js`. |
@@ -71,7 +73,8 @@ In rough order:
 1. **Apple Developer Program** enrollment; register the real **App ID / bundle identifier** + capabilities
    (Sign in with Apple, Push Notifications, Maps, associated domains if any).
 2. **Signing & provisioning** (distribution cert + provisioning profile) — via EAS managed credentials.
-3. **App Store Connect app record:** name, subtitle, primary category (Lifestyle or Medical?), age rating.
+3. **App Store Connect app record:** name, subtitle, primary category (**Lifestyle**, no secondary), age
+   rating. Values are finalized in `docs/app-store-connect-content.md` — paste from there.
 4. **Privacy "nutrition labels"** in App Store Connect — declare the data collected (account email/name,
    pet/health content the owner enters, precise location for nearby features, photos, payment handled by the
    processors) and link the **Privacy Policy URL** (live: https://augustotraversa98-dot.github.io/pawpi-legal/privacy).
@@ -81,11 +84,14 @@ In rough order:
    `GOOGLE_PLACES_API_KEY` (places 2.73), `CRON_SECRET` + an external scheduler (subscriptions 2.17 +
    food-recall ingest 2.75), `AUTH_*`. Each feature degrades cleanly until its key is set.
 7. **Pending Supabase migrations** `0056–0061` (Wave 7) hand-applied (`docs/test-backlog.md` ACTION 1).
-8. **EAS build** (production profile) → **TestFlight** → screenshots (per device size) → **export compliance**
-   (`ITSAppUsesNonExemptEncryption: false` already set) → submit for review.
+8. **EAS build** (production profile) → **TestFlight** → screenshots (**iPhone 6.9"/6.7" only — iPhone-only
+   v1, no iPad**) → **export compliance** (`ITSAppUsesNonExemptEncryption: false` already set) → submit for
+   review.
 9. **App Review notes:** a demo account + a note that paid services are real-world (external payment per
    3.1.3(e)), and how to reach the new account-deletion flow.
 
 ---
 
-_Last updated: 2026-06-19 (ticket 2.78). Tests (web vitest + mobile jest + integration RLS) green at write._
+_Last updated: 2026-06-28 — iPhone-only v1 (`supportsTablet: false`), Privacy Policy URL live, ASC content
+pack finalized. (Originally ticket 2.78, 2026-06-19.) Tests (web vitest + mobile jest + integration RLS)
+green at write._
