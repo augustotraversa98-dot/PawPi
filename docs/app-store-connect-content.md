@@ -1,8 +1,9 @@
 # PawPi — App Store Connect content pack
 
 Everything you paste into App Store Connect (ASC) on submission day, prepared in advance so the only
-thing missing is the Apple Developer account + the EAS build. Fill in `[BRACKETED]` items. Character
-limits are Apple's; counts below are within them.
+thing missing is the Apple Developer account + the EAS build. Values are finalized — the only items to
+supply at submission are the demo-account email/password in §10. Character limits are Apple's; counts
+below are within them.
 
 > Companion docs: `docs/app-store-readiness.md` (the compliance pass) and `docs/legal/` (Privacy
 > Policy + Terms). Set the hosted Privacy Policy URL here AND in `EXPO_PUBLIC_PRIVACY_POLICY_URL`.
@@ -14,24 +15,22 @@ limits are Apple's; counts below are within them.
 | Field | Value | Limit |
 |---|---|---|
 | **App Name** | PawPi | ≤ 30 |
-| **Subtitle** | Your dog's whole world, in one app | ≤ 30 |
-| **Bundle ID** | `[confirm — placeholder is com.pawpi.app]` | — |
-| **Primary language** | [English (U.S.)] | — |
-| **Copyright** | © 2026 [LEGAL ENTITY NAME] | — |
-| **SKU** | [your internal SKU, e.g. PAWPI-IOS-001] | — |
+| **Subtitle** | Care, track, connect for dogs | ≤ 30 |
+| **Bundle ID** | `com.pawpi.app` | — |
+| **Primary language** | English (U.S.) | — |
+| **Copyright** | © 2026 Augusto Traversa | — |
+| **SKU** | PAWPI-IOS-001 | — |
 
-Subtitle alternatives (pick one, all ≤30): "Care, track, connect for dogs" · "Health, community &
-care for dogs" · "Everything for your dog".
+Subtitle is 29 chars (the earlier "Your dog's whole world, in one app" was 34, over the ≤30 limit).
 
 ## 2. Category
 
-**Recommended:** Primary **Lifestyle**, Secondary **Medical** *(or Health & Fitness)*.
+**Primary: Lifestyle. No secondary category.**
 
 - Lifestyle is the standard home for pet/owner apps and avoids over-signaling medical claims.
-- A Medical/Health secondary helps the health-tracking and vet-record features get found — but the
-  more you lean "Medical," the more Review scrutinizes diagnostic claims, so keep the non-diagnostic
-  disclaimers prominent (they already are). If you'd rather minimize scrutiny, use **Health & Fitness**
-  as the secondary instead of Medical.
+- A secondary category can be added later if discovery needs it (a Health/Medical secondary would help
+  the health-tracking and vet-record features get found, at the cost of more Review scrutiny on
+  diagnostic claims). Left off for v1.
 
 ## 3. Promotional text (≤ 170 chars, editable anytime without review)
 
@@ -83,9 +82,9 @@ dog,puppy,pet care,vet records,dog health,reminders,walker,groomer,adoption,dog 
 
 | Field | Value |
 |---|---|
-| **Support URL** (required) | [https://pawpi.app/support or a support page] |
-| **Marketing URL** (optional) | [https://pawpi.app] |
-| **Privacy Policy URL** (required) | [hosted URL of docs/legal/privacy-policy.md] |
+| **Support URL** (required) | https://pawpi.info/support — ⚠️ page must be LIVE before submission |
+| **Marketing URL** (optional) | https://pawpi.info |
+| **Privacy Policy URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/privacy |
 
 ## 7. "What's New in This Version" (v1.0)
 
@@ -130,8 +129,9 @@ Notes / decisions to confirm:
 - **Financial info:** card/wallet credentials are handled by the payment processors, not stored by
   PawPi — so you generally declare **Purchase History** (what was bought), not Payment Info. Confirm
   with how your processors report back.
-- **Diagnostics / Usage Data:** declare **Crash Data / Performance Data** only **if** you add a
-  crash/analytics SDK. If the app ships with none, declare none. (Confirm before submitting.)
+- **Diagnostics / Usage Data:** declare **NONE**. Verified: the `@sentry/react-native` import is a
+  no-op shim that collects nothing, and there is no analytics SDK shipped — no Crash Data, no
+  Performance Data, no Usage Data is collected.
 - **Health:** pet health entries are treated as **User Content**, not Apple "Health & Fitness" (that
   category is for the *user's* own health data via HealthKit, which PawPi does not use).
 - **Data deletion:** answer **Yes**, the app offers account deletion (Settings → Delete account).
@@ -160,7 +160,7 @@ HEALTH POSITIONING (Guideline 1.4.1)
 PawPi is a tracking/organization tool with non-diagnostic disclaimers throughout; it does not diagnose, prescribe, or replace veterinary care.
 
 USER-GENERATED CONTENT (Guideline 1.2)
-[Describe report/block/moderation: e.g., users can report posts/comments and block users; objectionable content is removed within 24h; contact: [SUPPORT EMAIL].]
+Every user-generated surface has a Report action; any user can be blocked. Objectionable content is reviewed and removed within 24h, and an on-submit content filter screens posts at creation time. Contact: augusto@pawpi.info.
 ```
 
 ## 11. Export compliance
@@ -170,10 +170,9 @@ auto-resolve. Confirm at upload.
 
 ## 12. Screenshots & assets (needs the EAS build — plan now, capture later)
 
-Required (App Store): **iPhone 6.9"/6.7"** screenshots (1290×2796 / 1284×2778), and **6.5"** if you
-support older sizes. Add **iPad 13"/12.9"** only if the app supports iPad (it's portrait iPhone today
-— if iPhone-only, set the device family accordingly and skip iPad). 3–10 screenshots per size; an
-optional app preview video.
+v1 is **iPhone-only** (`ios.supportsTablet: false` in `app.json`), so **no iPad screenshots are
+required**. Required (App Store): **iPhone 6.9"/6.7"** screenshots (1290×2796 / 1284×2778). 3–10
+screenshots per size; an optional app preview video.
 
 Plan the 6–8 hero screens now so capture is fast once there's a build:
 1. Dog social profile + daily moments
