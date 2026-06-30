@@ -17,7 +17,9 @@
         "NSCameraUsageDescription": "PawPi uses the camera so you can take photos of your pet for their profile, daily moments, health checks and vet records.",
         "NSPhotoLibraryUsageDescription": "PawPi accesses your photo library so you can choose photos and documents for your pet's profile, posts, health records and chats.",
         "NSPhotoLibraryAddUsageDescription": "PawPi saves photos you create in the app, such as your pet's shareable daily-moment frame, to your photo library.",
-        "NSMicrophoneUsageDescription": "PawPi uses the microphone for audio in vet telehealth video consultations."
+        "NSMicrophoneUsageDescription": "PawPi uses the microphone for audio in vet telehealth video consultations.",
+        "NSCalendarsFullAccessUsageDescription": "PawPi adds your pet's appointments, bookings and reminders to your calendar so you don't miss them.",
+        "NSCalendarsUsageDescription": "PawPi adds your pet's appointments, bookings and reminders to your calendar so you don't miss them."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
