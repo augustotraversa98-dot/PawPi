@@ -12,7 +12,8 @@
     "autolinking": {
       "exclude": [
         "expo-speech",
-        "expo-speech-recognition"
+        "expo-speech-recognition",
+        "react-native-google-mobile-ads"
       ]
     }
   },
