@@ -8,6 +8,15 @@
     "test": "jest",
     "test:watch": "jest --watch"
   },
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "expo-speech",
+        "expo-speech-recognition",
+        "react-native-google-mobile-ads"
+      ]
+    }
+  },
   "dependencies": {
     "@anythingai/app": "0.1.98",
     "@expo-google-fonts/dev": "0.4.7",

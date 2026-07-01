@@ -33,8 +33,14 @@ export default function EntryPoint() {
     // network failure aren't both mistaken for "no pets → onboarding".
     console.log("[EntryPoint] User authenticated, checking for pets");
     let outcome;
+    // Bound the request so an unreachable/slow backend degrades to the retry
+    // screen (networkError → action:'error') instead of leaving the EntryPoint
+    // on "Loading..." forever. The SecureStore read in useAuth is already
+    // timeout-guarded; this startup fetch was not.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
-      const petsResponse = await fetch("/api/pets");
+      const petsResponse = await fetch("/api/pets", { signal: controller.signal });
       if (petsResponse.ok) {
         const { pets } = await petsResponse.json();
         outcome = { ok: true, status: petsResponse.status, pets };
@@ -44,6 +50,8 @@ export default function EntryPoint() {
     } catch (apiError) {
       console.error("[EntryPoint] Pets fetch failed:", apiError);
       outcome = { networkError: true };
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const result = determinePetsRoute(outcome);

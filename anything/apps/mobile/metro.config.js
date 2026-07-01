@@ -132,6 +132,20 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   }
 };
 
+// Exclude colocated test/spec files from the native & web bundle. They live
+// next to routes inside src/app, so Expo Router's require.context (see
+// expo-router/_ctx.ios.js) would otherwise sweep them into production — pulling
+// in @testing-library/react-native, which requires Node's `console` module and
+// fails to bundle for Hermes. Jest uses its own resolver, so unit tests are
+// unaffected by this blockList.
+const TEST_FILE_BLOCKLIST = /\.(test|spec)\.[jt]sx?$/;
+const existingBlockList = config.resolver.blockList;
+config.resolver.blockList = Array.isArray(existingBlockList)
+  ? [...existingBlockList, TEST_FILE_BLOCKLIST]
+  : existingBlockList
+    ? [existingBlockList, TEST_FILE_BLOCKLIST]
+    : [TEST_FILE_BLOCKLIST];
+
 const cacheDir = path.join(__dirname, 'caches');
 
 config.cacheStores = () => [
