@@ -57,6 +57,16 @@ describe('sendLogsToRemote', () => {
     });
   });
 
+  it('no-ops without fetching when the endpoint points at anything.com', async () => {
+    process.env.EXPO_PUBLIC_LOGS_ENDPOINT = 'https://api.anything.com/v0/project-logs';
+    process.env.EXPO_PUBLIC_PROJECT_GROUP_ID = 'pg-123';
+    process.env.EXPO_PUBLIC_CREATE_TEMP_API_KEY = 'key-abc';
+
+    const result = await sendLogsToRemote([{ message: 'test' }]);
+    expect(result).toEqual({ success: false });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('returns success: false on non-ok response', async () => {
     process.env.EXPO_PUBLIC_LOGS_ENDPOINT = 'https://logs.test/ingest';
     process.env.EXPO_PUBLIC_PROJECT_GROUP_ID = 'pg-123';
@@ -86,6 +96,16 @@ describe('reportErrorToRemote', () => {
     const result = await reportErrorToRemote({
       error: new Error('test error'),
     });
+    expect(result).toEqual({ success: false });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('no-ops without fetching when the endpoint points at anything.com', async () => {
+    process.env.EXPO_PUBLIC_LOGS_ENDPOINT = 'https://api.anything.com/v0/project-logs';
+    process.env.EXPO_PUBLIC_PROJECT_GROUP_ID = 'pg-123';
+    process.env.EXPO_PUBLIC_CREATE_TEMP_API_KEY = 'key-abc';
+
+    const result = await reportErrorToRemote({ error: new Error('boom') });
     expect(result).toEqual({ success: false });
     expect(global.fetch).not.toHaveBeenCalled();
   });

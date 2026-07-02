@@ -13,6 +13,11 @@
 		},
 		"production": {
 			"autoIncrement": true,
+			"env": {
+				"EXPO_PUBLIC_BASE_URL": "https://pawpi-production.up.railway.app",
+				"EXPO_PUBLIC_PROXY_BASE_URL": "https://pawpi-production.up.railway.app",
+				"EXPO_PUBLIC_HOST": "pawpi-production.up.railway.app"
+			},
 			"android": {
 				"buildType": "app-bundle"
 			}
