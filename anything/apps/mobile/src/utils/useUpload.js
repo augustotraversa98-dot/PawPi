@@ -1,6 +1,18 @@
 import * as React from "react";
 import { Platform } from "react-native";
 
+// Native FormData can only stream file parts from a uri, so raw bytes are
+// wrapped as a base64 data: uri on native (web uses a real Blob instead).
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 function useUpload() {
   const [loading, setLoading] = React.useState(false);
   const upload = React.useCallback(async (input) => {
@@ -25,7 +37,7 @@ function useUpload() {
           const formData = new FormData();
           formData.append("file", asset.file);
 
-          response = await fetch("/_create/api/upload/", {
+          response = await fetch("/api/upload", {
             method: "POST",
             body: formData,
           });
@@ -61,30 +73,65 @@ function useUpload() {
         }
       } else if ("url" in input) {
         console.log("[useUpload] URL input detected:", input.url);
-        response = await fetch("/_create/api/upload/", {
+        // /api/upload only accepts multipart form-data with a `file` field, so
+        // wrap the URL's contents as a file part (web needs a real Blob; native
+        // FormData streams http(s)/data: uris directly).
+        const fileName = input.url.split("/").pop()?.split("?")[0] || "upload";
+        const formData = new FormData();
+        if (Platform.OS === "web") {
+          const blob = await fetch(input.url).then((r) => r.blob());
+          formData.append("file", blob, fileName);
+        } else {
+          formData.append("file", {
+            uri: input.url,
+            name: fileName,
+            type: "application/octet-stream",
+          });
+        }
+
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url: input.url }),
+          body: formData,
         });
       } else if ("base64" in input) {
         console.log("[useUpload] Base64 input detected");
-        response = await fetch("/_create/api/upload/", {
+        const dataUri = input.base64.startsWith("data:")
+          ? input.base64
+          : `data:application/octet-stream;base64,${input.base64}`;
+        const mimeType =
+          dataUri.match(/^data:([^;,]+)/)?.[1] || "application/octet-stream";
+        const formData = new FormData();
+        if (Platform.OS === "web") {
+          const blob = await fetch(dataUri).then((r) => r.blob());
+          formData.append("file", blob, "upload");
+        } else {
+          formData.append("file", {
+            uri: dataUri,
+            name: "upload",
+            type: mimeType,
+          });
+        }
+
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ base64: input.base64 }),
+          body: formData,
         });
       } else {
         console.log("[useUpload] Buffer input detected");
-        response = await fetch("/_create/api/upload/", {
+        const formData = new FormData();
+        if (Platform.OS === "web") {
+          formData.append("file", new Blob([input.buffer]), "upload");
+        } else {
+          formData.append("file", {
+            uri: `data:application/octet-stream;base64,${arrayBufferToBase64(input.buffer)}`,
+            name: "upload",
+            type: "application/octet-stream",
+          });
+        }
+
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream",
-          },
-          body: input.buffer,
+          body: formData,
         });
       }
 

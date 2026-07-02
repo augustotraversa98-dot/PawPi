@@ -1,8 +1,15 @@
 import { serializeError } from 'serialize-error';
 
+// Remote logging is a no-op when no endpoint is configured, or when the
+// endpoint still points at the defunct Anything platform (a dead third-party
+// host — crash logs must not leave the app for it).
+const isRemoteLoggingDisabled = () =>
+  !process.env.EXPO_PUBLIC_LOGS_ENDPOINT ||
+  process.env.EXPO_PUBLIC_LOGS_ENDPOINT.includes('anything.com');
+
 export const sendLogsToRemote = async (logs) => {
   if (
-    !process.env.EXPO_PUBLIC_LOGS_ENDPOINT ||
+    isRemoteLoggingDisabled() ||
     !process.env.EXPO_PUBLIC_PROJECT_GROUP_ID ||
     !process.env.EXPO_PUBLIC_CREATE_TEMP_API_KEY
   ) {
@@ -31,12 +38,12 @@ export const sendLogsToRemote = async (logs) => {
 
 export const reportErrorToRemote = async ({ error }) => {
   if (
-    !process.env.EXPO_PUBLIC_LOGS_ENDPOINT ||
+    isRemoteLoggingDisabled() ||
     !process.env.EXPO_PUBLIC_PROJECT_GROUP_ID ||
     !process.env.EXPO_PUBLIC_CREATE_TEMP_API_KEY
   ) {
     console.debug(
-      'reportErrorToRemote: Missing environment variables for logging endpoint, project group ID, or API key.',
+      'reportErrorToRemote: remote logging disabled or not configured; error stays local.',
       error
     );
     return { success: false };
