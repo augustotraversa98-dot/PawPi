@@ -13,7 +13,11 @@ import { nextPublicProcessEnv } from './plugins/nextPublicProcessEnv';
 import { restart } from './plugins/restart';
 import { restartEnvFileChange } from './plugins/restartEnvFileChange';
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
+  // The SSR bundle runs on Node and uses top-level await (__create/index.ts);
+  // Vite's default browser target (es2020) rejects it at build time. Client
+  // bundle keeps the browser defaults.
+  build: isSsrBuild ? { target: 'esnext' } : undefined,
   // Keep them available via import.meta.env.NEXT_PUBLIC_*
   envPrefix: 'NEXT_PUBLIC_',
   optimizeDeps: {
@@ -92,4 +96,4 @@ export default defineConfig({
       clientFiles: ['./src/app/**/*', './src/app/root.tsx', './src/app/routes.ts'],
     },
   },
-});
+}));

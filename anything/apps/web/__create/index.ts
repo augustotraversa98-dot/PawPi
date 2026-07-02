@@ -322,7 +322,19 @@ app.use('/api/auth/*', async (c, next) => {
 });
 app.route(API_BASENAME, api);
 
-export default await createHonoServer({
+const serverPromise = createHonoServer({
   app,
   defaultLogger: false,
+  // Production listen config (ignored in dev, where Vite owns the server).
+  // The host injects PORT; hostname 0.0.0.0 so the container's mapped port is
+  // reachable. No URL here — Auth.js origin stays request-derived (trustHost).
+  port: Number(process.env.PORT) || 4000,
+  hostname: '0.0.0.0',
 });
+
+// Dev needs the resolved Hono app as the default export (Vite mounts it as
+// middleware). In production the export is unused — createHonoServer calls
+// serve() itself — and a top-level await here deadlocks: this entry chunk
+// would suspend while dynamic-importing server-build.js, which statically
+// imports back into this chunk for shared app modules (ESM TLA cycle).
+export default (import.meta.env.DEV ? await serverPromise : serverPromise);
