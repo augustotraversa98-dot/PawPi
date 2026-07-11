@@ -3,6 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthModal } from "@/utils/auth/store";
+import {
+  didForceStartupFallback,
+  didLastBootStall,
+  lastBootSummary,
+} from "../../__create/boot-trace";
 
 const C = {
   coral: "#FF6F61",
@@ -16,6 +21,18 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { open } = useAuthModal();
+
+  // Startup diagnostic (boot breadcrumbs): only visible when this launch
+  // needed the hard fallback or the previous launch stalled. A milestone code
+  // for TestFlight debugging — never an error message or stack trace.
+  let startupDiagnostic = null;
+  try {
+    if (didForceStartupFallback() || didLastBootStall()) {
+      startupDiagnostic = lastBootSummary() || "startup fallback used this launch";
+    }
+  } catch (_err) {
+    startupDiagnostic = null;
+  }
 
   const handleCreateAccount = () => {
     open({ mode: "signup" });
@@ -145,6 +162,19 @@ export default function WelcomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {startupDiagnostic ? (
+          <Text
+            style={{
+              marginTop: 16,
+              fontSize: 11,
+              color: "#B9A79A",
+              textAlign: "center",
+            }}
+          >
+            Startup diagnostic: {startupDiagnostic}
+          </Text>
+        ) : null}
 
       </ScrollView>
     </View>

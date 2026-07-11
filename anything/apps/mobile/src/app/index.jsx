@@ -4,8 +4,10 @@ import { Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
+import { markBootStep, markBootComplete } from "../../__create/boot-trace";
 
 export default function EntryPoint() {
+  markBootStep("entrypoint:render");
   const [loading, setLoading] = useState(true);
   const [destination, setDestination] = useState(null);
   const [error, setError] = useState(false);
@@ -23,10 +25,12 @@ export default function EntryPoint() {
     // Not authenticated → Welcome screen
     if (!auth) {
       console.log("[EntryPoint] No auth, redirecting to /welcome");
+      markBootStep("entrypoint:no-auth-welcome");
       setDestination("/welcome");
       setLoading(false);
       return;
     }
+    markBootStep("entrypoint:pets-fetch");
 
     // Authenticated → ask the server for pets. Resolve the routing from the
     // *outcome* of that call so an auth failure (401/403) and a transient
@@ -150,5 +154,7 @@ export default function EntryPoint() {
   }
 
   console.log("[EntryPoint] Redirecting to:", destination);
+  markBootStep("entrypoint:redirect");
+  markBootComplete();
   return <Redirect href={destination} />;
 }
