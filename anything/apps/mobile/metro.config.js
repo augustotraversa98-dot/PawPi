@@ -89,11 +89,28 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     if (moduleName.startsWith('@expo-google-fonts/') && moduleName !== '@expo-google-fonts/dev') {
       return context.resolveRequest(context, '@expo-google-fonts/dev', platform);
     }
-    // Resolve AnythingMenu to empty component in production
+    // Resolve AnythingMenu to an empty component in every NON-development build.
+    //
+    // index.tsx require()s this module at startup but only RENDERS it in the
+    // dev-like branch, so stubbing it in release is a zero-UX change. Crucially,
+    // the real module (anything-menu.ios.tsx) imports
+    // @anythingai/app/screens/launcher-menu → provider.js, whose module scope
+    // EAGERLY runs `import 'react-native-reanimated'` (→ worklets
+    // installTurboModule, a sync void TurboModule call), plus keyboard-controller,
+    // burnt and a LaunchDarkly client — all during the iOS launch window. In a
+    // release build that synchronous native init on the JS thread is the prime
+    // suspect for the pre-JS splash hang. Stubbing removes the whole chain from
+    // startup evaluation.
+    //
+    // The gate was previously `=== 'PRODUCTION'`, which was backwards for EAS:
+    // local dev sets EXPO_PUBLIC_CREATE_ENV=PRODUCTION (so the menu was stubbed
+    // in dev, where it's actually wanted) while EAS builds leave the var UNDEFINED
+    // (so the heavy real menu shipped to TestFlight). `!== 'DEVELOPMENT'` stubs it
+    // for both PRODUCTION and undefined, keeping the real menu only when the var is
+    // explicitly DEVELOPMENT.
     if (moduleName === './src/__create/anything-menu') {
-      const isProduction = process.env.EXPO_PUBLIC_CREATE_ENV === 'PRODUCTION';
-      if (isProduction) {
-        // Create empty component for production
+      const isDevelopment = process.env.EXPO_PUBLIC_CREATE_ENV === 'DEVELOPMENT';
+      if (!isDevelopment) {
         const emptyComponentPath = path.resolve(
           __dirname,
           './polyfills/shared/empty-component.tsx'

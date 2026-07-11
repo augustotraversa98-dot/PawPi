@@ -1,3 +1,49 @@
+diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a67797..c7f20b0 100644
+--- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -24,6 +24,7 @@
+ 
+ #import <objc/message.h>
+ #import <objc/runtime.h>
++#import <os/log.h>
+ #import <atomic>
+ #import <iostream>
+ #import <sstream>
+@@ -435,7 +436,32 @@ TraceSection s(
+     @try {
+       [inv invokeWithTarget:strongModule];
+     } @catch (NSException *exception) {
+-      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      // A native exception thrown from a VOID (async) TurboModule method has no
++      // JS call frame to receive it. Upstream RN converts it to a jsi::JSError and
++      // throws; because void methods run on the async invoker there is no JS frame
++      // to catch it, so it escapes the dispatch block and SIGABRTs the app
++      // (facebook/react-native#53960, and the iOS 26 startup variant #54859). A
++      // prior local patch changed that to `@throw exception`, but re-throwing an
++      // Objective-C exception up through the C++/Hermes frames of the async invoker
++      // is undefined behavior and can silently strand the JS thread — a frozen
++      // splash launch hang with the process still alive and no crash report.
++      //
++      // Swallow it here to preserve the original "don't crash the app" intent
++      // without re-introducing the crash OR the hang, and log it NATIVELY (NSLog +
++      // os_log, both pure Foundation/system paths that never touch the JS thread)
++      // so it is visible in Console.app / the device log even if the JS thread is
++      // already dead — the JS breadcrumb logger cannot help in that case.
++      const char *exName = exception.name.UTF8String ?: "unknown";
++      const char *exReason = exception.reason.UTF8String ?: "unknown";
++      NSLog(@"[PawPi][TurboModule] swallowed NSException from void %s.%s: %s (%s)",
++            moduleName, methodNameStr.c_str(), exName, exReason);
++      os_log_error(
++          OS_LOG_DEFAULT,
++          "[PawPi][TurboModule] swallowed NSException from void %{public}s.%{public}s: %{public}s (%{public}s)",
++          moduleName,
++          methodNameStr.c_str(),
++          exName,
++          exReason);
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];
+     }
 diff --git a/node_modules/react-native/index.js b/node_modules/react-native/index.js
 index c737c93..f3edd25 100644
 --- a/node_modules/react-native/index.js
@@ -28,25 +74,3 @@ index c737c93..f3edd25 100644
 -    },
 -  });
  }
-diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
-index 0000000..0000000 100644
---- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
-+++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
-@@ -432,14 +432,16 @@ void ObjCTurboModule::performVoidMethodInvocation(
-       TurboModulePerfLogger::asyncMethodCallExecutionStart(moduleName, methodName, asyncCallCounter);
-     }
- 
-     @try {
-       [inv invokeWithTarget:strongModule];
-     } @catch (NSException *exception) {
--      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
-+      // Void methods are always async, re-throw instead of converting to
-+      // JSError, same as the async branch in performMethodInvocation.
-+      @throw exception;
-     } @finally {
-       [retainedObjectsForInvocation removeAllObjects];
-     }
- 
-     if (shouldVoidMethodsExecuteSync_) {
-       TurboModulePerfLogger::syncMethodCallExecutionEnd(moduleName, methodName);
-     } else {
