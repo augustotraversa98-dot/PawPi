@@ -10,13 +10,17 @@ import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
+import { markBootStep } from "../../__create/boot-trace";
 
 SplashScreen.preventAutoHideAsync();
+markBootStep("layout:module-evaluated");
 
 export default function RootLayout() {
   const { initiate, isReady } = useAuth();
+  markBootStep("layout:render");
 
   useEffect(() => {
+    markBootStep("layout:initiate-effect");
     initiate();
   }, [initiate]);
 
@@ -42,6 +46,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (isReady) {
+      markBootStep("layout:splash-hide");
       SplashScreen.hideAsync();
     }
   }, [isReady]);

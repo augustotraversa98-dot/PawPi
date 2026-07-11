@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import { Modal, View } from 'react-native';
 import { useAuthModal, useAuthStore, authKey, secureStoreOptions } from './store';
+import { markBootStep } from '../../../__create/boot-trace';
 
 
 /**
@@ -23,17 +24,20 @@ export const useAuth = () => {
     // device first-unlock state, or iOS 26 TurboModule rethrow). Without a
     // catch the unhandled rejection leaves isReady=false forever and the
     // RootLayout renders null — the user sees a blank screen indefinitely.
+    markBootStep('auth:initiate-start');
     Promise.race([
       SecureStore.getItemAsync(authKey, secureStoreOptions),
       new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
     ])
       .then((stored) => {
+        markBootStep('auth:ready');
         useAuthStore.setState({
           auth: stored ? JSON.parse(stored) : null,
           isReady: true,
         });
       })
       .catch(() => {
+        markBootStep('auth:ready-after-error');
         useAuthStore.setState({ auth: null, isReady: true });
       });
   }, []);
