@@ -74,3 +74,52 @@ index c737c93..f3edd25 100644
 -    },
 -  });
  }
+diff --git a/node_modules/react-native/scripts/codegen/generate-artifacts-executor/generateRCTThirdPartyComponents.js b/node_modules/react-native/scripts/codegen/generate-artifacts-executor/generateRCTThirdPartyComponents.js
+index fdd7e95..4df4152 100644
+--- a/node_modules/react-native/scripts/codegen/generate-artifacts-executor/generateRCTThirdPartyComponents.js
++++ b/node_modules/react-native/scripts/codegen/generate-artifacts-executor/generateRCTThirdPartyComponents.js
+@@ -138,7 +138,19 @@ function generateRCTThirdPartyComponents(
+     .flatMap(library => {
+       const components = componentsInLibraries[library];
+       return components.map(({componentName, className}) => {
+-        return `\t\t@"${componentName}": NSClassFromString(@"${className}"), // ${library}`;
++        // PawPi patch: register each component only if its native class is
++        // actually linked. NSClassFromString returns nil for a class that was
++        // codegen'd but excluded from the native build (e.g. an autolinking
++        // exclusion), and inserting nil into the dictionary literal SIGABRTs the
++        // app on first Fabric mount. Skip-and-log instead.
++        return (
++          `\t\tcomponentViewClass = NSClassFromString(@"${className}"); // ${library}\n` +
++          `\t\tif (componentViewClass) {\n` +
++          `\t\t\tcomponents[@"${componentName}"] = componentViewClass;\n` +
++          `\t\t} else {\n` +
++          `\t\t\tNSLog(@"[PawPi][Fabric] Skipping component '${componentName}' — class '${className}' from ${library} is not linked");\n` +
++          `\t\t}`
++        );
+       });
+     })
+     .join('\n');
+diff --git a/node_modules/react-native/scripts/codegen/templates/RCTThirdPartyComponentsProviderMM.template b/node_modules/react-native/scripts/codegen/templates/RCTThirdPartyComponentsProviderMM.template
+index 4ce5107..193ba51 100644
+--- a/node_modules/react-native/scripts/codegen/templates/RCTThirdPartyComponentsProviderMM.template
++++ b/node_modules/react-native/scripts/codegen/templates/RCTThirdPartyComponentsProviderMM.template
+@@ -19,9 +19,17 @@
+   static dispatch_once_t nativeComponentsToken;
+ 
+   dispatch_once(&nativeComponentsToken, ^{
+-    thirdPartyComponents = @{
++    // PawPi patch: build the map defensively so a component whose native class
++    // is NOT linked (e.g. a library excluded from autolinking but still visible
++    // to codegen — see react-native-google-mobile-ads) resolves to a nil Class
++    // and is SKIPPED, instead of being inserted into a dictionary literal, which
++    // throws NSInvalidArgumentException on the first Fabric node creation and
++    // SIGABRTs the app before any UI renders. Each skip is logged natively so it
++    // is visible in Console.app / the device log.
++    NSMutableDictionary<NSString *, Class<RCTComponentViewProtocol>> *components = [NSMutableDictionary new];
++    Class componentViewClass = Nil;
+ {thirdPartyComponentsMapping}
+-    };
++    thirdPartyComponents = [components copy];
+   });
+ 
+   return thirdPartyComponents;
