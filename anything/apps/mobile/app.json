@@ -58,7 +58,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FF6F61"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -78,7 +78,8 @@
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "backgroundColor": "#FF6F61"
         }
       ],
       "expo-audio",
