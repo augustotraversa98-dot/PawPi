@@ -76,7 +76,15 @@ for (const method of ['post', 'put', 'patch'] as const) {
   app[method](
     '*',
     bodyLimit({
-      maxSize: 4.5 * 1024 * 1024, // 4.5mb to match vercel limit
+      // Was 4.5mb to match a Vercel constraint that no longer applies on
+      // Railway. Too small for real camera photos and outright blocks the
+      // daily-video-moments feature; 50mb matches Supabase Storage's default
+      // per-file limit. A rejected request over the limit also resets the
+      // connection mid-upload (Hono aborts before draining the body) rather
+      // than failing cleanly, which surfaces to native fetch as a generic
+      // "Network request failed" instead of the intended 413 — raising the
+      // cap keeps real uploads well clear of that edge case.
+      maxSize: 50 * 1024 * 1024,
       onError: (c) => {
         return c.json({ error: 'Body size limit exceeded' }, 413);
       },
