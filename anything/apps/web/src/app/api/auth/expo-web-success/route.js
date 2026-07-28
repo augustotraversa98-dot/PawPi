@@ -1,6 +1,10 @@
 import { getToken } from '@auth/core/jwt';
 export async function GET(request) {
-	const isSecure = process.env.AUTH_URL?.startsWith('https') ?? request.url?.startsWith('https') ?? false;
+	// See src/app/api/auth/token/route.js — same forwarded-proto fix.
+	const isSecure =
+		process.env.AUTH_URL?.startsWith('https') ||
+		request.headers.get('x-forwarded-proto') === 'https' ||
+		(request.url?.startsWith('https') ?? false);
 	const [token, jwt] = await Promise.all([
 		getToken({
 			req: request,

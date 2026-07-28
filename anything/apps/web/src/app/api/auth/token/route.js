@@ -1,6 +1,13 @@
 import { getToken } from '@auth/core/jwt';
 export async function GET(request) {
-	const isSecure = process.env.AUTH_URL?.startsWith('https') ?? request.url?.startsWith('https') ?? false;
+	// request.url reflects the app's internal (Railway-forwarded) scheme, which
+	// is plain http even when the client connected over real https — check the
+	// TLS-terminating proxy's forwarded-proto header first. See __create/index.ts
+	// cookies comment for the full story (same bug, this is the token-fetch half).
+	const isSecure =
+		process.env.AUTH_URL?.startsWith('https') ||
+		request.headers.get('x-forwarded-proto') === 'https' ||
+		(request.url?.startsWith('https') ?? false);
 	const [token, jwt] = await Promise.all([
 		getToken({
 			req: request,
