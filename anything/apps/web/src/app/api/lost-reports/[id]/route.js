@@ -19,6 +19,11 @@ async function GET(request, { params }) {
     }
     const reportId = parseInt(params.id);
 
+    // Same visibility guard as the list route: a non-owner may only see an
+    // active, unhidden report from a non-blocked owner. Without this, anyone
+    // could read a resolved/moderator-hidden/blocked-owner report just by
+    // guessing its numeric id (the list route already filters these out, but
+    // list-vs-detail visibility was never actually kept in sync).
     const reports = await sql`
       SELECT r.*, p.name AS pet_name, p.avatar_url AS pet_avatar, p.breed AS pet_breed,
              up.username AS owner_username
@@ -26,6 +31,9 @@ async function GET(request, { params }) {
       JOIN pets p ON p.id = r.pet_id
       JOIN user_profiles up ON up.id = r.owner_user_id
       WHERE r.id = ${reportId}
+        AND (r.status = 'active' OR r.owner_user_id = ${userId})
+        AND r.hidden_at IS NULL
+        AND NOT app_user_is_blocked(${userId}, r.owner_user_id)
     `;
     if (reports.length === 0) {
       return Response.json({ error: "Report not found" }, { status: 404 });
