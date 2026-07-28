@@ -142,8 +142,18 @@ if (process.env.AUTH_SECRET) {
       // browser/WebView on any non-localhost http origin, so no session sticks.
       // Derive the flags from the protocol: https keeps the platform behaviour,
       // http uses non-Secure + Lax (fine for the first-party local/LAN flow).
+      // AUTH_URL alone isn't enough off-platform: it's intentionally unset both
+      // for local/LAN http AND for the real https Railway deploy (trustHost —
+      // see comment above), so checking only AUTH_URL left Railway's genuinely
+      // https traffic with non-Secure cookies. @auth/core's default cookie
+      // names still carry the __Host-/__Secure- prefixes, which browsers and
+      // WKWebView silently reject unless Secure is actually set — breaking
+      // CSRF validation and login entirely. Fall back to the TLS-terminating
+      // proxy's forwarded-proto header (Railway, like other PaaS, sets this).
       cookies: (() => {
-        const useSecure = (c.env.AUTH_URL ?? '').startsWith('https');
+        const useSecure =
+          (c.env.AUTH_URL ?? '').startsWith('https') ||
+          c.req.header('x-forwarded-proto') === 'https';
         const options = {
           secure: useSecure,
           sameSite: useSecure ? ('none' as const) : ('lax' as const),
