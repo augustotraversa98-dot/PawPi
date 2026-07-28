@@ -1,5 +1,11 @@
 import * as React from 'react';
 
+// /api/upload (apps/web/src/app/api/upload/route.js) only accepts multipart
+// form-data with a `file` field and returns { url, mimeType } — it does not
+// accept the JSON { url } / { base64 } / { buffer } bodies the old
+// /_create/api/upload/ platform endpoint did. Wrap every input shape as a
+// real file part so all four branches hit the same real endpoint (mirrors the
+// mobile fix in apps/mobile/src/utils/useUpload.js, commit 55cff0e).
 function useUpload() {
   const [loading, setLoading] = React.useState(false);
   const upload = React.useCallback(async (input) => {
@@ -9,33 +15,36 @@ function useUpload() {
       if ("file" in input && input.file) {
         const formData = new FormData();
         formData.append("file", input.file);
-        response = await fetch("/_create/api/upload/", {
+        response = await fetch("/api/upload", {
           method: "POST",
           body: formData
         });
       } else if ("url" in input) {
-        response = await fetch("/_create/api/upload/", {
+        const blob = await fetch(input.url).then((r) => r.blob());
+        const fileName = input.url.split("/").pop()?.split("?")[0] || "upload";
+        const formData = new FormData();
+        formData.append("file", blob, fileName);
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ url: input.url })
+          body: formData
         });
       } else if ("base64" in input) {
-        response = await fetch("/_create/api/upload/", {
+        const dataUri = input.base64.startsWith("data:")
+          ? input.base64
+          : `data:application/octet-stream;base64,${input.base64}`;
+        const blob = await fetch(dataUri).then((r) => r.blob());
+        const formData = new FormData();
+        formData.append("file", blob, "upload");
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ base64: input.base64 })
+          body: formData
         });
       } else {
-        response = await fetch("/_create/api/upload/", {
+        const formData = new FormData();
+        formData.append("file", new Blob([input.buffer]), "upload");
+        response = await fetch("/api/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream"
-          },
-          body: input.buffer
+          body: formData
         });
       }
       if (!response.ok) {
