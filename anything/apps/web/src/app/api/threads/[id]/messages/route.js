@@ -83,7 +83,7 @@ async function POST(request, { params }) {
     }
 
     const threadId = params.id;
-    const body = (await request.json()) ?? {};
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const text = typeof body.body === "string" ? body.body.trim() : null;
     const attachmentUrl =
       typeof body.attachment_url === "string" && body.attachment_url.length > 0

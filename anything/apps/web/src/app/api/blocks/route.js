@@ -22,7 +22,7 @@ async function POST(request) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    const body = (await request.json()) ?? {};
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const blockedUserId = Number(body.blocked_user_id);
     if (!Number.isInteger(blockedUserId) || blockedUserId <= 0) {
       return Response.json({ error: "Invalid blocked_user_id" }, { status: 400 });

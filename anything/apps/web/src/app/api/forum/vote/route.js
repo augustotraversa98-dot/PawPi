@@ -19,7 +19,7 @@ async function POST(request) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const targetType = body.targetType;
     const targetId = parseInt(body.targetId);
     const value = parseInt(body.value);

@@ -78,7 +78,7 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     const threadId = parseInt(params.id);
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const title = body.title !== undefined ? (body.title || "").trim() : undefined;
     const text = body.body !== undefined ? (body.body || "").trim() || null : undefined;
     const category =

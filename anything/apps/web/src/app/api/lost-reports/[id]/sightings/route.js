@@ -18,7 +18,7 @@ async function POST(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     const reportId = parseInt(params.id);
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const note = (body.note || "").trim() || null;
     const lat = body.lat == null || body.lat === "" ? null : Number(body.lat);
     const lng = body.lng == null || body.lng === "" ? null : Number(body.lng);

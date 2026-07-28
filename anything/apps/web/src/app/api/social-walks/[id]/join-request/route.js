@@ -24,7 +24,7 @@ async function POST(request, { params }) {
     const requesterUserId = userProfiles[0].id;
     const socialWalkId = parseInt(params.id);
 
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const { petId, message } = body;
 
     if (!petId) {

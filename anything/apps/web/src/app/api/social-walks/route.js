@@ -24,7 +24,7 @@ async function POST(request) {
 
     const ownerUserId = userProfiles[0].id;
 
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const {
       routineId,
       routineWalkIndex,

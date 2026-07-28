@@ -16,7 +16,7 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     const commentId = parseInt(params.id);
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const text = (body.body || "").trim();
     if (!text) {
       return Response.json({ error: "Comment cannot be empty" }, { status: 400 });

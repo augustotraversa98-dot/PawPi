@@ -80,7 +80,7 @@ async function POST(request) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const title = (body.title || "").trim();
     const category = (body.category || "General").trim() || "General";
     const text = (body.body || "").trim() || null;

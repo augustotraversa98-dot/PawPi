@@ -19,7 +19,7 @@ async function POST(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     const threadId = parseInt(params.id);
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const text = (body.body || "").trim();
     const parentCommentId = body.parentCommentId
       ? parseInt(body.parentCommentId)

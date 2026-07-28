@@ -32,7 +32,7 @@ async function POST(request, { params }) {
     if (!Number.isInteger(reportId) || reportId <= 0) {
       return Response.json({ error: "Invalid report id" }, { status: 400 });
     }
-    const body = (await request.json()) ?? {};
+    const body = (await request.json().catch(() => ({}))) ?? {};
     const action = body.action;
     const ban = body.ban === true;
     if (!ACTIONS.has(action)) {
