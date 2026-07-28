@@ -25,7 +25,7 @@ async function GET(request) {
     const petId = searchParams.get("petId");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    if (!petId) {
+    if (!petId || !Number.isInteger(parseInt(petId))) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
@@ -69,7 +69,12 @@ async function POST(request) {
     const { petId, weight, weightUnit, bodyShapeEstimate, photoUrl, notes } =
       body;
 
-    if (!petId || weight === undefined || weight === null) {
+    if (
+      !petId ||
+      !Number.isInteger(parseInt(petId)) ||
+      weight === undefined ||
+      weight === null
+    ) {
       return Response.json(
         { error: "petId and weight are required" },
         { status: 400 },

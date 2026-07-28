@@ -62,6 +62,16 @@ async function GET(request) {
   }
 }
 
+const VALID_CHECK_TYPES = new Set([
+  "general",
+  "body_condition",
+  "mobility",
+  "mood_energy",
+  "skin_coat",
+  "appetite_hydration",
+  "custom",
+]);
+
 async function POST(request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -84,6 +94,12 @@ async function POST(request) {
     if (!petId || !checkType) {
       return Response.json(
         { error: "petId and checkType are required" },
+        { status: 400 },
+      );
+    }
+    if (!VALID_CHECK_TYPES.has(checkType)) {
+      return Response.json(
+        { error: `checkType must be one of: ${[...VALID_CHECK_TYPES].join(", ")}` },
         { status: 400 },
       );
     }

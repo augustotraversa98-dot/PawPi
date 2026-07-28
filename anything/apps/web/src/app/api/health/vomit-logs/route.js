@@ -25,7 +25,7 @@ async function GET(request) {
     const petId = searchParams.get("petId");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    if (!petId) {
+    if (!petId || !Number.isInteger(parseInt(petId))) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
@@ -78,7 +78,7 @@ async function POST(request) {
       notes,
     } = body;
 
-    if (!petId) {
+    if (!petId || !Number.isInteger(parseInt(petId))) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
