@@ -1,8 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
+import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
 
 const originalFetch = fetch;
-const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
 
 const getURLFromArgs = (...args: Parameters<typeof fetch>) => {
   const [urlArg] = args;
@@ -79,7 +79,10 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     }
   }
 
-  const auth = await SecureStore.getItemAsync(authKey)
+  // Must pass the same options the auth store writes with — a bare read hits a
+  // different Keychain service and silently returns null, stripping the
+  // Authorization header off every first-party request. See ./auth/secureStore.
+  const auth = await SecureStore.getItemAsync(authKey, secureStoreOptions)
     .then((auth) => {
       return auth ? JSON.parse(auth) : null;
     })
