@@ -44,7 +44,12 @@ let savedAuthUrl;
 beforeEach(() => {
   vi.clearAllMocks();
   // Build a fake hono context so getContext() doesn't throw outside a request.
-  getContext.mockReturnValue({ req: { raw: new Request('http://localhost/api/pets') } });
+  // header() models a request with no x-forwarded-proto (e.g. a direct/local
+  // request, no TLS-terminating proxy in front) — tests that care about the
+  // Railway-forwarded-https case override this via mockReturnValueOnce.
+  getContext.mockReturnValue({
+    req: { raw: new Request('http://localhost/api/pets'), header: vi.fn(() => undefined) },
+  });
   // Snapshot and clear AUTH_URL — its handling is the unit under test, not a
   // value to hardcode. Tests that need a value set it explicitly.
   savedAuthUrl = process.env.AUTH_URL;
@@ -89,6 +94,24 @@ describe('auth() tolerates an unset AUTH_URL (the PR #21 fix)', () => {
 
   it('passes secureCookie:true for an https AUTH_URL (prod)', async () => {
     process.env.AUTH_URL = 'https://app.pawpi.example';
+    getToken.mockResolvedValue(TOKEN);
+    await auth();
+    expect(getToken).toHaveBeenCalledWith(
+      expect.objectContaining({ secureCookie: true }),
+    );
+  });
+
+  it('passes secureCookie:true when x-forwarded-proto is https (Railway\'s TLS-terminating edge, AUTH_URL unset)', async () => {
+    // The real fix this file was missing: off-platform, AUTH_URL stays unset
+    // even on the genuinely-https Railway deploy (see __create/index.ts cookies
+    // comment) — the TLS-terminating proxy's forwarded-proto header is what
+    // actually distinguishes it from a plain local http request.
+    getContext.mockReturnValue({
+      req: {
+        raw: new Request('http://localhost/api/pets'),
+        header: vi.fn((name) => (name === 'x-forwarded-proto' ? 'https' : undefined)),
+      },
+    });
     getToken.mockResolvedValue(TOKEN);
     await auth();
     expect(getToken).toHaveBeenCalledWith(
