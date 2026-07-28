@@ -49,8 +49,8 @@ const DeviceErrorBoundary = ({
       isOpen
       description={
         sentLogs && !isAnythingApp
-          ? 'It looks like an error occurred while trying to use your app. This error has been reported to the AI agent and should be visible to the AI soon. If it is not present please see anything.com/docs for help'
-          : 'It looks like an error occurred while trying to use your app. Please see anything.com/docs for help'
+          ? 'It looks like an error occurred while trying to use your app. The error has been logged. Restarting usually fixes it.'
+          : 'It looks like an error occurred while trying to use your app. Restarting usually fixes it.'
       }
     >
       <View style={{ flexDirection: 'row', gap: 8 }}>

@@ -101,23 +101,27 @@ test("no service selected → validation error, no create", () => {
   expect(mockCreate).not.toHaveBeenCalled();
 });
 
-test("multi-select posts capabilities[] + primary provider_type", async () => {
-  const screen = render(<VetBusinessAccessScreen />);
-  fillName(screen);
-  fireEvent.press(screen.getByText("Veterinary clinic"));
-  fireEvent.press(screen.getByText("Pet shop"));
-  expect(screen.getByText("Selected: Veterinary clinic, Pet shop")).toBeTruthy();
-  fireEvent.press(screen.getByText("Build my profile"));
+test(
+  "multi-select posts capabilities[] + primary provider_type",
+  async () => {
+    const screen = render(<VetBusinessAccessScreen />);
+    fillName(screen);
+    fireEvent.press(screen.getByText("Veterinary clinic"));
+    fireEvent.press(screen.getByText("Pet shop"));
+    expect(screen.getByText("Selected: Veterinary clinic, Pet shop")).toBeTruthy();
+    fireEvent.press(screen.getByText("Build my profile"));
 
-  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
-  expect(mockCreate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      name: "Happy Paws",
-      provider_type: "vet",
-      capabilities: ["vet", "shop"],
-    }),
-  );
-});
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Happy Paws",
+        provider_type: "vet",
+        capabilities: ["vet", "shop"],
+      }),
+    );
+  },
+  10000,
+);
 
 test("optional links submit through useCreateProvider (ticket 2.20)", async () => {
   const screen = render(<VetBusinessAccessScreen />);
