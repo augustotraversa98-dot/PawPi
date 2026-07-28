@@ -166,11 +166,14 @@ describe('POST /api/providers create under pawpi_app + FORCE RLS', () => {
       const profileId = await seedProfile(authId, 'rollbackco');
       authState.session = { user: { id: authId, email: 'rollback@example.com', name: 'Rollback Co' } };
 
-      // The caps failure propagates out of the request transaction (begin rolls back +
-      // rejects); the framework maps this to a 500.
-      await expect(
-        POST(providersRequest({ name: 'Doomed', provider_type: 'vet', slug: 'doomed' })),
-      ).rejects.toThrow(/permission denied/i);
+      // The caps failure aborts the request transaction; sql.begin's implicit COMMIT
+      // then re-throws that same error past the route handler's own try/catch —
+      // withRequestContext now catches this uniformly and returns a clean 500 (see
+      // its comment), rather than letting the rejection escape uncaught as before.
+      const res = await POST(
+        providersRequest({ name: 'Doomed', provider_type: 'vet', slug: 'doomed' }),
+      );
+      expect(res.status).toBe(500);
 
       // The transaction aborted on the caps failure, so NEITHER the provider NOR the
       // owner-staff row persisted — no half-created provider.

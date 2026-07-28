@@ -69,13 +69,25 @@ export function withRequestContext(handler) {
     if (typeof sql.begin !== 'function') {
       return handler(request, ctx);
     }
-    // No tx is active here, so the proxy's `begin` runs on the global pool.
-    return sql.begin((tx) =>
-      runWithTx(tx, async () => {
-        await applyIdentity();
-        return handler(request, ctx);
-      })
-    );
+    try {
+      // No tx is active here, so the proxy's `begin` runs on the global pool.
+      return await sql.begin((tx) =>
+        runWithTx(tx, async () => {
+          await applyIdentity();
+          return handler(request, ctx);
+        })
+      );
+    } catch (error) {
+      // A query error the handler's own try/catch already caught-and-handled
+      // (returning its normal clean Response) still leaves the underlying
+      // Postgres transaction aborted; sql.begin's implicit COMMIT then fails
+      // and re-throws that same error here, past the handler entirely. Catch
+      // it so a caught-and-handled query error can never surface as an
+      // uncaught exception to the global error handler (which — before this
+      // fix — leaked full stack traces/DB internals to the client).
+      console.error('[withRequestContext] transaction failed (commit after an aborted tx):', error);
+      return Response.json({ error: 'Internal server error' }, { status: 500 });
+    }
   };
 }
 

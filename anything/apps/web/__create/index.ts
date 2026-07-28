@@ -52,16 +52,31 @@ app.use('*', (c, next) => {
 app.use(contextStorage());
 
 app.onError((err, c) => {
-  if (c.req.method !== 'GET') {
-    return c.json(
-      {
-        error: 'An error occurred in your app',
-        details: serializeError(err),
-      },
-      500
-    );
+  // Always log the full error server-side (the console override above tags it
+  // with the request's traceId). Never ship stack traces / DB internals / server
+  // file paths to the client in production — found leaking on every unhandled
+  // error (e.g. a Postgres constraint violation) via serializeError(err) below.
+  console.error('[onError]', err);
+
+  if (process.env.NODE_ENV !== 'production') {
+    if (c.req.method !== 'GET') {
+      return c.json(
+        {
+          error: 'An error occurred in your app',
+          details: serializeError(err),
+        },
+        500
+      );
+    }
+    // Dev-only sandbox preview page (postMessage handshake for an iframe-embedded
+    // preview) — never appropriate in production, and was hardcoded to HTTP 200
+    // even for genuine errors, which hid real failures from any status-based
+    // monitoring. Real status code even in dev, since 200-for-an-error is never
+    // correct regardless of environment.
+    return c.html(getHTMLForErrorPage(err), 500);
   }
-  return c.html(getHTMLForErrorPage(err), 200);
+
+  return c.json({ error: 'Internal server error' }, 500);
 });
 
 if (process.env.CORS_ORIGINS) {
