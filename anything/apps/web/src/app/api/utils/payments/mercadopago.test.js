@@ -4,6 +4,11 @@ import {
   verifyWebhook,
   mapStatus,
   buildOAuthUrl,
+  createCheckout,
+  refund,
+  payout,
+  getPaymentStatus,
+  exchangeOAuthCode,
   RAIL,
 } from './mercadopago';
 import { PaymentsNotConfiguredError } from './config';
@@ -101,5 +106,44 @@ describe('buildOAuthUrl', () => {
     expect(url).toContain('client_id=cid');
     expect(url).toContain('state=7.abc');
     expect(url).toContain(encodeURIComponent('https://x/cb'));
+  });
+});
+
+// Every remaining live-HTTP function must guard on unset keys and throw
+// PaymentsNotConfiguredError BEFORE ever calling fetch — no crash, no network call,
+// no leaking a raw TypeError/fetch failure to the caller. This is the N5 audit gap:
+// these guards existed in source but had no direct unit test.
+describe('degrade-clean guards (no keys set — must never call fetch)', () => {
+  it('createCheckout throws without calling fetch', async () => {
+    await expect(
+      createCheckout({ order: { id: 1, amount_cents: 100, currency: 'ARS', kind: 'booking' }, account: { access_token: 't' }, idempotencyKey: 'k' }),
+    ).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+
+  it('createCheckout throws when configured but the provider has no connected account', async () => {
+    configure();
+    await expect(
+      createCheckout({ order: { id: 1, amount_cents: 100, currency: 'ARS', kind: 'booking' }, account: null, idempotencyKey: 'k' }),
+    ).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+
+  it('refund throws without calling fetch', async () => {
+    await expect(
+      refund({ payment: { external_id: 'x' }, account: { access_token: 't' } }),
+    ).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+
+  it('payout throws without calling fetch', async () => {
+    await expect(payout()).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+
+  it('getPaymentStatus throws without calling fetch', async () => {
+    await expect(
+      getPaymentStatus({ externalId: 'x', account: { access_token: 't' } }),
+    ).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+
+  it('exchangeOAuthCode throws without calling fetch', async () => {
+    await expect(exchangeOAuthCode('code')).rejects.toThrow(PaymentsNotConfiguredError);
   });
 });
