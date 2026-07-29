@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import {
   Activity,
   Droplet,
@@ -25,18 +25,15 @@ import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
 import { useCurrentPet } from "@/hooks/usePetProfile";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 const TRACKERS = [
   {
@@ -58,7 +55,7 @@ const TRACKERS = [
     icon: UtensilsCrossed,
     label: "Food & Treats",
     description: "Meals, treats, appetite changes",
-    color: C.sage,
+    color: COLORS.sage,
     action: "foodWater",
   },
   {
@@ -93,7 +90,7 @@ const TRACKERS = [
     icon: Activity,
     label: "Exercise & Walks",
     description: "Activity level, duration, intensity",
-    color: C.coral,
+    color: COLORS.coral,
     action: "walkActivity",
   },
   {
@@ -125,7 +122,7 @@ const TRACKERS = [
     icon: Stethoscope,
     label: "Vet Visits",
     description: "Appointments, exams, procedures",
-    color: C.terracotta,
+    color: COLORS.terracotta,
   },
   {
     icon: Syringe,
@@ -182,46 +179,36 @@ export default function HealthTrack() {
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: SPACING.lg }}>
         {/* Section Title */}
-        <View style={{ marginBottom: 20 }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "800",
-              color: C.warmBrown,
-              marginBottom: 4,
-            }}
-          >
+        <View style={{ marginBottom: SPACING.xl }}>
+          <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
             Track Health Data
           </Text>
-          <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
+          <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
             Choose what you'd like to track for {petName}
           </Text>
         </View>
 
         {/* Tracker Cards */}
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: SPACING.md }}>
           {TRACKERS.map((tracker, idx) => {
             const Icon = tracker.icon;
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={idx}
                 onPress={() => handleTrackerPress(tracker)}
+                accessibilityRole="button"
                 style={{
-                  backgroundColor: C.card,
-                  borderRadius: 18,
-                  padding: 16,
-                  borderWidth: 1.5,
-                  borderColor: C.peach,
-                  shadowColor: C.terracotta,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 8,
-                  elevation: 2,
+                  backgroundColor: MATERIALS.surface,
+                  borderRadius: RADIUS.card,
+                  padding: SPACING.lg,
+                  borderWidth: 1,
+                  borderColor: MATERIALS.hairline,
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 14,
+                  gap: SPACING.md,
+                  ...ELEVATION.sm,
                 }}
               >
                 <View
@@ -237,55 +224,32 @@ export default function HealthTrack() {
                   <Icon size={24} color={tracker.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: C.warmBrown,
-                      marginBottom: 3,
-                    }}
-                  >
+                  <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 3 }]}>
                     {tracker.label}
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: C.mutedBrown,
-                      lineHeight: 17,
-                    }}
-                  >
+                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
                     {tracker.description}
                   </Text>
                 </View>
-                <ArrowRight size={20} color={C.mutedBrown} />
-              </TouchableOpacity>
+                <ArrowRight size={20} color={COLORS.mutedBrown} />
+              </PressableScale>
             );
           })}
         </View>
 
         {/* Info Box */}
-        <View
-          style={{
-            marginTop: 20,
-            backgroundColor: C.sand,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: C.peach,
-          }}
+        <Card
+          level="none"
+          radius={RADIUS.card}
+          color={MATERIALS.surfaceSunken}
+          borderColor={MATERIALS.hairline}
+          style={{ marginTop: SPACING.xl, padding: SPACING.lg }}
         >
-          <Text
-            style={{
-              fontSize: 13,
-              color: C.mutedBrown,
-              lineHeight: 19,
-              textAlign: "center",
-            }}
-          >
+          <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, lineHeight: 19, textAlign: "center", fontWeight: "500" }]}>
             Track changes over time to share meaningful data with your vet. The
             more you track, the better prepared you'll be for appointments.
           </Text>
-        </View>
+        </Card>
       </View>
 
       {/* Photo Check Modal */}
