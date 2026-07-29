@@ -63,6 +63,20 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
    code — consider retiring it in a later cleanup once the data is confirmed clean (left in place to avoid
    regressing the repair call).
 5. **App display name / branding.** Set to "PawPi" — confirm the final App Store name + subtitle.
+6. **Support URL (required for submission). ✅ CONTENT LIVE, DOMAIN GAP NOTED (2026-07-29).** The
+   support page (`docs/legal/support.md`/`.html` — now tracked in-repo as the source) is **live and
+   returns HTTP 200** at **https://augustotraversa98-dot.github.io/pawpi-legal/support** (same public
+   `pawpi-legal` repo + GitHub Pages mechanism as Privacy/Terms; published 2026-06-29, predates this
+   note). `docs/app-store-connect-content.md` §6 currently lists the Support URL as
+   `https://pawpi.info/support` — checked, and **`pawpi.info` has no web hosting configured**: it
+   resolves (`46.30.211.38`) but serves one.com's default "Hosted by one.com" parking page over HTTP
+   and a plain 404 over HTTPS (wildcard `*.one.com` cert, not ours). DNS/hosting for the root domain
+   is a one.com account action Code cannot perform. **Recommended fix (mirrors the already-accepted
+   Privacy Policy precedent, which also uses the github.io URL directly, not a pawpi.info alias):**
+   update the ASC content pack's Support URL field to
+   `https://augustotraversa98-dot.github.io/pawpi-legal/support` instead of waiting on DNS — not
+   edited here directly since that file has Tats' unsaved WIP elsewhere; this is the one field to
+   change by hand. If `pawpi.info` is ever pointed at real hosting later, this can be revisited.
 
 ---
 
