@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -19,6 +18,8 @@ import {
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useVetSummary } from "@/hooks/useVetSummary";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import { RADIUS } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import {
   detectHealthFlags,
   buildRecap,
@@ -99,27 +100,27 @@ export default function VetSummaryModal({ visible, onClose }) {
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown, marginLeft: 8 }}>
             Vet Summary{currentPet?.name ? ` · ${currentPet.name}` : ""}
           </Text>
-          <TouchableOpacity testID="vetsummary-close" onPress={onClose}>
+          <PressableScale testID="vetsummary-close" onPress={onClose}>
             <X size={22} color={C.warmBrown} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Range selector */}
         <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingTop: 14 }}>
           {RANGES.map((r) => (
-            <TouchableOpacity
+            <PressableScale
               key={r.key}
               testID={`range-${r.key}`}
               onPress={() => setRangeKey(r.key)}
               style={{
-                paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18,
+                paddingVertical: 8, paddingHorizontal: 16, borderRadius: RADIUS.chip,
                 backgroundColor: rangeKey === r.key ? C.coral : C.sand,
               }}
             >
               <Text style={{ fontSize: 13, fontWeight: "700", color: rangeKey === r.key ? "#FFF" : C.warmBrown }}>
                 {r.label}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
 
@@ -234,10 +235,10 @@ export default function VetSummaryModal({ visible, onClose }) {
               </View>
 
               {/* Share */}
-              <TouchableOpacity testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
+              <PressableScale testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
                 <Share2 size={18} color="#FFF" />
                 <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Share with vet</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </>
           )}
         </ScrollView>
@@ -257,7 +258,7 @@ const styles = {
   },
   recapCard: {
     backgroundColor: C.card,
-    borderRadius: 16,
+    borderRadius: RADIUS.card,
     padding: 16,
     marginBottom: 8,
     borderWidth: 1,
@@ -276,7 +277,7 @@ const styles = {
     alignItems: "center",
     gap: 12,
     backgroundColor: C.card,
-    borderRadius: 14,
+    borderRadius: RADIUS.control,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
@@ -284,7 +285,7 @@ const styles = {
   },
   input: {
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: RADIUS.control,
     padding: 14,
     fontSize: 14,
     color: C.warmBrown,
@@ -294,7 +295,7 @@ const styles = {
   },
   disclaimer: {
     backgroundColor: C.sand,
-    borderRadius: 12,
+    borderRadius: RADIUS.control,
     padding: 14,
     marginTop: 16,
   },
@@ -304,7 +305,7 @@ const styles = {
     justifyContent: "center",
     gap: 8,
     backgroundColor: C.coral,
-    borderRadius: 16,
+    borderRadius: RADIUS.control,
     paddingVertical: 16,
     marginTop: 20,
   },

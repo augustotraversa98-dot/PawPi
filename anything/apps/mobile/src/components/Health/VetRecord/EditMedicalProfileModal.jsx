@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -13,18 +12,8 @@ import { X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFBF7",
-  coral: "#FF6F61",
-  peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
-  mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
-  sand: "#F5EDE4",
-};
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 
 export default function EditMedicalProfileModal({
   visible,
@@ -193,16 +182,18 @@ export default function EditMedicalProfileModal({
   };
 
   const FormSection = ({ title, children }) => (
-    <View style={{ marginBottom: 24 }}>
+    <View style={{ marginBottom: SPACING.xxl }}>
       <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "700",
-          color: C.mutedBrown,
-          marginBottom: 12,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            fontWeight: "700",
+            color: COLORS.mutedBrown,
+            marginBottom: SPACING.md,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          },
+        ]}
       >
         {title}
       </Text>
@@ -219,14 +210,12 @@ export default function EditMedicalProfileModal({
     multiline = false,
     error,
   }) => (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: SPACING.lg }}>
       <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: C.warmBrown,
-          marginBottom: 6,
-        }}
+        style={[
+          TYPE.subhead,
+          { fontWeight: "600", color: COLORS.warmBrown, marginBottom: SPACING.xs + 2 },
+        ]}
       >
         {label}
       </Text>
@@ -234,18 +223,18 @@ export default function EditMedicalProfileModal({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={C.mutedBrown + "80"}
+        placeholderTextColor={COLORS.mutedBrown + "80"}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
         style={{
-          backgroundColor: C.card,
-          borderRadius: 12,
+          backgroundColor: MATERIALS.surface,
+          borderRadius: RADIUS.control,
           padding: 14,
           fontSize: 14,
-          color: C.warmBrown,
+          color: COLORS.warmBrown,
           borderWidth: 1.5,
-          borderColor: error ? "#FF6B6B" : C.peach,
+          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
           ...(multiline && {
             height: 80,
             textAlignVertical: "top",
@@ -272,7 +261,7 @@ export default function EditMedicalProfileModal({
         style={{
           fontSize: 13,
           fontWeight: "600",
-          color: C.warmBrown,
+          color: COLORS.warmBrown,
           marginBottom: 6,
         }}
       >
@@ -284,7 +273,7 @@ export default function EditMedicalProfileModal({
         fieldStyle={{
           padding: 14,
           borderWidth: 1.5,
-          borderColor: error ? "#FF6B6B" : C.peach,
+          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
         }}
         textStyle={{ fontSize: 14 }}
       />
@@ -308,7 +297,7 @@ export default function EditMedicalProfileModal({
         style={{
           fontSize: 13,
           fontWeight: "600",
-          color: C.warmBrown,
+          color: COLORS.warmBrown,
           marginBottom: 6,
         }}
       >
@@ -316,29 +305,28 @@ export default function EditMedicalProfileModal({
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["Male", "Female"].map((option) => (
-          <TouchableOpacity
+          <PressableScale
             key={option}
             onPress={() => setGender(option)}
             style={{
               flex: 1,
-              backgroundColor: gender === option ? C.coral : C.card,
-              borderRadius: 12,
-              paddingVertical: 12,
+              backgroundColor: gender === option ? COLORS.coral : MATERIALS.surface,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.md,
               alignItems: "center",
               borderWidth: 1.5,
-              borderColor: gender === option ? C.coral : C.peach,
+              borderColor: gender === option ? COLORS.coral : MATERIALS.hairline,
             }}
           >
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: gender === option ? "#FFF" : C.warmBrown,
-              }}
+              style={[
+                TYPE.callout,
+                { fontWeight: "600", color: gender === option ? "#FFF" : COLORS.warmBrown },
+              ]}
             >
               {option}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
     </View>
@@ -350,7 +338,7 @@ export default function EditMedicalProfileModal({
         style={{
           fontSize: 13,
           fontWeight: "600",
-          color: C.warmBrown,
+          color: COLORS.warmBrown,
           marginBottom: 6,
         }}
       >
@@ -358,29 +346,28 @@ export default function EditMedicalProfileModal({
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["lbs", "kg"].map((unit) => (
-          <TouchableOpacity
+          <PressableScale
             key={unit}
             onPress={() => setWeightUnit(unit)}
             style={{
               flex: 1,
-              backgroundColor: weightUnit === unit ? C.coral : C.card,
-              borderRadius: 12,
-              paddingVertical: 12,
+              backgroundColor: weightUnit === unit ? COLORS.coral : MATERIALS.surface,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.md,
               alignItems: "center",
               borderWidth: 1.5,
-              borderColor: weightUnit === unit ? C.coral : C.peach,
+              borderColor: weightUnit === unit ? COLORS.coral : MATERIALS.hairline,
             }}
           >
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: weightUnit === unit ? "#FFF" : C.warmBrown,
-              }}
+              style={[
+                TYPE.callout,
+                { fontWeight: "600", color: weightUnit === unit ? "#FFF" : COLORS.warmBrown },
+              ]}
             >
               {unit}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
     </View>
@@ -392,7 +379,7 @@ export default function EditMedicalProfileModal({
         style={{
           fontSize: 13,
           fontWeight: "600",
-          color: C.warmBrown,
+          color: COLORS.warmBrown,
           marginBottom: 6,
         }}
       >
@@ -401,33 +388,35 @@ export default function EditMedicalProfileModal({
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["Spayed", "Neutered", "Not spayed/neutered", "Unknown"].map(
           (option) => (
-            <TouchableOpacity
+            <PressableScale
               key={option}
               onPress={() => setSpayedNeuteredStatus(option)}
               style={{
                 flex: 1,
                 backgroundColor:
-                  spayedNeuteredStatus === option ? C.coral : C.card,
-                borderRadius: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 8,
+                  spayedNeuteredStatus === option ? COLORS.coral : MATERIALS.surface,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.md,
+                paddingHorizontal: SPACING.sm,
                 alignItems: "center",
                 borderWidth: 1.5,
                 borderColor:
-                  spayedNeuteredStatus === option ? C.coral : C.peach,
+                  spayedNeuteredStatus === option ? COLORS.coral : MATERIALS.hairline,
               }}
             >
               <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "600",
-                  color: spayedNeuteredStatus === option ? "#FFF" : C.warmBrown,
-                  textAlign: "center",
-                }}
+                style={[
+                  TYPE.footnote,
+                  {
+                    fontWeight: "600",
+                    color: spayedNeuteredStatus === option ? "#FFF" : COLORS.warmBrown,
+                    textAlign: "center",
+                  },
+                ]}
               >
                 {option}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ),
         )}
       </View>
