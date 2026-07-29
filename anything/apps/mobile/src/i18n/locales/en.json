@@ -66,7 +66,8 @@
     "tapToDrop": "Tap the map to drop a pin",
     "pinned": "Pinned",
     "noLocation": "No location set",
-    "addressPlaceholder": "Enter an address"
+    "addressPlaceholder": "Enter an address",
+    "addressNotFound": "Couldn't find that address"
   },
   "transport": {
     "trackTitle": "Live trip",

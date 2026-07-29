@@ -325,9 +325,51 @@ calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
   login is byte-for-byte unchanged. Placeholders + the callback URL pattern are documented in `.env.example`.
 
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
-Set up a MercadoPago marketplace app (OAuth client) + a Binance Pay merchant account, set the env keys
-(see the commented block added in 2.3), register webhook/redirect URLs, and connect each provider's
-account. Until then, every checkout shows a clean "payments not configured" message (nothing crashes).
+Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
+surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a
+clean "payments not configured" message; nothing crashes. **N5 (2026-07-29) re-audited every paid flow
+shipped since 2.3 (transport, Rx fulfillment, insurance, subscriptions, shop) and confirmed all of them
+degrade clean — they all funnel through `anything/apps/web/src/app/api/utils/payments/index.js`, which
+gates on config before ever reaching a rail's adapter.**
+
+### 1. MercadoPago (fiat rail — do this one first, it's the primary rail)
+1. Create a MercadoPago **marketplace app** (an OAuth client, not a personal account) at
+   https://www.mercadopago.com/developers — this lets each provider connect their own account and
+   MercadoPago auto-splits the platform commission at checkout (`marketplace_fee`).
+2. From the app's credentials page, copy the **Client ID** and **Client Secret**.
+3. Register the OAuth redirect/callback URL with the app:
+   `https://<your-production-domain>/api/providers/<id>/payment-accounts/mercadopago/callback`
+   (the `<id>` is per-provider — MercadoPago's app config just needs the domain + path pattern allowed).
+4. Register the webhook URL: `https://<your-production-domain>/api/payments/webhooks/mercadopago`
+   — generate a webhook secret in the MercadoPago dashboard when you set this up.
+5. Set on the **web** deploy (Railway): `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_WEBHOOK_SECRET`,
+   `MP_REDIRECT_URI` (the exact callback URL from step 3, without the `<id>` — the route fills that in
+   per-request). Exact names + a commented example are already in `anything/apps/web/.env.example`.
+6. Each provider then connects their own MercadoPago account from their dashboard (Sales/Payouts —
+   ticket 2.69), which starts the OAuth flow at `GET /api/providers/[id]/payment-accounts/mercadopago/connect`.
+
+### 2. Binance Pay (crypto rail — optional, can go live after MercadoPago or skip)
+1. Create a **Binance Pay merchant account** at https://merchant.binance.com.
+2. Copy the **API Key** and **API Secret** from the merchant dashboard.
+3. Register the webhook URL: `https://<your-production-domain>/api/payments/webhooks/binance`.
+   (No OAuth redirect needed — Binance uses a single merchant API key, not per-provider connect.)
+4. Set on the web deploy: `BINANCE_PAY_API_KEY`, `BINANCE_PAY_API_SECRET`.
+
+### 3. Token-at-rest encryption key (required either way, ticket 2.16)
+Set `PAYMENTS_TOKEN_KEY` — a 32-byte key, hex or base64 — before either rail can persist a provider's
+access token. Without it, connecting a provider account fails clean (503) rather than storing a token
+in plaintext. Generate one with `openssl rand -hex 32`.
+
+### 4. Verify after setting keys
+1. Book one real low-value service (or add one shop item to cart) and confirm the checkout screen shows
+   a real MercadoPago/Binance checkout link instead of "payments not configured."
+2. Complete that one real payment and confirm the webhook lands — check `payments` table for a row
+   with `status = 'approved'` (MercadoPago) or watch server logs for the webhook receiver firing.
+3. If using MercadoPago, confirm the provider's connect flow completes (Sales/Payouts dashboard shows
+   the account as connected) before testing a booking on that provider's services.
+4. Confirm the subscription auto-charge cron (`POST /api/payments/subscriptions/run`, gated on
+   `CRON_SECRET` — see ACTION 3-adjacent go-live keys) picks up a due subscription once both `CRON_SECRET`
+   and payment keys are set.
 
 ## ⚙️ ACTION 3 — Pre-launch security
 Change the `pawpi_app` DB password (currently the placeholder `pawpi_app`) before real users — see the
@@ -401,6 +443,33 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
   - Apply to adopt (or foster, if the listing offers both), chat with the shelter, and try the payment/
     donate buttons — all should behave exactly as before, just with the new look.
   - Favorites and Applications tabs still list your saved dogs and past applications the same as before.
+
+### [ ] N1 — Address autofill on the shared map picker  ·  ticket/n1-address-autofill (2026-07-29)
+- **What shipped:** the shared Apple-Maps location picker (used by the emergency card,
+  transport, places, events, provider onboarding, and the walk picker) now turns a
+  dropped pin into a readable address automatically, and typing an address can drop the
+  pin for you. Drop or drag the pin → after it settles, the address field (where shown)
+  fills in with a short "street, city" automatically, and the label under the map shows
+  that address instead of raw coordinates. Type an address into the address field and
+  tap away / hit return → the map re-centers and drops the pin there; if nothing matches,
+  a small "Couldn't find that address" message appears instead of the app doing nothing
+  or crashing. Denied location permission or a miss on either direction just falls back
+  to the old manual pin-drop / manual-address-typing behavior — nothing new is required.
+  **No migration. Mobile-only, no new env keys.**
+- **NEEDS A DEVICE PASS** — jest mocks expo-location, so this needs a real network lookup:
+  - Open any screen with the location picker (e.g. Vet Record → Emergency Card, or
+    Transport, or Create Event) → drop a pin on a real street → within about a second the
+    address field/label fills in with a plausible street + city (not raw coordinates).
+  - Drag the pin to a new spot → the address updates again after it settles (not while
+    still dragging).
+  - Type a real address into the address field and hit return / tap elsewhere → the map
+    recenters and the pin moves there.
+  - Type gibberish ("asdkjhasdkjh") into the address field and tap away → a small
+    "Couldn't find that address" message shows, the app doesn't freeze or crash, and the
+    pin stays where it was.
+  - Turn off Location permission for the app → dropping a pin manually and typing an
+    address by hand both still work exactly as before (just no auto-address-fill from
+    the pin, since reverse geocoding degrades quietly).
 
 ### [ ] N2 — Retire PATCH /api/pets ownership-repair handler (docs cleanup)  ·  ticket/repair-handler-cleanup (2026-07-29)
 - **What shipped:** no app code changed this pass — the actual removal (the `PATCH` method, its
