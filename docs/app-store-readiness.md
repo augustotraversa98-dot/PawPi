@@ -68,11 +68,28 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 
 ## ☑️ ACCOUNT-GATED SUBMISSION CHECKLIST (needs the Apple Developer account / EAS / App Store Connect)
 
+> **Progress update (2026-07-28).** Items 1, 2 and 7 are **DONE**, and item 8 is partly done —
+> the Apple Developer account exists and EAS production builds reach **TestFlight (Build 6)**. A long
+> native splash-hang arc had to be fixed first (PRs #253, #255–#259: bundling/ITMS-90683, a hard splash
+> deadline + boot breadcrumbs, the release-only Anything-menu stub, a SIGABRT on first Fabric mount, and
+> the real paw-emblem icons). **All migrations are applied — the live DB is at 0068, nothing pending.**
+> The backend is live on **Railway** and the mobile app points at it, and the App Review **demo account
+> is seeded** (`demo@pawpi.app`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots.
+>
+> **Newly discovered blockers not in the original list:**
+> - `VIDEO_API_KEY` / `VIDEO_API_SECRET` — **telehealth join is broken** without real vendor credentials.
+>   Either supply them or hide the telehealth entry point before review.
+> - `/account/forgot-password` is a **frontend-only stub** — a reviewer can reach it. Needs a real reset
+>   flow (or removal) before submission.
+> - The demo seed writes only historical data, so **Health → Today renders empty**; add same-day entries
+>   before shooting screenshots.
+
 In rough order:
 
-1. **Apple Developer Program** enrollment; register the real **App ID / bundle identifier** + capabilities
-   (Sign in with Apple, Push Notifications, Maps, associated domains if any).
-2. **Signing & provisioning** (distribution cert + provisioning profile) — via EAS managed credentials.
+1. ✅ **Apple Developer Program** enrollment; register the real **App ID / bundle identifier** + capabilities
+   (Sign in with Apple, Push Notifications, Maps, associated domains if any). *Done — bundle id
+   `com.pawpi.app` is building and shipping to TestFlight.*
+2. ✅ **Signing & provisioning** (distribution cert + provisioning profile) — via EAS managed credentials.
 3. **App Store Connect app record:** name, subtitle, primary category (**Lifestyle**, no secondary), age
    rating. Values are finalized in `docs/app-store-connect-content.md` — paste from there.
 4. **Privacy "nutrition labels"** in App Store Connect — declare the data collected (account email/name,
@@ -83,15 +100,21 @@ In rough order:
 6. **Go-live backend env keys** (see `docs/test-backlog.md`): payment rails (MercadoPago/Binance),
    `GOOGLE_PLACES_API_KEY` (places 2.73), `CRON_SECRET` + an external scheduler (subscriptions 2.17 +
    food-recall ingest 2.75), `AUTH_*`. Each feature degrades cleanly until its key is set.
-7. **Pending Supabase migrations** `0056–0061` (Wave 7) hand-applied (`docs/test-backlog.md` ACTION 1).
-8. **EAS build** (production profile) → **TestFlight** → screenshots (**iPhone 6.9"/6.7" only — iPhone-only
+7. ✅ **Pending Supabase migrations** — *none remain.* The live DB is at **0068** (0056–0068 all applied;
+   verified directly against production 2026-07-28).
+8. 🟡 **EAS build** (production profile) → **TestFlight** → screenshots (**iPhone 6.9"/6.7" only — iPhone-only
    v1, no iPad**) → **export compliance** (`ITSAppUsesNonExemptEncryption: false` already set) → submit for
-   review.
+   review. *Build + TestFlight done (Build 6). Screenshots and the submit step remain — shoot them on the
+   seeded demo account, and add same-day Health entries first so Today isn't empty.*
 9. **App Review notes:** a demo account + a note that paid services are real-world (external payment per
-   3.1.3(e)), and how to reach the new account-deletion flow.
+   3.1.3(e)), and how to reach the new account-deletion flow. *Demo account is seeded and ready:
+   `demo@pawpi.app` (pet Mango) — password is in `apps/web/scripts/demo-seed/spec.mjs`.*
 
 ---
 
-_Last updated: 2026-06-28 — iPhone-only v1 (`supportsTablet: false`), Privacy Policy URL live, ASC content
-pack finalized. (Originally ticket 2.78, 2026-06-19.) Tests (web vitest + mobile jest + integration RLS)
-green at write._
+_Last updated: **2026-07-28** — checklist items 1/2/7 marked done and 8 partly done (TestFlight Build 6);
+all migrations applied (live DB at 0068); backend live on Railway; demo account seeded. Added three
+newly-found blockers (telehealth video keys, the forgot-password stub, the empty Health→Today screen).
+Previously: 2026-06-28 — iPhone-only v1 (`supportsTablet: false`), Privacy Policy URL live, ASC content
+pack finalized. (Originally ticket 2.78, 2026-06-19.) Tests green at write: **mobile jest 1169 · web
+vitest 1292 · integration 638**._

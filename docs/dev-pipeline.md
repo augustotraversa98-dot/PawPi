@@ -30,11 +30,35 @@ only the two decisions that are genuinely yours.
 
 1. **Pick the batch.** I propose a set of `READY`, `safe-parallel: yes` items from `roadmap.md`
    with a one-line plan each. You say which go in (or reprioritise). This is the "key decision."
-2. **Test on device + approve merge.** I can't physically use your phone. I hand you a tight
-   checklist per PR; you run it and say merge / fix. On merge I squash, update the roadmap, and
-   queue the next batch.
+2. **Test on device + approve merge.** I hand you a tight checklist per PR; you run it and say
+   merge / fix. On merge I squash, update the roadmap, and queue the next batch.
 
 I never merge without your OK. Draft PRs only until you clear gate 2.
+
+### ⚠️ Gate 2 has changed (2026-07-28) — I can now self-verify mobile UI
+
+Gate 2 used to exist because *"I can't physically use your phone."* That's no longer fully true:
+**Xcode is installed and a local iOS Simulator build works**, so I can drive the app, take
+screenshots, and verify a screen myself before asking you to look. The 2.77 redesign rollout was
+verified this way, screen by screen, with before/after screenshots in each PR.
+
+The loop for **JS-only** changes (styling, layout, most UI work) — no native rebuild needed, because
+the Debug build loads JS from Metro:
+
+1. `git checkout <branch>` — Metro serves the working tree, so the branch on disk *is* what runs.
+2. `curl -X POST http://localhost:8081/reload` (give it ~8s).
+3. Drive with the Simulator tools; capture with `xcrun simctl io <udid> screenshot <path>.png`.
+
+**What still needs you:**
+- **The login.** I don't type passwords. You sign in once per session; the session then survives
+  reloads *and* branch switches, so it's a one-time cost, not per screen.
+- **Native changes** (anything touching `ios/`, native modules, permissions, build config) — those
+  need a real rebuild, and release-only behaviour still needs TestFlight. Expo Go hides native
+  modules, so a whole class of crash only ever appears in the real build.
+- **Taste.** I can confirm a screen renders and nothing is lost; whether it *looks right* is yours.
+
+**Verify against seeded data, not an empty account** — an empty account makes a visual change
+unreviewable (half the cards render "nothing logged yet"). Seed first: `docs/demo-seed-plan.md`.
 
 ## How to run a batch
 
@@ -81,6 +105,22 @@ There is no live channel between Cowork and Code. The **repo is the channel**. T
   that are *merged to main*. Uncommitted planning docs are invisible to them — push them first.
 - Cowork-owned files (`PawPi_instructions.md`, the master plan) may have uncommitted Cowork edits —
   never clobber; append to the status block, and surface Cowork's WIP rather than overwriting it.
+
+> **Lesson from the 2026-06-20 → 07-28 stretch (read this).** The sync rule above was NOT followed:
+> Code kept shipping (video moments, legal/consent, the whole iOS build arc, the Railway production
+> deploy, a production login outage, the 2.77 redesign) while `roadmap.md` and the instructions
+> Snapshot stayed frozen at Wave 9. Cowork would have had a five-week-stale picture, and the docs had
+> drifted into being **actively wrong** — they listed migrations 0067/0068 as "PENDING" when both were
+> live. Both files were rebuilt on 2026-07-28.
+>
+> Two habits that prevent a repeat:
+> - **Update the bridge docs in the same commit as the work**, not "later" — later never comes.
+> - **Verify claims of record against reality rather than against another doc.** Migration status was
+>   settled by querying production directly; the docs had been copying a stale claim forward.
+>
+> Also note: work has been **Claude Code only** for several weeks, so a lot landed as direct commits
+> to `main` rather than as reviewed PRs (the whole 2026-07-28 production-hardening batch). Read
+> `git log`, not just the PR list, when reconstructing what happened.
 
 ## Communication rule (always, plain English)
 

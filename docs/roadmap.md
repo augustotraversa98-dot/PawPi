@@ -12,6 +12,46 @@ Phone-checkable items land in [`docs/test-backlog.md`](test-backlog.md). See
 derives this queue, builds, and writes status back here + into the instructions status block, then
 commits. Keep this file in step with the master plan every time priorities change.
 
+> **Note (2026-07-28):** the pipeline has been **Claude Code only** for several weeks — Cowork has not
+> been driving. This file and the `PawPi_instructions.md` Snapshot were both refreshed on 2026-07-28
+> so Cowork can pick the thread back up. Everything below the "CURRENT STATE" block is history.
+
+---
+
+## 📍 CURRENT STATE (2026-07-28)
+
+**The app is feature-complete for v1 and is in the App Store submission phase.** All build waves
+(Phase 1, Phase 2, Waves 3–9), the UGC-moderation phase, and the 2.77 visual redesign are merged.
+What remains is submission logistics and a handful of go-live keys — not feature work.
+
+- **Backend is LIVE in production** on Railway at `https://pawpi-production.up.railway.app`, serving
+  the mobile app. Database is Supabase.
+- **Live DB is at migration `0068`. NOTHING IS PENDING.** (Verified directly against production
+  2026-07-28: `legal_consents` + `app_record_consent` exist (0067) and `posts.media_type` /
+  `video_url` / `video_thumbnail_url` exist (0068). Older docs claiming "0067 PENDING" were stale.)
+- **Test baselines: mobile jest 1169 · web vitest 1292 · integration 638.**
+- **iOS:** builds and runs. TestFlight got to **Build 6**; a long native splash-hang arc was fixed
+  (#253, #255–#259). A **local iOS Simulator build now works on Augusto's Mac**, so mobile UI can be
+  self-verified without a device round-trip — see the Simulator loop notes in `docs/dev-pipeline.md`.
+- **Demo/App-Review account is seeded on PRODUCTION**: `demo@pawpi.app`, hero pet **Mango** (6 posts,
+  friends, a vet clinic, a full health/vet record). Re-runnable and resettable — `docs/demo-seed-plan.md`.
+  *All current production data is disposable test data and will be wiped once the app is accepted.*
+
+**What is actually blocking submission** (all need Augusto, none are code):
+1. `VIDEO_API_KEY` / `VIDEO_API_SECRET` — telehealth join is broken without real vendor credentials.
+2. `CRON_SECRET` + an external scheduler — subscription auto-charge, recall ingest, calendar sync.
+3. `/account/forgot-password` is still a **frontend-only stub** — needs a real reset flow decision.
+4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment) — each feature degrades
+   cleanly until set. Full list in `docs/test-backlog.md`.
+5. Pre-launch security: change the placeholder `pawpi_app` DB password.
+
+**Known code gaps deliberately left open** (tracked, not forgotten):
+- `src/app/service/adoption.jsx` is the ONE screen not restyled to Liquid Glass — see the 2.77 entry.
+- The Edit Medical Profile sex/gender selector never shows the stored value as selected (case
+  mismatch: renders `["Male","Female"]`, DB stores lowercase). Pre-existing, not from the redesign.
+- The demo seed writes only HISTORICAL data, so Health → Today renders empty. Add same-day entries
+  before shooting App Store screenshots.
+
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your
 phone test · `BLOCKED` has a predecessor · `IDEA` needs scoping.
@@ -296,9 +336,15 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
-## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T7) — ✅ COMPLETE (PRs #228–#234)
-> Migration `0065` PENDING hand-apply to Supabase + legal-URL hosting/env are Augusto's go-live steps
-> (see `docs/ugc-moderation-build-log.md` "Still required before App Store submission").
+## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T9) — ✅ COMPLETE (PRs #228–#237)
+> **Both go-live steps are now DONE:** migrations `0065` + `0066` were APPLIED + VERIFIED on Supabase
+> 2026-06-21, and the legal docs are hosted with their URL env vars set (#251). Nothing pending here.
+> Two follow-ups landed after T1–T7: **T8** (#236, migration **0066**) brings provider storefront posts
+> into the moderation surface, and **T9** (#237) adds the Terms gate to the mobile vet/business signup
+> entry point.
+>
+> ⚠️ The `ModerationMenu` components this phase added are an **App Store requirement**. The 2.77
+> redesign rebase nearly deleted several of them — never drop one while restyling.
 
 Plan: [`docs/phase-ugc-moderation-plan.md`](phase-ugc-moderation-plan.md) · build log:
 [`docs/ugc-moderation-build-log.md`](ugc-moderation-build-log.md). The minimum 1.2 safeguards to pass
@@ -329,16 +375,110 @@ review: EULA gate, content filter, report/flag, block, contact info. Order **T1 
 
 ---
 
+## 🎬 DAILY VIDEO MOMENTS + FEED LOCKED-STATE — ✅ COMPLETE (2026-06-22 → 06-28)
+
+Feed work that followed the UGC phase. Built in steps, each its own PR.
+
+- **Locked-feed tease** (#242 → #243 → #244, iterated on device feedback). The locked feed is a
+  BeReal-style tease: other pets' posts must read as *clearly present but heavily blurred* behind the
+  lock card, so the user is incentivised to post. Final form = floating card over a blurred, static
+  (non-scrolling) feed; the locked chrome was repainted to **warm solid, NOT glass** — the unlocked
+  feed keeps the Liquid Glass look. Obscure via blur + cream wash, never via opacity.
+- **Camera-only composer** (#245) — dropped the gallery/library path; moments must be captured now.
+- **Daily video moments** — **migration 0068** (#246, schema only: additive `posts.media_type` /
+  `video_url` / `video_thumbnail_url`) → daily video-eligibility gate + server-side enforcement (#247)
+  → mobile capture/upload/post (#248) → playback in PostCard + PostDetailModal (#249) → the
+  "lucky day" composer treatment (#250).
+
+## ⚖️ LEGAL + APP STORE SUBMISSION PREP — ✅ COMPLETE (2026-06-22 → 06-29)
+
+- **Consent ledger — migration 0067** (#238): `legal_consents`, append-only, keyed to `auth_users.id`
+  (user_profiles is lazily created, so there's no profile id at signup); admin-only SELECT, no owner
+  write policy — the ONLY writer is the `app_record_consent` SECURITY DEFINER helper.
+- **#239** removed the duplicate Terms gate from the welcome screen (the signup gate is the real one).
+  *Do not re-add a Terms footer to `welcome.jsx`.*
+- **Legal docs finalized + hosted** (#251, #241) on GitHub Pages from a separate public repo
+  (`pawpi-legal`); URL env vars set. This closed the App Store legal-URL blocker.
+- **Submission prep** (#252): iPhone-only v1 + finalized the App Store Connect content pack.
+- **Demo-seed tooling + screenshot storyboard** (#240) — `docs/demo-seed-plan.md`,
+  `docs/screenshot-storyboard.md`, runner at `apps/web/scripts/demo-seed/`.
+
+## 📱 iOS BUILD / TESTFLIGHT ARC — ✅ RESOLVED (2026-07-01 → 07-12)
+
+A long native-only failure chain; none of it was reproducible in Expo Go, which hides native modules.
+Worth reading before touching native config.
+
+- **#253** fixed the EAS iOS production build (bundling, ITMS-90683 permission strings, launch crash,
+  splash hang). **#255** pointed Build 6 at the live Railway backend + fixed uploads.
+- **#256** un-brickable startup: a hard splash deadline, boot breadcrumbs, and a production error
+  boundary — so a stalled launch always falls through to Welcome instead of hanging on the splash.
+  This is what renders the on-device **"Startup diagnostic"** line on `welcome.jsx`; keep those
+  boot-trace imports.
+- **#257** native pre-JS splash-hang fix (stub the Anything menu in release; soften the TurboModule
+  NSException patch). **#258** fixed a SIGABRT on first Fabric mount (a nil third-party component in
+  the codegen'd provider). **#259** shipped the real PawPi paw-emblem icons + coral splash.
+- **2.76 widgets stays parked** — see the native track below.
+
+## 🚀 WEB PRODUCTION DEPLOY + PRODUCTION HARDENING — ✅ LIVE (2026-07-02, hardened 2026-07-28)
+
+- **#254** made the web app production-deployable (`build` + `start` path; three prod-only traps fixed).
+  Deployed to **Railway**; the mobile app now talks to `https://pawpi-production.up.railway.app`.
+- **2026-07-28 production incident + hardening** (committed directly to `main`, not via PRs):
+  - **Login was fully broken in production** — the `Secure` cookie flag was mis-detected behind
+    Railway's TLS-terminating proxy, so CSRF/session cookies never stuck (`15966bd`, `3fb5140`,
+    `e827439`). The rule: check `x-forwarded-proto`, not `request.url`, which is plain http internally.
+  - **Uploads were broken** — request body limit raised 4.5mb → 50mb (`791f049`), and the
+    provider dashboard was still posting to the dead `/_create` host (`9bcaeba`).
+  - **Error-info disclosure** — stopped leaking raw errors to clients + fixed the transaction-escape
+    root cause (`669e41e`).
+  - From an 11-agent QA sweep of the API surface: unsafe JSON body parsing on 14 routes (`638d0c0`),
+    a lost-report visibility gap (resolved/hidden/blocked owner, `bfae4af`), petId/checkType input
+    validation (`888407c`), and leftover create.xyz crash-screen copy (`4b6f478`).
+- **#260 (2026-07-29) — mobile login bounce-back.** Sign-in stored a valid JWT and then dropped the
+  user straight back to Welcome. The global fetch wrapper read the token from the **wrong Keychain
+  service**: `expo-secure-store` derives `kSecAttrService` from `options.keychainService` and falls
+  back to `"app"` when omitted, so a bare `getItemAsync(authKey)` missed the token the auth store had
+  written under `anything-auth`. Every first-party request went out unauthenticated → 401 on
+  `/api/pets` → the EntryPoint gate correctly cleared the "expired" session. **This would have hit
+  every user on every login, and curl-based testing can never catch it (curl has no Keychain).**
+  Key + options now live in one shared module (`utils/auth/secureStore.js`); guard test
+  `src/__create/fetch.test.js`. Anything touching auth needs a real device/Simulator login pass.
+
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
 - **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**
   on draft **PR #187** (2026-06; mobile 979/979 + web suites green in CI; code dormant until the Apple
   Developer account lands ~2 days out). Used `@bacons/apple-targets`; added the `pawpi://` deep-link scheme;
   finish-checklist in `docs/native-widgets.md`. Phases 2 (Live Activity) + 3 (Apple Watch) are later PRs,
-  ⛔ after the account + Phase 1 merge (Phase 2's transport half soft-needs 2.70). **Held** while CC builds
-  Wave 7 (decided 2026-06).
-- **2.77 iOS 27 "Liquid Glass" redesign (cross-cutting).** Ticketed; **DO LAST**, after Wave 7 + 2.76 reach
-  a clean point — visual/motion only, foundation-first then small per-screen PRs.
+  ⛔ after the account + Phase 1 merge (Phase 2's transport half soft-needs 2.70). **Still HELD as of
+  2026-07-28** — PR #187 is the last open PR in the repo and remains a draft. The Apple Developer
+  account now exists (TestFlight reached Build 6), so this is unblocked whenever it's prioritised;
+  it just hasn't been picked up. Note it will need a rebase — `main` has moved a long way since June.
+- **2.77 iOS 27 "Liquid Glass" redesign (cross-cutting) — ✅ COMPLETE (merged 2026-07-28).**
+  Visual/motion only; the COLORS palette is unchanged. Foundation-first, then one screen-group PR each:
+  **#202** design-system + motion foundation → **#203** Feed (reference screen) → **#204** Health →
+  **#205** Vet Record → **#206** Services → **#207** Community → **#208** Messages/Notifications →
+  **#209** Profile/onboarding/auth. Design tokens live in `apps/mobile/src/constants/`
+  (`spacing`/`typography`/`elevation`/`motion`, barrel `theme.js`); primitives in
+  `apps/mobile/src/components/ui/` (`GlassSurface`, `Card`, `Sheet`, `PressableScale`, `Button`).
+  Every screen was verified in the iOS Simulator on the seeded demo account before merge.
+  - **⚠️ ONE DELIBERATE EXCLUSION — `src/app/service/adoption.jsx`** keeps its pre-redesign styling and
+    is the only un-restyled service screen. Its restyle was authored in June against the pre-2.86 file;
+    cherry-picking produced 7 conflict hunks where taking the restyle's side would have **reverted the
+    Wave 9 adoption browse work** (grid card variant, age·size·gender row, distance, "See more"). Needs
+    restyling fresh against current `main`.
+  - **Hazard worth knowing (it recurred on every conflicted file):** #204–#209 sat as drafts for ~40 days,
+    so each one tried to silently revert newer work — the `ModerationMenu` (Guideline 1.2, an App Store
+    requirement) on provider/events/forum/chat, the add-to-calendar buttons (2.80) on transport/events,
+    and on `welcome.jsx` **both** a Terms/Privacy footer that #239 had deliberately deleted **and** the
+    boot-trace "Startup diagnostic" line from the splash-hang work. All caught and preserved by a
+    per-file structural parity check (counts of `testID`, `useState`, `useQuery`, `onPress`, `<Text`,
+    `ModerationMenu`, `accessibilityLabel` must be identical to `main` — a pure reskin changes none).
+  - **Motion HARD RULE:** never gate content visibility on an entrance animation. An early Feed restyle
+    wrapped items in `entering={FadeInDown…}` (starts at opacity 0), reanimated-4 didn't reliably run it,
+    and later posts stayed invisible. All entrance builders were removed from `motion.js`.
+  - Shipped alongside: `Button` now defaults `accessibilityLabel` to `title`, so replacing a hand-rolled
+    `TouchableOpacity` with the shared primitive can't silently drop its screen-reader label.
 
 ---
 

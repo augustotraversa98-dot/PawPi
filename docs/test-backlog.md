@@ -75,7 +75,13 @@ content tables, banned_at, 7 DEFINER fns incl. the two T2 admin-queue helpers `a
 Both additive + idempotent (`CREATE OR REPLACE`; CHECK drop+recreate; ADD COLUMN IF NOT EXISTS). The live
 DB moves 0064 → 0065 → 0066; no UGC-moderation migrations remain pending.
 
-**⏳ Legal consent — migration 0067 PENDING hand-apply on Supabase.** Records Terms/Privacy acceptance
+**✅ Legal consent — migration 0067 APPLIED on Supabase** (confirmed 2026-07-28 by querying production
+directly: `legal_consents` exists and `app_record_consent` is present). **✅ 0068 (post video support)
+is APPLIED too** — `posts.media_type` / `video_url` / `video_thumbnail_url` all exist. **The live DB is
+at 0068 and NOTHING is pending.** The paragraph below is kept for its design rationale; treat its
+"PENDING" wording as historical.
+
+Records Terms/Privacy acceptance
 at account creation (POST `/api/legal/consent` → `app_record_consent` DEFINER → `legal_consents`). The
 web sign-up form now uses `redirect:false`, awaits the result, fires the consent POST (best-effort: one
 retry, then log + proceed — never blocks an already-created account), then redirects manually. Run

@@ -723,7 +723,39 @@ not a hand-maintained log here:
 - `ARCHITECTURE.md`, `supabase/SCHEMA_NOTES.md`, `docs/rls-hardening.md` — architecture / schema /
   RLS orientation (Code-maintained).
 
-### Snapshot (2026-06-18)
+### Snapshot (2026-07-28) — CURRENT
+
+**The app is feature-complete for v1 and is in the App Store submission phase.** Every build wave and
+both cross-cutting phases (UGC moderation, the 2.77 redesign) are merged. What remains is submission
+logistics + go-live keys, not feature work.
+
+- **Production is LIVE.** Web/API deployed to **Railway** (`https://pawpi-production.up.railway.app`),
+  database on Supabase, and the mobile app points at it.
+- **Live DB is at migration `0068` — NOTHING PENDING.** Verified directly against production
+  2026-07-28. (Docs elsewhere that still say "0067 PENDING" are stale; 0067 and 0068 are both applied.)
+- **Test baselines: mobile jest 1169 · web vitest 1292 · integration 638.**
+- **iOS builds and runs.** TestFlight reached **Build 6**; a long native splash-hang arc is fixed
+  (#253, #255–#259). A **local iOS Simulator build now works on this Mac**, so mobile UI is
+  self-verifiable — no device round-trip needed for visual checks.
+- **2.77 Liquid Glass redesign — ✅ COMPLETE** (#202–#209, merged 2026-07-28). One deliberate
+  exclusion: `service/adoption.jsx` keeps its old styling (its restyle would have reverted the Wave 9
+  adoption browse work).
+- **Demo/App-Review account seeded on PRODUCTION:** `demo@pawpi.app`, hero pet **Mango**. All current
+  production data is disposable test data, to be wiped once the app is accepted.
+
+**Blocking submission (all need Tats, none are code):** telehealth video vendor credentials
+(`VIDEO_API_KEY`/`SECRET`); `CRON_SECRET` + an external scheduler; `/account/forgot-password` is still
+a frontend-only stub needing a real reset decision; the remaining go-live keys; and changing the
+placeholder `pawpi_app` DB password.
+
+**Pipeline note:** work has been **Claude Code only** for several weeks — Cowork has not been driving.
+`docs/roadmap.md` was refreshed the same day and now carries a "CURRENT STATE" block plus the
+post-Wave-9 history (video moments, legal/consent, the iOS build arc, the Railway deploy + production
+hardening, and the redesign). Read that for detail.
+
+---
+
+### Snapshot (2026-06-18) — historical, superseded by the block above
 
 - **Phase 1 — DONE.** Rebuilt off Anything onto Supabase; **RLS is LIVE** (the app connects as the
   locked-down `pawpi_app` role; every data table is FORCE-RLS'd; identity tables are RLS-exempt).
@@ -863,9 +895,11 @@ not a hand-maintained log here:
   `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` (provider enrichment); `PAYMENTS_TOKEN_KEY`;
   `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (web provider-location pin, 2.81); `CRON_SECRET` + scheduler →
   `POST /api/providers/calendar/sync` daily (calendar import, 2.84).
-- **Pending migrations:** **0064** (calendar import, 2.84); confirm whether **0063** (Wave 8 calendar) is
-  already applied before applying 0064 — see the Wave 9 verify note above.
+- **Pending migrations: NONE.** ~~0064~~ — superseded. The live DB is at **0068** (0063–0068 all
+  applied; verified against production 2026-07-28).
 - **Pre-launch security:** change the placeholder `pawpi_app` DB password.
+- **Still-stub / broken surfaces:** `/account/forgot-password` is frontend-only; telehealth join fails
+  without the video-vendor keys.
 - **Device/browser test passes:** the accumulated "To test" entries in `docs/test-backlog.md` (provider
   passes deferred by choice; auth, native uploads, and the Wave 5 features still owe a device pass).
 - **Minor known cleanup:** the `wrongPets` debug query was removed in 2.78. The stray
