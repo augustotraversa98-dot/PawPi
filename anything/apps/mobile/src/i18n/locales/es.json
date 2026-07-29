@@ -66,7 +66,8 @@
     "tapToDrop": "Toca el mapa para colocar un pin",
     "pinned": "Fijado",
     "noLocation": "Sin ubicación",
-    "addressPlaceholder": "Escribe una dirección"
+    "addressPlaceholder": "Escribe una dirección",
+    "addressNotFound": "No se encontró esa dirección"
   },
   "transport": {
     "trackTitle": "Viaje en vivo",

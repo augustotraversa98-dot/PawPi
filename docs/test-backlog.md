@@ -378,6 +378,33 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ## To test
 
+### [ ] N1 — Address autofill on the shared map picker  ·  ticket/n1-address-autofill (2026-07-29)
+- **What shipped:** the shared Apple-Maps location picker (used by the emergency card,
+  transport, places, events, provider onboarding, and the walk picker) now turns a
+  dropped pin into a readable address automatically, and typing an address can drop the
+  pin for you. Drop or drag the pin → after it settles, the address field (where shown)
+  fills in with a short "street, city" automatically, and the label under the map shows
+  that address instead of raw coordinates. Type an address into the address field and
+  tap away / hit return → the map re-centers and drops the pin there; if nothing matches,
+  a small "Couldn't find that address" message appears instead of the app doing nothing
+  or crashing. Denied location permission or a miss on either direction just falls back
+  to the old manual pin-drop / manual-address-typing behavior — nothing new is required.
+  **No migration. Mobile-only, no new env keys.**
+- **NEEDS A DEVICE PASS** — jest mocks expo-location, so this needs a real network lookup:
+  - Open any screen with the location picker (e.g. Vet Record → Emergency Card, or
+    Transport, or Create Event) → drop a pin on a real street → within about a second the
+    address field/label fills in with a plausible street + city (not raw coordinates).
+  - Drag the pin to a new spot → the address updates again after it settles (not while
+    still dragging).
+  - Type a real address into the address field and hit return / tap elsewhere → the map
+    recenters and the pin moves there.
+  - Type gibberish ("asdkjhasdkjh") into the address field and tap away → a small
+    "Couldn't find that address" message shows, the app doesn't freeze or crash, and the
+    pin stays where it was.
+  - Turn off Location permission for the app → dropping a pin manually and typing an
+    address by hand both still work exactly as before (just no auto-address-fill from
+    the pin, since reverse geocoding degrades quietly).
+
 ### ▸ WAVE 8 device-test queue (2026-06-20) — calendar integration
 
 ### [ ] 2.80 — Calendar everywhere (bookings / transport / telehealth / events)  ·  ticket/calendar-everywhere (2026-06-20)
