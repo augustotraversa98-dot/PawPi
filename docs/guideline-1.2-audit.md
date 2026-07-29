@@ -1,5 +1,13 @@
 # App Store Guideline 1.2 (User-Generated Content) — Readiness Audit
 
+> ⚠️ **SUPERSEDED — historical document, not current status.** This audit is dated 2026-06-20 and
+> its verdict below ("0 of 4 safeguards met... will be rejected under 1.2 as-is") describes the app
+> **before** the UGC moderation work shipped. Tickets T1–T9 (report/block/hide/ban + EULA gate +
+> content filter + provider_post follow-up + business Terms gate) have since merged and all four
+> safeguards are live in production. For current status see the **UGC MODERATION** section of
+> [`docs/roadmap.md`](roadmap.md). The audit body below is kept for its historical/design value —
+> do not read it as describing the app today.
+
 **Date:** 2026-06-20 · **Scope:** AUDIT ONLY — no source files changed, no migrations added.
 **Schema baseline:** migrations through `0064` (applied + verified on Supabase).
 
