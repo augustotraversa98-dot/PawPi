@@ -22,6 +22,7 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 | Privacy / Terms links in-app | 5.1.1 | Added a config slot (`src/constants/legal.js`, `EXPO_PUBLIC_PRIVACY_POLICY_URL` / `EXPO_PUBLIC_TERMS_URL`) and wired the welcome-screen "Terms & Privacy Policy" line to open them when set (degrades cleanly to plain text until the URLs are supplied). `anything/apps/mobile/src/app/welcome.jsx`. **LIVE (2026-06-28):** docs finalized + hosted; the URL env vars are now set (mobile `EXPO_PUBLIC_*`, web `NEXT_PUBLIC_*`), so the links are no longer no-ops. See FLAGGED #2 for the live URLs. |
 | Placeholder / no-op buttons removed | 2.1 / 2.3.1 | Wired two "coming soon" no-ops to real functionality: the **Weight-entry delete** button now calls a new owner-scoped `DELETE /api/health/weight-logs?id=` (with a destructive confirm); the **Change Photo** button on Profile Edit now opens the image picker and feeds the existing upload-on-save path (it was an `Alert("coming soon")`). `WeightModal.jsx`, `profile-edit.jsx`, `api/health/weight-logs/route.js`. |
 | In-app account deletion | 5.1.1(v) | **Added** (migration 0062 + `DELETE /api/account`): Settings → "Delete account" → two-step destructive confirm → `delete_my_account()` SECURITY DEFINER irreversibly deletes the caller's account + all owner-scoped data (auth→profile→pets→data cascade; the no-cascade `health_medical_care_logs` is cleared first), then the client clears its session and returns to welcome. Self-only (keys off `current_app_user_id()`); harness-proven (FK-clean cascade + another account untouched). Distinct from "Reset App Data" (local logout). |
+| `PATCH /api/pets` repair handler retired | 2.3.1 | The legacy owner-id repair endpoint (dead under RLS — reads are already scoped to the profile id, so its old `WHERE owner_user_id = <auth id>` lookup could never match a row) is fully removed: no `PATCH` method left on `pets/route.js`, the mobile caller `RepairPetsButton.jsx` and its call site deleted, and the `usePetProfile` auto-repair call removed. `anything/apps/web/src/app/api/pets/route.js`. |
 
 ### Verified already-compliant (no change needed)
 - **Sign in with Apple parity (4.8 / 5.1.1).** `SocialSignInButtons.jsx` renders **both** Apple and Google,
@@ -58,12 +59,8 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
    account-gated:** set the Privacy Policy URL in the App Store Connect metadata at submission (see the
    account-gated checklist below).
 3. **`com.pawpi.app` bundle identifier is a placeholder.** Confirm/replace with the real registered App ID.
-4. **`PATCH /api/pets` repair handler.** A historical owner-id repair endpoint (`pets/route.js`), still
-   invoked best-effort by `usePetProfile.js`. Not user-facing and harmless, but it is debug/maintenance
-   code — consider retiring it in a later cleanup once the data is confirmed clean (left in place to avoid
-   regressing the repair call).
-5. **App display name / branding.** Set to "PawPi" — confirm the final App Store name + subtitle.
-6. **Support URL (required for submission). ✅ CONTENT LIVE, DOMAIN GAP NOTED (2026-07-29).** The
+4. **App display name / branding.** Set to "PawPi" — confirm the final App Store name + subtitle.
+5. **Support URL (required for submission). ✅ CONTENT LIVE, DOMAIN GAP NOTED (2026-07-29).** The
    support page (`docs/legal/support.md`/`.html` — now tracked in-repo as the source) is **live and
    returns HTTP 200** at **https://augustotraversa98-dot.github.io/pawpi-legal/support** (same public
    `pawpi-legal` repo + GitHub Pages mechanism as Privacy/Terms; published 2026-06-29, predates this

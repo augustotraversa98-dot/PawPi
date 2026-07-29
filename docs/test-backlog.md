@@ -370,6 +370,9 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
   (disabled → clean 410, no DB) + its own debug spam stripped. Left as a **DRAFT PR** for Augusto since
   it changes the endpoint's prod behavior. **⚠️ FOLLOW-UP:** its mobile caller `RepairPetsButton.jsx`
   lives in open redesign PR #209 (Profile) — remove the button + this handler together once #209 lands.
+  **✅ RESOLVED (PR #225):** #209 merged, unblocking both sides — the `PATCH` method, its
+  `ENABLE_PET_OWNERSHIP_REPAIR` gate, `RepairPetsButton.jsx`, and the `usePetProfile` auto-repair call
+  are all fully removed; no gate, no dead endpoint. `docs/app-store-readiness.md` FLAGGED item moved to FIXED.
 - **Hardening:** none required — every deepened test passed as written; the DEFINER safe-paths, RLS
   isolation, idempotency, and clean-degrade paths all behave correctly. No server-side gap surfaced.
 - **No migration** introduced by this pass. (Next free number stays **0063** if one is ever needed.)
@@ -377,6 +380,18 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 ---
 
 ## To test
+
+### [ ] N2 — Retire PATCH /api/pets ownership-repair handler (docs cleanup)  ·  ticket/repair-handler-cleanup (2026-07-29)
+- **What shipped:** no app code changed this pass — the actual removal (the `PATCH` method, its
+  `ENABLE_PET_OWNERSHIP_REPAIR` gate, the mobile `RepairPetsButton.jsx` component and its call site, and
+  the `usePetProfile` auto-repair call) had already landed and merged to `main` in an earlier pass
+  (PR #225). This ticket closes the paper trail: `docs/app-store-readiness.md` FLAGGED item #4
+  ("`PATCH /api/pets` repair handler") moved to the FIXED table, the stale `RepairPetsButton.jsx`
+  reference in `ARCHITECTURE.md`'s auth-id inventory removed, and the historical `docs/test-backlog.md`
+  entry for the DRAFT pass annotated resolved.
+- **Nothing to check on device** — no runtime behavior changed (the endpoint has returned no `PATCH`
+  method, and the button hasn't existed, since PR #225). Confirmed by grep: zero remaining references to
+  `RepairPetsButton` or a `PATCH` repair handler anywhere in the app code.
 
 ### ▸ WAVE 8 device-test queue (2026-06-20) — calendar integration
 
