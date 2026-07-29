@@ -84,6 +84,8 @@ Success Message
 **Actions:**
 - "Create account" → Opens auth WebView in signup mode
 - "Log in" → Opens auth WebView in signin mode
+- "Forgot password?" → Opens auth WebView in forgot-password mode (added 2026-07-28; before this it
+  was only reachable via the link inside the sign-in page, which a locked-out owner had to guess)
 - "Access for vets & businesses" → `/vet-business-access`
 
 ---
@@ -151,11 +153,26 @@ Located in `/apps/web/src/app/account/`:
 - "Forgot password?" link
 - Redirects to main app or onboarding based on pet profile status
 
-#### **Forgot Password** (`/account/forgot-password`)
-- Email input
-- "Send reset link" button
-- Success message: "Check your email for reset instructions"
-- Note: Password reset API endpoint needs to be implemented (placeholder)
+#### **Forgot Password** (`/account/forgot-password`) — REAL (2026-07-28)
+- Email input → `POST /api/account/forgot-password`
+- Always the same "if an account exists for that email, we've sent a link" response — deliberately
+  uniform, so the endpoint can't be used to discover which addresses have accounts
+- Mints a **single-use, 30-minute** token (migration `0069`, stored only as a sha256 hash) and emails
+  a link to `/account/reset-password?token=…`
+- Reachable from the sign-in page **and** from the mobile Welcome screen's "Forgot password?" link
+  (`open({ mode: "forgot-password" })` — the auth modal maps `mode` straight onto `/account/<mode>`)
+- Needs `EMAIL_API_KEY` to actually deliver mail; until it's set the flow degrades cleanly and the
+  intended send is logged server-side
+
+#### **Set a new password** (`/account/reset-password?token=…`)
+- The target of the emailed link (opens in any browser — no deep link / associated domain needed)
+- New password + confirm, with the same live strength meter as sign-up (the shared 2.32
+  `passwordStrength` util, imported not duplicated)
+- `POST /api/account/reset-password` → validates the token (unused + unexpired), argon2-hashes the
+  password, burns the token **and** the account's other outstanding tokens + DB sessions
+- Every rejection (unknown / used / expired) returns one identical message
+- **Known limit:** sessions are JWT-based, so a JWT already issued to a signed-in device stays valid
+  until it expires
 
 #### **Logout** (`/account/logout`)
 - Confirmation screen
@@ -252,7 +269,7 @@ return <Redirect href="/(tabs)" />;
 - ✅ First-time users see Welcome screen
 - ✅ Users can create an account
 - ✅ Users can log in
-- ✅ Users can recover password (placeholder)
+- ✅ Users can recover password (real flow — token + email, see above)
 - ✅ Vets & businesses access exists as placeholder
 - ✅ New users continue to pet onboarding after account creation
 - ✅ Existing users go to main app if they have a pet profile
@@ -269,10 +286,10 @@ return <Redirect href="/(tabs)" />;
 - Patient/animal record management
 - Integration with user pet profiles
 
-### **Password Reset**
-- Implement password reset API endpoint
-- Email delivery service
-- Reset token generation and validation
+### ~~**Password Reset**~~ — DONE (2026-07-28)
+Built end to end: `POST /api/account/forgot-password` + `POST /api/account/reset-password`, the
+`password_reset_tokens` table (migration `0069`), and a vendor-agnostic email seam
+(`api/utils/email`, Resend by default) that degrades cleanly until `EMAIL_API_KEY` is set.
 
 ### **Social Login**
 - Google OAuth integration
@@ -328,7 +345,7 @@ Social Pet now has a complete, production-ready authentication flow:
 
 1. ✅ **Welcome screen** for first-time users
 2. ✅ **Email/password authentication** via WebView
-3. ✅ **Password recovery** (placeholder ready for implementation)
+3. ✅ **Password recovery** — real single-use token + emailed reset link
 4. ✅ **Pet profile onboarding** after account creation
 5. ✅ **Smart routing** based on auth + onboarding status
 6. ✅ **Vet/business access placeholder** for future expansion

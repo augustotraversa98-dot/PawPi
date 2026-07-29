@@ -733,7 +733,14 @@ logistics + go-live keys, not feature work.
   database on Supabase, and the mobile app points at it.
 - **Live DB is at migration `0068` — NOTHING PENDING.** Verified directly against production
   2026-07-28. (Docs elsewhere that still say "0067 PENDING" are stale; 0067 and 0068 are both applied.)
-- **Test baselines: mobile jest 1169 · web vitest 1292 · integration 638.**
+- **Test baselines: mobile jest 1170 · web vitest 1367 · integration 663.**
+- **Self-service password reset — ✅ BUILT (2026-07-28).** `/account/forgot-password` is no longer a
+  stub. Full flow: request a link → single-use 30-minute token (**migration 0069**, ⏳ the one pending
+  migration) → emailed link → a "set a new password" screen → the shared 2.32 strength rule + argon2 →
+  the token and the account's other outstanding tokens/DB sessions are burned. Existing login and other
+  users' sessions are untouched. Needs from Tats: ~~apply 0069~~ ✅ done, set `EMAIL_API_KEY` (+ `EMAIL_FROM=PawPi <no-reply@pawpi.info>` — the sending domain is **pawpi.info**, `pawpi.app` is NOT ours;
+  Resend by default) and `APP_BASE_URL`. Until the email key is set it degrades cleanly but no mail is
+  delivered.
 - **iOS builds and runs.** TestFlight reached **Build 6**; a long native splash-hang arc is fixed
   (#253, #255–#259). A **local iOS Simulator build now works on this Mac**, so mobile UI is
   self-verifiable — no device round-trip needed for visual checks.
@@ -744,9 +751,9 @@ logistics + go-live keys, not feature work.
   production data is disposable test data, to be wiped once the app is accepted.
 
 **Blocking submission (all need Tats, none are code):** telehealth video vendor credentials
-(`VIDEO_API_KEY`/`SECRET`); `CRON_SECRET` + an external scheduler; `/account/forgot-password` is still
-a frontend-only stub needing a real reset decision; the remaining go-live keys; and changing the
-placeholder `pawpi_app` DB password.
+(`VIDEO_API_KEY`/`SECRET`); `CRON_SECRET` + an external scheduler; **applying migration 0069 + setting
+`EMAIL_API_KEY`/`APP_BASE_URL`** so password-reset emails actually go out (the code is built); the
+remaining go-live keys; and changing the placeholder `pawpi_app` DB password.
 
 **Pipeline note:** work has been **Claude Code only** for several weeks — Cowork has not been driving.
 `docs/roadmap.md` was refreshed the same day and now carries a "CURRENT STATE" block plus the
@@ -894,12 +901,15 @@ hardening, and the redesign). Read that for detail.
   external scheduler (subscription auto-charge); the video-vendor keys (telehealth);
   `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` (provider enrichment); `PAYMENTS_TOKEN_KEY`;
   `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (web provider-location pin, 2.81); `CRON_SECRET` + scheduler →
-  `POST /api/providers/calendar/sync` daily (calendar import, 2.84).
-- **Pending migrations: NONE.** ~~0064~~ — superseded. The live DB is at **0068** (0063–0068 all
-  applied; verified against production 2026-07-28).
+  `POST /api/providers/calendar/sync` daily (calendar import, 2.84); **`EMAIL_API_KEY` (+ `EMAIL_FROM` on **pawpi.info**)
+  and `APP_BASE_URL`** (password-reset email — without them the flow runs but no link is delivered).
+- **Pending migrations: `0069_password_reset_tokens.sql`.** The live DB is at **0068** (0063–0068 all
+  applied; verified against production 2026-07-28); 0069 landed after that check and is harness-proven,
+  additive, and touches no existing table's RLS. Apply it, then run `supabase/verify_0069.sql`.
 - **Pre-launch security:** change the placeholder `pawpi_app` DB password.
-- **Still-stub / broken surfaces:** `/account/forgot-password` is frontend-only; telehealth join fails
-  without the video-vendor keys.
+- **Still-stub / broken surfaces:** telehealth join fails without the video-vendor keys.
+  (~~`/account/forgot-password` is frontend-only~~ — built 2026-07-28; it now needs migration 0069 +
+  `EMAIL_API_KEY`/`APP_BASE_URL`, not code.)
 - **Device/browser test passes:** the accumulated "To test" entries in `docs/test-backlog.md` (provider
   passes deferred by choice; auth, native uploads, and the Wave 5 features still owe a device pass).
 - **Minor known cleanup:** the `wrongPets` debug query was removed in 2.78. The stray

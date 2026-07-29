@@ -36,6 +36,14 @@ export default function WelcomeScreen() {
     open({ mode: "signin" });
   };
 
+  // Password recovery runs on the same web surface as sign-in/sign-up: the auth modal builds
+  // `${baseURL}/account/${mode}`, so this opens the real /account/forgot-password screen (backed by
+  // POST /api/account/forgot-password). Until now that screen was only reachable via the link on
+  // the sign-in page — an owner who couldn't get past login had to guess it was in there.
+  const handleForgotPassword = () => {
+    open({ mode: "forgot-password" });
+  };
+
   const handleVetAccess = () => {
     router.push("/vet-business-access");
   };
@@ -126,6 +134,23 @@ export default function WelcomeScreen() {
             size="lg"
             onPress={handleLogin}
           />
+
+          {/* Forgot password */}
+          <PressableScale
+            onPress={handleForgotPassword}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password?"
+            style={{ alignSelf: "center", paddingVertical: SPACING.sm }}
+          >
+            <Text
+              style={[
+                TYPE.subhead,
+                { color: COLORS.mutedBrown, textDecorationLine: "underline" },
+              ]}
+            >
+              Forgot password?
+            </Text>
+          </PressableScale>
         </View>
 
         {startupDiagnostic ? (

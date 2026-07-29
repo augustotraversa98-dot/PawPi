@@ -1,5 +1,15 @@
 import { useState } from "react";
 
+// Forgot password — step 1 of the self-service reset.
+//
+// This screen used to be a stub: a setTimeout that showed "check your email" with no backend at
+// all. It now posts to /api/account/forgot-password, which always answers with the same generic
+// message whether or not the address has an account — so this screen must NOT try to be more
+// helpful than that. "We couldn't find that email" here would undo the whole point of the uniform
+// server response and hand out an account-existence oracle.
+//
+// Reachable on mobile through the auth WebView (welcome → "Forgot password?", and the link on the
+// sign-in page) — this page is the mobile surface too, exactly like sign-in and sign-up.
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [success, setSuccess] = useState(false);
@@ -8,21 +18,35 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    if (!email) {
+    if (!email.trim()) {
       setError("Please enter your email address");
-      setLoading(false);
       return;
     }
 
-    // TODO: Implement password reset API endpoint
-    // For now, just show success message
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/account/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+
       setSuccess(true);
+    } catch {
+      setError(
+        "Couldn't reach the server. Check your connection and try again.",
+      );
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   if (success) {
@@ -33,9 +57,14 @@ export default function ForgotPasswordPage() {
           <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
             Check your email
           </h1>
-          <p className="mb-8 text-[#7A6254]">
-            We've sent password reset instructions to{" "}
-            <span className="font-semibold">{email}</span>
+          <p className="mb-4 text-[#7A6254]">
+            If an account exists for{" "}
+            <span className="font-semibold">{email.trim()}</span>, we've sent a
+            link to reset your password.
+          </p>
+          <p className="mb-8 text-sm text-[#7A6254]">
+            The link works once and expires in 30 minutes. Don't see it? Check
+            your spam folder.
           </p>
           <a
             href="/account/signin"

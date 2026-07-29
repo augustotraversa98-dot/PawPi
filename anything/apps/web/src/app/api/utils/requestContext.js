@@ -21,6 +21,43 @@ import sql, { getActiveTx, runWithTx } from './sql';
 import { resolveUserId } from './currentUser';
 
 /**
+ * Run `fn` inside a SAVEPOINT on the active request transaction, so a query error
+ * inside it CANNOT poison the surrounding transaction.
+ *
+ * Why this exists: a failed query aborts the whole Postgres transaction. A handler
+ * that catches the error and returns its own clean Response still loses — the
+ * implicit COMMIT at the end of `sql.begin` then fails, and withRequestContext's
+ * catch below converts that into a blanket 500, discarding whatever the handler
+ * decided to return. For most routes a 500 is the right answer anyway. For a route
+ * whose RESPONSE SHAPE IS THE SECURITY PROPERTY it is not: `/api/account/forgot-password`
+ * must answer identically whether or not the address has an account, and its
+ * token-minting step only runs for accounts that EXIST — so a failure there would
+ * mean 500 for real users and 200 for everyone else, i.e. a working
+ * account-existence oracle built out of an error path.
+ *
+ * Wrapping the fallible work in a savepoint means a failure rolls back only to the
+ * savepoint; the outer transaction stays committable and the handler's own response
+ * is what the client actually receives.
+ *
+ * Errors are RE-THROWN — this controls transaction scope, not error handling. The
+ * caller still needs its own try/catch. Outside a request transaction (unit tests
+ * with a mocked `sql`, or an unwrapped caller) there is nothing to protect and `fn`
+ * runs directly, so behaviour is unchanged.
+ */
+export async function withSavepoint(fn) {
+  const tx = getActiveTx();
+  if (!tx || typeof tx.savepoint !== 'function') {
+    return fn();
+  }
+  // runWithTx REBINDS the async-local handle to the savepoint, so every `sql\`…\`` inside `fn`
+  // is issued on it. This is load-bearing, not tidiness: leaving the outer transaction bound
+  // means porsager's ROLLBACK TO SAVEPOINT does not recover the connection, the outer COMMIT
+  // still fails, and the savepoint buys nothing (verified against real Postgres — the wrapper
+  // was landing a 500 over an already-handled error until the rebind was added).
+  return tx.savepoint((sp) => runWithTx(sp, fn));
+}
+
+/**
  * Set the transaction-local `app.current_user_id` GUC on the active request
  * transaction. No-op when called outside a request context (no active tx).
  * The value is bound as a text parameter (set_config's 2nd arg is text).
