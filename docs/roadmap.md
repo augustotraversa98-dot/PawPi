@@ -45,8 +45,10 @@ What remains is submission logistics and a handful of go-live keys — not featu
 3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28).** The full reset
    flow now exists end to end: forgot-password → single-use 30-minute token (migration **0069**) →
    emailed link → "set a new password" screen → `/api/account/reset-password`. Two things left for
-   Augusto: **apply migration 0069**, and set **`EMAIL_API_KEY`** (+ `EMAIL_FROM`; Resend by default)
-   plus **`APP_BASE_URL`** in production. Until the email key is set the flow degrades cleanly — every
+   Augusto: **apply migration 0069** ✅ done, and set **`EMAIL_API_KEY`** (+
+   `EMAIL_FROM=PawPi <no-reply@pawpi.info>`; Resend, sending domain **pawpi.info** — `pawpi.app` is
+   NOT ours). **`APP_BASE_URL`** ✅ already set on Railway to the production URL.
+   Until the email key is set the flow degrades cleanly — every
    screen behaves identically and the server logs the intended send — but no email actually goes out,
    so the reset can't complete. Details + device checklist in `docs/test-backlog.md`.
 4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment, **email**) — each feature

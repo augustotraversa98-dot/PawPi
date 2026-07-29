@@ -738,7 +738,7 @@ logistics + go-live keys, not feature work.
   stub. Full flow: request a link → single-use 30-minute token (**migration 0069**, ⏳ the one pending
   migration) → emailed link → a "set a new password" screen → the shared 2.32 strength rule + argon2 →
   the token and the account's other outstanding tokens/DB sessions are burned. Existing login and other
-  users' sessions are untouched. Needs from Tats: apply 0069, set `EMAIL_API_KEY` (+ `EMAIL_FROM`;
+  users' sessions are untouched. Needs from Tats: ~~apply 0069~~ ✅ done, set `EMAIL_API_KEY` (+ `EMAIL_FROM=PawPi <no-reply@pawpi.info>` — the sending domain is **pawpi.info**, `pawpi.app` is NOT ours;
   Resend by default) and `APP_BASE_URL`. Until the email key is set it degrades cleanly but no mail is
   delivered.
 - **iOS builds and runs.** TestFlight reached **Build 6**; a long native splash-hang arc is fixed
@@ -901,7 +901,7 @@ hardening, and the redesign). Read that for detail.
   external scheduler (subscription auto-charge); the video-vendor keys (telehealth);
   `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` (provider enrichment); `PAYMENTS_TOKEN_KEY`;
   `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (web provider-location pin, 2.81); `CRON_SECRET` + scheduler →
-  `POST /api/providers/calendar/sync` daily (calendar import, 2.84); **`EMAIL_API_KEY` (+ `EMAIL_FROM`)
+  `POST /api/providers/calendar/sync` daily (calendar import, 2.84); **`EMAIL_API_KEY` (+ `EMAIL_FROM` on **pawpi.info**)
   and `APP_BASE_URL`** (password-reset email — without them the flow runs but no link is delivered).
 - **Pending migrations: `0069_password_reset_tokens.sql`.** The live DB is at **0068** (0063–0068 all
   applied; verified against production 2026-07-28); 0069 landed after that check and is harness-proven,

@@ -87,8 +87,8 @@ describe("resolveAppOrigin", () => {
   });
 
   it("strips a trailing slash from APP_BASE_URL so links aren't doubled", () => {
-    process.env.APP_BASE_URL = "https://pawpi.app/";
-    expect(resolveAppOrigin(req("http://x/y"))).toBe("https://pawpi.app");
+    process.env.APP_BASE_URL = "https://pawpi.info/";
+    expect(resolveAppOrigin(req("http://x/y"))).toBe("https://pawpi.info");
   });
 
   it("falls back to the forwarded proto+host for local/LAN dev", () => {
@@ -113,14 +113,14 @@ describe("resolveAppOrigin", () => {
 
 describe("buildResetLink", () => {
   it("points at the reset page with the token in the query", () => {
-    expect(buildResetLink("https://pawpi.app", "tok123")).toBe(
-      "https://pawpi.app/account/reset-password?token=tok123",
+    expect(buildResetLink("https://pawpi.info", "tok123")).toBe(
+      "https://pawpi.info/account/reset-password?token=tok123",
     );
   });
 
   it("URL-encodes the token so it survives the round trip", () => {
-    expect(buildResetLink("https://pawpi.app", "a+b/c=")).toBe(
-      "https://pawpi.app/account/reset-password?token=a%2Bb%2Fc%3D",
+    expect(buildResetLink("https://pawpi.info", "a+b/c=")).toBe(
+      "https://pawpi.info/account/reset-password?token=a%2Bb%2Fc%3D",
     );
   });
 });

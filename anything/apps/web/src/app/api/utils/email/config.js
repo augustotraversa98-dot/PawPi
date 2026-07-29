@@ -23,9 +23,12 @@ export function emailConfig() {
   return {
     provider,
     apiKey,
-    // A verified sender on the vendor account. Falls back to a PawPi-domain address so a
-    // half-configured deploy fails loudly at the vendor rather than silently sending as someone else.
-    from: process.env.EMAIL_FROM || "PawPi <no-reply@pawpi.app>",
+    // A verified sender on the vendor account. The fallback is on **pawpi.info** — the domain
+    // PawPi actually owns and the one verified in Resend (SPF on send.pawpi.info + the
+    // resend._domainkey DKIM record). Do NOT "correct" this to pawpi.app: that domain is not
+    // ours, so the vendor would reject every send as an unverified sender and the whole
+    // password-reset flow would go quiet with EMAIL_API_KEY correctly set.
+    from: process.env.EMAIL_FROM || "PawPi <no-reply@pawpi.info>",
     baseUrl: process.env.EMAIL_API_BASE_URL || "https://api.resend.com",
   };
 }

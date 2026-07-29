@@ -101,8 +101,15 @@ sessions belonging to anyone else, and the 2.32 rules are all untouched.
   `supabase/verify_0069.sql` — every row should read PASS. Additive: one new table + two DEFINER fns,
   **no existing table's RLS is touched**.
 - ⚙️ **GO-LIVE (Tats, when ready) — `EMAIL_API_KEY`** (+ `EMAIL_FROM`, optional `EMAIL_PROVIDER` /
-  `EMAIL_API_BASE_URL`; template in `anything/apps/web/.env.example`). Default vendor is **Resend** —
-  create an API key and verify the sending domain. **Until the key is set the flow degrades cleanly**:
+  `EMAIL_API_BASE_URL`; template in `anything/apps/web/.env.example`). Default vendor is **Resend**.
+  **The sending domain is `pawpi.info`** — the domain PawPi actually owns (`pawpi.app` is NOT ours;
+  don't let the demo-account addresses mislead you). DNS lives at **one.com**; Resend verification =
+  a TXT SPF on `send.pawpi.info` (`v=spf1 include:amazonses.com ~all`), an MX on `send.pawpi.info`
+  → `feedback-smtp.sa-east-1.amazonses.com`, and the `resend._domainkey` DKIM TXT. one.com shows a
+  generic "you may block one.com mail — add `_custspf.one.com`" banner on any SPF record: **ignore
+  it here** — this record is on a SUBDOMAIN (no effect on root `pawpi.info`, which has no SPF at
+  all), and `pawpi.info` mail is Google Workspace (`MX → smtp.google.com`), not one.com.
+  Set `EMAIL_FROM=PawPi <no-reply@pawpi.info>`. **Until the key is set the flow degrades cleanly**:
   no crash, no 500, the screens behave identically, and the server logs the intended send
   (`[email] EMAIL_API_KEY not set — skipping send to …`) — but **nobody actually receives an email**,
   so the reset can't complete. This is the one key that gates the feature being genuinely usable.

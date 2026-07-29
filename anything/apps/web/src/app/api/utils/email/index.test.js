@@ -16,7 +16,7 @@ const SAVED = {
 const MESSAGE = {
   to: "owner@example.com",
   subject: "Reset your PawPi password",
-  text: "https://pawpi.app/account/reset-password?token=secret-token",
+  text: "https://pawpi.info/account/reset-password?token=secret-token",
   html: "<a>link</a>",
 };
 
@@ -52,17 +52,17 @@ describe("emailConfig", () => {
     expect(emailConfig()).toEqual({
       provider: "resend",
       apiKey: "re_test",
-      from: "PawPi <no-reply@pawpi.app>",
+      from: "PawPi <no-reply@pawpi.info>",
       baseUrl: "https://api.resend.com",
     });
   });
 
   it("honours the overrides", () => {
     process.env.EMAIL_API_KEY = "re_test";
-    process.env.EMAIL_FROM = "PawPi <hi@pawpi.app>";
+    process.env.EMAIL_FROM = "PawPi <hi@pawpi.info>";
     process.env.EMAIL_API_BASE_URL = "https://api.example.test";
     const cfg = emailConfig();
-    expect(cfg.from).toBe("PawPi <hi@pawpi.app>");
+    expect(cfg.from).toBe("PawPi <hi@pawpi.info>");
     expect(cfg.baseUrl).toBe("https://api.example.test");
   });
 
@@ -122,7 +122,7 @@ describe("sendEmail — configured", () => {
     expect(init.headers.Authorization).toBe("Bearer re_test");
     const body = JSON.parse(init.body);
     expect(body.to).toEqual(["owner@example.com"]);
-    expect(body.from).toBe("PawPi <no-reply@pawpi.app>");
+    expect(body.from).toBe("PawPi <no-reply@pawpi.info>");
     expect(body.subject).toBe(MESSAGE.subject);
     expect(body.text).toBe(MESSAGE.text);
     expect(body.html).toBe(MESSAGE.html);

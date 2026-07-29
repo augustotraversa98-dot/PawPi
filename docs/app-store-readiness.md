@@ -84,7 +84,7 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 >   hand-apply) → emailed link → a "set a new password" screen → `/api/account/reset-password` (re-runs
 >   the shared 2.32 strength rule, argon2-hashes, burns the token + the account's other outstanding
 >   tokens and DB sessions). Mobile reaches it through the auth WebView, and Welcome now has its own
->   **Forgot password?** entry. Remaining for Augusto: apply 0069, set **`EMAIL_API_KEY`** (+ `EMAIL_FROM`;
+>   **Forgot password?** entry. Remaining for Augusto: ~~apply 0069~~ ✅ done, set **`EMAIL_API_KEY`** (+ `EMAIL_FROM` on the owned domain **pawpi.info**;
 >   Resend by default) and **`APP_BASE_URL`**. Until the email key is set the flow degrades cleanly — no
 >   crash, identical screens, the intended send is logged — but no mail is delivered, so a reviewer would
 >   still not receive a link. **Known limit:** Auth.js uses the JWT session strategy, so a JWT already
