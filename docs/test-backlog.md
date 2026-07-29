@@ -316,13 +316,26 @@ calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
   "not set up yet" message; nothing crashes).
 - `2.21` set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready (until then "Import from the web"
   shows a clean "not set up yet"; nothing auto-fills).
-- `2.46` **Social sign-in (Apple + Google)** — ADDITIVE + ENV-GATED, no migration. To turn ON: create a
-  Google OAuth 2.0 Web client + an Apple Services ID / Sign in with Apple key, register the callback URLs
-  `<origin>/api/auth/callback/google` and `<origin>/api/auth/callback/apple`, then set in the web `.env`:
-  `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET`, and `AUTH_APPLE_ID` + `AUTH_APPLE_SECRET` (the Apple secret is a
-  GENERATED client-secret JWT, not a static string). A provider appears ONLY when BOTH its keys are set;
-  until then the "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password
-  login is byte-for-byte unchanged. Placeholders + the callback URL pattern are documented in `.env.example`.
+- `2.46` **Social sign-in (Apple + Google)** — ADDITIVE + ENV-GATED, no migration. To turn ON:
+  - **Google:** create an OAuth 2.0 Web client in Google Cloud Console, register the callback URL
+    `<origin>/api/auth/callback/google`, set `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` in the web `.env`.
+  - **Apple:** in your Apple Developer account, create a **Services ID** (this becomes `AUTH_APPLE_ID`)
+    and a **Sign in with Apple key**, then download its **`.p8` file** — Apple only lets you download
+    this once, so save it somewhere durable. Register the callback URL
+    `<origin>/api/auth/callback/apple`. Then set THREE vars instead of a hand-built secret:
+    `AUTH_APPLE_TEAM_ID` (your Apple Developer Team ID, top-right of the portal), `AUTH_APPLE_KEY_ID`
+    (the key's ID, shown right after you create it), and `AUTH_APPLE_PRIVATE_KEY` (the full `.p8` file
+    contents, `-----BEGIN PRIVATE KEY-----` through `-----END PRIVATE KEY-----`, newlines intact). **N6
+    (2026-07-29) changed this from a hand-generated static JWT to a JWT the app builds and signs itself
+    on every request from this raw key material** — Apple caps a client-secret JWT's lifetime at ~6
+    months, so a pasted-in static JWT would have silently broken sign-in for Apple users once it expired
+    with no obvious cause; generating it fresh from the key material removes that failure mode entirely.
+    (The old static-JWT path via `AUTH_APPLE_SECRET` still works if you already have one, but you'd be
+    back to regenerating it by hand every ~6 months — the three-var path above is recommended.)
+  - A provider appears ONLY when its keys are fully set (`AUTH_GOOGLE_ID`+`SECRET` for Google;
+    `AUTH_APPLE_ID` + either the three Apple vars or `AUTH_APPLE_SECRET` for Apple); until then the
+    "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password login is
+    byte-for-byte unchanged. Full details in `.env.example`.
 
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
