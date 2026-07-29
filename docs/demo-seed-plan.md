@@ -13,7 +13,11 @@ are 3–5 MB originals.
 ## The demo account
 
 - A normal account created through the usual sign-up flow, then seeded.
-- Suggested login (use as the App Review demo account too): **demo@pawpi.app** / **[strong password]**.
+- Login (also the App Review demo account): **augusto+demo@pawpi.info** / the password in
+  `scripts/demo-seed/spec.mjs`. Plus-addressed on **pawpi.info** — the domain PawPi owns — so a
+  reset/verification email actually reaches the single real mailbox (`augusto@pawpi.info`). It was
+  `demo@pawpi.app` until 2026-07-29; that domain is NOT ours, so mail to it was silently
+  undeliverable — which the new password-reset flow would have exposed at App Review.
 - All seeded rows are owned by this account's `user_profiles.id` (`owner_user_id`). The vet clinic is
   a separate provider record (its own staff account or admin-owned, per the provider model).
 
@@ -118,7 +122,7 @@ Both are gated: the script refuses unless `SEED_DEMO=1` / `SEED_DEMO_RESET=1` is
 otherwise `DATABASE_URL` from `web/.env`, and prints the target host before writing —
 set `DEMO_DATABASE_URL` to a dev/staging project to keep production untouched.
 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (already in `web/.env`) are required for
-the image uploads. After a successful seed the script prints the login (`demo@pawpi.app`).
+the image uploads. After a successful seed the script prints the login (`augusto+demo@pawpi.info`).
 
 How it stays honest about RLS: the app connects as the locked-down `pawpi_app` role,
 so every owner/author/provider write runs inside a transaction stamped with that
