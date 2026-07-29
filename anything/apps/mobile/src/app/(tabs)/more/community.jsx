@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,24 +15,22 @@ import {
 } from "@/hooks/useForum";
 import VoteControl from "@/components/Forum/VoteControl";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-
-const C = {
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, GlassSurface, PressableScale } from "@/components/ui";
 
 const CATEGORY_COLORS = {
   Health: { bg: "#EEF4FF", text: "#3B5CC4" },
   Food: { bg: "#FFF8E1", text: "#B8860B" },
   Training: { bg: "#E8F5E9", text: "#2E7D32" },
   Behavior: { bg: "#FBE9E7", text: "#BF360C" },
-  General: { bg: C.sand, text: C.mutedBrown },
+  General: { bg: COLORS.sand, text: COLORS.mutedBrown },
 };
 
 const SORTS = [
@@ -62,93 +59,91 @@ export default function CommunityScreen() {
   const ThreadCard = ({ thread }) => {
     const catStyle = CATEGORY_COLORS[thread.category] || CATEGORY_COLORS.General;
     return (
-      <TouchableOpacity
+      <PressableScale
         testID={`thread-${thread.id}`}
-        activeOpacity={0.92}
         onPress={() => router.push(`/forum-thread?id=${thread.id}`)}
-        style={{
-          backgroundColor: C.card,
-          borderRadius: 18,
-          padding: 16,
-          marginBottom: 12,
-          flexDirection: "row",
-          gap: 12,
-          borderWidth: 1,
-          borderColor: C.peach,
-        }}
       >
-        <VoteControl
-          score={thread.score || 0}
-          myVote={thread.my_vote ?? null}
-          onVote={(value) => handleVote(thread, value)}
-          testIDPrefix={`thread-vote-${thread.id}`}
-        />
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 8,
-              alignItems: "center",
-            }}
-          >
+        <Card
+          radius={RADIUS.card}
+          style={{
+            padding: SPACING.lg,
+            marginBottom: SPACING.md,
+            flexDirection: "row",
+            gap: SPACING.md,
+          }}
+        >
+          <VoteControl
+            score={thread.score || 0}
+            myVote={thread.my_vote ?? null}
+            onVote={(value) => handleVote(thread, value)}
+            testIDPrefix={`thread-vote-${thread.id}`}
+          />
+          <View style={{ flex: 1 }}>
             <View
               style={{
-                backgroundColor: catStyle.bg,
-                paddingHorizontal: 10,
-                paddingVertical: 3,
-                borderRadius: 9,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: SPACING.sm,
+                alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 11, color: catStyle.text, fontWeight: "700" }}>
-                {thread.category}
-              </Text>
+              <View
+                style={{
+                  backgroundColor: catStyle.bg,
+                  paddingHorizontal: SPACING.sm,
+                  paddingVertical: 3,
+                  borderRadius: RADIUS.chip,
+                }}
+              >
+                <Text style={[TYPE.caption, { color: catStyle.text, fontWeight: "700", letterSpacing: 0 }]}>
+                  {thread.category}
+                </Text>
+              </View>
             </View>
-          </View>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "800",
-              color: C.warmBrown,
-              marginBottom: 8,
-              lineHeight: 22,
-            }}
-          >
-            {thread.title}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 12, color: C.mutedBrown, fontWeight: "600" }}>
-              🐾 {thread.author_username || "someone"}
+            <Text
+              style={[
+                TYPE.headline,
+                { color: COLORS.warmBrown, fontWeight: "800", marginBottom: SPACING.sm },
+              ]}
+            >
+              {thread.title}
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <Megaphone size={14} color={C.mutedBrown} />
-              <Text style={{ fontSize: 12, color: C.mutedBrown, fontWeight: "600" }}>
-                {thread.comment_count || 0}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
+                🐾 {thread.author_username || "someone"}
               </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <Megaphone size={14} color={COLORS.mutedBrown} />
+                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
+                  {thread.comment_count || 0}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </Card>
+      </PressableScale>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
-          paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 12,
-          backgroundColor: C.card,
           borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
+          paddingTop: insets.top,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
         }}
       >
         <View
@@ -159,63 +154,65 @@ export default function CommunityScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
-              <ArrowLeft size={22} color={C.warmBrown} />
-            </TouchableOpacity>
+            <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+              <ArrowLeft size={22} color={COLORS.warmBrown} />
+            </PressableScale>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 24, fontWeight: "800", color: C.warmBrown }}>
+              <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
                 Community 🐕
               </Text>
-              <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
                 Ask, share, and connect with pet parents.
               </Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <TouchableOpacity
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
+            <PressableScale
               testID="events-button"
               onPress={() => router.push("/events")}
               style={{
-                backgroundColor: C.sand,
+                backgroundColor: MATERIALS.glassTintLight,
                 width: 42,
                 height: 42,
-                borderRadius: 21,
+                borderRadius: RADIUS.chip,
                 justifyContent: "center",
                 alignItems: "center",
+                borderWidth: 1,
+                borderColor: MATERIALS.hairline,
               }}
             >
-              <CalendarDays size={20} color={C.coral} />
-            </TouchableOpacity>
-            <TouchableOpacity
+              <CalendarDays size={20} color={COLORS.coral} />
+            </PressableScale>
+            <PressableScale
               testID="compose-button"
               onPress={() => router.push("/forum-compose")}
               style={{
-                backgroundColor: C.coral,
+                backgroundColor: COLORS.coral,
                 width: 42,
                 height: 42,
-                borderRadius: 21,
+                borderRadius: RADIUS.chip,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <Plus size={22} color="#FFF" />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Sort */}
       <View
         style={{
           flexDirection: "row",
-          gap: 8,
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          backgroundColor: C.card,
+          gap: SPACING.sm,
+          paddingHorizontal: SPACING.lg,
+          paddingTop: SPACING.md,
+          backgroundColor: COLORS.cream,
         }}
       >
         {SORTS.map(({ key, label, Icon }) => (
-          <TouchableOpacity
+          <PressableScale
             key={key}
             testID={`sort-${key}`}
             onPress={() => setSort(key)}
@@ -223,65 +220,69 @@ export default function CommunityScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
-              paddingHorizontal: 14,
+              paddingHorizontal: SPACING.md,
               paddingVertical: 7,
-              borderRadius: 18,
-              backgroundColor: sort === key ? C.coral : C.sand,
+              borderRadius: RADIUS.chip,
+              backgroundColor: sort === key ? COLORS.coral : MATERIALS.surfaceSunken,
             }}
           >
-            <Icon size={14} color={sort === key ? "#FFF" : C.mutedBrown} />
+            <Icon size={14} color={sort === key ? "#FFF" : COLORS.mutedBrown} />
             <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: sort === key ? "#FFF" : C.mutedBrown,
-              }}
+              style={[
+                TYPE.subhead,
+                {
+                  fontWeight: "700",
+                  color: sort === key ? "#FFF" : COLORS.mutedBrown,
+                },
+              ]}
             >
               {label}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
 
       {/* Categories */}
       <View
         style={{
-          backgroundColor: C.card,
-          paddingVertical: 10,
+          backgroundColor: COLORS.cream,
+          paddingVertical: SPACING.sm,
           borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          borderBottomColor: MATERIALS.hairline,
         }}
       >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg }}
         >
           {FORUM_CATEGORIES.map((cat) => (
-            <TouchableOpacity
+            <PressableScale
               key={cat}
               testID={`category-${cat}`}
               onPress={() => setActiveCategory(cat)}
               style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 20,
-                marginRight: 8,
-                backgroundColor: activeCategory === cat ? C.coral : C.sand,
+                paddingHorizontal: SPACING.lg,
+                paddingVertical: SPACING.sm,
+                borderRadius: RADIUS.chip,
+                marginRight: SPACING.sm,
+                backgroundColor: activeCategory === cat ? COLORS.coral : MATERIALS.surfaceSunken,
                 borderWidth: 1.5,
-                borderColor: activeCategory === cat ? C.coral : C.peach,
+                borderColor: activeCategory === cat ? COLORS.coral : MATERIALS.hairline,
               }}
             >
               <Text
-                style={{
-                  color: activeCategory === cat ? "#FFF" : C.mutedBrown,
-                  fontWeight: "700",
-                  fontSize: 13,
-                }}
+                style={[
+                  TYPE.subhead,
+                  {
+                    color: activeCategory === cat ? "#FFF" : COLORS.mutedBrown,
+                    fontWeight: "700",
+                  },
+                ]}
               >
                 {cat}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </ScrollView>
       </View>
@@ -289,11 +290,11 @@ export default function CommunityScreen() {
       <RefreshableScrollView
         refetch={refetch}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 100 }}
       >
         {isLoading && (
-          <View style={{ alignItems: "center", padding: 40 }}>
-            <ActivityIndicator size="large" color={C.coral} />
+          <View style={{ alignItems: "center", padding: SPACING.huge }}>
+            <ActivityIndicator size="large" color={COLORS.coral} />
           </View>
         )}
 
@@ -305,16 +306,14 @@ export default function CommunityScreen() {
           <View style={{ alignItems: "center", padding: 50 }}>
             <Text style={{ fontSize: 36 }}>🐾</Text>
             <Text
-              style={{
-                color: C.warmBrown,
-                fontSize: 16,
-                fontWeight: "700",
-                marginTop: 12,
-              }}
+              style={[
+                TYPE.headline,
+                { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.md },
+              ]}
             >
               No discussions here yet.
             </Text>
-            <Text style={{ color: C.mutedBrown, fontSize: 13, marginTop: 4 }}>
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
               Be the first to bark!
             </Text>
           </View>

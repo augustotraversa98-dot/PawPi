@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
 } from "react-native";
@@ -11,16 +10,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useCreateThread, FORUM_CATEGORIES } from "@/hooks/useForum";
-
-const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { GlassSurface, PressableScale } from "@/components/ui";
 
 // Categories minus the "All" pseudo-filter.
 const CATEGORIES = FORUM_CATEGORIES.filter((c) => c !== "All");
@@ -45,58 +43,64 @@ export default function ForumComposeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
-      <View
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 20,
-          paddingVertical: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          paddingTop: insets.top + SPACING.sm,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.lg,
         }}
       >
-        <TouchableOpacity
+        <PressableScale
           testID="compose-back"
           onPress={() => router.back()}
-          style={{ marginRight: 12 }}
+          style={{ marginRight: SPACING.md }}
         >
-          <ArrowLeft size={22} color={C.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
+          <ArrowLeft size={22} color={COLORS.warmBrown} />
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           New Discussion
         </Text>
-      </View>
+      </GlassSurface>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.label}>Category</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, marginBottom: 18 }}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity
+            <PressableScale
               key={cat}
               testID={`compose-category-${cat}`}
               onPress={() => setCategory(cat)}
               style={{
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 18,
-                backgroundColor: category === cat ? C.coral : C.sand,
+                paddingHorizontal: SPACING.md,
+                paddingVertical: SPACING.sm,
+                borderRadius: RADIUS.chip,
+                backgroundColor: category === cat ? COLORS.coral : MATERIALS.surfaceSunken,
               }}
             >
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: category === cat ? "#FFF" : C.mutedBrown,
-                }}
+                style={[
+                  TYPE.subhead,
+                  {
+                    fontWeight: "700",
+                    color: category === cat ? "#FFF" : COLORS.mutedBrown,
+                  },
+                ]}
               >
                 {cat}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
 
@@ -106,29 +110,29 @@ export default function ForumComposeScreen() {
           value={title}
           onChangeText={setTitle}
           placeholder="What's your question?"
-          placeholderTextColor={C.mutedBrown + "90"}
+          placeholderTextColor={COLORS.mutedBrown + "90"}
           style={styles.input}
         />
 
-        <Text style={[styles.label, { marginTop: 16 }]}>Details (optional)</Text>
+        <Text style={[styles.label, { marginTop: SPACING.lg }]}>Details (optional)</Text>
         <TextInput
           testID="compose-body"
           value={body}
           onChangeText={setBody}
           placeholder="Add more context..."
-          placeholderTextColor={C.mutedBrown + "90"}
+          placeholderTextColor={COLORS.mutedBrown + "90"}
           multiline
           style={[styles.input, { minHeight: 120, textAlignVertical: "top" }]}
         />
 
-        <TouchableOpacity
+        <PressableScale
           testID="compose-submit"
           onPress={handleSubmit}
           disabled={!canSubmit}
           style={{
-            backgroundColor: canSubmit ? C.coral : C.sand,
-            borderRadius: 16,
-            paddingVertical: 16,
+            backgroundColor: canSubmit ? COLORS.coral : MATERIALS.surfaceSunken,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.lg,
             alignItems: "center",
             marginTop: 28,
             opacity: canSubmit ? 1 : 0.6,
@@ -138,30 +142,32 @@ export default function ForumComposeScreen() {
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "800",
-                color: canSubmit ? "#FFF" : C.mutedBrown,
-              }}
+              style={[
+                TYPE.headline,
+                {
+                  fontWeight: "800",
+                  color: canSubmit ? "#FFF" : COLORS.mutedBrown,
+                },
+              ]}
             >
               Post
             </Text>
           )}
-        </TouchableOpacity>
+        </PressableScale>
       </ScrollView>
     </View>
   );
 }
 
 const styles = {
-  label: { fontSize: 14, fontWeight: "700", color: C.warmBrown, marginBottom: 8 },
+  label: { ...TYPE.callout, fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
   input: {
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: C.warmBrown,
+    backgroundColor: MATERIALS.surfaceSunken,
+    borderRadius: RADIUS.control,
+    padding: SPACING.md,
+    ...TYPE.body,
+    color: COLORS.warmBrown,
     borderWidth: 1,
-    borderColor: C.peach,
+    borderColor: MATERIALS.hairline,
   },
 };

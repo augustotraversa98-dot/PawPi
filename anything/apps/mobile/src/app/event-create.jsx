@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
 } from "react-native";
@@ -11,7 +10,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { COLORS } from "@/constants/colors";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { GlassSurface, PressableScale } from "@/components/ui";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import LocationField from "@/components/Map/LocationField";
@@ -56,40 +63,42 @@ export default function EventCreateScreen() {
   };
 
   const inputStyle = {
-    backgroundColor: COLORS.card,
-    borderWidth: 1.5,
-    borderColor: COLORS.peach,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    backgroundColor: MATERIALS.surfaceSunken,
+    borderWidth: 1,
+    borderColor: MATERIALS.hairline,
+    borderRadius: RADIUS.control,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    ...TYPE.callout,
     color: COLORS.warmBrown,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
-          paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
+          paddingTop: insets.top + SPACING.sm,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           {t("events.createTitle")}
         </Text>
-      </View>
+      </GlassSurface>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
         <TextInput
           testID="event-title"
           value={title}
@@ -108,7 +117,7 @@ export default function EventCreateScreen() {
           style={[inputStyle, { minHeight: 80, textAlignVertical: "top" }]}
         />
 
-        <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <View style={{ flex: 1 }}>
             <DateField testID="event-date" value={date} onChange={setDate} />
           </View>
@@ -117,7 +126,7 @@ export default function EventCreateScreen() {
           </View>
         </View>
 
-        <View style={{ marginTop: 12, marginBottom: 12 }}>
+        <View style={{ marginTop: SPACING.md, marginBottom: SPACING.md }}>
           <LocationField
             testID="event-location"
             label={t("events.location")}
@@ -136,23 +145,23 @@ export default function EventCreateScreen() {
           style={inputStyle}
         />
 
-        <TouchableOpacity
+        <PressableScale
           testID="event-submit"
           onPress={submit}
           disabled={!canSubmit || create.isPending}
           style={{
             backgroundColor: canSubmit ? COLORS.coral : COLORS.peach,
-            borderRadius: 14,
-            paddingVertical: 14,
+            borderRadius: RADIUS.control,
+            paddingVertical: SPACING.md,
             alignItems: "center",
             opacity: create.isPending ? 0.6 : 1,
-            marginTop: 4,
+            marginTop: SPACING.xs,
           }}
         >
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+          <Text style={[TYPE.headline, { color: "#fff", fontWeight: "800" }]}>
             {t("events.publish")}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </ScrollView>
     </View>
   );
