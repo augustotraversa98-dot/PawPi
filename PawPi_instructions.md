@@ -723,11 +723,21 @@ not a hand-maintained log here:
 - `ARCHITECTURE.md`, `supabase/SCHEMA_NOTES.md`, `docs/rls-hardening.md` — architecture / schema /
   RLS orientation (Code-maintained).
 
-### Snapshot (2026-07-28) — CURRENT
+### Snapshot (2026-07-29) — CURRENT
 
 **The app is feature-complete for v1 and is in the App Store submission phase.** Every build wave and
 both cross-cutting phases (UGC moderation, the 2.77 redesign) are merged. What remains is submission
 logistics + go-live keys, not feature work.
+
+**Night-run 2026-07-29 (unattended, tickets N1–N10 in `docs/phase2-tickets/`, order/detail in
+`docs/night-run-2026-07-29.md`, one-line-per-merge scan in `docs/night-run-log.md`):** N2 (retired the
+dead `PATCH /api/pets` repair handler + `RepairPetsButton.jsx`), N9 (docs hygiene), N5 (payments
+degrade-clean audit + rewrote the go-live runbook), N1 (address autofill on the shared map picker), N7
+(support page confirmed live; `pawpi.info` DNS gap documented), and N6 (Apple Sign-in's client-secret
+JWT is now generated from key material instead of a static string that would've silently expired)
+merged so far. N3 (adoption Liquid Glass restyle) and N4 (medical-profile sex/gender selector fix) are
+in flight; N8 (device-test self-verify) and N10 (widget rebase) still queued. See
+`docs/night-run-log.md` for the fully up-to-date picture if this snapshot is read mid-run.
 
 - **Production is LIVE.** Web/API deployed to **Railway** (`https://pawpi-production.up.railway.app`),
   database on Supabase, and the mobile app points at it.

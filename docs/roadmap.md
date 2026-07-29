@@ -56,7 +56,6 @@ What remains is submission logistics and a handful of go-live keys — not featu
 5. Pre-launch security: change the placeholder `pawpi_app` DB password.
 
 **Known code gaps deliberately left open** (tracked, not forgotten):
-- `src/app/service/adoption.jsx` is the ONE screen not restyled to Liquid Glass — see the 2.77 entry.
 - The demo seed writes only HISTORICAL data, so Health → Today renders empty. Add same-day entries
   before shooting App Store screenshots.
 - **NEW (found while fixing N4):** `EditMedicalProfileModal`'s Save button is wired to
@@ -475,11 +474,14 @@ Worth reading before touching native config.
   (`spacing`/`typography`/`elevation`/`motion`, barrel `theme.js`); primitives in
   `apps/mobile/src/components/ui/` (`GlassSurface`, `Card`, `Sheet`, `PressableScale`, `Button`).
   Every screen was verified in the iOS Simulator on the seeded demo account before merge.
-  - **⚠️ ONE DELIBERATE EXCLUSION — `src/app/service/adoption.jsx`** keeps its pre-redesign styling and
-    is the only un-restyled service screen. Its restyle was authored in June against the pre-2.86 file;
-    cherry-picking produced 7 conflict hunks where taking the restyle's side would have **reverted the
-    Wave 9 adoption browse work** (grid card variant, age·size·gender row, distance, "See more"). Needs
-    restyling fresh against current `main`.
+  - **`src/app/service/adoption.jsx` restyled (ticket N3, 2026-07-29)** — the one screen left out of
+    #204–#209 (its June restyle was authored against the pre-2.86 file; cherry-picking would have
+    reverted the Wave 9 adoption browse work). Restyled fresh against current `main`: GlassSurface
+    headers, `Card` + `PressableScale` content surfaces, `TYPE`/`SPACING`/`RADIUS`/`MATERIALS` tokens,
+    on both the browse grid and the 2.87 rich detail page (gallery, key facts, shelter map). The
+    grid card variant, age·size·gender row, distance label, "See more", and the `ModerationMenu` on
+    listings are all preserved — structural parity counts identical to `main` (mobile jest green,
+    1173/1173, unchanged test count).
   - **Hazard worth knowing (it recurred on every conflicted file):** #204–#209 sat as drafts for ~40 days,
     so each one tried to silently revert newer work — the `ModerationMenu` (Guideline 1.2, an App Store
     requirement) on provider/events/forum/chat, the add-to-calendar buttons (2.80) on transport/events,

@@ -316,13 +316,26 @@ calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
   "not set up yet" message; nothing crashes).
 - `2.21` set `GOOGLE_PLACES_API_KEY` + `ENRICHMENT_LLM_KEY` when ready (until then "Import from the web"
   shows a clean "not set up yet"; nothing auto-fills).
-- `2.46` **Social sign-in (Apple + Google)** — ADDITIVE + ENV-GATED, no migration. To turn ON: create a
-  Google OAuth 2.0 Web client + an Apple Services ID / Sign in with Apple key, register the callback URLs
-  `<origin>/api/auth/callback/google` and `<origin>/api/auth/callback/apple`, then set in the web `.env`:
-  `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET`, and `AUTH_APPLE_ID` + `AUTH_APPLE_SECRET` (the Apple secret is a
-  GENERATED client-secret JWT, not a static string). A provider appears ONLY when BOTH its keys are set;
-  until then the "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password
-  login is byte-for-byte unchanged. Placeholders + the callback URL pattern are documented in `.env.example`.
+- `2.46` **Social sign-in (Apple + Google)** — ADDITIVE + ENV-GATED, no migration. To turn ON:
+  - **Google:** create an OAuth 2.0 Web client in Google Cloud Console, register the callback URL
+    `<origin>/api/auth/callback/google`, set `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` in the web `.env`.
+  - **Apple:** in your Apple Developer account, create a **Services ID** (this becomes `AUTH_APPLE_ID`)
+    and a **Sign in with Apple key**, then download its **`.p8` file** — Apple only lets you download
+    this once, so save it somewhere durable. Register the callback URL
+    `<origin>/api/auth/callback/apple`. Then set THREE vars instead of a hand-built secret:
+    `AUTH_APPLE_TEAM_ID` (your Apple Developer Team ID, top-right of the portal), `AUTH_APPLE_KEY_ID`
+    (the key's ID, shown right after you create it), and `AUTH_APPLE_PRIVATE_KEY` (the full `.p8` file
+    contents, `-----BEGIN PRIVATE KEY-----` through `-----END PRIVATE KEY-----`, newlines intact). **N6
+    (2026-07-29) changed this from a hand-generated static JWT to a JWT the app builds and signs itself
+    on every request from this raw key material** — Apple caps a client-secret JWT's lifetime at ~6
+    months, so a pasted-in static JWT would have silently broken sign-in for Apple users once it expired
+    with no obvious cause; generating it fresh from the key material removes that failure mode entirely.
+    (The old static-JWT path via `AUTH_APPLE_SECRET` still works if you already have one, but you'd be
+    back to regenerating it by hand every ~6 months — the three-var path above is recommended.)
+  - A provider appears ONLY when its keys are fully set (`AUTH_GOOGLE_ID`+`SECRET` for Google;
+    `AUTH_APPLE_ID` + either the three Apple vars or `AUTH_APPLE_SECRET` for Apple); until then the
+    "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password login is
+    byte-for-byte unchanged. Full details in `.env.example`.
 
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
@@ -445,6 +458,27 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
   `onCtaPress`/`ctaLabel`/`ctaDisabled`, but this screen still passes the old `onSave`/`saveText`/
   `loading`), so the button is wired to nothing. Flagged in `docs/roadmap.md` "Known code gaps" and as a
   follow-up task — needs its own ticket, out of scope here.
+
+### [ ] N3 — Adoption screen restyled to match the rest of the app (Liquid Glass)  ·  ticket/n3-adoption-restyle (2026-07-29)
+- **What shipped:** the Adoption screen (Browse / Favorites / Applications, and the dog detail page you
+  open from a card) was the one screen in the app that never got the "Liquid Glass" look-and-feel update
+  that every other screen got last week. It now matches — the header has the same frosted-glass look,
+  buttons and cards have the same soft rounded style and gentle press animation as Vet, Shop, Transport,
+  etc. Nothing about how it WORKS changed: same dogs, same filters, same "Apply to adopt"/"Chat with
+  shelter"/"Pay adoption fee"/"Donate" buttons, same report-listing button, same photo/video gallery and
+  shelter map on the detail page.
+- **What to test (when you have time):** open More → Adoption.
+  - Confirm the header, tabs, and dog cards now look like the rest of the app (soft rounded cards, subtle
+    press animation when you tap a card or button) — no visual mismatch with e.g. the Shop or Transport
+    screens.
+  - Browse tab: cards still show photo, name, age·size·gender, distance ("X km away"), and "See more";
+    tap **Filters**, pick a filter, apply — the grid narrows and the pill shows the count.
+  - Tap a dog card → the detail page opens: swipe through photos/video if the listing has them, the key
+    facts and shelter map still show correctly, and the report/moderation icon (flag/dots near the close
+    button) is still there.
+  - Apply to adopt (or foster, if the listing offers both), chat with the shelter, and try the payment/
+    donate buttons — all should behave exactly as before, just with the new look.
+  - Favorites and Applications tabs still list your saved dogs and past applications the same as before.
 
 ### [ ] N1 — Address autofill on the shared map picker  ·  ticket/n1-address-autofill (2026-07-29)
 - **What shipped:** the shared Apple-Maps location picker (used by the emergency card,
