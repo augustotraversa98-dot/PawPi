@@ -458,14 +458,21 @@ Worth reading before touching native config.
 
 ## NATIVE + REDESIGN TRACKS (sequenced separately from Wave 7)
 
-- **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED**
-  on draft **PR #187** (2026-06; mobile 979/979 + web suites green in CI; code dormant until the Apple
-  Developer account lands ~2 days out). Used `@bacons/apple-targets`; added the `pawpi://` deep-link scheme;
-  finish-checklist in `docs/native-widgets.md`. Phases 2 (Live Activity) + 3 (Apple Watch) are later PRs,
-  ⛔ after the account + Phase 1 merge (Phase 2's transport half soft-needs 2.70). **Still HELD as of
-  2026-07-28** — PR #187 is the last open PR in the repo and remains a draft. The Apple Developer
-  account now exists (TestFlight reached Build 6), so this is unblocked whenever it's prioritised;
-  it just hasn't been picked up. Note it will need a rebase — `main` has moved a long way since June.
+- **2.76 Widgets / Live Activities / Apple Watch (ATTENDED).** **Phase 1 (Home/Lock-screen widget) STAGED
+  + REBASED (ticket N10, 2026-07-29)** on draft **PR #187**. Used `@bacons/apple-targets`; added the
+  `pawpi://` deep-link scheme; finish-checklist in `docs/native-widgets.md`. Phases 2 (Live Activity) + 3
+  (Apple Watch) are later PRs, ⛔ after the account + Phase 1 merge (Phase 2's transport half soft-needs
+  2.70). The branch was ~40 days stale (last touched pre-Wave-7); N10 rebased it cleanly onto current
+  `main` — 2 conflicted files (`_layout.jsx`, `health.jsx`), both resolved by combining (zero lines of
+  `main`'s work reverted, verified via diff), `app.json`/`package.json` auto-merged clean. **mobile jest
+  156/156 suites green** on the rebased branch. Local native verification (no Apple account needed):
+  `expo config` resolves the plugin cleanly, `expo prebuild -p ios` generates **both** the `PawPi` and
+  `widget` Xcode targets/schemes (confirmed via `xcodebuild -list`) — `pod install` hit an unrelated local
+  Ruby/CocoaPods environment bug, so a full compiled Simulator build wasn't reached tonight. **Still NOT
+  merged, deliberately** — PR #187's own "do NOT merge yet" note stands: App Group id, signing,
+  capabilities, EAS credentials, and the on-device acceptance pass are all account/device-gated and need
+  Tats. The rebase just gets it unstuck from being stale; the finish checklist in `docs/native-widgets.md`
+  is a short, mechanical step whenever the account side is ready.
 - **2.77 iOS 27 "Liquid Glass" redesign (cross-cutting) — ✅ COMPLETE (merged 2026-07-28).**
   Visual/motion only; the COLORS palette is unchanged. Foundation-first, then one screen-group PR each:
   **#202** design-system + motion foundation → **#203** Feed (reference screen) → **#204** Health →
