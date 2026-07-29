@@ -730,20 +730,27 @@ both cross-cutting phases (UGC moderation, the 2.77 redesign) are merged. What r
 logistics + go-live keys, not feature work.
 
 **Night-run 2026-07-29 (unattended, tickets N1–N10 in `docs/phase2-tickets/`, order/detail in
-`docs/night-run-2026-07-29.md`, one-line-per-merge scan in `docs/night-run-log.md`):** N2 (retired the
-dead `PATCH /api/pets` repair handler + `RepairPetsButton.jsx`), N9 (docs hygiene), N5 (payments
-degrade-clean audit + rewrote the go-live runbook), N1 (address autofill on the shared map picker), N7
-(support page confirmed live; `pawpi.info` DNS gap documented), and N6 (Apple Sign-in's client-secret
-JWT is now generated from key material instead of a static string that would've silently expired)
-merged so far. N3 (adoption Liquid Glass restyle) and N4 (medical-profile sex/gender selector fix) are
-in flight; N8 (device-test self-verify) and N10 (widget rebase) still queued. See
-`docs/night-run-log.md` for the fully up-to-date picture if this snapshot is read mid-run.
+`docs/night-run-2026-07-29.md`, one-line-per-merge scan in `docs/night-run-log.md`) — COMPLETE.**
+N1 (address autofill on the shared map picker), N2 (retired the dead `PATCH /api/pets` repair handler +
+`RepairPetsButton.jsx`), N3 (adoption screen restyled to Liquid Glass — the one screen 2.77 left out),
+N4 (medical-profile sex/gender selector case-mismatch fix), N5 (payments degrade-clean audit + rewrote
+the go-live runbook), N6 (Apple Sign-in's client-secret JWT now generated from key material instead of
+a static string that would've silently expired), N7 (support page confirmed live; `pawpi.info` DNS gap
+documented for Tats), N8 (iOS Simulator self-verify pass — caught and fixed a missed merge on N4;
+documented honestly that the historical device-test backlog wasn't swept due to Simulator tap-injection
+flakiness this session), and N9 (docs hygiene) all merged. **N10 (widget PR #187 rebase) is
+deliberately NOT merged** — rebased the ~40-day-stale branch cleanly onto `main` (CI-green, structural
+parity confirmed, `expo prebuild` generates both native targets), but left it open per its own explicit
+gate: needs Tats' Apple Developer account setup + on-device acceptance pass before merge — see
+`docs/native-widgets.md`. One real bug found and flagged (not fixed, out of scope): the Edit Medical
+Profile screen's Save button is a pre-existing no-op from the 2.77 restyle (prop-name mismatch) —
+spawned as its own follow-up task. See `docs/night-run-log.md` for full per-PR detail.
 
 - **Production is LIVE.** Web/API deployed to **Railway** (`https://pawpi-production.up.railway.app`),
   database on Supabase, and the mobile app points at it.
 - **Live DB is at migration `0068` — NOTHING PENDING.** Verified directly against production
   2026-07-28. (Docs elsewhere that still say "0067 PENDING" are stale; 0067 and 0068 are both applied.)
-- **Test baselines: mobile jest 1170 · web vitest 1367 · integration 663.**
+- **Test baselines (2026-07-29, post night-run): mobile jest 1195 · web vitest 1377 · integration 663.**
 - **Self-service password reset — ✅ BUILT (2026-07-28).** `/account/forgot-password` is no longer a
   stub. Full flow: request a link → single-use 30-minute token (**migration 0069**, ⏳ the one pending
   migration) → emailed link → a "set a new password" screen → the shared 2.32 strength rule + argon2 →
