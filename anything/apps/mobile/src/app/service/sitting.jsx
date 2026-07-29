@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
@@ -21,6 +20,14 @@ import {
   X,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
@@ -65,48 +72,50 @@ export default function SittingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Pet Sitting 💛
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             In-home visits, overnights, and house-sits
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.push("/provider-messages")}
           accessibilityLabel="Messages"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: RADIUS.chip,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           <MessageSquare size={20} color={COLORS.coral} />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* Visit updates the sitter posted, owner-readable. */}
         {activeVisits.length > 0 ? (
@@ -118,7 +127,7 @@ export default function SittingScreen() {
           </>
         ) : null}
 
-        <SectionLabel style={{ marginTop: activeVisits.length ? 24 : 0 }}>
+        <SectionLabel style={{ marginTop: activeVisits.length ? SPACING.xxl : 0 }}>
           SITTERS NEAR YOU
         </SectionLabel>
 
@@ -166,15 +175,10 @@ function VisitCard({ visit }) {
   const hasLocation =
     visit.check_in_lat != null && visit.check_in_lng != null;
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View
         style={{
@@ -183,28 +187,28 @@ function VisitCard({ visit }) {
           justifyContent: "space-between",
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
           {visit.provider_name || "Visit"}
         </Text>
         <StatusPill status={visit.status} />
       </View>
       {visit.visit_at ? (
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
           {String(visit.visit_at).slice(0, 16).replace("T", " ")}
           {visit.sitter_name ? ` · ${visit.sitter_name}` : ""}
         </Text>
       ) : null}
 
       {visit.notes ? (
-        <Text style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 8 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", marginTop: SPACING.sm }]}>
           {visit.notes}
         </Text>
       ) : null}
 
       {hasLocation ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: SPACING.sm }}>
           <MapPin size={14} color={COLORS.coral} />
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
             Checked in at {Number(visit.check_in_lat).toFixed(4)},{" "}
             {Number(visit.check_in_lng).toFixed(4)}
           </Text>
@@ -212,23 +216,23 @@ function VisitCard({ visit }) {
       ) : null}
 
       {Array.isArray(visit.photo_urls) && visit.photo_urls.length > 0 ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.sm }}>
           {visit.photo_urls.map((u) => (
             <Image
               key={u}
               source={{ uri: u }}
-              style={{ width: 72, height: 72, borderRadius: 8, backgroundColor: COLORS.sand }}
+              style={{ width: 72, height: 72, borderRadius: RADIUS.xs, backgroundColor: COLORS.sand }}
             />
           ))}
         </View>
       ) : null}
       {Array.isArray(visit.video_urls) && visit.video_urls.length > 0 ? (
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 6 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 6 }]}>
           🎥 {visit.video_urls.length} video
           {visit.video_urls.length > 1 ? "s" : ""}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -243,12 +247,12 @@ function StatusPill({ status }) {
     <View
       style={{
         backgroundColor: s.color + "22",
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm + 2,
         paddingVertical: 3,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "800", color: s.color }}>
+      <Text style={[TYPE.caption, { fontWeight: "800", color: s.color, letterSpacing: 0 }]}>
         {s.label}
       </Text>
     </View>
@@ -257,37 +261,26 @@ function StatusPill({ status }) {
 
 function ProviderCard({ provider, onOpen, onBook }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 14,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="md"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md + 2 }}
     >
-      <TouchableOpacity
+      <PressableScale
         onPress={onOpen}
-        activeOpacity={0.85}
-        style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+        style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md + 2 }}
       >
         {provider.logo_url ? (
           <Image
             source={{ uri: provider.logo_url }}
-            style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: COLORS.sand }}
+            style={{ width: 52, height: 52, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
           />
         ) : (
           <View
             style={{
               width: 52,
               height: 52,
-              borderRadius: 14,
+              borderRadius: RADIUS.control,
               backgroundColor: COLORS.sand,
               justifyContent: "center",
               alignItems: "center",
@@ -298,12 +291,12 @@ function ProviderCard({ provider, onOpen, onBook }) {
         )}
         <View style={{ flex: 1 }}>
           <Text
-            style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
+            style={[TYPE.title2, { fontSize: 17, lineHeight: 22, color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
             {provider.name}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: 2 }}>
             <RatingBadge
               avgRating={provider.avg_rating}
               reviewCount={provider.review_count}
@@ -311,7 +304,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
           </View>
           {provider.bio ? (
             <Text
-              style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}
               numberOfLines={2}
             >
               {provider.bio}
@@ -319,24 +312,23 @@ function ProviderCard({ provider, onOpen, onBook }) {
           ) : null}
         </View>
         <ChevronRight size={20} color={COLORS.mutedBrown} />
-      </TouchableOpacity>
+      </PressableScale>
 
-      <TouchableOpacity
+      <PressableScale
         onPress={onBook}
-        activeOpacity={0.9}
         style={{
-          marginTop: 12,
+          marginTop: SPACING.md,
           backgroundColor: COLORS.coral,
-          borderRadius: 14,
-          paddingVertical: 11,
+          borderRadius: RADIUS.control,
+          paddingVertical: SPACING.md - 1,
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>
+        <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
           Book a sitter
         </Text>
-      </TouchableOpacity>
-    </View>
+      </PressableScale>
+    </Card>
   );
 }
 
@@ -411,65 +403,66 @@ function BookSittingModal({ provider, petId, onClose }) {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 16,
+            padding: SPACING.lg,
             borderBottomWidth: 1,
             borderBottomColor: COLORS.peach,
             backgroundColor: COLORS.card,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
             Book a sitter
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
+        <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.lg }}>
           {provider ? (
-            <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
               {provider.name}
             </Text>
           ) : null}
 
           <FieldLabel>Service</FieldLabel>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
             {SERVICE_TYPES.map((t) => {
               const selected = serviceType === t.key;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={t.key}
                   onPress={() => setServiceType(t.key)}
-                  activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   style={{
-                    paddingHorizontal: 14,
+                    paddingHorizontal: SPACING.md + 2,
                     paddingVertical: 9,
-                    borderRadius: 999,
+                    borderRadius: RADIUS.chip,
                     borderWidth: 1,
                     borderColor: selected ? COLORS.coral : COLORS.peach,
                     backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
                   }}
                 >
                   <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: selected ? COLORS.coral : COLORS.warmBrown,
-                    }}
+                    style={[
+                      TYPE.subhead,
+                      {
+                        fontWeight: "700",
+                        color: selected ? COLORS.coral : COLORS.warmBrown,
+                      },
+                    ]}
                   >
                     {t.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               );
             })}
           </View>
 
-          <FieldLabel style={{ marginTop: 16 }}>Date</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>Date</FieldLabel>
           <DateField value={date} onChange={setDate} placeholder="Select date" />
 
-          <FieldLabel style={{ marginTop: 16 }}>Notes for the sitter</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>Notes for the sitter</FieldLabel>
           <TextInput
             value={notes}
             onChangeText={setNotes}
@@ -495,27 +488,26 @@ function BookSittingModal({ provider, petId, onClose }) {
             />
           ) : null}
 
-          <TouchableOpacity
+          <PressableScale
             onPress={submit}
             disabled={book.isPending}
-            activeOpacity={0.9}
             style={{
-              marginTop: 24,
+              marginTop: SPACING.xxl,
               backgroundColor: COLORS.coral,
-              borderRadius: 16,
-              paddingVertical: 15,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg - 1,
               alignItems: "center",
               opacity: book.isPending ? 0.6 : 1,
             }}
           >
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
               {book.isPending
                 ? "Booking…"
                 : meetAndGreet
                   ? "Request meet & greet"
                   : "Confirm booking"}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </KeyboardAwareScrollView>
       </View>
     </Modal>
@@ -529,16 +521,16 @@ function ToggleRow({ label, help, value, onValueChange }) {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginTop: 18,
-        gap: 12,
+        marginTop: SPACING.lg + 2,
+        gap: SPACING.md,
       }}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.warmBrown }}>
+        <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.warmBrown }]}>
           {label}
         </Text>
         {help ? (
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
             {help}
           </Text>
         ) : null}
@@ -554,10 +546,10 @@ function ToggleRow({ label, help, value, onValueChange }) {
 
 const inputStyle = {
   backgroundColor: COLORS.card,
-  borderRadius: 12,
+  borderRadius: RADIUS.control,
   borderWidth: 1,
   borderColor: COLORS.peach,
-  padding: 12,
+  padding: SPACING.md,
   fontSize: 14,
   color: COLORS.warmBrown,
   minHeight: 48,
@@ -568,7 +560,8 @@ function FieldLabel({ children, style }) {
   return (
     <Text
       style={[
-        { fontSize: 13, fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
+        TYPE.subhead,
+        { fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
         style,
       ]}
     >
@@ -581,11 +574,11 @@ function SectionLabel({ children, style }) {
   return (
     <Text
       style={[
+        TYPE.subhead,
         {
-          fontSize: 13,
           fontWeight: "800",
           color: COLORS.mutedBrown,
-          marginBottom: 14,
+          marginBottom: SPACING.md + 2,
           letterSpacing: 0.6,
         },
         style,
@@ -598,32 +591,30 @@ function SectionLabel({ children, style }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.xxl + 4, alignItems: "center" }}
     >
       <Heart size={32} color={COLORS.mutedBrown} />
       <Text
-        style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}
+        style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}
       >
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginTop: 6,
+            textAlign: "center",
+          },
+        ]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }

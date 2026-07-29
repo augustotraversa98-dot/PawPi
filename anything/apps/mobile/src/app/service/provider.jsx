@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Linking,
@@ -25,6 +24,14 @@ import {
   ShoppingBag,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useProviderProfile,
@@ -71,28 +78,30 @@ export default function ProviderScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.back()}
-          style={{ marginRight: 14 }}
+          style={{ marginRight: SPACING.md }}
         >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           {provider?.name || "Provider"}
         </Text>
-      </View>
+      </GlassSurface>
 
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -104,27 +113,25 @@ export default function ProviderScreen() {
             flex: 1,
             justifyContent: "center",
             alignItems: "center",
-            padding: 32,
+            padding: SPACING.xxxl,
           }}
         >
           <Stethoscope size={32} color={COLORS.mutedBrown} />
           <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "800",
-              color: COLORS.warmBrown,
-              marginTop: 12,
-            }}
+            style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}
           >
             Provider not found
           </Text>
           <Text
-            style={{
-              fontSize: 13,
-              color: COLORS.mutedBrown,
-              marginTop: 6,
-              textAlign: "center",
-            }}
+            style={[
+              TYPE.subhead,
+              {
+                color: COLORS.mutedBrown,
+                fontWeight: "500",
+                marginTop: 6,
+                textAlign: "center",
+              },
+            ]}
           >
             This provider isn't available right now.
           </Text>
@@ -132,7 +139,7 @@ export default function ProviderScreen() {
       ) : (
         <RefreshableScrollView
           refetch={refetch}
-          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 120 }}
         >
           {/* Storefront cover banner (ticket 2.22) — only when set. */}
           {provider.cover_image_url ? (
@@ -142,38 +149,36 @@ export default function ProviderScreen() {
               style={{
                 width: "100%",
                 height: 140,
-                borderRadius: 18,
-                marginBottom: 14,
+                borderRadius: RADIUS.card,
+                marginBottom: SPACING.md + 2,
                 backgroundColor: COLORS.sand,
               }}
             />
           ) : null}
 
           {/* Header card */}
-          <View
+          <Card
+            level="md"
+            radius={RADIUS.card}
             style={{
-              backgroundColor: COLORS.card,
-              borderRadius: 22,
-              padding: 18,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: COLORS.peach,
+              padding: SPACING.lg + 2,
+              marginBottom: SPACING.lg,
               flexDirection: "row",
-              gap: 14,
+              gap: SPACING.md + 2,
               alignItems: "center",
             }}
           >
             {provider.logo_url ? (
               <Image
                 source={{ uri: provider.logo_url }}
-                style={{ width: 60, height: 60, borderRadius: 16, backgroundColor: COLORS.sand }}
+                style={{ width: 60, height: 60, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
               />
             ) : (
               <View
                 style={{
                   width: 60,
                   height: 60,
-                  borderRadius: 16,
+                  borderRadius: RADIUS.control,
                   backgroundColor: COLORS.sand,
                   justifyContent: "center",
                   alignItems: "center",
@@ -183,18 +188,20 @@ export default function ProviderScreen() {
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 19, fontWeight: "800", color: COLORS.warmBrown }}>
+              <Text style={[TYPE.title2, { fontSize: 19, lineHeight: 24, color: COLORS.warmBrown }]}>
                 {provider.name}
               </Text>
               {provider.provider_type ? (
                 <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: COLORS.coral,
-                    marginTop: 2,
-                    textTransform: "capitalize",
-                  }}
+                  style={[
+                    TYPE.footnote,
+                    {
+                      fontWeight: "700",
+                      color: COLORS.coral,
+                      marginTop: 2,
+                      textTransform: "capitalize",
+                    },
+                  ]}
                 >
                   {provider.provider_type}
                 </Text>
@@ -207,16 +214,18 @@ export default function ProviderScreen() {
                 />
               </View>
             </View>
-          </View>
+          </Card>
 
           {provider.bio ? (
             <Text
-              style={{
-                fontSize: 14,
-                color: COLORS.mutedBrown,
-                lineHeight: 20,
-                marginBottom: 18,
-              }}
+              style={[
+                TYPE.callout,
+                {
+                  color: COLORS.mutedBrown,
+                  lineHeight: 20,
+                  marginBottom: SPACING.lg + 2,
+                },
+              ]}
             >
               {provider.bio}
             </Text>
@@ -229,19 +238,14 @@ export default function ProviderScreen() {
           {locations.length > 0 && (
             <Section title="Locations">
               {locations.map((l) => (
-                <View
+                <Card
                   key={l.id}
-                  style={{
-                    backgroundColor: COLORS.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                  }}
+                  level="sm"
+                  radius={RADIUS.md}
+                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
                 >
                   <Text
-                    style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}
+                    style={[TYPE.headline, { color: COLORS.warmBrown }]}
                   >
                     {l.name}
                   </Text>
@@ -255,7 +259,7 @@ export default function ProviderScreen() {
                       {l.phone}
                     </Row>
                   ) : null}
-                </View>
+                </Card>
               ))}
             </Section>
           )}
@@ -264,16 +268,11 @@ export default function ProviderScreen() {
           {services.length > 0 && (
             <Section title="Services">
               {services.map((s) => (
-                <View
+                <Card
                   key={s.id}
-                  style={{
-                    backgroundColor: COLORS.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                  }}
+                  level="sm"
+                  radius={RADIUS.md}
+                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
                 >
                   <View
                     style={{
@@ -283,25 +282,20 @@ export default function ProviderScreen() {
                     }}
                   >
                     <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "800",
-                        color: COLORS.warmBrown,
-                        flex: 1,
-                      }}
+                      style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}
                     >
                       {s.name}
                     </Text>
                     {formatPrice(s.price_cents) ? (
                       <Text
-                        style={{ fontSize: 15, fontWeight: "800", color: COLORS.coral }}
+                        style={[TYPE.headline, { color: COLORS.coral }]}
                       >
                         {formatPrice(s.price_cents)}
                       </Text>
                     ) : null}
                   </View>
                   {s.description ? (
-                    <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
                       {s.description}
                     </Text>
                   ) : null}
@@ -315,8 +309,8 @@ export default function ProviderScreen() {
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: 8,
-                        marginTop: 10,
+                        gap: SPACING.sm,
+                        marginTop: SPACING.sm + 2,
                       }}
                     >
                       {s.image_urls.map((uri, i) => (
@@ -327,14 +321,14 @@ export default function ProviderScreen() {
                           style={{
                             width: 72,
                             height: 72,
-                            borderRadius: 12,
+                            borderRadius: RADIUS.control,
                             backgroundColor: COLORS.sand,
                           }}
                         />
                       ))}
                     </View>
                   ) : null}
-                </View>
+                </Card>
               ))}
             </Section>
           )}
@@ -347,19 +341,19 @@ export default function ProviderScreen() {
                 style={{
                   flexDirection: "row",
                   flexWrap: "wrap",
-                  gap: 10,
+                  gap: SPACING.sm + 2,
                 }}
               >
                 {products.map((p) => (
-                  <TouchableOpacity
+                  <PressableScale
                     key={p.id}
                     testID="storefront-item"
                     onPress={() => router.push("/service/shop")}
                     style={{
                       width: "47%",
                       backgroundColor: COLORS.card,
-                      borderRadius: 16,
-                      padding: 10,
+                      borderRadius: RADIUS.md,
+                      padding: SPACING.sm + 2,
                       borderWidth: 1,
                       borderColor: COLORS.peach,
                     }}
@@ -370,7 +364,7 @@ export default function ProviderScreen() {
                         style={{
                           width: "100%",
                           height: 90,
-                          borderRadius: 12,
+                          borderRadius: RADIUS.control,
                           backgroundColor: COLORS.sand,
                         }}
                       />
@@ -379,7 +373,7 @@ export default function ProviderScreen() {
                         style={{
                           width: "100%",
                           height: 90,
-                          borderRadius: 12,
+                          borderRadius: RADIUS.control,
                           backgroundColor: COLORS.sand,
                           justifyContent: "center",
                           alignItems: "center",
@@ -390,23 +384,21 @@ export default function ProviderScreen() {
                     )}
                     <Text
                       numberOfLines={1}
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "800",
-                        color: COLORS.warmBrown,
-                        marginTop: 6,
-                      }}
+                      style={[
+                        TYPE.subhead,
+                        { fontWeight: "800", color: COLORS.warmBrown, marginTop: 6 },
+                      ]}
                     >
                       {p.name}
                     </Text>
                     {formatPrice(p.price_cents) ? (
                       <Text
-                        style={{ fontSize: 13, fontWeight: "800", color: COLORS.coral }}
+                        style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral }]}
                       >
                         {formatPrice(p.price_cents)}
                       </Text>
                     ) : null}
-                  </TouchableOpacity>
+                  </PressableScale>
                 ))}
               </View>
             </Section>
@@ -416,29 +408,22 @@ export default function ProviderScreen() {
           {posts.length > 0 && (
             <Section title="Posts">
               {posts.map((post) => (
-                <View
+                <Card
                   key={post.id}
                   testID="storefront-post"
-                  style={{
-                    backgroundColor: COLORS.card,
-                    borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                  }}
+                  level="sm"
+                  radius={RADIUS.md}
+                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
                 >
                   {/* Body + Report/Block menu (Guideline 1.2) — the menu hides Report on
                       the staff author's own post (is_own); non-owners can Report + Block. */}
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm }}>
                     {post.body ? (
                       <Text
-                        style={{
-                          flex: 1,
-                          fontSize: 14,
-                          color: COLORS.warmBrown,
-                          lineHeight: 20,
-                        }}
+                        style={[
+                          TYPE.callout,
+                          { flex: 1, color: COLORS.warmBrown, lineHeight: 20 },
+                        ]}
                       >
                         {post.body}
                       </Text>
@@ -458,8 +443,11 @@ export default function ProviderScreen() {
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: 8,
-                        marginTop: 10,
+                        gap: SPACING.sm,
+                        // The body row above is always rendered now (it carries the
+                        // moderation menu even when there is no body), so this margin is
+                        // unconditional — SPACING.sm + 2 is the same 10pt as before.
+                        marginTop: SPACING.sm + 2,
                       }}
                     >
                       {post.image_urls.map((uri, i) => (
@@ -470,14 +458,14 @@ export default function ProviderScreen() {
                           style={{
                             width: 96,
                             height: 96,
-                            borderRadius: 12,
+                            borderRadius: RADIUS.control,
                             backgroundColor: COLORS.sand,
                           }}
                         />
                       ))}
                     </View>
                   ) : null}
-                </View>
+                </Card>
               ))}
             </Section>
           )}
@@ -485,20 +473,16 @@ export default function ProviderScreen() {
           {/* Reviews (ticket 2.2) — real data; empty state when none. */}
           <Section title="Reviews">
             {reviewList.length === 0 ? (
-              <View
-                style={{
-                  backgroundColor: COLORS.card,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: COLORS.peach,
-                }}
+              <Card
+                level="sm"
+                radius={RADIUS.md}
+                style={{ padding: SPACING.lg }}
               >
-                <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
                   No reviews yet. After a completed appointment you can be the
                   first to leave one.
                 </Text>
-              </View>
+              </Card>
             ) : (
               reviewList.map((rv) => <ReviewCard key={rv.id} review={rv} />)
             )}
@@ -510,16 +494,16 @@ export default function ProviderScreen() {
       {provider && (
         <View
           style={{
-            padding: 16,
-            paddingBottom: insets.bottom + 16,
+            padding: SPACING.lg,
+            paddingBottom: insets.bottom + SPACING.lg,
             borderTopWidth: 1,
             borderTopColor: COLORS.peach,
             backgroundColor: COLORS.card,
             flexDirection: "row",
-            gap: 12,
+            gap: SPACING.md,
           }}
         >
-          <TouchableOpacity
+          <PressableScale
             onPress={() => {
               if (startingThread) return;
               startThread(
@@ -543,12 +527,12 @@ export default function ProviderScreen() {
             style={{
               flex: 1,
               backgroundColor: COLORS.sand,
-              borderRadius: 16,
-              padding: 16,
+              borderRadius: RADIUS.control,
+              padding: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: SPACING.sm,
               borderWidth: 1,
               borderColor: COLORS.peach,
             }}
@@ -558,28 +542,28 @@ export default function ProviderScreen() {
             ) : (
               <MessageSquare size={18} color={COLORS.coral} />
             )}
-            <Text style={{ color: COLORS.coral, fontWeight: "800", fontSize: 15 }}>
+            <Text style={[TYPE.headline, { color: COLORS.coral, fontWeight: "800" }]}>
               Message
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressableScale>
+          <PressableScale
             onPress={() => setShowBooking(true)}
             style={{
               flex: 1,
               backgroundColor: COLORS.coral,
-              borderRadius: 16,
-              padding: 16,
+              borderRadius: RADIUS.control,
+              padding: SPACING.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: SPACING.sm,
             }}
           >
             <Calendar size={18} color="#FFF" />
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
+            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
               Book
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       )}
 
@@ -597,15 +581,17 @@ export default function ProviderScreen() {
 
 function Section({ title, children }) {
   return (
-    <View style={{ marginBottom: 18 }}>
+    <View style={{ marginBottom: SPACING.lg + 2 }}>
       <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "800",
-          color: COLORS.mutedBrown,
-          marginBottom: 12,
-          letterSpacing: 0.6,
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            fontWeight: "800",
+            color: COLORS.mutedBrown,
+            marginBottom: SPACING.md,
+            letterSpacing: 0.6,
+          },
+        ]}
       >
         {title.toUpperCase()}
       </Text>
@@ -623,15 +609,10 @@ function ReviewCard({ review }) {
       })
     : null;
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.md}
+      style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
     >
       <View
         style={{
@@ -641,14 +622,14 @@ function ReviewCard({ review }) {
         }}
       >
         <Text
-          style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }}
+          style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}
           numberOfLines={1}
         >
           {review.reviewer_name || "Pet parent"}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
           <Star size={13} color={COLORS.coral} fill={COLORS.coral} />
-          <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown }]}>
             {review.rating}
           </Text>
           {/* Report this review (T4). */}
@@ -656,21 +637,21 @@ function ReviewCard({ review }) {
         </View>
       </View>
       {review.pet_name ? (
-        <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700", marginTop: 2 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}>
           with {review.pet_name}
         </Text>
       ) : null}
       {review.body ? (
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 6, lineHeight: 19 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 6, lineHeight: 19 }]}>
           {review.body}
         </Text>
       ) : null}
       {date ? (
-        <Text style={{ fontSize: 11, color: COLORS.mutedBrown, marginTop: 6 }}>
+        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 6 }]}>
           {date}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -680,7 +661,7 @@ function Row({ icon, children }) {
       style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 6 }}
     >
       {icon}
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, flex: 1 }}>
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", flex: 1 }]}>
         {children}
       </Text>
     </View>
@@ -701,9 +682,9 @@ function ProviderLinks({ provider }) {
   if (links.length === 0) return null;
 
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm + 2, marginBottom: SPACING.lg + 2 }}>
       {links.map(({ url, label, Icon }) => (
-        <TouchableOpacity
+        <PressableScale
           key={label}
           onPress={() => Linking.openURL(url.trim())}
           accessibilityRole="link"
@@ -713,18 +694,18 @@ function ProviderLinks({ provider }) {
             alignItems: "center",
             gap: 6,
             backgroundColor: COLORS.sand,
-            borderRadius: 999,
-            paddingHorizontal: 12,
+            borderRadius: RADIUS.chip,
+            paddingHorizontal: SPACING.md,
             paddingVertical: 7,
             borderWidth: 1,
             borderColor: COLORS.peach,
           }}
         >
           <Icon size={15} color={COLORS.coral} />
-          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.warmBrown }]}>
             {label}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       ))}
     </View>
   );

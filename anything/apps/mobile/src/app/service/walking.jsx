@@ -2,7 +2,6 @@ import React from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
 } from "react-native";
@@ -16,6 +15,14 @@ import {
   MapPin,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useWalkSessions } from "@/hooks/useProviders";
@@ -58,59 +65,58 @@ export default function WalkingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md + 2,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.back()}
-          style={{ marginRight: 14 }}
+          style={{ marginRight: SPACING.md + 2 }}
         >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text
-            style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}
-          >
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Dog Walking 🐾
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Book a walker, watch the walk live
           </Text>
         </View>
         {/* Owner ↔ provider Messages inbox (ticket 2.5). */}
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.push("/provider-messages")}
           accessibilityLabel="Messages"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: RADIUS.chip,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           <MessageSquare size={20} color={COLORS.coral} />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* LIVE walk — only when there is an in_progress session for the active pet. */}
         {liveSession ? (
-          <TouchableOpacity
-            activeOpacity={0.9}
+          <PressableScale
             onPress={() =>
               router.push({
                 pathname: "/walk-live",
@@ -119,12 +125,12 @@ export default function WalkingScreen() {
             }
             style={{
               backgroundColor: COLORS.coral,
-              borderRadius: 22,
-              padding: 18,
-              marginBottom: 18,
+              borderRadius: RADIUS.card,
+              padding: SPACING.lg + 2,
+              marginBottom: SPACING.lg + 2,
               flexDirection: "row",
               alignItems: "center",
-              gap: 14,
+              gap: SPACING.md + 2,
             }}
           >
             <View
@@ -140,26 +146,23 @@ export default function WalkingScreen() {
               <MapPin size={22} color="#FFF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>
+              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
                 Walk in progress
               </Text>
-              <Text style={{ fontSize: 13, color: "#FFFFFFCC", marginTop: 2 }}>
+              <Text style={[TYPE.subhead, { color: "#FFFFFFCC", fontWeight: "500", marginTop: 2 }]}>
                 {liveSession.walker_name || "Your walker"} is out with{" "}
                 {currentPet?.name || "your dog"} — tap to watch live
               </Text>
             </View>
             <ChevronRight size={20} color="#FFF" />
-          </TouchableOpacity>
+          </PressableScale>
         ) : null}
 
         <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "800",
-            color: COLORS.mutedBrown,
-            marginBottom: 14,
-            letterSpacing: 0.6,
-          }}
+          style={[
+            TYPE.subhead,
+            { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.md + 2, letterSpacing: 0.6 },
+          ]}
         >
           WALKERS NEAR YOU
         </Text>
@@ -192,14 +195,16 @@ export default function WalkingScreen() {
         {recent.length > 0 ? (
           <>
             <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "800",
-                color: COLORS.mutedBrown,
-                marginTop: 24,
-                marginBottom: 14,
-                letterSpacing: 0.6,
-              }}
+              style={[
+                TYPE.subhead,
+                {
+                  color: COLORS.mutedBrown,
+                  fontWeight: "800",
+                  marginTop: SPACING.xxl,
+                  marginBottom: SPACING.md + 2,
+                  letterSpacing: 0.6,
+                },
+              ]}
             >
               RECENT WALKS
             </Text>
@@ -229,83 +234,75 @@ function metresToMiles(m) {
 
 function ProviderCard({ provider, onPress }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 14,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      {provider.logo_url ? (
-        <Image
-          source={{ uri: provider.logo_url }}
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: COLORS.sand,
-          }}
-        />
-      ) : (
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Footprints size={24} color={COLORS.coral} />
-        </View>
-      )}
-
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
-          numberOfLines={1}
-        >
-          {provider.name}
-        </Text>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 2,
-          }}
-        >
-          <RatingBadge
-            avgRating={provider.avg_rating}
-            reviewCount={provider.review_count}
+    <PressableScale onPress={onPress} style={{ marginBottom: SPACING.md + 2 }}>
+      <Card
+        level="sm"
+        borderColor={COLORS.peach}
+        style={{
+          padding: SPACING.lg,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.md + 2,
+        }}
+      >
+        {provider.logo_url ? (
+          <Image
+            source={{ uri: provider.logo_url }}
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: RADIUS.control - 2,
+              backgroundColor: COLORS.sand,
+            }}
           />
-        </View>
-        {provider.bio ? (
-          <Text
-            style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
-            numberOfLines={2}
+        ) : (
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: RADIUS.control - 2,
+              backgroundColor: COLORS.sand,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            {provider.bio}
-          </Text>
-        ) : null}
-      </View>
+            <Footprints size={24} color={COLORS.coral} />
+          </View>
+        )}
 
-      <ChevronRight size={20} color={COLORS.mutedBrown} />
-    </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}
+            numberOfLines={1}
+          >
+            {provider.name}
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.sm,
+              marginTop: 2,
+            }}
+          >
+            <RatingBadge
+              avgRating={provider.avg_rating}
+              reviewCount={provider.review_count}
+            />
+          </View>
+          {provider.bio ? (
+            <Text
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}
+              numberOfLines={2}
+            >
+              {provider.bio}
+            </Text>
+          ) : null}
+        </View>
+
+        <ChevronRight size={20} color={COLORS.mutedBrown} />
+      </Card>
+    </PressableScale>
   );
 }
 
@@ -315,83 +312,59 @@ function WalkReportCard({ session, onPress }) {
     session.duration_s != null ? Math.round(session.duration_s / 60) : null;
   const date = session.ended_at || session.created_at;
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
-          {session.provider_name || "Walk"}
-        </Text>
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
-          {date ? new Date(date).toLocaleDateString() : ""}
-        </Text>
-      </View>
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 6 }}>
-        {mins != null ? `${mins} min` : "Walk"}
-        {miles != null ? ` · ${miles} mi` : ""}
-        {session.potty_pee ? " · 💦" : ""}
-        {session.potty_poo ? " · 💩" : ""}
-      </Text>
-      {session.notes ? (
-        <Text
-          style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 6 }}
-          numberOfLines={2}
+    <PressableScale onPress={onPress} style={{ marginBottom: SPACING.md }}>
+      <Card level="none" radius={RADIUS.control} borderColor={COLORS.peach} style={{ padding: SPACING.lg }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          {session.notes}
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
+            {session.provider_name || "Walk"}
+          </Text>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+            {date ? new Date(date).toLocaleDateString() : ""}
+          </Text>
+        </View>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2 }]}>
+          {mins != null ? `${mins} min` : "Walk"}
+          {miles != null ? ` · ${miles} mi` : ""}
+          {session.potty_pee ? " · 💦" : ""}
+          {session.potty_poo ? " · 💩" : ""}
         </Text>
-      ) : null}
-    </TouchableOpacity>
+        {session.notes ? (
+          <Text
+            style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", marginTop: SPACING.xs + 2 }]}
+            numberOfLines={2}
+          >
+            {session.notes}
+          </Text>
+        ) : null}
+      </Card>
+    </PressableScale>
   );
 }
 
 function EmptyState({ title, body }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="none"
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.xxl + SPACING.xs, alignItems: "center" }}
     >
       <Footprints size={32} color={COLORS.mutedBrown} />
       <Text
-        style={{
-          fontSize: 16,
-          fontWeight: "800",
-          color: COLORS.warmBrown,
-          marginTop: 12,
-        }}
+        style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", marginTop: SPACING.md }]}
       >
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
-        }}
+        style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2, textAlign: "center" }]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }

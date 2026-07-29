@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
 } from "react-native";
@@ -11,6 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ShieldCheck, CheckSquare, Square } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useDiscoverProviders } from "@/hooks/useProviders";
@@ -68,131 +75,141 @@ export default function InsuranceScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md + 2,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md + 2 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>Insurance 🛡️</Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>Insurance 🛡️</Text>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Compare plans and get a quote
           </Text>
         </View>
-      </View>
+      </GlassSurface>
 
-      <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 60 }}>
-        <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.mutedBrown, marginBottom: 8 }}>
+      <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: insets.bottom + 60 }}>
+        <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown, marginBottom: SPACING.sm }]}>
           INSURERS
         </Text>
         {isLoading ? (
-          <Text style={{ color: COLORS.mutedBrown }}>Loading…</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Loading…</Text>
         ) : isError ? (
-          <Text style={{ color: COLORS.mutedBrown }}>Couldn't load insurers.</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Couldn't load insurers.</Text>
         ) : insurers.length === 0 ? (
-          <Text testID="insurers-empty" style={{ color: COLORS.mutedBrown }}>
+          <Text testID="insurers-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
             No insurers available yet.
           </Text>
         ) : (
           insurers.map((p) => (
-            <TouchableOpacity
+            <PressableScale
               key={p.id}
               testID={`insurer-${p.id}`}
               onPress={() => { setInsurer(p); setCompare({}); }}
-              activeOpacity={0.85}
-              style={{
-                flexDirection: "row", alignItems: "center", gap: 10,
-                backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8,
-                borderWidth: insurer?.id === p.id ? 2 : 1,
-                borderColor: insurer?.id === p.id ? COLORS.coral : COLORS.peach,
-              }}
+              style={{ marginBottom: SPACING.sm }}
             >
-              <ShieldCheck size={20} color={COLORS.coral} />
-              <Text style={{ flex: 1, fontWeight: "800", color: COLORS.warmBrown }}>{p.name}</Text>
-            </TouchableOpacity>
+              <Card
+                level="none"
+                radius={RADIUS.control - 2}
+                borderColor={insurer?.id === p.id ? COLORS.coral : COLORS.peach}
+                style={{
+                  flexDirection: "row", alignItems: "center", gap: SPACING.sm + 2,
+                  padding: SPACING.md + 2,
+                  borderWidth: insurer?.id === p.id ? 2 : 1,
+                }}
+              >
+                <ShieldCheck size={20} color={COLORS.coral} />
+                <Text style={[TYPE.headline, { flex: 1, fontWeight: "800", color: COLORS.warmBrown }]}>{p.name}</Text>
+              </Card>
+            </PressableScale>
           ))
         )}
 
         {insurer && (
           <>
-            <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.mutedBrown, marginTop: 16, marginBottom: 8 }}>
+            <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown, marginTop: SPACING.lg, marginBottom: SPACING.sm }]}>
               PLANS
             </Text>
             {plans.length === 0 ? (
-              <Text testID="plans-empty" style={{ color: COLORS.mutedBrown }}>
+              <Text testID="plans-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
                 No plans yet.
               </Text>
             ) : (
               plans.map((plan) => (
-                <View
+                <Card
                   key={plan.id}
                   testID={`plan-${plan.id}`}
-                  style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: COLORS.peach }}
+                  level="none"
+                  radius={RADIUS.control - 2}
+                  borderColor={COLORS.peach}
+                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm }}
                 >
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
                       {plan.name}{plan.tier ? ` · ${plan.tier}` : ""}
                     </Text>
-                    <Text style={{ fontWeight: "800", color: COLORS.coral }}>{priceRange(plan)}</Text>
+                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.coral }]}>{priceRange(plan)}</Text>
                   </View>
                   {!!plan.deductible && (
-                    <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 2 }}>Deductible: {plan.deductible}</Text>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>Deductible: {plan.deductible}</Text>
                   )}
                   {!!plan.reimbursement && (
-                    <Text style={{ color: COLORS.mutedBrown, fontSize: 13 }}>Reimbursement: {plan.reimbursement}</Text>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>Reimbursement: {plan.reimbursement}</Text>
                   )}
                   {(plan.coverage_highlights || []).map((h, i) => (
-                    <Text key={i} style={{ color: COLORS.warmBrown, fontSize: 13, marginTop: 2 }}>• {h}</Text>
+                    <Text key={i} style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", marginTop: 2 }]}>• {h}</Text>
                   ))}
-                  <View style={{ flexDirection: "row", gap: 16, marginTop: 10, alignItems: "center" }}>
-                    <TouchableOpacity
+                  <View style={{ flexDirection: "row", gap: SPACING.lg, marginTop: SPACING.sm + 2, alignItems: "center" }}>
+                    <PressableScale
                       testID={`compare-${plan.id}`}
                       onPress={() => setCompare((c) => ({ ...c, [plan.id]: !c[plan.id] }))}
                       style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                     >
                       {compare[plan.id] ? <CheckSquare size={18} color={COLORS.coral} /> : <Square size={18} color={COLORS.mutedBrown} />}
-                      <Text style={{ color: COLORS.mutedBrown, fontWeight: "700" }}>Compare</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "700" }]}>Compare</Text>
+                    </PressableScale>
+                    <PressableScale
                       testID={`quote-${plan.id}`}
                       onPress={() => setQuotePlan(plan)}
-                      style={{ borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                      style={{ borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm }}
                     >
-                      <Text style={{ color: COLORS.coral, fontWeight: "800" }}>Get a quote</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>Get a quote</Text>
+                    </PressableScale>
+                    <PressableScale
                       testID={`apply-${plan.id}`}
                       onPress={() =>
                         router.push(
                           `/insurance-policy?providerId=${insurer.id}&planId=${plan.id}&planName=${encodeURIComponent(plan.name || "")}&petId=${currentPet?.id ?? ""}&termsUrl=${encodeURIComponent(plan.terms_url || "")}&insurerName=${encodeURIComponent(insurer.name || "")}`,
                         )
                       }
-                      style={{ backgroundColor: COLORS.coral, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+                      style={{ backgroundColor: COLORS.coral, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm }}
                     >
-                      <Text style={{ color: "#fff", fontWeight: "800" }}>Apply / Buy</Text>
-                    </TouchableOpacity>
+                      <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>Apply / Buy</Text>
+                    </PressableScale>
                   </View>
-                </View>
+                </Card>
               ))
             )}
 
             {selected.length >= 2 && (
-              <View testID="compare-view" style={{ backgroundColor: COLORS.sand, borderRadius: 14, padding: 14, marginTop: 6 }}>
-                <Text style={{ fontWeight: "800", color: COLORS.warmBrown, marginBottom: 8 }}>Compare</Text>
+              <View testID="compare-view" style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.control - 2, padding: SPACING.md + 2, marginTop: 6 }}>
+                <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>Compare</Text>
                 {selected.map((p) => (
-                  <View key={p.id} style={{ marginBottom: 8 }}>
-                    <Text style={{ fontWeight: "800", color: COLORS.warmBrown }}>{p.name}</Text>
-                    <Text style={{ color: COLORS.mutedBrown, fontSize: 13 }}>
+                  <View key={p.id} style={{ marginBottom: SPACING.sm }}>
+                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>{p.name}</Text>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
                       {priceRange(p)} · Deductible {p.deductible || "—"} · Reimb. {p.reimbursement || "—"}
                     </Text>
                   </View>
@@ -204,11 +221,11 @@ export default function InsuranceScreen() {
 
         {/* Quote form */}
         {quotePlan && (
-          <View testID="quote-form" style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: COLORS.peach }}>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Card testID="quote-form" level="none" radius={RADIUS.control} borderColor={COLORS.peach} style={{ padding: SPACING.lg, marginTop: SPACING.lg }}>
+            <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
               Get a quote: {quotePlan.name}
             </Text>
-            <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 4 }}>
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
               For {currentPet?.name || "your pet"}
               {currentPet?.species ? ` · ${currentPet.species}` : ""}
               {currentPet?.breed ? ` · ${currentPet.breed}` : ""}
@@ -221,7 +238,7 @@ export default function InsuranceScreen() {
               placeholderTextColor={COLORS.mutedBrown}
               keyboardType="email-address"
               autoCapitalize="none"
-              style={{ marginTop: 12, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+              style={{ marginTop: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
             <TextInput
               testID="quote-phone"
@@ -229,7 +246,7 @@ export default function InsuranceScreen() {
               onChangeText={setPhone}
               placeholder="Contact phone (optional)"
               placeholderTextColor={COLORS.mutedBrown}
-              style={{ marginTop: 8, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+              style={{ marginTop: SPACING.sm, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
             <TextInput
               testID="quote-note"
@@ -238,22 +255,22 @@ export default function InsuranceScreen() {
               placeholder="Anything the insurer should know? (optional)"
               placeholderTextColor={COLORS.mutedBrown}
               multiline
-              style={{ marginTop: 8, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, minHeight: 56, color: COLORS.warmBrown }}
+              style={{ marginTop: SPACING.sm, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, minHeight: 56, color: COLORS.warmBrown }}
             />
-            <TouchableOpacity
+            <PressableScale
               testID="submit-quote"
               onPress={sendQuote}
               disabled={submit.isPending}
-              style={{ marginTop: 12, backgroundColor: COLORS.coral, borderRadius: 14, paddingVertical: 12, alignItems: "center" }}
+              style={{ marginTop: SPACING.md, backgroundColor: COLORS.coral, borderRadius: RADIUS.control - 2, paddingVertical: SPACING.md, alignItems: "center" }}
             >
-              <Text style={{ color: "#fff", fontWeight: "800" }}>
+              <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
                 {submit.isPending ? "Sending…" : "Request quote"}
               </Text>
-            </TouchableOpacity>
-            <Text style={{ color: COLORS.mutedBrown, fontSize: 11, marginTop: 8, textAlign: "center" }}>
+            </PressableScale>
+            <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm, textAlign: "center" }]}>
               We only share what you enter here — never your Vet Record.
             </Text>
-          </View>
+          </Card>
         )}
       </RefreshableScrollView>
     </View>

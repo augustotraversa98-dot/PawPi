@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
@@ -21,6 +20,14 @@ import {
   X,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
@@ -63,48 +70,50 @@ export default function DaycareScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Daycare & Boarding 🏠
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Book a stay, get daily report cards
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.push("/provider-messages")}
           accessibilityLabel="Messages"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: RADIUS.chip,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           <MessageSquare size={20} color={COLORS.coral} />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* Active stays — booked / checked-in, with vaccine status + report cards. */}
         {activeStays.length > 0 ? (
@@ -116,7 +125,7 @@ export default function DaycareScreen() {
           </>
         ) : null}
 
-        <SectionLabel style={{ marginTop: activeStays.length ? 24 : 0 }}>
+        <SectionLabel style={{ marginTop: activeStays.length ? SPACING.xxl : 0 }}>
           DAYCARE NEAR YOU
         </SectionLabel>
 
@@ -152,7 +161,7 @@ export default function DaycareScreen() {
 
         {pastStays.length > 0 ? (
           <>
-            <SectionLabel style={{ marginTop: 24 }}>PAST STAYS</SectionLabel>
+            <SectionLabel style={{ marginTop: SPACING.xxl }}>PAST STAYS</SectionLabel>
             {pastStays.map((s) => (
               <StayCard key={s.id} stay={s} petName={currentPet?.name} />
             ))}
@@ -174,15 +183,10 @@ function StayCard({ stay, petName }) {
   const vax = stay.vaccine_status;
   const cards = stay.report_cards ?? [];
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View
         style={{
@@ -191,12 +195,12 @@ function StayCard({ stay, petName }) {
           justifyContent: "space-between",
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
           {stay.provider_name || "Stay"}
         </Text>
         <StatusPill status={status} />
       </View>
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
         {stay.start_date}
         {stay.end_date && stay.end_date !== stay.start_date
           ? ` → ${stay.end_date}`
@@ -208,27 +212,29 @@ function StayCard({ stay, petName }) {
       {vax ? <VaccineStatus vax={vax} /> : null}
 
       {stay.feeding_instructions ? (
-        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 8 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginTop: SPACING.sm }]}>
           🍽️ {stay.feeding_instructions}
         </Text>
       ) : null}
       {stay.med_instructions ? (
-        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 4 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginTop: 4 }]}>
           💊 {stay.med_instructions}
         </Text>
       ) : null}
 
       {/* Daily report cards from the facility. */}
       {cards.length > 0 ? (
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: SPACING.sm + 2 }}>
           <Text
-            style={{
-              fontSize: 11,
-              fontWeight: "800",
-              color: COLORS.mutedBrown,
-              letterSpacing: 0.5,
-              marginBottom: 6,
-            }}
+            style={[
+              TYPE.caption,
+              {
+                fontWeight: "800",
+                color: COLORS.mutedBrown,
+                letterSpacing: 0.5,
+                marginBottom: 6,
+              },
+            ]}
           >
             REPORT CARDS
           </Text>
@@ -237,7 +243,7 @@ function StayCard({ stay, petName }) {
           ))}
         </View>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -246,43 +252,43 @@ function ReportCard({ card, petName }) {
     <View
       style={{
         backgroundColor: COLORS.cream,
-        borderRadius: 12,
-        padding: 10,
-        marginBottom: 8,
+        borderRadius: RADIUS.control,
+        padding: SPACING.sm + 2,
+        marginBottom: SPACING.sm,
         borderWidth: 1,
         borderColor: COLORS.peach,
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: "800", color: COLORS.warmBrown }}>
+      <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.warmBrown }]}>
         {card.date}
       </Text>
       {card.mood ? (
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
           Mood: {card.mood}
         </Text>
       ) : null}
       {card.meals ? (
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
           Meals: {card.meals}
         </Text>
       ) : null}
       {card.activities ? (
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
           Activities: {card.activities}
         </Text>
       ) : null}
       {card.notes ? (
-        <Text style={{ fontSize: 12, color: COLORS.warmBrown, marginTop: 4 }}>
+        <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginTop: 4 }]}>
           {card.notes}
         </Text>
       ) : null}
       {Array.isArray(card.photo_urls) && card.photo_urls.length > 0 ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.sm }}>
           {card.photo_urls.map((u) => (
             <Image
               key={u}
               source={{ uri: u }}
-              style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: COLORS.sand }}
+              style={{ width: 64, height: 64, borderRadius: RADIUS.xs, backgroundColor: COLORS.sand }}
             />
           ))}
         </View>
@@ -295,23 +301,23 @@ function VaccineStatus({ vax }) {
   if (!vax.required || vax.required.length === 0) return null;
   if (vax.passed) {
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm }}>
         <CheckCircle2 size={16} color="#3FA34D" />
-        <Text style={{ fontSize: 12, color: "#3FA34D", fontWeight: "700" }}>
+        <Text style={[TYPE.footnote, { color: "#3FA34D", fontWeight: "700" }]}>
           Vaccinations up to date
         </Text>
       </View>
     );
   }
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: SPACING.sm }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <AlertTriangle size={16} color={COLORS.coral} />
-        <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700" }}>
+        <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
           Missing required vaccines
         </Text>
       </View>
-      <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
         {vax.missing.join(", ")}
       </Text>
     </View>
@@ -330,12 +336,12 @@ function StatusPill({ status }) {
     <View
       style={{
         backgroundColor: s.color + "22",
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm + 2,
         paddingVertical: 3,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "800", color: s.color }}>
+      <Text style={[TYPE.caption, { fontWeight: "800", color: s.color, letterSpacing: 0 }]}>
         {s.label}
       </Text>
     </View>
@@ -344,37 +350,26 @@ function StatusPill({ status }) {
 
 function ProviderCard({ provider, onOpen, onBook }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 14,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="md"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md + 2 }}
     >
-      <TouchableOpacity
+      <PressableScale
         onPress={onOpen}
-        activeOpacity={0.85}
-        style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+        style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md + 2 }}
       >
         {provider.logo_url ? (
           <Image
             source={{ uri: provider.logo_url }}
-            style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: COLORS.sand }}
+            style={{ width: 52, height: 52, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
           />
         ) : (
           <View
             style={{
               width: 52,
               height: 52,
-              borderRadius: 14,
+              borderRadius: RADIUS.control,
               backgroundColor: COLORS.sand,
               justifyContent: "center",
               alignItems: "center",
@@ -385,12 +380,12 @@ function ProviderCard({ provider, onOpen, onBook }) {
         )}
         <View style={{ flex: 1 }}>
           <Text
-            style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
+            style={[TYPE.title2, { fontSize: 17, lineHeight: 22, color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
             {provider.name}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: 2 }}>
             <RatingBadge
               avgRating={provider.avg_rating}
               reviewCount={provider.review_count}
@@ -398,7 +393,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
           </View>
           {provider.bio ? (
             <Text
-              style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}
               numberOfLines={2}
             >
               {provider.bio}
@@ -406,24 +401,23 @@ function ProviderCard({ provider, onOpen, onBook }) {
           ) : null}
         </View>
         <ChevronRight size={20} color={COLORS.mutedBrown} />
-      </TouchableOpacity>
+      </PressableScale>
 
-      <TouchableOpacity
+      <PressableScale
         onPress={onBook}
-        activeOpacity={0.9}
         style={{
-          marginTop: 12,
+          marginTop: SPACING.md,
           backgroundColor: COLORS.coral,
-          borderRadius: 14,
-          paddingVertical: 11,
+          borderRadius: RADIUS.control,
+          paddingVertical: SPACING.md - 1,
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>
+        <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
           Book a stay
         </Text>
-      </TouchableOpacity>
-    </View>
+      </PressableScale>
+    </Card>
   );
 }
 
@@ -487,23 +481,23 @@ function BookStayModal({ provider, petId, onClose }) {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 16,
+            padding: SPACING.lg,
             borderBottomWidth: 1,
             borderBottomColor: COLORS.peach,
             backgroundColor: COLORS.card,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
             Book a stay
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
+        <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.lg }}>
           {provider ? (
-            <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
               {provider.name}
             </Text>
           ) : null}
@@ -511,7 +505,7 @@ function BookStayModal({ provider, petId, onClose }) {
           <FieldLabel>Start date</FieldLabel>
           <DateField value={startDate} onChange={setStartDate} placeholder="Select start" />
 
-          <FieldLabel style={{ marginTop: 16 }}>End date</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>End date</FieldLabel>
           <DateField
             value={endDate}
             onChange={setEndDate}
@@ -519,7 +513,7 @@ function BookStayModal({ provider, petId, onClose }) {
             minimumDate={startDate ? new Date(startDate) : undefined}
           />
 
-          <FieldLabel style={{ marginTop: 16 }}>Feeding instructions</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>Feeding instructions</FieldLabel>
           <TextInput
             value={feeding}
             onChangeText={setFeeding}
@@ -529,7 +523,7 @@ function BookStayModal({ provider, petId, onClose }) {
             style={inputStyle}
           />
 
-          <FieldLabel style={{ marginTop: 16 }}>Medication instructions</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>Medication instructions</FieldLabel>
           <TextInput
             value={meds}
             onChangeText={setMeds}
@@ -539,23 +533,22 @@ function BookStayModal({ provider, petId, onClose }) {
             style={inputStyle}
           />
 
-          <TouchableOpacity
+          <PressableScale
             onPress={submit}
             disabled={book.isPending}
-            activeOpacity={0.9}
             style={{
-              marginTop: 24,
+              marginTop: SPACING.xxl,
               backgroundColor: COLORS.coral,
-              borderRadius: 16,
-              paddingVertical: 15,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg - 1,
               alignItems: "center",
               opacity: book.isPending ? 0.6 : 1,
             }}
           >
-            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
               {book.isPending ? "Booking…" : "Confirm stay"}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </KeyboardAwareScrollView>
       </View>
     </Modal>
@@ -564,10 +557,10 @@ function BookStayModal({ provider, petId, onClose }) {
 
 const inputStyle = {
   backgroundColor: COLORS.card,
-  borderRadius: 12,
+  borderRadius: RADIUS.control,
   borderWidth: 1,
   borderColor: COLORS.peach,
-  padding: 12,
+  padding: SPACING.md,
   fontSize: 14,
   color: COLORS.warmBrown,
   minHeight: 48,
@@ -578,7 +571,8 @@ function FieldLabel({ children, style }) {
   return (
     <Text
       style={[
-        { fontSize: 13, fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
+        TYPE.subhead,
+        { fontWeight: "700", color: COLORS.warmBrown, marginBottom: 6 },
         style,
       ]}
     >
@@ -591,11 +585,11 @@ function SectionLabel({ children, style }) {
   return (
     <Text
       style={[
+        TYPE.subhead,
         {
-          fontSize: 13,
           fontWeight: "800",
           color: COLORS.mutedBrown,
-          marginBottom: 14,
+          marginBottom: SPACING.md + 2,
           letterSpacing: 0.6,
         },
         style,
@@ -608,32 +602,30 @@ function SectionLabel({ children, style }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      style={{ padding: SPACING.xxl + 4, alignItems: "center" }}
     >
       <Home size={32} color={COLORS.mutedBrown} />
       <Text
-        style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}
+        style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}
       >
         {title}
       </Text>
       <Text
-        style={{
-          fontSize: 13,
-          color: COLORS.mutedBrown,
-          marginTop: 6,
-          textAlign: "center",
-        }}
+        style={[
+          TYPE.subhead,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "500",
+            marginTop: 6,
+            textAlign: "center",
+          },
+        ]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }

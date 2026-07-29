@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -17,6 +17,14 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 
 // Pet Services hub — a quick-access CATEGORY GRID promoted into the main bottom
 // navigation so the built provider/booking loops are 1-2 taps away.
@@ -129,33 +137,28 @@ export default function ServicesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
-          paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
+          paddingTop: insets.top,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md + 2,
         }}
       >
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "800",
-            color: COLORS.warmBrown,
-            letterSpacing: -0.5,
-          }}
-        >
+        <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
           Pet Services 🐾
         </Text>
-        <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: 2, fontWeight: "500" }]}>
           Book trusted care for your dog.
         </Text>
-      </View>
+      </GlassSurface>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         <View
@@ -186,32 +189,14 @@ function CategoryCard({ category, onPress }) {
   const Icon = category.icon;
   const isLive = category.live;
 
-  // Coming-soon cards are pure signposts: rendered with no onPress so they are
-  // not tappable into any flow (no fake data behind them).
-  const Wrapper = isLive ? TouchableOpacity : View;
-  const wrapperProps = isLive
-    ? { onPress, activeOpacity: 0.9, accessibilityRole: "button" }
-    : { accessibilityRole: "text" };
+  const cardStyle = {
+    width: "48%",
+    marginBottom: SPACING.md + 2,
+    opacity: isLive ? 1 : 0.65,
+  };
 
-  return (
-    <Wrapper
-      {...wrapperProps}
-      style={{
-        width: "48%",
-        padding: 16,
-        backgroundColor: COLORS.card,
-        borderRadius: 20,
-        marginBottom: 14,
-        shadowColor: COLORS.terracotta,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isLive ? 0.07 : 0.03,
-        shadowRadius: 14,
-        elevation: isLive ? 3 : 1,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-        opacity: isLive ? 1 : 0.65,
-      }}
-    >
+  const inner = (
+    <>
       <View
         style={{
           flexDirection: "row",
@@ -223,7 +208,7 @@ function CategoryCard({ category, onPress }) {
           style={{
             width: 46,
             height: 46,
-            borderRadius: 14,
+            borderRadius: RADIUS.control - 2,
             backgroundColor: COLORS.coral + "20",
             justifyContent: "center",
             alignItems: "center",
@@ -239,28 +224,45 @@ function CategoryCard({ category, onPress }) {
       </View>
 
       <Text
-        style={{
-          fontSize: 15,
-          fontWeight: "800",
-          color: COLORS.warmBrown,
-          marginTop: 12,
-        }}
+        style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", marginTop: SPACING.md }]}
       >
         {category.title}
       </Text>
       {category.subtitle ? (
         <Text
-          style={{
-            fontSize: 12,
-            color: COLORS.mutedBrown,
-            marginTop: 3,
-            lineHeight: 16,
-          }}
+          style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 3 }]}
         >
           {category.subtitle}
         </Text>
       ) : null}
-    </Wrapper>
+    </>
+  );
+
+  // Coming-soon cards are pure signposts: rendered with no onPress so they are
+  // not tappable into any flow (no fake data behind them).
+  if (isLive) {
+    return (
+      <PressableScale
+        onPress={onPress}
+        accessibilityRole="button"
+        style={cardStyle}
+      >
+        <Card level="sm" borderColor={COLORS.peach} style={{ padding: SPACING.lg }}>
+          {inner}
+        </Card>
+      </PressableScale>
+    );
+  }
+
+  return (
+    <Card
+      level="none"
+      borderColor={COLORS.peach}
+      accessibilityRole="text"
+      style={[cardStyle, { padding: SPACING.lg }]}
+    >
+      {inner}
+    </Card>
   );
 }
 
@@ -269,20 +271,15 @@ function ComingSoonBadge() {
     <View
       style={{
         backgroundColor: COLORS.sand,
-        borderRadius: 999,
-        paddingHorizontal: 8,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm,
         paddingVertical: 3,
         borderWidth: 1,
         borderColor: COLORS.peach,
       }}
     >
       <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "800",
-          color: COLORS.mutedBrown,
-          letterSpacing: 0.3,
-        }}
+        style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "800", letterSpacing: 0.3 }]}
       >
         Coming soon
       </Text>

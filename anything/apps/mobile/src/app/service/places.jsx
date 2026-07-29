@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   Linking,
   Platform,
@@ -14,6 +13,14 @@ import * as Location from "expo-location";
 import { ArrowLeft, MapPin, Star, Navigation, Heart } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import MapLocationView from "@/components/Map/MapLocationView";
 import {
   usePlacesSearch,
@@ -119,78 +126,80 @@ export default function PlacesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md + 2,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md + 2 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
+        </PressableScale>
+        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
           {t("places.title")}
         </Text>
-      </View>
+      </GlassSurface>
 
       {/* Tabs */}
-      <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+      <View style={{ flexDirection: "row", paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.sm }}>
         {[
           { k: "near", label: t("places.nearby") },
           { k: "saved", label: t("places.saved") },
         ].map(({ k, label }) => (
-          <TouchableOpacity
+          <PressableScale
             key={k}
             testID={`places-tab-${k}`}
             onPress={() => setTab(k)}
             style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 999,
+              paddingHorizontal: SPACING.md + 2,
+              paddingVertical: SPACING.sm,
+              borderRadius: RADIUS.chip,
               backgroundColor: tab === k ? COLORS.coral : COLORS.card,
               borderWidth: 1,
               borderColor: COLORS.peach,
             }}
           >
-            <Text style={{ fontWeight: "700", color: tab === k ? "#fff" : COLORS.warmBrown }}>
+            <Text style={[TYPE.subhead, { fontWeight: "700", color: tab === k ? "#fff" : COLORS.warmBrown }]}>
               {label}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
         {tab === "near" && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 12 }}
-            contentContainerStyle={{ gap: 8 }}
+            style={{ marginBottom: SPACING.md }}
+            contentContainerStyle={{ gap: SPACING.sm }}
           >
             {CATEGORIES.map((c) => (
-              <TouchableOpacity
+              <PressableScale
                 key={c.key}
                 testID={`places-cat-${c.key}`}
                 onPress={() => setCategory(c.key)}
                 style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 999,
+                  paddingHorizontal: SPACING.md + 2,
+                  paddingVertical: SPACING.sm,
+                  borderRadius: RADIUS.chip,
                   backgroundColor: category === c.key ? COLORS.coral : COLORS.card,
                   borderWidth: 1,
                   borderColor: COLORS.peach,
                 }}
               >
-                <Text style={{ fontWeight: "700", color: category === c.key ? "#fff" : COLORS.warmBrown }}>
+                <Text style={[TYPE.subhead, { fontWeight: "700", color: category === c.key ? "#fff" : COLORS.warmBrown }]}>
                   {c.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             ))}
           </ScrollView>
         )}
@@ -201,7 +210,7 @@ export default function PlacesScreen() {
         ) : tab === "near" && denied && !coord ? (
           <Empty testID="places-denied" body={t("places.locationDenied")} />
         ) : tab === "near" && isLoading ? (
-          <ActivityIndicator color={COLORS.coral} style={{ marginTop: 24 }} />
+          <ActivityIndicator color={COLORS.coral} style={{ marginTop: SPACING.xxl }} />
         ) : list.length === 0 ? (
           <Empty
             testID={tab === "saved" ? "places-saved-empty" : "places-empty"}
@@ -209,36 +218,39 @@ export default function PlacesScreen() {
           />
         ) : (
           <>
-            <View style={{ marginBottom: 16 }}>
+            <View style={{ marginBottom: SPACING.lg }}>
               <MapLocationView points={markers} height={220} />
             </View>
             {list.map((p) => (
-              <View
+              <Card
                 key={p.place_id}
                 testID={`place-${p.place_id}`}
-                style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: COLORS.peach }}
+                level="none"
+                radius={RADIUS.control - 2}
+                borderColor={COLORS.peach}
+                style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm }}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <View style={{ flex: 1, paddingRight: 8 }}>
-                    <Text style={{ fontWeight: "800", color: COLORS.warmBrown }}>{p.name}</Text>
+                  <View style={{ flex: 1, paddingRight: SPACING.sm }}>
+                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>{p.name}</Text>
                     {p.address ? (
-                      <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 2 }}>{p.address}</Text>
+                      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>{p.address}</Text>
                     ) : null}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm + 2, marginTop: SPACING.xs }}>
                       {p.rating != null && (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                           <Star size={12} color={COLORS.coral} />
-                          <Text style={{ color: COLORS.mutedBrown, fontSize: 12 }}>{p.rating}</Text>
+                          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>{p.rating}</Text>
                         </View>
                       )}
                       {p.open_now != null && (
-                        <Text style={{ color: p.open_now ? COLORS.sageDark : "#C2410C", fontSize: 12, fontWeight: "700" }}>
+                        <Text style={[TYPE.footnote, { color: p.open_now ? COLORS.sageDark : "#C2410C", fontWeight: "700" }]}>
                           {p.open_now ? t("places.openNow") : t("places.closed")}
                         </Text>
                       )}
                     </View>
                   </View>
-                  <TouchableOpacity
+                  <PressableScale
                     testID={`place-save-${p.place_id}`}
                     onPress={() => toggleSave(p)}
                     hitSlop={8}
@@ -248,17 +260,17 @@ export default function PlacesScreen() {
                       color={COLORS.coral}
                       fill={savedIds.has(p.place_id) ? COLORS.coral : "none"}
                     />
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
-                <TouchableOpacity
+                <PressableScale
                   testID={`place-directions-${p.place_id}`}
                   onPress={() => openDirections(p)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm + 2 }}
                 >
                   <Navigation size={15} color={COLORS.sageDark} />
-                  <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>{t("places.directions")}</Text>
-                </TouchableOpacity>
-              </View>
+                  <Text style={[TYPE.subhead, { color: COLORS.sageDark, fontWeight: "700" }]}>{t("places.directions")}</Text>
+                </PressableScale>
+              </Card>
             ))}
           </>
         )}
@@ -269,14 +281,17 @@ export default function PlacesScreen() {
 
 function Empty({ body, testID }) {
   return (
-    <View
+    <Card
       testID={testID}
-      style={{ backgroundColor: COLORS.card, borderRadius: 18, padding: 28, alignItems: "center", borderWidth: 1, borderColor: COLORS.peach, marginTop: 8 }}
+      level="none"
+      radius={RADIUS.control}
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.xxl + SPACING.xs, alignItems: "center", marginTop: SPACING.sm }}
     >
       <MapPin size={28} color={COLORS.mutedBrown} />
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 10, textAlign: "center" }}>
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.sm + 2, textAlign: "center" }]}>
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }

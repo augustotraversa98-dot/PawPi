@@ -3,8 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ScrollView,
   Switch,
   Alert,
 } from "react-native";
@@ -13,6 +11,8 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Car, MapPin, MessageCircle, Navigation, CalendarDays } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
@@ -40,23 +40,22 @@ const STATUS_LABEL = {
 
 function Chip({ selected, label, onPress, testID }) {
   return (
-    <TouchableOpacity
+    <PressableScale
       testID={testID}
       onPress={onPress}
-      activeOpacity={0.85}
       style={{
-        paddingHorizontal: 12,
+        paddingHorizontal: SPACING.md,
         paddingVertical: 7,
-        borderRadius: 999,
+        borderRadius: RADIUS.chip,
         borderWidth: 1,
         borderColor: selected ? COLORS.coral : COLORS.peach,
         backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
       }}
     >
-      <Text style={{ color: selected ? COLORS.coral : COLORS.warmBrown, fontWeight: "700", fontSize: 13 }}>
+      <Text style={[TYPE.subhead, { color: selected ? COLORS.coral : COLORS.warmBrown }]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
@@ -171,92 +170,98 @@ export default function TransportScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>Transport 🚕</Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>Transport 🚕</Text>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Book a pet-taxi: pickup and dropoff
           </Text>
         </View>
-      </View>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 60 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: insets.bottom + 60 }}
       >
         {/* Provider picker */}
-        <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.mutedBrown, marginBottom: 8 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.sm }]}>
           TRANSPORT PROVIDERS NEAR YOU
         </Text>
         {isLoading ? (
-          <Text style={{ color: COLORS.mutedBrown }}>Loading…</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Loading…</Text>
         ) : isError ? (
-          <Text style={{ color: COLORS.mutedBrown }}>Couldn't load providers.</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Couldn't load providers.</Text>
         ) : providers.length === 0 ? (
-          <Text testID="providers-empty" style={{ color: COLORS.mutedBrown }}>
+          <Text testID="providers-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
             No transport providers available yet.
           </Text>
         ) : (
           providers.map((p) => (
-            <TouchableOpacity
+            <PressableScale
               key={p.id}
               testID={`provider-${p.id}`}
               onPress={() => setProvider(p)}
-              activeOpacity={0.85}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                backgroundColor: COLORS.card,
-                borderRadius: 14,
-                padding: 14,
-                marginBottom: 8,
-                borderWidth: provider?.id === p.id ? 2 : 1,
-                borderColor: provider?.id === p.id ? COLORS.coral : COLORS.peach,
-              }}
             >
-              <Car size={20} color={COLORS.coral} />
-              <Text style={{ flex: 1, fontWeight: "800", color: COLORS.warmBrown }}>{p.name}</Text>
-            </TouchableOpacity>
+              <Card
+                level="sm"
+                radius={RADIUS.control}
+                borderColor={provider?.id === p.id ? COLORS.coral : COLORS.peach}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm,
+                  padding: SPACING.lg - 2,
+                  marginBottom: SPACING.sm,
+                  borderWidth: provider?.id === p.id ? 2 : 1,
+                }}
+              >
+                <Car size={20} color={COLORS.coral} />
+                <Text style={[TYPE.headline, { flex: 1, fontWeight: "800", color: COLORS.warmBrown }]}>
+                  {p.name}
+                </Text>
+              </Card>
+            </PressableScale>
           ))
         )}
 
         {/* Booking form */}
         {provider && (
-          <View
+          <Card
             testID="booking-form"
-            style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginTop: 12, borderWidth: 1, borderColor: COLORS.peach }}
+            level="sm"
+            radius={RADIUS.card}
+            borderColor={COLORS.peach}
+            style={{ padding: SPACING.lg, marginTop: SPACING.md }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginBottom: 10 }}>
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>
               Book {provider.name}
             </Text>
 
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flexDirection: "row", gap: SPACING.md }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginBottom: 4 }}>Date</Text>
+                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>Date</Text>
                 <DateField value={date} onChange={setDate} testID="trip-date" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginBottom: 4 }}>Time</Text>
+                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>Time</Text>
                 <TimeField value={time} onChange={setTime} testID="trip-time" />
               </View>
             </View>
 
-            <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginTop: 12, marginBottom: 4 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: SPACING.xs }]}>
               <MapPin size={13} color={COLORS.mutedBrown} /> Pickup
             </Text>
             <TextInput
@@ -265,13 +270,13 @@ export default function TransportScreen() {
               onChangeText={setPickupAddr}
               placeholder="Pickup address"
               placeholderTextColor={COLORS.mutedBrown}
-              style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+              style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
-            <View style={{ height: 140, marginTop: 8, borderRadius: 12, overflow: "hidden" }}>
+            <View style={{ height: 140, marginTop: SPACING.sm, borderRadius: RADIUS.sm, overflow: "hidden" }}>
               <MapLocationPicker value={pickupCoord} onChange={setPickupCoord} testID="pickup-map" />
             </View>
 
-            <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginTop: 12, marginBottom: 4 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: SPACING.xs }]}>
               <MapPin size={13} color={COLORS.mutedBrown} /> Dropoff
             </Text>
             <TextInput
@@ -280,14 +285,14 @@ export default function TransportScreen() {
               onChangeText={setDropoffAddr}
               placeholder="Dropoff address"
               placeholderTextColor={COLORS.mutedBrown}
-              style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+              style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
-            <View style={{ height: 140, marginTop: 8, borderRadius: 12, overflow: "hidden" }}>
+            <View style={{ height: 140, marginTop: SPACING.sm, borderRadius: RADIUS.sm, overflow: "hidden" }}>
               <MapLocationPicker value={dropoffCoord} onChange={setDropoffCoord} testID="dropoff-map" />
             </View>
 
-            <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>Trip</Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: 6 }]}>Trip</Text>
+            <View style={{ flexDirection: "row", gap: SPACING.sm }}>
               <Chip testID="type-one_way" label="One-way" selected={tripType === "one_way"} onPress={() => setTripType("one_way")} />
               <Chip testID="type-round_trip" label="Round-trip" selected={tripType === "round_trip"} onPress={() => setTripType("round_trip")} />
             </View>
@@ -298,11 +303,11 @@ export default function TransportScreen() {
               onChangeText={setPetSize}
               placeholder="Pet size (e.g. small / medium / large)"
               placeholderTextColor={COLORS.mutedBrown}
-              style={{ marginTop: 12, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+              style={{ marginTop: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
 
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
-              <Text style={{ color: COLORS.warmBrown, fontWeight: "700" }}>Carrier needed</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.md }}>
+              <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700" }]}>Carrier needed</Text>
               <Switch testID="carrier" value={carrier} onValueChange={setCarrier} />
             </View>
 
@@ -313,96 +318,98 @@ export default function TransportScreen() {
               placeholder="Notes (gate code, temperament…)"
               placeholderTextColor={COLORS.mutedBrown}
               multiline
-              style={{ marginTop: 12, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, minHeight: 60, color: COLORS.warmBrown }}
+              style={{ marginTop: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, minHeight: 60, color: COLORS.warmBrown }}
             />
 
-            <TouchableOpacity
+            <PressableScale
               testID="book-transport"
               onPress={submit}
               disabled={!canBook || book.isPending}
-              activeOpacity={0.85}
               style={{
-                marginTop: 14,
+                marginTop: SPACING.lg - 2,
                 backgroundColor: canBook ? COLORS.coral : COLORS.peach,
-                borderRadius: 14,
+                borderRadius: RADIUS.control,
                 paddingVertical: 13,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "800" }}>
+              <Text style={[TYPE.headline, { color: "#fff", fontWeight: "800" }]}>
                 {book.isPending ? "Requesting…" : "Request pet-taxi"}
               </Text>
-            </TouchableOpacity>
-            <Text style={{ color: COLORS.mutedBrown, fontSize: 11, marginTop: 8, textAlign: "center" }}>
+            </PressableScale>
+            <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm, textAlign: "center" }]}>
               The provider sets the fare and confirms. You can pay once it's confirmed (payments may
               not be set up yet).
             </Text>
-          </View>
+          </Card>
         )}
 
         {/* My trips */}
-        <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.mutedBrown, marginTop: 20, marginBottom: 8 }}>
+        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "800", marginTop: SPACING.xl, marginBottom: SPACING.sm }]}>
           MY TRIPS
         </Text>
         {trips.length === 0 ? (
-          <Text testID="trips-empty" style={{ color: COLORS.mutedBrown }}>
+          <Text testID="trips-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
             No trips yet.
           </Text>
         ) : (
           trips.map((t) => (
-            <View
+            <Card
               key={t.id}
-              style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: COLORS.peach }}
+              level="sm"
+              radius={RADIUS.control}
+              borderColor={COLORS.peach}
+              style={{ padding: SPACING.lg - 2, marginBottom: SPACING.sm }}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontWeight: "800", color: COLORS.warmBrown }}>
+                <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
                   {t.provider_name || "Provider"}
                 </Text>
-                <Text style={{ fontWeight: "800", color: COLORS.coral }}>
+                <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.coral }]}>
                   {STATUS_LABEL[t.status] || t.status}
                 </Text>
               </View>
-              <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 4 }}>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
                 {t.pickup_address} → {t.dropoff_address}
               </Text>
               {t.fare_amount != null && (
-                <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 4 }}>
+                <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.xs }]}>
                   Fare: {t.fare_amount}
                 </Text>
               )}
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-                <TouchableOpacity
+              <View style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}>
+                <PressableScale
                   testID={`message-${t.id}`}
                   onPress={() => messageProvider(t)}
                   style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                 >
                   <MessageCircle size={16} color={COLORS.sageDark} />
-                  <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>Message</Text>
-                </TouchableOpacity>
+                  <Text style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "700" }]}>Message</Text>
+                </PressableScale>
                 {(t.status === "requested" || t.status === "confirmed" || t.status === "en_route") && (
-                  <TouchableOpacity
+                  <PressableScale
                     testID={`add-calendar-${t.id}`}
                     onPress={() => addTripToCalendar(t)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                   >
                     <CalendarDays size={16} color={COLORS.sageDark} />
-                    <Text style={{ color: COLORS.sageDark, fontWeight: "700" }}>
+                    <Text style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "700" }]}>
                       {t.calendar_event_id ? tr("calendar.added") : tr("calendar.addToCalendar")}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 )}
                 {t.status === "en_route" && (
-                  <TouchableOpacity
+                  <PressableScale
                     testID={`track-${t.id}`}
                     onPress={() => router.push(`/transport-track?tripId=${t.id}`)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                   >
                     <Navigation size={16} color={COLORS.coral} />
-                    <Text style={{ color: COLORS.coral, fontWeight: "700" }}>Track live</Text>
-                  </TouchableOpacity>
+                    <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>Track live</Text>
+                  </PressableScale>
                 )}
                 {(t.status === "requested" || t.status === "confirmed") && (
-                  <TouchableOpacity
+                  <PressableScale
                     testID={`cancel-${t.id}`}
                     onPress={() =>
                       Alert.alert("Cancel trip?", "", [
@@ -411,11 +418,11 @@ export default function TransportScreen() {
                       ])
                     }
                   >
-                    <Text style={{ color: "#C2410C", fontWeight: "700" }}>Cancel</Text>
-                  </TouchableOpacity>
+                    <Text style={[TYPE.body, { color: "#C2410C", fontWeight: "700" }]}>Cancel</Text>
+                  </PressableScale>
                 )}
               </View>
-            </View>
+            </Card>
           ))
         )}
       </RefreshableScrollView>

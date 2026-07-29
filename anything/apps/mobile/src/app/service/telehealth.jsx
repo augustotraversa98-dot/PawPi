@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Linking,
@@ -16,6 +15,14 @@ import {
   MessageSquare,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import {
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  BLUR,
+} from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useDiscoverProviders,
@@ -49,52 +56,54 @@ export default function TelehealthScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
+      <GlassSurface
+        intensity={BLUR.thick}
         style={{
+          borderBottomWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md + 2,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md + 2 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Telehealth 📹
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Video consult with a vet
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           onPress={() => router.push("/provider-messages")}
           accessibilityLabel="Messages"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: RADIUS.chip,
             backgroundColor: COLORS.sand,
             justifyContent: "center",
             alignItems: "center",
           }}
         >
           <MessageSquare size={20} color={COLORS.coral} />
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </GlassSurface>
 
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
         {/* My consults — only shown when the current pet has any. */}
         {consults.length > 0 && (
-          <View style={{ marginBottom: 8 }}>
+          <View style={{ marginBottom: SPACING.sm }}>
             <SectionLabel>MY CONSULTS</SectionLabel>
             {consults.map((c) => (
               <ConsultCard key={c.id} consult={c} petId={petId} />
@@ -163,127 +172,117 @@ function ConsultCard({ consult, petId }) {
           : "Scheduled";
 
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="none"
+      radius={RADIUS.control}
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
-      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>
+      <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
         {consult.provider_name || "Video consult"}
       </Text>
-      <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
         {statusLabel}
       </Text>
 
       {joinable ? (
-        <TouchableOpacity
+        <PressableScale
           onPress={onJoin}
           disabled={joinTelehealth.isPending}
           accessibilityRole="button"
           style={{
-            marginTop: 12,
+            marginTop: SPACING.md,
             backgroundColor: COLORS.coral,
-            borderRadius: 14,
-            paddingVertical: 12,
+            borderRadius: RADIUS.control - 2,
+            paddingVertical: SPACING.md,
             alignItems: "center",
             opacity: joinTelehealth.isPending ? 0.7 : 1,
           }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>
+          <Text style={[TYPE.body, { fontWeight: "800", color: "#FFF" }]}>
             {joinTelehealth.isPending ? "Joining…" : "Join video consult"}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       ) : null}
 
       {error ? (
-        <Text style={{ marginTop: 10, fontSize: 13, fontWeight: "600", color: "#B23B30" }}>
+        <Text style={[TYPE.subhead, { marginTop: SPACING.sm + 2, color: "#B23B30" }]}>
           {error}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 function ProviderCard({ provider, onPress }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 16,
-        marginBottom: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      {provider.logo_url ? (
-        <Image
-          source={{ uri: provider.logo_url }}
-          style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: COLORS.sand }}
-        />
-      ) : (
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Video size={24} color={COLORS.coral} />
-        </View>
-      )}
-
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{ fontSize: 17, fontWeight: "800", color: COLORS.warmBrown }}
-          numberOfLines={1}
-        >
-          {provider.name}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-          <RatingBadge
-            avgRating={provider.avg_rating}
-            reviewCount={provider.review_count}
+    <PressableScale onPress={onPress} style={{ marginBottom: SPACING.md + 2 }}>
+      <Card
+        level="none"
+        borderColor={COLORS.peach}
+        style={{
+          padding: SPACING.lg,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.md + 2,
+        }}
+      >
+        {provider.logo_url ? (
+          <Image
+            source={{ uri: provider.logo_url }}
+            style={{ width: 52, height: 52, borderRadius: RADIUS.control - 2, backgroundColor: COLORS.sand }}
           />
-        </View>
-        {provider.bio ? (
-          <Text
-            style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}
-            numberOfLines={2}
+        ) : (
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: RADIUS.control - 2,
+              backgroundColor: COLORS.sand,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            {provider.bio}
-          </Text>
-        ) : null}
-      </View>
+            <Video size={24} color={COLORS.coral} />
+          </View>
+        )}
 
-      <ChevronRight size={20} color={COLORS.mutedBrown} />
-    </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}
+            numberOfLines={1}
+          >
+            {provider.name}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: 2 }}>
+            <RatingBadge
+              avgRating={provider.avg_rating}
+              reviewCount={provider.review_count}
+            />
+          </View>
+          {provider.bio ? (
+            <Text
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}
+              numberOfLines={2}
+            >
+              {provider.bio}
+            </Text>
+          ) : null}
+        </View>
+
+        <ChevronRight size={20} color={COLORS.mutedBrown} />
+      </Card>
+    </PressableScale>
   );
 }
 
 function SectionLabel({ children }) {
   return (
     <Text
-      style={{
-        fontSize: 13,
-        fontWeight: "800",
-        color: COLORS.mutedBrown,
-        marginBottom: 14,
-        letterSpacing: 0.6,
-      }}
+      style={[
+        TYPE.subhead,
+        { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.md + 2, letterSpacing: 0.6 },
+      ]}
     >
       {children}
     </Text>
@@ -292,25 +291,20 @@ function SectionLabel({ children }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="none"
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.xxl + SPACING.xs, alignItems: "center" }}
     >
       <Video size={32} color={COLORS.mutedBrown} />
-      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}>
+      <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", marginTop: SPACING.md }]}>
         {title}
       </Text>
       <Text
-        style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 6, textAlign: "center" }}
+        style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2, textAlign: "center" }]}
       >
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }
