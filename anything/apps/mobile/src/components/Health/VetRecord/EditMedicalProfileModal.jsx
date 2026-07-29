@@ -37,7 +37,11 @@ export default function EditMedicalProfileModal({
       ? new Date(initialData.pet.adoption_date).toISOString().split("T")[0]
       : "",
   );
-  const [gender, setGender] = useState(initialData?.pet?.gender || "");
+  // Stored lowercase (app-wide convention — see profile-edit.jsx / AddDogModal.jsx);
+  // normalize on read so a pre-existing differently-cased value still matches an option.
+  const [gender, setGender] = useState(
+    initialData?.pet?.gender?.toLowerCase() || "",
+  );
   const [currentWeight, setCurrentWeight] = useState(
     initialData?.currentWeight?.weight?.toString() || "",
   );
@@ -304,9 +308,10 @@ export default function EditMedicalProfileModal({
         Sex / Gender
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {["Male", "Female"].map((option) => (
+        {["male", "female"].map((option) => (
           <PressableScale
             key={option}
+            testID={`gender-${option}`}
             onPress={() => setGender(option)}
             style={{
               flex: 1,
@@ -324,7 +329,7 @@ export default function EditMedicalProfileModal({
                 { fontWeight: "600", color: gender === option ? "#FFF" : COLORS.warmBrown },
               ]}
             >
-              {option}
+              {option.charAt(0).toUpperCase() + option.slice(1)}
             </Text>
           </PressableScale>
         ))}
