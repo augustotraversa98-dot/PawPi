@@ -65,6 +65,11 @@ export function Button({
   fullWidth = true,
   style,
   textStyle,
+  // Defaults to `title` so a Button is always reachable by its visible label.
+  // The 2.77 restyle replaces hand-rolled TouchableOpacity buttons that carried
+  // an explicit accessibilityLabel; without this default those labels would be
+  // silently dropped screen by screen.
+  accessibilityLabel,
   ...rest
 }) {
   const s = SIZES[size] || SIZES.md;
@@ -76,6 +81,9 @@ export function Button({
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={
+        accessibilityLabel ?? (typeof title === "string" ? title : undefined)
+      }
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
         {
