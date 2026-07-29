@@ -436,6 +436,27 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ## To test
 
+### [ ] N3 — Adoption screen restyled to match the rest of the app (Liquid Glass)  ·  ticket/n3-adoption-restyle (2026-07-29)
+- **What shipped:** the Adoption screen (Browse / Favorites / Applications, and the dog detail page you
+  open from a card) was the one screen in the app that never got the "Liquid Glass" look-and-feel update
+  that every other screen got last week. It now matches — the header has the same frosted-glass look,
+  buttons and cards have the same soft rounded style and gentle press animation as Vet, Shop, Transport,
+  etc. Nothing about how it WORKS changed: same dogs, same filters, same "Apply to adopt"/"Chat with
+  shelter"/"Pay adoption fee"/"Donate" buttons, same report-listing button, same photo/video gallery and
+  shelter map on the detail page.
+- **What to test (when you have time):** open More → Adoption.
+  - Confirm the header, tabs, and dog cards now look like the rest of the app (soft rounded cards, subtle
+    press animation when you tap a card or button) — no visual mismatch with e.g. the Shop or Transport
+    screens.
+  - Browse tab: cards still show photo, name, age·size·gender, distance ("X km away"), and "See more";
+    tap **Filters**, pick a filter, apply — the grid narrows and the pill shows the count.
+  - Tap a dog card → the detail page opens: swipe through photos/video if the listing has them, the key
+    facts and shelter map still show correctly, and the report/moderation icon (flag/dots near the close
+    button) is still there.
+  - Apply to adopt (or foster, if the listing offers both), chat with the shelter, and try the payment/
+    donate buttons — all should behave exactly as before, just with the new look.
+  - Favorites and Applications tabs still list your saved dogs and past applications the same as before.
+
 ### [ ] N1 — Address autofill on the shared map picker  ·  ticket/n1-address-autofill (2026-07-29)
 - **What shipped:** the shared Apple-Maps location picker (used by the emergency card,
   transport, places, events, provider onboarding, and the walk picker) now turns a

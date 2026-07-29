@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
@@ -28,6 +27,8 @@ import {
   MapPin,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import {
@@ -51,6 +52,11 @@ import { isValidCoord } from "@/utils/walkBuddies";
 // the dog becomes the owner's own pet. Discovery is the SHARED
 // /api/providers/discover?type=adoption (capability match, 2.1). Real data only; empty →
 // empty states; NO fake listings. RLS (0038) is the real guard.
+//
+// Restyled to Liquid Glass (ticket N3, 2026-07-29) — visual/motion only, on top of the
+// Wave 9 adoption-browse work (2.86/2.87: the grid card variant, age·size·gender row,
+// distance label, "See more", the rich detail page). No behavior, data, hooks, test hooks, or
+// copy changed.
 
 const TABS = [
   { key: "browse", label: "Browse" },
@@ -128,60 +134,57 @@ export default function AdoptionScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-      <View
-        style={{
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: COLORS.card,
+          paddingHorizontal: SPACING.xl,
+          paddingBottom: SPACING.md,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
-        </TouchableOpacity>
+        </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
             Adoption 🐶
           </Text>
-          <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
             Find a dog to bring home
           </Text>
         </View>
-      </View>
+      </GlassSurface>
 
-      <View style={{ flexDirection: "row", gap: 8, padding: 16, paddingBottom: 4 }}>
+      <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.lg, paddingBottom: SPACING.xs }}>
         {TABS.map((t) => {
           const selected = tab === t.key;
           return (
-            <TouchableOpacity
+            <PressableScale
               key={t.key}
               onPress={() => setTab(t.key)}
-              activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               style={{
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 999,
+                paddingHorizontal: SPACING.lg - 2,
+                paddingVertical: SPACING.sm,
+                borderRadius: RADIUS.chip,
                 borderWidth: 1,
                 borderColor: selected ? COLORS.coral : COLORS.peach,
                 backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
               }}
             >
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: selected ? COLORS.coral : COLORS.warmBrown,
-                }}
+                style={[
+                  TYPE.subhead,
+                  { color: selected ? COLORS.coral : COLORS.warmBrown },
+                ]}
               >
                 {t.label}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
       </View>
@@ -269,42 +272,42 @@ function BrowseTab({ onOpenListing }) {
   return (
     <RefreshableScrollView
       refetch={refetch}
-      contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+      contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
     >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 12,
+          marginBottom: SPACING.md,
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <MapPin size={14} color={COLORS.mutedBrown} />
-          <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.mutedBrown }}>
+          <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown }]}>
             {nearest ? "NEAREST FIRST" : "RECENTLY ADDED"}
           </Text>
         </View>
-        <TouchableOpacity
+        <PressableScale
           testID="open-filters"
           onPress={() => setFiltersOpen(true)}
           style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 6,
-            borderRadius: 999,
+            borderRadius: RADIUS.chip,
             borderWidth: 1,
             borderColor: count > 0 ? COLORS.coral : COLORS.peach,
             backgroundColor: count > 0 ? COLORS.coral + "18" : COLORS.card,
-            paddingHorizontal: 12,
+            paddingHorizontal: SPACING.md,
             paddingVertical: 7,
           }}
         >
           <SlidersHorizontal size={15} color={count > 0 ? COLORS.coral : COLORS.warmBrown} />
-          <Text style={{ fontSize: 13, fontWeight: "700", color: count > 0 ? COLORS.coral : COLORS.warmBrown }}>
+          <Text style={[TYPE.subhead, { color: count > 0 ? COLORS.coral : COLORS.warmBrown }]}>
             Filters{count > 0 ? ` (${count})` : ""}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       {isLoading || !located ? (
@@ -374,86 +377,85 @@ function DogProfileCard({ listing, onPress, grid = false }) {
     .join(" · ");
   const km = listing.distance_km;
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: grid ? 18 : 22,
-        marginBottom: 14,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-        overflow: "hidden",
-      }}
-    >
-      <View>
-        {photo ? (
-          <Image source={{ uri: photo }} style={{ width: "100%", height: photoH, backgroundColor: COLORS.sand }} />
-        ) : (
-          <View
-            style={{
-              width: "100%",
-              height: photoH,
-              backgroundColor: COLORS.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <PawPrint size={grid ? 30 : 40} color={COLORS.coral} />
-          </View>
-        )}
-        {listing.is_urgent ? (
-          <View
-            testID={`urgent-${listing.id}`}
-            style={{
-              position: "absolute",
-              top: 8,
-              left: 8,
-              backgroundColor: "#C2410C",
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-            }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 10 }}>URGENT</Text>
-          </View>
-        ) : null}
-      </View>
+    <PressableScale onPress={onPress}>
+      <Card
+        level="sm"
+        radius={grid ? RADIUS.md : RADIUS.card}
+        borderColor={COLORS.peach}
+        style={{ marginBottom: SPACING.md + 2, overflow: "hidden" }}
+      >
+        <View>
+          {photo ? (
+            <Image source={{ uri: photo }} style={{ width: "100%", height: photoH, backgroundColor: COLORS.sand }} />
+          ) : (
+            <View
+              style={{
+                width: "100%",
+                height: photoH,
+                backgroundColor: COLORS.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <PawPrint size={grid ? 30 : 40} color={COLORS.coral} />
+            </View>
+          )}
+          {listing.is_urgent ? (
+            <View
+              testID={`urgent-${listing.id}`}
+              style={{
+                position: "absolute",
+                top: SPACING.sm,
+                left: SPACING.sm,
+                backgroundColor: "#C2410C",
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.md - 2,
+                paddingVertical: 4,
+              }}
+            >
+              <Text style={[TYPE.caption, { color: "#fff", fontWeight: "800", letterSpacing: 0 }]}>URGENT</Text>
+            </View>
+          ) : null}
+        </View>
 
-      <View style={{ padding: grid ? 12 : 16 }}>
-        <Text style={{ fontSize: grid ? 16 : 19, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
-          {listing.name}
-        </Text>
-        <Text style={{ fontSize: 12.5, color: COLORS.mutedBrown, marginTop: 2 }} numberOfLines={1}>
-          {info || "Details inside"}
-        </Text>
-        {km != null ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
-            <MapPin size={12} color={COLORS.mutedBrown} />
-            <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
-              {km < 1 ? "Less than 1 km away" : `${Math.round(km)} km away`}
-            </Text>
-          </View>
-        ) : null}
-        {!grid ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
-            {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
-            {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
-            {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
-          </View>
-        ) : null}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-          <Text style={{ fontSize: 12.5, color: COLORS.coral, fontWeight: "700" }} numberOfLines={1}>
-            {money(listing.adoption_fee_cents, listing.currency)}
+        <View style={{ padding: grid ? SPACING.md : SPACING.lg }}>
+          <Text
+            style={[grid ? TYPE.headline : TYPE.title2, { color: COLORS.warmBrown }]}
+            numberOfLines={1}
+          >
+            {listing.name}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-            <Text style={{ fontSize: 12.5, fontWeight: "700", color: COLORS.warmBrown }}>See more</Text>
-            <ChevronRight size={16} color={COLORS.warmBrown} />
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]} numberOfLines={1}>
+            {info || "Details inside"}
+          </Text>
+          {km != null ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: SPACING.sm }}>
+              <MapPin size={12} color={COLORS.mutedBrown} />
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+                {km < 1 ? "Less than 1 km away" : `${Math.round(km)} km away`}
+              </Text>
+            </View>
+          ) : null}
+          {!grid ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.sm + 2 }}>
+              {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
+              {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
+              {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
+              {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
+            </View>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.sm + 2 }}>
+            <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]} numberOfLines={1}>
+              {money(listing.adoption_fee_cents, listing.currency)}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+              <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.warmBrown }]}>See more</Text>
+              <ChevronRight size={16} color={COLORS.warmBrown} />
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </Card>
+    </PressableScale>
   );
 }
 
@@ -479,26 +481,26 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-        <View
-          style={{
+        <GlassSurface
+          intensity={BLUR.thick}
+          style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+          contentStyle={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.peach,
+            padding: SPACING.lg,
           }}
         >
-          <TouchableOpacity onPress={onClose} testID="filters-close">
+          <PressableScale onPress={onClose} testID="filters-close">
             <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>Filters</Text>
-          <TouchableOpacity onPress={onClear} testID="filters-clear">
-            <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}>Clear all</Text>
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>Filters</Text>
+          <PressableScale onPress={onClear} testID="filters-clear">
+            <Text style={[TYPE.body, { fontWeight: "700", color: COLORS.coral }]}>Clear all</Text>
+          </PressableScale>
+        </GlassSurface>
 
-        <RefreshableScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
           <FilterGroup label="Gender">
             {GENDERS.map((g) => (
               <FilterPill key={g} label={g} active={draft.gender === g} onPress={() => toggle("gender", g)} />
@@ -531,14 +533,14 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
           </FilterGroup>
         </RefreshableScrollView>
 
-        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: COLORS.peach }}>
-          <TouchableOpacity
+        <View style={{ padding: SPACING.lg, borderTopWidth: 1, borderTopColor: MATERIALS.hairline }}>
+          <PressableScale
             testID="filters-apply"
             onPress={() => onApply(draft)}
-            style={{ backgroundColor: COLORS.coral, borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+            style={{ backgroundColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 16, alignItems: "center" }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>Show dogs</Text>
-          </TouchableOpacity>
+            <Text style={[TYPE.headline, { color: "#fff" }]}>Show dogs</Text>
+          </PressableScale>
         </View>
       </View>
     </Modal>
@@ -547,34 +549,34 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
 
 function FilterGroup({ label, children }) {
   return (
-    <View style={{ marginBottom: 20 }}>
-      <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.warmBrown, marginBottom: 10 }}>
+    <View style={{ marginBottom: SPACING.xl }}>
+      <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm + 2 }]}>
         {label}
       </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{children}</View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>{children}</View>
     </View>
   );
 }
 
 function FilterPill({ label, active, onPress }) {
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={{
-        paddingHorizontal: 14,
-        paddingVertical: 9,
-        borderRadius: 999,
+        paddingHorizontal: SPACING.md + 2,
+        paddingVertical: SPACING.sm + 1,
+        borderRadius: RADIUS.chip,
         borderWidth: 1,
         borderColor: active ? COLORS.coral : COLORS.peach,
         backgroundColor: active ? COLORS.coral + "18" : COLORS.card,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: "700", color: active ? COLORS.coral : COLORS.warmBrown, textTransform: "capitalize" }}>
+      <Text style={[TYPE.subhead, { color: active ? COLORS.coral : COLORS.warmBrown, textTransform: "capitalize" }]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
@@ -661,33 +663,32 @@ function ListingDetailModal({ data, onClose, router }) {
     >
       {listing ? (
         <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-          <View
-            style={{
+          <GlassSurface
+            intensity={BLUR.thick}
+            style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+            contentStyle={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: COLORS.peach,
-              backgroundColor: COLORS.card,
+              padding: SPACING.lg,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown, flex: 1 }} numberOfLines={1}>
+            <Text style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown, flex: 1 }]} numberOfLines={1}>
               {listing.name}
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
               {/* Report this adoption listing (T4). */}
               <ModerationMenu targetType="adoption_listing" targetId={listing.id} iconSize={18} />
-              <TouchableOpacity onPress={onClose}>
+              <PressableScale onPress={onClose}>
                 <X size={22} color={COLORS.warmBrown} />
-              </TouchableOpacity>
+              </PressableScale>
             </View>
-          </View>
+          </GlassSurface>
 
           <RefreshableScrollView contentContainerStyle={{ paddingBottom: 40 }}>
             {listing.is_urgent ? (
-              <View testID="detail-urgent" style={{ margin: 16, marginBottom: 0, backgroundColor: "#C2410C", borderRadius: 12, padding: 12 }}>
-                <Text style={{ color: "#fff", fontWeight: "800" }}>
+              <View testID="detail-urgent" style={{ margin: SPACING.lg, marginBottom: 0, backgroundColor: "#C2410C", borderRadius: RADIUS.md - 4, padding: SPACING.md }}>
+                <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
                   Urgent{listing.urgent_reason ? `: ${listing.urgent_reason}` : ""}
                 </Text>
               </View>
@@ -695,32 +696,32 @@ function ListingDetailModal({ data, onClose, router }) {
 
             <DogProfileDetail listing={listing} place={place} />
 
-            <View style={{ padding: 16, gap: 12 }}>
+            <View style={{ padding: SPACING.lg, gap: SPACING.md }}>
               {/* Placement: shown only when the listing allows BOTH adopt + foster. */}
               {listing.placement_type === "both" ? (
                 <View>
-                  <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", marginBottom: 6 }}>
+                  <Text style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.sm - 2 }]}>
                     I'd like to:
                   </Text>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity
+                  <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+                    <PressableScale
                       testID="placement-adopt"
                       onPress={() => setPlacement("adopt")}
-                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: placement === "adopt" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "adopt" ? COLORS.coral + "18" : COLORS.card }}
+                      style={{ paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.chip, borderWidth: 1, borderColor: placement === "adopt" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "adopt" ? COLORS.coral + "18" : COLORS.card }}
                     >
-                      <Text style={{ color: placement === "adopt" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }}>Adopt</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                      <Text style={[TYPE.body, { color: placement === "adopt" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>Adopt</Text>
+                    </PressableScale>
+                    <PressableScale
                       testID="placement-foster"
                       onPress={() => setPlacement("foster")}
-                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: placement === "foster" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "foster" ? COLORS.coral + "18" : COLORS.card }}
+                      style={{ paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.chip, borderWidth: 1, borderColor: placement === "foster" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "foster" ? COLORS.coral + "18" : COLORS.card }}
                     >
-                      <Text style={{ color: placement === "foster" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }}>Foster</Text>
-                    </TouchableOpacity>
+                      <Text style={[TYPE.body, { color: placement === "foster" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>Foster</Text>
+                    </PressableScale>
                   </View>
                 </View>
               ) : listing.placement_type === "foster" ? (
-                <Text testID="placement-foster-only" style={{ color: COLORS.mutedBrown, fontWeight: "700" }}>
+                <Text testID="placement-foster-only" style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
                   This dog is available to foster.
                 </Text>
               ) : null}
@@ -835,14 +836,14 @@ function MediaGallery({ photos, video }) {
         )}
       </ScrollView>
       {items.length > 1 ? (
-        <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: SPACING.sm }}>
           {items.map((it, i) => (
             <View
               key={i}
               style={{
                 width: 7,
                 height: 7,
-                borderRadius: 999,
+                borderRadius: RADIUS.chip,
                 backgroundColor: i === page ? COLORS.coral : COLORS.peach,
               }}
             />
@@ -857,11 +858,11 @@ function MediaGallery({ photos, video }) {
 function Fact({ label, value }) {
   if (value == null || value === "") return null;
   return (
-    <View style={{ width: "50%", paddingVertical: 6 }}>
-      <Text style={{ fontSize: 11, color: COLORS.mutedBrown, textTransform: "uppercase", fontWeight: "700" }}>
+    <View style={{ width: "50%", paddingVertical: SPACING.sm - 2 }}>
+      <Text style={[TYPE.caption, { color: COLORS.mutedBrown, textTransform: "uppercase" }]}>
         {label}
       </Text>
-      <Text style={{ fontSize: 15, color: COLORS.warmBrown, fontWeight: "600", marginTop: 2 }}>
+      <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "600", marginTop: 2 }]}>
         {value}
       </Text>
     </View>
@@ -877,14 +878,14 @@ function DogProfileDetail({ listing, place }) {
   return (
     <View>
       <MediaGallery photos={listing.photo_urls} video={listing.video_url} />
-      <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 24, fontWeight: "800", color: COLORS.warmBrown }}>{listing.name}</Text>
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}>
+      <View style={{ padding: SPACING.lg }}>
+        <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>{listing.name}</Text>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
           Listed by {listing.provider_name || place?.name}
         </Text>
 
         {/* Key facts — only the ones we actually know. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 14 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: SPACING.md + 2 }}>
           <Fact label="Age" value={ageLabel(listing.age_years, listing.age_months) !== "Age unknown" ? ageLabel(listing.age_years, listing.age_months) : null} />
           <Fact label="Gender" value={listing.gender} />
           <Fact label="Size" value={listing.size} />
@@ -895,7 +896,7 @@ function DogProfileDetail({ listing, place }) {
 
         {/* Compatibility chips. */}
         {(listing.energy_level || listing.good_with_kids === true || listing.good_with_cats === true || listing.good_with_dogs === true) ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.md }}>
             {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
             {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
             {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
@@ -905,31 +906,31 @@ function DogProfileDetail({ listing, place }) {
 
         {listing.story ? (
           <>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 20, marginBottom: 6 }}>
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.xl, marginBottom: SPACING.sm - 2 }]}>
               {listing.name}'s story
             </Text>
-            <Text style={{ fontSize: 15, color: COLORS.warmBrown, lineHeight: 22 }}>
+            <Text style={[TYPE.body, { color: COLORS.warmBrown, lineHeight: 22 }]}>
               {listing.story}
             </Text>
           </>
         ) : null}
 
         {/* Shelter card — name + a map of its location (ticket 2.68 MapLocationView) when known. */}
-        <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 20, marginBottom: 8 }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.xl, marginBottom: SPACING.sm }]}>
           Shelter
         </Text>
-        <View style={{ borderWidth: 1, borderColor: COLORS.peach, borderRadius: 16, padding: 14, backgroundColor: COLORS.card }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.warmBrown }}>
+        <Card level="sm" radius={RADIUS.card} borderColor={COLORS.peach} style={{ padding: SPACING.md + 2 }}>
+          <Text style={[TYPE.body, { fontWeight: "700", color: COLORS.warmBrown }]}>
             {listing.provider_name || place?.name}
           </Text>
           {shelterAddr ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
               <MapPin size={13} color={COLORS.mutedBrown} />
-              <Text style={{ fontSize: 13, color: COLORS.mutedBrown, flex: 1 }}>{shelterAddr}</Text>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", flex: 1 }]}>{shelterAddr}</Text>
             </View>
           ) : null}
           {hasCoord ? (
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginTop: SPACING.sm + 2 }}>
               <MapLocationView
                 testID="shelter-map"
                 points={{ lat: listing.provider_lat, lng: listing.provider_lng }}
@@ -937,7 +938,7 @@ function DogProfileDetail({ listing, place }) {
               />
             </View>
           ) : null}
-        </View>
+        </Card>
       </View>
     </View>
   );
@@ -946,7 +947,7 @@ function DogProfileDetail({ listing, place }) {
 function FavoritesTab({ onOpenListing }) {
   const { data: favorites, isLoading, isError, refetch } = useAdoptionFavorites();
   return (
-    <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+    <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}>
       <SectionLabel>SAVED DOGS</SectionLabel>
       {isLoading ? (
         <Loading />
@@ -984,45 +985,44 @@ function FavoritesTab({ onOpenListing }) {
 function FavoriteRow({ fav, onPress }) {
   const photo = Array.isArray(fav.listing_photo_urls) ? fav.listing_photo_urls[0] : null;
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
-    >
-      {photo ? (
-        <Image source={{ uri: photo }} style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.sand }} />
-      ) : (
-        <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.sand, justifyContent: "center", alignItems: "center" }}>
-          <PawPrint size={22} color={COLORS.coral} />
+    <PressableScale onPress={onPress}>
+      <Card
+        level="sm"
+        radius={RADIUS.card}
+        borderColor={COLORS.peach}
+        style={{
+          padding: SPACING.md + 2,
+          marginBottom: SPACING.md,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.md,
+        }}
+      >
+        {photo ? (
+          <Image source={{ uri: photo }} style={{ width: 56, height: 56, borderRadius: RADIUS.md - 4, backgroundColor: COLORS.sand }} />
+        ) : (
+          <View style={{ width: 56, height: 56, borderRadius: RADIUS.md - 4, backgroundColor: COLORS.sand, justifyContent: "center", alignItems: "center" }}>
+            <PawPrint size={22} color={COLORS.coral} />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]} numberOfLines={1}>
+            {fav.listing_name}
+          </Text>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]} numberOfLines={1}>
+            {[fav.listing_breed, fav.provider_name].filter(Boolean).join(" · ")}
+          </Text>
         </View>
-      )}
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
-          {fav.listing_name}
-        </Text>
-        <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }} numberOfLines={1}>
-          {[fav.listing_breed, fav.provider_name].filter(Boolean).join(" · ")}
-        </Text>
-      </View>
-      <Heart size={18} color={COLORS.coral} fill={COLORS.coral} />
-    </TouchableOpacity>
+        <Heart size={18} color={COLORS.coral} fill={COLORS.coral} />
+      </Card>
+    </PressableScale>
   );
 }
 
 function ApplicationsTab() {
   const { data: apps, isLoading, isError, refetch } = useMyAdoptionApplications();
   return (
-    <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+    <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}>
       <SectionLabel>YOUR APPLICATIONS</SectionLabel>
       {isLoading ? (
         <Loading />
@@ -1043,34 +1043,30 @@ function ApplicationsTab() {
 function ApplicationCard({ app }) {
   const approved = app.status === "approved";
   return (
-    <View
-      style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-      }}
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      borderColor={COLORS.peach}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }} numberOfLines={1}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]} numberOfLines={1}>
           {app.listing_name || "Dog"}
         </Text>
         <StatusPill status={app.status} />
       </View>
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 4 }}>
+      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 4 }]}>
         {[app.listing_breed, app.provider_name].filter(Boolean).join(" · ")}
       </Text>
       {approved ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm + 2 }}>
           <Check size={16} color="#3FA34D" />
-          <Text style={{ fontSize: 13, color: "#3FA34D", fontWeight: "700" }}>
+          <Text style={[TYPE.footnote, { color: "#3FA34D", fontWeight: "700" }]}>
             Approved — this dog is now your pet! Find it under My Pets.
           </Text>
         </View>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -1083,8 +1079,8 @@ function StatusPill({ status }) {
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (
-    <View style={{ backgroundColor: s.color + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-      <Text style={{ fontSize: 11, fontWeight: "800", color: s.color }}>{s.label}</Text>
+    <View style={{ backgroundColor: s.color + "22", borderRadius: RADIUS.chip, paddingHorizontal: SPACING.sm + 2, paddingVertical: 3 }}>
+      <Text style={[TYPE.caption, { fontWeight: "800", color: s.color, letterSpacing: 0 }]}>{s.label}</Text>
     </View>
   );
 }
@@ -1094,57 +1090,55 @@ function Chip({ label }) {
     <View
       style={{
         backgroundColor: COLORS.coral + "14",
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        borderRadius: RADIUS.chip,
+        paddingHorizontal: SPACING.sm + 2,
         paddingVertical: 4,
       }}
     >
-      <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.coral }}>{label}</Text>
+      <Text style={[TYPE.caption, { fontWeight: "700", color: COLORS.coral, letterSpacing: 0 }]}>{label}</Text>
     </View>
   );
 }
 
 function PrimaryButton({ label, onPress, disabled }) {
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.9}
       style={{
         backgroundColor: COLORS.coral,
-        borderRadius: 16,
+        borderRadius: RADIUS.control,
         paddingVertical: 15,
         alignItems: "center",
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>{label}</Text>
-    </TouchableOpacity>
+      <Text style={[TYPE.headline, { color: "#FFF" }]}>{label}</Text>
+    </PressableScale>
   );
 }
 
 function SecondaryButton({ label, icon: Icon, onPress, disabled }) {
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.9}
       style={{
         backgroundColor: COLORS.card,
-        borderRadius: 16,
+        borderRadius: RADIUS.control,
         paddingVertical: 14,
         alignItems: "center",
         flexDirection: "row",
         justifyContent: "center",
-        gap: 8,
+        gap: SPACING.sm,
         borderWidth: 1,
         borderColor: COLORS.peach,
         opacity: disabled ? 0.5 : 1,
       }}
     >
       {Icon ? <Icon size={18} color={COLORS.coral} /> : null}
-      <Text style={{ color: COLORS.coral, fontWeight: "800", fontSize: 15 }}>{label}</Text>
-    </TouchableOpacity>
+      <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "800" }]}>{label}</Text>
+    </PressableScale>
   );
 }
 
@@ -1159,13 +1153,15 @@ function Loading({ small }) {
 function SectionLabel({ children }) {
   return (
     <Text
-      style={{
-        fontSize: 13,
-        fontWeight: "800",
-        color: COLORS.mutedBrown,
-        marginBottom: 14,
-        letterSpacing: 0.6,
-      }}
+      style={[
+        TYPE.subhead,
+        {
+          fontWeight: "800",
+          color: COLORS.mutedBrown,
+          marginBottom: SPACING.lg - 2,
+          letterSpacing: 0.6,
+        },
+      ]}
     >
       {children}
     </Text>
@@ -1174,23 +1170,22 @@ function SectionLabel({ children }) {
 
 function EmptyState({ title, body }) {
   return (
-    <View
+    <Card
+      level="sm"
+      radius={RADIUS.card}
+      borderColor={COLORS.peach}
       style={{
-        backgroundColor: COLORS.card,
-        borderRadius: 22,
-        padding: 28,
+        padding: SPACING.xxl + SPACING.xs,
         alignItems: "center",
-        borderWidth: 1,
-        borderColor: COLORS.peach,
       }}
     >
       <PawPrint size={32} color={COLORS.mutedBrown} />
-      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginTop: 12 }}>
+      <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}>
         {title}
       </Text>
-      <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 6, textAlign: "center" }}>
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2, textAlign: "center" }]}>
         {body}
       </Text>
-    </View>
+    </Card>
   );
 }
