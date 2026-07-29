@@ -1,7 +1,7 @@
 # PawPi — App Store screenshot storyboard
 
 Eight hero screens, in order, with the marketing caption to overlay on each. Shoot against the seeded
-demo account (`demo@pawpi.app`, see `docs/demo-seed-plan.md`). Apple shows the **first 2–3** in search
+demo account (`augusto+demo@pawpi.info`, see `docs/demo-seed-plan.md`). Apple shows the **first 2–3** in search
 results, so screens 1–3 carry the most weight — lead with emotion + the core value.
 
 ## How to capture (no Apple Developer account needed)

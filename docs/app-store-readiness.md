@@ -74,7 +74,7 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 > deadline + boot breadcrumbs, the release-only Anything-menu stub, a SIGABRT on first Fabric mount, and
 > the real paw-emblem icons). **All migrations are applied — the live DB is at 0068, nothing pending.**
 > The backend is live on **Railway** and the mobile app points at it, and the App Review **demo account
-> is seeded** (`demo@pawpi.app`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots.
+> is seeded** (`augusto+demo@pawpi.info`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots.
 >
 > **Newly discovered blockers not in the original list:**
 > - `VIDEO_API_KEY` / `VIDEO_API_SECRET` — **telehealth join is broken** without real vendor credentials.
@@ -120,7 +120,9 @@ In rough order:
    seeded demo account, and add same-day Health entries first so Today isn't empty.*
 9. **App Review notes:** a demo account + a note that paid services are real-world (external payment per
    3.1.3(e)), and how to reach the new account-deletion flow. *Demo account is seeded and ready:
-   `demo@pawpi.app` (pet Mango) — password is in `apps/web/scripts/demo-seed/spec.mjs`.*
+   `augusto+demo@pawpi.info` (pet Mango) — password is in `apps/web/scripts/demo-seed/spec.mjs`.
+   Moved off `demo@pawpi.app` on 2026-07-29 (domain not ours → a reviewer testing "Forgot password?"
+   could never receive a link).*
 
 ---
 

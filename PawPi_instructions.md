@@ -747,7 +747,7 @@ logistics + go-live keys, not feature work.
 - **2.77 Liquid Glass redesign — ✅ COMPLETE** (#202–#209, merged 2026-07-28). One deliberate
   exclusion: `service/adoption.jsx` keeps its old styling (its restyle would have reverted the Wave 9
   adoption browse work).
-- **Demo/App-Review account seeded on PRODUCTION:** `demo@pawpi.app`, hero pet **Mango**. All current
+- **Demo/App-Review account seeded on PRODUCTION:** `augusto+demo@pawpi.info`, hero pet **Mango**. All current
   production data is disposable test data, to be wiped once the app is accepted.
 
 **Blocking submission (all need Tats, none are code):** telehealth video vendor credentials

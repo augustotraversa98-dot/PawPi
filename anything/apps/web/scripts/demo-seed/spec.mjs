@@ -21,33 +21,46 @@ export const FILLER_USERNAME_PREFIX = "pawpi_seed_fan_";
 // Login + App-Review demo account, plus the friend + clinic-owner accounts.
 // The password is the SAME for every demo account (printed by the runner). It is
 // only used to log in — credential sign-IN never re-checks password strength.
+//
+// Addresses are PLUS-ADDRESSED on pawpi.info (augusto+<key>@pawpi.info). Two reasons:
+//   1. They must be on a domain we own. These were on pawpi.app, which is NOT ours — so mail to
+//      them could never be delivered OR bounced. That became a real problem once the app grew a
+//      password-reset flow: an App Reviewer testing "Forgot password?" on the demo login would
+//      wait forever for a link that physically cannot arrive, with nothing on screen looking wrong.
+//   2. PawPi has exactly ONE mailbox (augusto@pawpi.info) and no budget for more. Everything after
+//      the `+` still lands in it, so all four accounts are reachable for free — no extra seat, no
+//      alias, no DNS.
+// These strings are the seed's IDENTITY KEYS: the runner upserts on them and the reset path deletes
+// on them. Changing one here does NOT rename an already-seeded account — it orphans the old row and
+// creates a new one. Migrate live rows with an explicit UPDATE first (that is how the pawpi.app →
+// pawpi.info move was done), then change these to match.
 export const DEMO_PASSWORD = "PawpiDemo2026!";
 
 export const ACCOUNTS = {
   demo: {
     key: "demo",
-    email: "demo@pawpi.app",
+    email: "augusto+demo@pawpi.info",
     name: "Alex Rivera",
     username: "demo",
     role: "pet_owner",
   },
   luna: {
     key: "luna",
-    email: "luna.demo@pawpi.app",
+    email: "augusto+luna@pawpi.info",
     name: "Sophie Bennett",
     username: "sophiebennett",
     role: "pet_owner",
   },
   cooper: {
     key: "cooper",
-    email: "cooper.demo@pawpi.app",
+    email: "augusto+cooper@pawpi.info",
     name: "Marcus Lee",
     username: "marcuslee",
     role: "pet_owner",
   },
   clinic: {
     key: "clinic",
-    email: "clinic.demo@pawpi.app",
+    email: "augusto+clinic@pawpi.info",
     name: "Northside Veterinary Clinic",
     username: "northsidevet",
     role: "business",

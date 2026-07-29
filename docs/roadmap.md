@@ -35,7 +35,7 @@ What remains is submission logistics and a handful of go-live keys — not featu
 - **iOS:** builds and runs. TestFlight got to **Build 6**; a long native splash-hang arc was fixed
   (#253, #255–#259). A **local iOS Simulator build now works on Augusto's Mac**, so mobile UI can be
   self-verified without a device round-trip — see the Simulator loop notes in `docs/dev-pipeline.md`.
-- **Demo/App-Review account is seeded on PRODUCTION**: `demo@pawpi.app`, hero pet **Mango** (6 posts,
+- **Demo/App-Review account is seeded on PRODUCTION**: `augusto+demo@pawpi.info`, hero pet **Mango** (6 posts,
   friends, a vet clinic, a full health/vet record). Re-runnable and resettable — `docs/demo-seed-plan.md`.
   *All current production data is disposable test data and will be wiped once the app is accepted.*
 
