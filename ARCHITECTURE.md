@@ -149,7 +149,7 @@ pets.owner_user_id  ( = user_profiles.id )
 Every API route follows the same pattern: take `session.user.id`, look up `SELECT id FROM user_profiles WHERE auth_user_id = <auth id>`, then use `userProfile[0].id` as the owner key for all data.
 
 ### Reference inventory (representative)
-- **Auth user id (`session.user.id` / `token.sub`):** `web/__create/index.ts:103`; `@auth/create.js:15`; `auth/token/route.js:31`; `pets/route.js:18,129,303`; `pets/[id]/route.js:20,222`; `user-profile/route.js:12,53`; `posts/route.js:120`; and the `if (!session?.user?.id)` guard in essentially every API route. Mobile display-only: `RepairPetsButton.jsx:42,126`.
+- **Auth user id (`session.user.id` / `token.sub`):** `web/__create/index.ts:103`; `@auth/create.js:15`; `auth/token/route.js:31`; `pets/route.js:18,129,303`; `pets/[id]/route.js:20,222`; `user-profile/route.js:12,53`; `posts/route.js:120`; and the `if (!session?.user?.id)` guard in essentially every API route.
 - **`user_profiles` / `user_profiles.id`:** lookups `WHERE auth_user_id = ...` in `pets/route.js:26,137,311`, `pets/[id]/route.js:29,229`, `user-profile/route.js:17,60`, `posts/route.js:59,126`, and every health/vet/routines/social-walks route; inserts `(auth_user_id, ...)` in `pets/route.js:160,334` and `user-profile/route.js:24`; joins `ON ... = up.id` in `posts/route.js:30,261`, `social-walks/route.js:181,213,257`.
 - **`pets.owner_user_id`:** INSERT `pets/route.js:259,264` (value `${userId}` = `user_profiles.id`); filter `pets/route.js:57`, `pets/[id]/route.js:49,245`.
 
