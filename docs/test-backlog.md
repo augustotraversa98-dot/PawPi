@@ -436,6 +436,47 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ## To test
 
+### N8 — Self-verify device-test backlog using the iOS Simulator (2026-07-29)
+**Honest summary, not a full sweep.** Attempted to work through the "To test" backlog below using
+the local iOS Simulator (per `docs/dev-pipeline.md`'s self-verify loop). Real findings:
+- **Confirmed working:** the installed Simulator build boots cleanly, holds a persisted login
+  session (no password was typed — this session reused an already-signed-in demo account per the
+  house rule that Claude never enters credentials), and successfully round-trips real data from the
+  backend (Feed, Health Hub, Vet Record, Services all rendered live data, not stale/cached). Basic
+  tab navigation (Feed↔Health↔Services, the Vet Record sub-tab) was confirmed working via
+  screenshots.
+- **Environment fix made:** the Mac's LAN IP had drifted (`192.168.68.105` → `.116`, the same class
+  of DHCP-drift gotcha already documented in `supabase/SCHEMA_NOTES.md`/`dev-pipeline.md`), so
+  `anything/apps/mobile/.env`'s `EXPO_PUBLIC_BASE_URL`/`PROXY_BASE_URL`/`HOST`/`API_URL` were stale.
+  Updated to the current IP and restarted Metro (`bunx expo start --web`, which also serves the iOS
+  Metro bundle) — gitignored file, no PR needed. **If a future session finds the app stuck showing
+  stale/cached data, check this first.**
+- **Real process gap caught by this pass:** PR #267 (N4, the sex/gender selector fix) had its merge
+  conflicts resolved and pushed earlier in tonight's run, but the actual `gh pr merge` call was never
+  re-issued afterward — it sat open and unmerged while later tickets proceeded. Caught only because
+  reading `EditMedicalProfileModal.jsx` from the working tree still showed the old buggy
+  `["Male","Female"]` comparison after N4 was believed merged. Now genuinely merged (verified via
+  `gh pr view 267 --json mergedAt` and by re-reading the file: `gender?.toLowerCase()` + lowercase
+  `["male","female"]` options are now on `main`). **Lesson for future batches: always verify
+  `mergedAt` is non-null after a conflict-resolution + re-push, don't assume the retry happened.**
+- **Simulator tap-injection was unreliable this session.** Basic taps and scroll swipes worked
+  intermittently — sometimes several attempts in a row landed nothing, fixed by detaching/reattaching
+  the Simulator panel, then degraded again. This cost the majority of this pass's time and is why the
+  sweep below is partial, not exhaustive. The N4 fix itself was therefore verified by reading the
+  merged source diff directly (confirmed correct: `initialData?.pet?.gender?.toLowerCase()` on read,
+  `["male","female"]` options with `.charAt(0).toUpperCase()...` for display) rather than by a
+  screenshot of the selector pre-highlighted — **not** marked Passed below because no screenshot was
+  taken of the actual selected state; left as a 30-second real check for Tats.
+- **Not attempted tonight:** N1's own device checklist (needs real network reverse/forward geocoding,
+  flagged NEEDS A DEVICE PASS in N1's own entry below), N3's visual restyle screenshot (Services →
+  Adoption did not scroll reliably during this pass), and the ~45 historical `2.x` items further down
+  this file (2.9 through 2.80) — none were driven or screenshotted this session, so none are moved to
+  Passed. They remain exactly as before this pass. This is the honest state, not a regression — N8's
+  own acceptance criteria is explicit that an unscreenshotted item must not be marked passed.
+- **Nothing genuinely device-only was reached to flag** (push notifications, camera/photo-library
+  permission prompts, real OAuth round-trips, GPS-in-motion) — the session ran out of reliable
+  interaction time before getting that far down the list.
+
 ### [ ] N4 — Edit Medical Profile sex/gender selector shows the wrong (blank) selection  ·  ticket/n4-medical-gender-selector (2026-07-29)
 - **What shipped (plain English):** on the Edit Medical Profile screen, the Male/Female picker used to
   never show your dog's saved sex — it always looked unselected, even though it was correctly saved.
