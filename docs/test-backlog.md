@@ -378,6 +378,29 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ## To test
 
+### [ ] N4 — Edit Medical Profile sex/gender selector shows the wrong (blank) selection  ·  ticket/n4-medical-gender-selector (2026-07-29)
+- **What shipped (plain English):** on the Edit Medical Profile screen, the Male/Female picker used to
+  never show your dog's saved sex — it always looked unselected, even though it was correctly saved.
+  That was a display bug only: the picker was comparing "Male"/"Female" (capital letter) against what's
+  actually stored in the database ("male"/"female", lowercase), so they never matched. Fixed by making
+  the picker use the same lowercase values the rest of the app already uses (Dog Profile edit, Add Dog,
+  onboarding) and by normalizing whatever is read from the database to lowercase before comparing, so
+  even a pre-existing oddly-cased value would still show correctly. Nothing in the database changed and
+  no migration was needed — this only touched how the screen reads/displays the value.
+- **On-device steps:**
+  1. Open a pet that already has a saved sex (Male or Female) → Health → Vet Record → Edit Medical
+     Profile. The correct option (Male or Female) should now show highlighted/selected immediately.
+  2. Change the selection to the other option and tap Save → reopen Edit Medical Profile → the newly
+     saved option should show selected (regression: still persists correctly).
+  3. Confirm the Dog Profile edit screen (More → Profile → edit) still shows the same gender for that
+     pet — the two screens read the same underlying value and must agree.
+- **⚠️ Found but NOT fixed by this ticket (separate, pre-existing bug):** while testing step 2 you may
+  find the Save button on this exact screen does nothing at all. That's unrelated — it's a leftover
+  prop-name mismatch from the 2.77 Vet Record restyle (the modal wrapper's real prop names are
+  `onCtaPress`/`ctaLabel`/`ctaDisabled`, but this screen still passes the old `onSave`/`saveText`/
+  `loading`), so the button is wired to nothing. Flagged in `docs/roadmap.md` "Known code gaps" and as a
+  follow-up task — needs its own ticket, out of scope here.
+
 ### ▸ WAVE 8 device-test queue (2026-06-20) — calendar integration
 
 ### [ ] 2.80 — Calendar everywhere (bookings / transport / telehealth / events)  ·  ticket/calendar-everywhere (2026-06-20)

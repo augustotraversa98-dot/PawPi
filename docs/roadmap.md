@@ -57,10 +57,13 @@ What remains is submission logistics and a handful of go-live keys — not featu
 
 **Known code gaps deliberately left open** (tracked, not forgotten):
 - `src/app/service/adoption.jsx` is the ONE screen not restyled to Liquid Glass — see the 2.77 entry.
-- The Edit Medical Profile sex/gender selector never shows the stored value as selected (case
-  mismatch: renders `["Male","Female"]`, DB stores lowercase). Pre-existing, not from the redesign.
 - The demo seed writes only HISTORICAL data, so Health → Today renders empty. Add same-day entries
   before shooting App Store screenshots.
+- **NEW (found while fixing N4):** `EditMedicalProfileModal`'s Save button is wired to
+  `KeyboardSafeFormModal` with the wrong prop names (`onSave`/`saveText`/`loading` — that component
+  actually takes `onCtaPress`/`ctaLabel`/`ctaDisabled`), so tapping Save on the Edit Medical Profile
+  screen currently does nothing at all. Pre-existing since the 2.77 Vet Record restyle (#205), not
+  caused by N4. Needs its own ticket.
 
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your
