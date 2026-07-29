@@ -26,10 +26,12 @@ What remains is submission logistics and a handful of go-live keys — not featu
 
 - **Backend is LIVE in production** on Railway at `https://pawpi-production.up.railway.app`, serving
   the mobile app. Database is Supabase.
-- **Live DB is at migration `0068`. NOTHING IS PENDING.** (Verified directly against production
-  2026-07-28: `legal_consents` + `app_record_consent` exist (0067) and `posts.media_type` /
-  `video_url` / `video_thumbnail_url` exist (0068). Older docs claiming "0067 PENDING" were stale.)
-- **Test baselines: mobile jest 1169 · web vitest 1292 · integration 638.**
+- **Live DB is at migration `0068`.** (Verified directly against production 2026-07-28:
+  `legal_consents` + `app_record_consent` exist (0067) and `posts.media_type` / `video_url` /
+  `video_thumbnail_url` exist (0068). Older docs claiming "0067 PENDING" were stale.)
+  **⏳ `0069_password_reset_tokens.sql` is now PENDING hand-apply** — harness-proven, additive, no
+  existing table's RLS touched. Run it then `supabase/verify_0069.sql` (`docs/test-backlog.md` ACTION 1).
+- **Test baselines: mobile jest 1170 · web vitest 1367 · integration 663.**
 - **iOS:** builds and runs. TestFlight got to **Build 6**; a long native splash-hang arc was fixed
   (#253, #255–#259). A **local iOS Simulator build now works on Augusto's Mac**, so mobile UI can be
   self-verified without a device round-trip — see the Simulator loop notes in `docs/dev-pipeline.md`.
@@ -40,9 +42,15 @@ What remains is submission logistics and a handful of go-live keys — not featu
 **What is actually blocking submission** (all need Augusto, none are code):
 1. `VIDEO_API_KEY` / `VIDEO_API_SECRET` — telehealth join is broken without real vendor credentials.
 2. `CRON_SECRET` + an external scheduler — subscription auto-charge, recall ingest, calendar sync.
-3. `/account/forgot-password` is still a **frontend-only stub** — needs a real reset flow decision.
-4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment) — each feature degrades
-   cleanly until set. Full list in `docs/test-backlog.md`.
+3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28).** The full reset
+   flow now exists end to end: forgot-password → single-use 30-minute token (migration **0069**) →
+   emailed link → "set a new password" screen → `/api/account/reset-password`. Two things left for
+   Augusto: **apply migration 0069**, and set **`EMAIL_API_KEY`** (+ `EMAIL_FROM`; Resend by default)
+   plus **`APP_BASE_URL`** in production. Until the email key is set the flow degrades cleanly — every
+   screen behaves identically and the server logs the intended send — but no email actually goes out,
+   so the reset can't complete. Details + device checklist in `docs/test-backlog.md`.
+4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment, **email**) — each feature
+   degrades cleanly until set. Full list in `docs/test-backlog.md`.
 5. Pre-launch security: change the placeholder `pawpi_app` DB password.
 
 **Known code gaps deliberately left open** (tracked, not forgotten):

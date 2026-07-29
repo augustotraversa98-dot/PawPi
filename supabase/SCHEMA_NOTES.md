@@ -11,7 +11,10 @@ follow-up), and **legal consent at signup (0067 — `legal_consents`
 append-only ledger keyed to `auth_users.id` + the `app_record_consent` SECURITY DEFINER insert helper;
 admin-only SELECT, DEFINER-only writes, server-authoritative versions). 0067 took the next free integer
 past the reserved 0066.** Then **daily video moments — step 1 (0068 — additive `posts.media_type` /
-`video_url` / `video_thumbnail_url`; schema only, no RLS/policy change)**. As of the original five-arc
+`video_url` / `video_thumbnail_url`; schema only, no RLS/policy change)**, and **self-service password
+reset (0069 — `password_reset_tokens` + the `app_create_password_reset_token` /
+`app_consume_password_reset_token` SECURITY DEFINER helpers; new table only, no existing table's RLS
+touched)**. As of the original five-arc
 write-up the set ran `0001`–`0055`, in five arcs:
 - **0001–0011 — base schema:** auth, user_profiles, pets, social, vet_records, routines, social_walks,
   health_logs, the double-encoded-jsonb backfill (0009), the wellness `general` check-type widen (0010),
@@ -52,6 +55,31 @@ ACTION 1).
 > columns NULL, so all current image posts are unaffected. Idempotent (`add column if not exists` +
 > drop-if-exists/re-add the constraint). Verify: `supabase/verify_0068.sql` (all rows PASS). HARNESS-ONLY
 > this ticket — hand-applied to Supabase after merge.
+
+> **0069** adds self-service password reset — the server side of `/account/forgot-password`, which was
+> a frontend-only stub. One new table plus two SECURITY DEFINER helpers; **no existing table's RLS is
+> touched**.
+> - `password_reset_tokens` — keyed to **`auth_users.id`, not `user_profiles.id`**, for the same reason
+>   0067's `legal_consents` is: profiles are created lazily, and here the requester is by definition
+>   logged OUT, so `app.current_user_id` is unset for the entire flow and no owner policy could ever be
+>   satisfied. Stores **`token_hash` = sha256(token)** (unique index) — never the token itself, so a DB
+>   dump yields nothing redeemable. Single-use is enforced on `used_at`; expiry on `expires_at` (the
+>   route mints 30 minutes).
+> - RLS: ENABLE + FORCE with **admin-only SELECT** (reuses `app_is_admin()`) and **no
+>   INSERT/UPDATE/DELETE policy at all**. That leaves the two DEFINER helpers as the only writers, and
+>   means a logged-in attacker cannot read a pending reset off a session — not even their own.
+> - `app_create_password_reset_token(...)` issues one token; it returns **NULL** rather than raising
+>   when an account exceeds 5 tokens/hour, so the route's uniform "if that email exists…" response
+>   stays uniform (a throttled request is indistinguishable from an unknown address).
+> - `app_consume_password_reset_token(token_hash, password_hash)` validates unused+unexpired under
+>   `FOR UPDATE`, burns the token **and every other outstanding token for that account**, writes the
+>   password hash to `auth_accounts` (creating a `credentials` row if the account was social-only), and
+>   deletes that account's `auth_sessions`. It returns the `auth_users.id`, or **NULL for every failure
+>   reason** so the route can't leak which one. Every statement is filtered by the token's own
+>   `auth_user_id` — no other account is read or written.
+> - Password hashing stays in the **app layer** (argon2, as in `src/auth.js`); Postgres is handed a hash
+>   and never sees a plaintext password. Verify: `supabase/verify_0069.sql`. HARNESS-ONLY this ticket —
+>   hand-applied to Supabase after merge.
 
 Still deferred: **no RLS, no seed data, no app-code changes.**
 

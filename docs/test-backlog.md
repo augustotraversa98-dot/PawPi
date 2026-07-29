@@ -65,6 +65,8 @@ as the RLS migrations 0019–0026.)
 0066_provider_post_moderation.sql     (1.2 follow-up — provider storefront posts [provider_posts, 2.22] join the moderation surface: 'provider_post' added to the content_reports target_type CHECK + hidden_at on provider_posts + the provider_post→provider_posts case in app_moderate_hide / app_moderate_unhide / app_admin_action_report [hideable list + ban-author author_user_id]; additive, no policy change — provider_posts is already ENABLE+FORCE RLS from 0042) BUILT + harness-proven — ✅ APPLIED + VERIFIED on Supabase 2026-06-21 (all 5 checks PASS via supabase/verify_0066.sql). Idempotent (CHECK drop+recreate; ADD COLUMN IF NOT EXISTS; CREATE OR REPLACE). Live DB now at 0066.
 --- LEGAL CONSENT AT SIGNUP (App Store readiness / Guideline 1.2 follow-up) ---
 0067_legal_consents.sql               (legal_consents — append-only Terms/Privacy consent ledger keyed to auth_users.id [user_profiles is lazy → no profile id at signup]; ENABLE+FORCE RLS, admin-only SELECT [reuses 0065 app_is_admin], NO owner write policy; the ONLY writer is the app_record_consent SECURITY DEFINER helper [server-authoritative versions, GRANT EXECUTE to pawpi_app]) BUILT + harness-proven (legal-consent.integration.test.ts, 7 tests) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0067.sql in the SQL editor; every row should read PASS)
+--- SELF-SERVICE PASSWORD RESET (App Store readiness — closes the forgot-password stub) ---
+0069_password_reset_tokens.sql        (password_reset_tokens — single-use 30-minute reset tokens keyed to auth_users.id [the requester is logged OUT, so there is no user_profiles.id and no app.current_user_id for the whole flow]; stores sha256(token), NEVER the token; ENABLE+FORCE RLS, admin-only SELECT [reuses 0065 app_is_admin], NO owner read/write policy at all; the ONLY writers are 2 SECURITY DEFINER helpers: app_create_password_reset_token [+ 5-per-hour throttle] and app_consume_password_reset_token [validates unused+unexpired, burns this token AND the account's other outstanding ones, writes the argon2 hash to auth_accounts, clears that account's auth_sessions]) BUILT + harness-proven (password-reset.integration.test.ts, 22 tests) — ⏳ PENDING hand-apply to Supabase (run supabase/verify_0069.sql in the SQL editor; every row should read PASS)
 ```
 
 **✅ UGC moderation — migrations 0065 + 0066 APPLIED + VERIFIED on Supabase 2026-06-21.** Both ran in the
@@ -88,6 +90,33 @@ retry, then log + proceed — never blocks an already-created account), then red
 `0067_legal_consents.sql` then `supabase/verify_0067.sql` in the SQL editor; additive (one table + one
 DEFINER fn), pre-launch → safe. 0066 is the UGC provider_post follow-up (above); consent took the next
 free integer 0067.
+
+**🔑 Self-service password reset — migration 0069 + ONE NEW GO-LIVE ENV KEY (`EMAIL_API_KEY`).**
+`/account/forgot-password` is no longer a stub: it posts to `POST /api/account/forgot-password`, which
+mints a single-use 30-minute token (0069) and emails a link to `/account/reset-password?token=…`; that
+screen posts to `POST /api/account/reset-password`, which re-runs the shared 2.32 strength rule, argon2-
+hashes the new password, and consumes the token through the DEFINER helper. Existing login, existing
+sessions belonging to anyone else, and the 2.32 rules are all untouched.
+- ⚙️ **MIGRATION TO APPLY (in ACTION 1):** `0069_password_reset_tokens.sql`, then run
+  `supabase/verify_0069.sql` — every row should read PASS. Additive: one new table + two DEFINER fns,
+  **no existing table's RLS is touched**.
+- ⚙️ **GO-LIVE (Tats, when ready) — `EMAIL_API_KEY`** (+ `EMAIL_FROM`, optional `EMAIL_PROVIDER` /
+  `EMAIL_API_BASE_URL`; template in `anything/apps/web/.env.example`). Default vendor is **Resend** —
+  create an API key and verify the sending domain. **Until the key is set the flow degrades cleanly**:
+  no crash, no 500, the screens behave identically, and the server logs the intended send
+  (`[email] EMAIL_API_KEY not set — skipping send to …`) — but **nobody actually receives an email**,
+  so the reset can't complete. This is the one key that gates the feature being genuinely usable.
+- ⚙️ **ALSO SET IN PRODUCTION — `APP_BASE_URL`** (e.g. `https://pawpi-production.up.railway.app`).
+  Reset links are built from it. Unset, the link falls back to the request's `Host` header, which an
+  attacker can forge to point a real reset token at their own server (host-header poisoning).
+- 📱 **DEVICE TEST (after the key is set):** Welcome → **Forgot password?** (new entry point; the link
+  on the sign-in page still works too) → enter the demo account's email → "check your email" → open the
+  emailed link on the phone → set a new password → log in with it in the app. Then check: the same link
+  a second time says "invalid or has expired", and a *different* account's login is unaffected.
+- ⚠️ **KNOWN LIMIT (documented, not a bug):** Auth.js runs the **JWT** session strategy here, so a JWT
+  already issued to a signed-in device stays valid until it expires — the reset clears the account's DB
+  sessions and every outstanding reset token, but it cannot revoke an already-minted JWT. Worth a
+  follow-up ticket if forced global sign-out is ever required.
 
 **TODO — "consent backstop" follow-up ticket (OUT OF SCOPE here):** (1) social-login sign-ups
 (Apple/Google) record no consent — they don't pass through the credentials sign-up form, so wire a

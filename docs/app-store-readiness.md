@@ -79,8 +79,17 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 > **Newly discovered blockers not in the original list:**
 > - `VIDEO_API_KEY` / `VIDEO_API_SECRET` — **telehealth join is broken** without real vendor credentials.
 >   Either supply them or hide the telehealth entry point before review.
-> - `/account/forgot-password` is a **frontend-only stub** — a reviewer can reach it. Needs a real reset
->   flow (or removal) before submission.
+> - ~~`/account/forgot-password` is a **frontend-only stub**~~ — **BUILT (2026-07-28).** Real flow end to
+>   end: forgot-password → single-use 30-minute token (**migration 0069**, harness-proven, ⏳ pending
+>   hand-apply) → emailed link → a "set a new password" screen → `/api/account/reset-password` (re-runs
+>   the shared 2.32 strength rule, argon2-hashes, burns the token + the account's other outstanding
+>   tokens and DB sessions). Mobile reaches it through the auth WebView, and Welcome now has its own
+>   **Forgot password?** entry. Remaining for Augusto: apply 0069, set **`EMAIL_API_KEY`** (+ `EMAIL_FROM`;
+>   Resend by default) and **`APP_BASE_URL`**. Until the email key is set the flow degrades cleanly — no
+>   crash, identical screens, the intended send is logged — but no mail is delivered, so a reviewer would
+>   still not receive a link. **Known limit:** Auth.js uses the JWT session strategy, so a JWT already
+>   issued to a signed-in device survives the reset until it expires; the reset clears DB sessions and all
+>   outstanding tokens but cannot revoke a minted JWT.
 > - The demo seed writes only historical data, so **Health → Today renders empty**; add same-day entries
 >   before shooting screenshots.
 
@@ -99,9 +108,12 @@ In rough order:
    so the buttons go live (2.46).
 6. **Go-live backend env keys** (see `docs/test-backlog.md`): payment rails (MercadoPago/Binance),
    `GOOGLE_PLACES_API_KEY` (places 2.73), `CRON_SECRET` + an external scheduler (subscriptions 2.17 +
-   food-recall ingest 2.75), `AUTH_*`. Each feature degrades cleanly until its key is set.
-7. ✅ **Pending Supabase migrations** — *none remain.* The live DB is at **0068** (0056–0068 all applied;
-   verified directly against production 2026-07-28).
+   food-recall ingest 2.75), `AUTH_*`, and **`EMAIL_API_KEY` + `APP_BASE_URL`** (password reset — the
+   one whose absence leaves a user-visible flow unable to complete). Each feature degrades cleanly
+   until its key is set.
+7. 🟡 **Pending Supabase migrations** — the live DB is at **0068** (0056–0068 all applied; verified
+   directly against production 2026-07-28). **`0069_password_reset_tokens.sql` is now pending** — apply
+   it, then run `supabase/verify_0069.sql` (every row should read PASS).
 8. 🟡 **EAS build** (production profile) → **TestFlight** → screenshots (**iPhone 6.9"/6.7" only — iPhone-only
    v1, no iPad**) → **export compliance** (`ITSAppUsesNonExemptEncryption: false` already set) → submit for
    review. *Build + TestFlight done (Build 6). Screenshots and the submit step remain — shoot them on the
@@ -112,9 +124,10 @@ In rough order:
 
 ---
 
-_Last updated: **2026-07-28** — checklist items 1/2/7 marked done and 8 partly done (TestFlight Build 6);
-all migrations applied (live DB at 0068); backend live on Railway; demo account seeded. Added three
-newly-found blockers (telehealth video keys, the forgot-password stub, the empty Health→Today screen).
-Previously: 2026-06-28 — iPhone-only v1 (`supportsTablet: false`), Privacy Policy URL live, ASC content
-pack finalized. (Originally ticket 2.78, 2026-06-19.) Tests green at write: **mobile jest 1169 · web
-vitest 1292 · integration 638**._
+_Last updated: **2026-07-28** — the **forgot-password blocker is closed in code**: real reset flow +
+migration **0069** (now the one pending migration), new go-live keys `EMAIL_API_KEY` / `APP_BASE_URL`.
+Earlier the same day: checklist items 1/2 marked done and 8 partly done (TestFlight Build 6); 0056–0068
+applied; backend live on Railway; demo account seeded; three newly-found blockers added (telehealth video
+keys, the forgot-password stub, the empty Health→Today screen). Previously: 2026-06-28 — iPhone-only v1
+(`supportsTablet: false`), Privacy Policy URL live, ASC content pack finalized. (Originally ticket 2.78,
+2026-06-19.) Tests green at write: **mobile jest 1170 · web vitest 1367 · integration 663**._

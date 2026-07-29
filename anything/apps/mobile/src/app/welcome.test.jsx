@@ -25,4 +25,13 @@ describe("WelcomeScreen", () => {
     fireEvent.press(getByLabelText("Create account"));
     expect(mockOpen).toHaveBeenCalledWith({ mode: "signup" });
   });
+
+  // Password recovery is now a real backed flow (/api/account/forgot-password). The auth modal
+  // maps `mode` straight onto `${baseURL}/account/${mode}`, so this mode string IS the route —
+  // if it drifts, the WebView 404s instead of showing the reset screen.
+  it("opens the forgot-password screen when Forgot password? is pressed", () => {
+    const { getByLabelText } = render(<WelcomeScreen />);
+    fireEvent.press(getByLabelText("Forgot password?"));
+    expect(mockOpen).toHaveBeenCalledWith({ mode: "forgot-password" });
+  });
 });
