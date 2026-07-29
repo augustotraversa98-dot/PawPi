@@ -11,6 +11,7 @@ const SAVED = {
   from: process.env.EMAIL_FROM,
   provider: process.env.EMAIL_PROVIDER,
   base: process.env.EMAIL_API_BASE_URL,
+  replyTo: process.env.EMAIL_REPLY_TO,
 };
 
 const MESSAGE = {
@@ -28,6 +29,7 @@ beforeEach(() => {
   delete process.env.EMAIL_FROM;
   delete process.env.EMAIL_PROVIDER;
   delete process.env.EMAIL_API_BASE_URL;
+  delete process.env.EMAIL_REPLY_TO;
 });
 
 afterEach(() => {
@@ -36,6 +38,7 @@ afterEach(() => {
     ["EMAIL_FROM", SAVED.from],
     ["EMAIL_PROVIDER", SAVED.provider],
     ["EMAIL_API_BASE_URL", SAVED.base],
+    ["EMAIL_REPLY_TO", SAVED.replyTo],
   ]) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
@@ -53,6 +56,7 @@ describe("emailConfig", () => {
       provider: "resend",
       apiKey: "re_test",
       from: "PawPi <no-reply@pawpi.info>",
+      replyTo: "augusto@pawpi.info",
       baseUrl: "https://api.resend.com",
     });
   });
@@ -64,6 +68,20 @@ describe("emailConfig", () => {
     const cfg = emailConfig();
     expect(cfg.from).toBe("PawPi <hi@pawpi.info>");
     expect(cfg.baseUrl).toBe("https://api.example.test");
+  });
+
+  // PawPi has ONE real mailbox. `from` is a send-only address (Resend authorizes the whole
+  // verified domain, so no-reply@pawpi.info needs no mailbox) — if replyTo ever silently
+  // becomes empty, every reply a user sends vanishes with no bounce and no trace.
+  it("always carries a Reply-To that reaches a real inbox", () => {
+    process.env.EMAIL_API_KEY = "re_test";
+    expect(emailConfig().replyTo).toBe("augusto@pawpi.info");
+  });
+
+  it("honours an EMAIL_REPLY_TO override", () => {
+    process.env.EMAIL_API_KEY = "re_test";
+    process.env.EMAIL_REPLY_TO = "help@pawpi.info";
+    expect(emailConfig().replyTo).toBe("help@pawpi.info");
   });
 
   it("is read at CALL time, not import time (so a late-set key takes effect)", () => {
@@ -123,6 +141,8 @@ describe("sendEmail — configured", () => {
     const body = JSON.parse(init.body);
     expect(body.to).toEqual(["owner@example.com"]);
     expect(body.from).toBe("PawPi <no-reply@pawpi.info>");
+    // `from` has no mailbox behind it — a reply must land in the one real inbox, not a void.
+    expect(body.reply_to).toBe("augusto@pawpi.info");
     expect(body.subject).toBe(MESSAGE.subject);
     expect(body.text).toBe(MESSAGE.text);
     expect(body.html).toBe(MESSAGE.html);

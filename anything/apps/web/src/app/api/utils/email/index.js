@@ -30,6 +30,9 @@ async function sendViaResend(cfg, { to, subject, text, html }) {
     body: JSON.stringify({
       from: cfg.from,
       to: [to],
+      // `from` is a send-only address with no mailbox behind it, so without this a reply
+      // disappears. Points at the one real inbox — see email/config.
+      ...(cfg.replyTo ? { reply_to: cfg.replyTo } : {}),
       subject,
       ...(text ? { text } : {}),
       ...(html ? { html } : {}),

@@ -29,6 +29,12 @@ export function emailConfig() {
     // ours, so the vendor would reject every send as an unverified sender and the whole
     // password-reset flow would go quiet with EMAIL_API_KEY correctly set.
     from: process.env.EMAIL_FROM || "PawPi <no-reply@pawpi.info>",
+    // Where a REPLY goes. This matters because `from` above is a send-only address: Resend
+    // authorizes the whole verified DOMAIN, so `no-reply@pawpi.info` sends fine without a mailbox
+    // existing behind it — and anyone who hits Reply would be writing into a void. PawPi has
+    // exactly ONE real mailbox (augusto@pawpi.info), so every outgoing message points replies
+    // there. Costs nothing: no extra seat, no alias, no DNS.
+    replyTo: process.env.EMAIL_REPLY_TO || "augusto@pawpi.info",
     baseUrl: process.env.EMAIL_API_BASE_URL || "https://api.resend.com",
   };
 }
