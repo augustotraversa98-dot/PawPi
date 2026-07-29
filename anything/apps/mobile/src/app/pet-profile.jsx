@@ -23,24 +23,18 @@ import {
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
 import { useStartDM } from "@/hooks/useDMs";
+import {
+  COLORS,
+  TYPE,
+  RADIUS,
+  SPACING,
+  MATERIALS,
+  ELEVATION,
+} from "@/constants/theme";
+import { Card, PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
-
-const C = {
-  coral: "#FF6F61",
-  apricot: "#FFB37A",
-  peach: "#FFD9B3",
-  honey: "#FFC857",
-  terracotta: "#B75D32",
-  sage: "#A7BFA3",
-  sageDark: "#5A8A74",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-};
 
 // Friendly age from the structured age_years / age_months columns.
 function formatAge(years, months) {
@@ -181,22 +175,12 @@ export default function PetProfileScreen({ embedded = false }) {
     const inner = (
       <>
         <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "800",
-            color: color || C.warmBrown,
-            letterSpacing: -0.5,
-          }}
+          style={[TYPE.title2, { color: color || COLORS.warmBrown }]}
         >
           {value}
         </Text>
         <Text
-          style={{
-            fontSize: 11,
-            color: C.mutedBrown,
-            marginTop: 2,
-            fontWeight: "600",
-          }}
+          style={[TYPE.caption, { color: COLORS.mutedBrown, marginTop: 2 }]}
         >
           {label}
         </Text>
@@ -218,19 +202,19 @@ export default function PetProfileScreen({ embedded = false }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
       <View
         style={{
           paddingTop: insets.top,
-          paddingHorizontal: 16,
-          paddingBottom: 14,
-          backgroundColor: C.card,
+          paddingHorizontal: SPACING.lg,
+          paddingBottom: SPACING.md,
+          backgroundColor: MATERIALS.surface,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          borderBottomColor: MATERIALS.hairline,
         }}
       >
         {embedded ? (
@@ -238,22 +222,22 @@ export default function PetProfileScreen({ embedded = false }) {
           // + the My Dogs switcher, so nothing owner-level is orphaned.
           <View style={{ width: 70 }} />
         ) : (
-          <TouchableOpacity
+          <PressableScale
             onPress={() => router.back()}
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 4,
-              padding: 6,
+              gap: SPACING.xs,
+              padding: SPACING.xs + 2,
             }}
           >
-            <ChevronLeft size={22} color={C.coral} />
-            <Text style={{ color: C.coral, fontWeight: "700", fontSize: 15 }}>
+            <ChevronLeft size={22} color={COLORS.coral} />
+            <Text style={[TYPE.headline, { color: COLORS.coral }]}>
               Back
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         )}
-        <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
           {embedded ? "Profile" : "Pet profile"}
         </Text>
         {embedded ? (
@@ -281,23 +265,23 @@ export default function PetProfileScreen({ embedded = false }) {
         <View
           style={{
             alignItems: "center",
-            paddingTop: 30,
-            paddingBottom: 24,
-            paddingHorizontal: 24,
-            backgroundColor: C.card,
+            paddingTop: SPACING.xxxl,
+            paddingBottom: SPACING.xxl,
+            paddingHorizontal: SPACING.xxl,
+            backgroundColor: MATERIALS.surface,
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
           }}
         >
           {/* Avatar with coral ring */}
           <View
             style={{
               borderWidth: 3.5,
-              borderColor: C.coral,
+              borderColor: COLORS.coral,
               borderRadius: 62,
               padding: 3,
-              marginBottom: 14,
-              shadowColor: C.coral,
+              marginBottom: SPACING.md + 2,
+              shadowColor: COLORS.coral,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
               shadowRadius: 12,
@@ -308,14 +292,7 @@ export default function PetProfileScreen({ embedded = false }) {
 
           {/* Name */}
           {!!name && (
-            <Text
-              style={{
-                fontSize: 26,
-                fontWeight: "800",
-                color: C.warmBrown,
-                letterSpacing: -0.5,
-              }}
-            >
+            <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
               {name}
             </Text>
           )}
@@ -323,12 +300,7 @@ export default function PetProfileScreen({ embedded = false }) {
           {/* Handle */}
           {!!handle && (
             <Text
-              style={{
-                fontSize: 14,
-                color: C.coral,
-                fontWeight: "700",
-                marginTop: 2,
-              }}
+              style={[TYPE.callout, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}
             >
               @{handle}
             </Text>
@@ -340,20 +312,18 @@ export default function PetProfileScreen({ embedded = false }) {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 6,
-                marginTop: 4,
+                gap: SPACING.xs + 2,
+                marginTop: SPACING.xs,
               }}
             >
               {!!breed && (
-                <Text
-                  style={{ fontSize: 15, color: C.coral, fontWeight: "600" }}
-                >
+                <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "600" }]}>
                   {breed}
                 </Text>
               )}
-              {!!breed && !!ageText && <Text style={{ color: C.peach }}>·</Text>}
+              {!!breed && !!ageText && <Text style={{ color: COLORS.peach }}>·</Text>}
               {!!ageText && (
-                <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
                   {ageText}
                 </Text>
               )}
@@ -363,12 +333,7 @@ export default function PetProfileScreen({ embedded = false }) {
           {/* Owner */}
           {!!ownerName && (
             <Text
-              style={{
-                fontSize: 13,
-                color: C.mutedBrown,
-                marginTop: 4,
-                fontWeight: "600",
-              }}
+              style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: SPACING.xs }]}
             >
               with {ownerName}
             </Text>
@@ -379,66 +344,65 @@ export default function PetProfileScreen({ embedded = false }) {
           {canFollow && (
             <View
               style={{
-                marginTop: 18,
+                marginTop: SPACING.lg + 2,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 10,
+                gap: SPACING.sm + 2,
               }}
             >
-              <TouchableOpacity
+              <PressableScale
                 onPress={handleToggleFollow}
+                accessibilityRole="button"
                 style={{
-                  paddingVertical: 13,
-                  paddingHorizontal: 30,
-                  borderRadius: 18,
-                  backgroundColor: isFollowing ? C.sand : C.coral,
+                  paddingVertical: SPACING.md + 1,
+                  paddingHorizontal: SPACING.xxxl - 2,
+                  borderRadius: RADIUS.control,
+                  backgroundColor: isFollowing ? MATERIALS.surfaceSunken : COLORS.coral,
                   borderWidth: isFollowing ? 1.5 : 0,
-                  borderColor: C.peach,
+                  borderColor: COLORS.peach,
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 8,
-                  shadowColor: isFollowing ? "transparent" : C.coral,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
+                  gap: SPACING.sm,
+                  ...(isFollowing ? {} : { shadowColor: COLORS.coral, ...ELEVATION.sm }),
                 }}
               >
-                <PawPrint size={18} color={isFollowing ? C.mutedBrown : "#FFF"} />
+                <PawPrint size={18} color={isFollowing ? COLORS.mutedBrown : "#FFF"} />
                 <Text
-                  style={{
-                    fontWeight: "800",
-                    fontSize: 15,
-                    color: isFollowing ? C.mutedBrown : "#FFF",
-                  }}
+                  style={[
+                    TYPE.headline,
+                    { fontWeight: "800", color: isFollowing ? COLORS.mutedBrown : "#FFF" },
+                  ]}
                 >
                   {isFollowing ? "Following ✓" : "Follow +"}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
 
               {canMessage && (
-                <TouchableOpacity
+                <PressableScale
                   onPress={handleMessage}
                   disabled={startDM.isPending}
                   testID="message-owner"
+                  accessibilityRole="button"
                   style={{
-                    paddingVertical: 13,
-                    paddingHorizontal: 22,
-                    borderRadius: 18,
-                    backgroundColor: C.sand,
+                    paddingVertical: SPACING.md + 1,
+                    paddingHorizontal: SPACING.xxl - 2,
+                    borderRadius: RADIUS.control,
+                    backgroundColor: MATERIALS.surfaceSunken,
                     borderWidth: 1.5,
-                    borderColor: C.peach,
+                    borderColor: COLORS.peach,
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 8,
+                    gap: SPACING.sm,
+                    opacity: startDM.isPending ? 0.6 : 1,
                   }}
                 >
-                  <MessageCircle size={18} color={C.terracotta} />
+                  <MessageCircle size={18} color={COLORS.terracotta} />
                   <Text
-                    style={{ fontWeight: "800", fontSize: 15, color: C.terracotta }}
+                    style={[TYPE.headline, { fontWeight: "800", color: COLORS.terracotta }]}
                   >
                     Message
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               )}
             </View>
           )}
@@ -447,34 +411,34 @@ export default function PetProfileScreen({ embedded = false }) {
         {/* ── Stats strip ── */}
         <View
           style={{
-            backgroundColor: C.card,
+            backgroundColor: MATERIALS.surface,
             flexDirection: "row",
-            paddingVertical: 18,
-            paddingHorizontal: 12,
+            paddingVertical: SPACING.lg + 2,
+            paddingHorizontal: SPACING.md,
             borderBottomWidth: 1,
-            borderBottomColor: C.peach,
+            borderBottomColor: MATERIALS.hairline,
             gap: 0,
           }}
         >
           <StatPill value={stats?.totalPosts ?? 0} label="Daily posts" />
-          <View style={{ width: 1, backgroundColor: C.peach }} />
+          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
           <StatPill
             value={stats?.totalPaws ?? 0}
             label="Paws"
-            color={C.coral}
+            color={COLORS.coral}
           />
-          <View style={{ width: 1, backgroundColor: C.peach }} />
+          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
           <StatPill value={stats?.totalBarks ?? 0} label="Barks" />
-          <View style={{ width: 1, backgroundColor: C.peach }} />
+          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
           <StatPill
             value={stats?.followers ?? 0}
             label="Followers"
-            color={C.sageDark}
+            color={COLORS.sageDark}
             onPress={
               resolvedFollowsPetId ? () => openFollows("followers") : undefined
             }
           />
-          <View style={{ width: 1, backgroundColor: C.peach }} />
+          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
           <StatPill
             value={stats?.following ?? 0}
             label="Following"
@@ -485,38 +449,31 @@ export default function PetProfileScreen({ embedded = false }) {
         </View>
 
         {/* ── Daily posts grid ── */}
-        <View style={{ padding: 16 }}>
+        <View style={{ padding: SPACING.lg }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              marginBottom: 14,
+              gap: SPACING.sm,
+              marginBottom: SPACING.md + 2,
             }}
           >
-            <Grid3X3 size={18} color={C.warmBrown} />
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "800",
-                color: C.warmBrown,
-                letterSpacing: -0.2,
-              }}
-            >
+            <Grid3X3 size={18} color={COLORS.warmBrown} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
               Daily moments
             </Text>
           </View>
 
           {isLoading && posts.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: 40 }}>
-              <ActivityIndicator size="large" color={C.coral} />
+            <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
+              <ActivityIndicator size="large" color={COLORS.coral} />
             </View>
           ) : posts.length > 0 ? (
             <View
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 4,
+                gap: SPACING.xs,
               }}
             >
               {posts.map((p) => (
@@ -531,8 +488,8 @@ export default function PetProfileScreen({ embedded = false }) {
                     style={{
                       width: IMG_SIZE,
                       height: IMG_SIZE,
-                      borderRadius: 12,
-                      backgroundColor: C.sand,
+                      borderRadius: RADIUS.control,
+                      backgroundColor: MATERIALS.surfaceSunken,
                     }}
                     resizeMode="cover"
                   />
@@ -540,21 +497,19 @@ export default function PetProfileScreen({ embedded = false }) {
                   <View
                     style={{
                       position: "absolute",
-                      bottom: 6,
-                      left: 6,
+                      bottom: SPACING.xs + 2,
+                      left: SPACING.xs + 2,
                       flexDirection: "row",
                       alignItems: "center",
                       backgroundColor: "rgba(59,36,27,0.6)",
-                      borderRadius: 10,
+                      borderRadius: RADIUS.chip,
                       paddingHorizontal: 7,
                       paddingVertical: 3,
                       gap: 3,
                     }}
                   >
                     <PawPrint size={10} color="#FFF" fill="#FFF" />
-                    <Text
-                      style={{ fontSize: 11, color: "#FFF", fontWeight: "700" }}
-                    >
+                    <Text style={[TYPE.caption, { color: "#FFF", fontWeight: "700", letterSpacing: 0 }]}>
                       {p.paw_count}
                     </Text>
                   </View>
@@ -565,33 +520,30 @@ export default function PetProfileScreen({ embedded = false }) {
             <View
               style={{
                 alignItems: "center",
-                paddingVertical: 40,
-                backgroundColor: C.card,
-                borderRadius: 20,
+                paddingVertical: SPACING.huge,
+                backgroundColor: MATERIALS.surface,
+                borderRadius: RADIUS.card,
                 borderWidth: 1,
-                borderColor: C.peach,
+                borderColor: COLORS.peach,
                 borderStyle: "dashed",
               }}
             >
               <Text style={{ fontSize: 36 }}>🐾</Text>
               <Text
-                style={{
-                  color: C.mutedBrown,
-                  fontSize: 15,
-                  fontWeight: "600",
-                  marginTop: 12,
-                }}
+                style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
               >
                 No daily posts yet
               </Text>
               <Text
-                style={{
-                  color: C.mutedBrown,
-                  fontSize: 13,
-                  marginTop: 4,
-                  textAlign: "center",
-                  paddingHorizontal: 20,
-                }}
+                style={[
+                  TYPE.subhead,
+                  {
+                    color: COLORS.mutedBrown,
+                    marginTop: SPACING.xs,
+                    textAlign: "center",
+                    paddingHorizontal: SPACING.xl,
+                  },
+                ]}
               >
                 {name ? `${name}'s` : "These"} daily moments will appear here.
               </Text>
@@ -600,28 +552,16 @@ export default function PetProfileScreen({ embedded = false }) {
         </View>
 
         {/* ── Pet info card ── */}
-        <View
+        <Card
+          level="sm"
           style={{
-            marginHorizontal: 16,
-            backgroundColor: C.card,
-            borderRadius: 22,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: C.peach,
-            shadowColor: C.terracotta,
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            marginBottom: 10,
+            marginHorizontal: SPACING.lg,
+            padding: SPACING.lg + 2,
+            marginBottom: SPACING.sm + 2,
           }}
         >
           <Text
-            style={{
-              fontSize: 15,
-              fontWeight: "800",
-              color: C.warmBrown,
-              marginBottom: 14,
-            }}
+            style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", marginBottom: SPACING.md + 2 }]}
           >
             About {name}
           </Text>
@@ -637,32 +577,20 @@ export default function PetProfileScreen({ embedded = false }) {
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
-                  paddingVertical: 10,
+                  paddingVertical: SPACING.sm + 2,
                   borderBottomWidth: 1,
-                  borderBottomColor: C.peach,
+                  borderBottomColor: MATERIALS.hairline,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: C.mutedBrown,
-                    fontWeight: "600",
-                  }}
-                >
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
                   {row.label}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: C.warmBrown,
-                    fontWeight: "700",
-                  }}
-                >
+                <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "700" }]}>
                   {row.value}
                 </Text>
               </View>
             ))}
-        </View>
+        </Card>
       </RefreshableScrollView>
 
       {/* ── POST DETAIL MODAL ── */}

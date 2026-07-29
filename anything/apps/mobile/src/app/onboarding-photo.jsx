@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, Alert, Linking } from "react-native";
+import { View, Text, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Camera as CameraIcon, Image as ImageIcon } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
-
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
-  peach: "#FFD9B3",
-};
+import { COLORS, TYPE, SPACING } from "@/constants/theme";
+import { Button, PressableScale } from "@/components/ui";
 
 export default function OnboardingPhotoScreen() {
   const insets = useSafeAreaInsets();
@@ -191,140 +184,113 @@ export default function OnboardingPhotoScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.cream,
-        paddingTop: insets.top + 40,
-        paddingBottom: insets.bottom + 40,
-        paddingHorizontal: 24,
+        backgroundColor: COLORS.cream,
+        paddingTop: insets.top + SPACING.huge,
+        paddingBottom: insets.bottom + SPACING.huge,
+        paddingHorizontal: SPACING.xxl,
       }}
     >
       {/* Header */}
       <View style={{ flex: 1, justifyContent: "center" }}>
         <View style={{ alignItems: "center", marginBottom: 60 }}>
           {/* Emoji Icon */}
-          <Text style={{ fontSize: 80, marginBottom: 24 }}>📸</Text>
+          <Text style={{ fontSize: 80, marginBottom: SPACING.xxl }}>📸</Text>
 
           {/* Title */}
           <Text
-            style={{
-              fontSize: 32,
-              fontWeight: "900",
-              color: C.warmBrown,
-              textAlign: "center",
-              marginBottom: 16,
-              letterSpacing: -0.5,
-            }}
+            style={[
+              TYPE.largeTitle,
+              {
+                fontSize: 32,
+                color: COLORS.warmBrown,
+                textAlign: "center",
+                marginBottom: SPACING.lg,
+                letterSpacing: -0.5,
+              },
+            ]}
           >
             Let's meet your dog
           </Text>
 
           {/* Subtitle */}
           <Text
-            style={{
-              fontSize: 17,
-              color: C.mutedBrown,
-              textAlign: "center",
-              lineHeight: 26,
-              paddingHorizontal: 20,
-            }}
+            style={[
+              TYPE.body,
+              {
+                fontSize: 17,
+                color: COLORS.mutedBrown,
+                textAlign: "center",
+                lineHeight: 26,
+                paddingHorizontal: SPACING.xl,
+              },
+            ]}
           >
             Start with a photo. You can use it as your dog's first pet moment.
           </Text>
         </View>
 
         {/* Action Buttons */}
-        <View style={{ gap: 16 }}>
+        <View style={{ gap: SPACING.lg }}>
           {/* Open Camera - Primary */}
-          <TouchableOpacity
+          <Button
+            variant="primary"
+            size="lg"
             onPress={openCamera}
             disabled={isPickingImage.current}
-            style={{
-              backgroundColor: C.coral,
-              borderRadius: 18,
-              paddingVertical: 18,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-              shadowColor: C.coral,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 6,
-              opacity: isPickingImage.current ? 0.5 : 1,
-            }}
+            icon={<CameraIcon size={24} color="#FFF" />}
           >
-            <CameraIcon size={24} color="#FFF" />
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "800",
-                color: "#FFF",
-              }}
-            >
+            <Text style={[TYPE.headline, { fontSize: 17, color: "#FFF" }]}>
               Open camera
             </Text>
-          </TouchableOpacity>
+          </Button>
 
           {/* Choose from Gallery */}
-          <TouchableOpacity
+          <Button
+            variant="secondary"
+            size="lg"
             onPress={openGallery}
             disabled={isPickingImage.current}
-            style={{
-              backgroundColor: C.sand,
-              borderRadius: 18,
-              paddingVertical: 18,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-              borderWidth: 2,
-              borderColor: C.peach,
-              opacity: isPickingImage.current ? 0.5 : 1,
-            }}
+            icon={<ImageIcon size={24} color={COLORS.coral} />}
           >
-            <ImageIcon size={24} color={C.coral} />
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "800",
-                color: C.coral,
-              }}
-            >
+            <Text style={[TYPE.headline, { fontSize: 17, color: COLORS.coral }]}>
               Choose from gallery
             </Text>
-          </TouchableOpacity>
+          </Button>
 
           {/* Skip for now */}
-          <TouchableOpacity
+          <PressableScale
             onPress={handleSkip}
             style={{
-              paddingVertical: 16,
+              paddingVertical: SPACING.lg,
               alignItems: "center",
             }}
           >
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: C.mutedBrown,
-                textDecorationLine: "underline",
-              }}
+              style={[
+                TYPE.headline,
+                {
+                  color: COLORS.mutedBrown,
+                  textDecorationLine: "underline",
+                },
+              ]}
             >
               Skip for now
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </View>
 
       {/* Footer Helper Text */}
       <Text
-        style={{
-          fontSize: 14,
-          color: C.mutedBrown,
-          textAlign: "center",
-          marginTop: 32,
-          opacity: 0.8,
-        }}
+        style={[
+          TYPE.callout,
+          {
+            color: COLORS.mutedBrown,
+            textAlign: "center",
+            marginTop: SPACING.xxxl,
+            opacity: 0.8,
+          },
+        ]}
       >
         Don't worry, you can change this later.
       </Text>
