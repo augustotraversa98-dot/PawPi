@@ -1,6 +1,14 @@
 # N7 — Get the Support URL live (pawpi.info/support)
 
-**Status:** ready · docs/hosting only, no app code · independent · safe-parallel: yes
+**Status:** ✅ RESOLVED (2026-07-31) · docs/hosting only, no app code · independent · safe-parallel: yes
+
+## Resolution
+The support page is genuinely live and returns HTTP 200 at
+`https://augustotraversa98-dot.github.io/pawpi-legal/support` (same `pawpi-legal` repo + GitHub Pages
+mechanism as Privacy/Terms). `pawpi.info` itself remains unhosted (parked at one.com), so rather than
+wait on DNS, `docs/app-store-connect-content.md` §6's Support URL field was updated to point at the
+github.io URL directly — mirroring the already-accepted Privacy Policy precedent. See
+`docs/app-store-readiness.md` FLAGGED #5 for the full note.
 
 ## Context
 `docs/app-store-connect-content.md` §6 requires a live Support URL for submission —

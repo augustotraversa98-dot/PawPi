@@ -735,8 +735,9 @@ N1 (address autofill on the shared map picker), N2 (retired the dead `PATCH /api
 `RepairPetsButton.jsx`), N3 (adoption screen restyled to Liquid Glass — the one screen 2.77 left out),
 N4 (medical-profile sex/gender selector case-mismatch fix), N5 (payments degrade-clean audit + rewrote
 the go-live runbook), N6 (Apple Sign-in's client-secret JWT now generated from key material instead of
-a static string that would've silently expired), N7 (support page confirmed live; `pawpi.info` DNS gap
-documented for Tats), N8 (iOS Simulator self-verify pass — caught and fixed a missed merge on N4;
+a static string that would've silently expired), N7 (support page confirmed live at the github.io URL;
+resolved 2026-07-31 by pointing the ASC content pack's Support URL field there directly since
+`pawpi.info` itself still has no hosting — see `docs/app-store-readiness.md` FLAGGED #5), N8 (iOS Simulator self-verify pass — caught and fixed a missed merge on N4;
 documented honestly that the historical device-test backlog wasn't swept due to Simulator tap-injection
 flakiness this session), and N9 (docs hygiene) all merged. **N10 (widget PR #187 rebase) is
 deliberately NOT merged** — rebased the ~40-day-stale branch cleanly onto `main` (CI-green, structural

@@ -82,7 +82,7 @@ dog,puppy,pet care,vet records,dog health,reminders,walker,groomer,adoption,dog 
 
 | Field | Value |
 |---|---|
-| **Support URL** (required) | https://pawpi.info/support — ⚠️ page must be LIVE before submission |
+| **Support URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/support |
 | **Marketing URL** (optional) | https://pawpi.info |
 | **Privacy Policy URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/privacy |
 
@@ -138,10 +138,17 @@ Notes / decisions to confirm:
 
 ## 10. App Review notes (paste into "Notes" for the reviewer)
 
+> **ACTION before submitting:** create the demo account below *inside the app* (email/password
+> sign-up), then populate it so reviewers don't see empty tabs: add **one dog** (name, breed,
+> photo), **2–3 feed posts/daily moments**, **2–3 reminders** (e.g. a feeding + a walk + a
+> vet appointment), and **one vet-record entry** (e.g. a weight log or a vaccination). This is a
+> real account you fill in by hand — not mock data — so the app rule against fake data is fine.
+> If email sign-up requires verification, the Gmail `+alias` below delivers to your real inbox.
+
 ```
 DEMO ACCOUNT
-Email: [demo email]
-Password: [demo password]
+Email: augustotraversa98+appreview@gmail.com
+Password: PawpiReview2026!
 (Pre-seeded with a sample dog, a few posts, and example reminders so all tabs are reviewable.)
 
 PAYMENTS — EXTERNAL PAYMENT IS INTENTIONAL (Guideline 3.1.3(e))
