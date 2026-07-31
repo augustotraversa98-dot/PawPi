@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { getCurrentWeight } from "@/app/api/utils/petWeight";
 
 async function GET(request) {
   try {
@@ -52,15 +53,6 @@ async function GET(request) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
-    // Get latest weight from weight logs
-    const latestWeight = await sql`
-      SELECT weight, weight_unit, logged_at
-      FROM health_weight_logs
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
-      ORDER BY logged_at DESC
-      LIMIT 1
-    `;
-
     // Get medical profile
     const medicalProfile = await sql`
       SELECT 
@@ -81,13 +73,12 @@ async function GET(request) {
       WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
     `;
 
-    const currentWeight =
-      latestWeight.length > 0
-        ? {
-            weight: latestWeight[0].weight,
-            weight_unit: latestWeight[0].weight_unit,
-          }
-        : { weight: pet[0].weight, weight_unit: pet[0].weight_unit };
+    const currentWeight = await getCurrentWeight(
+      petId,
+      ownerUserId,
+      pet[0].weight,
+      pet[0].weight_unit,
+    );
 
     return Response.json({
       pet: pet[0],

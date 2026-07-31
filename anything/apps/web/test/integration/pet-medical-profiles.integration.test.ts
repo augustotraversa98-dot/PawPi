@@ -173,4 +173,42 @@ describe('POST /api/pet-medical-profiles — owner with 2+ pets', () => {
     expect(pet.id).toBe(OWNER.petId);
     expect(pet.id).not.toBe(PET_B_ID);
   });
+
+  // Regression for the getCurrentWeight() extraction (shared with GET
+  // /api/pets and GET /api/pets/[id] — pets-current-weight.integration.test.ts):
+  // this route's own currentWeight must keep preferring the latest weigh-in
+  // over pets.weight after the shared-helper refactor.
+  it("GET currentWeight prefers the latest health_weight_logs row over stale pets.weight", async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await raw`update pets set weight = 40, weight_unit = 'lbs' where id = ${OWNER.petId}`;
+    await raw`
+      insert into health_weight_logs (pet_id, owner_user_id, weight, weight_unit, logged_at)
+      values
+        (${OWNER.petId}, ${OWNER.profileId}, 42, 'lbs', '2026-06-01T00:00:00Z'),
+        (${OWNER.petId}, ${OWNER.profileId}, 45.5, 'lbs', '2026-07-01T00:00:00Z')
+    `;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    const res = await GET(
+      new Request(`http://localhost/api/pet-medical-profiles?petId=${OWNER.petId}`),
+    );
+    expect(res.status).toBe(200);
+    const { currentWeight } = await res.json();
+    expect(Number(currentWeight.weight)).toBe(45.5);
+  });
+
+  it('GET currentWeight falls back to pets.weight when zero weigh-ins are logged', async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await raw`update pets set weight = 40, weight_unit = 'lbs' where id = ${OWNER.petId}`;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    const res = await GET(
+      new Request(`http://localhost/api/pet-medical-profiles?petId=${OWNER.petId}`),
+    );
+    expect(res.status).toBe(200);
+    const { currentWeight } = await res.json();
+    expect(Number(currentWeight.weight)).toBe(40);
+  });
 });
