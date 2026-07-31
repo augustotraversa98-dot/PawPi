@@ -60,6 +60,27 @@ the Debug build loads JS from Metro:
 **Verify against seeded data, not an empty account** — an empty account makes a visual change
 unreviewable (half the cards render "nothing logged yet"). Seed first: `docs/demo-seed-plan.md`.
 
+### Local dev vs. production-pointed testing
+
+The normal loop above (`Start PawPi.command` / `scripts/dev.sh`) runs Metro against **your own
+Mac's local backend + database** (`scripts/dev-backend.sh` + `scripts/sync-mobile-ip.sh`) — great
+for fast, offline iteration, but it never exercises the real Railway backend or Supabase database
+the shipped app actually uses.
+
+For a final check before submitting to TestFlight/App Store Review, use **`scripts/dev-mobile-prod.sh`**
+(double-clickable launcher: **`Start PawPi (Production Backend).command`**) instead. It starts Metro
+(`expo start -c`) pointed at the live Railway backend (`https://pawpi-production.up.railway.app`) and
+does **not** start `scripts/dev-backend.sh` — there is no local backend in this mode. The production
+URL is exported as shell env vars scoped to that one `expo start` process only; it is never written
+into `anything/apps/mobile/.env`, so a normal `dev.sh` / `Start PawPi.command` run afterward reverts
+to local with no leftover state.
+
+- **Use local (`Start PawPi.command`)** for day-to-day feature work and iteration.
+- **Use production-pointed (`Start PawPi (Production Backend).command`)** as a pre-submission smoke
+  test — does the real build talk to the real backend correctly end-to-end.
+- **Safety: only sign in with the seeded demo account (`demo@pawpi.app`)** in this mode. It is a
+  live production database — any other account's writes are permanent, real writes, not test data.
+
 ## How to run a batch
 
 > Approve a batch (e.g. "build P3-FEED, P3-WALK, QW-DEADCODE"), then I trigger the
