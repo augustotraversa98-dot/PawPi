@@ -67,6 +67,27 @@ What remains is submission logistics and a handful of go-live keys — not featu
   npm test green (1195 mobile tests). Simulator touch-input was non-functional this session (confirmed
   via multiple gesture types and a full device reboot — hardware buttons still worked), so on-device
   tap-and-save confirmation is still owed before the next device-test pass.
+- **FIXED:** `EditMedicalProfileModal`'s save wrote breed/birthday/gender/weight to the `pets` row
+  correctly (scoped `WHERE id = petId AND owner_user_id = ownerUserId` — unchanged, confirmed correct)
+  but never invalidated the `["pets"]` React Query cache, unlike `profile-edit.jsx`'s own PATCH save.
+  So Dog Profile (`more/profile.jsx`, which reads `currentPet.weight`/`.gender`/etc. straight off
+  `usePetProfile`/`useCurrentPet`) kept showing the pre-edit value until the 45s `staleTime` lapsed or
+  the app restarted. Fixed by adding the same `queryClient.invalidateQueries({queryKey:["pets"]})` +
+  `refetchQueries({queryKey:["pets","current"]})` calls `profile-edit.jsx` uses. Swept every other
+  pet-editing call site (`AddDogModal`/`useCreatePet`, `onboarding.jsx`) — both already invalidate
+  `["pets"]` correctly; no other gap found. Added a real-Postgres integration test
+  (`pet-medical-profiles.integration.test.ts`) proving an owner with 2+ pets editing pet A never
+  touches pet B, plus the cross-owner 404 case. mobile jest 1197 green / web vitest 1386 green /
+  integration green.
+  **Flagged, not fixed (explicitly out of scope for this ticket — no data-model change):** Dog Profile
+  reads weight from `pets.weight` directly; `POST /api/pet-medical-profiles` only writes there when
+  the pet has ZERO `health_weight_logs` rows — once a pet has any prior weigh-in logged, a weight edit
+  via Edit Medical Profile writes a NEW `health_weight_logs` row instead and `pets.weight` (what Dog
+  Profile displays) never updates again, regardless of cache invalidation. The GET side of the same
+  route papers over this by preferring the latest `health_weight_logs` row for its own `currentWeight`
+  field, so reopening the modal looks "synced" while Dog Profile silently diverges. Needs a deliberate
+  decision (merge Dog Profile's read the same way, or always keep `pets.weight` in sync) before it can
+  be closed.
 
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your

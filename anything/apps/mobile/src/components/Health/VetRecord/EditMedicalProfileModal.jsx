@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
@@ -23,6 +24,7 @@ export default function EditMedicalProfileModal({
   onSave,
 }) {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   // Shared fields (from pets table)
@@ -173,6 +175,14 @@ export default function EditMedicalProfileModal({
       if (!response.ok) {
         throw new Error("Failed to save");
       }
+
+      // breed/birthday/gender/weight above are shared fields written to the
+      // pets table (not just pet_medical_profiles) — invalidate the same
+      // ["pets"] cache profile-edit.jsx does so every other screen reading
+      // usePetProfile/useCurrentPet (Dog Profile, headers, etc.) reflects the
+      // change immediately instead of waiting out the 45s staleTime.
+      await queryClient.invalidateQueries({ queryKey: ["pets"] });
+      await queryClient.refetchQueries({ queryKey: ["pets", "current"] });
 
       Alert.alert("Success", "Medical profile saved");
       onSave?.();
