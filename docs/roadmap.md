@@ -98,6 +98,26 @@ What remains is submission logistics and a handful of go-live keys — not featu
   add a second "current weight" field or write path — if a screen needs to show or edit weight, read
   through `getCurrentWeight()` (or `currentWeight` from `/api/pet-medical-profiles`) and log new
   weigh-ins to `health_weight_logs`, never write a display value back to `pets.weight`.
+- **RESOLVED — weight WRITE-side consolidation (follow-up to #275/#276).** The read-side fix above
+  left the write side split: `PATCH /api/pets/[id]` (Dog Profile edit) still wrote weight straight to
+  `pets.weight`/`weight_unit`, while `POST /api/pet-medical-profiles` (Edit Medical Profile) correctly
+  inserted a new `health_weight_logs` row once history existed — so a Dog Profile weight edit on a pet
+  with any weigh-in history wrote to a column the read side no longer looked at, and the edit appeared
+  to silently not save. **Convention: there is exactly one write implementation too** —
+  `logCurrentWeight(petId, ownerUserId, weight, weightUnit)`, alongside `getCurrentWeight()` in
+  `api/utils/petWeight.js`. It mirrors the read fallback exactly: insert a new `health_weight_logs` row
+  once the pet has any history, else seed `pets.weight`/`weight_unit` directly (the zero-history case
+  `getCurrentWeight()` falls back to). Both `PATCH /api/pets/[id]` and `POST /api/pet-medical-profiles`
+  now call this one helper instead of each having its own copy of the insert-vs-seed branch. Pet
+  CREATION (`POST /api/pets`) is untouched on purpose — that write IS the legitimate zero-history seed
+  value, not an edit. Mobile: both `profile-edit.jsx` and `EditMedicalProfileModal.jsx` now also
+  invalidate `["health","weight-logs"]` and `["health","timeline"]` (not just `["pets"]`) after save,
+  since either screen can now create a `health_weight_logs` row — otherwise Health → Track weight would
+  have kept showing the stale chart until its own cache expired. New integration coverage
+  (`pets-patch-weight.integration.test.ts`) proves the seed-vs-insert branch and per-pet scoping for
+  PATCH; `pet-medical-profiles.integration.test.ts` gained a regression proving its insert-when-history
+  path is unchanged. **Do not add a third weight write path** (a new screen, a bulk-import feature,
+  etc.) — always call `logCurrentWeight()`.
 - **RESOLVED — Dog Profile current-weight-source ticket, age/birthday follow-on.** **Convention: a known
   birthday always wins; `age_years`/`age_months` is only an ESTIMATE for when the birthday isn't known.**
   `pets` has both a `birthday` (date) and independent `age_years`/`age_months` (plain numbers) that used

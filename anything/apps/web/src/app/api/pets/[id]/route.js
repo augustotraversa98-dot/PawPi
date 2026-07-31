@@ -1,7 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { getCurrentWeight } from "@/app/api/utils/petWeight";
+import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
 
 // Update a specific pet
 async function PATCH(request, { params }) {
@@ -91,6 +91,19 @@ async function PATCH(request, { params }) {
       }
     }
 
+    // Weight is a HISTORY, not a single field (see petWeight.js) — a valid
+    // numeric weight edit is routed through the shared logCurrentWeight
+    // helper (same one Edit Medical Profile uses) instead of writing
+    // pets.weight directly, so the two edit screens can't silently diverge
+    // again. An explicit null (clearing the field) still falls through to
+    // the plain column update below.
+    let numericWeight = null;
+    if (weight !== undefined && weight !== null && weight !== "") {
+      const parsed = typeof weight === "number" ? weight : parseFloat(weight);
+      if (!isNaN(parsed)) numericWeight = parsed;
+    }
+    const loggingWeight = numericWeight !== null;
+
     // Build update fields dynamically (only update provided fields)
     const updates = [];
     const values = [];
@@ -124,11 +137,11 @@ async function PATCH(request, { params }) {
       updates.push(`gender = $${paramIndex++}`);
       values.push(gender);
     }
-    if (weight !== undefined) {
+    if (!loggingWeight && weight !== undefined) {
       updates.push(`weight = $${paramIndex++}`);
       values.push(weight);
     }
-    if (weight_unit !== undefined) {
+    if (!loggingWeight && weight_unit !== undefined) {
       updates.push(`weight_unit = $${paramIndex++}`);
       values.push(weight_unit);
     }
@@ -148,28 +161,36 @@ async function PATCH(request, { params }) {
     // Always update updated_at
     updates.push(`updated_at = NOW()`);
 
-    if (updates.length === 1) {
-      // Only updated_at, no real changes
-      return Response.json({ pet: existingPet[0] });
+    let updatedPet = existingPet[0];
+
+    if (updates.length > 1) {
+      // Add petId as the last parameter for WHERE clause
+      values.push(petId);
+
+      // Build and execute dynamic UPDATE query
+      const updateQuery = `
+        UPDATE pets
+        SET ${updates.join(", ")}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+
+      const result = await sql.unsafe(updateQuery, values);
+      updatedPet = result[0];
     }
 
+    if (loggingWeight) {
+      const unitForWeight =
+        weight_unit !== undefined ? weight_unit : updatedPet.weight_unit;
+      await logCurrentWeight(petId, userId, numericWeight, unitForWeight);
 
-    // Add petId as the last parameter for WHERE clause
-    values.push(petId);
+      // logCurrentWeight just wrote this exact value (either seeded onto
+      // pets, or as the newest health_weight_logs row) — it IS the pet's
+      // current weight now, no need to re-derive it via getCurrentWeight.
+      updatedPet = { ...updatedPet, weight: numericWeight, weight_unit: unitForWeight };
+    }
 
-    // Build and execute dynamic UPDATE query
-    const updateQuery = `
-      UPDATE pets
-      SET ${updates.join(", ")}
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
-
-
-    const result = await sql.unsafe(updateQuery, values);
-
-
-    return Response.json({ pet: result[0] });
+    return Response.json({ pet: updatedPet });
   } catch (error) {
     console.error(
       "[PATCH /api/pets/[id]] ========================================",

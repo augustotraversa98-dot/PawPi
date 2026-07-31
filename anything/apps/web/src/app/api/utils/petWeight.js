@@ -35,3 +35,39 @@ export async function getCurrentWeight(
     ? { weight: latestWeight[0].weight, weight_unit: latestWeight[0].weight_unit }
     : { weight: fallbackWeight, weight_unit: fallbackWeightUnit };
 }
+
+// logCurrentWeight — the single "how does a weight edit get saved" write,
+// shared by every screen that lets an owner edit a pet's current weight
+// (Dog Profile edit, Edit Medical Profile, and any future one). Mirrors the
+// getCurrentWeight fallback rule exactly: once a pet has any health_weight_logs
+// history, a weight edit is an ongoing log entry (INSERT a new row — the pet's
+// current weight is always its latest log after that point). Only when the pet
+// has zero weigh-ins yet does the edit seed pets.weight/weight_unit directly,
+// which is the value getCurrentWeight falls back to.
+//
+// Not for pet creation (POST /api/pets) — that write is the legitimate
+// "no history yet" seed value itself, not an edit, and stays a direct
+// pets.weight/weight_unit write.
+export async function logCurrentWeight(petId, ownerUserId, weight, weightUnit) {
+  const existingLogs = await sql`
+    SELECT COUNT(*)::int as count
+    FROM health_weight_logs
+    WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
+  `;
+
+  if (existingLogs[0].count > 0) {
+    await sql`
+      INSERT INTO health_weight_logs (
+        pet_id, owner_user_id, weight, weight_unit, logged_at
+      ) VALUES (
+        ${petId}, ${ownerUserId}, ${weight}, ${weightUnit}, NOW()
+      )
+    `;
+  } else {
+    await sql`
+      UPDATE pets
+      SET weight = ${weight}, weight_unit = ${weightUnit}, updated_at = NOW()
+      WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
+    `;
+  }
+}
