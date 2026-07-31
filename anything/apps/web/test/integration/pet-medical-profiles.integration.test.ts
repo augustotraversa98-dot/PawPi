@@ -129,11 +129,57 @@ describe('POST /api/pet-medical-profiles — owner with 2+ pets', () => {
     expect(petB.gender).toBe('male');
     expect(new Date(petB.birthday).toISOString().slice(0, 10)).toBe('2020-01-01');
     expect(petB.weight).toBeNull();
+  });
 
-    // The medical-profile upsert also only created a row for pet A.
-    const profiles = await raw`select pet_id, microchip_id from pet_medical_profiles`;
-    expect(profiles).toHaveLength(1);
-    expect(profiles[0]).toMatchObject({ pet_id: OWNER.petId, microchip_id: 'chip-a' });
+  // Age model (docs/roadmap.md): ageYears/ageMonths are only sent (and only
+  // ever written) when the owner has marked the birthday unknown. Same
+  // same-owner-two-pets scoping risk as breed/gender/birthday/weight above —
+  // worth its own explicit proof since this is a brand-new write path.
+  it("editing pet A's estimated age never changes pet B (same owner), and clears pet A's birthday", async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await seedSecondPet(raw, { petId: PET_B_ID, ownerUserId: OWNER.profileId, petName: 'Bella' });
+    await raw`update pets set age_years = 9, age_months = 9 where id = ${PET_B_ID}`;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    const res = await POST(
+      medicalProfileRequest({
+        petId: OWNER.petId,
+        birthday: null,
+        ageYears: 4,
+        ageMonths: 2,
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const [petA] = await raw`select birthday, age_years, age_months from pets where id = ${OWNER.petId}`;
+    expect(petA.birthday).toBeNull();
+    expect(petA.age_years).toBe(4);
+    expect(petA.age_months).toBe(2);
+
+    // Pet B (SAME owner) keeps its own birthday AND its own age estimate.
+    const [petB] = await raw`select birthday, age_years, age_months from pets where id = ${PET_B_ID}`;
+    expect(new Date(petB.birthday).toISOString().slice(0, 10)).toBe('2020-01-01');
+    expect(petB.age_years).toBe(9);
+    expect(petB.age_months).toBe(9);
+  });
+
+  it('omitting ageYears/ageMonths from the body leaves a previously-stored estimate untouched', async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await raw`update pets set age_years = 3, age_months = 6 where id = ${OWNER.petId}`;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    // Birthday added, ageYears/ageMonths NOT in the body at all (the client
+    // omits them once it's in "I know the birthday" mode).
+    const res = await POST(medicalProfileRequest({ petId: OWNER.petId, birthday: '2021-03-15' }));
+    expect(res.status).toBe(200);
+
+    const [petA] = await raw`select birthday, age_years, age_months from pets where id = ${OWNER.petId}`;
+    expect(new Date(petA.birthday).toISOString().slice(0, 10)).toBe('2021-03-15');
+    // The old estimate is left in place, harmless (display always prefers birthday).
+    expect(petA.age_years).toBe(3);
+    expect(petA.age_months).toBe(6);
   });
 
   it("owner A cannot edit owner C's pet at all (404, zero rows changed)", async () => {

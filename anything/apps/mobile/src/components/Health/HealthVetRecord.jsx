@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
+import { getDisplayAge } from "@/utils/petAge";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
@@ -735,9 +736,7 @@ export default function HealthVetRecord() {
                       { label: "Breed", value: medicalProfileData?.pet?.breed },
                       {
                         label: "Age",
-                        value: medicalProfileData?.pet?.age_years
-                          ? `${medicalProfileData.pet.age_years} years${medicalProfileData.pet.age_months ? `, ${medicalProfileData.pet.age_months} months` : ""}`
-                          : null,
+                        value: getDisplayAge(medicalProfileData?.pet),
                       },
                       { label: "Sex", value: medicalProfileData?.pet?.gender },
                       {

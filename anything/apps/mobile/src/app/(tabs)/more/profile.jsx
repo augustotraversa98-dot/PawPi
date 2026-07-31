@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useGroomSessions } from "@/hooks/useGroomSessions";
+import { getDisplayAge } from "@/utils/petAge";
 import useUser from "@/utils/auth/useUser";
 import {
   COLORS,
@@ -49,20 +50,6 @@ export default function ProfileScreen() {
     console.log("[Dog Profile] Loading:", loadingPet);
     console.log("[Dog Profile] ========================================");
   }, [authUser, currentPet, loadingPet]);
-
-  // Helper to format age
-  const formatAge = (ageYears, ageMonths) => {
-    if (!ageYears && !ageMonths) return null;
-
-    const years = ageYears || 0;
-    const months = ageMonths || 0;
-
-    const parts = [];
-    if (years > 0) parts.push(`${years} year${years > 1 ? "s" : ""}`);
-    if (months > 0) parts.push(`${months} month${months > 1 ? "s" : ""}`);
-
-    return parts.join(", ");
-  };
 
   // Helper to format weight
   const formatWeight = (weight, weightUnit) => {
@@ -153,7 +140,7 @@ export default function ProfileScreen() {
   // Use database values instead of AsyncStorage
   const petName = currentPet?.name || "My Dog";
   const petBreed = currentPet?.breed;
-  const petAge = formatAge(currentPet?.age_years, currentPet?.age_months);
+  const petAge = getDisplayAge(currentPet);
   const petGender = formatGender(currentPet?.gender);
   const petWeight = formatWeight(currentPet?.weight, currentPet?.weight_unit);
   const petBirthday = formatDate(currentPet?.birthday);
