@@ -79,15 +79,25 @@ What remains is submission logistics and a handful of go-live keys — not featu
   (`pet-medical-profiles.integration.test.ts`) proving an owner with 2+ pets editing pet A never
   touches pet B, plus the cross-owner 404 case. mobile jest 1197 green / web vitest 1386 green /
   integration green.
-  **Flagged, not fixed (explicitly out of scope for this ticket — no data-model change):** Dog Profile
-  reads weight from `pets.weight` directly; `POST /api/pet-medical-profiles` only writes there when
-  the pet has ZERO `health_weight_logs` rows — once a pet has any prior weigh-in logged, a weight edit
-  via Edit Medical Profile writes a NEW `health_weight_logs` row instead and `pets.weight` (what Dog
-  Profile displays) never updates again, regardless of cache invalidation. The GET side of the same
-  route papers over this by preferring the latest `health_weight_logs` row for its own `currentWeight`
-  field, so reopening the modal looks "synced" while Dog Profile silently diverges. Needs a deliberate
-  decision (merge Dog Profile's read the same way, or always keep `pets.weight` in sync) before it can
-  be closed.
+- **RESOLVED — Dog Profile weight-source flag (follow-up to #274).** **Convention: weight is a
+  HISTORY, not a single field.** "Current weight" anywhere in the app always means the latest
+  `health_weight_logs` row for the pet, falling back to `pets.weight`/`weight_unit` only when the pet
+  has zero weigh-ins logged ever — never re-derive this; there is exactly one implementation,
+  `getCurrentWeight()` in `api/utils/petWeight.js`. `POST /api/pet-medical-profiles` already only
+  wrote to `pets.weight` in that same zero-logs fallback case (unchanged). The GET side of that route
+  already preferred the latest log for its own `currentWeight` field (unchanged, now calls the shared
+  helper). What was fixed: `GET /api/pets` (list) and `GET /api/pets/[id]` — the routes behind
+  `useCurrentPet`/`usePetProfile` — now merge each pet's `weight`/`weight_unit` through the same
+  helper before responding, so Dog Profile (`more/profile.jsx`) and the Edit Pet Profile prefill
+  (`more/profile-edit.jsx`), the only two direct `pets.weight` display reads found (grepped the whole
+  mobile app), get the correct value with no mobile-side change needed. Health → Track weight
+  chart/history was already reading `health_weight_logs` directly and is unaffected. New integration
+  coverage (`pets-current-weight.integration.test.ts`) proves the latest-log-wins and zero-logs-fallback
+  cases, plus per-pet scoping for an owner with 2 pets; `pet-medical-profiles.integration.test.ts`
+  gained a regression pair proving its own `currentWeight` is unchanged by the extraction. Do **not**
+  add a second "current weight" field or write path — if a screen needs to show or edit weight, read
+  through `getCurrentWeight()` (or `currentWeight` from `/api/pet-medical-profiles`) and log new
+  weigh-ins to `health_weight_logs`, never write a display value back to `pets.weight`.
 
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your

@@ -5,6 +5,7 @@ import {
   setCurrentUserId,
 } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { getCurrentWeight } from "@/app/api/utils/petWeight";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -48,7 +49,25 @@ async function GET(request) {
       WHERE owner_user_id = ${userId}
       ORDER BY created_at DESC
     `;
-    return Response.json({ pets });
+
+    // "Current weight" is a history, not a single field (Dog Profile
+    // weight-source ticket): prefer each pet's latest health_weight_logs row,
+    // falling back to pets.weight only when it has zero weigh-ins logged yet.
+    // Every consumer of this list (useCurrentPet/usePetProfile — Dog Profile,
+    // the Edit Pet Profile prefill, headers) gets the correct value for free.
+    const petsWithCurrentWeight = await Promise.all(
+      pets.map(async (pet) => {
+        const currentWeight = await getCurrentWeight(
+          pet.id,
+          userId,
+          pet.weight,
+          pet.weight_unit,
+        );
+        return { ...pet, ...currentWeight };
+      }),
+    );
+
+    return Response.json({ pets: petsWithCurrentWeight });
   } catch (error) {
     console.error("[GET /api/pets] Error:", error.message);
     return Response.json({ error: "Failed to fetch pets" }, { status: 500 });

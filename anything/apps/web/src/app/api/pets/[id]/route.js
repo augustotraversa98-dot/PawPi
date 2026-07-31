@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { getCurrentWeight } from "@/app/api/utils/petWeight";
 
 // Update a specific pet
 async function PATCH(request, { params }) {
@@ -223,8 +224,17 @@ async function GET(request, { params }) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
+    // See pets/route.js — "current weight" prefers the latest
+    // health_weight_logs row, falling back to pets.weight/weight_unit only
+    // when the pet has zero weigh-ins logged yet.
+    const currentWeight = await getCurrentWeight(
+      petId,
+      userId,
+      pet[0].weight,
+      pet[0].weight_unit,
+    );
 
-    return Response.json({ pet: pet[0] });
+    return Response.json({ pet: { ...pet[0], ...currentWeight } });
   } catch (error) {
     console.error("[GET /api/pets/[id]] ERROR:", error);
     return Response.json({ error: "Failed to fetch pet" }, { status: 500 });

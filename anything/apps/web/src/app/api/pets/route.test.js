@@ -29,7 +29,7 @@ const SESSION = {
 // user_profiles.id (7) -> pets.owner_user_id (7). owner_user_id holds the
 // PROFILE id, not the auth id.
 const PROFILE_ROW = { id: 7, auth_user_id: 42, username: 'pat', onboarding_completed: true };
-const PET_ROW = { id: 1, name: 'Rex', handle: 'rex', owner_user_id: 7 };
+const PET_ROW = { id: 1, name: 'Rex', handle: 'rex', owner_user_id: 7, weight: 40, weight_unit: 'lbs' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -41,9 +41,13 @@ beforeEach(() => {
 describe('GET /api/pets — authenticated path', () => {
   it('authed -> 200 with the user\'s pets', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1st sql call: profile lookup. 2nd: pets by owner. A non-empty pets
-    // result skips the wrongPets debug query, so exactly two calls run.
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([PET_ROW]);
+    // 1st sql call: profile lookup. 2nd: pets by owner. 3rd: getCurrentWeight's
+    // per-pet health_weight_logs lookup — empty here, so the fallback
+    // (pets.weight/weight_unit, already on PET_ROW) passes through unchanged.
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([PET_ROW])
+      .mockResolvedValueOnce([]);
 
     const res = await GET(new Request('http://localhost/api/pets'));
 
