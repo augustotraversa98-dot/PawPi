@@ -244,6 +244,35 @@ describe('POST /api/pet-medical-profiles — owner with 2+ pets', () => {
     expect(Number(currentWeight.weight)).toBe(45.5);
   });
 
+  // Regression for the logCurrentWeight() extraction (shared with PATCH
+  // /api/pets/[id] — pets-patch-weight.integration.test.ts): once a pet has
+  // weigh-in history, POSTing a new currentWeight here must still insert a
+  // NEW health_weight_logs row rather than overwrite the now-stale pets.weight.
+  it('POST currentWeight inserts a new health_weight_logs row once history exists, leaving pets.weight stale', async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await raw`update pets set weight = 40, weight_unit = 'lbs' where id = ${OWNER.petId}`;
+    await raw`
+      insert into health_weight_logs (pet_id, owner_user_id, weight, weight_unit, logged_at)
+      values (${OWNER.petId}, ${OWNER.profileId}, 42, 'lbs', '2026-06-01T00:00:00Z')
+    `;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    const res = await POST(
+      medicalProfileRequest({ petId: OWNER.petId, currentWeight: '45.5', weightUnit: 'lbs' }),
+    );
+    expect(res.status).toBe(200);
+
+    const [petA] = await raw`select weight from pets where id = ${OWNER.petId}`;
+    expect(Number(petA.weight)).toBe(40);
+
+    const logs = await raw`
+      select weight from health_weight_logs where pet_id = ${OWNER.petId} order by logged_at desc
+    `;
+    expect(logs).toHaveLength(2);
+    expect(Number(logs[0].weight)).toBe(45.5);
+  });
+
   it('GET currentWeight falls back to pets.weight when zero weigh-ins are logged', async () => {
     await seedOwnerWithPet(raw, OWNER);
     await raw`update pets set weight = 40, weight_unit = 'lbs' where id = ${OWNER.petId}`;

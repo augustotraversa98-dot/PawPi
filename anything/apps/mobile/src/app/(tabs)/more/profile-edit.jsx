@@ -219,6 +219,13 @@ export default function ProfileEditScreen() {
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       await queryClient.refetchQueries({ queryKey: ["pets", "current"] });
 
+      // A weight edit here can land in health_weight_logs now (petWeight.js
+      // logCurrentWeight — once the pet has any weigh-in history), not just
+      // pets.weight, so the Health → Track weight chart/history must refresh
+      // too, same as WeightModal.jsx does after logging a weight there.
+      await queryClient.invalidateQueries({ queryKey: ["health", "weight-logs"] });
+      await queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+
       console.log("[Profile Edit] ✅ Profile update complete!");
       console.log("[Profile Edit] ========================================");
 

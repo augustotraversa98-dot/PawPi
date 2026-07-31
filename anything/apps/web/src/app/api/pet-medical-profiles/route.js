@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { getCurrentWeight } from "@/app/api/utils/petWeight";
+import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
 
 async function GET(request) {
   try {
@@ -205,7 +205,9 @@ async function POST(request) {
       );
     }
 
-    // Handle weight update: create a new weight log if weight changed
+    // Handle weight update: routed through the shared logCurrentWeight
+    // helper (petWeight.js) — the same one Dog Profile edit uses — so there
+    // is exactly one implementation of "how a weight edit gets saved".
     if (
       currentWeight !== undefined &&
       currentWeight !== null &&
@@ -213,31 +215,12 @@ async function POST(request) {
     ) {
       const numericWeight = parseFloat(currentWeight);
       if (!isNaN(numericWeight)) {
-        // Check if there are existing weight logs
-        const hasWeightLogs = await sql`
-          SELECT COUNT(*)::int as count 
-          FROM health_weight_logs 
-          WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
-        `;
-
-        if (hasWeightLogs[0].count > 0) {
-          // Create new weight log entry
-          await sql`
-            INSERT INTO health_weight_logs (
-              pet_id, owner_user_id, weight, weight_unit, logged_at
-            ) VALUES (
-              ${petId}, ${ownerUserId}, ${numericWeight}, 
-              ${weightUnit || "lbs"}, NOW()
-            )
-          `;
-        } else {
-          // No weight logs exist yet, update pets.weight
-          await sql`
-            UPDATE pets 
-            SET weight = ${numericWeight}, updated_at = NOW()
-            WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-          `;
-        }
+        await logCurrentWeight(
+          petId,
+          ownerUserId,
+          numericWeight,
+          weightUnit || "lbs",
+        );
       }
     }
 
