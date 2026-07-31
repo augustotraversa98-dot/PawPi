@@ -119,9 +119,9 @@ In rough order:
    so the buttons go live (2.46).
 6. **Go-live backend env keys** (see `docs/test-backlog.md`): payment rails (MercadoPago/Binance),
    `GOOGLE_PLACES_API_KEY` (places 2.73), `CRON_SECRET` + an external scheduler (subscriptions 2.17 +
-   food-recall ingest 2.75), `AUTH_*`, and **`EMAIL_API_KEY` + `APP_BASE_URL`** (password reset — the
-   one whose absence leaves a user-visible flow unable to complete). Each feature degrades cleanly
-   until its key is set.
+   food-recall ingest 2.75), and `AUTH_*` — still open, each feature degrades cleanly until its key is
+   set. ~~`EMAIL_API_KEY` + `EMAIL_FROM` + `APP_BASE_URL`~~ ✅ done (2026-07-31) — password reset is
+   fully live: Resend verified on **pawpi.info**, confirmed on Railway, device-tested end to end.
 7. 🟡 **Pending Supabase migrations** — the live DB is at **0068** (0056–0068 all applied; verified
    directly against production 2026-07-28). **`0069_password_reset_tokens.sql` is now pending** — apply
    it, then run `supabase/verify_0069.sql` (every row should read PASS).
@@ -137,7 +137,10 @@ In rough order:
 
 ---
 
-_Last updated: **2026-07-28** — the **forgot-password blocker is closed in code**: real reset flow +
+_Last updated: **2026-07-31** — **password reset is now fully live in production**: `EMAIL_API_KEY` /
+`EMAIL_FROM` / `APP_BASE_URL` set and confirmed on Railway (Resend, `pawpi.info` verified), full flow
+device-tested end to end (Welcome → Forgot password? → emailed link → set new password → logged in).
+Previously (2026-07-28): the **forgot-password blocker was closed in code**: real reset flow +
 migration **0069** (now the one pending migration), new go-live keys `EMAIL_API_KEY` / `APP_BASE_URL`.
 Earlier the same day: checklist items 1/2 marked done and 8 partly done (TestFlight Build 6); 0056–0068
 applied; backend live on Railway; demo account seeded; three newly-found blockers added (telehealth video

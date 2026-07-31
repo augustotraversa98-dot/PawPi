@@ -18,7 +18,11 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 📍 CURRENT STATE (2026-07-28)
+## 📍 CURRENT STATE (2026-07-31)
+
+> **Update (2026-07-31):** password reset is now fully live in production — `EMAIL_API_KEY` /
+> `EMAIL_FROM` / `APP_BASE_URL` are set and confirmed on Railway (Resend, `pawpi.info` domain
+> verified), and the full flow was device-tested end to end. See blocker #3 below.
 
 **The app is feature-complete for v1 and is in the App Store submission phase.** All build waves
 (Phase 1, Phase 2, Waves 3–9), the UGC-moderation phase, and the 2.77 visual redesign are merged.
@@ -42,15 +46,14 @@ What remains is submission logistics and a handful of go-live keys — not featu
 **What is actually blocking submission** (all need Augusto, none are code):
 1. `VIDEO_API_KEY` / `VIDEO_API_SECRET` — telehealth join is broken without real vendor credentials.
 2. `CRON_SECRET` + an external scheduler — subscription auto-charge, recall ingest, calendar sync.
-3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28).** The full reset
-   flow now exists end to end: forgot-password → single-use 30-minute token (migration **0069**) →
-   emailed link → "set a new password" screen → `/api/account/reset-password`. Two things left for
-   Augusto: **apply migration 0069** ✅ done, and set **`EMAIL_API_KEY`** (+
-   `EMAIL_FROM=PawPi <no-reply@pawpi.info>`; Resend, sending domain **pawpi.info** — `pawpi.app` is
-   NOT ours). **`APP_BASE_URL`** ✅ already set on Railway to the production URL.
-   Until the email key is set the flow degrades cleanly — every
-   screen behaves identically and the server logs the intended send — but no email actually goes out,
-   so the reset can't complete. Details + device checklist in `docs/test-backlog.md`.
+3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28) and LIVE (2026-07-31).**
+   The full reset flow now exists end to end: forgot-password → single-use 30-minute token (migration
+   **0069**) → emailed link → "set a new password" screen → `/api/account/reset-password`.
+   ~~apply migration 0069~~ ✅ done, ~~set `EMAIL_API_KEY` + `EMAIL_FROM` + `APP_BASE_URL`~~ ✅ done
+   (2026-07-31) — Resend verified on sending domain **pawpi.info**, confirmed on Railway. Augusto
+   device-tested the full flow end to end: Welcome → Forgot password? → emailed link → set new
+   password → logged in successfully with the new password. Details + device checklist in
+   `docs/test-backlog.md`.
 4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment, **email**) — each feature
    degrades cleanly until set. Full list in `docs/test-backlog.md`.
 5. Pre-launch security: change the placeholder `pawpi_app` DB password.
