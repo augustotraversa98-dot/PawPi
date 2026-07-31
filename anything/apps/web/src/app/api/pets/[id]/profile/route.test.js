@@ -26,6 +26,7 @@ const PET_ROW = {
   breed: 'Lab',
   age_years: 3,
   age_months: 4,
+  birthday: '2022-01-15',
   gender: 'male',
   owner_user_id: 7,
 };
@@ -89,6 +90,12 @@ describe('GET /api/pets/[id]/profile', () => {
     expect(body.pet).not.toHaveProperty('owner_user_id');
     expect(body.pet).not.toHaveProperty('notes');
     expect(body.pet.id).toBe(2);
+    // Age model (docs/roadmap.md): the Dog Social Profile calculates age live
+    // from birthday, so this route must select it — a prior version of this
+    // route omitted birthday entirely, leaving the social profile unable to
+    // ever show a calculated age.
+    expect(body.pet.birthday).toBe('2022-01-15');
+    expect(queryText(0).toLowerCase()).toContain('birthday');
     expect(body.owner).toEqual(OWNER_ROW);
     expect(body.stats).toEqual({
       totalPosts: 2,

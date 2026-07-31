@@ -18,6 +18,7 @@ import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
+import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import {
   COLORS,
@@ -57,6 +58,10 @@ export default function ProfileEditScreen() {
     breed: "",
     ageYears: "",
     ageMonths: "",
+    // Explicit "I don't know the birthday" state (docs/roadmap.md) — not
+    // just "birthday happens to be blank". Derived from the pet on load,
+    // then owned by the toggle below.
+    birthdayUnknown: false,
     gender: "",
     weight: "",
     weightUnit: "lbs",
@@ -105,6 +110,7 @@ export default function ProfileEditScreen() {
         breed: currentPet.breed || "",
         ageYears: currentPet.age_years?.toString() || "",
         ageMonths: currentPet.age_months?.toString() || "",
+        birthdayUnknown: !currentPet.birthday,
         gender: currentPet.gender || "",
         weight: currentPet.weight?.toString() || "",
         weightUnit: currentPet.weight_unit || "lbs",
@@ -160,21 +166,33 @@ export default function ProfileEditScreen() {
         console.log("[Profile Edit] ✅ Photo uploaded:", uploadedAvatarUrl);
       }
 
-      // Prepare update payload
+      // Prepare update payload. Age model (docs/roadmap.md): when the
+      // birthday is known, age_years/age_months are left OUT of the payload
+      // entirely (not set to null) so a previously-stored estimate stays in
+      // the database untouched — it's harmless once a birthday exists since
+      // display always prefers the calculated age. When the birthday is
+      // marked unknown, birthday is explicitly cleared and the estimate (if
+      // any) is written.
       const updatePayload = {
         name: formData.name,
         handle: formData.handle || null,
         avatar_url: uploadedAvatarUrl,
         breed: formData.breed || null,
-        age_years: formData.ageYears ? parseInt(formData.ageYears) : null,
-        age_months: formData.ageMonths ? parseInt(formData.ageMonths) : null,
         gender: formData.gender || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         weight_unit: formData.weightUnit || "lbs",
-        birthday: formData.birthday || null,
+        birthday: formData.birthdayUnknown ? null : formData.birthday || null,
         adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
       };
+      if (formData.birthdayUnknown) {
+        updatePayload.age_years = formData.ageYears
+          ? parseInt(formData.ageYears)
+          : null;
+        updatePayload.age_months = formData.ageMonths
+          ? parseInt(formData.ageMonths)
+          : null;
+      }
 
       console.log(
         "[Profile Edit] Update payload:",
@@ -367,49 +385,6 @@ export default function ProfileEditScreen() {
             placeholder="e.g. Golden Retriever"
           />
 
-          {/* Age */}
-          <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-            Age
-          </Text>
-          <View style={{ flexDirection: "row", gap: SPACING.md, marginBottom: SPACING.xl }}>
-            <View style={{ flex: 1 }}>
-              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 }]}>
-                Years
-              </Text>
-              <TextInput
-                style={inputStyle}
-                placeholder="0"
-                placeholderTextColor={COLORS.mutedBrown}
-                value={formData.ageYears}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ageYears: text.replace(/[^0-9]/g, ""),
-                  }))
-                }
-                keyboardType="number-pad"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 }]}>
-                Months
-              </Text>
-              <TextInput
-                style={inputStyle}
-                placeholder="0"
-                placeholderTextColor={COLORS.mutedBrown}
-                value={formData.ageMonths}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ageMonths: text.replace(/[^0-9]/g, ""),
-                  }))
-                }
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
-
           {/* Gender */}
           <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
             Gender
@@ -505,23 +480,28 @@ export default function ProfileEditScreen() {
             </View>
           </View>
 
-          {/* Birthday */}
+          {/* Birthday (known) or estimated Age (unknown) — mutually exclusive */}
           <View style={{ marginBottom: SPACING.xl }}>
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
               Birthday
             </Text>
-            <DateField
-              value={formData.birthday}
-              onChange={(date) =>
+            <BirthdayOrAgeField
+              birthdayUnknown={formData.birthdayUnknown}
+              onToggleUnknown={(unknown) =>
+                setFormData((prev) => ({ ...prev, birthdayUnknown: unknown }))
+              }
+              birthday={formData.birthday}
+              onBirthdayChange={(date) =>
                 setFormData((prev) => ({ ...prev, birthday: date }))
               }
-              maximumDate={new Date()}
-              fieldStyle={{
-                backgroundColor: MATERIALS.surfaceSunken,
-                padding: SPACING.md + 2,
-                borderColor: MATERIALS.hairline,
-              }}
-              textStyle={{ ...TYPE.body }}
+              ageYears={formData.ageYears}
+              onAgeYearsChange={(text) =>
+                setFormData((prev) => ({ ...prev, ageYears: text }))
+              }
+              ageMonths={formData.ageMonths}
+              onAgeMonthsChange={(text) =>
+                setFormData((prev) => ({ ...prev, ageMonths: text }))
+              }
             />
           </View>
 

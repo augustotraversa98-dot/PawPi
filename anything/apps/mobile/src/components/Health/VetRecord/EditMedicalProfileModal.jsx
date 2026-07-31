@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
+import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 
@@ -33,6 +34,18 @@ export default function EditMedicalProfileModal({
     initialData?.pet?.birthday
       ? new Date(initialData.pet.birthday).toISOString().split("T")[0]
       : "",
+  );
+  // Explicit "I don't know the birthday" state (docs/roadmap.md) — not just
+  // "birthday happens to be blank". Derived from the pet on open, then owned
+  // by the toggle in BirthdayOrAgeField.
+  const [birthdayUnknown, setBirthdayUnknown] = useState(
+    !initialData?.pet?.birthday,
+  );
+  const [ageYears, setAgeYears] = useState(
+    initialData?.pet?.age_years?.toString() || "",
+  );
+  const [ageMonths, setAgeMonths] = useState(
+    initialData?.pet?.age_months?.toString() || "",
   );
   const [adoptionDate, setAdoptionDate] = useState(
     initialData?.pet?.adoption_date
@@ -146,13 +159,27 @@ export default function EditMedicalProfileModal({
     setErrors({});
 
     try {
+      // Age model (docs/roadmap.md): when the birthday is known, age_years/
+      // age_months are left OUT of the body entirely (not sent as null) so a
+      // previously-stored estimate stays in the database untouched — it's
+      // harmless once a birthday exists since display always prefers the
+      // calculated age. When the birthday is marked unknown, birthday is
+      // explicitly cleared and the estimate (if any) is written.
+      const ageFields = birthdayUnknown
+        ? {
+            ageYears: ageYears ? parseInt(ageYears, 10) : null,
+            ageMonths: ageMonths ? parseInt(ageMonths, 10) : null,
+          }
+        : {};
+
       const response = await fetch("/api/pet-medical-profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           petId,
           breed,
-          birthday: birthday || null,
+          birthday: birthdayUnknown ? null : birthday || null,
+          ...ageFields,
           adoptionDate: adoptionDate || null,
           gender,
           currentWeight: currentWeight || null,
@@ -454,12 +481,28 @@ export default function EditMedicalProfileModal({
           onChangeText={setBreed}
           placeholder="e.g., Golden Retriever"
         />
-        <FormDateField
-          label="Birthday"
-          value={birthday}
-          onChange={setBirthday}
-          error={errors.birthday}
-        />
+        <View style={{ marginBottom: 16 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: COLORS.warmBrown,
+              marginBottom: 6,
+            }}
+          >
+            Birthday
+          </Text>
+          <BirthdayOrAgeField
+            birthdayUnknown={birthdayUnknown}
+            onToggleUnknown={setBirthdayUnknown}
+            birthday={birthday}
+            onBirthdayChange={setBirthday}
+            ageYears={ageYears}
+            onAgeYearsChange={setAgeYears}
+            ageMonths={ageMonths}
+            onAgeMonthsChange={setAgeMonths}
+          />
+        </View>
         <FormDateField
           label="Adoption Date (optional)"
           value={adoptionDate}

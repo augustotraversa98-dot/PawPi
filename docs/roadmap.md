@@ -98,6 +98,48 @@ What remains is submission logistics and a handful of go-live keys — not featu
   add a second "current weight" field or write path — if a screen needs to show or edit weight, read
   through `getCurrentWeight()` (or `currentWeight` from `/api/pet-medical-profiles`) and log new
   weigh-ins to `health_weight_logs`, never write a display value back to `pets.weight`.
+- **RESOLVED — Dog Profile current-weight-source ticket, age/birthday follow-on.** **Convention: a known
+  birthday always wins; `age_years`/`age_months` is only an ESTIMATE for when the birthday isn't known.**
+  `pets` has both a `birthday` (date) and independent `age_years`/`age_months` (plain numbers) that used
+  to be edited as unlinked fields and displayed via five separate ad-hoc formatters (`profile.jsx`
+  `formatAge`, `pet-profile.jsx`'s own `formatAge`, an inline computation in `HealthVetRecord.jsx`, plus
+  two more on the unrelated adoptable-listings side that were deliberately left alone — see below). The
+  model, same idea as the weight convention: **if `birthday` is set, "Age" is ALWAYS the live-calculated
+  years/months as of today — the stored `age_years`/`age_months` estimate is never read or shown once a
+  birthday exists.** If `birthday` is NOT set, the stored estimate is shown instead, marked approximate
+  (a leading `~`, e.g. `~2 years`) so it never reads as precise. There is exactly one implementation,
+  `getDisplayAge(pet)` in mobile `src/utils/petAge.js` (a pure frontend util, not backend, because — unlike
+  weight — there's no separate history table to query; birthday and the estimate are both already plain
+  columns on the same `pets` row every consumer already fetches). `profile.jsx`, `pet-profile.jsx`, and
+  `HealthVetRecord.jsx` all now call it instead of their own formatter. One real gap this closed: `GET
+  /api/pets/[id]/profile` (the Dog Social Profile route) was selecting `age_years`/`age_months` but never
+  `birthday`, so that screen could never calculate an age even when a birthday existed — fixed by adding
+  `birthday` to its SELECT (both the numeric-id and handle lookup).
+  **The "I don't know the birthday" state is now explicit, not just "birthday happens to be null."** A
+  shared `<BirthdayOrAgeField>` component (`mobile/src/components/Pets/BirthdayOrAgeField.jsx`, used by
+  both `profile-edit.jsx` and `EditMedicalProfileModal.jsx` — the two editable surfaces; onboarding is
+  create-only and keeps its own existing birthday/adoption/"I'm not sure" step) renders a two-way toggle —
+  "I know the birthday" vs. "I'm not sure" — that shows either the birthday `DateField` or estimated-years/
+  estimated-months inputs, never both. `EditMedicalProfileModal` previously had NO age fields at all (only
+  birthday), so a pet whose profile was only ever touched from Vet Record had no way to ever get an age
+  estimate — that gap is now closed; `POST /api/pet-medical-profiles` gained `ageYears`/`ageMonths` body
+  handling to match. **Write rule, mirrors the weight convention's "don't clobber":** when the toggle is on
+  "I know the birthday," the client leaves `age_years`/`age_months` OUT of the save payload entirely (not
+  sent as `null`) so any previously-stored estimate is left untouched in the database — harmless, since
+  display never reads it once a birthday exists. When the toggle is "I'm not sure," `birthday` is
+  explicitly written as `null` and the typed estimate (or `null`, if left blank) is written. Do **not** add
+  a third age representation or a "birthday_unknown" database column — the toggle state is derived on load
+  from whether `birthday` is set and owned by the screen from then on; that derivation plus the two-way
+  toggle IS the "deliberate unknown" affordance, no new column needed. Deliberately **out of scope and
+  unchanged**: `adoption_date` (already correctly wired everywhere, consumed by `feedDelight.js`/
+  `memoriesWrapped.js`); the adoptable-listings `age_years`/`age_months` on the unrelated `adoptable_listings`
+  table (`service/adoption.jsx`'s `ageLabel`, duplicated in `AdoptionFeedCard.jsx`) — that table has no
+  birthday column at all and is a shelter-listing concept, not an owned-pet concept. Coverage: unit tests
+  for every `getDisplayAge` branch (`petAge.test.js`), toggle + payload-shape tests in
+  `EditMedicalProfileModal.test.jsx` and a new `profile-edit.test.jsx`, plus two new real-Postgres
+  integration tests in `pet-medical-profiles.integration.test.ts` proving the age write never leaks across
+  an owner's two pets and that omitting `ageYears`/`ageMonths` truly leaves the old estimate untouched.
+  mobile jest / web vitest / integration all green.
 
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your

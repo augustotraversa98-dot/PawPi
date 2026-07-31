@@ -108,6 +108,8 @@ async function POST(request) {
       breed,
       birthday,
       adoptionDate,
+      ageYears,
+      ageMonths,
       gender,
       currentWeight,
       weightUnit,
@@ -169,6 +171,19 @@ async function POST(request) {
     if (adoptionDate !== undefined) {
       updateFields.push(`adoption_date = $${paramIndex++}`);
       updateValues.push(adoptionDate || null);
+    }
+    // Age model (docs/roadmap.md): the client only sends ageYears/ageMonths
+    // when the owner has marked the birthday unknown. When birthday IS known,
+    // these keys are omitted (not sent as null) so a previously-stored
+    // estimate is left untouched rather than wiped — it's harmless once a
+    // birthday exists since display always prefers the calculated age.
+    if (ageYears !== undefined) {
+      updateFields.push(`age_years = $${paramIndex++}`);
+      updateValues.push(ageYears);
+    }
+    if (ageMonths !== undefined) {
+      updateFields.push(`age_months = $${paramIndex++}`);
+      updateValues.push(ageMonths);
     }
     if (gender !== undefined) {
       updateFields.push(`gender = $${paramIndex++}`);

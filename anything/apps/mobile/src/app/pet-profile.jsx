@@ -23,6 +23,7 @@ import {
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
 import { useStartDM } from "@/hooks/useDMs";
+import { getDisplayAge } from "@/utils/petAge";
 import {
   COLORS,
   TYPE,
@@ -35,16 +36,6 @@ import { Card, PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
-
-// Friendly age from the structured age_years / age_months columns.
-function formatAge(years, months) {
-  const y = Number(years) || 0;
-  const m = Number(months) || 0;
-  const parts = [];
-  if (y > 0) parts.push(`${y} ${y === 1 ? "yr" : "yrs"}`);
-  if (m > 0) parts.push(`${m} ${m === 1 ? "mo" : "mos"}`);
-  return parts.join(" ");
-}
 
 export default function PetProfileScreen({ embedded = false }) {
   const insets = useSafeAreaInsets();
@@ -79,7 +70,7 @@ export default function PetProfileScreen({ embedded = false }) {
     ? owner?.full_name || owner?.username || ""
     : params.ownerName || "";
   const breed = pet?.breed ?? params.breed ?? "";
-  const ageText = pet ? formatAge(pet.age_years, pet.age_months) : params.age || "";
+  const ageText = pet ? getDisplayAge(pet) || "" : params.age || "";
 
   const posts = profile?.posts || [];
   const isFollowing = !!profile?.isFollowing;
