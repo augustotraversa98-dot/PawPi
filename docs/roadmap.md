@@ -58,11 +58,15 @@ What remains is submission logistics and a handful of go-live keys — not featu
 **Known code gaps deliberately left open** (tracked, not forgotten):
 - The demo seed writes only HISTORICAL data, so Health → Today renders empty. Add same-day entries
   before shooting App Store screenshots.
-- **NEW (found while fixing N4):** `EditMedicalProfileModal`'s Save button is wired to
-  `KeyboardSafeFormModal` with the wrong prop names (`onSave`/`saveText`/`loading` — that component
-  actually takes `onCtaPress`/`ctaLabel`/`ctaDisabled`), so tapping Save on the Edit Medical Profile
-  screen currently does nothing at all. Pre-existing since the 2.77 Vet Record restyle (#205), not
-  caused by N4. Needs its own ticket.
+- **FIXED:** `EditMedicalProfileModal`'s Save button was wired to `KeyboardSafeFormModal` with the
+  wrong prop names (`onSave`/`saveText`/`loading` instead of `onCtaPress`/`ctaLabel`/`ctaDisabled`),
+  so tapping Save on the Edit Medical Profile screen did nothing. Pre-existing since the 2.77 Vet
+  Record restyle (#205), not caused by N4. Corrected to the same `onCtaPress`/`ctaLabel`/`ctaDisabled`
+  pattern already used correctly by the other three `KeyboardSafeFormModal` consumers
+  (`BookingFormModal`, `PhotoCheckRoutineModal`, `ReminderCreationModal` — swept and confirmed clean).
+  npm test green (1195 mobile tests). Simulator touch-input was non-functional this session (confirmed
+  via multiple gesture types and a full device reboot — hardware buttons still worked), so on-device
+  tap-and-save confirmation is still owed before the next device-test pass.
 
 ## Status legend
 `READY` build-eligible · `BATCH:n` assigned · `BUILDING` draft PR open · `DEVICE` waiting on your

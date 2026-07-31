@@ -433,9 +433,9 @@ export default function EditMedicalProfileModal({
       visible={visible}
       onClose={onClose}
       title="Edit Medical Profile"
-      onSave={handleSave}
-      saveText="Save Medical Profile"
-      loading={loading}
+      onCtaPress={handleSave}
+      ctaLabel={loading ? "Saving…" : "Save Medical Profile"}
+      ctaDisabled={loading}
     >
       <FormSection title="Basic Information">
         <FormInput
