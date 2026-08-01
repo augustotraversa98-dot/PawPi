@@ -1,0 +1,26 @@
+name: Scheduled cron jobs
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily — subscription auto-charge
+    - cron: '15 6 * * *'  # 06:15 UTC daily — calendar import sync
+  workflow_dispatch: {}   # lets you trigger manually from the Actions tab, for testing
+
+jobs:
+  subscriptions-run:
+    if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run subscription auto-charge
+        run: |
+          curl -sf -X POST https://pawpi-production.up.railway.app/api/payments/subscriptions/run \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+
+  calendar-sync:
+    if: github.event.schedule == '15 6 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run calendar import sync
+        run: |
+          curl -sf -X POST https://pawpi-production.up.railway.app/api/providers/calendar/sync \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
