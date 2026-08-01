@@ -2,7 +2,11 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { getVideoRoom, VideoNotConfiguredError } from "@/app/api/utils/video";
+import {
+  getVideoRoom,
+  VideoNotConfiguredError,
+  isTelehealthSessionExpired,
+} from "@/app/api/utils/video";
 import {
   parseCanonicalDateParam,
   parseCanonicalTimeParam,
@@ -71,6 +75,27 @@ async function POST(request, { params }) {
     let consult = rows[0];
 
     if (consult.status === "cancelled" || consult.status === "ended") {
+      return Response.json(
+        { error: `This consult is ${consult.status}` },
+        { status: 409 },
+      );
+    }
+
+    // Safety net: nobody ever called PATCH action='end' on this session (see
+    // BookingsInbox.jsx's "End consult" button), but it's been 'in_progress' well past
+    // when its Daily room would have expired — the room itself is functionally gone. Close
+    // it out here rather than silently attempting getVideoRoom() against an expired room
+    // (a worse failure mode than a clear "this consult has ended" response). Persisting the
+    // status means every OTHER read of this row (both participants, the bookings inbox)
+    // sees 'ended' too, not just this one response.
+    if (consult.status === "in_progress" && isTelehealthSessionExpired(consult)) {
+      const closed = await sql`
+        UPDATE telehealth_sessions
+        SET status = 'ended', ended_at = NOW(), updated_at = NOW()
+        WHERE id = ${sessionId} AND status = 'in_progress'
+        RETURNING *
+      `;
+      consult = closed[0] ?? { ...consult, status: "ended" };
       return Response.json(
         { error: `This consult is ${consult.status}` },
         { status: 409 },

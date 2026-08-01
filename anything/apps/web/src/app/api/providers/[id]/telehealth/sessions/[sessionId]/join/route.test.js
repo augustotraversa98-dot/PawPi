@@ -85,6 +85,46 @@ describe("POST telehealth join", () => {
     expect(res.status).toBe(409);
   });
 
+  describe("stale in_progress safety net (nobody ever called action='end')", () => {
+    it("in_progress well past the default TTL → closed out server-side, 409, no getVideoRoom attempt", async () => {
+      configureVideo();
+      const staleStartedAt = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(); // 6h ago
+      sql.mockResolvedValueOnce([
+        { id: 1, provider_id: 100, status: "in_progress", started_at: staleStartedAt },
+      ]); // session SELECT
+      sql.mockResolvedValueOnce([
+        { id: 1, provider_id: 100, status: "ended", started_at: staleStartedAt },
+      ]); // the safety-net UPDATE
+
+      const res = await POST(req(), PARAMS);
+
+      expect(res.status).toBe(409);
+      const data = await res.json();
+      expect(data.error).toBe("This consult is ended");
+      // Persisted: UPDATE ... SET status = 'ended' ran, not a getVideoRoom() fetch.
+      const upd = sql.mock.calls[2];
+      expect(upd[0].join(" ")).toContain("UPDATE telehealth_sessions");
+      expect(upd[0].join(" ")).toContain("'ended'");
+      // Exactly 3 sql calls total (resolveUserId, session SELECT, the close UPDATE) —
+      // nothing beyond that (no fetch to the video vendor was ever attempted).
+      expect(sql).toHaveBeenCalledTimes(3);
+    });
+
+    it("in_progress but still fresh (just started) → proceeds to join normally", async () => {
+      configureVideo();
+      const freshStartedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // 5m ago
+      sql.mockResolvedValueOnce([
+        { id: 1, provider_id: 100, status: "in_progress", started_at: freshStartedAt },
+      ]); // session SELECT — no further UPDATE call expected (status already in_progress)
+
+      const res = await POST(req(), PARAMS);
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(typeof data.joinUrl).toBe("string");
+    });
+  });
+
   it("staff join anytime, even hours before the scheduled time (no gate)", async () => {
     configureVideo();
     sql.mockResolvedValueOnce([

@@ -16,12 +16,14 @@ import {
   Loader2,
   Stethoscope,
   Video,
+  PhoneOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProviderBookings,
   useBookingAction,
   useProviderStaff,
+  useEndTelehealthConsult,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 
@@ -81,6 +83,8 @@ export default function BookingsInbox({ providerId }) {
   } = useProviderBookings(providerId, bookingStatus);
 
   const { mutate, isPending, variables } = useBookingAction(providerId);
+  const { mutate: endConsult, isPending: isEnding, variables: endingVars } =
+    useEndTelehealthConsult(providerId);
 
   // Staff (c2c) powers the Assign-by-name picker and maps a booking's
   // staff_user_id (a provider_staff.user_profile_id) to a display name. Only
@@ -177,6 +181,23 @@ export default function BookingsInbox({ providerId }) {
     }
   };
 
+  // End a telehealth consult (the vet's DELIBERATE action — never fires from a closed tab;
+  // there's no reliable "the browser tab closed" signal, see telehealth-call.jsx on the owner
+  // side, which intentionally does nothing but navigate back on close). Prompts for an
+  // optional quick recap the PATCH endpoint already accepts; a cancelled prompt still ends
+  // the consult with no summary rather than aborting the action entirely.
+  const onEndConsult = (b) => {
+    if (!window.confirm(`End the consult for ${b.pet_name || "this pet"}?`)) return;
+    const summary = window.prompt("Optional recap for the owner (leave blank to skip):", "");
+    endConsult(
+      { sessionId: b.telehealth_session_id, summary: summary || undefined },
+      {
+        onSuccess: () => toast.success("Consult ended"),
+        onError: (err) => toast.error(err?.message || "Couldn't end the consult"),
+      },
+    );
+  };
+
   // Open the booked pet's clinical record (c3). Carry the pet name + booking id so
   // the record screen can label itself and tie an access request to this booking.
   // The record itself is consent-gated server-side — this only navigates.
@@ -243,7 +264,18 @@ export default function BookingsInbox({ providerId }) {
           const canJoinConsult =
             b.capability === "telehealth" &&
             (status === "confirmed" || status === "requested");
+          // End consult: only once a session actually exists (this vet has joined at least
+          // once — telehealth_session_id comes from the bookings SELECT's LATERAL join) and
+          // it isn't already ended/cancelled. Persists across page reloads since it's read
+          // from the DB, not local join-time state.
+          const canEndConsult =
+            b.capability === "telehealth" &&
+            b.telehealth_session_id != null &&
+            (b.telehealth_session_status === "scheduled" ||
+              b.telehealth_session_status === "in_progress");
           const busy = isPending && variables?.appointmentId === b.id;
+          const ending =
+            isEnding && endingVars?.sessionId === b.telehealth_session_id;
           return (
             <div className="flex flex-wrap items-center gap-2">
               {canJoinConsult && (
@@ -252,6 +284,15 @@ export default function BookingsInbox({ providerId }) {
                   Icon={Video}
                   onClick={() => onJoinConsult(b)}
                   variant="primary"
+                />
+              )}
+              {canEndConsult && (
+                <ActionButton
+                  label="End consult"
+                  Icon={PhoneOff}
+                  onClick={() => onEndConsult(b)}
+                  disabled={ending}
+                  variant="danger"
                 />
               )}
               {canOpenRecord && (
@@ -302,7 +343,9 @@ export default function BookingsInbox({ providerId }) {
                 !canDecline &&
                 !canCancel &&
                 !canAssign &&
-                !canOpenRecord && (
+                !canOpenRecord &&
+                !canJoinConsult &&
+                !canEndConsult && (
                   <span className="text-xs text-[#B8A99D]">No actions</span>
                 )}
             </div>
@@ -313,7 +356,7 @@ export default function BookingsInbox({ providerId }) {
     // handlers are stable enough for this screen; rebuild on pending change so
     // the busy state reflects in the cells, and on staff load so the assigned
     // column resolves names.
-    [isPending, variables, staffById],
+    [isPending, variables, isEnding, endingVars, staffById],
   );
 
   const table = useReactTable({

@@ -7,7 +7,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // instead of creating a duplicate, and falls back to creating a new room when the stored
 // room_ref 404s (expired/deleted). global.fetch mocked for the Daily calls.
 
-import { getVideoRoom, VideoNotConfiguredError } from "./index";
+import {
+  getVideoRoom,
+  VideoNotConfiguredError,
+  dailyExpirySeconds,
+  isTelehealthSessionExpired,
+} from "./index";
 
 let savedProvider, savedKey, savedSecret, savedFetch;
 beforeEach(() => {
@@ -183,5 +188,61 @@ describe("getVideoRoom — 'daily' adapter", () => {
     expect(roomExp).toBe(tokenExp);
     const expectedFloor = Math.floor(new Date(scheduledEnd).getTime() / 1000);
     expect(roomExp).toBeGreaterThan(expectedFloor); // grace window added on top
+  });
+});
+
+describe("isTelehealthSessionExpired — the join-route safety net for a never-ended session", () => {
+  it("no started_at → never expired (can't be genuinely in_progress without one)", () => {
+    expect(isTelehealthSessionExpired({ id: 1, status: "in_progress" })).toBe(false);
+  });
+
+  it("started_at well within the default 2h TTL → not expired", () => {
+    const startedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30m ago
+    expect(isTelehealthSessionExpired({ id: 1, started_at: startedAt })).toBe(false);
+  });
+
+  it("started_at long past the default 2h TTL → expired (the stale-test-session case)", () => {
+    const startedAt = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(); // 6h ago
+    expect(isTelehealthSessionExpired({ id: 1, started_at: startedAt })).toBe(true);
+  });
+
+  it("respects an injected nowMs so the check is deterministic in tests", () => {
+    const startedAt = "2026-08-01T10:00:00.000Z";
+    const justInside = new Date("2026-08-01T11:59:00.000Z").getTime(); // < 2h
+    const justOutside = new Date("2026-08-01T12:01:00.000Z").getTime(); // > 2h
+    expect(
+      isTelehealthSessionExpired({ started_at: startedAt }, { nowMs: justInside }),
+    ).toBe(false);
+    expect(
+      isTelehealthSessionExpired({ started_at: startedAt }, { nowMs: justOutside }),
+    ).toBe(true);
+  });
+
+  it("a scheduled_end_at anchors the ceiling at started_at, not real now", () => {
+    // scheduled_end_at is 10 minutes after started_at → ceiling = that + 15m grace = 25m
+    // after started_at, well short of the 2h default. Confirms the window is anchored at
+    // started_at (room-creation time), not recomputed against the real current instant.
+    const startedAt = new Date(Date.now() - 3 * 60 * 60 * 1000); // 3h ago (way past 2h default)
+    const scheduledEnd = new Date(startedAt.getTime() + 10 * 60 * 1000).toISOString();
+    expect(
+      isTelehealthSessionExpired({
+        started_at: startedAt.toISOString(),
+        scheduled_end_at: scheduledEnd,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("dailyExpirySeconds — nowMs override", () => {
+  it("defaults to Date.now() when nowMs is omitted", () => {
+    const before = Math.floor(Date.now() / 1000);
+    const exp = dailyExpirySeconds({});
+    expect(exp).toBeGreaterThanOrEqual(before);
+  });
+
+  it("anchors the default TTL at an explicit nowMs instead of the real clock", () => {
+    const anchor = new Date("2026-01-01T00:00:00.000Z").getTime();
+    const exp = dailyExpirySeconds({}, { nowMs: anchor });
+    expect(exp).toBe(Math.floor((anchor + 2 * 60 * 60 * 1000) / 1000));
   });
 });

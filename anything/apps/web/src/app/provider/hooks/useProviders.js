@@ -292,6 +292,32 @@ export function useBookingAction(providerId) {
   });
 }
 
+// End a telehealth consult (ticket: telehealth "End consult" gap). The vet's deliberate
+// action — PATCHes the EXISTING telehealth session lifecycle endpoint with action='end',
+// which the bookings inbox SELECT already surfaced as telehealth_session_id per row
+// (BookingsInbox.jsx). Not tied to closing a browser tab: there's no reliable signal for
+// that, so this only fires on an explicit click. On success we invalidate the same bookings
+// cache as useBookingAction so the row's telehealth_session_status flips to 'ended'.
+export function useEndTelehealthConsult(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, summary }) => {
+      const body = summary ? { action: "end", summary } : { action: "end" };
+      return getJson(
+        `/api/providers/${providerId}/telehealth/sessions/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingsPrefixKey(providerId) });
+    },
+  });
+}
+
 // The Rx fulfillment queue (GET /api/providers/[id]/rx-fulfillment-orders) — incoming orders for a
 // `pharmacy`-capable provider. Capability-gated server-side; disabled until a providerId is known.
 export function useProviderRxFulfillment(providerId) {
