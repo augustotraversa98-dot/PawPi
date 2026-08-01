@@ -147,6 +147,66 @@ describe("MyHubScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
   });
 
+  it('shows a "Join now" badge for a telehealth booking joinable right now, instead of its booking_status', () => {
+    const now = new Date();
+    const withinWindow = new Date(now.getTime() + 3 * 60 * 1000); // 3 minutes from now
+    const pad = (n) => String(n).padStart(2, "0");
+    mockBookings = stub({
+      upcoming: [
+        {
+          id: 1,
+          provider_name: "Northside Vet",
+          provider_slug: "northside-vet",
+          capability: "telehealth",
+          pet_name: "Rex",
+          service_name: "Telehealth consult",
+          appointment_date: `${withinWindow.getFullYear()}-${pad(withinWindow.getMonth() + 1)}-${pad(withinWindow.getDate())}`,
+          appointment_time: `${pad(withinWindow.getHours())}:${pad(withinWindow.getMinutes())}`,
+          booking_status: "confirmed",
+        },
+        {
+          id: 2,
+          provider_name: "Vet A",
+          provider_slug: "vet-a",
+          capability: "vet",
+          pet_name: "Rex",
+          service_name: "Checkup",
+          appointment_date: "2999-01-01",
+          booking_status: "confirmed",
+        },
+      ],
+      past: [],
+    });
+
+    const { getByText, queryByText } = render(<MyHubScreen />);
+    expect(getByText("Join now")).toBeTruthy();
+    // The non-telehealth booking still shows its plain booking_status.
+    expect(getByText("confirmed")).toBeTruthy();
+  });
+
+  it("shows the plain booking_status for a telehealth booking that is NOT joinable yet", () => {
+    mockBookings = stub({
+      upcoming: [
+        {
+          id: 1,
+          provider_name: "Northside Vet",
+          provider_slug: "northside-vet",
+          capability: "telehealth",
+          pet_name: "Rex",
+          service_name: "Telehealth consult",
+          appointment_date: "2999-01-01",
+          appointment_time: "10:00",
+          booking_status: "confirmed",
+        },
+      ],
+      past: [],
+    });
+
+    const { getByText, queryByText } = render(<MyHubScreen />);
+    expect(queryByText("Join now")).toBeNull();
+    expect(getByText("confirmed")).toBeTruthy();
+  });
+
   it("shows empty states with no data (no fake metrics)", () => {
     const { getByText } = render(<MyHubScreen />);
     expect(getByText("No bookings yet.")).toBeTruthy();

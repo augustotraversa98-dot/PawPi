@@ -3,6 +3,22 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { getVideoRoom, VideoNotConfiguredError } from "@/app/api/utils/video";
+import {
+  parseCanonicalDateParam,
+  parseCanonicalTimeParam,
+  dbDateToParts,
+  dbTimeToParts,
+  minutesBetweenWallClock,
+  addMinutesToWallClock,
+  formatWallClockDate,
+  formatWallClockTime,
+} from "@/app/api/utils/localWallClock";
+
+// The owner may join once the vet has started the call (status flips to
+// in_progress on first join, by whichever side gets there first) OR within this
+// many minutes of the scheduled time, whichever comes first. Vet/staff joins are
+// never gated — see BookingsInbox.jsx's onJoinConsult, which hits this same route.
+const OWNER_EARLY_JOIN_WINDOW_MINUTES = 5;
 
 // POST /api/providers/[id]/telehealth/sessions/[sessionId]/join — a PARTICIPANT joins the
 // video room. Phase 2 ticket 2.18.
@@ -28,10 +44,22 @@ async function POST(request, { params }) {
     const providerId = params.id;
     const sessionId = params.sessionId;
 
-    // RLS scopes this read to participants only.
+    // The caller's own local wall-clock "now" (?today=YYYY-MM-DD&nowTime=HH:MM — mirrors
+    // GET /api/me/bookings' ?today= convention). appointment_date/appointment_time have no
+    // timezone stored anywhere in the schema, so this must come from the CLIENT's clock —
+    // never the server's now() (which runs in UTC and would misjudge the window for a
+    // negative-offset caller, the exact bug class fixed in #280/#281).
+    const { searchParams } = new URL(request.url);
+    const clientToday = parseCanonicalDateParam(searchParams.get("today"));
+    const clientNowTime = parseCanonicalTimeParam(searchParams.get("nowTime"));
+
+    // RLS scopes this read to participants only. Join vet_appointments via booking_id so
+    // the owner early-join gate below can compare against the scheduled appointment time.
     const rows = await sql`
-      SELECT * FROM telehealth_sessions
-      WHERE id = ${sessionId} AND provider_id = ${providerId}
+      SELECT ts.*, va.appointment_date, va.appointment_time
+      FROM telehealth_sessions ts
+      LEFT JOIN vet_appointments va ON va.id = ts.booking_id
+      WHERE ts.id = ${sessionId} AND ts.provider_id = ${providerId}
       LIMIT 1
     `;
     if (rows.length === 0) {
@@ -49,11 +77,53 @@ async function POST(request, { params }) {
       );
     }
 
+    const isOwner = consult.owner_user_id === userId;
+
+    // OWNER early-join gate (vet/staff side is unrestricted — a vet may legitimately
+    // start a couple minutes early to prep). Once the call is already in_progress
+    // (either side may have started it first, including an owner inside the window —
+    // that's fine, not a bug), no gate applies to anyone.
+    if (isOwner && consult.status !== "in_progress") {
+      const apptDateParts = dbDateToParts(consult.appointment_date);
+      const apptTimeParts = dbTimeToParts(consult.appointment_time);
+
+      // Fail closed: without a verifiable appointment time or the caller's own clock,
+      // we can't prove the window — never let an owner bypass the gate on missing data.
+      if (!apptDateParts || !apptTimeParts || !clientToday || !clientNowTime) {
+        return Response.json(
+          { ready: false, error: "Not time to join yet" },
+          { status: 425 },
+        );
+      }
+
+      const minutesUntilAppointment = minutesBetweenWallClock(
+        { ...clientToday, ...clientNowTime },
+        { ...apptDateParts, ...apptTimeParts },
+      );
+
+      if (minutesUntilAppointment > OWNER_EARLY_JOIN_WINDOW_MINUTES) {
+        const availableAt = addMinutesToWallClock(
+          { ...apptDateParts, ...apptTimeParts },
+          -OWNER_EARLY_JOIN_WINDOW_MINUTES,
+        );
+        return Response.json(
+          {
+            ready: false,
+            error: "Not time to join yet",
+            availableAt: {
+              date: formatWallClockDate(availableAt),
+              time: formatWallClockTime(availableAt),
+            },
+          },
+          { status: 425 },
+        );
+      }
+    }
+
     // Dormant-behind-keys: 503 if the video vendor isn't configured (nothing crashes).
     // participantName/persistRoomRef are 'daily'-only (the 'generic' adapter ignores them):
     // persistRoomRef saves a newly-created Daily room name onto room_ref so the OTHER
     // participant's join reuses the same room instead of creating a second one.
-    const isOwner = consult.owner_user_id === userId;
     const participantName =
       authSession.user.name || (isOwner ? "Pet Owner" : "Vet");
     const room = await getVideoRoom({

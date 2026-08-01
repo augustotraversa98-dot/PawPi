@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toCanonicalDate } from "@/utils/canonicalDateTime";
+import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
 
 // Owner-facing provider discovery + booking (docs/provider-design.md §4 items 5–6).
 // These wrap the public/owner routes shipped in T5/T6:
@@ -480,17 +480,32 @@ export function useTelehealthSessions(petId) {
 // { joinUrl, token, session }. Surfaces the backend's clean 503 ("Video consults aren't set
 // up yet") so the UI shows the right state instead of crashing. Invalidates the consult list
 // so a status flip (→ in_progress) shows.
+//
+// Sends the device's own local wall-clock (?today=&nowTime=, mirroring useMyBookings' ?today=
+// convention) so the server's owner early-join gate can compare against it — appointment_date/
+// appointment_time have no timezone stored anywhere, so this must come from the caller's
+// clock, never the server's UTC now(). A 425 (too early) is re-thrown as a distinguishable
+// `notReady` error so the UI can show a friendly "not time yet" message instead of a generic
+// failure (see telehealth.jsx's ConsultCard).
 export function useJoinTelehealth() {
   const queryClient = useQueryClient();
   return useMutation({
     // mutateAsync({ providerId, sessionId, petId? }) → { joinUrl, token, session }
     mutationFn: async ({ providerId, sessionId }) => {
+      const now = new Date();
+      const qs = `?today=${encodeURIComponent(toCanonicalDate(now))}&nowTime=${encodeURIComponent(toCanonicalTime(now))}`;
       const response = await fetch(
-        `/api/providers/${encodeURIComponent(providerId)}/telehealth/sessions/${encodeURIComponent(sessionId)}/join`,
+        `/api/providers/${encodeURIComponent(providerId)}/telehealth/sessions/${encodeURIComponent(sessionId)}/join${qs}`,
         { method: "POST" },
       );
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
+        if (response.status === 425) {
+          const notReadyError = new Error(error.error || "Not time to join yet");
+          notReadyError.notReady = true;
+          notReadyError.availableAt = error.availableAt;
+          throw notReadyError;
+        }
         throw new Error(error.error || "Couldn't join the consult");
       }
       return response.json();

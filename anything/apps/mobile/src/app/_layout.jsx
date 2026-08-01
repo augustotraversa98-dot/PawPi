@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/utils/queryClient";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
+import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
@@ -38,6 +39,13 @@ export default function RootLayout() {
   // Start reminder notification sync
   useEffect(() => {
     const cleanup = startReminderNotificationSync();
+    return cleanup;
+  }, []);
+
+  // Schedule/cancel local "video consult starts in 5 minutes" reminders for upcoming
+  // telehealth bookings, independent of which screen the owner is on.
+  useEffect(() => {
+    const cleanup = startTelehealthReminderSync();
     return cleanup;
   }, []);
 

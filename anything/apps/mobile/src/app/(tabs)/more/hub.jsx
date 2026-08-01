@@ -23,6 +23,7 @@ import {
 } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { canOwnerJoinTelehealthNow } from "@/utils/telehealthJoinGate";
 
 // MY HUB (Phase 2 ticket 2.14) — the owner's single place tying the super-app together. It
 // SURFACES + LINKS INTO the existing per-feature screens; it does NOT duplicate them. Sections:
@@ -117,7 +118,7 @@ function SectionCard({ title, Icon, count, onPress, children }) {
   );
 }
 
-function Row({ primary, secondary, badge, onPress }) {
+function Row({ primary, secondary, badge, badgeHighlight, onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -146,8 +147,8 @@ function Row({ primary, secondary, badge, onPress }) {
           style={{
             fontSize: 12,
             fontWeight: "700",
-            color: COLORS.terracotta,
-            textTransform: "capitalize",
+            color: badgeHighlight ? COLORS.coral : COLORS.terracotta,
+            textTransform: badgeHighlight ? "none" : "capitalize",
             marginRight: onPress ? 4 : 0,
           }}
         >
@@ -171,6 +172,17 @@ function Empty({ text }) {
 // pattern used by every service/*.jsx discovery screen. Telehealth has no provider-profile
 // booking surface of its own (service/telehealth.jsx IS the consult list + join screen), so
 // it goes straight there instead of /service/provider.
+// A telehealth booking the owner can join RIGHT NOW gets a "Join now" badge instead of its
+// plain booking_status, so the row doesn't read as an indistinguishable tap-through (Task 2).
+// Reuses the same eligibility rule as the Telehealth screen's join gate (telehealthJoinGate.js)
+// — within 5 minutes of the scheduled time, or once the vet has already started the call.
+function isJoinableTelehealthBooking(booking) {
+  return (
+    booking.capability === "telehealth" &&
+    canOwnerJoinTelehealthNow(booking, { sessionStatus: booking.telehealth_session_status })
+  );
+}
+
 function openBooking(router, booking) {
   if (booking.capability === "telehealth") {
     router.push("/service/telehealth");
@@ -256,17 +268,21 @@ export default function MyHubScreen() {
               <Empty text="No bookings yet." />
             ) : (
               <>
-                {upcoming.slice(0, 4).map((b) => (
-                  <Row
-                    key={b.id}
-                    primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-                    secondary={`${b.service_name || b.capability || "Booking"} · ${formatDisplayDate(
-                      b.appointment_date,
-                    )}`}
-                    badge={b.booking_status}
-                    onPress={() => openBooking(router, b)}
-                  />
-                ))}
+                {upcoming.slice(0, 4).map((b) => {
+                  const joinableNow = isJoinableTelehealthBooking(b);
+                  return (
+                    <Row
+                      key={b.id}
+                      primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
+                      secondary={`${b.service_name || b.capability || "Booking"} · ${formatDisplayDate(
+                        b.appointment_date,
+                      )}`}
+                      badge={joinableNow ? "Join now" : b.booking_status}
+                      badgeHighlight={joinableNow}
+                      onPress={() => openBooking(router, b)}
+                    />
+                  );
+                })}
                 {upcoming.length === 0 && past.length > 0 ? (
                   <Empty text="No upcoming bookings — see past visits below." />
                 ) : null}

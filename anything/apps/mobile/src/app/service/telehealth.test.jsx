@@ -105,3 +105,50 @@ test("an ended consult shows its status and no Join button", () => {
   expect(getByText("Consult ended")).toBeTruthy();
   expect(queryByText("Join video consult")).toBeNull();
 });
+
+// Owner early-join gate (Task 3): more than 5 minutes before the scheduled appointment_date/
+// appointment_time shows a friendly "not time yet" message instead of the Join button, and
+// never even calls the join API.
+test("a consult more than 5 minutes before its scheduled time shows a friendly wait message, no Join button, no API call", () => {
+  const farFuture = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+  const pad = (n) => String(n).padStart(2, "0");
+  mockConsults = {
+    data: [
+      {
+        id: 9,
+        provider_id: 10,
+        provider_name: "Tele Vet Co",
+        status: "scheduled",
+        appointment_date: `${farFuture.getFullYear()}-${pad(farFuture.getMonth() + 1)}-${pad(farFuture.getDate())}`,
+        appointment_time: `${pad(farFuture.getHours())}:${pad(farFuture.getMinutes())}`,
+      },
+    ],
+  };
+
+  const { getByText, queryByText } = render(<TelehealthScreen />);
+  expect(queryByText("Join video consult")).toBeNull();
+  expect(getByText(/you can join in/i)).toBeTruthy();
+  expect(mockJoin).not.toHaveBeenCalled();
+});
+
+// If the client-side pre-check lets a tap through (uncertain data, clock skew, etc.) and the
+// server responds with its 425 "not ready" gate, show the same friendly message instead of a
+// generic error.
+test("a server 425 (not ready) response shows a friendly wait message, not a generic error", async () => {
+  mockConsults = {
+    data: [{ id: 9, provider_id: 10, provider_name: "Tele Vet Co", status: "scheduled" }],
+  };
+  const notReadyError = new Error("Not time to join yet");
+  notReadyError.notReady = true;
+  mockJoin.mockRejectedValue(notReadyError);
+
+  const { getByText, queryByText } = render(<TelehealthScreen />);
+  fireEvent.press(getByText("Join video consult"));
+
+  await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(queryByText("Not time to join yet")).toBeNull(),
+  );
+  expect(getByText(/once your vet starts the call/i)).toBeTruthy();
+  expect(mockPush).not.toHaveBeenCalled();
+});
