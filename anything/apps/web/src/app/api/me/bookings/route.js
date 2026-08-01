@@ -47,6 +47,7 @@ async function GET(request) {
         va.service_id,
         p.name AS pet_name,
         pr.name AS provider_name,
+        pr.slug AS provider_slug,
         s.name AS service_name
       FROM vet_appointments va
       LEFT JOIN pets p ON p.id = va.pet_id
@@ -72,6 +73,7 @@ async function GET(request) {
         va.service_id,
         p.name AS pet_name,
         pr.name AS provider_name,
+        pr.slug AS provider_slug,
         s.name AS service_name
       FROM vet_appointments va
       LEFT JOIN pets p ON p.id = va.pet_id

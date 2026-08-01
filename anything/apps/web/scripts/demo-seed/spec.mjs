@@ -295,9 +295,10 @@ export const PROVIDER = {
   coverAsset: "vet-cover.jpg",
   logoAsset: "vet-2.jpg",
   website_url: "https://northsidevet.example",
-  // 'telehealth' is NOT a valid capability enum (vet/groomer/walker/daycare/sitter/
-  // trainer/shop/adoption/transport/pharmacy) — telehealth is offered as a SERVICE.
-  capabilities: ["vet"],
+  // 'telehealth' widened into the capability CHECK by 0040_telehealth.sql — the
+  // clinic must HOLD it (not just offer the service) to pass the capability gate
+  // in providers/[id]/book/route.js and show up under Services → Telehealth.
+  capabilities: ["vet", "telehealth"],
   services: [
     { name: "Wellness exam", description: "Comprehensive nose-to-tail health check.", duration_min: 30, price_cents: 5500 },
     { name: "Vaccination (per shot)", description: "Core and lifestyle vaccines.", duration_min: 15, price_cents: 3000 },
