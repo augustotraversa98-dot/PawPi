@@ -78,18 +78,21 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 > the Apple Developer account exists and EAS production builds reach **TestFlight (Build 6)**. A long
 > native splash-hang arc had to be fixed first (PRs #253, #255–#259: bundling/ITMS-90683, a hard splash
 > deadline + boot breadcrumbs, the release-only Anything-menu stub, a SIGABRT on first Fabric mount, and
-> the real paw-emblem icons). **All migrations are applied — the live DB is at 0068, nothing pending.**
+> the real paw-emblem icons). **All migrations are applied — the live DB is at 0069, nothing pending.**
 > The backend is live on **Railway** and the mobile app points at it, and the App Review **demo account
-> is seeded** (`augusto+demo@pawpi.info`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots.
+> is seeded** (`augusto+demo@pawpi.info`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots
+> (telehealth video keys, formerly listed as a newly-discovered blocker below, are also now resolved —
+> see the audit note dated 2026-08-01).
 >
 > **Newly discovered blockers not in the original list:**
-> - Telehealth join needs a real vendor — **Daily.co** (`VIDEO_PROVIDER=daily`, in-app WebView
->   call, no native SDK). Just `VIDEO_API_KEY` + `VIDEO_PROVIDER=daily` (Daily's single-key
->   Bearer auth, no separate secret). Either set it or hide the telehealth entry point before
->   review.
+> - ~~Telehealth join needs a real vendor~~ — **✅ RESOLVED (confirmed 2026-08-01).** Daily.co is
+>   live: Railway has both `VIDEO_PROVIDER` and `VIDEO_API_KEY` set (confirmed via Railway's
+>   variable list, not just a doc claim), and a real join was tested end to end against
+>   production — it created a genuine Daily room and flipped the session to `in_progress`. No
+>   action needed; nothing to hide before review.
 > - ~~`/account/forgot-password` is a **frontend-only stub**~~ — **BUILT (2026-07-28).** Real flow end to
->   end: forgot-password → single-use 30-minute token (**migration 0069**, harness-proven, ⏳ pending
->   hand-apply) → emailed link → a "set a new password" screen → `/api/account/reset-password` (re-runs
+>   end: forgot-password → single-use 30-minute token (**migration 0069**, ✅ applied + confirmed live
+>   2026-08-01) → emailed link → a "set a new password" screen → `/api/account/reset-password` (re-runs
 >   the shared 2.32 strength rule, argon2-hashes, burns the token + the account's other outstanding
 >   tokens and DB sessions). Mobile reaches it through the auth WebView, and Welcome now has its own
 >   **Forgot password?** entry. Remaining for Augusto: ~~apply 0069~~ ✅ done, set **`EMAIL_API_KEY`** (+ `EMAIL_FROM` on the owned domain **pawpi.info**;
@@ -119,9 +122,13 @@ In rough order:
    food-recall ingest 2.75), and `AUTH_*` — still open, each feature degrades cleanly until its key is
    set. ~~`EMAIL_API_KEY` + `EMAIL_FROM` + `APP_BASE_URL`~~ ✅ done (2026-07-31) — password reset is
    fully live: Resend verified on **pawpi.info**, confirmed on Railway, device-tested end to end.
-7. 🟡 **Pending Supabase migrations** — the live DB is at **0068** (0056–0068 all applied; verified
-   directly against production 2026-07-28). **`0069_password_reset_tokens.sql` is now pending** — apply
-   it, then run `supabase/verify_0069.sql` (every row should read PASS).
+7. ✅ **Supabase migrations — 0069 applied.** The live DB is at **0069** (0056–0069 all applied).
+   `0069_password_reset_tokens.sql` was previously listed here as pending; that was stale — the doc's
+   own "newly discovered blockers" note above already said it was done, and this line disagreed with
+   it. Confirmed for real 2026-08-01: a live `POST /api/account/forgot-password` against production
+   (the demo account) completed with no DB error in Railway's deploy logs and a ~2s duration consistent
+   with an actual email send, which isn't possible unless `password_reset_tokens` +
+   `app_create_password_reset_token` exist and work. Nothing pending.
 8. 🟡 **EAS build** (production profile) → **TestFlight** → screenshots (**iPhone 6.9"/6.7" only — iPhone-only
    v1, no iPad**) → **export compliance** (`ITSAppUsesNonExemptEncryption: false` already set) → submit for
    review. *Build + TestFlight done (Build 6). Screenshots and the submit step remain — shoot them on the
@@ -134,7 +141,19 @@ In rough order:
 
 ---
 
-_Last updated: **2026-07-31** — **password reset is now fully live in production**: `EMAIL_API_KEY` /
+_Last updated: **2026-08-01** — **full audit against Railway's real variables + live production
+tests** (not just doc claims), per Augusto's ask after finding drift. Two items this doc still
+called "blocking" were actually already done: **telehealth's Daily.co key** (`VIDEO_PROVIDER` +
+`VIDEO_API_KEY` confirmed set on Railway; a real join was tested end to end against production) and
+**migration 0069 / password reset** (this doc's own checklist item 7 still said "pending" while its
+"newly discovered blockers" note two paragraphs above already said "done" — confirmed for real via a
+live `forgot-password` call against production with no DB error). Both corrected in place. Also
+found and flagged separately: the **local `.env`'s `DATABASE_URL`** in this repo checkout is stale
+after the `pawpi_app` password rotation (production's own copy on Railway is fine — confirmed via a
+healthy recent deploy + live traffic) — a dev-workflow note, not a submission blocker, tracked in
+`docs/roadmap.md`. Going forward, a Railway env var change or a manual/device test is a doc-sync
+trigger too, same as a PR merge — see `docs/dev-pipeline.md`'s sync rule.
+Previously (2026-07-31): **password reset is now fully live in production**: `EMAIL_API_KEY` /
 `EMAIL_FROM` / `APP_BASE_URL` set and confirmed on Railway (Resend, `pawpi.info` verified), full flow
 device-tested end to end (Welcome → Forgot password? → emailed link → set new password → logged in).
 Previously (2026-07-28): the **forgot-password blocker was closed in code**: real reset flow +

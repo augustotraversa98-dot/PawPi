@@ -121,6 +121,13 @@ There is no live channel between Cowork and Code. The **repo is the channel**. T
   what Cowork has written.
 - **After every batch/merge:** update `docs/roadmap.md` AND the status block in
   `PawPi_instructions.md`, then commit. That is how Cowork sees what Code did.
+- **A PR merge is not the only doc-sync trigger.** A **Railway env var being set/changed** (a
+  go-live key landing, a credential rotation) or a **manual device/production test Augusto or
+  Code runs** (a live join, a real forgot-password send, a SQL Editor check) can *also* flip an
+  item from "still needed" to "done" with no PR involved. Whichever of us learns that — check
+  Railway's actual variables (`list-variables`, names only over OAuth — never assume from a doc)
+  and, where it matters, run the live test rather than trusting the last-written claim — then
+  update `docs/roadmap.md` / `docs/app-store-readiness.md` in that same sitting, not "later."
 - **Committed + pushed to `origin/main` is the sync point.** Build-agents work in worktrees branched
   off `origin/main`, so they only see bridge docs (roadmap, dev-pipeline, master plan, instructions)
   that are *merged to main*. Uncommitted planning docs are invisible to them — push them first.
@@ -138,6 +145,13 @@ There is no live channel between Cowork and Code. The **repo is the channel**. T
 > - **Update the bridge docs in the same commit as the work**, not "later" — later never comes.
 > - **Verify claims of record against reality rather than against another doc.** Migration status was
 >   settled by querying production directly; the docs had been copying a stale claim forward.
+>
+> **Recurred 2026-08-01** (same pattern, different trigger): a full audit of the App Store blocker
+> list against Railway's real variables + live tests found the telehealth Daily.co key and migration
+> `0069` (password reset) had both quietly gone from "blocking" to "done" — one via a Railway env var
+> being set, the other via a live production test — with neither doc updated. `app-store-readiness.md`
+> even contradicted *itself*: one section said 0069 was applied, its own checklist said pending. Fixed
+> in both docs; see the "Recurred" trigger rule added above.
 >
 > Also note: work has been **Claude Code only** for several weeks, so a lot landed as direct commits
 > to `main` rather than as reviewed PRs (the whole 2026-07-28 production-hardening batch). Read

@@ -18,8 +18,20 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 📍 CURRENT STATE (2026-07-31)
+## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-01):** full audit of the blocker list below against Railway's real variables
+> + live production tests (not just this doc's claims) — the same standard as blocker #3's
+> device test. Found **two items marked "blocking" that were already done**: telehealth's Daily.co
+> key (blocker #1 — `VIDEO_PROVIDER`/`VIDEO_API_KEY` confirmed set on Railway, a real join tested
+> end to end against production) and migration `0069` (password reset's own table — confirmed
+> applied via a live `forgot-password` call against production, no DB error). Both corrected below.
+> Also: Augusto **rotated the `pawpi_app` DB password** (blocker #5, now done) — production's
+> Railway `DATABASE_URL` picked it up fine (healthy deploy + live traffic confirmed), but this
+> repo's local `.env` still has the pre-rotation password and will fail direct-DB scripts until
+> updated locally. Going forward, a Railway env var change or a manual/device test is a doc-sync
+> trigger too, same as a PR merge (`docs/dev-pipeline.md`'s sync rule).
+>
 > **Update (2026-07-31):** password reset is now fully live in production — `EMAIL_API_KEY` /
 > `EMAIL_FROM` / `APP_BASE_URL` are set and confirmed on Railway (Resend, `pawpi.info` domain
 > verified), and the full flow was device-tested end to end. See blocker #3 below.
@@ -30,11 +42,11 @@ What remains is submission logistics and a handful of go-live keys — not featu
 
 - **Backend is LIVE in production** on Railway at `https://pawpi-production.up.railway.app`, serving
   the mobile app. Database is Supabase.
-- **Live DB is at migration `0068`.** (Verified directly against production 2026-07-28:
-  `legal_consents` + `app_record_consent` exist (0067) and `posts.media_type` / `video_url` /
-  `video_thumbnail_url` exist (0068). Older docs claiming "0067 PENDING" were stale.)
-  **⏳ `0069_password_reset_tokens.sql` is now PENDING hand-apply** — harness-proven, additive, no
-  existing table's RLS touched. Run it then `supabase/verify_0069.sql` (`docs/test-backlog.md` ACTION 1).
+- **Live DB is at migration `0069`.** (0056–0068 verified directly against production 2026-07-28;
+  `0069_password_reset_tokens.sql` confirmed applied 2026-08-01 via a live `forgot-password` call
+  against production completing with no DB error — the table + its `app_create_password_reset_token`/
+  `app_consume_password_reset_token` helpers exist and work. Older docs claiming "0067 PENDING" or
+  "0069 PENDING" were both stale; nothing is pending now.)
 - **Test baselines: mobile jest 1170 · web vitest 1367 · integration 663.**
 - **iOS:** builds and runs. TestFlight got to **Build 6**; a long native splash-hang arc was fixed
   (#253, #255–#259). A **local iOS Simulator build now works on Augusto's Mac**, so mobile UI can be
@@ -44,23 +56,33 @@ What remains is submission logistics and a handful of go-live keys — not featu
   *All current production data is disposable test data and will be wiped once the app is accepted.*
 
 **What is actually blocking submission** (all need Augusto, none are code):
-1. Telehealth join has a real vendor now — **Daily.co** (`VIDEO_PROVIDER=daily`, in-app WebView
-   call screen, no native SDK). Daily's REST API auth is a single API key used as a Bearer
-   token, so go-live is just `VIDEO_API_KEY` + `VIDEO_PROVIDER=daily` (no separate secret,
-   unlike the `generic` placeholder). Sign up at daily.co, create an API key, set both on
-   Railway — same dormant-behind-keys pattern as email/payments, no code change needed.
+1. ~~Telehealth join needs a real vendor~~ — **✅ DONE, confirmed 2026-08-01.** Daily.co is live:
+   Railway has both `VIDEO_PROVIDER` and `VIDEO_API_KEY` set (confirmed via Railway's actual
+   variable list, not a doc claim), and a real join was tested end to end via Expo against
+   production — it created a genuine Daily room (`room_ref`) and flipped the session to
+   `in_progress`. This was previously listed here as blocking; it wasn't. Nothing left to do.
 2. `CRON_SECRET` + an external scheduler — subscription auto-charge, recall ingest, calendar sync.
+   Confirmed still unset on Railway (2026-08-01) — genuinely still blocking.
 3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28) and LIVE (2026-07-31).**
    The full reset flow now exists end to end: forgot-password → single-use 30-minute token (migration
    **0069**) → emailed link → "set a new password" screen → `/api/account/reset-password`.
    ~~apply migration 0069~~ ✅ done, ~~set `EMAIL_API_KEY` + `EMAIL_FROM` + `APP_BASE_URL`~~ ✅ done
    (2026-07-31) — Resend verified on sending domain **pawpi.info**, confirmed on Railway. Augusto
    device-tested the full flow end to end: Welcome → Forgot password? → emailed link → set new
-   password → logged in successfully with the new password. Details + device checklist in
+   password → logged in successfully with the new password. Re-confirmed live 2026-08-01 (see the
+   audit note above) — migration 0069 is genuinely applied, not just claimed. Details + device
+   checklist in `docs/test-backlog.md`.
+4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment) — each feature degrades
+   cleanly until set. Confirmed still absent from Railway's variable list (2026-08-01): no
+   `AUTH_APPLE_ID`/`AUTH_GOOGLE_ID`, no payment-rail keys, no `GOOGLE_PLACES_API_KEY`/
+   `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`, no `ENRICHMENT_LLM_KEY` — genuinely still open. (Email
+   was in this list before; it's done — see #3 — and has been removed from here.) Full list in
    `docs/test-backlog.md`.
-4. Remaining go-live keys (OAuth, payments, maps browser key, enrichment, **email**) — each feature
-   degrades cleanly until set. Full list in `docs/test-backlog.md`.
-5. Pre-launch security: change the placeholder `pawpi_app` DB password.
+5. ~~Pre-launch security: change the placeholder `pawpi_app` DB password~~ — **✅ DONE** (rotated by
+   Augusto 2026-08-01). Production's Railway `DATABASE_URL` already reflects it (confirmed via a
+   healthy fresh deploy + live `/api/auth/session` traffic, which touches the DB). **Follow-up, not
+   a submission blocker:** this repo's local `anything/apps/web/.env` still has the pre-rotation
+   password — direct-DB scripts run from this machine will fail auth until it's updated to match.
 
 **Known code gaps deliberately left open** (tracked, not forgotten):
 - The demo seed writes only HISTORICAL data, so Health → Today renders empty. Add same-day entries
