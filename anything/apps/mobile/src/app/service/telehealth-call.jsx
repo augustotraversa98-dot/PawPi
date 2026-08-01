@@ -46,6 +46,7 @@ export default function TelehealthCallScreen() {
           style={{ flex: 1 }}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
+          mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
           onLoadEnd={() => setLoading(false)}
           onError={() => setError(true)}
         />
