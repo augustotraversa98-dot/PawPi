@@ -17,6 +17,10 @@ export class VideoNotConfiguredError extends Error {
 // Resolve the video vendor config or null when any required key is missing (the "not
 // configured" signal). Vendor-agnostic: VIDEO_PROVIDER selects the adapter (default
 // 'generic'); VIDEO_API_KEY/SECRET are the credentials; VIDEO_BASE_URL is the room host.
+//
+// 'daily' is the exception to the two-key shape: Daily's REST API auth is a SINGLE API key
+// used as a Bearer token, so it needs only VIDEO_API_KEY — VIDEO_API_SECRET stays unrequired
+// for that provider. 'generic' keeps its original key+secret requirement.
 export function videoConfig() {
   const {
     VIDEO_PROVIDER,
@@ -24,11 +28,15 @@ export function videoConfig() {
     VIDEO_API_SECRET,
     VIDEO_BASE_URL,
   } = process.env;
-  if (!VIDEO_API_KEY || !VIDEO_API_SECRET) {
+  const provider = VIDEO_PROVIDER || "generic";
+  if (!VIDEO_API_KEY) {
+    return null;
+  }
+  if (provider !== "daily" && !VIDEO_API_SECRET) {
     return null;
   }
   return {
-    provider: VIDEO_PROVIDER || "generic",
+    provider,
     apiKey: VIDEO_API_KEY,
     apiSecret: VIDEO_API_SECRET,
     baseUrl: (VIDEO_BASE_URL || "https://video.pawpi.example").replace(/\/+$/, ""),
