@@ -117,6 +117,14 @@ async function GET(request, { params }) {
     // (pet/owner/service names); no medical table is touched. owner_name prefers
     // full_name, falling back to username. provider_services is LEFT JOIN'd
     // because service_id is nullable on a booking.
+    //
+    // telehealth_session_id/_status: the LATERAL join surfaces the CALLING staff member's
+    // own telehealth_sessions row (if any) for this booking, so "End consult" (BookingsInbox)
+    // can target the right session across page reloads without a separate fetch. telehealth_
+    // sessions RLS (0040) scopes staff SELECT to `staff_user_id = current_app_user_id()` —
+    // this request already runs under the caller's identity (withRequestContext below), so
+    // the join naturally returns NULL for a booking the caller isn't the assigned participant
+    // on, same as it would for anyone who can't act on that session anyway.
     const bookings = bookingStatus
       ? await sql`
           SELECT
@@ -144,11 +152,19 @@ async function GET(request, { params }) {
             va.updated_at,
             p.name AS pet_name,
             COALESCE(up.full_name, up.username) AS owner_name,
-            s.name AS service_name
+            s.name AS service_name,
+            ts.id AS telehealth_session_id,
+            ts.status AS telehealth_session_status
           FROM vet_appointments va
           LEFT JOIN pets p ON p.id = va.pet_id
           LEFT JOIN user_profiles up ON up.id = va.owner_user_id
           LEFT JOIN provider_services s ON s.id = va.service_id
+          LEFT JOIN LATERAL (
+            SELECT id, status FROM telehealth_sessions
+            WHERE booking_id = va.id
+            ORDER BY created_at DESC
+            LIMIT 1
+          ) ts ON va.capability = 'telehealth'
           WHERE va.provider_id = ${providerId}
             AND va.deleted_at IS NULL
             AND va.booking_status = ${bookingStatus}
@@ -180,11 +196,19 @@ async function GET(request, { params }) {
             va.updated_at,
             p.name AS pet_name,
             COALESCE(up.full_name, up.username) AS owner_name,
-            s.name AS service_name
+            s.name AS service_name,
+            ts.id AS telehealth_session_id,
+            ts.status AS telehealth_session_status
           FROM vet_appointments va
           LEFT JOIN pets p ON p.id = va.pet_id
           LEFT JOIN user_profiles up ON up.id = va.owner_user_id
           LEFT JOIN provider_services s ON s.id = va.service_id
+          LEFT JOIN LATERAL (
+            SELECT id, status FROM telehealth_sessions
+            WHERE booking_id = va.id
+            ORDER BY created_at DESC
+            LIMIT 1
+          ) ts ON va.capability = 'telehealth'
           WHERE va.provider_id = ${providerId}
             AND va.deleted_at IS NULL
           ORDER BY va.appointment_date DESC, va.appointment_time DESC

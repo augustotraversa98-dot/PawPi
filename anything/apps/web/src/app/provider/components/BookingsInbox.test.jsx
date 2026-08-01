@@ -16,6 +16,7 @@ vi.mock("../hooks/useProviders", () => ({
   useProviderBookings: vi.fn(),
   useBookingAction: vi.fn(),
   useProviderStaff: vi.fn(),
+  useEndTelehealthConsult: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -25,6 +26,7 @@ import {
   useProviderBookings,
   useBookingAction,
   useProviderStaff,
+  useEndTelehealthConsult,
 } from "../hooks/useProviders";
 import BookingsInbox from "./BookingsInbox";
 
@@ -78,7 +80,23 @@ const CONFIRMED = {
   staff_user_id: 42,
 };
 
+const TELEHEALTH_LIVE = {
+  id: 3,
+  pet_id: 88,
+  appointment_date: "2026-07-03",
+  appointment_time: "10:00",
+  pet_name: "Nala",
+  owner_name: "Ali Owner",
+  service_name: "Video consult",
+  booking_status: "confirmed",
+  staff_user_id: 7,
+  capability: "telehealth",
+  telehealth_session_id: 55,
+  telehealth_session_status: "in_progress",
+};
+
 let mutateMock;
+let endConsultMock;
 
 function setBookings(data, extra = {}) {
   useProviderBookings.mockReturnValue({
@@ -95,6 +113,12 @@ beforeEach(() => {
   mutateMock = vi.fn();
   useBookingAction.mockReturnValue({
     mutate: mutateMock,
+    isPending: false,
+    variables: undefined,
+  });
+  endConsultMock = vi.fn();
+  useEndTelehealthConsult.mockReturnValue({
+    mutate: endConsultMock,
     isPending: false,
     variables: undefined,
   });
@@ -205,6 +229,44 @@ describe("BookingsInbox", () => {
       expect.objectContaining({ action: "assign", staffUserId: 42 }),
       expect.any(Object),
     );
+  });
+
+  it("shows End consult for a telehealth booking with an active session, and calls the PATCH-backed mutation", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(window, "prompt").mockReturnValue("Recheck in 2 weeks");
+    setBookings([TELEHEALTH_LIVE]);
+    render(<BookingsInbox providerId={3} />);
+
+    const endButton = screen.getByText("End consult");
+    fireEvent.click(endButton);
+
+    expect(endConsultMock).toHaveBeenCalledWith(
+      { sessionId: 55, summary: "Recheck in 2 weeks" },
+      expect.any(Object),
+    );
+  });
+
+  it("does NOT call the end mutation when the confirm dialog is dismissed", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    setBookings([TELEHEALTH_LIVE]);
+    render(<BookingsInbox providerId={3} />);
+
+    fireEvent.click(screen.getByText("End consult"));
+    expect(endConsultMock).not.toHaveBeenCalled();
+  });
+
+  it("hides End consult once the session is already ended", () => {
+    setBookings([{ ...TELEHEALTH_LIVE, telehealth_session_status: "ended" }]);
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.queryByText("End consult")).not.toBeInTheDocument();
+  });
+
+  it("hides End consult when no session has ever been created for the booking", () => {
+    setBookings([
+      { ...TELEHEALTH_LIVE, telehealth_session_id: null, telehealth_session_status: null },
+    ]);
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.queryByText("End consult")).not.toBeInTheDocument();
   });
 
   it("Open record navigates to the booking's pet clinical record", () => {

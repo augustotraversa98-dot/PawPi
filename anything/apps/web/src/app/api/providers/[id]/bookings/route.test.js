@@ -103,11 +103,32 @@ describe('GET /api/providers/[id]/bookings', () => {
     await GET(inboxReq(), PARAMS);
 
     const text = lastQueryText();
-    expect(text).not.toContain('health_');
+    // health_* LOG tables (weight/food/poo/etc.) are medical — never touched here.
+    // telehealth_sessions is deliberately excluded from this check: it's the operational
+    // video-room record (room_ref/status/started_at), not clinical data — the consult note
+    // itself lives in vet_notes via the separate medical_write path, untouched by this route.
+    expect(text).not.toMatch(/(?<!tele)health_/);
     expect(text).not.toContain('weight');
     expect(text).not.toContain('vaccinations');
     expect(text).not.toContain('vet_notes');
     expect(text).not.toContain('care_access');
+  });
+
+  it('the telehealth LATERAL join surfaces the id/status only (no room_ref/summary)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([ACTIVE_MEMBERSHIP])
+      .mockResolvedValueOnce([]);
+
+    await GET(inboxReq(), PARAMS);
+
+    const text = lastQueryText();
+    expect(text).toContain('telehealth_sessions');
+    expect(text).toContain('telehealth_session_id');
+    expect(text).toContain('telehealth_session_status');
+    expect(text).not.toContain('room_ref');
+    expect(text).not.toContain('summary');
   });
 
   it('?booking_status= filters by booking_status', async () => {

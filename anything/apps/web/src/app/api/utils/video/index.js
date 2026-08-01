@@ -42,17 +42,31 @@ const DAILY_ROOM_GRACE_MS = 15 * 60 * 1000; // grace window past a known schedul
 
 // Unix-seconds expiration for the room/token: the session's scheduled end time (whichever of
 // these fields a caller happens to populate) + a grace window, else a flat default TTL from
-// now. `telehealth_sessions` carries no explicit end-time column today, so this falls back to
-// the default in practice — the field checks are forward-compatible, not dead code.
-function dailyExpirySeconds(session) {
+// `nowMs` (defaults to Date.now(), overridable so callers can anchor the SAME window at a
+// past instant — see isTelehealthSessionExpired below). `telehealth_sessions` carries no
+// explicit end-time column today, so this falls back to the default in practice — the field
+// checks are forward-compatible, not dead code.
+export function dailyExpirySeconds(session, { nowMs = Date.now() } = {}) {
   const scheduledEnd =
     session?.scheduled_end_at || session?.ends_at || session?.end_time || null;
   const scheduledEndMs = scheduledEnd ? new Date(scheduledEnd).getTime() : NaN;
-  const nowMs = Date.now();
   const expMs = Number.isFinite(scheduledEndMs)
     ? Math.max(scheduledEndMs, nowMs) + DAILY_ROOM_GRACE_MS
     : nowMs + DAILY_DEFAULT_TTL_MS;
   return Math.floor(expMs / 1000);
+}
+
+// Safety net for a consult nobody ever explicitly ended (PATCH action='end'): a session's
+// Daily room exp is computed at ROOM-CREATION time — which happens on first join, i.e.
+// session.started_at — using dailyExpirySeconds' own window. Anchoring that SAME window at
+// started_at (instead of "now") mirrors exactly what dailyRoom() computed when the room was
+// created, rather than reimplementing the TTL/grace numbers separately. A session with no
+// started_at can't be 'in_progress' yet, so it's never considered expired.
+export function isTelehealthSessionExpired(session, { nowMs = Date.now() } = {}) {
+  const startedAtMs = session?.started_at ? new Date(session.started_at).getTime() : NaN;
+  if (!Number.isFinite(startedAtMs)) return false;
+  const ceilingMs = dailyExpirySeconds(session, { nowMs: startedAtMs }) * 1000;
+  return nowMs > ceilingMs;
 }
 
 async function dailyFetch(cfg, path, { method = "GET", body } = {}) {
