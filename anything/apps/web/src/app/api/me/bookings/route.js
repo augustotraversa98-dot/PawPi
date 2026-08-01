@@ -76,7 +76,13 @@ async function GET(request) {
         p.name AS pet_name,
         pr.name AS provider_name,
         pr.slug AS provider_slug,
-        s.name AS service_name
+        s.name AS service_name,
+        (
+          SELECT ts.status FROM telehealth_sessions ts
+          WHERE ts.booking_id = va.id
+          ORDER BY ts.created_at DESC
+          LIMIT 1
+        ) AS telehealth_session_status
       FROM vet_appointments va
       LEFT JOIN pets p ON p.id = va.pet_id
       LEFT JOIN providers pr ON pr.id = va.provider_id
@@ -102,7 +108,13 @@ async function GET(request) {
         p.name AS pet_name,
         pr.name AS provider_name,
         pr.slug AS provider_slug,
-        s.name AS service_name
+        s.name AS service_name,
+        (
+          SELECT ts.status FROM telehealth_sessions ts
+          WHERE ts.booking_id = va.id
+          ORDER BY ts.created_at DESC
+          LIMIT 1
+        ) AS telehealth_session_status
       FROM vet_appointments va
       LEFT JOIN pets p ON p.id = va.pet_id
       LEFT JOIN providers pr ON pr.id = va.provider_id

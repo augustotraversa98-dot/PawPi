@@ -358,6 +358,7 @@ function getReminderConfig(type) {
     general_check: { icon: "✅", actionLabel: "Start check" },
     weight_check: { icon: "⚖️", actionLabel: "Log weight" },
     photo_check: { icon: "📸", actionLabel: "Take photo" },
+    telehealth: { icon: "📹", actionLabel: "Join call" },
   };
   return configs[type] || { icon: "📌", actionLabel: "Done" };
 }

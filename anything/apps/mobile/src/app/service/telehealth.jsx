@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import { isTelehealthJoinTooEarly, describeTelehealthJoinWait } from "@/utils/telehealthJoinGate";
 
 // Telehealth discovery + consults (ticket 2.18). A consult IS a normal booking — tapping a
 // vet opens the shared provider profile carrying capability='telehealth' (the generalized
@@ -142,11 +143,18 @@ function ConsultCard({ consult, petId }) {
   const router = useRouter();
   const joinTelehealth = useJoinTelehealth();
   const [error, setError] = useState(null);
+  const [notReadyMessage, setNotReadyMessage] = useState(null);
 
   const joinable = consult.status === "scheduled" || consult.status === "in_progress";
+  // Client-side pre-check (telehealthJoinGate.js) — only blocks when we can be SURE it's too
+  // early; unparseable data falls through to the API call, and the server's 425 is the real
+  // gate (see the notReady branch below).
+  const tooEarly =
+    joinable && isTelehealthJoinTooEarly(consult, { sessionStatus: consult.status });
 
   const onJoin = async () => {
     setError(null);
+    setNotReadyMessage(null);
     try {
       const res = await joinTelehealth.mutateAsync({
         providerId: consult.provider_id,
@@ -160,8 +168,14 @@ function ConsultCard({ consult, petId }) {
         });
       }
     } catch (e) {
-      // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
-      setError(e?.message || "Couldn't join the consult");
+      if (e?.notReady) {
+        // The server is the source of truth (clock skew, etc.) — same friendly copy as the
+        // pre-check so the message is consistent either way.
+        setNotReadyMessage(describeTelehealthJoinWait(consult));
+      } else {
+        // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
+        setError(e?.message || "Couldn't join the consult");
+      }
     }
   };
 
@@ -188,7 +202,20 @@ function ConsultCard({ consult, petId }) {
         {statusLabel}
       </Text>
 
-      {joinable ? (
+      {joinable && tooEarly ? (
+        <View
+          style={{
+            marginTop: SPACING.md,
+            backgroundColor: COLORS.sand,
+            borderRadius: RADIUS.control - 2,
+            padding: SPACING.md,
+          }}
+        >
+          <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
+            {describeTelehealthJoinWait(consult)}
+          </Text>
+        </View>
+      ) : joinable ? (
         <PressableScale
           onPress={onJoin}
           disabled={joinTelehealth.isPending}
@@ -206,6 +233,12 @@ function ConsultCard({ consult, petId }) {
             {joinTelehealth.isPending ? "Joining…" : "Join video consult"}
           </Text>
         </PressableScale>
+      ) : null}
+
+      {notReadyMessage ? (
+        <Text style={[TYPE.subhead, { marginTop: SPACING.sm + 2, color: COLORS.mutedBrown }]}>
+          {notReadyMessage}
+        </Text>
       ) : null}
 
       {error ? (
