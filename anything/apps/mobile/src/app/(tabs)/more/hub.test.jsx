@@ -108,6 +108,45 @@ describe("MyHubScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/service/adoption");
   });
 
+  it("routes a tapped booking row to its per-service screen by capability", () => {
+    mockBookings = stub({
+      upcoming: [
+        {
+          id: 1,
+          provider_name: "Vet A",
+          provider_slug: "vet-a",
+          capability: "vet",
+          pet_name: "Rex",
+          service_name: "Checkup",
+          appointment_date: "2026-07-01",
+          booking_status: "confirmed",
+        },
+        {
+          id: 2,
+          provider_name: "Northside Vet",
+          provider_slug: "northside-vet",
+          capability: "telehealth",
+          pet_name: "Rex",
+          service_name: "Telehealth consult",
+          appointment_date: "2026-07-02",
+          booking_status: "confirmed",
+        },
+      ],
+      past: [],
+    });
+
+    const { getByText } = render(<MyHubScreen />);
+
+    fireEvent.press(getByText(/Vet A · Rex/));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/service/provider",
+      params: { slug: "vet-a", capability: "vet" },
+    });
+
+    fireEvent.press(getByText(/Northside Vet · Rex/));
+    expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
+  });
+
   it("shows empty states with no data (no fake metrics)", () => {
     const { getByText } = render(<MyHubScreen />);
     expect(getByText("No bookings yet.")).toBeTruthy();

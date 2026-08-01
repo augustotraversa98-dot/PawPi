@@ -53,6 +53,9 @@ describe('GET /api/me/bookings', () => {
       expect(text).toContain('FROM vet_appointments');
       expect(text).toContain('va.owner_user_id =');
       expect(text).toContain('deleted_at IS NULL');
+      // provider_slug is needed to route a tapped booking row to its per-service screen
+      // (the mobile My Hub, ticket 2.14 follow-up).
+      expect(text).toContain('pr.slug AS provider_slug');
     }
     // owner id (7) is bound, NOT a provider id.
     const boundValues = sql.mock.calls.flatMap((c) => c.slice(1));

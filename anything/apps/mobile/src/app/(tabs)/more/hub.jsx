@@ -114,9 +114,12 @@ function SectionCard({ title, Icon, count, onPress, children }) {
   );
 }
 
-function Row({ primary, secondary, badge }) {
+function Row({ primary, secondary, badge, onPress }) {
   return (
-    <View
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={onPress ? 0.6 : 1}
+      disabled={!onPress}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -142,12 +145,14 @@ function Row({ primary, secondary, badge }) {
             fontWeight: "700",
             color: COLORS.terracotta,
             textTransform: "capitalize",
+            marginRight: onPress ? 4 : 0,
           }}
         >
           {badge}
         </Text>
       ) : null}
-    </View>
+      {onPress ? <ChevronRight size={16} color={COLORS.peach} /> : null}
+    </TouchableOpacity>
   );
 }
 
@@ -157,6 +162,22 @@ function Empty({ text }) {
       {text}
     </Text>
   );
+}
+
+// Route a booking row to the right existing per-service screen — mirrors the openProvider
+// pattern used by every service/*.jsx discovery screen. Telehealth has no provider-profile
+// booking surface of its own (service/telehealth.jsx IS the consult list + join screen), so
+// it goes straight there instead of /service/provider.
+function openBooking(router, booking) {
+  if (booking.capability === "telehealth") {
+    router.push("/service/telehealth");
+    return;
+  }
+  if (!booking.provider_slug) return;
+  router.push({
+    pathname: "/service/provider",
+    params: { slug: booking.provider_slug, capability: booking.capability },
+  });
 }
 
 export default function MyHubScreen() {
@@ -240,6 +261,7 @@ export default function MyHubScreen() {
                       b.appointment_date,
                     )}`}
                     badge={b.booking_status}
+                    onPress={() => openBooking(router, b)}
                   />
                 ))}
                 {upcoming.length === 0 && past.length > 0 ? (
@@ -251,6 +273,7 @@ export default function MyHubScreen() {
                     primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
                     secondary={`Past · ${formatDate(b.appointment_date)}`}
                     badge={b.status}
+                    onPress={() => openBooking(router, b)}
                   />
                 ))}
               </>
