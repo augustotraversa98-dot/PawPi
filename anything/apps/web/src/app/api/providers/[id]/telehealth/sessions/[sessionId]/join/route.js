@@ -50,7 +50,18 @@ async function POST(request, { params }) {
     }
 
     // Dormant-behind-keys: 503 if the video vendor isn't configured (nothing crashes).
-    const room = await getVideoRoom({ session: consult });
+    // participantName/persistRoomRef are 'daily'-only (the 'generic' adapter ignores them):
+    // persistRoomRef saves a newly-created Daily room name onto room_ref so the OTHER
+    // participant's join reuses the same room instead of creating a second one.
+    const isOwner = consult.owner_user_id === userId;
+    const participantName =
+      authSession.user.name || (isOwner ? "Pet Owner" : "Vet");
+    const room = await getVideoRoom({
+      session: consult,
+      participantName,
+      persistRoomRef: (roomName) =>
+        sql`UPDATE telehealth_sessions SET room_ref = ${roomName}, updated_at = NOW() WHERE id = ${sessionId}`,
+    });
 
     // First join flips scheduled → in_progress (+ started_at). Both participants may update
     // under the session RLS. Idempotent: a re-join while in_progress doesn't re-stamp.

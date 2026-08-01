@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   ActivityIndicator,
-  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -140,6 +139,7 @@ export default function TelehealthScreen() {
 // One consult row with a JOIN button whose state follows the session status + the dormant
 // video vendor (a clean message instead of a crash when video isn't configured).
 function ConsultCard({ consult, petId }) {
+  const router = useRouter();
   const joinTelehealth = useJoinTelehealth();
   const [error, setError] = useState(null);
 
@@ -154,7 +154,10 @@ function ConsultCard({ consult, petId }) {
         petId,
       });
       if (res?.joinUrl) {
-        Linking.openURL(res.joinUrl);
+        router.push({
+          pathname: "/service/telehealth-call",
+          params: { joinUrl: res.joinUrl },
+        });
       }
     } catch (e) {
       // Clean message (e.g. "Video consults aren't set up yet") — never a crash.

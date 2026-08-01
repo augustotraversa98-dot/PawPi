@@ -1,23 +1,22 @@
 // Render pins for the Telehealth owner screen (ticket 2.18):
 //   - discovery lists telehealth vets (real data via useDiscoverProviders('telehealth'));
 //     empty → "No telehealth vets yet" (no fakes);
-//   - a scheduled consult shows a "Join video consult" button; pressing it joins and opens
-//     the returned room URL;
+//   - a scheduled consult shows a "Join video consult" button; pressing it joins and pushes
+//     the in-app call screen (not an external browser) with the returned room URL;
 //   - when the video vendor isn't configured, join surfaces a clean message (no crash);
 //   - an ended consult shows "Consult ended" and NO join button.
-// All data hooks, router, current-pet, icons, and Linking are mocked.
+// All data hooks, router, current-pet, and icons are mocked.
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { Linking } from "react-native";
 
 let mockProviders;
 let mockConsults;
 const mockJoin = jest.fn();
-const mockOpenURL = jest.spyOn(Linking, "openURL").mockImplementation(() => {});
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ back: jest.fn(), push: mockPush }),
 }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
@@ -43,7 +42,7 @@ beforeEach(() => {
   mockProviders = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
   mockConsults = { data: [] };
   mockJoin.mockReset();
-  mockOpenURL.mockReset();
+  mockPush.mockReset();
 });
 
 test("empty discovery → no-telehealth-vets empty state", () => {
@@ -62,7 +61,7 @@ test("lists telehealth vets from discovery", () => {
   expect(getByText("Tele Vet Co")).toBeTruthy();
 });
 
-test("a scheduled consult shows Join and joining opens the returned room URL", async () => {
+test("a scheduled consult shows Join and joining pushes the in-app call screen with the room URL", async () => {
   mockConsults = {
     data: [{ id: 9, provider_id: 10, provider_name: "Tele Vet Co", status: "scheduled" }],
   };
@@ -76,7 +75,10 @@ test("a scheduled consult shows Join and joining opens the returned room URL", a
     expect.objectContaining({ providerId: 10, sessionId: 9, petId: 55 }),
   );
   await waitFor(() =>
-    expect(mockOpenURL).toHaveBeenCalledWith("https://video/room?t=abc"),
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/service/telehealth-call",
+      params: { joinUrl: "https://video/room?t=abc" },
+    }),
   );
 });
 
@@ -92,7 +94,7 @@ test("join surfaces a clean message when the video vendor isn't configured", asy
   await waitFor(() =>
     expect(getByText("Video consults aren't set up yet")).toBeTruthy(),
   );
-  expect(mockOpenURL).not.toHaveBeenCalled();
+  expect(mockPush).not.toHaveBeenCalled();
 });
 
 test("an ended consult shows its status and no Join button", () => {

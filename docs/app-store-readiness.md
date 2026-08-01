@@ -88,8 +88,10 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 > is seeded** (`augusto+demo@pawpi.info`, pet Mango). What genuinely remains: items 4, 5, 6, 9 + screenshots.
 >
 > **Newly discovered blockers not in the original list:**
-> - `VIDEO_API_KEY` / `VIDEO_API_SECRET` — **telehealth join is broken** without real vendor credentials.
->   Either supply them or hide the telehealth entry point before review.
+> - Telehealth join needs a real vendor — **Daily.co** (`VIDEO_PROVIDER=daily`, in-app WebView
+>   call, no native SDK). Just `VIDEO_API_KEY` + `VIDEO_PROVIDER=daily` (Daily's single-key
+>   Bearer auth, no separate secret). Either set it or hide the telehealth entry point before
+>   review.
 > - ~~`/account/forgot-password` is a **frontend-only stub**~~ — **BUILT (2026-07-28).** Real flow end to
 >   end: forgot-password → single-use 30-minute token (**migration 0069**, harness-proven, ⏳ pending
 >   hand-apply) → emailed link → a "set a new password" screen → `/api/account/reset-password` (re-runs

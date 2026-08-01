@@ -44,7 +44,11 @@ What remains is submission logistics and a handful of go-live keys — not featu
   *All current production data is disposable test data and will be wiped once the app is accepted.*
 
 **What is actually blocking submission** (all need Augusto, none are code):
-1. `VIDEO_API_KEY` / `VIDEO_API_SECRET` — telehealth join is broken without real vendor credentials.
+1. Telehealth join has a real vendor now — **Daily.co** (`VIDEO_PROVIDER=daily`, in-app WebView
+   call screen, no native SDK). Daily's REST API auth is a single API key used as a Bearer
+   token, so go-live is just `VIDEO_API_KEY` + `VIDEO_PROVIDER=daily` (no separate secret,
+   unlike the `generic` placeholder). Sign up at daily.co, create an API key, set both on
+   Railway — same dormant-behind-keys pattern as email/payments, no code change needed.
 2. `CRON_SECRET` + an external scheduler — subscription auto-charge, recall ingest, calendar sync.
 3. ~~`/account/forgot-password` is a frontend-only stub~~ — **BUILT (2026-07-28) and LIVE (2026-07-31).**
    The full reset flow now exists end to end: forgot-password → single-use 30-minute token (migration
