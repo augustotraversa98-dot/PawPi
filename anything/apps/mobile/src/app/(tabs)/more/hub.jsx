@@ -22,6 +22,7 @@ import {
   useAdoptionFavorites,
 } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 
 // MY HUB (Phase 2 ticket 2.14) — the owner's single place tying the super-app together. It
 // SURFACES + LINKS INTO the existing per-feature screens; it does NOT duplicate them. Sections:
@@ -33,6 +34,8 @@ import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 // Every read is OWNER-scoped server-side (owner_user_id = me); no cross-owner data, no fake
 // metrics. Empty → empty states. Tapping a section opens the real feature screen.
 
+// For orders.created_at only (timestamptz) — appointment_date is a date-only
+// column and must go through formatDisplayDate() instead (see below).
 function formatDate(dateStr) {
   if (!dateStr) return "";
   try {
@@ -257,7 +260,7 @@ export default function MyHubScreen() {
                   <Row
                     key={b.id}
                     primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-                    secondary={`${b.service_name || b.capability || "Booking"} · ${formatDate(
+                    secondary={`${b.service_name || b.capability || "Booking"} · ${formatDisplayDate(
                       b.appointment_date,
                     )}`}
                     badge={b.booking_status}
@@ -271,7 +274,7 @@ export default function MyHubScreen() {
                   <Row
                     key={b.id}
                     primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-                    secondary={`Past · ${formatDate(b.appointment_date)}`}
+                    secondary={`Past · ${formatDisplayDate(b.appointment_date)}`}
                     badge={b.status}
                     onPress={() => openBooking(router, b)}
                   />

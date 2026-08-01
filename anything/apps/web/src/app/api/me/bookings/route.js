@@ -21,6 +21,31 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every query is a tagged
 // template; params bind via `${}`. Never sql(string, array).
+//
+// Upcoming/past boundary: the DB session runs in UTC (confirmed via `SHOW timezone`), so a bare
+// `now()::date` compares against the UTC calendar date, not the caller's. For a negative-offset
+// timezone (e.g. Buenos Aires, UTC-3) that's wrong for ~3 hours every day (UTC 00:00-03:00, i.e.
+// 21:00-24:00 local the previous day): a booking dated the caller's actual "today" has already
+// rolled to DB-"tomorrow minus a day" territory and gets bucketed into `past`. Accept the caller's
+// own local calendar date as `?today=YYYY-MM-DD` (mobile sends it via canonicalDateTime's
+// toCanonicalDate) and use it as the boundary; fall back to `now()::date` when absent/invalid so
+// any other caller keeps the previous (UTC) behavior unchanged.
+// Validates "YYYY-MM-DD" and rejects impossible calendar dates (e.g. "2026-13-40",
+// "2026-02-30") that a bare shape regex would let through and the DB would then reject as an
+// invalid date literal. Returns the original string (never a Date — this only ever feeds a
+// parameterized ::date cast) or null.
+function parseCanonicalDateParam(value) {
+  const m = typeof value === "string" && value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const [, year, month, day] = m.map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  const roundTrips =
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day;
+  return roundTrips ? value : null;
+}
+
 async function GET(request) {
   try {
     const session = await auth();
@@ -32,6 +57,9 @@ async function GET(request) {
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const clientToday = parseCanonicalDateParam(searchParams.get("today"));
 
     const upcoming = await sql`
       SELECT
@@ -55,7 +83,7 @@ async function GET(request) {
       LEFT JOIN provider_services s ON s.id = va.service_id
       WHERE va.owner_user_id = ${userId}
         AND va.deleted_at IS NULL
-        AND va.appointment_date >= now()::date
+        AND va.appointment_date >= COALESCE(${clientToday}::date, now()::date)
       ORDER BY va.appointment_date ASC, va.appointment_time ASC
     `;
 
@@ -81,7 +109,7 @@ async function GET(request) {
       LEFT JOIN provider_services s ON s.id = va.service_id
       WHERE va.owner_user_id = ${userId}
         AND va.deleted_at IS NULL
-        AND va.appointment_date < now()::date
+        AND va.appointment_date < COALESCE(${clientToday}::date, now()::date)
       ORDER BY va.appointment_date DESC, va.appointment_time DESC
       LIMIT 50
     `;

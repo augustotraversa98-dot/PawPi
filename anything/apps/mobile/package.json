@@ -5,7 +5,7 @@
   "scripts": {
     "preinstall": "npx -y only-allow npm",
     "postinstall": "patch-package",
-    "test": "jest",
+    "test": "jest && jest --config jest.config.tz-negative.js",
     "test:watch": "jest --watch"
   },
   "expo": {

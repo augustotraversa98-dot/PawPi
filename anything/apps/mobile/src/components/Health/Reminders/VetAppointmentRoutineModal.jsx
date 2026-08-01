@@ -16,6 +16,7 @@ import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedV
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import {
   addVetAppointmentToCalendar,
   updateVetAppointmentInCalendar,
@@ -404,20 +405,6 @@ export default function VetAppointmentRoutineModal({
   const handleCancel = () => {
     resetForm();
     setEditingAppointmentId(null);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
   };
 
   const formatTime = (timeStr) => {
@@ -1056,7 +1043,7 @@ export default function VetAppointmentRoutineModal({
                                       color: C.mutedBrown,
                                     }}
                                   >
-                                    {formatDate(appt.appointment_date)} •{" "}
+                                    {formatDisplayDate(appt.appointment_date)} •{" "}
                                     {formatTime(appt.appointment_time)}
                                   </Text>
                                   {appt.clinic && (

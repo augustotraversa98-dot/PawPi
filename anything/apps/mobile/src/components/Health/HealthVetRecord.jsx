@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
 import { getDisplayAge } from "@/utils/petAge";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
@@ -450,20 +451,6 @@ export default function HealthVetRecord() {
     </Card>
   );
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   if (summaryLoading) {
     return (
       <View
@@ -742,13 +729,13 @@ export default function HealthVetRecord() {
                       {
                         label: "Birthday",
                         value: medicalProfileData?.pet?.birthday
-                          ? formatDate(medicalProfileData.pet.birthday)
+                          ? formatDisplayDate(medicalProfileData.pet.birthday)
                           : null,
                       },
                       {
                         label: "Adoption Date",
                         value: medicalProfileData?.pet?.adoption_date
-                          ? formatDate(medicalProfileData.pet.adoption_date)
+                          ? formatDisplayDate(medicalProfileData.pet.adoption_date)
                           : null,
                       },
                       {
@@ -817,7 +804,7 @@ export default function HealthVetRecord() {
                           ? `${medicalProfileData.medicalProfile.spayed_neutered_status}${
                               medicalProfileData.medicalProfile
                                 .spayed_neutered_date
-                                ? ` (${formatDate(medicalProfileData.medicalProfile.spayed_neutered_date)})`
+                                ? ` (${formatDisplayDate(medicalProfileData.medicalProfile.spayed_neutered_date)})`
                                 : ""
                             }`
                           : null,
@@ -1012,7 +999,7 @@ export default function HealthVetRecord() {
                       marginBottom: 3,
                     }}
                   >
-                    {formatDate(appt.appointment_date)} at{" "}
+                    {formatDisplayDate(appt.appointment_date)} at{" "}
                     {appt.appointment_time}
                   </Text>
                   {appt.clinic && (
@@ -1125,7 +1112,7 @@ export default function HealthVetRecord() {
                         color: COLORS.mutedBrown,
                       }}
                     >
-                      Diagnosed: {formatDate(allergy.diagnosed_date)}
+                      Diagnosed: {formatDisplayDate(allergy.diagnosed_date)}
                     </Text>
                   )}
                 </View>
@@ -1212,7 +1199,7 @@ export default function HealthVetRecord() {
                             color: COLORS.mutedBrown,
                           }}
                         >
-                          Diagnosed: {formatDate(condition.diagnosed_date)}
+                          Diagnosed: {formatDisplayDate(condition.diagnosed_date)}
                         </Text>
                       )}
                     </View>
@@ -1329,7 +1316,7 @@ export default function HealthVetRecord() {
                     }}
                   >
                     {vaccine.date_given
-                      ? formatDate(vaccine.date_given)
+                      ? formatDisplayDate(vaccine.date_given)
                       : "Date not recorded"}
                   </Text>
                   {vaccine.expires_on && (
@@ -1340,7 +1327,7 @@ export default function HealthVetRecord() {
                         marginBottom: vaccine.lot ? 4 : 0,
                       }}
                     >
-                      Expires {formatDate(vaccine.expires_on)}
+                      Expires {formatDisplayDate(vaccine.expires_on)}
                     </Text>
                   )}
                   {vaccine.lot && (
@@ -1420,7 +1407,7 @@ export default function HealthVetRecord() {
                       marginBottom: 4,
                     }}
                   >
-                    {formatDate(surgery.surgery_date)}
+                    {formatDisplayDate(surgery.surgery_date)}
                   </Text>
                   {surgery.surgeon && surgery.clinic && (
                     <Text
@@ -1484,7 +1471,7 @@ export default function HealthVetRecord() {
                       marginBottom: 4,
                     }}
                   >
-                    {formatDate(lab.test_date)}
+                    {formatDisplayDate(lab.test_date)}
                   </Text>
                   {lab.results && (
                     <Text
@@ -1599,7 +1586,7 @@ export default function HealthVetRecord() {
                             color: COLORS.mutedBrown,
                           }}
                         >
-                          {formatDate(doc.document_date)}
+                          {formatDisplayDate(doc.document_date)}
                         </Text>
                       )}
                       <View
@@ -1697,7 +1684,7 @@ export default function HealthVetRecord() {
                   GENERAL SUMMARY
                 </Text>
                 <Text style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 4, fontWeight: "600" }}>
-                  {`${historyNotes.length} ${historyNotes.length === 1 ? "entry" : "entries"} · last updated ${formatDate(historyNotes[0].note_date)}${historyNotes[0].vet_name ? ` by ${historyNotes[0].vet_name}` : ""}`}
+                  {`${historyNotes.length} ${historyNotes.length === 1 ? "entry" : "entries"} · last updated ${formatDisplayDate(historyNotes[0].note_date)}${historyNotes[0].vet_name ? ` by ${historyNotes[0].vet_name}` : ""}`}
                 </Text>
               </View>
             )}
@@ -1770,7 +1757,7 @@ export default function HealthVetRecord() {
                           color: COLORS.mutedBrown,
                         }}
                       >
-                        {formatDate(note.note_date)}
+                        {formatDisplayDate(note.note_date)}
                       </Text>
                       <TouchableOpacity
                         testID="delete-vet-note"
@@ -1997,7 +1984,7 @@ export default function HealthVetRecord() {
                 {[
                   {
                     label: "Date",
-                    value: formatDate(selectedSurgery.surgery_date),
+                    value: formatDisplayDate(selectedSurgery.surgery_date),
                   },
                   { label: "Surgeon", value: selectedSurgery.surgeon },
                   { label: "Clinic", value: selectedSurgery.clinic },
@@ -2135,7 +2122,7 @@ export default function HealthVetRecord() {
                 </View>
 
                 {[
-                  { label: "Date", value: formatDate(selectedLab.test_date) },
+                  { label: "Date", value: formatDisplayDate(selectedLab.test_date) },
                   { label: "Results", value: selectedLab.results },
                   { label: "Ordered By", value: selectedLab.ordered_by },
                   { label: "Notes", value: selectedLab.notes },
