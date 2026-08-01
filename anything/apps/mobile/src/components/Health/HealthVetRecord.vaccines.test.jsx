@@ -13,14 +13,11 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import HealthVetRecord from "./HealthVetRecord";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 
-// Mirror the screen's formatDate so date assertions stay timezone-stable.
-const fmt = (d) =>
-  new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+// The screen formats date_given/expires_on via the shared canonicalDateTime util (date-only
+// columns — see canonicalDateTime.test.js for its own coverage).
+const fmt = (d) => formatDisplayDate(d);
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),

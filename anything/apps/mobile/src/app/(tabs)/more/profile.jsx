@@ -21,6 +21,7 @@ import {
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useGroomSessions } from "@/hooks/useGroomSessions";
 import { getDisplayAge } from "@/utils/petAge";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import {
   COLORS,
@@ -55,21 +56,6 @@ export default function ProfileScreen() {
   const formatWeight = (weight, weightUnit) => {
     if (!weight) return null;
     return `${weight} ${weightUnit || "lbs"}`;
-  };
-
-  // Helper to format date
-  const formatDate = (dateString) => {
-    if (!dateString) return null;
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch (error) {
-      return dateString;
-    }
   };
 
   // Helper to format gender
@@ -143,8 +129,8 @@ export default function ProfileScreen() {
   const petAge = getDisplayAge(currentPet);
   const petGender = formatGender(currentPet?.gender);
   const petWeight = formatWeight(currentPet?.weight, currentPet?.weight_unit);
-  const petBirthday = formatDate(currentPet?.birthday);
-  const petAdoptionDate = formatDate(currentPet?.adoption_date);
+  const petBirthday = formatDisplayDate(currentPet?.birthday) || null;
+  const petAdoptionDate = formatDisplayDate(currentPet?.adoption_date) || null;
   const petDate = petBirthday || petAdoptionDate;
   const petNotes = currentPet?.notes;
   const petAvatar = currentPet?.avatar_url;

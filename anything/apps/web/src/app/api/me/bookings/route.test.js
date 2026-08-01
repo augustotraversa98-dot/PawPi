@@ -15,8 +15,9 @@ vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
 vi.mock('@/app/api/utils/currentUser', () => ({ resolveUserId: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
-const req = () => new Request('http://localhost/api/me/bookings');
+const req = (qs = '') => new Request(`http://localhost/api/me/bookings${qs}`);
 const allQueryTexts = () => sql.mock.calls.map((c) => (c[0] ?? []).join(' '));
+const allBoundValues = () => sql.mock.calls.flatMap((c) => c.slice(1));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -67,5 +68,45 @@ describe('GET /api/me/bookings', () => {
     sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const res = await GET(req());
     expect(await res.json()).toEqual({ upcoming: [], past: [] });
+  });
+
+  // The DB session runs in UTC (confirmed live via `SHOW timezone`), so a bare `now()::date`
+  // boundary is wrong for a negative-offset caller (e.g. Buenos Aires, UTC-3) for ~3 hours a
+  // day. The client may pass its own local calendar date as `?today=`.
+  describe('the today= boundary override', () => {
+    it('uses the caller-supplied local date as the boundary, not now()::date', async () => {
+      auth.mockResolvedValue(SESSION);
+      sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      await GET(req('?today=2026-07-31'));
+
+      for (const text of allQueryTexts()) {
+        expect(text).toContain('COALESCE(');
+        expect(text).toContain('::date, now()::date)');
+      }
+      expect(allBoundValues()).toContain('2026-07-31');
+    });
+
+    it('falls back to now()::date when today= is absent (unchanged prior behavior)', async () => {
+      auth.mockResolvedValue(SESSION);
+      sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      await GET(req());
+
+      expect(allBoundValues()).toContain(null);
+    });
+
+    it.each(['not-a-date', '2026-13-40', '2026/07/31', ''])(
+      'falls back to now()::date for an invalid today=%s (never lets an unvalidated value reach the query)',
+      async (bad) => {
+        auth.mockResolvedValue(SESSION);
+        sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+        await GET(req(`?today=${encodeURIComponent(bad)}`));
+
+        expect(allBoundValues()).toContain(null);
+        expect(allBoundValues()).not.toContain(bad);
+      },
+    );
   });
 });

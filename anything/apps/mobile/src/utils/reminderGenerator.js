@@ -1,5 +1,6 @@
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { REMINDER_STATUS } from "@/data/remindersData";
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
 
 // A soft-deleted routine must generate NO reminders — neither forward nor overdue —
 // independent of its is_active flag (delete also flips is_active off, but pausing
@@ -1499,12 +1500,7 @@ function getMedicalCarePriority(careType) {
 }
 
 function formatShortDate(dateStr) {
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  } catch {
-    return dateStr;
-  }
+  return formatDisplayDate(dateStr) || dateStr;
 }
 
 // =========================================================================

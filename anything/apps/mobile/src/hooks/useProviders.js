@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toCanonicalDate } from "@/utils/canonicalDateTime";
 
 // Owner-facing provider discovery + booking (docs/provider-design.md §4 items 5–6).
 // These wrap the public/owner routes shipped in T5/T6:
@@ -32,7 +33,12 @@ export function useMyBookings() {
   return useQuery({
     queryKey: ["my-bookings", "owner"],
     queryFn: async () => {
-      const response = await fetch(`/api/me/bookings`);
+      // The upcoming/past split happens server-side against this DATE, so it must be the
+      // device's own local calendar day (see route.js) — not left for the server to guess.
+      const today = toCanonicalDate(new Date());
+      const response = await fetch(
+        `/api/me/bookings?today=${encodeURIComponent(today)}`,
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch bookings");
       }

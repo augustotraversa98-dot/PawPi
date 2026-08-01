@@ -3,6 +3,8 @@
  * Routines are the source of truth for generating reminders
  */
 
+import { formatDisplayDate } from "@/utils/canonicalDateTime";
+
 export const ROUTINE_TYPES = {
   FEEDING: "feeding",
   WALK: "walk",
@@ -584,21 +586,6 @@ export function getScheduleSummary(routine) {
     if (activeAppointments.length === 0)
       return "No active vet appointment reminders";
 
-    // Helper to format date
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "Date TBD";
-      try {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
-      } catch {
-        return dateStr;
-      }
-    };
-
     // Helper to format time
     const formatTime = (time) => {
       if (!time) return "";
@@ -612,7 +599,7 @@ export function getScheduleSummary(routine) {
     // Build summary for each appointment
     const summaries = activeAppointments.map((appt) => {
       const title = appt.title || "Vet Appointment";
-      const dateStr = formatDate(appt.date);
+      const dateStr = formatDisplayDate(appt.date) || "Date TBD";
       const timeStr = formatTime(appt.time);
       return `${title} • ${dateStr} at ${timeStr}`;
     });
@@ -680,11 +667,7 @@ export function getScheduleSummary(routine) {
 
   // End date
   if (routine.endDate) {
-    const endDate = new Date(routine.endDate);
-    scheduleText += ` until ${endDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    })}`;
+    scheduleText += ` until ${formatDisplayDate(routine.endDate)}`;
   }
 
   return scheduleText;
