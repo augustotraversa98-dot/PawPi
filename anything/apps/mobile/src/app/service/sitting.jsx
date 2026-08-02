@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Heart,
@@ -38,6 +39,9 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // Pet Sitting discovery + visit updates (ticket 2.9) — browse PUBLISHED sitter providers
 // (real data, no mocks) and manage the active pet's sitting: book a drop-in visit /
@@ -64,6 +68,10 @@ export default function SittingScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("sitter");
+  const { t } = useTranslation();
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   const { data: visits } = useSittingVisits(petId);
   const activeVisits = (visits ?? []).filter((v) => v.status !== "cancelled");
@@ -131,6 +139,15 @@ export default function SittingScreen() {
           SITTERS NEAR YOU
         </SectionLabel>
 
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+          />
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />
@@ -140,13 +157,18 @@ export default function SittingScreen() {
             title="Couldn't load sitters"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No sitters available yet"
             body="Check back soon — pet sitters are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}

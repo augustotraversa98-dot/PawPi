@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Stethoscope,
@@ -41,10 +42,13 @@ import {
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import { formatMoney } from "@/utils/money";
 
-function formatPrice(cents) {
-  if (cents == null) return null;
-  return `$${(cents / 100).toFixed(2)}`;
+// Shared formatter (src/utils/money.js) so a price never renders as one currency
+// here and another in the Shop. Services carry no currency column → default ARS;
+// products pass their own currency.
+function formatPrice(cents, currency) {
+  return formatMoney(cents, currency);
 }
 
 // A published provider's public profile + a "Book appointment" CTA. Receives the
@@ -53,6 +57,7 @@ function formatPrice(cents) {
 export default function ProviderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { slug, capability } = useLocalSearchParams();
   const slugStr = Array.isArray(slug) ? slug[0] : slug;
   // Optional capability the owner is booking FOR (ticket 2.6: grooming passes
@@ -75,6 +80,15 @@ export default function ProviderScreen() {
   // Reviews for this provider (ticket 2.2). Keyed by id once the profile resolves.
   const { data: reviews } = useProviderReviews(provider?.id);
   const reviewList = reviews ?? [];
+
+  // "from" price for the Book CTA so cost is visible without scrolling to the
+  // Services section (conversion). Cheapest priced service; null → no teaser.
+  const servicePrices = services
+    .map((s) => s.price_cents)
+    .filter((c) => c != null);
+  const fromPrice = servicePrices.length ? Math.min(...servicePrices) : null;
+  const avgRating = provider?.avg_rating;
+  const reviewCount = provider?.review_count ?? 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -391,11 +405,11 @@ export default function ProviderScreen() {
                     >
                       {p.name}
                     </Text>
-                    {formatPrice(p.price_cents) ? (
+                    {formatPrice(p.price_cents, p.currency) ? (
                       <Text
                         style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral }]}
                       >
-                        {formatPrice(p.price_cents)}
+                        {formatPrice(p.price_cents, p.currency)}
                       </Text>
                     ) : null}
                   </PressableScale>
@@ -490,80 +504,125 @@ export default function ProviderScreen() {
         </RefreshableScrollView>
       )}
 
-      {/* Primary CTAs: Message (start/reuse a thread → open conversation) + Book. */}
+      {/* Primary CTAs: Message (secondary) + Book (primary). A trust strip pins the
+          rating + "from" price so social proof and cost stay visible without
+          scrolling back up (conversion quick wins). */}
       {provider && (
         <View
           style={{
-            padding: SPACING.lg,
+            paddingTop: SPACING.md,
+            paddingHorizontal: SPACING.lg,
             paddingBottom: insets.bottom + SPACING.lg,
             borderTopWidth: 1,
             borderTopColor: COLORS.peach,
             backgroundColor: COLORS.card,
-            flexDirection: "row",
-            gap: SPACING.md,
           }}
         >
-          <PressableScale
-            onPress={() => {
-              if (startingThread) return;
-              startThread(
-                { providerId: provider.id },
-                {
-                  onSuccess: (res) => {
-                    const thread = res?.thread;
-                    if (!thread) return;
-                    router.push({
-                      pathname: "/provider-chat",
-                      params: {
-                        threadId: String(thread.id),
-                        providerName: provider.name || "Provider",
-                        ownerUserId: String(thread.owner_user_id),
-                      },
-                    });
+          {(avgRating != null || fromPrice != null) && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: SPACING.md,
+              }}
+            >
+              {avgRating != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Star size={15} color={COLORS.coral} fill={COLORS.coral} />
+                  <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown }]}>
+                    {Number(avgRating).toFixed(1)}
+                  </Text>
+                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+                    {reviewCount === 1
+                      ? t("providers.reviewsOne")
+                      : t("providers.reviewsOther", { count: reviewCount })}
+                  </Text>
+                </View>
+              ) : (
+                <View />
+              )}
+              {fromPrice != null ? (
+                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
+                  {t("providers.fromPrice", { price: formatPrice(fromPrice) })}
+                </Text>
+              ) : null}
+            </View>
+          )}
+
+          <View style={{ flexDirection: "row", gap: SPACING.md }}>
+            <PressableScale
+              onPress={() => {
+                if (startingThread) return;
+                startThread(
+                  { providerId: provider.id },
+                  {
+                    onSuccess: (res) => {
+                      const thread = res?.thread;
+                      if (!thread) return;
+                      router.push({
+                        pathname: "/provider-chat",
+                        params: {
+                          threadId: String(thread.id),
+                          providerName: provider.name || "Provider",
+                          ownerUserId: String(thread.owner_user_id),
+                        },
+                      });
+                    },
                   },
-                },
-              );
-            }}
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.sand,
-              borderRadius: RADIUS.control,
-              padding: SPACING.lg,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: SPACING.sm,
-              borderWidth: 1,
-              borderColor: COLORS.peach,
-            }}
-          >
-            {startingThread ? (
-              <ActivityIndicator size="small" color={COLORS.coral} />
-            ) : (
-              <MessageSquare size={18} color={COLORS.coral} />
-            )}
-            <Text style={[TYPE.headline, { color: COLORS.coral, fontWeight: "800" }]}>
-              Message
-            </Text>
-          </PressableScale>
-          <PressableScale
-            onPress={() => setShowBooking(true)}
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.coral,
-              borderRadius: RADIUS.control,
-              padding: SPACING.lg,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: SPACING.sm,
-            }}
-          >
-            <Calendar size={18} color="#FFF" />
-            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-              Book
-            </Text>
-          </PressableScale>
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t("providers.messageA11y")}
+              style={{
+                flex: 1,
+                backgroundColor: COLORS.sand,
+                borderRadius: RADIUS.control,
+                padding: SPACING.lg,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: SPACING.sm,
+                borderWidth: 1,
+                borderColor: COLORS.peach,
+              }}
+            >
+              {startingThread ? (
+                <ActivityIndicator size="small" color={COLORS.coral} />
+              ) : (
+                <MessageSquare size={18} color={COLORS.coral} />
+              )}
+              <Text style={[TYPE.headline, { color: COLORS.coral, fontWeight: "800" }]}>
+                {t("providers.message")}
+              </Text>
+            </PressableScale>
+            <PressableScale
+              onPress={() => setShowBooking(true)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                fromPrice != null
+                  ? t("providers.bookFromA11y", { price: formatPrice(fromPrice) })
+                  : t("providers.bookA11y")
+              }
+              style={{
+                flex: 2,
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.control,
+                padding: SPACING.lg,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: SPACING.sm,
+              }}
+            >
+              <Calendar size={18} color="#FFF" />
+              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+                {fromPrice != null
+                  ? t("providers.bookFromPrice", { price: formatPrice(fromPrice) })
+                  : t("providers.book")}
+              </Text>
+            </PressableScale>
+          </View>
         </View>
       )}
 

@@ -53,7 +53,12 @@ async function POST(request, { params }) {
     }
     const ownerUserId = petRows[0].owner_user_id;
 
-    // vet_name defaults to the acting provider/staff display name.
+    // vet_name defaults to the acting provider/staff display name. It must NEVER
+    // end up null: a vet note with no attribution renders on the owner's record as
+    // "You" (indistinguishable from an owner-authored note). So the chain falls
+    // through to the acting user's email and finally a neutral "Veterinario" — the
+    // note always names who wrote it. (No schema change; vet_notes still has only
+    // the denormalized vet_name text — a structured author FK stays a proposal.)
     let resolvedVetName = vet_name ?? null;
     if (!resolvedVetName) {
       const nameRows = await sql`
@@ -64,7 +69,11 @@ async function POST(request, { params }) {
       `;
       const n = nameRows[0] ?? {};
       resolvedVetName =
-        n.staff_name || n.staff_username || n.provider_name || null;
+        n.staff_name ||
+        n.staff_username ||
+        n.provider_name ||
+        session.user.email ||
+        "Veterinario";
     }
 
     // note_date defaults to today (canonical YYYY-MM-DD).

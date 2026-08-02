@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
@@ -59,6 +60,7 @@ import { Card, PressableScale } from "@/components/ui";
 export default function HealthVetRecord() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
 
@@ -354,7 +356,23 @@ export default function HealthVetRecord() {
 
   const handleRecordTypeSelect = (type) => {
     setShowAddRecordPicker(false);
-    Alert.alert("Coming Soon", `The ${type} form will be added next.`);
+    // The two record types with a real add flow route straight to it (and expand
+    // the section so the new entry is visible). The rest aren't built yet — give
+    // honest "coming soon" feedback instead of a dead primary CTA.
+    if (type === "Vet Note") {
+      setExpandedSections((prev) => ({ ...prev, vetNotes: true }));
+      setAddNoteVisible(true);
+      return;
+    }
+    if (type === "Document") {
+      setExpandedSections((prev) => ({ ...prev, documents: true }));
+      setAddDocVisible(true);
+      return;
+    }
+    Alert.alert(
+      t("health.recordSoonTitle", { type }),
+      t("health.recordSoonBody", { type }),
+    );
   };
 
   const SectionHeader = ({ title, icon: Icon, section, count }) => (
@@ -1867,16 +1885,16 @@ export default function HealthVetRecord() {
               showsVerticalScrollIndicator={false}
             >
               {[
-                { type: "Vet Visit", icon: Stethoscope },
-                { type: "Vaccination", icon: Syringe },
-                { type: "Medication", icon: Pill },
-                { type: "Allergy", icon: AlertTriangle },
-                { type: "Known Condition", icon: Heart },
-                { type: "Surgery", icon: Scissors },
-                { type: "Lab Result", icon: FlaskConical },
-                { type: "Document", icon: FileText },
                 { type: "Vet Note", icon: Edit },
-                { type: "Other", icon: Plus },
+                { type: "Document", icon: FileText },
+                { type: "Vet Visit", icon: Stethoscope, comingSoon: true },
+                { type: "Vaccination", icon: Syringe, comingSoon: true },
+                { type: "Medication", icon: Pill, comingSoon: true },
+                { type: "Allergy", icon: AlertTriangle, comingSoon: true },
+                { type: "Known Condition", icon: Heart, comingSoon: true },
+                { type: "Surgery", icon: Scissors, comingSoon: true },
+                { type: "Lab Result", icon: FlaskConical, comingSoon: true },
+                { type: "Other", icon: Plus, comingSoon: true },
               ].map((record, idx) => {
                 const Icon = record.icon;
                 return (
@@ -1912,10 +1930,33 @@ export default function HealthVetRecord() {
                         fontSize: 15,
                         fontWeight: "600",
                         color: COLORS.warmBrown,
+                        flex: 1,
                       }}
                     >
                       {record.type}
                     </Text>
+                    {record.comingSoon && (
+                      <View
+                        style={{
+                          backgroundColor: MATERIALS.surfaceSunken,
+                          borderRadius: 999,
+                          paddingHorizontal: 10,
+                          paddingVertical: 3,
+                          borderWidth: 1,
+                          borderColor: MATERIALS.hairline,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: COLORS.mutedBrown,
+                          }}
+                        >
+                          {t("health.trackerSoon")}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}

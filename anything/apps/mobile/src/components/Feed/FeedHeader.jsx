@@ -7,6 +7,7 @@ import { COLORS, TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/them
 import { GlassSurface, PressableScale } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 
 // A small glassy icon button used for the header actions (search/messages/bell).
 function HeaderIconButton({ onPress, children }) {
@@ -31,9 +32,16 @@ function HeaderIconButton({ onPress, children }) {
 export function FeedHeader() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const unreadNotificationCount = useSocialPetStore(
+  const unreadReminderCount = useSocialPetStore(
     (state) => state.unreadNotificationCount,
   );
+  // Pending care-access requests also live in the bell (see notifications.jsx),
+  // so they count toward the badge — an access request should never go unseen.
+  const { data: careGrants } = useAllCareAccessGrants();
+  const pendingAccessCount = (careGrants || []).filter(
+    (g) => g.status === "pending",
+  ).length;
+  const unreadNotificationCount = unreadReminderCount + pendingAccessCount;
 
   return (
     <GlassSurface

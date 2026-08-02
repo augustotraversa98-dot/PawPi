@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, Alert } from "react-native";
 import {
   Activity,
   Droplet,
@@ -24,6 +24,7 @@ import WalkActivityModal from "./WalkActivity/WalkActivityModal";
 import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   COLORS,
@@ -98,6 +99,7 @@ const TRACKERS = [
     label: "Weight",
     description: "Track weight over time",
     color: "#9575CD",
+    action: "weight",
   },
   {
     icon: Pill,
@@ -111,30 +113,35 @@ const TRACKERS = [
     label: "Symptoms & Behavior",
     description: "Changes, observations, notes",
     color: "#FF8A65",
+    comingSoon: true,
   },
   {
     icon: Heart,
     label: "Vital Signs",
     description: "Temperature, heart rate, breathing",
     color: "#E57373",
+    comingSoon: true,
   },
   {
     icon: Stethoscope,
     label: "Vet Visits",
     description: "Appointments, exams, procedures",
     color: COLORS.terracotta,
+    comingSoon: true,
   },
   {
     icon: Syringe,
     label: "Vaccinations",
     description: "Vaccine history, upcoming shots",
     color: "#4DB6AC",
+    comingSoon: true,
   },
 ];
 
 export default function HealthTrack() {
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
-  const petName = currentPet?.name || "your pet";
+  const petName = currentPet?.name || t("common.yourPet");
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
   const [foodWaterModalVisible, setFoodWaterModalVisible] = useState(false);
   const [foodWaterModalType, setFoodWaterModalType] = useState("food");
@@ -174,6 +181,12 @@ export default function HealthTrack() {
       setWalkActivityModalVisible(true);
     } else if (tracker.action === "weight") {
       setWeightModalVisible(true);
+    } else if (tracker.comingSoon) {
+      // Honest feedback instead of a silent dead tap for trackers not yet built.
+      Alert.alert(
+        t("health.trackerSoonTitle", { label: tracker.label }),
+        t("health.trackerSoonBody", { label: tracker.label, pet: petName }),
+      );
     }
   };
 
@@ -224,9 +237,34 @@ export default function HealthTrack() {
                   <Icon size={24} color={tracker.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 3 }]}>
-                    {tracker.label}
-                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: SPACING.xs,
+                      marginBottom: 3,
+                    }}
+                  >
+                    <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+                      {tracker.label}
+                    </Text>
+                    {tracker.comingSoon && (
+                      <View
+                        style={{
+                          backgroundColor: MATERIALS.surfaceSunken,
+                          borderRadius: RADIUS.chip,
+                          paddingHorizontal: SPACING.sm,
+                          paddingVertical: 2,
+                          borderWidth: 1,
+                          borderColor: MATERIALS.hairline,
+                        }}
+                      >
+                        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
+                          {t("health.trackerSoon")}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
                     {tracker.description}
                   </Text>

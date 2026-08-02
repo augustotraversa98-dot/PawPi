@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Stethoscope,
@@ -20,14 +21,21 @@ import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // Veterinary discovery — browse PUBLISHED vet providers (real data, no mocks).
 // Tapping a card opens the provider's public profile (provider.jsx) by slug.
 export default function VetScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: providers, isLoading, isError, refetch } =
     useDiscoverProviders("vet");
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   const openProvider = (slug) => {
     router.push({ pathname: "/service/provider", params: { slug } });
@@ -84,14 +92,14 @@ export default function VetScreen() {
         refetch={refetch}
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
       >
-        <Text
-          style={[
-            TYPE.subhead,
-            { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.md + 2, letterSpacing: 0.6 },
-          ]}
-        >
-          VETS NEAR YOU
-        </Text>
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+          />
+        ) : null}
 
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
@@ -102,13 +110,18 @@ export default function VetScreen() {
             title="Couldn't load vets"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No vets available yet"
             body="Check back soon — vet clinics are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}

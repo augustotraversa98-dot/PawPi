@@ -20,7 +20,8 @@
     "back": "Back",
     "close": "Close",
     "share": "Share",
-    "send": "Send"
+    "send": "Send",
+    "yourPet": "your pet"
   },
   "settings": {
     "title": "Settings",
@@ -40,7 +41,12 @@
     "today": "Today",
     "track": "Track",
     "insights": "Insights",
-    "vetRecord": "Vet Record"
+    "vetRecord": "Vet Record",
+    "trackerSoon": "Soon",
+    "trackerSoonTitle": "{{label}} — coming soon",
+    "trackerSoonBody": "{{label}} tracking for {{pet}} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.",
+    "recordSoonTitle": "{{type}} — coming soon",
+    "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document."
   },
   "services": {
     "title": "Services",
@@ -58,7 +64,11 @@
   "notifications": {
     "title": "Notifications",
     "markAllRead": "Mark all read",
-    "empty": "No new notifications yet"
+    "empty": "No new notifications yet",
+    "filterRequests": "Requests",
+    "accessProviderFallback": "A care provider",
+    "accessRequestBody": "wants access to {{pet}}'s records",
+    "vetNoteBody": "added a note to {{pet}}"
   },
   "map": {
     "setOnMap": "Set location on map",
@@ -194,5 +204,22 @@
     "permissionBody": "Calendar access is needed to add this. It's optional — your booking is still saved.",
     "couldNotAdd": "Couldn't add to calendar, but it's still saved.",
     "rsvpFirst": "RSVP \"going\" to add this event to your calendar"
+  },
+  "providers": {
+    "searchPlaceholder": "Search by name",
+    "sortSuggested": "Suggested",
+    "sortTopRated": "Top rated",
+    "sortMostReviewed": "Most reviewed",
+    "clearSearch": "Clear search",
+    "noMatchBody": "No results for \"{{query}}\". Try a different name.",
+    "fromPrice": "from {{price}}",
+    "book": "Book",
+    "bookFromPrice": "Book · from {{price}}",
+    "message": "Message",
+    "messageA11y": "Message provider",
+    "bookA11y": "Book appointment",
+    "bookFromA11y": "Book, from {{price}}",
+    "reviewsOne": "(1 review)",
+    "reviewsOther": "({{count}} reviews)"
   }
 }

@@ -13,6 +13,9 @@ let mockVote;
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
 }));
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -62,10 +65,22 @@ test("renders real threads with author + score", () => {
   expect(getByText(/sarah/)).toBeTruthy();
 });
 
-test("empty thread list → empty state", () => {
-  mockThreads = { data: [], isLoading: false, refetch: jest.fn() };
-  const { getByText } = render(<CommunityScreen />);
+test("empty thread list → empty state (not an error)", () => {
+  mockThreads = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
+  const { getByText, queryByText } = render(<CommunityScreen />);
   expect(getByText("No discussions here yet.")).toBeTruthy();
+  expect(queryByText("Try again")).toBeNull();
+});
+
+test("a fetch failure shows an error + Retry, NOT the empty state", () => {
+  const refetch = jest.fn();
+  mockThreads = { data: undefined, isLoading: false, isError: true, refetch };
+  const { getByText, queryByText } = render(<CommunityScreen />);
+  // Distinct from "no discussions": a real error with a working Retry.
+  expect(queryByText("No discussions here yet.")).toBeNull();
+  expect(getByText("Something went wrong. Please try again.")).toBeTruthy();
+  fireEvent.press(getByText("Try again"));
+  expect(refetch).toHaveBeenCalled();
 });
 
 test("tapping a thread upvote fires the vote mutation", () => {
