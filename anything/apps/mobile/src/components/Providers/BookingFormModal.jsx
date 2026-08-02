@@ -1,12 +1,19 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Linking,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { useCurrentPet } from "@/hooks/usePetProfile";
-import { useBookProvider } from "@/hooks/useProviders";
+import { useBookProvider, useBookingCheckout } from "@/hooks/useProviders";
 import {
   addBookingToCalendar,
   addTelehealthToCalendar,
@@ -90,6 +97,7 @@ export default function BookingFormModal({
 }) {
   const { data: currentPet } = useCurrentPet();
   const book = useBookProvider();
+  const checkout = useBookingCheckout();
   const { t } = useTranslation();
 
   // The capability this booking is for: explicit prop, else the provider's primary
@@ -105,6 +113,19 @@ export default function BookingFormModal({
   const [notes, setNotes] = useState("");
   const [repeat, setRepeat] = useState(false); // recurring cycle (2.6 grooming)
   const [addCal, setAddCal] = useState(false); // add to phone calendar (2.80)
+
+  // Pay-at-request policy of the chosen service (migration 0070): drives both the heads-up in the
+  // form and the checkout in handleConfirm. A 'none' policy — or a deposit/full policy with no
+  // amount set — charges nothing (the booking stays free, exactly as before).
+  const chosenService = services.find((s) => s.id === serviceId);
+  const paymentPolicy = chosenService?.payment_policy ?? "none";
+  const chargeCents =
+    paymentPolicy === "full"
+      ? Number(chosenService?.price_cents) || 0
+      : paymentPolicy === "deposit"
+        ? Number(chosenService?.deposit_cents) || 0
+        : 0;
+  const requiresPayment = paymentPolicy !== "none" && chargeCents > 0;
 
   const resetAndClose = () => {
     setServiceId(null);
@@ -157,6 +178,17 @@ export default function BookingFormModal({
     }
 
     try {
+      let orderId;
+      let checkoutUrl;
+      if (requiresPayment) {
+        const checkoutRes = await checkout.mutateAsync({
+          provider_id: provider.id,
+          amount_cents: chargeCents,
+        });
+        orderId = checkoutRes.order?.id;
+        checkoutUrl = checkoutRes.checkoutUrl || checkoutRes.deeplink;
+      }
+
       await book.mutateAsync({
         providerId: provider.id,
         petId: currentPet.id,
@@ -175,12 +207,22 @@ export default function BookingFormModal({
           repeat && copy.recurrence ? copy.recurrence.rule : undefined,
         // Device calendar event id (2.80) — persisted on the booking row when added.
         calendar_event_id: calendarEventId,
+        // Pay-at-request: links the pending payment order to the booking (0070).
+        order_id: orderId,
       });
       resetAndClose();
-      Alert.alert(
-        "Request sent!",
-        `${provider.name} will confirm your ${copy.noun} soon.`,
-      );
+      if (requiresPayment && checkoutUrl) {
+        Alert.alert(
+          "Almost done — complete payment",
+          `Opening MercadoPago to pay for your ${copy.noun}. ${provider.name} will confirm once your payment goes through.`,
+        );
+        Linking.openURL(checkoutUrl).catch(() => {});
+      } else {
+        Alert.alert(
+          "Request sent!",
+          `${provider.name} will confirm your ${copy.noun} soon.`,
+        );
+      }
     } catch (err) {
       // Surface backend 400/403/404 messages instead of swallowing them.
       Alert.alert("Couldn't book", err?.message || "Please try again.");
@@ -246,6 +288,27 @@ export default function BookingFormModal({
           />
         ))}
       </View>
+
+      {requiresPayment && (
+        <View
+          testID="booking-payment-note"
+          style={{
+            backgroundColor: COLORS.sand,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 18,
+            borderWidth: 1,
+            borderColor: COLORS.peach,
+          }}
+        >
+          <Text style={{ color: COLORS.mutedBrown, fontSize: 13 }}>
+            {paymentPolicy === "deposit" ? "A deposit of " : "Payment of "}
+            {formatPrice(chargeCents)} is required to request this {copy.noun}.
+            You'll be sent to MercadoPago to pay — if it's declined, you're
+            refunded automatically.
+          </Text>
+        </View>
+      )}
 
       {/* Location (optional) */}
       {locations.length > 0 && (

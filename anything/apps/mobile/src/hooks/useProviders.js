@@ -1214,6 +1214,34 @@ export function useToggleAdoptionFavorite() {
   });
 }
 
+// Start a BOOKING payment via the SHARED 2.3 payment layer (POST /api/payments/checkout,
+// kind:'booking'). mutateAsync({ provider_id, amount_cents, source_ref? }) →
+// { order, checkoutUrl, deeplink, ... }. Used by BookingFormModal when the chosen service has a
+// deposit/full payment policy (pay-at-request, migration 0070). Surfaces the backend's 503
+// "payments not configured" verbatim so the UI can tell the customer. Same route the rest of the
+// app uses — no duplicate payment code.
+export function useBookingCheckout() {
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch(`/api/payments/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rail: "mercadopago",
+          currency: "ARS",
+          kind: "booking",
+          ...body,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Couldn't start payment");
+      }
+      return response.json();
+    },
+  });
+}
+
 // Pay an adoption FEE or DONATE to a place via the SHARED 2.3 payment layer (POST
 // /api/payments/checkout). mutateAsync({ provider_id, kind, amount_cents, source_ref }) →
 // { order, checkoutUrl, deeplink, qrContent }. kind is 'adoption_fee' or 'donation'. Surfaces

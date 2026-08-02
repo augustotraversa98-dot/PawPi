@@ -8,16 +8,23 @@
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
 let mockCurrentPet;
 const mockMutateAsync = jest.fn(() => Promise.resolve({ appointment: { id: 1 } }));
+const mockCheckoutMutateAsync = jest.fn(() =>
+  Promise.resolve({ order: { id: 900 }, checkoutUrl: "https://mp/checkout/900" }),
+);
 
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: mockCurrentPet }),
 }));
 jest.mock("@/hooks/useProviders", () => ({
   useBookProvider: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
+  useBookingCheckout: () => ({
+    mutateAsync: mockCheckoutMutateAsync,
+    isPending: false,
+  }),
 }));
 jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 const mockAddBookingToCalendar = jest.fn();
@@ -61,9 +68,13 @@ const LOCATIONS = [{ id: 8, name: "Main St", address: "1 Main" }];
 
 beforeEach(() => {
   mockMutateAsync.mockClear();
+  mockCheckoutMutateAsync
+    .mockClear()
+    .mockResolvedValue({ order: { id: 900 }, checkoutUrl: "https://mp/checkout/900" });
   mockAddBookingToCalendar.mockReset().mockResolvedValue({ success: true, eventId: "evt-1" });
   mockAddTelehealthToCalendar.mockReset().mockResolvedValue({ success: true, eventId: "evt-2" });
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -262,4 +273,93 @@ test("a groomer booking sends recurrence_rule ONLY when the owner opts in", asyn
   expect(mockMutateAsync.mock.calls[0][0].recurrence_rule).toBe(
     "FREQ=WEEKLY;INTERVAL=6",
   );
+});
+
+// ── Booking payments (Phase 3): pay-at-request for a paid service ──────────────
+const PAID_FULL = [
+  { id: 5, name: "Checkup", price_cents: 5000, deposit_cents: 1500, payment_policy: "full", active: true },
+];
+
+test("a 'full' policy service starts checkout, links the order, and opens MercadoPago", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByText, getByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+  );
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-service-5"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
+  // 'full' → the full price is charged.
+  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({
+    provider_id: 3,
+    amount_cents: 5000,
+  });
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  // The booking is linked to the checkout order, and MercadoPago is opened.
+  expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(900);
+  await waitFor(() =>
+    expect(Linking.openURL).toHaveBeenCalledWith("https://mp/checkout/900"),
+  );
+});
+
+test("a 'deposit' policy charges the deposit amount, not the full price", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const services = [
+    { id: 5, name: "Groom", price_cents: 5000, deposit_cents: 1500, payment_policy: "deposit", active: true },
+  ];
+  const { getByText, getByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={services} />,
+  );
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-service-5"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockCheckoutMutateAsync.mock.calls[0][0].amount_cents).toBe(1500);
+  // Let the fire-and-forget redirect settle so it can't leak into the next test.
+  await waitFor(() => expect(Linking.openURL).toHaveBeenCalled());
+});
+
+test("a 'none' policy service books free — no checkout, no order_id, no redirect", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  // SERVICES service 5 has no payment_policy → 'none'.
+  const { getByText, getByTestId } = renderForm();
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-service-5"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockCheckoutMutateAsync).not.toHaveBeenCalled();
+  expect(mockMutateAsync.mock.calls[0][0].order_id).toBeUndefined();
+});
+
+test("if checkout fails (e.g. provider not connected → 503) it does NOT create a free booking", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  mockCheckoutMutateAsync.mockRejectedValueOnce(new Error("payments not configured"));
+  const { getByText, getByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+  );
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-service-5"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync).not.toHaveBeenCalled(); // no booking created
+  expect(Alert.alert).toHaveBeenCalledWith("Couldn't book", "payments not configured");
+});
+
+test("shows a payment heads-up only once a paid service is selected", () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const { getByTestId, queryByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+  );
+  // "General" (no service) selected by default → no note.
+  expect(queryByTestId("booking-payment-note")).toBeNull();
+  fireEvent.press(getByTestId("booking-service-5"));
+  expect(getByTestId("booking-payment-note")).toBeTruthy();
 });
