@@ -26,9 +26,9 @@ The redesign turns Services into a **two-layer marketplace**:
 
 **The only true backend gap for discovery is coordinates:** `/api/providers/discover` returns no `lat`/`lng` and no `capabilities[]`, and takes only a single `?type=`. Coordinates already exist on `provider_locations` (`lat numeric(9,6)`, `lng numeric(9,6)`, `hours_json`) — the discover query just doesn't project them. **Additive only, no destructive migration.**
 
-**Maps ship iOS-first** on Apple Maps (`react-native-maps` `PROVIDER_DEFAULT`, free, no key — already how `MapLocationView` renders). **Android** needs a Google Maps SDK key + billing + a location permission in `app.json` — a later phase; until then the hub **degrades to list-only** on Android. **Pet-friendly places** additionally need `GOOGLE_PLACES_API_KEY` (server-only, currently unset) and degrade to an empty/unconfigured state gracefully.
+**Maps ship iOS-first** on Apple Maps (`react-native-maps` `PROVIDER_DEFAULT`, free, no key — already how `MapLocationView` renders — this is map *tiles*, not a Places data dependency). **Android** needs a Google Maps SDK key + billing + a location permission in `app.json` — a later phase; until then the hub **degrades to list-only** on Android. **Pet-friendly places are deliberately OFF the P1–P4 critical path** and are **not** taken from a paid Google Places dependency — they become a **self-sourced dataset** (our own table, seeded by area / scraping / manual entry; approach TBD, decided later). The hub is fully useful with providers alone; places layer in later.
 
-**Phasing (recommended spine):** P1 backend coords + query params → P2 unified discovery list (search + filters) → P3 iOS map + marker-tap + bottom-sheet/toggle → P4 unified storefront (converge profile + shop, per-type CTA, product detail, cart/checkout) → P5 fold in pet-friendly places → P6 retire the merged screens after parity → **Android map as a later phase.** Each phase is independently reviewable; P1–P3 are shippable without touching the storefront.
+**Phasing (recommended spine):** P1 backend coords + query params → P2 unified discovery list (search + filters) → P3 iOS map + marker-tap + bottom-sheet/toggle → P4 unified storefront (converge profile + shop, per-type CTA, product detail, cart/checkout) → P6 retire the merged screens after parity. **Pet-friendly places (self-sourced) are a later, separate phase — not P1–P4.** **Android map** is also a later phase. Each phase is independently reviewable; P1–P3 are shippable without touching the storefront.
 
 ---
 
@@ -91,7 +91,7 @@ Categories map to **capability sets** (a provider is matched if it holds *any* c
 | **Transport**        | providers             | `transport`                              |
 | **Insurance**        | providers             | `insurance`                              |
 | **Adoption**         | providers             | `adoption`                               |
-| **Pet-friendly places** | Google Places      | park / café / restaurant / hotel / beach / pet_store |
+| **Pet-friendly places** | self-sourced dataset (later; our own table, TBD) | park / café / restaurant / hotel / beach / pet_store |
 
 Notes:
 - The `capabilities[]` and `provider_type` truths come from `providerAuth.js` (`ALLOWED_CAPABILITIES = vet, groomer, walker, daycare, sitter, trainer, shop, adoption, transport, pharmacy, telehealth, insurance`). **`provider_type` is display-only**; all matching is by capability.
@@ -120,7 +120,7 @@ Reuse `PROVIDER_SORTS` (`relevance` / `rating` / `reviews`) from `ProviderListCo
 | **Empty (no data at all)** | "No providers or places yet." (Real: providers table empty + places unconfigured.) No mock fallback. |
 | **No results (filters too narrow)** | "No results for these filters." + a **Clear filters** action. Reuse `providers.noMatchBody`. |
 | **Error**                | "Couldn't load results. Retry." with a retry button; each source (providers/places) fails independently — one failing does not blank the other. |
-| **Places unconfigured**  | If `GOOGLE_PLACES_API_KEY` unset, the Places category shows "Pet-friendly places aren't available yet" (the proxy already returns `{configured:false, places:[]}` — no crash). Providers still show. |
+| **Places not yet sourced** | Until the self-sourced places dataset exists, the Places category shows "Pet-friendly places aren't available yet." Providers still show — places are off the critical path. |
 | **Android (no maps key)** | Map toggle hidden; list-only. Banner optional. |
 
 ---
@@ -136,7 +136,7 @@ Reuse `PROVIDER_SORTS` (`relevance` / `rating` / `reviews`) from `ProviderListCo
 | Holds `shop`/`pharmacy` and has products     | **Shop** (in-store catalog → cart → checkout) | Message |
 | Holds `vet`/`groomer`/`telehealth`/`walker`/`daycare`/`sitter`/`trainer`/`transport` | **Book** (pick service → capability-aware booking) | Message |
 | Holds both shop *and* bookable capabilities  | Show **both** — a "Shop" tab and a "Book" CTA (a "vet shop" is explicitly supported by the capability model) | Message |
-| Pet-friendly place (Google Places result)    | **Directions** + **Save** | — (no cart/booking) |
+| Pet-friendly place (self-sourced result, later) | **Directions** + **Save** | — (no cart/booking) |
 
 Every storefront supports the four invariants from the vision: **search within it**, **learn about it** (about/info), **see what they offer** (catalog or services), and the **type-appropriate primary action**.
 
@@ -164,10 +164,11 @@ Reuses today's `provider.jsx` scaffolding (cover banner, header card with logo/n
 - **Booking picks the service → capability.** The booking gotcha: `POST /api/providers/[id]/book` defaults `capability` to `'vet'` when none is passed. The unified flow must pass the capability of the **service the user selected** (or the category they arrived from). `BookingFormModal` already accepts a `capability` prop; the storefront must supply it (today `provider.jsx` only forwards a `capability` *route param*, and `vet.jsx` navigates **without** one — fine for vet, wrong for grooming). Fix: derive capability from the chosen `provider_services` row (map service → capability) or from the arriving filter category, and pass it into `BookingFormModal`.
 - Telehealth's "video consult" primary action routes into the existing telehealth session flow rather than a physical booking (branch inside the Book action when capability = `telehealth`).
 
-### 2.5 Pet-friendly place storefront (learn about it)
+### 2.5 Pet-friendly place storefront (learn about it) — later phase
 
-- Google-Places result → a **place profile** (not the provider shell). Fetch detail via `GET /api/places/[placeId]` (returns `name, address, lat, lng, rating, user_ratings_total, open_now, price_level, phone, website, google_maps_url, hours` weekday_text).
-- Sections: photos (if available), about/info, **hours / open-now**, **directions** (hand-off to Apple/Google Maps — pattern already in `places.jsx` `openDirections`), **Save** (writes `saved_places` via `POST /api/saved-places`). **No cart, no booking.**
+- A place result (from our **self-sourced** dataset, once it exists) → a **place profile** (not the provider shell). The exact fields come from the future places table (approach TBD), but the profile shape is: name, address, lat/lng, category, hours, and whatever we choose to store.
+- Sections: photos (if available), about/info, **hours / open-now**, **directions** (hand-off to Apple/Google Maps — the `openDirections` pattern in today's `places.jsx` is reusable and is *maps navigation*, not a Places-API data call), **Save**. **No cart, no booking.**
+- **Not in P1–P4.** The current `places.jsx` (Google Places-backed) keeps working untouched until the self-sourced dataset replaces it.
 
 ---
 
@@ -208,14 +209,12 @@ ORDER BY /* distance when lat/lng given, else name */ ;
 - **Dedupe:** one row per provider (chips carry the multi-capability info), so a multi-capability provider appears **once** — unlike today's `?type=` DISTINCT-per-query behaviour.
 - **Providers with no location** return `lat=null` → they appear in the **list** but not on the **map** (and are excluded when a radius filter is active). This is honest and correct.
 
-### 3.2 Places source & unification
+### 3.2 Places source (self-sourced, later — NOT P1–P4)
 
-- **Places stay a separate source** (verified: no `places` table; data is live from **Google Places** via the key-gated proxy `GET /api/places/search?lat&lng&category&radius`; favorites persist in `saved_places` keyed by Google `place_id`). **Do not convert places to provider rows** and do not add a "place" capability.
-- **Unification is federation at the hub, not in the DB.** A new `useDiscover` hook fires **both** requests in parallel:
-  1. `GET /api/providers/discover?…` → providers
-  2. `GET /api/places/search?…` (only when a place category is active or "all") → places
-  and merges into one `ResultCard[]` tagged `source: 'provider' | 'place'`. Sort/filter apply across the merged list. Each source **fails/loads independently**.
-- **Why federation:** zero migration, respects the existing Google proxy + billing model, and keeps the provider booking/commerce spine clean. The place storefront is intentionally lightweight (no cart), which matches "learn about it."
+- **Decision (founder):** do **NOT** take a paid Google Places data dependency. Pet-friendly places become **our own dataset** — a PawPi-owned table, seeded by **area / scraping / manual entry**. The exact sourcing + schema is **TBD and decided later**; it is intentionally left out of the P1–P4 critical path.
+- Today's `places.jsx` is Google Places-backed and keeps working as-is; it is **not** wired into the hub during P1–P4 and will be **replaced** by the self-sourced source when that phase is scheduled.
+- **When it lands**, unification is still done at the hub (a `useDiscover` merge of providers + places into one `ResultCard[]` tagged `source: 'provider' | 'place'`), but the places half reads **our own endpoint/table**, not a Google proxy. Places are **not** provider rows and there is **no** "place" capability.
+- **Why our own data:** no per-request Google billing, full control of coverage/curation, and it keeps the provider booking/commerce spine clean. The place storefront stays lightweight (no cart) = "learn about it."
 
 ### 3.3 `capabilities[]` → chips
 
@@ -320,19 +319,18 @@ Each phase is independently reviewable. Effort is rough (1 = ~day, 5 = ~week+).
 - **Test:** port `shop.*.test`/`provider.*.test` coverage; a grooming booking sends `capability='groomer'`; add-to-cart → checkout still hits `shop-checkout` with catalog-priced items; product detail renders with only real fields.
 - **Ship:** yes — behind the storefront entry; the old `/service/shop` route stays until parity.
 
-### P5 — Fold in pet-friendly places  ·  Effort 2  ·  Risk Low  ·  Shippable alone ✅
-- **Files:** `useDiscover` (add Places source), `ResultCard` place variant, new `PlaceStorefront`, reuse `usePlaces`/`saved-places`.
-- **Do:** Places category in the hub (federated), place pins on the map, "learn about it" storefront (directions/save/hours), Saved view reachable.
-- **Risk:** `GOOGLE_PLACES_API_KEY` currently **unset** → Places degrade to unconfigured/empty (proxy already returns `{configured:false}`); billing is a Google-side dependency.
-- **Test:** unconfigured-key path shows the graceful empty state and does **not** blank providers; save/unsave; open-now from Google.
-- **Ship:** yes — providers work regardless of the Places key.
-
 ### P6 — Retire merged screens after parity  ·  Effort 2  ·  Risk Med  ·  Shippable alone ✅
 - **Files:** remove/redirect `app/service/vet.jsx`, `grooming.jsx`, `telehealth.jsx` (then optionally `walking/daycare/sitting/training`); migrate their test coverage onto the hub/storefront; update any deep links.
 - **Do:** only after the hub + storefront reach feature parity; leave `redirect` stubs for existing deep links (`/service/vet` → hub with the Veterinary filter).
 - **Risk:** losing test coverage or breaking deep links → **port tests first**, add redirects.
 - **Test:** deep-link redirects resolve; retired screens' behaviours are covered by hub/storefront tests.
 - **Ship:** yes, incrementally (retire vet/grooming/telehealth first).
+
+### Later — Pet-friendly places (self-sourced)  ·  Effort TBD  ·  Risk Med  ·  Separate from P1–P4
+- **Not on the P1–P4 critical path.** Do **not** use Google Places. Build a PawPi-owned places dataset (own table) sourced by area / scraping / manual entry — **approach + schema TBD, decided later.**
+- **Do (when scheduled):** define the places table + an owner-facing read endpoint; add the Places source to `useDiscover` (merge with providers); `ResultCard` place variant; `PlaceStorefront` (about/hours/directions/save). Retire the Google-backed `places.jsx`.
+- **Risk:** data coverage/freshness is now ours to maintain; needs a seeding/ingestion story.
+- **Ship:** independently, after P2/P3 exist to render it. Providers never depend on it.
 
 ### Later — Android map  ·  Effort 2  ·  Risk Med  ·  Depends on Google Cloud
 - **Files:** `apps/mobile/app.json` — add `android.config.googleMaps.apiKey`, add `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` to `android.permissions`; remove the Android list-only guard.
@@ -345,13 +343,13 @@ Each phase is independently reviewable. Effort is rough (1 = ~day, 5 = ~week+).
 
 1. **Booking-capability gotcha.** `POST /api/providers/[id]/book` defaults `capability='vet'`; `vet.jsx` navigates to the profile with no capability param. → **Default:** the storefront derives capability from the **selected service** (map `provider_services` → capability) and passes it into `BookingFormModal`; the arriving hub category seeds a fallback. Add a test asserting a grooming booking sends `capability='groomer'`.
 
-2. **Places data model.** Places are live Google Places, not provider rows; no `places` table. → **Default:** **federate** — hub queries providers + places in parallel and merges; place storefront is "learn about it" (no cart). No migration.
+2. **Places data model.** ~~Federate live Google Places.~~ **DECIDED (founder):** no paid Google Places dependency. Pet-friendly places become a **self-sourced PawPi dataset** (our own table, seeded by area / scraping / manual entry — approach TBD, decided later). Kept **off the P1–P4 critical path**; layers in as a later phase via a hub-level merge into `ResultCard[]`. Place storefront stays "learn about it" (no cart). Today's Google-backed `places.jsx` is untouched until then.
 
 3. **Primary location (no `is_primary`).** `provider_locations` has no primary flag. → **Default:** v1 picks the **lowest `id`** as primary for the map pin; add `is_primary boolean` (additive) later if multi-location providers need control.
 
 4. **Open-now for providers.** Places get `open_now` free from Google; providers only have `hours_json`. → **Default:** compute open-now **client-side** from `hours_json` + device time for v1 (timezone edge cases accepted); server `?openNow=` filter can follow once a timezone strategy is set. If `hours_json` shape is unproven, **ship open-now for places only in P5** and add providers when the data is confirmed.
 
-5. **Delivery address at checkout.** `shop-checkout` collects **no address** today. → **Default:** v1 ships **pickup-only** (no address); add `orders.shipping_address jsonb` (additive) + a select-all cart + address step only if delivery is in scope for P4. Keeps real-money checkout unchanged initially.
+5. **Delivery vs pickup at checkout.** `shop-checkout` collects **no address** today. → **OPEN — founder decides at P4.** Not locked to pickup-only. Both paths are additive from where we are: pickup = ship the existing checkout contract unchanged; delivery = add `orders.shipping_address jsonb` (additive) + a select-all cart + an address step. Decision deferred until we reach P4; the storefront is built so either can drop in without reworking the commerce loop.
 
 6. **Rich product-detail fields (rating/approval %/Q&A/financing/delivery).** No backing data. → **Default:** **omit** from v1 (no fake data); list as additive future tables/columns. Product detail v1 = carousel + price + read-more + stock + Rx + add-to-cart.
 
@@ -363,7 +361,7 @@ Each phase is independently reviewable. Effort is rough (1 = ~day, 5 = ~week+).
 
 10. **Retiring screens = losing tests.** → **Default:** **port coverage first**, add deep-link redirects, retire vet/grooming/telehealth before the care-&-boarding set.
 
-11. **Android maps + Places billing.** Two separate Google costs: **Maps SDK (Android)** and **Places API (all platforms)**. → **Default:** iOS-first (Apple Maps free); Android map is a later phase; Places degrade gracefully until `GOOGLE_PLACES_API_KEY` + billing exist.
+11. **Android maps.** The only remaining Google cost is the **Maps SDK for Android** (map *tiles*). There is **no Places-API cost** — places are self-sourced. → **Default:** iOS-first on Apple Maps (free); Android map degrades to list-only until a Maps-SDK key + billing exist (a later phase).
 
 12. **Payment/checkout implications.** Checkout is real money via the shared payments layer (MercadoPago live). → **Default:** P4 changes **only the client wiring**; the `shop-checkout` server contract and `createCheckout` are untouched. One live E2E test before enabling the storefront checkout for all users.
 
