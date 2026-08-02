@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
 import {
   verifyWebhook,
@@ -9,6 +9,7 @@ import {
   payout,
   getPaymentStatus,
   exchangeOAuthCode,
+  webhookUrl,
   RAIL,
 } from './mercadopago';
 import { PaymentsNotConfiguredError } from './config';
@@ -145,5 +146,63 @@ describe('degrade-clean guards (no keys set — must never call fetch)', () => {
 
   it('exchangeOAuthCode throws without calling fetch', async () => {
     await expect(exchangeOAuthCode('code')).rejects.toThrow(PaymentsNotConfiguredError);
+  });
+});
+
+// The webhook wiring: a checkout preference MUST carry a notification_url so MercadoPago
+// posts the payment status back to us (the only signal that flips an order to 'paid').
+// Regression guard for the "payments succeed but orders never reconcile" bug.
+describe('createCheckout notification_url (webhook wiring)', () => {
+  const SAVED_BASE = process.env.APP_BASE_URL;
+  let fetchSpy;
+  beforeEach(() => {
+    configure();
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'pref_1', init_point: 'https://mp/checkout' }),
+    });
+  });
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    if (SAVED_BASE === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = SAVED_BASE;
+  });
+
+  function bodyOfLastCall() {
+    return JSON.parse(fetchSpy.mock.calls.at(-1)[1].body);
+  }
+
+  it('webhookUrl builds the public endpoint from a https APP_BASE_URL and strips trailing slash', () => {
+    process.env.APP_BASE_URL = 'https://pawpi.info/';
+    expect(webhookUrl()).toBe('https://pawpi.info/api/payments/webhooks/mercadopago');
+  });
+
+  it('webhookUrl returns null for an unset or non-public base (never a bad notification_url)', () => {
+    delete process.env.APP_BASE_URL;
+    expect(webhookUrl()).toBe(null);
+    process.env.APP_BASE_URL = 'http://localhost:4000';
+    expect(webhookUrl()).toBe(null);
+  });
+
+  it('includes notification_url in the preference when APP_BASE_URL is a public https url', async () => {
+    process.env.APP_BASE_URL = 'https://pawpi-production.up.railway.app';
+    await createCheckout({
+      order: { id: 42, amount_cents: 5000, currency: 'ARS', kind: 'product' },
+      account: { access_token: 'provider-token' },
+      idempotencyKey: 'order-42',
+    });
+    expect(bodyOfLastCall().notification_url).toBe(
+      'https://pawpi-production.up.railway.app/api/payments/webhooks/mercadopago',
+    );
+  });
+
+  it('omits notification_url when no public base URL is configured', async () => {
+    delete process.env.APP_BASE_URL;
+    await createCheckout({
+      order: { id: 42, amount_cents: 5000, currency: 'ARS', kind: 'product' },
+      account: { access_token: 'provider-token' },
+      idempotencyKey: 'order-42',
+    });
+    expect(bodyOfLastCall()).not.toHaveProperty('notification_url');
   });
 });

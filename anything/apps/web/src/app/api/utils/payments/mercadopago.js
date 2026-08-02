@@ -82,6 +82,28 @@ export async function createCheckout({ order, account, idempotencyKey }) {
     throw new PaymentsNotConfiguredError(RAIL);
   }
   const fee = commissionCents(order.amount_cents);
+  const preference = {
+    items: [
+      {
+        title: `PawPi ${order.kind} #${order.id}`,
+        quantity: 1,
+        unit_price: order.amount_cents / 100,
+        currency_id: order.currency,
+      },
+    ],
+    marketplace_fee: fee / 100,
+    external_reference: String(order.id),
+  };
+  // Wire the IPN/webhook per-preference so MercadoPago POSTs the payment status back to
+  // OUR endpoint — the ONLY signal that flips an order to 'paid' (there is no return
+  // deep-link). Without this, reconciliation depends solely on a webhook URL registered
+  // by hand in the MP dashboard; a real payment can succeed while the order stays
+  // 'pending' forever. Only set when a PUBLIC https base URL is configured (prod): a
+  // localhost/unset URL is omitted so preference creation never fails on a bad
+  // notification_url (tests/local keep today's behaviour).
+  const notificationUrl = webhookUrl();
+  if (notificationUrl) preference.notification_url = notificationUrl;
+
   const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
     method: 'POST',
     headers: {
@@ -89,18 +111,7 @@ export async function createCheckout({ order, account, idempotencyKey }) {
       authorization: `Bearer ${account.access_token}`,
       'X-Idempotency-Key': idempotencyKey,
     },
-    body: JSON.stringify({
-      items: [
-        {
-          title: `PawPi ${order.kind} #${order.id}`,
-          quantity: 1,
-          unit_price: order.amount_cents / 100,
-          currency_id: order.currency,
-        },
-      ],
-      marketplace_fee: fee / 100,
-      external_reference: String(order.id),
-    }),
+    body: JSON.stringify(preference),
   });
   if (!res.ok) {
     throw new Error(`MercadoPago checkout failed (${res.status})`);
@@ -197,6 +208,15 @@ export async function payout() {
   const cfg = mercadopagoConfig();
   if (!cfg) throw new PaymentsNotConfiguredError(RAIL);
   return { status: 'paid', externalId: null };
+}
+
+// Resolve the public MercadoPago webhook URL from APP_BASE_URL. Returns null unless a
+// PUBLIC https base is configured — MercadoPago rejects a non-public notification_url, so
+// we omit it rather than risk failing preference creation in tests/local.
+export function webhookUrl() {
+  const base = process.env.APP_BASE_URL;
+  if (!base || !/^https:\/\//i.test(base)) return null;
+  return `${base.replace(/\/+$/, '')}/api/payments/webhooks/mercadopago`;
 }
 
 // timing-safe hex comparison that never throws on length mismatch.

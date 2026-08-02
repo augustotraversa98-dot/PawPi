@@ -217,6 +217,14 @@ export default function BookingFormModal({
           `Opening MercadoPago to pay for your ${copy.noun}. ${provider.name} will confirm once your payment goes through.`,
         );
         Linking.openURL(checkoutUrl).catch(() => {});
+      } else if (requiresPayment) {
+        // Payment was required but no checkout URL came back — the charge could NOT be
+        // started. The booking exists but is unpaid; never imply it's a normal free
+        // request. Be honest so the owner knows nothing was charged.
+        Alert.alert(
+          "Payment couldn't start",
+          `We couldn't open the payment window for your ${copy.noun}, so nothing was charged. Please try again.`,
+        );
       } else {
         Alert.alert(
           "Request sent!",

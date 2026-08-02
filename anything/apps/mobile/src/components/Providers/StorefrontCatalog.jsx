@@ -94,14 +94,25 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
         })),
         rail: "mercadopago",
       });
-      if (res.checkoutUrl) {
-        Linking.openURL(res.checkoutUrl).catch(() => {});
-        Alert.alert("Order placed", "Complete your payment in the checkout window.");
+      const payUrl = res.checkoutUrl || res.deeplink;
+      if (payUrl) {
+        // Send the buyer to MercadoPago. The order stays PENDING until the payment
+        // webhook confirms it — so we must NOT tell them it's "placed"/on its way yet.
+        Linking.openURL(payUrl).catch(() => {});
+        Alert.alert(
+          "Complete your payment",
+          "Finish paying in MercadoPago to confirm your order. It isn't confirmed until your payment goes through.",
+        );
+        reset();
+        onClose();
       } else {
-        Alert.alert("Order placed", "Your order is on its way.");
+        // 201 but no checkout URL → payment could NOT be started. Never claim success:
+        // nothing was charged. Keep the cart open so the buyer can retry.
+        Alert.alert(
+          "Payment couldn't start",
+          "We couldn't open the payment window, so nothing was charged. Please try again.",
+        );
       }
-      reset();
-      onClose();
     } catch (e) {
       Alert.alert("Couldn't check out", e.message || "Please try again.");
     }

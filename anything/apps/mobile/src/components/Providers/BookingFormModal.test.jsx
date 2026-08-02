@@ -353,6 +353,35 @@ test("if checkout fails (e.g. provider not connected → 503) it does NOT create
   expect(Alert.alert).toHaveBeenCalledWith("Couldn't book", "payments not configured");
 });
 
+test("a paid service whose checkout returns no URL is NOT mislabeled 'Request sent!'", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  // Checkout succeeds (no throw) but yields no payable URL — payment could not start.
+  // Use mockResolvedValue (persistent) so a stray fire-and-forget redirect leaked from a
+  // prior test can't consume a one-shot and let THIS booking get a real URL.
+  mockCheckoutMutateAsync.mockReset().mockResolvedValue({ order: { id: 901 }, checkoutUrl: null });
+  const { getByText, getByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+  );
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByTestId("booking-service-5"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  // The booking is still created (linked to the unpaid order)...
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(901);
+  // ...but the owner is told payment couldn't start — never the free-booking "Request sent!".
+  await waitFor(() =>
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Payment couldn't start",
+      expect.stringContaining("nothing was charged"),
+    ),
+  );
+  for (const call of Alert.alert.mock.calls) {
+    expect(call[0]).not.toMatch(/request sent/i);
+  }
+});
+
 test("shows a payment heads-up only once a paid service is selected", () => {
   mockCurrentPet = { id: 7, name: "Rex" };
   const { getByTestId, queryByTestId } = render(

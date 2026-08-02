@@ -4,7 +4,8 @@
 // The cart/checkout LOGIC is unchanged from shop.jsx — here we only cover the browsing UI.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { Alert, Linking } from "react-native";
 
 let mockProducts;
 const mockCheckout = jest.fn();
@@ -123,4 +124,54 @@ test("empty store shows a real empty state (no fakes)", () => {
   mockProducts = [];
   const { getByText } = renderCatalog();
   expect(getByText("This store hasn't listed any products yet.")).toBeTruthy();
+});
+
+// Checkout honesty (payments money path): the order is only PENDING until the payment
+// webhook confirms it, so the UI must send the buyer to pay and must NEVER claim success
+// when no payment window opened.
+describe("checkout does not fake a paid order", () => {
+  let alertSpy;
+  let openSpy;
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    openSpy = jest.spyOn(Linking, "openURL").mockResolvedValue();
+  });
+  afterEach(() => {
+    alertSpy.mockRestore();
+    openSpy.mockRestore();
+  });
+
+  const addToCartAndCheckout = () => {
+    const utils = renderCatalog();
+    fireEvent.press(utils.getByTestId("storefront-product-1"));
+    fireEvent.press(utils.getByTestId("storefront-detail-add"));
+    fireEvent.press(utils.getByTestId("storefront-checkout"));
+    return utils;
+  };
+
+  test("with a checkoutUrl → opens MercadoPago and tells the buyer to complete payment", async () => {
+    mockCheckout.mockResolvedValue({ checkoutUrl: "https://mp/checkout" });
+    addToCartAndCheckout();
+    await waitFor(() => expect(openSpy).toHaveBeenCalledWith("https://mp/checkout"));
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Complete your payment",
+      expect.stringContaining("Finish paying in MercadoPago"),
+    );
+  });
+
+  test("no checkoutUrl → never claims the order was placed, opens nothing", async () => {
+    mockCheckout.mockResolvedValue({ checkoutUrl: null });
+    addToCartAndCheckout();
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Payment couldn't start",
+        expect.stringContaining("nothing was charged"),
+      ),
+    );
+    expect(openSpy).not.toHaveBeenCalled();
+    // Any "Order placed"/"on its way" copy would be a false success — assert it's absent.
+    for (const call of alertSpy.mock.calls) {
+      expect(call[0]).not.toMatch(/order placed/i);
+    }
+  });
 });
