@@ -42,6 +42,13 @@ export function useProviderListFilter(providers) {
       matched.sort((a, b) => (b?.avg_rating ?? -1) - (a?.avg_rating ?? -1));
     } else if (sort === "reviews") {
       matched.sort((a, b) => (b?.review_count ?? 0) - (a?.review_count ?? 0));
+    } else if (sort === "nearest") {
+      // Services Hub: nearest first using distance_km from the discover projection
+      // (present only when the caller passed the device lat/lng). Providers with no
+      // distance fall to the bottom. Inert for callers that never select this sort.
+      matched.sort(
+        (a, b) => (a?.distance_km ?? Infinity) - (b?.distance_km ?? Infinity),
+      );
     }
     return matched;
   }, [providers, query, sort]);
@@ -55,6 +62,7 @@ export default function ProviderListControls({
   sort,
   setSort,
   placeholder,
+  sorts = PROVIDER_SORTS,
 }) {
   const { t } = useTranslation();
   const searchPlaceholder = placeholder || t("providers.searchPlaceholder");
@@ -98,8 +106,8 @@ export default function ProviderListControls({
       </View>
 
       {/* Sort chips. */}
-      <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-        {PROVIDER_SORTS.map((s) => {
+      <View style={{ flexDirection: "row", gap: SPACING.sm, flexWrap: "wrap" }}>
+        {sorts.map((s) => {
           const selected = sort === s.key;
           return (
             <PressableScale

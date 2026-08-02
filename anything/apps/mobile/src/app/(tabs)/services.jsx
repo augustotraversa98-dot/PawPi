@@ -46,7 +46,10 @@ const CATEGORIES = [
     subtitle: "Find and book a vet, then share records",
     icon: Stethoscope,
     live: true,
-    route: "/service/vet",
+    // Services Hub P2: the vet/grooming/telehealth tiles now open the unified
+    // discovery screen with the Veterinary category pre-applied (the old
+    // per-capability screens stay in place until P6 parity).
+    route: "/service/discover?category=veterinary",
   },
   {
     key: "telehealth",
@@ -54,7 +57,7 @@ const CATEGORIES = [
     subtitle: "Video consult with a vet",
     icon: Video,
     live: true,
-    route: "/service/telehealth",
+    route: "/service/discover?category=veterinary",
   },
   {
     key: "grooming",
@@ -62,7 +65,7 @@ const CATEGORIES = [
     subtitle: "Baths, trims, and nail care",
     icon: Scissors,
     live: true,
-    route: "/service/grooming",
+    route: "/service/discover?category=veterinary",
   },
   {
     key: "walking",
@@ -102,7 +105,9 @@ const CATEGORIES = [
     subtitle: "Food, toys, and supplies",
     icon: ShoppingBag,
     live: true,
-    route: "/service/shop",
+    // Services Hub P2: the Shop tile opens the unified discovery screen filtered
+    // to Shops (the standalone shop.jsx browse stays reachable until P6 parity).
+    route: "/service/discover?category=shops",
   },
   {
     key: "adoption",
