@@ -46,6 +46,18 @@ describe("GET /api/transport-trips", () => {
     expect(q).toContain("va.calendar_event_id");
   });
 
+  it("surfaces a `paid` flag from the fare order (source_ref transport:<id>, status paid)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1, status: "confirmed", paid: true }]);
+    const res = await GET(req());
+    expect(res.status).toBe(200);
+    const q = sql.mock.calls[0][0].join(" ");
+    expect(q).toContain("source_ref = 'transport:'");
+    expect(q).toContain("'paid'");
+    expect(q).toContain("AS paid");
+    expect((await res.json()).trips[0].paid).toBe(true);
+  });
+
   it("?petId= narrows to one pet → 200", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([]);
