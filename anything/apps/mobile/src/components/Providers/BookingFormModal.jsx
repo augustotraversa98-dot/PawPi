@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -106,6 +106,9 @@ export default function BookingFormModal({
   const copy = copyForCapability(resolvedCapability);
 
   const [serviceId, setServiceId] = useState(null); // null = "General"
+  // Once the user taps any service chip (incl. "General") we stop auto-preselecting so we
+  // never override an explicit choice on a background re-fetch.
+  const serviceTouched = useRef(false);
   const [locationId, setLocationId] = useState(null);
   const [date, setDate] = useState(""); // canonical YYYY-MM-DD from DateField
   const [time, setTime] = useState(""); // canonical HH:MM from TimeField
@@ -127,7 +130,19 @@ export default function BookingFormModal({
         : 0;
   const requiresPayment = paymentPolicy !== "none" && chargeCents > 0;
 
+  // A provider whose ONLY service requires payment must NOT be silently booked for free:
+  // when there's exactly one active service, preselect it so its price/policy applies (the
+  // user can still switch to "General"). Without this, the default "General" (serviceId=null)
+  // books a FREE request even for a paid single-service vet — no charge, no MercadoPago.
+  useEffect(() => {
+    if (visible && !serviceTouched.current && serviceId == null && services.length === 1) {
+      setServiceId(services[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, services]);
+
   const resetAndClose = () => {
+    serviceTouched.current = false;
     setServiceId(null);
     setLocationId(null);
     setDate("");
@@ -280,7 +295,10 @@ export default function BookingFormModal({
         <Chip
           label="General"
           selected={serviceId == null}
-          onPress={() => setServiceId(null)}
+          onPress={() => {
+            serviceTouched.current = true;
+            setServiceId(null);
+          }}
         />
         {services.map((s) => (
           <Chip
@@ -291,7 +309,10 @@ export default function BookingFormModal({
                 : s.name
             }
             selected={serviceId === s.id}
-            onPress={() => setServiceId(s.id)}
+            onPress={() => {
+              serviceTouched.current = true;
+              setServiceId(s.id);
+            }}
             testID={`booking-service-${s.id}`}
           />
         ))}

@@ -111,7 +111,20 @@ test("blocks (alerts, no POST) when there is no active pet", () => {
 
 test("Confirm books with the active petId, provider id and canonical date/time", async () => {
   mockCurrentPet = { id: 7, name: "Rex" };
-  const { getByText, getByTestId } = renderForm();
+  // Two services → "General" stays the default (single-service auto-preselect does not fire),
+  // so this covers the no-service-chosen path.
+  const { getByText, getByTestId } = render(
+    <BookingFormModal
+      visible
+      onClose={jest.fn()}
+      provider={PROVIDER}
+      locations={LOCATIONS}
+      services={[
+        { id: 5, name: "Checkup", price_cents: 5000, active: true },
+        { id: 6, name: "Consulta", price_cents: 3000, active: true },
+      ]}
+    />,
+  );
 
   fireEvent.press(getByTestId("booking-date"));
   fireEvent.press(getByTestId("booking-time"));
@@ -129,6 +142,29 @@ test("Confirm books with the active petId, provider id and canonical date/time",
   // No service/location chosen → those ids are omitted.
   expect(arg.service_id).toBeUndefined();
   expect(arg.provider_location_id).toBeUndefined();
+});
+
+test("a single paid service is auto-selected so booking CHARGES without tapping the chip", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  // Vet Krauss's real case: exactly one service ("Chequeos"), payment_policy 'full', $50.
+  // The user must be sent to pay WITHOUT having to manually select the service.
+  const { getByText, getByTestId, queryByTestId } = render(
+    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+  );
+  // Preselected → the payment heads-up is visible immediately (no chip tap).
+  expect(queryByTestId("booking-payment-note")).toBeTruthy();
+
+  fireEvent.press(getByTestId("booking-date"));
+  fireEvent.press(getByTestId("booking-time"));
+  fireEvent.press(getByText("Confirm appointment"));
+
+  // Checkout is created for the full price and the booking is linked to it.
+  await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, amount_cents: 5000 });
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(5);
+  expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(900);
+  await waitFor(() => expect(Linking.openURL).toHaveBeenCalledWith("https://mp/checkout/900"));
 });
 
 test("only sends service/location ids that belong to this provider", async () => {
@@ -384,8 +420,19 @@ test("a paid service whose checkout returns no URL is NOT mislabeled 'Request se
 
 test("shows a payment heads-up only once a paid service is selected", () => {
   mockCurrentPet = { id: 7, name: "Rex" };
+  // Two services → "General" is the default (no single-service auto-preselect), so the note
+  // is hidden until the paid service is explicitly chosen.
   const { getByTestId, queryByTestId } = render(
-    <BookingFormModal visible onClose={jest.fn()} provider={PROVIDER} locations={[]} services={PAID_FULL} />,
+    <BookingFormModal
+      visible
+      onClose={jest.fn()}
+      provider={PROVIDER}
+      locations={[]}
+      services={[
+        { id: 6, name: "Consulta", price_cents: 3000, payment_policy: "none", active: true },
+        { id: 5, name: "Checkup", price_cents: 5000, deposit_cents: 1500, payment_policy: "full", active: true },
+      ]}
+    />,
   );
   // "General" (no service) selected by default → no note.
   expect(queryByTestId("booking-payment-note")).toBeNull();

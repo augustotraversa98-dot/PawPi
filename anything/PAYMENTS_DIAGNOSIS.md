@@ -17,10 +17,66 @@ left for you to do in the MercadoPago dashboard.
 | Path | Charges today? | Verdict | Why |
 |---|---|---|---|
 | **Shop checkout** | No real charge | **TEST-ENV / CONFIG-EXPECTED** + 1 UX bug (fixed) | Order stays `pending`; only a signed webhook flips it to `paid`. No premature "paid". Blocked by provider-not-connected and/or webhook-not-wired. |
-| **Appointment booking** | No, when service is `payment_policy='none'` | **BY DESIGN (not a bug)** — pay-at-clinic default | Booking route never charges. Online charge only fires when a service is set to `deposit`/`full` **and** the provider is MP-connected. |
+| **Appointment booking** | No — books a **free** request | **REAL BUG (fixed)** — paid single-service vet defaults to free "General" | Payment only fires for the *selected* service, but the modal defaults to "General" (free). See "CONFIRMED booking root cause" below. |
 | **Webhook reconciliation** | Would not fire | **REAL BUG (fixed, P0 for go-live)** | `createCheckout` set no `notification_url`; MP had no per-preference callback. |
 
 **Nothing is ever marked paid without a signature-verified webhook.** That part is correct and safe.
+
+---
+
+## ⭐ CONFIRMED booking root cause (Vet Krauss / "Chequeos" / "Mango test")
+
+**Real data (queried live, 2026-08-02):**
+- Provider **"Vet Krauss" = id 3**. Service **"Chequeos" = id 18, `payment_policy:'full'`, `price_cents:5000`**
+  (= $50 ARS). → The founder's "charge at booking" setting **persisted correctly** — this is genuinely a paid
+  service. That kills the "policy didn't save / still none" theory.
+- ⚠️ **DB caveat:** the local `.env` `DATABASE_URL` points at a **dev/staging** Supabase
+  (`qaebbesldduvgwttqlnq`, sa-east-1) with **0 pets, 0 appointments, 0 orders, 0 `provider_payment_accounts`**
+  — it is **not** the production DB the phone writes to (prod has the demo "Mango"). So I could read the
+  service config but not the founder's actual appointment/connection rows. Production checks are listed below.
+
+**The bug (code, file:line):** `anything/apps/mobile/src/components/Providers/BookingFormModal.jsx`
+- `serviceId` defaults to `null` = **"General"**, and "General" is the pre-selected chip
+  (`BookingFormModal.jsx:280-283`). Payment only triggers for the *chosen* service:
+  `chosenService = services.find(s => s.id === serviceId)` → `paymentPolicy` → `requiresPayment`
+  (`:120-128`). With "General" selected, `requiresPayment` is **false**.
+- `provider.jsx:750-757` opens the modal with `services={services}` but **pre-selects nothing**.
+- Vet Krauss has **exactly one** service ("Chequeos"). Booking it while the modal sits on the default
+  "General" → `requiresPayment=false` → **no `createCheckout`, no MercadoPago** → `book.mutateAsync`
+  creates a `booking_status='requested'` appointment → **"Request sent!"**. The vet can accept it.
+  **This is exactly the reported symptom** (request created, no charge, no error, vet can accept).
+
+Why "no error" matters: if the service *had* been selected (`requiresPayment=true`) and the provider were
+not connected, `createCheckout` would 503 and the app shows "Couldn't book" with **no** appointment. The
+founder got an appointment and no error → payment was never attempted → the service was on "General".
+
+**Fix (this branch):** `BookingFormModal.jsx` now **auto-selects the service when the provider has exactly
+one active service** (the user can still switch to "General"). Booking Vet Krauss now selects "Chequeos" →
+`requiresPayment=true` → `createCheckout` → opens MercadoPago. Multi-service providers keep "General" default.
+Test added: *"a single paid service is auto-selected so booking CHARGES without tapping the chip."*
+
+> **🚨 This fix is mobile JS — it does NOT reach the phone until a fresh EAS build.** Per the go-live notes,
+> the installed build predates the booking-payment feature (#287, commit `54cbc63`) and OTA only helps *after*
+> a build that includes it. **A device on the pre-#287 build has no booking-payment code at all** — so a
+> rebuild is required regardless, and is itself a likely reason the founder sees "just a request".
+> **Action: cut one new EAS/TestFlight build.**
+
+**Production checks to confirm (need prod DB / prod build):**
+1. `provider_payment_accounts` where `provider_id=3` — is there a `rail='mercadopago'`, `status='connected'`
+   row with a non-null `access_token`? (In the dev DB there is **none**.)
+2. The just-created `vet_appointments` row for the Mango pet — does it carry an `order_id`? NULL → payment was
+   never attempted (confirms the "General"/stale-build path). Has `order_id` but order `pending` → payment
+   started but wasn't completed.
+3. Confirm the phone runs a build including commit `54cbc63` (#287) or later.
+
+**Product decision (payment vs. vet acceptance) — your call:** Today payment and confirmation are
+**decoupled** (`providers/[id]/bookings/[appointmentId]/route.js:101-127`): the vet can `confirm` a
+`requested` booking **without** checking whether its order is paid; declining auto-refunds an approved payment
+(`:153-169`). The founder wants "payment at booking time." Checkout *does* open at request time (once the
+service is selected), but nothing stops a vet accepting an unpaid one.
+- **Recommended:** keep charge-at-request, and **gate the vet's `confirm` on `orders.status='paid'`** for
+  bookings that carry an `order_id` (unpaid → vet can only cancel). Money-adjacent + changes the provider
+  inbox UX, so it is **PROPOSED**, not auto-applied.
 
 ---
 
@@ -87,14 +143,11 @@ the booking, independent of payment (`providers/[id]/bookings/[appointmentId]/ro
 auto-refunds any approved payment (`:153-169`).
 
 ### Is booking-without-charge a bug?
-**No.** `payment_policy='none'` = "No online payment — pay in person" is the **server default**
-(`providers/[id]/services/route.js:106`; UI `provider/components/ProviderServices.jsx:434-437`). If the
-founder's test service is left at the default, a free booking is the **intended** behavior.
-
-> **Product decision for the founder:** Do you want vet/grooming/etc. bookings to charge (a deposit)
-> online, or stay pay-at-clinic? **Recommended:** keep `none` as the default (lower friction, avoids
-> refund overhead), and turn on `deposit` per-service only for no-show-prone services. To charge, set
-> the service's `payment_policy` to `deposit`/`full` **and** connect the provider's MP account.
+**It depends which service is booked — and for Vet Krauss, YES, it was a bug** (see the ⭐ CONFIRMED
+section at the top). A service left at `payment_policy='none'` ("pay in person", the server default —
+`providers/[id]/services/route.js:106`) is *intended* to be free. But "Chequeos" is `payment_policy='full'`,
+and the modal still booked it free because it defaulted to the "General" chip — a paid single-service vet
+must not be silently booked for free. Fixed by auto-selecting the sole service.
 
 ---
 
@@ -191,10 +244,17 @@ No premature/`paid` write exists on any path. ✅
 - New branch: `requiresPayment && !checkoutUrl` → **"Payment couldn't start … nothing was charged"** instead of
   the free-booking "Request sent!". Test added in `BookingFormModal.test.jsx`.
 
-**Verification:** web `vitest run` **1484 passed** (+ my new MP tests); web `react-router build` ✅;
-`tsc` baseline unchanged (124 pre-existing `TS7016` route-type errors, **0 new**, none in my files); mobile
-`jest` for the touched suites — StorefrontCatalog 10 ✅, BookingFormModal 16 ✅, provider/storefront 14 ✅.
-No live charge was run (that's your E2E).
+### Fix 4 — Paid single-service vet no longer books FREE (the Vet Krauss bug) · **P0 · low risk**
+`anything/apps/mobile/src/components/Providers/BookingFormModal.jsx`
+- Auto-selects the service when the provider has exactly one active service (a `useEffect` guarded by a
+  `serviceTouched` ref so it never overrides an explicit choice / background re-fetch). "General" stays the
+  default for multi-service providers. This makes a $50 "Chequeos" booking trigger `createCheckout` → MercadoPago
+  without the user having to tap the service chip. Test: *"a single paid service is auto-selected so booking
+  CHARGES without tapping the chip."* ⚠️ **Requires a fresh EAS build to reach the device.**
+
+**Verification:** web `vitest run` **1484 passed**; web `react-router build` ✅; `tsc` baseline unchanged
+(124 pre-existing `TS7016` route-type errors, **0 new**, none in my files); mobile `jest` for the touched
+suites — StorefrontCatalog 10 ✅, BookingFormModal **17** ✅, provider + storefront 14 ✅. No live charge run.
 
 ---
 
@@ -236,10 +296,13 @@ No live charge was run (that's your E2E).
 
 | Pri | Item | Owner | Effort | Risk | Status |
 |---|---|---|---|---|---|
+| **P0** | Auto-select sole service so paid vet booking charges (Vet Krauss) | code (me) | S | low | ✅ done |
+| **P0** | Cut a fresh EAS/TestFlight build (mobile fixes + #287 payment code) | founder | S | — | you |
 | **P0** | `notification_url` on the preference | code (me) | XS | low | ✅ done |
 | **P0** | Register webhook URL + confirm secret in MP dashboard | founder | S | — | you |
-| **P0** | Connect ≥1 real provider MP account (OAuth) | founder | S | — | you |
+| **P0** | Connect Vet Krauss's MP account (OAuth) + verify `provider_payment_accounts` row | founder | S | — | you |
 | **P1** | Stop faking "Order placed"/"Request sent!" on unpaid | code (me) | S | low | ✅ done |
+| **P1** | Gate vet `confirm` on `orders.status='paid'` for paid bookings (product decision) | founder+code | M | med | proposed |
 | **P1** | Daycare: honest unpaid handling (decide hard-fail vs pay-later) | founder+code | S | med | proposed |
 | **P2** | `back_urls`/auto-return + app deep-link back from MP | code | M | med | proposed |
 | **P2** | Reconcile cron (`getStatus` for stuck `pending`) | code | M | low | proposed |
