@@ -23,6 +23,9 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -120,5 +123,32 @@ describe("Vet Record — Vaccination History", () => {
     const screen = render(<HealthVetRecord />);
     expandVaccines(screen);
     expect(screen.getByText("No vaccinations yet")).toBeTruthy();
+  });
+});
+
+describe("Vet Record — Add Record picker (no dead-end primary CTA)", () => {
+  const { Alert } = require("react-native");
+
+  test("an unbuilt record type gives honest coming-soon feedback, not a silent dead tap", () => {
+    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const screen = render(<HealthVetRecord />);
+    fireEvent.press(screen.getByText("Add Record"));
+    // Unbuilt types are badged "Soon" (all but Vet Note + Document).
+    expect(screen.getAllByText("Soon").length).toBeGreaterThanOrEqual(8);
+    fireEvent.press(screen.getByText("Vet Visit"));
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining("Vet Visit"),
+      expect.stringContaining("Vet Visit"),
+    );
+    spy.mockRestore();
+  });
+
+  test("the two built types (Vet Note / Document) route to their real flow, no coming-soon alert", () => {
+    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const screen = render(<HealthVetRecord />);
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByText("Vet Note"));
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

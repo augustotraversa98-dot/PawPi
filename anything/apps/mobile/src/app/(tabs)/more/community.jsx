@@ -7,7 +7,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp, CalendarDays } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp, CalendarDays, RotateCcw } from "lucide-react-native";
 import {
   useForumThreads,
   useForumVote,
@@ -42,12 +43,14 @@ const SORTS = [
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState("All");
   const [sort, setSort] = useState("hot");
 
   const {
     data: threads,
     isLoading,
+    isError,
     refetch,
   } = useForumThreads(activeCategory, sort);
   const voteMutation = useForumVote();
@@ -298,7 +301,43 @@ export default function CommunityScreen() {
           </View>
         )}
 
+        {/* A fetch failure is NOT the same as "no discussions" — show a real error
+            with a Retry so an outage never masquerades as an empty community. */}
+        {!isLoading && isError && (
+          <View style={{ alignItems: "center", padding: 50 }}>
+            <Text style={{ fontSize: 36 }}>🐾</Text>
+            <Text
+              style={[
+                TYPE.headline,
+                { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.md, textAlign: "center" },
+              ]}
+            >
+              {t("common.somethingWrong")}
+            </Text>
+            <PressableScale
+              onPress={() => refetch()}
+              accessibilityRole="button"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: SPACING.sm,
+                marginTop: SPACING.lg,
+                paddingHorizontal: SPACING.xl,
+                paddingVertical: SPACING.md,
+                borderRadius: RADIUS.control,
+                backgroundColor: COLORS.coral,
+              }}
+            >
+              <RotateCcw size={16} color="#FFF" />
+              <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
+                {t("common.retry")}
+              </Text>
+            </PressableScale>
+          </View>
+        )}
+
         {!isLoading &&
+          !isError &&
           threads &&
           threads.map((thread) => <ThreadCard key={thread.id} thread={thread} />)}
 

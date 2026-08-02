@@ -44,7 +44,9 @@
     "vetRecord": "Historia clínica",
     "trackerSoon": "Pronto",
     "trackerSoonTitle": "{{label}} — próximamente",
-    "trackerSoonBody": "El registro de {{label}} para {{pet}} está en camino. Mientras tanto, puedes anotarlo en Comida y premios o en la Historia clínica."
+    "trackerSoonBody": "El registro de {{label}} para {{pet}} está en camino. Mientras tanto, puedes anotarlo en Comida y premios o en la Historia clínica.",
+    "recordSoonTitle": "{{type}} — próximamente",
+    "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento."
   },
   "services": {
     "title": "Servicios",

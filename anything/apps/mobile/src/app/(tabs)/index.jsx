@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { RotateCcw } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
+import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
@@ -16,6 +19,7 @@ import { usePostingStreak, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 
 export default function FeedScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     petProfile,
     petName,
@@ -32,6 +36,7 @@ export default function FeedScreen() {
     refetchPosts,
     refetchTodayDailyUpdate,
     loadingPosts,
+    postsError,
     uploading,
   } = useFeedData();
 
@@ -180,6 +185,41 @@ export default function FeedScreen() {
           <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.md, fontWeight: "600" }]}>
             Loading posts...
           </Text>
+        </View>
+      ) : postsError && posts.length === 0 ? (
+        // The feed FAILED to load (not just empty) and we have nothing cached —
+        // show a real error + Retry so an outage never reads as "no posts yet".
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: SPACING.huge }}
+        >
+          <Text style={{ fontSize: 40 }}>🐾</Text>
+          <Text
+            style={[
+              TYPE.headline,
+              { color: COLORS.warmBrown, fontWeight: "800", marginTop: SPACING.md, textAlign: "center" },
+            ]}
+          >
+            {t("common.somethingWrong")}
+          </Text>
+          <PressableScale
+            onPress={() => refetchPosts()}
+            accessibilityRole="button"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.sm,
+              marginTop: SPACING.lg,
+              paddingHorizontal: SPACING.xl,
+              paddingVertical: SPACING.md,
+              borderRadius: RADIUS.control,
+              backgroundColor: COLORS.coral,
+            }}
+          >
+            <RotateCcw size={16} color="#FFF" />
+            <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
+              {t("common.retry")}
+            </Text>
+          </PressableScale>
         </View>
       ) : (
         // Relative container so the locked floating card can be an absolute

@@ -44,7 +44,9 @@
     "vetRecord": "Vet Record",
     "trackerSoon": "Soon",
     "trackerSoonTitle": "{{label}} — coming soon",
-    "trackerSoonBody": "{{label}} tracking for {{pet}} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record."
+    "trackerSoonBody": "{{label}} tracking for {{pet}} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.",
+    "recordSoonTitle": "{{type}} — coming soon",
+    "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document."
   },
   "services": {
     "title": "Services",

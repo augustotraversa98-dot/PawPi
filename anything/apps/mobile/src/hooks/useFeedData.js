@@ -26,6 +26,7 @@ export function useFeedData() {
   const {
     data: posts = [],
     isLoading: loadingPosts,
+    isError: postsError,
     refetch: refetchPosts,
   } = useFeedPosts();
 
@@ -337,6 +338,9 @@ export function useFeedData() {
     handleDeletePost,
     refetchPosts,
     refetchTodayDailyUpdate,
+    // A real fetch failure (distinct from an empty feed) so the screen can show an
+    // error + Retry instead of silently rendering as "nothing here".
+    postsError,
     loadingPosts:
       loadingPosts || loadingPet || loadingDailyUpdate || loadingOwnerPosted,
     uploading,

@@ -5,13 +5,16 @@
 // (the feed children are stubbed so the test isolates the scroll wiring).
 
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, fireEvent } from "@testing-library/react-native";
 
 let mockFeed;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -60,6 +63,7 @@ const feedData = (overrides) => ({
   refetchPosts: jest.fn(),
   refetchTodayDailyUpdate: jest.fn(),
   loadingPosts: false,
+  postsError: false,
   uploading: false,
   ...overrides,
 });
@@ -74,4 +78,20 @@ test("unlocked feed scrolls", () => {
   mockFeed = feedData({ feedUnlocked: true });
   const { getByTestId } = render(<FeedScreen />);
   expect(getByTestId("feed-scroll").props.scrollEnabled).toBe(true);
+});
+
+test("a fetch failure with no cached posts shows an error + Retry, not the feed", () => {
+  const refetchPosts = jest.fn();
+  mockFeed = feedData({ postsError: true, posts: [], refetchPosts });
+  const { getByText, queryByTestId } = render(<FeedScreen />);
+  expect(queryByTestId("feed-scroll")).toBeNull(); // not the silent-empty feed
+  expect(getByText("Something went wrong. Please try again.")).toBeTruthy();
+  fireEvent.press(getByText("Try again"));
+  expect(refetchPosts).toHaveBeenCalled();
+});
+
+test("an error while cached posts exist still shows the feed (transient refetch)", () => {
+  mockFeed = feedData({ postsError: true, posts: [{ id: 1 }], feedUnlocked: true });
+  const { getByTestId } = render(<FeedScreen />);
+  expect(getByTestId("feed-scroll")).toBeTruthy();
 });
