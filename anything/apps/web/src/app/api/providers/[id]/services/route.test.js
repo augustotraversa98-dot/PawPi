@@ -185,6 +185,49 @@ describe('POST /api/providers/[id]/services — create', () => {
     expect(valuesOf(1)).toEqual(expect.arrayContaining([IMAGES]));
   });
 
+  it('persists payment_policy on create; defaults to none when omitted', async () => {
+    auth.mockResolvedValue(SESSION);
+    const CREATED = { id: 9, provider_id: 100, name: 'Grooming', payment_policy: 'full' };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
+      .mockResolvedValueOnce([CREATED]); // insert
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await POST(
+      postReq({ name: 'Grooming', price_cents: 5000, payment_policy: 'full' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(201);
+    expect(queryTextOf(1)).toContain('payment_policy');
+    expect(valuesOf(1)).toContain('full');
+  });
+
+  it('defaults payment_policy to none when omitted', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 9 }]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    await POST(postReq({ name: 'Checkup' }), PARAMS);
+    expect(valuesOf(1)).toContain('none');
+  });
+
+  it('rejects an unknown payment_policy with 400, no insert', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await POST(
+      postReq({ name: 'Checkup', payment_policy: 'later' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+    // only the profile lookup ran; no insert
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects a non-array image_urls with 400, no insert (ticket 2.23)', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

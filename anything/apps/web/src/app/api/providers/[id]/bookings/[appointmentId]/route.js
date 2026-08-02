@@ -6,6 +6,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { refund } from "@/app/api/utils/payments";
 
 // PATCH /api/providers/[id]/bookings/[appointmentId] — act on ONE booking.
 // Ticket 6b (docs/provider-design.md §4 item 6, provider half). The provider's
@@ -63,7 +64,7 @@ async function PATCH(request, { params }) {
     // Cross-provider isolation: load the target scoped to BOTH ids. Another
     // provider's appointment id (or a soft-deleted one) matches no row → 404.
     const rows = await sql`
-      SELECT id, booking_status, status FROM vet_appointments
+      SELECT id, booking_status, status, order_id FROM vet_appointments
       WHERE id = ${appointmentId}
         AND provider_id = ${providerId}
         AND deleted_at IS NULL
@@ -148,7 +149,35 @@ async function PATCH(request, { params }) {
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
         RETURNING *
       `;
-      return Response.json({ booking: updated[0] });
+
+      // Pay-at-request model: if the customer already paid for this booking, declining it
+      // must refund them. Best-effort — the decline NEVER fails on a refund error (an
+      // admin can retry via POST /api/payments/[id]/refund). Only an APPROVED payment on
+      // the linked order is refundable; unpaid / pay-in-person bookings skip this entirely.
+      let refundResult = null;
+      const orderId = rows[0].order_id;
+      if (orderId != null) {
+        try {
+          const payRows = await sql`
+            SELECT * FROM payments
+            WHERE order_id = ${orderId} AND status = ${"approved"}
+            ORDER BY id DESC
+            LIMIT 1
+          `;
+          if (payRows.length > 0) {
+            await refund(payRows[0]);
+            refundResult = { refunded: true, payment_id: payRows[0].id };
+          }
+        } catch (refundError) {
+          console.error(
+            "[PATCH bookings decline] refund failed (booking still declined):",
+            refundError.message,
+          );
+          refundResult = { refunded: false, refund_error: refundError.message };
+        }
+      }
+
+      return Response.json({ booking: updated[0], refund: refundResult });
     }
 
     if (action === "cancel") {

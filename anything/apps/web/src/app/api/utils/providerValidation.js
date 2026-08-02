@@ -27,8 +27,17 @@ export function invalidLocationFields(body) {
 // Validate optional money/duration fields. Returns an error message or null.
 // price_cents/deposit_cents: non-negative integers; duration_min: positive
 // integer. Absent (undefined/null) values are allowed.
+export const SERVICE_PAYMENT_POLICIES = ["none", "deposit", "full"];
+
 export function invalidServiceFields(body) {
-  const { duration_min, price_cents, deposit_cents } = body;
+  const { duration_min, price_cents, deposit_cents, payment_policy } = body;
+  if (
+    payment_policy !== undefined &&
+    payment_policy !== null &&
+    !SERVICE_PAYMENT_POLICIES.includes(payment_policy)
+  ) {
+    return "payment_policy must be one of none, deposit, full";
+  }
   if (
     price_cents !== undefined &&
     price_cents !== null &&

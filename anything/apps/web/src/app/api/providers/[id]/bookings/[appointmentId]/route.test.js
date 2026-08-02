@@ -10,9 +10,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PATCH } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
+import { refund } from '@/app/api/utils/payments';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+vi.mock('@/app/api/utils/payments', () => ({ refund: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
@@ -156,6 +158,49 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
     arrange([{ id: 55, booking_status: 'confirmed', status: 'scheduled' }]);
     const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
     expect(res.status).toBe(409);
+  });
+
+  it('decline: a PAID booking (approved payment on the order) is auto-refunded', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [{ id: 55, booking_status: 'declined' }], // update
+      [{ id: 5, order_id: 900, status: 'approved', rail: 'mercadopago' }], // approved payment
+    );
+    refund.mockResolvedValueOnce({ status: 'refunded' });
+
+    const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
+    expect(res.status).toBe(200);
+    expect(refund).toHaveBeenCalledTimes(1);
+    const body = await res.json();
+    expect(body.refund).toEqual({ refunded: true, payment_id: 5 });
+  });
+
+  it('decline: an UNPAID booking with an order (no approved payment) refunds nothing', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [{ id: 55, booking_status: 'declined' }], // update
+      [], // no approved payment
+    );
+
+    const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
+    expect(res.status).toBe(200);
+    expect(refund).not.toHaveBeenCalled();
+    expect((await res.json()).refund).toBeNull();
+  });
+
+  it('decline: a refund FAILURE still declines the booking (best-effort, flagged)', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [{ id: 55, booking_status: 'declined' }], // update
+      [{ id: 5, order_id: 900, status: 'approved', rail: 'mercadopago' }], // approved payment
+    );
+    refund.mockRejectedValueOnce(new Error('MP unreachable'));
+
+    const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
+    expect(res.status).toBe(200); // decline is NOT blocked by a refund error
+    const body = await res.json();
+    expect(body.booking).toBeTruthy();
+    expect(body.refund).toEqual({ refunded: false, refund_error: 'MP unreachable' });
   });
 
   // ---- cancel ----

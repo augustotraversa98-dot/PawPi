@@ -77,6 +77,19 @@ describe('invalidServiceFields', () => {
     );
   });
 
+  it('allows a valid payment_policy and absent/null', () => {
+    expect(invalidServiceFields({ payment_policy: 'none' })).toBe(null);
+    expect(invalidServiceFields({ payment_policy: 'deposit' })).toBe(null);
+    expect(invalidServiceFields({ payment_policy: 'full' })).toBe(null);
+    expect(invalidServiceFields({ payment_policy: null })).toBe(null);
+  });
+
+  it('rejects an unknown payment_policy', () => {
+    expect(invalidServiceFields({ payment_policy: 'later' })).toBe(
+      'payment_policy must be one of none, deposit, full',
+    );
+  });
+
   it('rejects non-positive or non-integer duration_min', () => {
     expect(invalidServiceFields({ duration_min: 0 })).toBe(
       'duration_min must be a positive integer',

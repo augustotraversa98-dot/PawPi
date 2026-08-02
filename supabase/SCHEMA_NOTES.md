@@ -81,6 +81,17 @@ ACTION 1).
 >   and never sees a plaintext password. Verify: `supabase/verify_0069.sql`. HARNESS-ONLY this ticket —
 >   hand-applied to Supabase after merge.
 
+> **0070** adds per-service booking payment policy — the schema side of "let a provider charge for
+> a booking" (booking-payments Phase 1). ONE purely additive column on `provider_services`:
+> `payment_policy text NOT NULL DEFAULT 'none'` with a `provider_services_payment_policy_check` CHECK
+> (`none`|`deposit`|`full`). `none` = pay in person (the default, so every existing service is
+> unchanged); `deposit` = charge the existing `deposit_cents` (0014) up front; `full` = charge the
+> existing `price_cents` up front. No new table, no RLS/policy change (provider_services is already
+> ENABLE+FORCE RLS from 0024; this column rides it). The money model is unchanged — an up-front charge
+> is still an orders/payments row (0029) linked via `vet_appointments.order_id` (0030); this column
+> only records the provider's INTENT. Idempotent (`add column if not exists` + drop/re-add the CHECK).
+> Verify: `supabase/verify_0070.sql`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
+
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---
