@@ -1,21 +1,30 @@
-// One money formatter for the whole app so the SAME price never renders as two
-// different currencies. Before this, provider.jsx printed price_cents as "$X" while
-// shop.jsx printed the identical value as "ARS X" — the same catalog item looked
-// like USD on one screen and ARS on another (a real trust/conversion bug).
+// One money formatter for the whole app so the SAME price never renders two ways.
 //
-// Prices are stored as integer cents plus an ISO currency code (DB default "ARS";
-// provider_services rows carry no currency column and fall back to the default).
-// We prefix the ISO code rather than a bare "$" because "$" is shared by USD, ARS,
-// MXN and others — the code makes the currency unambiguous everywhere.
+// PawPi launches in Argentina; the DB default currency is ARS. Argentine users read
+// pesos as a bare "$" with es-AR grouping ("." for thousands, "," for decimals),
+// e.g. $1.500 — an "ARS" prefix reads as foreign money. So ARS is shown as "$" and
+// decimals are hidden when the amount is whole (the common case). A non-ARS currency
+// is rare here (a provider could set USD); to stay unambiguous it keeps the ISO-code
+// prefix ("USD 49.00"). Prices are integer cents; provider_services rows carry no
+// currency column and fall back to the ARS default.
 //
-// Hermes-safe: no Intl/toLocaleString options (grouping is done manually).
+// Hermes-safe: no Intl/toLocaleString (grouping is done manually).
 
 export function formatMoney(cents, currency = "ARS") {
   if (cents == null || Number.isNaN(cents)) return null;
   const code = (currency || "ARS").toUpperCase();
-  const negative = cents < 0;
-  const fixed = (Math.abs(cents) / 100).toFixed(2);
-  const [whole, frac] = fixed.split(".");
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${negative ? "-" : ""}${code} ${grouped}.${frac}`;
+  const sign = cents < 0 ? "-" : "";
+  const absCents = Math.abs(cents);
+  const whole = Math.trunc(absCents / 100);
+  const frac = absCents % 100;
+
+  if (code === "ARS") {
+    const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const decimals = frac === 0 ? "" : `,${String(frac).padStart(2, "0")}`;
+    return `${sign}$${grouped}${decimals}`;
+  }
+
+  // Non-ARS: keep the ISO code so a foreign price is never mistaken for pesos.
+  const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${code} ${grouped}.${String(frac).padStart(2, "0")}`;
 }
