@@ -290,6 +290,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       duration_min: "",
       price: "",
       deposit: "",
+      payment_policy: "none",
     },
   });
 
@@ -304,6 +305,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       duration_min: service?.duration_min != null ? String(service.duration_min) : "",
       price: centsToInput(service?.price_cents),
       deposit: centsToInput(service?.deposit_cents),
+      payment_policy: service?.payment_policy ?? "none",
     });
     setImages(Array.isArray(service?.image_urls) ? service.image_urls : []);
   }, [service, reset]);
@@ -333,6 +335,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       duration_min: duration.value ?? null,
       price_cents: price.cents ?? null,
       deposit_cents: deposit.cents ?? null,
+      payment_policy: values.payment_policy,
       image_urls: images,
     };
     onSubmit(body);
@@ -415,6 +418,21 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               />
             </Field>
           </div>
+
+          <Field
+            label="Payment for booking"
+            hint="when a customer requests this service"
+          >
+            <select {...register("payment_policy")} className={inputCls}>
+              <option value="none">No online payment — pay in person</option>
+              <option value="deposit">Deposit up front (the Deposit amount)</option>
+              <option value="full">Full price up front (the Price)</option>
+            </select>
+            <p className="mt-1 text-xs text-[#7A6254]">
+              Customers pay when they request the booking. If you decline a paid
+              request, they're refunded automatically.
+            </p>
+          </Field>
 
           <ImageUploader
             label="Photos"

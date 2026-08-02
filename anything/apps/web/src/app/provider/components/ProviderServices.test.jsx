@@ -32,6 +32,7 @@ const ACTIVE = {
   duration_min: 30,
   price_cents: 5000,
   deposit_cents: 1000,
+  payment_policy: "deposit",
   active: true,
 };
 const INACTIVE = {
@@ -119,8 +120,39 @@ describe("ProviderServices", () => {
       duration_min: 45,
       price_cents: 7550,
       deposit_cents: null,
+      payment_policy: "none",
       image_urls: [],
     });
+  });
+
+  it("sends the chosen payment_policy when creating a service", async () => {
+    render(<ProviderServices providerId={3} />);
+    fireEvent.click(screen.getByRole("button", { name: /add service/i }));
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByPlaceholderText("Annual checkup"), {
+      target: { value: "Grooming" },
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText("50.00"), {
+      target: { value: "40.00" },
+    });
+    // Choose "Full price up front"
+    fireEvent.change(within(dialog).getByDisplayValue(/no online payment/i), {
+      target: { value: "full" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /add service/i }));
+
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    expect(createMutate.mock.calls[0][0].payment_policy).toBe("full");
+  });
+
+  it("seeds the existing payment_policy when editing a service", () => {
+    render(<ProviderServices providerId={3} />);
+    // Open the edit form for the first service (seeded with payment_policy).
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
+    const dialog = screen.getByRole("dialog");
+    const select = within(dialog).getByRole("combobox");
+    expect(select.value).toBe("deposit");
   });
 
   it("blocks a non-numeric price before any POST and shows an error", async () => {
