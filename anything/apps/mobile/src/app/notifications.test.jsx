@@ -8,6 +8,8 @@ import { render, fireEvent } from "@testing-library/react-native";
 let mockStoreState;
 let mockDbNotifications;
 let mockCareGrants;
+let mockVetNotes;
+let mockCurrentPet;
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockMarkRead = jest.fn();
@@ -51,6 +53,12 @@ jest.mock("@/hooks/useNotifications", () => ({
 }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useAllCareAccessGrants: () => ({ data: mockCareGrants }),
+}));
+jest.mock("@/hooks/useRecentVetNotes", () => ({
+  useRecentVetNotes: () => ({ data: mockVetNotes }),
+}));
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: mockCurrentPet }),
 }));
 jest.mock("@/utils/handleNotificationTap", () => ({
   handleNotificationTap: (...args) => mockHandleTap(...args),
@@ -103,7 +111,17 @@ beforeEach(() => {
   };
   mockDbNotifications = [dbPaw, dbFollow];
   mockCareGrants = [];
+  mockVetNotes = [];
+  mockCurrentPet = { id: 1, name: "Mango" };
 });
+
+// A vet-authored note (has vet_name) created "just now" so it's inside the window.
+const recentVetNote = {
+  id: 9,
+  vet_name: "Dr. Vet",
+  note: "All good",
+  created_at: new Date(Date.now() - 60000).toISOString(),
+};
 
 const pendingGrant = {
   id: 77,
@@ -154,6 +172,33 @@ test("a pending care-access request appears in the bell and routes to Data Acces
   // Tapping takes the owner to the trust screen to approve/deny.
   fireEvent.press(getByText("wants access to Mango's records"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/data-access");
+});
+
+test("a recent vet note surfaces in the bell and opens the Health tab", () => {
+  mockVetNotes = [recentVetNote];
+  const { getByText } = render(<NotificationsScreen />);
+  expect(getByText("Dr. Vet")).toBeTruthy();
+  expect(getByText("added a note to Mango")).toBeTruthy();
+  fireEvent.press(getByText("added a note to Mango"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/health");
+});
+
+test("an owner-authored note (no vet_name) does NOT surface in the bell", () => {
+  mockVetNotes = [{ id: 10, vet_name: null, created_at: new Date().toISOString() }];
+  const { queryByText } = render(<NotificationsScreen />);
+  expect(queryByText("added a note to Mango")).toBeNull();
+});
+
+test("a stale vet note (older than the window) does NOT surface", () => {
+  mockVetNotes = [
+    {
+      id: 11,
+      vet_name: "Dr. Old",
+      created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+    },
+  ];
+  const { queryByText } = render(<NotificationsScreen />);
+  expect(queryByText("Dr. Old")).toBeNull();
 });
 
 test("only pending grants surface (active/revoked are excluded)", () => {

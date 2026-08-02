@@ -11,6 +11,7 @@ import {
   Target,
   ChevronRight,
   ShieldCheck,
+  FileText,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -27,6 +28,12 @@ import {
   useMarkNotificationsRead,
 } from "@/hooks/useNotifications";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
+import { useRecentVetNotes } from "@/hooks/useRecentVetNotes";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+
+// A vet-authored note stays in the bell for this long, then ages out (there is no
+// read-state store yet — see useRecentVetNotes). Keeps the signal fresh, not spammy.
+const VET_NOTE_WINDOW_MS = 1000 * 60 * 60 * 24 * 14;
 
 const FILTER_OPTIONS = [
   "All",
@@ -42,6 +49,22 @@ const FILTER_OPTIONS = [
 // into the screen's item shape. Tagged _source:"access" so a tap routes to the
 // Data Access trust screen where the owner can approve/deny. Owner-scoped by the
 // route, reactive via React Query, so it survives restart and clears on decision.
+// Map a vet-authored note into a bell item (Flow A awareness). Tagged
+// _source:"vetNote" so a tap opens the Health tab where the Vet Record lives.
+function mapVetNote(n, petName, t) {
+  return {
+    id: `vetnote-${n.id}`,
+    _source: "vetNote",
+    type: "vetNote",
+    title: n.vet_name, // guaranteed non-null for vet notes (see provider notes route)
+    message: t("notifications.vetNoteBody", {
+      pet: petName || t("common.yourPet"),
+    }),
+    timestamp: n.created_at,
+    read: false,
+  };
+}
+
 function mapAccessGrant(g, t) {
   return {
     id: `access-${g.id}`,
@@ -90,6 +113,8 @@ const NotificationIcon = ({ type }) => {
       return <Target size={18} color={COLORS.sageDark} />;
     case "access":
       return <ShieldCheck size={18} color={COLORS.sageDark} />;
+    case "vetNote":
+      return <FileText size={18} color={COLORS.terracotta} />;
     default:
       return <Bell size={18} color={COLORS.mutedBrown} />;
   }
@@ -141,16 +166,36 @@ export default function NotificationsScreen() {
   // bell so a request the owner would want to approve/deny is impossible to miss.
   const { data: careGrants } = useAllCareAccessGrants();
 
+  // Vet-note awareness (Flow A): when a vet adds a note to the current pet's
+  // record, surface it in the bell so the owner isn't left to discover it inside a
+  // collapsed Vet Record section. Scoped to the current pet (the notes API is
+  // per-pet) and bounded by recency so it ages out without a read-state store.
+  const { data: currentPet } = useCurrentPet();
+  const { data: vetNotes } = useRecentVetNotes(currentPet?.id);
+
   // Merge: local reminder notifications (those with a reminderId) + the real social
-  // notifications from the API + pending care-access requests, newest first. No mock data.
+  // notifications from the API + pending care-access requests + recent vet notes,
+  // newest first. No mock data.
   const reminderNotifs = (storeNotifications || []).filter((n) => n.reminderId);
   const socialNotifs = (dbNotifications || []).map(mapDbNotification);
   const accessNotifs = (careGrants || [])
     .filter((g) => g.status === "pending")
     .map((g) => mapAccessGrant(g, t));
-  const merged = [...accessNotifs, ...socialNotifs, ...reminderNotifs].sort(
-    (a, b) => new Date(b.timestamp) - new Date(a.timestamp),
-  );
+  const nowMs = Date.now();
+  const vetNoteNotifs = (vetNotes || [])
+    .filter(
+      (n) =>
+        n.vet_name &&
+        n.created_at &&
+        nowMs - new Date(n.created_at).getTime() < VET_NOTE_WINDOW_MS,
+    )
+    .map((n) => mapVetNote(n, currentPet?.name, t));
+  const merged = [
+    ...accessNotifs,
+    ...vetNoteNotifs,
+    ...socialNotifs,
+    ...reminderNotifs,
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   // Filter notifications
   const filteredNotifications = merged.filter((notif) => {
@@ -170,6 +215,12 @@ export default function NotificationsScreen() {
     if (notif._source === "access") {
       // Take the owner to the trust screen to approve/deny the request.
       router.push("/(tabs)/more/data-access");
+      return;
+    }
+
+    if (notif._source === "vetNote") {
+      // Open the Health tab where the Vet Record (and the new note) lives.
+      router.push("/(tabs)/health");
       return;
     }
 

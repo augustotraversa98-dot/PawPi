@@ -65,7 +65,8 @@
     "empty": "No new notifications yet",
     "filterRequests": "Requests",
     "accessProviderFallback": "A care provider",
-    "accessRequestBody": "wants access to {{pet}}'s records"
+    "accessRequestBody": "wants access to {{pet}}'s records",
+    "vetNoteBody": "added a note to {{pet}}"
   },
   "map": {
     "setOnMap": "Set location on map",

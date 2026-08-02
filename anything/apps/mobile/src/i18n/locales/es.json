@@ -65,7 +65,8 @@
     "empty": "Todavía no hay notificaciones",
     "filterRequests": "Solicitudes",
     "accessProviderFallback": "Un proveedor de cuidado",
-    "accessRequestBody": "quiere acceso a la ficha de {{pet}}"
+    "accessRequestBody": "quiere acceso a la ficha de {{pet}}",
+    "vetNoteBody": "añadió una nota a {{pet}}"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",

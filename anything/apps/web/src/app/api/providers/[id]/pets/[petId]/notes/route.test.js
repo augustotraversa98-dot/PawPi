@@ -116,6 +116,42 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
     expect(lastValues()).toContain("2026-06-01");
   });
 
+  it("falls back to the acting user's email when no name resolves (never null)", async () => {
+    auth.mockResolvedValue({
+      user: { id: 42, email: "vet@vet.com" },
+      expires: "9999999999",
+    });
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
+      .mockResolvedValueOnce([
+        { provider_name: null, staff_name: null, staff_username: null },
+      ]) // name lookup: nothing resolves
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+    assertCareAccess.mockResolvedValue({ id: 555 });
+
+    const res = await POST(postReq({ note: "n" }), PARAMS);
+    expect(res.status).toBe(201);
+    // A vet note is never stored with a null attribution (would render as "You").
+    expect(lastValues()).toContain("vet@vet.com");
+  });
+
+  it("falls back to 'Veterinario' when neither a name nor an email is available", async () => {
+    auth.mockResolvedValue(SESSION); // no email on the session
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([PET_OWNER_ROW])
+      .mockResolvedValueOnce([
+        { provider_name: null, staff_name: null, staff_username: null },
+      ])
+      .mockResolvedValueOnce([{ id: 1 }]);
+    assertCareAccess.mockResolvedValue({ id: 555 });
+
+    const res = await POST(postReq({ note: "n" }), PARAMS);
+    expect(res.status).toBe(201);
+    expect(lastValues()).toContain("Veterinario");
+  });
+
   it("assertCareAccess throws → 403, nothing inserted", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);
