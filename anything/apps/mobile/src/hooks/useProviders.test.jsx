@@ -1,6 +1,7 @@
 // Contract for the owner-facing provider hooks (discovery + booking):
-//   - useDiscoverProviders keys on ["providers","discover",type], hits
-//     /api/providers/discover?type=, returns providers[], throws on !ok;
+//   - useDiscoverProviders hits /api/providers/discover, returns providers[], throws
+//     on !ok. A string arg is the capability (?capability=); an options object adds
+//     the Services Hub P1 params (?lat/&lng/&radius/&q). Back-compat: string form.
 //   - useProviderProfile keys on ["providers","public",slug], is disabled with
 //     no slug, hits /api/providers/public/[slug], returns {provider,...};
 //   - useBookProvider POSTs to /api/providers/[id]/book with the body (providerId
@@ -52,7 +53,7 @@ afterEach(() => {
 });
 
 describe("useDiscoverProviders", () => {
-  test("fetches published providers for the given type and returns the array", async () => {
+  test("string arg fetches published providers by capability and returns the array", async () => {
     const providers = [{ id: 1, slug: "happy-paws", name: "Happy Paws" }];
     global.fetch = jest.fn(async () => ({
       ok: true,
@@ -65,8 +66,47 @@ describe("useDiscoverProviders", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(lastFetchUrl()).toBe("/api/providers/discover?type=vet");
+    expect(lastFetchUrl()).toBe("/api/providers/discover?capability=vet");
     expect(result.current.data).toBe(providers);
+  });
+
+  test("options object builds the geo + search query string (P1)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ providers: [] }),
+    }));
+
+    const { result } = renderHook(
+      () =>
+        useDiscoverProviders({
+          capability: "shop",
+          lat: -34.6,
+          lng: -58.4,
+          radius: 5,
+          q: "paws",
+        }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(lastFetchUrl()).toBe(
+      "/api/providers/discover?capability=shop&lat=-34.6&lng=-58.4&radius=5&q=paws",
+    );
+  });
+
+  test("no args → bare discover URL (no params)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ providers: [] }),
+    }));
+
+    const { result } = renderHook(() => useDiscoverProviders({}), {
+      wrapper: makeWrapper(makeClient()),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe("/api/providers/discover");
   });
 
   test("throws when the response is not ok", async () => {

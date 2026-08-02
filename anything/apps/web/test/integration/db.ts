@@ -202,15 +202,28 @@ export async function seedService(
   return { serviceId };
 }
 
-/** Seed a provider_location (R2e). name carries the id. */
+/**
+ * Seed a provider_location (R2e). name carries the id. Optional lat/lng/hoursJson
+ * (Services Hub P1) default null — the pre-P1 behaviour is unchanged.
+ */
 export async function seedLocation(
   sql: Sql,
-  opts: { locationId: number; providerId: number; name?: string },
+  opts: {
+    locationId: number;
+    providerId: number;
+    name?: string;
+    lat?: number | null;
+    lng?: number | null;
+    hoursJson?: unknown;
+  },
 ): Promise<{ locationId: number }> {
-  const { locationId, providerId, name } = opts;
+  const { locationId, providerId, name, lat = null, lng = null, hoursJson = null } = opts;
   await sql`
-    insert into provider_locations (id, provider_id, name)
-    values (${locationId}, ${providerId}, ${name ?? `location-${locationId}`})
+    insert into provider_locations (id, provider_id, name, lat, lng, hours_json)
+    values (
+      ${locationId}, ${providerId}, ${name ?? `location-${locationId}`},
+      ${lat}, ${lng}, ${hoursJson == null ? null : sql.json(hoursJson as any)}
+    )
   `;
   return { locationId };
 }

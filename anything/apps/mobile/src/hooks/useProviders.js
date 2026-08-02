@@ -9,13 +9,35 @@ import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
 // Pattern mirrors usePetProfile / useVetAppointmentReminders: relative
 // fetch("/api/..."), a query key, throw on !res.ok.
 
-// Browse PUBLISHED providers, optionally filtered by provider_type (vet-first).
-export function useDiscoverProviders(type = "vet") {
+// Browse PUBLISHED providers. Back-compat: pass a capability STRING
+// (useDiscoverProviders("vet")) exactly as before. Services Hub P1
+// (docs/SERVICES_HUB_PLAN.md) also accepts an OPTIONS object so later phases can
+// drive the unified discovery surface:
+//   useDiscoverProviders({ capability, lat, lng, radius, q, openNow })
+// Each returned provider now also carries capabilities[], the primary location
+// (lat/lng/location_name/hours_json), and — when lat+lng are supplied — distance_km,
+// nearest-first. No screen consumes the new fields yet; this only widens the contract.
+export function useDiscoverProviders(arg = "vet") {
+  const opts = typeof arg === "string" ? { capability: arg } : arg || {};
+  const { capability, lat, lng, radius, q, openNow } = opts;
+
   return useQuery({
-    queryKey: ["providers", "discover", type],
+    // Every param is part of the key so distinct filters cache independently.
+    queryKey: ["providers", "discover", { capability, lat, lng, radius, q, openNow }],
     queryFn: async () => {
-      const qs = type ? `?type=${encodeURIComponent(type)}` : "";
-      const response = await fetch(`/api/providers/discover${qs}`);
+      const params = new URLSearchParams();
+      if (capability) params.set("capability", capability);
+      if (lat != null && lng != null) {
+        params.set("lat", String(lat));
+        params.set("lng", String(lng));
+        if (radius != null) params.set("radius", String(radius));
+      }
+      if (q) params.set("q", q);
+      if (openNow) params.set("openNow", "true");
+      const qs = params.toString();
+      const response = await fetch(
+        `/api/providers/discover${qs ? `?${qs}` : ""}`,
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch providers");
       }
