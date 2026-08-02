@@ -56,6 +56,55 @@ test("shows the empty state when no providers exist (no fakes)", () => {
   expect(getByText("No vets available yet")).toBeTruthy();
 });
 
+test("typing in the search box filters the list by name (type-ahead)", () => {
+  mockDiscover = {
+    data: [
+      { id: 1, slug: "happy-paws", name: "Happy Paws Clinic", provider_type: "vet" },
+      { id: 2, slug: "city-vet", name: "City Vet", provider_type: "vet" },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+  const { getByPlaceholderText, getByText, queryByText } = render(<VetScreen />);
+  fireEvent.changeText(getByPlaceholderText("Search vets by name"), "city");
+  expect(getByText("City Vet")).toBeTruthy();
+  expect(queryByText("Happy Paws Clinic")).toBeNull();
+});
+
+test("a search with no matches shows a 'no matching vets' state", () => {
+  mockDiscover = {
+    data: [
+      { id: 1, slug: "happy-paws", name: "Happy Paws Clinic", provider_type: "vet" },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+  const { getByPlaceholderText, getByText } = render(<VetScreen />);
+  fireEvent.changeText(getByPlaceholderText("Search vets by name"), "zzz");
+  expect(getByText("No matching vets")).toBeTruthy();
+});
+
+test("Top rated sort orders providers by average rating", () => {
+  mockDiscover = {
+    data: [
+      { id: 1, slug: "low", name: "Low Rated", provider_type: "vet", avg_rating: 3.1 },
+      { id: 2, slug: "high", name: "High Rated", provider_type: "vet", avg_rating: 4.9 },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+  const { getByText, UNSAFE_getAllByType } = render(<VetScreen />);
+  fireEvent.press(getByText("Top rated"));
+  const { Text } = require("react-native");
+  const names = UNSAFE_getAllByType(Text)
+    .map((n) => (typeof n.props.children === "string" ? n.props.children : null))
+    .filter((t) => t === "High Rated" || t === "Low Rated");
+  expect(names[0]).toBe("High Rated");
+});
+
 test("tapping a card navigates to the provider detail with the slug", () => {
   mockDiscover = {
     data: [

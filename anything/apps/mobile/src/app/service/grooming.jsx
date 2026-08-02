@@ -20,6 +20,9 @@ import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // Grooming discovery (ticket 2.6) — browse PUBLISHED groomer providers (real data, no
 // mocks). Discovery is the SHARED /api/providers/discover?type=groomer (capability
@@ -32,6 +35,9 @@ export default function GroomingScreen() {
   const router = useRouter();
   const { data: providers, isLoading, isError, refetch } =
     useDiscoverProviders("groomer");
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   const openProvider = (slug) => {
     router.push({
@@ -100,6 +106,16 @@ export default function GroomingScreen() {
           GROOMERS NEAR YOU
         </Text>
 
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            placeholder="Search groomers by name"
+          />
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />
@@ -109,13 +125,18 @@ export default function GroomingScreen() {
             title="Couldn't load groomers"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No groomers available yet"
             body="Check back soon — groomers are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No matching groomers"
+            body={`No groomers match "${query.trim()}". Try a different name.`}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}

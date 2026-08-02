@@ -38,6 +38,9 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // Daycare & Boarding discovery + stays (ticket 2.8) — browse PUBLISHED daycare providers
 // (real data, no mocks) and manage the active pet's STAYS: book a multi-day stay with
@@ -57,6 +60,9 @@ export default function DaycareScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("daycare");
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   const { data: stays } = useDaycareStays(petId);
   const activeStays = (stays ?? []).filter(
@@ -129,6 +135,16 @@ export default function DaycareScreen() {
           DAYCARE NEAR YOU
         </SectionLabel>
 
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            placeholder="Search daycares by name"
+          />
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />
@@ -138,13 +154,18 @@ export default function DaycareScreen() {
             title="Couldn't load facilities"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No facilities available yet"
             body="Check back soon — daycares are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No matching facilities"
+            body={`No daycares match "${query.trim()}". Try a different name.`}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}

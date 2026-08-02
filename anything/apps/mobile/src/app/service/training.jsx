@@ -40,6 +40,9 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // PROVIDER Training discovery + progress (ticket 2.10) — HIRING a trainer. This is DISTINCT
 // from the consumer self-Training tab ((tabs)/training.jsx — static how-to content, no
@@ -63,6 +66,9 @@ export default function TrainingServiceScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("trainer");
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   const { data: programs } = useTrainingPrograms(petId);
   const activePrograms = (programs ?? []).filter((p) => p.status !== "cancelled");
@@ -130,6 +136,16 @@ export default function TrainingServiceScreen() {
           TRAINERS NEAR YOU
         </SectionLabel>
 
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            placeholder="Search trainers by name"
+          />
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />
@@ -139,13 +155,18 @@ export default function TrainingServiceScreen() {
             title="Couldn't load trainers"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No trainers available yet"
             body="Check back soon — dog trainers are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No matching trainers"
+            body={`No trainers match "${query.trim()}". Try a different name.`}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}

@@ -28,6 +28,9 @@ import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useWalkSessions } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import ProviderListControls, {
+  useProviderListFilter,
+} from "@/components/Providers/ProviderListControls";
 
 // Dog Walking discovery + live (ticket 2.7) — browse PUBLISHED walker providers (real
 // data, no mocks) and watch the active pet's LIVE walk / read past reports. Discovery is
@@ -50,6 +53,9 @@ export default function WalkingScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("walker");
+  const { query, setQuery, sort, setSort, filtered } =
+    useProviderListFilter(providers);
+  const hasProviders = !!providers && providers.length > 0;
 
   // Live + recent sessions for the active pet. Poll while there is a live walk.
   const { data: sessions } = useWalkSessions(petId, { live: true });
@@ -167,6 +173,16 @@ export default function WalkingScreen() {
           WALKERS NEAR YOU
         </Text>
 
+        {hasProviders ? (
+          <ProviderListControls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            placeholder="Search walkers by name"
+          />
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />
@@ -176,13 +192,18 @@ export default function WalkingScreen() {
             title="Couldn't load walkers"
             body="Something went wrong. Pull down to try again."
           />
-        ) : !providers || providers.length === 0 ? (
+        ) : !hasProviders ? (
           <EmptyState
             title="No walkers available yet"
             body="Check back soon — walkers are joining PawPi."
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No matching walkers"
+            body={`No walkers match "${query.trim()}". Try a different name.`}
+          />
         ) : (
-          providers.map((p) => (
+          filtered.map((p) => (
             <ProviderCard
               key={p.id}
               provider={p}
