@@ -10,6 +10,7 @@ import {
   Utensils,
   Target,
   ChevronRight,
+  ShieldCheck,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "@/constants/colors";
@@ -24,8 +25,33 @@ import {
   useNotifications,
   useMarkNotificationsRead,
 } from "@/hooks/useNotifications";
+import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 
-const FILTER_OPTIONS = ["All", "Walks", "Feeding", "Paws", "Barks", "Training"];
+const FILTER_OPTIONS = [
+  "All",
+  "Requests",
+  "Walks",
+  "Feeding",
+  "Paws",
+  "Barks",
+  "Training",
+];
+
+// Map a pending care-access grant (a vet/business asking to see a pet's record)
+// into the screen's item shape. Tagged _source:"access" so a tap routes to the
+// Data Access trust screen where the owner can approve/deny. Owner-scoped by the
+// route, reactive via React Query, so it survives restart and clears on decision.
+function mapAccessGrant(g) {
+  return {
+    id: `access-${g.id}`,
+    _source: "access",
+    type: "access",
+    title: g.provider_name || "A care provider",
+    message: `wants access to ${g.pet_name || "your pet"}'s records`,
+    timestamp: g.created_at,
+    read: false, // a pending request is always unread until acted on
+  };
+}
 
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
@@ -59,6 +85,8 @@ const NotificationIcon = ({ type }) => {
       return <Megaphone size={18} color={COLORS.terracotta} />;
     case "training":
       return <Target size={18} color={COLORS.sageDark} />;
+    case "access":
+      return <ShieldCheck size={18} color={COLORS.sageDark} />;
     default:
       return <Bell size={18} color={COLORS.mutedBrown} />;
   }
@@ -97,11 +125,20 @@ export default function NotificationsScreen() {
   const { data: dbNotifications } = useNotifications();
   const markRead = useMarkNotificationsRead();
 
+  // Pending care-access requests (a vet/business asking to see a pet's records)
+  // are owner-scoped grants, not social notifications — they'd otherwise only be
+  // visible if the owner manually opened More → Data Access. Surface them in the
+  // bell so a request the owner would want to approve/deny is impossible to miss.
+  const { data: careGrants } = useAllCareAccessGrants();
+
   // Merge: local reminder notifications (those with a reminderId) + the real social
-  // notifications from the API, newest first. No mock data.
+  // notifications from the API + pending care-access requests, newest first. No mock data.
   const reminderNotifs = (storeNotifications || []).filter((n) => n.reminderId);
   const socialNotifs = (dbNotifications || []).map(mapDbNotification);
-  const merged = [...socialNotifs, ...reminderNotifs].sort(
+  const accessNotifs = (careGrants || [])
+    .filter((g) => g.status === "pending")
+    .map(mapAccessGrant);
+  const merged = [...accessNotifs, ...socialNotifs, ...reminderNotifs].sort(
     (a, b) => new Date(b.timestamp) - new Date(a.timestamp),
   );
 
@@ -109,6 +146,7 @@ export default function NotificationsScreen() {
   const filteredNotifications = merged.filter((notif) => {
     if (selectedFilter === "All") return true;
     const typeMap = {
+      Requests: "access",
       Walks: "walk",
       Feeding: "feeding",
       Paws: "paw",
@@ -119,6 +157,12 @@ export default function NotificationsScreen() {
   });
 
   const handleNotifTap = (notif) => {
+    if (notif._source === "access") {
+      // Take the owner to the trust screen to approve/deny the request.
+      router.push("/(tabs)/more/data-access");
+      return;
+    }
+
     if (notif._source === "db") {
       if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
       if (notif.relatedPetId) {
