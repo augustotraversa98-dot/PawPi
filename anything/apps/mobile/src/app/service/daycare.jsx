@@ -7,6 +7,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -475,7 +476,18 @@ function BookStayModal({ provider, petId, onClose }) {
         med_instructions: meds || null,
       });
       const vax = res?.vaccine_status;
-      if (vax && vax.required?.length > 0 && !vax.passed) {
+      const needsVax = vax && vax.required?.length > 0 && !vax.passed;
+      reset();
+      onClose();
+      // Pay-at-request (0071): the facility priced this stay (rate × nights or a deposit) →
+      // open MercadoPago. If it's a free / pay-in-person facility, checkoutUrl is null.
+      if (res?.checkoutUrl) {
+        Alert.alert(
+          "Stay booked — complete payment",
+          "Opening MercadoPago to pay for the stay. The facility confirms once your payment goes through.",
+        );
+        Linking.openURL(res.checkoutUrl).catch(() => {});
+      } else if (needsVax) {
         Alert.alert(
           "Stay booked — vaccines needed",
           `Missing: ${vax.missing.join(", ")}. The facility may ask you to share proof.`,
@@ -483,8 +495,6 @@ function BookStayModal({ provider, petId, onClose }) {
       } else {
         Alert.alert("Stay booked", "Your stay is booked. You'll get daily report cards.");
       }
-      reset();
-      onClose();
     } catch (e) {
       Alert.alert("Couldn't book", e.message || "Please try again.");
     }

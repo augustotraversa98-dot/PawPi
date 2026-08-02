@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { createCheckout } from "@/app/api/utils/payments";
 
 // /api/pets/[id]/daycare-stays — the OWNER books a daycare/boarding stay and reads
 // their pet's stays (with the daily REPORT CARDS + the VACCINE-REQUIREMENT status).
@@ -92,7 +93,13 @@ async function GET(request, { params }) {
         ds.feeding_instructions, ds.med_instructions,
         ds.checked_in_at, ds.checked_out_at, ds.created_at,
         p.name AS provider_name,
-        l.name AS location_name
+        l.name AS location_name,
+        EXISTS (
+          SELECT 1 FROM orders o
+          WHERE o.source_ref = 'daycare:' || ds.id
+            AND o.owner_user_id = ${userId}
+            AND o.status = 'paid'
+        ) AS paid
       FROM daycare_stays ds
       LEFT JOIN providers p ON p.id = ds.provider_id
       LEFT JOIN provider_locations l ON l.id = ds.location_id
@@ -262,6 +269,60 @@ async function POST(request, { params }) {
       RETURNING *
     `;
 
+    const stay = created[0];
+
+    // ── Daycare pricing (0071): price the stay by the provider's daycare-service policy.
+    // 'full' → nightly_rate_cents × nights, 'deposit' → deposit_cents (flat), 'none' → free.
+    // nights = whole days between start/end, at least 1. The charge is a normal orders/payments
+    // row linked to the stay via source_ref = 'daycare:<stayId>'. Best-effort: if payments aren't
+    // configured or the provider hasn't connected an account, the stay is still created (unpaid)
+    // and checkoutUrl is null — the same clean-degrade as every other paid surface.
+    let checkoutUrl = null;
+    try {
+      const svc = (
+        await sql`
+          SELECT nightly_rate_cents, deposit_cents, payment_policy
+          FROM provider_services
+          WHERE provider_id = ${provider_id} AND capability = 'daycare' AND active = true
+          ORDER BY id ASC
+          LIMIT 1
+        `
+      )[0];
+      const policy = svc?.payment_policy ?? "none";
+      const nights = Math.max(
+        1,
+        Math.round(
+          (new Date(end_date).getTime() - new Date(start_date).getTime()) /
+            86400000,
+        ),
+      );
+      const amountCents =
+        policy === "full"
+          ? (Number(svc?.nightly_rate_cents) || 0) * nights
+          : policy === "deposit"
+            ? Number(svc?.deposit_cents) || 0
+            : 0;
+      if (amountCents > 0) {
+        const orderRows = await sql`
+          INSERT INTO orders
+            (owner_user_id, provider_id, kind, source_ref, amount_cents, currency, status)
+          VALUES (
+            ${userId}, ${provider_id}, 'booking', ${`daycare:${stay.id}`},
+            ${amountCents}, 'ARS', 'pending'
+          )
+          RETURNING *
+        `;
+        const result = await createCheckout(orderRows[0], {
+          rail: "mercadopago",
+          idempotencyKey: `order-${orderRows[0].id}`,
+        });
+        checkoutUrl = result.checkoutUrl ?? result.deeplink ?? null;
+      }
+    } catch (payErr) {
+      // Payments not configured / provider not connected → stay stays unpaid, no crash.
+      console.error("[daycare-stays] pricing/checkout skipped:", payErr?.message);
+    }
+
     // Surface the vaccine status with the created stay so the owner immediately sees
     // pass/fail + any missing vaccines.
     const vaccineStatus = await computeVaccineStatus(
@@ -271,7 +332,7 @@ async function POST(request, { params }) {
     );
 
     return Response.json(
-      { stay: created[0], vaccine_status: vaccineStatus },
+      { stay, vaccine_status: vaccineStatus, checkoutUrl },
       { status: 201 },
     );
   } catch (error) {

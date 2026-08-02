@@ -87,12 +87,13 @@ async function POST(request, { params }) {
       active,
       image_urls,
       payment_policy,
+      nightly_rate_cents,
     } = body;
     const images = Array.isArray(image_urls) ? image_urls : [];
 
     const created = await sql`
       INSERT INTO provider_services
-        (provider_id, name, description, duration_min, price_cents, deposit_cents, active, image_urls, payment_policy)
+        (provider_id, name, description, duration_min, price_cents, deposit_cents, active, image_urls, payment_policy, nightly_rate_cents)
       VALUES (
         ${providerId},
         ${name},
@@ -102,7 +103,8 @@ async function POST(request, { params }) {
         ${deposit_cents ?? null},
         ${active === undefined ? true : active},
         ${images},
-        ${payment_policy ?? "none"}
+        ${payment_policy ?? "none"},
+        ${nightly_rate_cents ?? null}
       )
       RETURNING *
     `;

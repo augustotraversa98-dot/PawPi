@@ -30,13 +30,20 @@ export function invalidLocationFields(body) {
 export const SERVICE_PAYMENT_POLICIES = ["none", "deposit", "full"];
 
 export function invalidServiceFields(body) {
-  const { duration_min, price_cents, deposit_cents, payment_policy } = body;
+  const { duration_min, price_cents, deposit_cents, payment_policy, nightly_rate_cents } = body;
   if (
     payment_policy !== undefined &&
     payment_policy !== null &&
     !SERVICE_PAYMENT_POLICIES.includes(payment_policy)
   ) {
     return "payment_policy must be one of none, deposit, full";
+  }
+  if (
+    nightly_rate_cents !== undefined &&
+    nightly_rate_cents !== null &&
+    (!Number.isInteger(nightly_rate_cents) || nightly_rate_cents < 0)
+  ) {
+    return "nightly_rate_cents must be a non-negative integer";
   }
   if (
     price_cents !== undefined &&
