@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Home,
@@ -60,6 +61,7 @@ export default function DaycareScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("daycare");
+  const { t } = useTranslation();
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
@@ -141,7 +143,6 @@ export default function DaycareScreen() {
             setQuery={setQuery}
             sort={sort}
             setSort={setSort}
-            placeholder="Search daycares by name"
           />
         ) : null}
 
@@ -161,8 +162,8 @@ export default function DaycareScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No matching facilities"
-            body={`No daycares match "${query.trim()}". Try a different name.`}
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
           />
         ) : (
           filtered.map((p) => (

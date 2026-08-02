@@ -30,6 +30,32 @@ test("a missing key falls back to English (never a raw key in another language)"
   expect(i18n.t("__test.onlyEn")).toBe("English only");
 });
 
+test("audit-added keys resolve in BOTH languages (no half-translated strings)", async () => {
+  const en = require("./locales/en.json");
+  const es = require("./locales/es.json");
+  const newKeys = [
+    ["providers", "searchPlaceholder"],
+    ["providers", "sortTopRated"],
+    ["providers", "noMatchBody"],
+    ["providers", "bookFromPrice"],
+    ["providers", "reviewsOther"],
+    ["notifications", "filterRequests"],
+    ["notifications", "accessRequestBody"],
+    ["health", "trackerSoon"],
+    ["health", "trackerSoonBody"],
+    ["common", "yourPet"],
+  ];
+  for (const [ns, key] of newKeys) {
+    expect(typeof en[ns]?.[key]).toBe("string");
+    expect(en[ns][key].length).toBeGreaterThan(0);
+    expect(typeof es[ns]?.[key]).toBe("string");
+    expect(es[ns][key].length).toBeGreaterThan(0);
+    // Interpolation placeholders must survive translation (same {{vars}}).
+    const vars = (s) => (s.match(/{{\s*\w+\s*}}/g) || []).sort();
+    expect(vars(es[ns][key])).toEqual(vars(en[ns][key]));
+  }
+});
+
 test("deviceLanguage maps a Spanish phone to es, anything else to en", () => {
   mockGetLocales.mockReturnValueOnce([{ languageCode: "es" }]);
   expect(deviceLanguage()).toBe("es");

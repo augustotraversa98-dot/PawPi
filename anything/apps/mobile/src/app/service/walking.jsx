@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Footprints,
@@ -53,6 +54,7 @@ export default function WalkingScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("walker");
+  const { t } = useTranslation();
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
@@ -179,7 +181,6 @@ export default function WalkingScreen() {
             setQuery={setQuery}
             sort={sort}
             setSort={setSort}
-            placeholder="Search walkers by name"
           />
         ) : null}
 
@@ -199,8 +200,8 @@ export default function WalkingScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No matching walkers"
-            body={`No walkers match "${query.trim()}". Try a different name.`}
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
           />
         ) : (
           filtered.map((p) => (

@@ -20,7 +20,8 @@
     "back": "Atrás",
     "close": "Cerrar",
     "share": "Compartir",
-    "send": "Enviar"
+    "send": "Enviar",
+    "yourPet": "tu mascota"
   },
   "settings": {
     "title": "Ajustes",
@@ -40,7 +41,10 @@
     "today": "Hoy",
     "track": "Registrar",
     "insights": "Estadísticas",
-    "vetRecord": "Historia clínica"
+    "vetRecord": "Historia clínica",
+    "trackerSoon": "Pronto",
+    "trackerSoonTitle": "{{label}} — próximamente",
+    "trackerSoonBody": "El registro de {{label}} para {{pet}} está en camino. Mientras tanto, puedes anotarlo en Comida y premios o en la Historia clínica."
   },
   "services": {
     "title": "Servicios",
@@ -58,7 +62,10 @@
   "notifications": {
     "title": "Notificaciones",
     "markAllRead": "Marcar todo como leído",
-    "empty": "Todavía no hay notificaciones"
+    "empty": "Todavía no hay notificaciones",
+    "filterRequests": "Solicitudes",
+    "accessProviderFallback": "Un proveedor de cuidado",
+    "accessRequestBody": "quiere acceso a la ficha de {{pet}}"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",
@@ -194,5 +201,22 @@
     "permissionBody": "Se necesita acceso al calendario para añadir esto. Es opcional: tu reserva se guarda igual.",
     "couldNotAdd": "No se pudo añadir al calendario, pero se guardó igual.",
     "rsvpFirst": "Confirma \"voy\" para añadir este evento a tu calendario"
+  },
+  "providers": {
+    "searchPlaceholder": "Buscar por nombre",
+    "sortSuggested": "Sugeridos",
+    "sortTopRated": "Mejor valorados",
+    "sortMostReviewed": "Con más reseñas",
+    "clearSearch": "Borrar búsqueda",
+    "noMatchBody": "No hay resultados para \"{{query}}\". Prueba con otro nombre.",
+    "fromPrice": "desde {{price}}",
+    "book": "Reservar",
+    "bookFromPrice": "Reservar · desde {{price}}",
+    "message": "Mensaje",
+    "messageA11y": "Enviar mensaje al proveedor",
+    "bookA11y": "Reservar turno",
+    "bookFromA11y": "Reservar, desde {{price}}",
+    "reviewsOne": "(1 reseña)",
+    "reviewsOther": "({{count}} reseñas)"
   }
 }

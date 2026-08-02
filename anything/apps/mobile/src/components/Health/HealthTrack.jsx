@@ -24,6 +24,7 @@ import WalkActivityModal from "./WalkActivity/WalkActivityModal";
 import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   COLORS,
@@ -138,8 +139,9 @@ const TRACKERS = [
 ];
 
 export default function HealthTrack() {
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
-  const petName = currentPet?.name || "your pet";
+  const petName = currentPet?.name || t("common.yourPet");
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
   const [foodWaterModalVisible, setFoodWaterModalVisible] = useState(false);
   const [foodWaterModalType, setFoodWaterModalType] = useState("food");
@@ -182,8 +184,8 @@ export default function HealthTrack() {
     } else if (tracker.comingSoon) {
       // Honest feedback instead of a silent dead tap for trackers not yet built.
       Alert.alert(
-        `${tracker.label} — coming soon`,
-        `${tracker.label} tracking for ${petName} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.`,
+        t("health.trackerSoonTitle", { label: tracker.label }),
+        t("health.trackerSoonBody", { label: tracker.label, pet: petName }),
       );
     }
   };
@@ -258,7 +260,7 @@ export default function HealthTrack() {
                         }}
                       >
                         <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
-                          Soon
+                          {t("health.trackerSoon")}
                         </Text>
                       </View>
                     )}

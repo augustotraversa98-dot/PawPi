@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Heart,
@@ -67,6 +68,7 @@ export default function SittingScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("sitter");
+  const { t } = useTranslation();
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
@@ -143,7 +145,6 @@ export default function SittingScreen() {
             setQuery={setQuery}
             sort={sort}
             setSort={setSort}
-            placeholder="Search sitters by name"
           />
         ) : null}
 
@@ -163,8 +164,8 @@ export default function SittingScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No matching sitters"
-            body={`No sitters match "${query.trim()}". Try a different name.`}
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
           />
         ) : (
           filtered.map((p) => (

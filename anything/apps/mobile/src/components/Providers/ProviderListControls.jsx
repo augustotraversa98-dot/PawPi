@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, TextInput } from "react-native";
 import { Search, X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
@@ -15,9 +16,9 @@ import { PressableScale } from "@/components/ui";
 // discover projection.
 
 export const PROVIDER_SORTS = [
-  { key: "relevance", label: "Suggested" },
-  { key: "rating", label: "Top rated" },
-  { key: "reviews", label: "Most reviewed" },
+  { key: "relevance", labelKey: "providers.sortSuggested" },
+  { key: "rating", labelKey: "providers.sortTopRated" },
+  { key: "reviews", labelKey: "providers.sortMostReviewed" },
 ];
 
 export function useProviderListFilter(providers) {
@@ -53,8 +54,10 @@ export default function ProviderListControls({
   setQuery,
   sort,
   setSort,
-  placeholder = "Search by name",
+  placeholder,
 }) {
+  const { t } = useTranslation();
+  const searchPlaceholder = placeholder || t("providers.searchPlaceholder");
   return (
     <View style={{ marginBottom: SPACING.md + 2 }}>
       {/* Search box with instant type-ahead + clear button. */}
@@ -76,17 +79,17 @@ export default function ProviderListControls({
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder}
           placeholderTextColor={COLORS.mutedBrown}
           autoCorrect={false}
           returnKeyType="search"
-          accessibilityLabel={placeholder}
+          accessibilityLabel={searchPlaceholder}
           style={[TYPE.subhead, { flex: 1, color: COLORS.warmBrown, padding: 0 }]}
         />
         {query.length > 0 ? (
           <PressableScale
             onPress={() => setQuery("")}
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t("providers.clearSearch")}
             hitSlop={8}
           >
             <X size={18} color={COLORS.mutedBrown} />
@@ -122,7 +125,7 @@ export default function ProviderListControls({
                   },
                 ]}
               >
-                {s.label}
+                {t(s.labelKey)}
               </Text>
             </PressableScale>
           );

@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Stethoscope,
@@ -56,6 +57,7 @@ function formatPrice(cents, currency) {
 export default function ProviderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { slug, capability } = useLocalSearchParams();
   const slugStr = Array.isArray(slug) ? slug[0] : slug;
   // Optional capability the owner is booking FOR (ticket 2.6: grooming passes
@@ -532,7 +534,9 @@ export default function ProviderScreen() {
                     {Number(avgRating).toFixed(1)}
                   </Text>
                   <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                    {reviewCount === 1 ? "(1 review)" : `(${reviewCount} reviews)`}
+                    {reviewCount === 1
+                      ? t("providers.reviewsOne")
+                      : t("providers.reviewsOther", { count: reviewCount })}
                   </Text>
                 </View>
               ) : (
@@ -540,7 +544,7 @@ export default function ProviderScreen() {
               )}
               {fromPrice != null ? (
                 <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
-                  {`from ${formatPrice(fromPrice)}`}
+                  {t("providers.fromPrice", { price: formatPrice(fromPrice) })}
                 </Text>
               ) : null}
             </View>
@@ -569,7 +573,7 @@ export default function ProviderScreen() {
                 );
               }}
               accessibilityRole="button"
-              accessibilityLabel="Message provider"
+              accessibilityLabel={t("providers.messageA11y")}
               style={{
                 flex: 1,
                 backgroundColor: COLORS.sand,
@@ -589,7 +593,7 @@ export default function ProviderScreen() {
                 <MessageSquare size={18} color={COLORS.coral} />
               )}
               <Text style={[TYPE.headline, { color: COLORS.coral, fontWeight: "800" }]}>
-                Message
+                {t("providers.message")}
               </Text>
             </PressableScale>
             <PressableScale
@@ -597,8 +601,8 @@ export default function ProviderScreen() {
               accessibilityRole="button"
               accessibilityLabel={
                 fromPrice != null
-                  ? `Book, from ${formatPrice(fromPrice)}`
-                  : "Book appointment"
+                  ? t("providers.bookFromA11y", { price: formatPrice(fromPrice) })
+                  : t("providers.bookA11y")
               }
               style={{
                 flex: 2,
@@ -613,7 +617,9 @@ export default function ProviderScreen() {
             >
               <Calendar size={18} color="#FFF" />
               <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                {fromPrice != null ? `Book · from ${formatPrice(fromPrice)}` : "Book"}
+                {fromPrice != null
+                  ? t("providers.bookFromPrice", { price: formatPrice(fromPrice) })
+                  : t("providers.book")}
               </Text>
             </PressableScale>
           </View>

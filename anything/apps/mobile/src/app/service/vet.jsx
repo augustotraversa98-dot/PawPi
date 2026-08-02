@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Stethoscope,
@@ -29,6 +30,7 @@ import ProviderListControls, {
 export default function VetScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: providers, isLoading, isError, refetch } =
     useDiscoverProviders("vet");
   const { query, setQuery, sort, setSort, filtered } =
@@ -96,7 +98,6 @@ export default function VetScreen() {
             setQuery={setQuery}
             sort={sort}
             setSort={setSort}
-            placeholder="Search vets by name"
           />
         ) : null}
 
@@ -116,8 +117,8 @@ export default function VetScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No matching vets"
-            body={`No vets match "${query.trim()}". Try a different name.`}
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
           />
         ) : (
           filtered.map((p) => (

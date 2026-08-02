@@ -14,6 +14,9 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: mockPush }),
 }));
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -67,7 +70,7 @@ test("typing in the search box filters the list by name (type-ahead)", () => {
     refetch: jest.fn(),
   };
   const { getByPlaceholderText, getByText, queryByText } = render(<VetScreen />);
-  fireEvent.changeText(getByPlaceholderText("Search vets by name"), "city");
+  fireEvent.changeText(getByPlaceholderText("Search by name"), "city");
   expect(getByText("City Vet")).toBeTruthy();
   expect(queryByText("Happy Paws Clinic")).toBeNull();
 });
@@ -82,8 +85,8 @@ test("a search with no matches shows a 'no matching vets' state", () => {
     refetch: jest.fn(),
   };
   const { getByPlaceholderText, getByText } = render(<VetScreen />);
-  fireEvent.changeText(getByPlaceholderText("Search vets by name"), "zzz");
-  expect(getByText("No matching vets")).toBeTruthy();
+  fireEvent.changeText(getByPlaceholderText("Search by name"), "zzz");
+  expect(getByText("No results")).toBeTruthy();
 });
 
 test("Top rated sort orders providers by average rating", () => {

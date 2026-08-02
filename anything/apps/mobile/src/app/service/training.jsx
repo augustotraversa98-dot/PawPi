@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   GraduationCap,
@@ -66,6 +67,7 @@ export default function TrainingServiceScreen() {
     isError,
     refetch,
   } = useDiscoverProviders("trainer");
+  const { t } = useTranslation();
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
@@ -142,7 +144,6 @@ export default function TrainingServiceScreen() {
             setQuery={setQuery}
             sort={sort}
             setSort={setSort}
-            placeholder="Search trainers by name"
           />
         ) : null}
 
@@ -162,8 +163,8 @@ export default function TrainingServiceScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No matching trainers"
-            body={`No trainers match "${query.trim()}". Try a different name.`}
+            title={t("common.noResults")}
+            body={t("providers.noMatchBody", { query: query.trim() })}
           />
         ) : (
           filtered.map((p) => (

@@ -9,6 +9,23 @@ import { Alert } from "react-native";
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
+jest.mock("react-i18next", () => {
+  const en = require("@/i18n/locales/en.json");
+  const resolve = (k) =>
+    k.split(".").reduce((o, part) => (o == null ? o : o[part]), en);
+  return {
+    useTranslation: () => ({
+      t: (key, vars) => {
+        let s = resolve(key);
+        if (typeof s !== "string") return key;
+        if (vars)
+          for (const [name, val] of Object.entries(vars))
+            s = s.replace(new RegExp(`{{${name}}}`, "g"), String(val));
+        return s;
+      },
+    }),
+  };
+});
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 1, name: "Mango" } }),
 }));
