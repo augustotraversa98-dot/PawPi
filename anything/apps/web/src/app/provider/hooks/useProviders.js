@@ -189,6 +189,17 @@ export const salesKey = (providerId) => [
 
 export const salesUrl = (providerId) => `/api/providers/${providerId}/sales`;
 
+// Payment-account connection status (ACTION 2 §1) — whether each rail (MercadoPago /
+// Binance) is linked, so the Sales dashboard can show connected/not and gate the connect
+// button. Read-only; the endpoint never returns tokens.
+export const paymentAccountsKey = (providerId) => [
+  "provider-payment-accounts",
+  String(providerId ?? ""),
+];
+
+export const paymentAccountsUrl = (providerId) =>
+  `/api/providers/${providerId}/payment-accounts`;
+
 // Rx fulfillment queue (ticket 2.71) — the dispensing provider's incoming fulfillment orders.
 export const rxFulfillmentKey = (providerId) => [
   "provider-rx-fulfillment",
@@ -238,6 +249,16 @@ export function useProviderSales(providerId) {
   return useQuery({
     queryKey: salesKey(providerId),
     queryFn: () => getJson(salesUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Connection status of the payment rails for the active provider (ACTION 2 §1). Used by
+// the Sales dashboard's "Payment account" card.
+export function usePaymentAccounts(providerId) {
+  return useQuery({
+    queryKey: paymentAccountsKey(providerId),
+    queryFn: () => getJson(paymentAccountsUrl(providerId)),
     enabled: providerId != null && providerId !== "",
   });
 }

@@ -350,16 +350,23 @@ gates on config before ever reaching a rail's adapter.**
    https://www.mercadopago.com/developers — this lets each provider connect their own account and
    MercadoPago auto-splits the platform commission at checkout (`marketplace_fee`).
 2. From the app's credentials page, copy the **Client ID** and **Client Secret**.
-3. Register the OAuth redirect/callback URL with the app:
-   `https://<your-production-domain>/api/providers/<id>/payment-accounts/mercadopago/callback`
-   (the `<id>` is per-provider — MercadoPago's app config just needs the domain + path pattern allowed).
-4. Register the webhook URL: `https://<your-production-domain>/api/payments/webhooks/mercadopago`
+3. Register the OAuth Redirect URL with the app (a SINGLE FIXED url — the provider id is NOT in
+   it; it travels in the OAuth `state`):
+   `https://pawpi-production.up.railway.app/provider/payments/mercadopago/return`
+   This is the provider-facing return page that completes the per-provider connect. It must match,
+   byte-for-byte, `MP_REDIRECT_URI` (step 5). **Corrected N-payments (2026-08-02):** the earlier
+   version of this step pointed at the `/api/.../callback` route with a `<id>` placeholder — that
+   was wrong (OAuth redirects are exact-match and can't carry a path placeholder).
+4. Register the webhook URL: `https://pawpi-production.up.railway.app/api/payments/webhooks/mercadopago`
    — generate a webhook secret in the MercadoPago dashboard when you set this up.
 5. Set on the **web** deploy (Railway): `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_WEBHOOK_SECRET`,
-   `MP_REDIRECT_URI` (the exact callback URL from step 3, without the `<id>` — the route fills that in
-   per-request). Exact names + a commented example are already in `anything/apps/web/.env.example`.
-6. Each provider then connects their own MercadoPago account from their dashboard (Sales/Payouts —
-   ticket 2.69), which starts the OAuth flow at `GET /api/providers/[id]/payment-accounts/mercadopago/connect`.
+   `MP_REDIRECT_URI` (the exact Redirect URL from step 3 — verbatim, no `<id>`). Exact names + a
+   commented example are already in `anything/apps/web/.env.example`.
+6. Each provider then connects their own MercadoPago account from the **Sales** dashboard
+   (`/provider/sales` → "Payment account" card → **Connect MercadoPago**, ticket-payments-connect),
+   which starts the OAuth flow at `GET /api/providers/[id]/payment-accounts/mercadopago/connect` and
+   returns to the page from step 3. **Built 2026-08-02** — before that the backend endpoints existed
+   but there was no button/return page, so no provider could connect. 📱 device-test entry below.
 
 ### 2. Binance Pay (crypto rail — optional, can go live after MercadoPago or skip)
 1. Create a **Binance Pay merchant account** at https://merchant.binance.com.
@@ -435,6 +442,23 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 ---
 
 ## To test
+
+### [ ] MercadoPago provider connect — web dashboard button + OAuth return page (2026-08-02)
+- **What shipped (plain English):** the "Connect MercadoPago" button on a business's **Sales**
+  dashboard, plus the page MercadoPago sends the provider back to after they approve. Before this,
+  the payment *backend* existed but there was no way in the app for a business to actually link its
+  MercadoPago account — so checkout would stay "payments not configured" for every provider even
+  with all the keys set. This closes that gap.
+- **Depends on:** ACTION 2 §1 done — `MP_CLIENT_ID` / `MP_CLIENT_SECRET` / `MP_REDIRECT_URI` set on
+  Railway, and the Redirect URL `https://pawpi-production.up.railway.app/provider/payments/mercadopago/return`
+  registered in the MercadoPago app. Until the keys are set the button shows a clean
+  "payments aren't set up yet" message (503) — no crash.
+- **Manual test (web):** log in as a business owner → `/provider/sales` → the "Payment account"
+  card shows **Connect MercadoPago** → click → you're sent to MercadoPago → authorize → you land
+  back on the return page showing "MercadoPago connected" → the card now shows connected. Then:
+  book/checkout one low-value service on that provider and confirm a real MercadoPago checkout link
+  appears (no longer "payments not configured"). Covered by unit tests (route + return page); this
+  entry is the real end-to-end OAuth round-trip a human must do once with live keys.
 
 ### N8 — Self-verify device-test backlog using the iOS Simulator (2026-07-29)
 **Honest summary, not a full sweep.** Attempted to work through the "To test" backlog below using

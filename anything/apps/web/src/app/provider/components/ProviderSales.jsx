@@ -18,6 +18,7 @@ import {
 } from "../../../client-integrations/recharts";
 import { useProviderSales } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import PaymentAccountCard from "./PaymentAccountCard";
 
 // Provider SALES / PAYOUTS / RECONCILIATION (Wave 7 ticket 2.69). Read-only surfacing of the 2.3
 // money already captured: revenue (net/gross over the last 6 months), a transactions ledger
@@ -133,6 +134,10 @@ export default function ProviderSales({ providerId }) {
           Revenue, payouts and reconciliation — only this provider's money, read-only.
         </p>
       </header>
+
+      {/* Payment account connection (ACTION 2 §1) — provider links their own MercadoPago
+          account here; without it, checkout stays "payments not configured" for them. */}
+      <PaymentAccountCard providerId={providerId} />
 
       {/* Headline stats */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
