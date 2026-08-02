@@ -28,6 +28,10 @@ jest.mock("@/components/RefreshableScrollView", () => {
 });
 jest.mock("@/components/Providers/BookingFormModal", () => () => null);
 jest.mock("@/components/Providers/RatingBadge", () => () => null);
+jest.mock("@/components/Providers/StorefrontCatalog", () => () => null);
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: null }),
+}));
 jest.mock("@/hooks/useProviders", () => ({
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),

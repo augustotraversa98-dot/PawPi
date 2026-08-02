@@ -1,12 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   Image,
   ActivityIndicator,
-  Modal,
   Alert,
-  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -14,12 +12,7 @@ import {
   ArrowLeft,
   ShoppingBag,
   ChevronRight,
-  Plus,
-  Minus,
-  X,
-  Package,
   RefreshCw,
-  Pill,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
@@ -27,8 +20,6 @@ import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useDiscoverProviders,
-  useShopProducts,
-  useShopCheckout,
   useShopOrders,
   useShopSubscriptions,
   useCreateShopSubscription,
@@ -36,6 +27,7 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import StorefrontCatalog from "@/components/Providers/StorefrontCatalog";
 import { formatMoney } from "@/utils/money";
 
 // SHOP / e-commerce (ticket 2.11) — the owner browses PUBLISHED shop providers (real data, no
@@ -133,7 +125,7 @@ export default function ShopScreen() {
         <SubscriptionsTab />
       )}
 
-      <ShopCatalogModal
+      <StorefrontCatalog
         shop={openShop}
         petId={petId}
         onClose={() => setOpenShop(null)}
@@ -228,252 +220,6 @@ function ShopCard({ shop, onPress }) {
         <ChevronRight size={20} color={COLORS.mutedBrown} />
       </Card>
     </PressableScale>
-  );
-}
-
-// A shop's catalog + cart + checkout. The cart is local state; checkout posts to the backend
-// which prices each line from the catalog, refuses out-of-stock + Rx-without-vet, then pays
-// via the 2.3 layer.
-function ShopCatalogModal({ shop, petId, onClose }) {
-  const { data: products, isLoading } = useShopProducts(shop?.id);
-  const [cart, setCart] = useState({}); // productId -> qty
-  const checkout = useShopCheckout();
-
-  const reset = () => setCart({});
-
-  const cartLines = useMemo(() => {
-    if (!products) return [];
-    return Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([pid, qty]) => {
-        const product = products.find((p) => String(p.id) === String(pid));
-        return product ? { product, qty } : null;
-      })
-      .filter(Boolean);
-  }, [cart, products]);
-
-  const total = cartLines.reduce(
-    (sum, l) => sum + l.product.price_cents * l.qty,
-    0,
-  );
-
-  const setQty = (productId, delta, stockQty) => {
-    setCart((prev) => {
-      const next = Math.max(0, Math.min(stockQty ?? 99, (prev[productId] ?? 0) + delta));
-      return { ...prev, [productId]: next };
-    });
-  };
-
-  const doCheckout = async () => {
-    if (!petId) {
-      Alert.alert("Add a pet first", "Set up a pet to check out.");
-      return;
-    }
-    if (cartLines.length === 0) return;
-    try {
-      const res = await checkout.mutateAsync({
-        petId,
-        provider_id: shop.id,
-        items: cartLines.map((l) => ({
-          product_id: l.product.id,
-          quantity: l.qty,
-        })),
-        rail: "mercadopago",
-      });
-      if (res.checkoutUrl) {
-        Linking.openURL(res.checkoutUrl).catch(() => {});
-        Alert.alert("Order placed", "Complete your payment in the checkout window.");
-      } else {
-        Alert.alert("Order placed", "Your order is on its way.");
-      }
-      reset();
-      onClose();
-    } catch (e) {
-      // Surfaces the backend's "Out of stock", Rx-required, or "payments not configured".
-      Alert.alert("Couldn't check out", e.message || "Please try again.");
-    }
-  };
-
-  return (
-    <Modal
-      visible={!!shop}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-        <GlassSurface
-          intensity={BLUR.thick}
-          style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
-          contentStyle={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: SPACING.lg,
-          }}
-        >
-          <Text
-            style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown }]}
-            numberOfLines={1}
-          >
-            {shop?.name || "Shop"}
-          </Text>
-          <PressableScale onPress={onClose}>
-            <X size={22} color={COLORS.warmBrown} />
-          </PressableScale>
-        </GlassSurface>
-
-        <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 140 }}>
-          {isLoading ? (
-            <View style={{ paddingVertical: 48, alignItems: "center" }}>
-              <ActivityIndicator color={COLORS.coral} />
-            </View>
-          ) : !products || products.length === 0 ? (
-            <EmptyState
-              title="No products yet"
-              body="This shop hasn't listed any products."
-            />
-          ) : (
-            products.map((p) => (
-              <ProductRow
-                key={p.id}
-                product={p}
-                qty={cart[p.id] ?? 0}
-                onAdd={() => setQty(p.id, 1, p.stock_qty)}
-                onRemove={() => setQty(p.id, -1, p.stock_qty)}
-              />
-            ))
-          )}
-        </RefreshableScrollView>
-
-        {/* Cart bar */}
-        {cartLines.length > 0 ? (
-          <GlassSurface
-            intensity={BLUR.thick}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderTopWidth: 1,
-              borderColor: MATERIALS.glassBorder,
-            }}
-            contentStyle={{ padding: SPACING.lg }}
-          >
-            <PressableScale
-              onPress={doCheckout}
-              disabled={checkout.isPending}
-              style={{
-                backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.control,
-                paddingVertical: 15,
-                alignItems: "center",
-                opacity: checkout.isPending ? 0.6 : 1,
-              }}
-            >
-              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                {checkout.isPending
-                  ? "Checking out…"
-                  : `Checkout · ${money(total, shop?.currency)}`}
-              </Text>
-            </PressableScale>
-          </GlassSurface>
-        ) : null}
-      </View>
-    </Modal>
-  );
-}
-
-function ProductRow({ product, qty, onAdd, onRemove }) {
-  const soldOut = product.stock_qty <= 0;
-  return (
-    <Card
-      level="sm"
-      radius={RADIUS.md}
-      borderColor={COLORS.peach}
-      style={{
-        padding: SPACING.lg - 2,
-        marginBottom: SPACING.md,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SPACING.md,
-        opacity: soldOut ? 0.6 : 1,
-      }}
-    >
-      {Array.isArray(product.image_urls) && product.image_urls[0] ? (
-        <Image
-          source={{ uri: product.image_urls[0] }}
-          style={{ width: 56, height: 56, borderRadius: RADIUS.sm, backgroundColor: COLORS.sand }}
-        />
-      ) : (
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: RADIUS.sm,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Package size={22} color={COLORS.coral} />
-        </View>
-      )}
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text
-            style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown, flexShrink: 1 }]}
-            numberOfLines={1}
-          >
-            {product.name}
-          </Text>
-          {product.is_rx ? <RxBadge /> : null}
-        </View>
-        <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}>
-          {money(product.price_cents, product.currency)}
-        </Text>
-        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 2 }]}>
-          {soldOut ? "Sold out" : `${product.stock_qty} in stock`}
-        </Text>
-      </View>
-
-      {soldOut ? null : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
-          {qty > 0 ? (
-            <>
-              <PressableScale onPress={onRemove} accessibilityLabel="Remove one">
-                <Minus size={20} color={COLORS.warmBrown} />
-              </PressableScale>
-              <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
-                {qty}
-              </Text>
-            </>
-          ) : null}
-          <PressableScale onPress={onAdd} accessibilityLabel="Add to cart">
-            <Plus size={20} color={COLORS.coral} />
-          </PressableScale>
-        </View>
-      )}
-    </Card>
-  );
-}
-
-function RxBadge() {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        backgroundColor: COLORS.terracotta + "22",
-        borderRadius: RADIUS.chip,
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-      }}
-    >
-      <Pill size={11} color={COLORS.terracotta} />
-      <Text style={[TYPE.caption, { fontSize: 10, fontWeight: "800", color: COLORS.terracotta, letterSpacing: 0 }]}>Rx</Text>
-    </View>
   );
 }
 

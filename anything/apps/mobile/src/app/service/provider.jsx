@@ -5,6 +5,7 @@ import {
   Image,
   ActivityIndicator,
   Linking,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -41,8 +42,25 @@ import {
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import StorefrontCatalog from "@/components/Providers/StorefrontCatalog";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatMoney } from "@/utils/money";
+
+// Storefront primary-action buckets (Services Hub P4a). A provider's capabilities[] (from
+// the public profile) decide the primary action: a SHOP (shop/pharmacy or any products)
+// leads with the store; a BOOKable capability leads with Book; a provider with both shows
+// both. provider_type is display-only and never gates this.
+const BOOKABLE_CAPS = [
+  "vet",
+  "groomer",
+  "telehealth",
+  "walker",
+  "sitter",
+  "daycare",
+  "trainer",
+];
+const SHOP_CAPS = ["shop", "pharmacy"];
 
 // Shared formatter (src/utils/money.js) so a price never renders as one currency
 // here and another in the Shop. Services carry no currency column → default ARS;
@@ -68,7 +86,12 @@ export default function ProviderScreen() {
 
   const { data, isLoading, isError, refetch } = useProviderProfile(slugStr);
   const [showBooking, setShowBooking] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false); // in-storefront shop (P4a)
+  const [showCapChooser, setShowCapChooser] = useState(false);
+  const [bookingCapability, setBookingCapability] = useState(null);
   const { mutate: startThread, isPending: startingThread } = useStartThread();
+  const { data: currentPet } = useCurrentPet();
+  const petId = currentPet?.id;
 
   const provider = data?.provider;
   const locations = data?.locations ?? [];
@@ -76,6 +99,40 @@ export default function ProviderScreen() {
   // Storefront sections (ticket 2.22): the provider's shop items + posts feed.
   const products = data?.products ?? [];
   const posts = data?.posts ?? [];
+  // Capabilities drive the per-type primary action (P4a). The public profile already
+  // returns them; before P4a this screen ignored them.
+  const capabilities = data?.capabilities ?? [];
+
+  // Per-type primary action. A SHOP if it holds a shop/pharmacy capability OR lists any
+  // products; BOOKable capabilities show Book. A pure shop hides Book; a provider with no
+  // known capability still shows Book (the pre-P4a fallback, unchanged).
+  const bookableCaps = capabilities.filter((c) => BOOKABLE_CAPS.includes(c));
+  const isShop =
+    capabilities.some((c) => SHOP_CAPS.includes(c)) || products.length > 0;
+  const showShop = isShop;
+  const showBook = bookableCaps.length > 0 || !isShop;
+
+  // The capability a booking is FOR: an explicit deep-link param wins; else the sole
+  // bookable capability; else chosen from the chooser. Fixes the book/route 'vet' default
+  // gotcha — a grooming-only provider books as 'groomer', telehealth as 'telehealth'.
+  const resolvedBookingCapability =
+    bookingCapability ??
+    capabilityStr ??
+    (bookableCaps.length === 1 ? bookableCaps[0] : undefined);
+
+  const openBooking = () => {
+    // Multiple bookable capabilities and none preselected → ask which one first.
+    if (!bookingCapability && !capabilityStr && bookableCaps.length > 1) {
+      setShowCapChooser(true);
+    } else {
+      setShowBooking(true);
+    }
+  };
+  const pickBookingCapability = (cap) => {
+    setBookingCapability(cap);
+    setShowCapChooser(false);
+    setShowBooking(true);
+  };
 
   // Reviews for this provider (ticket 2.2). Keyed by id once the profile resolves.
   const { data: reviews } = useProviderReviews(provider?.id);
@@ -205,7 +262,37 @@ export default function ProviderScreen() {
               <Text style={[TYPE.title2, { fontSize: 19, lineHeight: 24, color: COLORS.warmBrown }]}>
                 {provider.name}
               </Text>
-              {provider.provider_type ? (
+              {/* Capability chips (P4a) — one per capability the provider holds; falls back
+                  to the display-only provider_type label when capabilities aren't set. */}
+              {capabilities.length > 0 ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: SPACING.xs,
+                    marginTop: 4,
+                  }}
+                >
+                  {capabilities.map((c) => (
+                    <View
+                      key={c}
+                      testID={`provider-cap-${c}`}
+                      style={{
+                        paddingHorizontal: SPACING.sm,
+                        paddingVertical: 2,
+                        borderRadius: RADIUS.chip,
+                        backgroundColor: COLORS.coral + "14",
+                        borderWidth: 1,
+                        borderColor: COLORS.peach,
+                      }}
+                    >
+                      <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "700" }]}>
+                        {t(`discover.cap.${c}`)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : provider.provider_type ? (
                 <Text
                   style={[
                     TYPE.footnote,
@@ -347,8 +434,9 @@ export default function ProviderScreen() {
             </Section>
           )}
 
-          {/* Items (ticket 2.22) — the provider's shop catalog summary. Tapping any
-              item opens the existing Shop flow (we don't rebuild checkout). */}
+          {/* Items (ticket 2.22 / P4a) — the provider's shop catalog summary. Tapping any
+              item opens the IN-STOREFRONT catalog (StorefrontCatalog) for this provider,
+              reusing the existing cart + checkout — no separate Shop screen hop. */}
           {products.length > 0 && (
             <Section title="Items">
               <View
@@ -362,7 +450,7 @@ export default function ProviderScreen() {
                   <PressableScale
                     key={p.id}
                     testID="storefront-item"
-                    onPress={() => router.push("/service/shop")}
+                    onPress={() => setShowCatalog(true)}
                     style={{
                       width: "47%",
                       backgroundColor: COLORS.card,
@@ -551,6 +639,7 @@ export default function ProviderScreen() {
           )}
 
           <View style={{ flexDirection: "row", gap: SPACING.md }}>
+            {/* Message (secondary, icon) */}
             <PressableScale
               onPress={() => {
                 if (startingThread) return;
@@ -575,14 +664,12 @@ export default function ProviderScreen() {
               accessibilityRole="button"
               accessibilityLabel={t("providers.messageA11y")}
               style={{
-                flex: 1,
+                width: 56,
                 backgroundColor: COLORS.sand,
                 borderRadius: RADIUS.control,
                 padding: SPACING.lg,
-                flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: SPACING.sm,
                 borderWidth: 1,
                 borderColor: COLORS.peach,
               }}
@@ -590,38 +677,72 @@ export default function ProviderScreen() {
               {startingThread ? (
                 <ActivityIndicator size="small" color={COLORS.coral} />
               ) : (
-                <MessageSquare size={18} color={COLORS.coral} />
+                <MessageSquare size={20} color={COLORS.coral} />
               )}
-              <Text style={[TYPE.headline, { color: COLORS.coral, fontWeight: "800" }]}>
-                {t("providers.message")}
-              </Text>
             </PressableScale>
-            <PressableScale
-              onPress={() => setShowBooking(true)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                fromPrice != null
-                  ? t("providers.bookFromA11y", { price: formatPrice(fromPrice) })
-                  : t("providers.bookA11y")
-              }
-              style={{
-                flex: 2,
-                backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.control,
-                padding: SPACING.lg,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: SPACING.sm,
-              }}
-            >
-              <Calendar size={18} color="#FFF" />
-              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                {fromPrice != null
-                  ? t("providers.bookFromPrice", { price: formatPrice(fromPrice) })
-                  : t("providers.book")}
-              </Text>
-            </PressableScale>
+
+            {/* Shop — primary when the store is the main action, secondary alongside Book. */}
+            {showShop ? (
+              <PressableScale
+                testID="storefront-shop-cta"
+                onPress={() => setShowCatalog(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t("storefront.shop")}
+                style={{
+                  flex: 1,
+                  backgroundColor: showBook ? COLORS.sand : COLORS.coral,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.lg,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: SPACING.sm,
+                  borderWidth: showBook ? 1 : 0,
+                  borderColor: COLORS.peach,
+                }}
+              >
+                <ShoppingBag size={18} color={showBook ? COLORS.coral : "#FFF"} />
+                <Text
+                  style={[
+                    TYPE.headline,
+                    { color: showBook ? COLORS.coral : "#FFF", fontWeight: "800" },
+                  ]}
+                >
+                  {t("storefront.shop")}
+                </Text>
+              </PressableScale>
+            ) : null}
+
+            {/* Book — capability-aware (opens the chooser first when there are several). */}
+            {showBook ? (
+              <PressableScale
+                testID="storefront-book-cta"
+                onPress={openBooking}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  fromPrice != null
+                    ? t("providers.bookFromA11y", { price: formatPrice(fromPrice) })
+                    : t("providers.bookA11y")
+                }
+                style={{
+                  flex: showShop ? 1 : 2,
+                  backgroundColor: COLORS.coral,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.lg,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: SPACING.sm,
+                }}
+              >
+                <Calendar size={18} color="#FFF" />
+                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+                  {fromPrice != null && !showShop
+                    ? t("providers.bookFromPrice", { price: formatPrice(fromPrice) })
+                    : t("providers.book")}
+                </Text>
+              </PressableScale>
+            ) : null}
           </View>
         </View>
       )}
@@ -632,8 +753,72 @@ export default function ProviderScreen() {
         provider={provider}
         locations={locations}
         services={services}
-        capability={capabilityStr}
+        capability={resolvedBookingCapability}
       />
+
+      {/* In-storefront shop (P4a): the SAME cart + checkout the Shop screen uses. */}
+      <StorefrontCatalog
+        shop={showCatalog ? provider : null}
+        petId={petId}
+        onClose={() => setShowCatalog(false)}
+      />
+
+      {/* Capability chooser — only when a provider offers several bookable services and
+          none was preselected, so the booking is filed under the RIGHT capability. */}
+      <Modal
+        visible={showCapChooser}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCapChooser(false)}
+      >
+        <PressableScale
+          onPress={() => setShowCapChooser(false)}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: COLORS.cream,
+              borderTopLeftRadius: RADIUS.card,
+              borderTopRightRadius: RADIUS.card,
+              padding: SPACING.lg,
+              paddingBottom: insets.bottom + SPACING.lg,
+            }}
+          >
+            <Text
+              style={[
+                TYPE.headline,
+                { color: COLORS.warmBrown, fontWeight: "800", marginBottom: SPACING.md },
+              ]}
+            >
+              {t("storefront.chooseServiceTitle")}
+            </Text>
+            {bookableCaps.map((cap) => (
+              <PressableScale
+                key={cap}
+                testID={`storefront-cap-choose-${cap}`}
+                onPress={() => pickBookingCapability(cap)}
+                style={{
+                  paddingVertical: SPACING.md + 2,
+                  paddingHorizontal: SPACING.lg,
+                  borderRadius: RADIUS.control,
+                  backgroundColor: COLORS.card,
+                  borderWidth: 1,
+                  borderColor: COLORS.peach,
+                  marginBottom: SPACING.sm + 2,
+                }}
+              >
+                <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "700" }]}>
+                  {t(`discover.cap.${cap}`)}
+                </Text>
+              </PressableScale>
+            ))}
+          </View>
+        </PressableScale>
+      </Modal>
     </View>
   );
 }

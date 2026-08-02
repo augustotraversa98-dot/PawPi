@@ -261,5 +261,21 @@
       "insurance": "Insurance",
       "adoption": "Adoption"
     }
+  },
+  "storefront": {
+    "shop": "Shop",
+    "searchInStore": "Search this store",
+    "allCategories": "All",
+    "noProducts": "This store hasn't listed any products yet.",
+    "readMore": "Read more",
+    "readLess": "Read less",
+    "inStock": "{{count}} in stock",
+    "soldOut": "Sold out",
+    "addToCart": "Add to cart",
+    "inCart": "In cart · {{count}}",
+    "removeOne": "Remove one",
+    "deliveryPickup": "Delivery & pickup options shown at checkout",
+    "favorite": "Favorite",
+    "chooseServiceTitle": "What would you like to book?"
   }
 }
