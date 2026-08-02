@@ -36,6 +36,7 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
+import { formatMoney } from "@/utils/money";
 
 // SHOP / e-commerce (ticket 2.11) — the owner browses PUBLISHED shop providers (real data, no
 // mocks), opens a shop's CATALOG, adds products to a CART, CHECKS OUT (pays via the 2.3
@@ -50,9 +51,11 @@ const TABS = [
   { key: "subs", label: "Auto-reorder" },
 ];
 
+// Delegates to the shared formatter (src/utils/money.js) so shop and provider
+// screens always render the same price identically. Returns "" (not null) so
+// existing string interpolations stay clean.
 function money(cents, currency = "ARS") {
-  if (cents == null) return "";
-  return `${currency} ${(cents / 100).toFixed(2)}`;
+  return formatMoney(cents, currency) ?? "";
 }
 
 export default function ShopScreen() {
