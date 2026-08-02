@@ -261,5 +261,21 @@
       "insurance": "Seguro",
       "adoption": "Adopción"
     }
+  },
+  "storefront": {
+    "shop": "Tienda",
+    "searchInStore": "Buscar en esta tienda",
+    "allCategories": "Todos",
+    "noProducts": "Esta tienda todavía no publicó productos.",
+    "readMore": "Leer más",
+    "readLess": "Leer menos",
+    "inStock": "{{count}} en stock",
+    "soldOut": "Agotado",
+    "addToCart": "Agregar al carrito",
+    "inCart": "En el carrito · {{count}}",
+    "removeOne": "Quitar uno",
+    "deliveryPickup": "Opciones de envío y retiro en el pago",
+    "favorite": "Favorito",
+    "chooseServiceTitle": "¿Qué te gustaría reservar?"
   }
 }
