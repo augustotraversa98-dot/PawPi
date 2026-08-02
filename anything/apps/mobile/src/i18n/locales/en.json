@@ -221,5 +221,39 @@
     "bookFromA11y": "Book, from {{price}}",
     "reviewsOne": "(1 review)",
     "reviewsOther": "({{count}} reviews)"
+  },
+  "discover": {
+    "title": "Discover",
+    "subtitle": "Find trusted pet care near you",
+    "searchPlaceholder": "Search providers",
+    "sortNearest": "Nearest",
+    "openNow": "Open now",
+    "distanceKm": "{{km}} km away",
+    "clearFilters": "Clear filters",
+    "loadErrorTitle": "Couldn't load providers",
+    "loadErrorBody": "Something went wrong. Pull down or tap retry.",
+    "emptyTitle": "No providers yet",
+    "emptyBody": "Trusted pet businesses are joining PawPi. Check back soon.",
+    "noResultsTitle": "No matches",
+    "noResultsBody": "No providers match your search or filters.",
+    "cat": {
+      "all": "All",
+      "veterinary": "Veterinary",
+      "shops": "Shops"
+    },
+    "cap": {
+      "vet": "Vet",
+      "groomer": "Grooming",
+      "telehealth": "Telehealth",
+      "shop": "Shop",
+      "pharmacy": "Pharmacy",
+      "walker": "Walking",
+      "daycare": "Daycare",
+      "sitter": "Sitting",
+      "trainer": "Training",
+      "transport": "Transport",
+      "insurance": "Insurance",
+      "adoption": "Adoption"
+    }
   }
 }

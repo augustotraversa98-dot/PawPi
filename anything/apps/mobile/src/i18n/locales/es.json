@@ -221,5 +221,39 @@
     "bookFromA11y": "Reservar, desde {{price}}",
     "reviewsOne": "(1 reseña)",
     "reviewsOther": "({{count}} reseñas)"
+  },
+  "discover": {
+    "title": "Descubrir",
+    "subtitle": "Encuentra cuidado confiable para tu mascota cerca de ti",
+    "searchPlaceholder": "Buscar proveedores",
+    "sortNearest": "Más cercanos",
+    "openNow": "Abierto ahora",
+    "distanceKm": "a {{km}} km",
+    "clearFilters": "Borrar filtros",
+    "loadErrorTitle": "No se pudieron cargar los proveedores",
+    "loadErrorBody": "Algo salió mal. Desliza hacia abajo o toca reintentar.",
+    "emptyTitle": "Aún no hay proveedores",
+    "emptyBody": "Negocios de mascotas confiables se están sumando a PawPi. Vuelve pronto.",
+    "noResultsTitle": "Sin coincidencias",
+    "noResultsBody": "Ningún proveedor coincide con tu búsqueda o filtros.",
+    "cat": {
+      "all": "Todos",
+      "veterinary": "Veterinaria",
+      "shops": "Tiendas"
+    },
+    "cap": {
+      "vet": "Veterinaria",
+      "groomer": "Peluquería",
+      "telehealth": "Telemedicina",
+      "shop": "Tienda",
+      "pharmacy": "Farmacia",
+      "walker": "Paseos",
+      "daycare": "Guardería",
+      "sitter": "Cuidado",
+      "trainer": "Entrenamiento",
+      "transport": "Transporte",
+      "insurance": "Seguro",
+      "adoption": "Adopción"
+    }
   }
 }

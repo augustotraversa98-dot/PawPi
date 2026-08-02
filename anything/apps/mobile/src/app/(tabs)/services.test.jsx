@@ -39,22 +39,24 @@ test("renders the full category grid (every category live, none coming-soon)", (
   expect(queryAllByText("Coming soon")).toHaveLength(COMING_SOON.length);
 });
 
-test("tapping the live Veterinary card opens the vet discover/book flow", () => {
+// Services Hub P2: the Veterinary/Grooming/Telehealth tiles now open the UNIFIED
+// discovery screen with the Veterinary category pre-applied (vet/groomer/telehealth).
+test("tapping the Veterinary card opens unified discover (Veterinary category)", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Veterinary"));
-  expect(mockPush).toHaveBeenCalledWith("/service/vet");
+  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
 });
 
-test("tapping the live Grooming card opens the grooming discover/book flow", () => {
+test("tapping the Grooming card opens unified discover (Veterinary category)", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Grooming"));
-  expect(mockPush).toHaveBeenCalledWith("/service/grooming");
+  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
 });
 
-test("tapping the live Telehealth card opens the telehealth discover/consult flow", () => {
+test("tapping the Telehealth card opens unified discover (Veterinary category)", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Telehealth"));
-  expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
+  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
 });
 
 // Regression guard for the More-tab corruption (ticket 2.19): NO Services card may push
@@ -106,10 +108,10 @@ test("tapping the live Training card opens the PROVIDER training service (not th
   expect(mockPush).toHaveBeenCalledWith("/service/training");
 });
 
-test("tapping the live Shop card opens the shop discover/catalog flow", () => {
+test("tapping the Shop card opens unified discover (Shops category)", () => {
   const { getByText } = render(<ServicesScreen />);
   fireEvent.press(getByText("Shop"));
-  expect(mockPush).toHaveBeenCalledWith("/service/shop");
+  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=shops");
 });
 
 test("tapping the live Adoption card opens the adoption discover flow", () => {
