@@ -42,8 +42,12 @@ jest.mock("react-native-maps", () => {
   const { View, TouchableOpacity } = require("react-native");
   const MapView = ({ children, onPress, testID }) =>
     React.createElement(TouchableOpacity, { testID, onPress }, children);
-  const Marker = ({ children, onDragEnd, testID }) =>
-    React.createElement(TouchableOpacity, { testID, onPress: onDragEnd }, children);
+  const Marker = ({ children, onDragEnd, onPress, testID }) =>
+    React.createElement(
+      TouchableOpacity,
+      { testID, onPress: onPress || onDragEnd },
+      children,
+    );
   const Polyline = ({ testID }) => React.createElement(View, { testID });
   return {
     __esModule: true,
@@ -291,5 +295,20 @@ describe("MapLocationView", () => {
     );
     expect(getByTestId("map-location-view-empty")).toBeTruthy();
     expect(queryByTestId("map-location-view-map")).toBeNull();
+  });
+
+  it("fires onMarkerPress(index, point) when a marker is tapped (Services Hub P3, additive)", () => {
+    const onMarkerPress = jest.fn();
+    const { getByTestId } = render(
+      <MapLocationView
+        points={[
+          { lat: 40.7, lng: -74, id: 11 },
+          { lat: 40.8, lng: -73.9, id: 22 },
+        ]}
+        onMarkerPress={onMarkerPress}
+      />,
+    );
+    fireEvent.press(getByTestId("map-location-view-marker-1"));
+    expect(onMarkerPress).toHaveBeenCalledWith(1, expect.objectContaining({ id: 22 }));
   });
 });

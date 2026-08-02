@@ -48,6 +48,11 @@ function regionFor(pts) {
  *   polyline?: [{ lat, lng }]                     — route line to draw
  *   height?: number                               — default 200
  *   interactive?: boolean                         — default false (scroll/zoom locked)
+ *   onMarkerPress?: (index, point) => void        — ADDITIVE (Services Hub P3): makes
+ *       markers tappable and reports which one. Absent → markers are not pressable and
+ *       behaviour is unchanged for existing callers (places/events/transport/adoption).
+ *   selectedIndex?: number                        — ADDITIVE: highlights that marker
+ *       (coral pin). Absent/-1 → all markers use the default pin.
  *   testID?: string
  */
 export default function MapLocationView({
@@ -56,6 +61,8 @@ export default function MapLocationView({
   polyline,
   height = 200,
   interactive = false,
+  onMarkerPress,
+  selectedIndex = -1,
   testID = "map-location-view",
 }) {
   const { t } = useTranslation();
@@ -114,6 +121,10 @@ export default function MapLocationView({
             coordinate={{ latitude: p.lat, longitude: p.lng }}
             title={p.title}
             description={p.description}
+            pinColor={i === selectedIndex ? C.coral : undefined}
+            onPress={
+              onMarkerPress ? () => onMarkerPress(i, p) : undefined
+            }
           />
         ))}
         {line.length >= 2 && (
