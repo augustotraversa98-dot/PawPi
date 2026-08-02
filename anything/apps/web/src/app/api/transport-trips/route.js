@@ -23,7 +23,13 @@ async function GET(request) {
     const trips = petId
       ? await sql`
           SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug,
-                 va.calendar_event_id AS calendar_event_id
+                 va.calendar_event_id AS calendar_event_id,
+                 EXISTS (
+                   SELECT 1 FROM orders o
+                   WHERE o.source_ref = 'transport:' || t.id
+                     AND o.owner_user_id = ${userId}
+                     AND o.status = 'paid'
+                 ) AS paid
           FROM transport_trips t
           LEFT JOIN providers pr ON pr.id = t.provider_id
           LEFT JOIN vet_appointments va ON va.id = t.booking_id
@@ -32,7 +38,13 @@ async function GET(request) {
         `
       : await sql`
           SELECT t.*, pr.name AS provider_name, pr.slug AS provider_slug,
-                 va.calendar_event_id AS calendar_event_id
+                 va.calendar_event_id AS calendar_event_id,
+                 EXISTS (
+                   SELECT 1 FROM orders o
+                   WHERE o.source_ref = 'transport:' || t.id
+                     AND o.owner_user_id = ${userId}
+                     AND o.status = 'paid'
+                 ) AS paid
           FROM transport_trips t
           LEFT JOIN providers pr ON pr.id = t.provider_id
           LEFT JOIN vet_appointments va ON va.id = t.booking_id

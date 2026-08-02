@@ -5,6 +5,7 @@ import {
   TextInput,
   Switch,
   Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -18,7 +19,11 @@ import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import MapLocationPicker from "@/components/Map/MapLocationPicker";
 import { useCurrentPet } from "@/hooks/usePetProfile";
-import { useDiscoverProviders, useStartThread } from "@/hooks/useProviders";
+import {
+  useDiscoverProviders,
+  useStartThread,
+  useBookingCheckout,
+} from "@/hooks/useProviders";
 import {
   useTransportTrips,
   useBookTransport,
@@ -66,7 +71,34 @@ export default function TransportScreen() {
   const { data: providers = [], isLoading, isError, refetch } = useDiscoverProviders("transport");
   const { data: trips = [] } = useTransportTrips(currentPet?.id ?? null);
   const book = useBookTransport();
+  const checkout = useBookingCheckout();
+  const [payingId, setPayingId] = useState(null);
   const cancel = useCancelTransport();
+
+  // Pay the provider-set fare of a confirmed trip via MercadoPago (pay-on-confirm).
+  // Links the payment to the trip through the order's source_ref = "transport:<id>";
+  // the trip's `paid` flag (from GET /api/transport-trips) flips once the payment lands.
+  const payTrip = async (t) => {
+    const cents = Math.round(Number(t.fare_amount) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) {
+      Alert.alert("No fare yet", "The provider hasn't set a fare for this trip.");
+      return;
+    }
+    setPayingId(t.id);
+    try {
+      const res = await checkout.mutateAsync({
+        provider_id: t.provider_id,
+        amount_cents: cents,
+        source_ref: `transport:${t.id}`,
+      });
+      const url = res.checkoutUrl || res.deeplink;
+      if (url) Linking.openURL(url).catch(() => {});
+    } catch (e) {
+      Alert.alert("Couldn't start payment", e.message || "Please try again.");
+    } finally {
+      setPayingId(null);
+    }
+  };
   const setTripCal = useSetTripCalendarEvent();
   const startThread = useStartThread();
   // aliased to `tr` — this screen already uses `t` as the trip variable in trips.map/messageProvider
@@ -377,6 +409,31 @@ export default function TransportScreen() {
                   Fare: {t.fare_amount}
                 </Text>
               )}
+              {t.paid ? (
+                <Text
+                  testID={`paid-${t.id}`}
+                  style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "800", marginTop: SPACING.xs }]}
+                >
+                  ✓ Paid
+                </Text>
+              ) : (t.status === "confirmed" || t.status === "en_route") &&
+                t.fare_amount != null ? (
+                <PressableScale
+                  testID={`pay-${t.id}`}
+                  onPress={() => payTrip(t)}
+                  style={{
+                    backgroundColor: COLORS.coral,
+                    borderRadius: RADIUS.control,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                    marginTop: SPACING.sm,
+                  }}
+                >
+                  <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
+                    {payingId === t.id ? "Opening…" : "Pay fare"}
+                  </Text>
+                </PressableScale>
+              ) : null}
               <View style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}>
                 <PressableScale
                   testID={`message-${t.id}`}
