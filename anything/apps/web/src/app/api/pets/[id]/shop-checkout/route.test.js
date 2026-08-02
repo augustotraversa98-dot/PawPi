@@ -12,7 +12,13 @@ import { createCheckout } from "@/app/api/utils/payments";
 import { ProviderPaymentAccountError } from "@/app/api/utils/payments/config";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/sql", () => {
+  // sql is a tagged-template fn; sql.json(v) binds a jsonb value (returns it raw here so
+  // tests can read the bound shipping_address object off the INSERT call).
+  const fn = vi.fn();
+  fn.json = (v) => v;
+  return { default: fn };
+});
 vi.mock("@/app/api/utils/payments", () => ({ createCheckout: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
@@ -186,6 +192,114 @@ describe("POST /api/pets/[id]/shop-checkout", () => {
     expect(json.checkoutUrl).toBe("https://pay/y");
     // No Rx lookup for a non-Rx cart.
     expect(allQueryText()).not.toContain("app_pet_has_vet_relationship");
+  });
+
+  // ── P4b fulfillment: pickup | delivery + shipping_address (additive, back-compat) ──
+  const okUpToInsert = (order, product = STD_PRODUCT) =>
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ id: 55 }]) // pet ownership
+      .mockResolvedValueOnce([{ 1: 1 }]) // shop capability
+      .mockResolvedValueOnce([product]) // product in stock
+      .mockResolvedValueOnce([order]) // INSERT order
+      .mockResolvedValueOnce([]); // INSERT order_item
+
+  const insertOrderValues = () => {
+    // The INSERT INTO orders is the 5th sql call (idx 4): resolveUserId, pet, cap, product, INSERT.
+    const call = sql.mock.calls[4];
+    return call.slice(1);
+  };
+
+  it("omitting fulfillment fields creates a valid PICKUP order (back-compat)", async () => {
+    auth.mockResolvedValue(SESSION);
+    okUpToInsert({ id: 600, kind: "product" });
+    createCheckout.mockResolvedValue({ payment: {}, checkoutUrl: "https://pay/a" });
+    const res = await POST(
+      postReq({ provider_id: 100, items: [{ product_id: 9 }], rail: "mercadopago" }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+    const text = allQueryText();
+    expect(text).toContain("fulfillment_type");
+    expect(text).toContain("shipping_address");
+    const values = insertOrderValues();
+    expect(values).toContain("pickup"); // defaulted
+    expect(values).toContain(null); // shipping_address null for pickup
+  });
+
+  it("an explicit PICKUP order stores no address", async () => {
+    auth.mockResolvedValue(SESSION);
+    okUpToInsert({ id: 601, kind: "product" });
+    createCheckout.mockResolvedValue({ payment: {}, checkoutUrl: "https://pay/b" });
+    const res = await POST(
+      postReq({
+        provider_id: 100,
+        items: [{ product_id: 9 }],
+        rail: "mercadopago",
+        fulfillment_type: "pickup",
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+    expect(insertOrderValues()).toContain("pickup");
+  });
+
+  it("a DELIVERY order persists fulfillment_type + the shipping_address object", async () => {
+    auth.mockResolvedValue(SESSION);
+    okUpToInsert({ id: 602, kind: "product" });
+    createCheckout.mockResolvedValue({ payment: {}, checkoutUrl: "https://pay/c" });
+    const address = { address: "123 Test St", lat: 1, lng: 2 };
+    const res = await POST(
+      postReq({
+        provider_id: 100,
+        items: [{ product_id: 9 }],
+        rail: "mercadopago",
+        fulfillment_type: "delivery",
+        shipping_address: address,
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+    const values = insertOrderValues();
+    expect(values).toContain("delivery");
+    expect(values).toEqual(
+      expect.arrayContaining([expect.objectContaining({ address: "123 Test St" })]),
+    );
+  });
+
+  it("400 a DELIVERY order without an address (no order created)", async () => {
+    auth.mockResolvedValue(SESSION);
+    // Fulfillment is validated before any capability/product query — only the ownership
+    // lookups run first.
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([{ id: 55 }]);
+    const res = await POST(
+      postReq({
+        provider_id: 100,
+        items: [{ product_id: 9 }],
+        rail: "mercadopago",
+        fulfillment_type: "delivery",
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+    expect(allQueryText()).not.toContain("INSERT INTO orders");
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("400 an invalid fulfillment_type is rejected", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([{ id: 55 }]);
+    const res = await POST(
+      postReq({
+        provider_id: 100,
+        items: [{ product_id: 9 }],
+        rail: "mercadopago",
+        fulfillment_type: "courier",
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+    expect(allQueryText()).not.toContain("INSERT INTO orders");
   });
 
   it("503 when payments are not configured (never crashes)", async () => {

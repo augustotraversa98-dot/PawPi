@@ -25,7 +25,8 @@ async function GET(request) {
     const orders = await sql`
       SELECT
         o.id, o.owner_user_id, o.provider_id, o.kind, o.amount_cents, o.currency,
-        o.status, o.fulfillment_status, o.created_at, o.updated_at,
+        o.status, o.fulfillment_status, o.fulfillment_type, o.shipping_address,
+        o.created_at, o.updated_at,
         p.name AS provider_name
       FROM orders o
       LEFT JOIN providers p ON p.id = o.provider_id

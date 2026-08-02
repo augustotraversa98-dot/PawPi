@@ -56,7 +56,14 @@ async function POST(request, { params }) {
     }
 
     const body = (await request.json()) ?? {};
-    const { provider_id, items, rail, idempotency_key } = body;
+    const {
+      provider_id,
+      items,
+      rail,
+      idempotency_key,
+      fulfillment_type,
+      shipping_address,
+    } = body;
 
     if (!provider_id) {
       return Response.json({ error: "provider_id is required" }, { status: 400 });
@@ -66,6 +73,31 @@ async function POST(request, { params }) {
     }
     if (!SUPPORTED_RAILS.includes(rail)) {
       return Response.json({ error: `Invalid rail: ${rail}` }, { status: 400 });
+    }
+
+    // FULFILLMENT (Services Hub P4b) — pickup or delivery-address. Back-compat: an omitted
+    // field is 'pickup' (matching the column default), so every pre-P4b caller still works.
+    // Delivery REQUIRES an address; pickup stores none. No courier/fee/tracking this phase.
+    const fulfillmentType = fulfillment_type ?? "pickup";
+    if (!["pickup", "delivery"].includes(fulfillmentType)) {
+      return Response.json(
+        { error: `Invalid fulfillment_type: ${fulfillmentType}` },
+        { status: 400 },
+      );
+    }
+    let shippingAddress = null;
+    if (fulfillmentType === "delivery") {
+      const addr =
+        shipping_address && typeof shipping_address === "object"
+          ? shipping_address.address
+          : null;
+      if (typeof addr !== "string" || addr.trim().length === 0) {
+        return Response.json(
+          { error: "A delivery address is required for delivery orders" },
+          { status: 400 },
+        );
+      }
+      shippingAddress = shipping_address;
     }
 
     // GATE 1 — the provider must hold the 'shop' capability (2.1).
@@ -147,11 +179,16 @@ async function POST(request, { params }) {
     }
 
     // Create the 'product' order as the paying owner (RLS WITH CHECK: owner_user_id = me).
+    // fulfillment_type + shipping_address are additive (0073): a pickup order stores
+    // 'pickup' + null exactly as a pre-P4b order did.
     const orderRows = await sql`
       INSERT INTO orders
-        (owner_user_id, provider_id, kind, amount_cents, currency, status)
+        (owner_user_id, provider_id, kind, amount_cents, currency, status,
+         fulfillment_type, shipping_address)
       VALUES (
-        ${userId}, ${provider_id}, 'product', ${amountCents}, 'ARS', 'pending'
+        ${userId}, ${provider_id}, 'product', ${amountCents}, 'ARS', 'pending',
+        ${fulfillmentType},
+        ${shippingAddress != null ? sql.json(shippingAddress) : null}
       )
       RETURNING *
     `;
