@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, Alert } from "react-native";
 import {
   Activity,
   Droplet,
@@ -98,6 +98,7 @@ const TRACKERS = [
     label: "Weight",
     description: "Track weight over time",
     color: "#9575CD",
+    action: "weight",
   },
   {
     icon: Pill,
@@ -111,24 +112,28 @@ const TRACKERS = [
     label: "Symptoms & Behavior",
     description: "Changes, observations, notes",
     color: "#FF8A65",
+    comingSoon: true,
   },
   {
     icon: Heart,
     label: "Vital Signs",
     description: "Temperature, heart rate, breathing",
     color: "#E57373",
+    comingSoon: true,
   },
   {
     icon: Stethoscope,
     label: "Vet Visits",
     description: "Appointments, exams, procedures",
     color: COLORS.terracotta,
+    comingSoon: true,
   },
   {
     icon: Syringe,
     label: "Vaccinations",
     description: "Vaccine history, upcoming shots",
     color: "#4DB6AC",
+    comingSoon: true,
   },
 ];
 
@@ -174,6 +179,12 @@ export default function HealthTrack() {
       setWalkActivityModalVisible(true);
     } else if (tracker.action === "weight") {
       setWeightModalVisible(true);
+    } else if (tracker.comingSoon) {
+      // Honest feedback instead of a silent dead tap for trackers not yet built.
+      Alert.alert(
+        `${tracker.label} — coming soon`,
+        `${tracker.label} tracking for ${petName} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.`,
+      );
     }
   };
 
@@ -224,9 +235,34 @@ export default function HealthTrack() {
                   <Icon size={24} color={tracker.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: 3 }]}>
-                    {tracker.label}
-                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: SPACING.xs,
+                      marginBottom: 3,
+                    }}
+                  >
+                    <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+                      {tracker.label}
+                    </Text>
+                    {tracker.comingSoon && (
+                      <View
+                        style={{
+                          backgroundColor: MATERIALS.surfaceSunken,
+                          borderRadius: RADIUS.chip,
+                          paddingHorizontal: SPACING.sm,
+                          paddingVertical: 2,
+                          borderWidth: 1,
+                          borderColor: MATERIALS.hairline,
+                        }}
+                      >
+                        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
+                          Soon
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
                     {tracker.description}
                   </Text>
