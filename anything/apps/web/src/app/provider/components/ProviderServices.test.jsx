@@ -121,6 +121,7 @@ describe("ProviderServices", () => {
       price_cents: 7550,
       deposit_cents: null,
       payment_policy: "none",
+      nightly_rate_cents: null,
       image_urls: [],
     });
   });

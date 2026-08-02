@@ -92,6 +92,15 @@ ACTION 1).
 > only records the provider's INTENT. Idempotent (`add column if not exists` + drop/re-add the CHECK).
 > Verify: `supabase/verify_0070.sql`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
 
+> **0071** adds daycare per-night pricing — a DEDICATED `nightly_rate_cents integer` (CHECK null-or-≥0)
+> on `provider_services` (the daycare menu is provider_services capability='daycare', 0034). Purely
+> additive, rides existing 0024 RLS; no policy/table change. Kept separate from the generic `price_cents`
+> on purpose — a stay is priced rate × nights, not flat. WHEN to charge reuses `payment_policy` (0070):
+> full → nightly_rate_cents × nights, deposit → deposit_cents, none → free. The charge is a normal
+> orders/payments row; a stay links via the order source_ref = 'daycare:<stayId>' (no stay column, same
+> pattern as transport). Idempotent. Verify: `supabase/verify_0071.sql`. HARNESS-ONLY this ticket —
+> hand-applied to Supabase after merge.
+
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---

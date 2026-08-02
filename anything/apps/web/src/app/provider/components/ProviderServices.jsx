@@ -291,6 +291,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       price: "",
       deposit: "",
       payment_policy: "none",
+      nightly_rate: "",
     },
   });
 
@@ -306,6 +307,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       price: centsToInput(service?.price_cents),
       deposit: centsToInput(service?.deposit_cents),
       payment_policy: service?.payment_policy ?? "none",
+      nightly_rate: centsToInput(service?.nightly_rate_cents),
     });
     setImages(Array.isArray(service?.image_urls) ? service.image_urls : []);
   }, [service, reset]);
@@ -328,6 +330,11 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       setError("deposit", { type: "validate", message: deposit.error });
       return;
     }
+    const nightly = dollarsToCents(values.nightly_rate);
+    if (nightly.error) {
+      setError("nightly_rate", { type: "validate", message: nightly.error });
+      return;
+    }
 
     const body = {
       name: values.name.trim(),
@@ -336,6 +343,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       price_cents: price.cents ?? null,
       deposit_cents: deposit.cents ?? null,
       payment_policy: values.payment_policy,
+      nightly_rate_cents: nightly.cents ?? null,
       image_urls: images,
     };
     onSubmit(body);
@@ -431,6 +439,24 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
             <p className="mt-1 text-xs text-[#7A6254]">
               Customers pay when they request the booking. If you decline a paid
               request, they're refunded automatically.
+            </p>
+          </Field>
+
+          <Field
+            label="Nightly rate"
+            hint="daycare/boarding only — $ per night"
+            error={errors.nightly_rate?.message}
+          >
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="40.00"
+              {...register("nightly_rate")}
+              className={inputCls}
+            />
+            <p className="mt-1 text-xs text-[#7A6254]">
+              For a daycare stay, the customer is charged this rate × the number of
+              nights (when Payment is set to Full). Leave blank for other services.
             </p>
           </Field>
 

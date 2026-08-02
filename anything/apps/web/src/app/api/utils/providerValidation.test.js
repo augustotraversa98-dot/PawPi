@@ -90,6 +90,17 @@ describe('invalidServiceFields', () => {
     );
   });
 
+  it('allows a valid nightly_rate_cents and rejects a negative/non-integer one', () => {
+    expect(invalidServiceFields({ nightly_rate_cents: 4000 })).toBe(null);
+    expect(invalidServiceFields({ nightly_rate_cents: null })).toBe(null);
+    expect(invalidServiceFields({ nightly_rate_cents: -1 })).toBe(
+      'nightly_rate_cents must be a non-negative integer',
+    );
+    expect(invalidServiceFields({ nightly_rate_cents: 1.5 })).toBe(
+      'nightly_rate_cents must be a non-negative integer',
+    );
+  });
+
   it('rejects non-positive or non-integer duration_min', () => {
     expect(invalidServiceFields({ duration_min: 0 })).toBe(
       'duration_min must be a positive integer',
