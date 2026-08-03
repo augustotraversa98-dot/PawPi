@@ -36,7 +36,7 @@ import {
   refund,
   payout,
 } from './index';
-import { PaymentsNotConfiguredError } from './config';
+import { PaymentsNotConfiguredError, ProviderPaymentAccountError } from './config';
 import { encryptToken } from './tokenCrypto'; // real (not mocked) — proves decrypt-on-read
 
 const MP_ENV = ['MP_CLIENT_ID', 'MP_CLIENT_SECRET', 'MP_WEBHOOK_SECRET'];
@@ -57,13 +57,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   saved = {};
-  for (const k of [...MP_ENV, ...BIN_ENV]) {
+  for (const k of [...MP_ENV, ...BIN_ENV, 'PAYMENTS_TOKEN_KEY']) {
     saved[k] = process.env[k];
     delete process.env[k];
   }
 });
 afterEach(() => {
-  for (const k of [...MP_ENV, ...BIN_ENV]) {
+  for (const k of [...MP_ENV, ...BIN_ENV, 'PAYMENTS_TOKEN_KEY']) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
@@ -118,6 +118,38 @@ describe('createCheckout', () => {
     expect(insertCall).toEqual(
       expect.arrayContaining([10, 'mercadopago', 'pref_1', 'k1']),
     );
+  });
+
+  it('mercadopago: a stored token that no longer decrypts (rotated key) → ProviderPaymentAccountError token_invalid, NOT a 500', async () => {
+    configureMp();
+    // Encrypt with one key, then rotate PAYMENTS_TOKEN_KEY so the stored ciphertext is
+    // no longer decryptable — exactly the "provider connected, key changed since" case.
+    process.env.PAYMENTS_TOKEN_KEY = '11'.repeat(32);
+    const enc = encryptToken('provider-token');
+    process.env.PAYMENTS_TOKEN_KEY = '22'.repeat(32);
+    sql.mockResolvedValueOnce([{ access_token: enc, refresh_token: null }]); // loadProviderAccount
+
+    await expect(
+      createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' }),
+    ).rejects.toMatchObject({
+      name: 'ProviderPaymentAccountError',
+      code: 'account_token_invalid',
+      status: 409,
+    });
+    // Never reached the adapter, never inserted a payment — the load was the only query.
+    expect(mp.createCheckout).not.toHaveBeenCalled();
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it('mercadopago: a MISSING PAYMENTS_TOKEN_KEY stays a platform 503 (not the provider error)', async () => {
+    configureMp();
+    delete process.env.PAYMENTS_TOKEN_KEY;
+    // A prefixed (encrypted) token needs the key to decrypt; with none set, tokenCrypto
+    // throws its 503-shaped config error, which must propagate as a PLATFORM problem.
+    sql.mockResolvedValueOnce([{ access_token: 'enc:v1:whatever', refresh_token: null }]);
+    await expect(
+      createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' }),
+    ).rejects.not.toBeInstanceOf(ProviderPaymentAccountError);
   });
 
   it('binance: no provider account lookup; checkout returns a deeplink/qr', async () => {

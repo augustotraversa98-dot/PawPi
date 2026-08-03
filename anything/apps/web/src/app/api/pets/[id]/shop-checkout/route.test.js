@@ -9,6 +9,7 @@ import { POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { createCheckout } from "@/app/api/utils/payments";
+import { ProviderPaymentAccountError } from "@/app/api/utils/payments/config";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -205,5 +206,32 @@ describe("POST /api/pets/[id]/shop-checkout", () => {
       PARAMS,
     );
     expect(res.status).toBe(503);
+  });
+
+  it("409 when the shop provider hasn't connected MercadoPago (distinct from the platform 503)", async () => {
+    auth.mockResolvedValue(SESSION);
+    const ORDER = { id: 503, owner_user_id: 7, provider_id: 100, kind: "product" };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 55 }])
+      .mockResolvedValueOnce([{ 1: 1 }])
+      .mockResolvedValueOnce([STD_PRODUCT])
+      .mockResolvedValueOnce([ORDER])
+      .mockResolvedValueOnce([]);
+    createCheckout.mockRejectedValue(
+      new ProviderPaymentAccountError("mercadopago", "not_connected"),
+    );
+    const res = await POST(
+      postReq({
+        provider_id: 100,
+        items: [{ product_id: 9 }],
+        rail: "mercadopago",
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe("account_not_connected");
+    expect(body.error).toMatch(/hasn't connected MercadoPago/i);
   });
 });

@@ -6,6 +6,7 @@ import { createCheckout } from "@/app/api/utils/payments";
 import {
   SUPPORTED_RAILS,
   PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
 
 // POST /api/payments/checkout — the OWNER starts a payment (ticket 2.3). Creates an
@@ -108,6 +109,13 @@ async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
+    // Provider hasn't connected / their token is unusable — DISTINCT from the platform 503.
+    if (error instanceof ProviderPaymentAccountError) {
+      return Response.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
     if (error instanceof PaymentsNotConfiguredError || error.status === 503) {
       return Response.json({ error: error.message }, { status: 503 });
     }

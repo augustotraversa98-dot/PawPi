@@ -9,7 +9,10 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 import { resolveUserId } from '@/app/api/utils/currentUser';
 import { createCheckout } from '@/app/api/utils/payments';
-import { PaymentsNotConfiguredError } from '@/app/api/utils/payments/config';
+import {
+  PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
+} from '@/app/api/utils/payments/config';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
@@ -118,5 +121,33 @@ describe('POST /api/payments/checkout', () => {
     const res = await POST(jsonReq(VALID));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toMatch(/not configured/i);
+  });
+
+  it('provider-not-connected → 409 with a clear message + code (NOT the platform 503)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 10, amount_cents: 10000 }]);
+    createCheckout.mockRejectedValue(
+      new ProviderPaymentAccountError('mercadopago', 'not_connected'),
+    );
+
+    const res = await POST(jsonReq(VALID));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('account_not_connected');
+    expect(body.error).toMatch(/hasn't connected MercadoPago/i);
+  });
+
+  it('provider token undecryptable → 409 account_token_invalid (reconnect needed)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 10, amount_cents: 10000 }]);
+    createCheckout.mockRejectedValue(
+      new ProviderPaymentAccountError('mercadopago', 'token_invalid'),
+    );
+
+    const res = await POST(jsonReq(VALID));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('account_token_invalid');
+    expect(body.error).toMatch(/reconnect/i);
   });
 });

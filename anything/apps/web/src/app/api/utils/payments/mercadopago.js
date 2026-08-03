@@ -17,6 +17,7 @@ import {
   mercadopagoConfig,
   commissionCents,
   PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
 } from './config';
 
 export const RAIL = 'mercadopago';
@@ -78,8 +79,10 @@ export async function createCheckout({ order, account, idempotencyKey }) {
   const cfg = mercadopagoConfig();
   if (!cfg) throw new PaymentsNotConfiguredError(RAIL);
   if (!account?.access_token) {
-    // The provider has not completed OAuth connect — treat as not-configured for them.
-    throw new PaymentsNotConfiguredError(RAIL);
+    // DISTINCT from platform-keys-missing: the provider has not completed OAuth connect
+    // (no account row / null token). Surfaced as a clear "hasn't connected" 409, not the
+    // ambiguous "rail is missing env keys" 503.
+    throw new ProviderPaymentAccountError(RAIL, 'not_connected');
   }
   const fee = commissionCents(order.amount_cents);
   const preference = {

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { CreditCard, CheckCircle2, Loader2 } from "lucide-react";
-import { usePaymentAccounts } from "../hooks/useProviders";
+import {
+  usePaymentAccounts,
+  useDisconnectMercadoPago,
+} from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 
 // Payment-account connection card for the Sales dashboard (ACTION 2 §1). Shows whether the
@@ -18,6 +21,26 @@ export default function PaymentAccountCard({ providerId }) {
 
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
+  const disconnect = useDisconnectMercadoPago(providerId);
+
+  const startDisconnect = async () => {
+    setError(null);
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Disconnect MercadoPago? Payments for your services and products will stop until you reconnect.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await disconnect.mutateAsync();
+    } catch (e) {
+      setError(
+        e?.message || "Couldn't disconnect. Please try again.",
+      );
+    }
+  };
 
   const startConnect = async () => {
     setError(null);
@@ -56,13 +79,36 @@ export default function PaymentAccountCard({ providerId }) {
           <Loader2 className="h-4 w-4 animate-spin" /> Checking connection…
         </div>
       ) : connected ? (
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#2E8F62]">
-          <CheckCircle2 className="h-5 w-5" />
-          MercadoPago connected
-          {mp?.account_ref ? (
-            <span className="font-normal text-[#7A6254]">
-              (account {mp.account_ref})
-            </span>
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#2E8F62]">
+            <CheckCircle2 className="h-5 w-5" />
+            MercadoPago connected
+            {mp?.account_ref ? (
+              <span className="font-normal text-[#7A6254]">
+                (account {mp.account_ref})
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-[#7A6254]">
+            Payments failing or charges not going through? Disconnect and reconnect
+            to refresh your MercadoPago link.
+          </p>
+          <button
+            type="button"
+            onClick={startDisconnect}
+            disabled={disconnect.isPending}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#E4D3C6] bg-white px-4 py-2 text-sm font-semibold text-[#7A6254] transition-all hover:bg-[#FFF6EE] disabled:opacity-50"
+          >
+            {disconnect.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Disconnecting…
+              </>
+            ) : (
+              "Disconnect MercadoPago"
+            )}
+          </button>
+          {error ? (
+            <p className="mt-3 text-sm text-red-600">{error}</p>
           ) : null}
         </div>
       ) : (

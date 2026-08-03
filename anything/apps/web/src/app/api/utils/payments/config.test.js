@@ -8,6 +8,7 @@ import {
   isRailConfigured,
   SUPPORTED_RAILS,
   PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
 } from './config';
 
 // payments/config — env-key reading + commission math (ticket 2.3). The "not configured"
@@ -103,5 +104,30 @@ describe('PaymentsNotConfiguredError', () => {
     expect(e.status).toBe(503);
     expect(e.rail).toBe('mercadopago');
     expect(e.message).toMatch(/not configured/i);
+  });
+});
+
+describe('ProviderPaymentAccountError', () => {
+  it('not_connected → 409, code account_not_connected, friendly rail name', () => {
+    const e = new ProviderPaymentAccountError('mercadopago', 'not_connected');
+    expect(e.status).toBe(409);
+    expect(e.code).toBe('account_not_connected');
+    expect(e.reason).toBe('not_connected');
+    expect(e.rail).toBe('mercadopago');
+    expect(e.message).toMatch(/hasn't connected MercadoPago/i);
+  });
+
+  it('token_invalid → 409, code account_token_invalid, asks to reconnect', () => {
+    const e = new ProviderPaymentAccountError('mercadopago', 'token_invalid');
+    expect(e.status).toBe(409);
+    expect(e.code).toBe('account_token_invalid');
+    expect(e.message).toMatch(/reconnect/i);
+  });
+
+  it('defaults to not_connected and is DISTINCT from PaymentsNotConfiguredError', () => {
+    const e = new ProviderPaymentAccountError('binance');
+    expect(e.reason).toBe('not_connected');
+    expect(e.message).toMatch(/Binance Pay/);
+    expect(e instanceof PaymentsNotConfiguredError).toBe(false);
   });
 });

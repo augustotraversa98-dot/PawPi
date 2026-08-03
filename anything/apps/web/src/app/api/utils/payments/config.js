@@ -21,6 +21,34 @@ export class PaymentsNotConfiguredError extends Error {
   }
 }
 
+// A DISTINCT error for the PROVIDER side of the connection — kept separate from
+// PaymentsNotConfiguredError (which means the PLATFORM's rail keys are unset). This fires
+// when THIS provider has not connected the rail, or their stored token can't be used
+// (e.g. undecryptable after a PAYMENTS_TOKEN_KEY change). Splitting the two removes the
+// old ambiguity where both surfaced as "the rail is missing env keys". Routes map it to a
+// 409 with a machine-readable `code` so the client can tell the owner exactly what's wrong.
+export class ProviderPaymentAccountError extends Error {
+  constructor(rail, reason = 'not_connected') {
+    const label =
+      rail === 'mercadopago'
+        ? 'MercadoPago'
+        : rail === 'binance'
+          ? 'Binance Pay'
+          : (rail ?? 'this payment rail');
+    super(
+      reason === 'token_invalid'
+        ? `This provider's ${label} connection is no longer valid — they need to reconnect ${label}.`
+        : `This provider hasn't connected ${label} yet.`,
+    );
+    this.name = 'ProviderPaymentAccountError';
+    this.status = 409;
+    this.rail = rail ?? null;
+    this.reason = reason; // 'not_connected' | 'token_invalid'
+    this.code =
+      reason === 'token_invalid' ? 'account_token_invalid' : 'account_not_connected';
+  }
+}
+
 // Platform commission in basis points (1% = 100 bps). Defaults to 0 when unset so a
 // missing value never crashes — it just means no commission is taken until configured.
 export function platformCommissionBps() {

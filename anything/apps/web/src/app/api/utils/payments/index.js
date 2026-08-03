@@ -16,8 +16,12 @@
 // lets it propagate so the ROUTE returns a clean 503 and NEVER crashes.
 
 import sql from '../sql';
-import { railConfig, PaymentsNotConfiguredError } from './config';
-import { decryptToken } from './tokenCrypto';
+import {
+  railConfig,
+  PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
+} from './config';
+import { decryptToken, TokenCryptoConfigError } from './tokenCrypto';
 import * as mercadopago from './mercadopago';
 import * as binance from './binance';
 
@@ -54,11 +58,22 @@ async function loadProviderAccount(providerId, rail) {
   `;
   const account = rows[0] ?? null;
   if (account) {
-    if (account.access_token != null) {
-      account.access_token = decryptToken(account.access_token);
-    }
-    if (account.refresh_token != null) {
-      account.refresh_token = decryptToken(account.refresh_token);
+    try {
+      if (account.access_token != null) {
+        account.access_token = decryptToken(account.access_token);
+      }
+      if (account.refresh_token != null) {
+        account.refresh_token = decryptToken(account.refresh_token);
+      }
+    } catch (err) {
+      // A MISSING/malformed PAYMENTS_TOKEN_KEY is a PLATFORM config problem — let it stay a
+      // clean 503 (TokenCryptoConfigError). But a token that won't decrypt with the present
+      // key (e.g. the key was rotated after the provider connected) is a PROVIDER-side
+      // problem: the stored token is unusable and they must reconnect. Surface that as a
+      // distinct, actionable error instead of a raw 500. We never log the token or the error
+      // detail (it could echo ciphertext) — only that decryption failed.
+      if (err instanceof TokenCryptoConfigError) throw err;
+      throw new ProviderPaymentAccountError(rail, 'token_invalid');
     }
   }
   return account;

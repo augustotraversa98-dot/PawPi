@@ -12,7 +12,7 @@ import {
   webhookUrl,
   RAIL,
 } from './mercadopago';
-import { PaymentsNotConfiguredError } from './config';
+import { PaymentsNotConfiguredError, ProviderPaymentAccountError } from './config';
 
 // MercadoPago adapter — the SIGNATURE-VERIFICATION + pure mapping surface. Real HMAC is
 // computed so the test proves a forged signature is rejected and a valid one accepted.
@@ -121,11 +121,15 @@ describe('degrade-clean guards (no keys set — must never call fetch)', () => {
     ).rejects.toThrow(PaymentsNotConfiguredError);
   });
 
-  it('createCheckout throws when configured but the provider has no connected account', async () => {
+  it('createCheckout on a configured rail but UNCONNECTED provider throws the DISTINCT provider error (not the platform 503)', async () => {
     configure();
     await expect(
       createCheckout({ order: { id: 1, amount_cents: 100, currency: 'ARS', kind: 'booking' }, account: null, idempotencyKey: 'k' }),
-    ).rejects.toThrow(PaymentsNotConfiguredError);
+    ).rejects.toThrow(ProviderPaymentAccountError);
+    // And it is NOT the platform-keys error — the two are now separable.
+    await expect(
+      createCheckout({ order: { id: 1, amount_cents: 100, currency: 'ARS', kind: 'booking' }, account: null, idempotencyKey: 'k' }),
+    ).rejects.not.toThrow(PaymentsNotConfiguredError);
   });
 
   it('refund throws without calling fetch', async () => {

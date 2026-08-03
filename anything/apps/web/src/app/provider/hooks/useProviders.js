@@ -263,6 +263,25 @@ export function usePaymentAccounts(providerId) {
   });
 }
 
+// Disconnect this provider's MercadoPago account (DELETE .../payment-accounts/mercadopago).
+// Clears the stored token + flips status to 'disconnected' so a bad/undecryptable token can
+// be replaced by reconnecting. Invalidates the accounts query so the card flips to "connect".
+export const mercadopagoAccountUrl = (providerId) =>
+  `/api/providers/${providerId}/payment-accounts/mercadopago`;
+
+export function useDisconnectMercadoPago(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      getJson(mercadopagoAccountUrl(providerId), { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: paymentAccountsKey(providerId),
+      });
+    },
+  });
+}
+
 // The bookings inbox for a provider, optionally filtered by booking_status.
 export function useProviderBookings(providerId, bookingStatus) {
   return useQuery({
