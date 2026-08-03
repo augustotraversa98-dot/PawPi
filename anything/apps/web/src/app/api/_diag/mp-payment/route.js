@@ -46,10 +46,14 @@ async function GET(request) {
     const order = orders[0] ?? null;
     if (!order) return Response.json({ error: "no booking order for provider 3" });
 
-    // The stored payment row carries the MP preference id (external_id).
-    const payRows = await sql`
-      SELECT external_id FROM payments WHERE order_id = ${order.id} ORDER BY id DESC LIMIT 1
-    `;
+    // The stored payment row carries the MP preference id (external_id). payments is
+    // FORCE-RLS, so read it under the provider owner's identity too.
+    const payRows = await sql.begin(async (tx) => {
+      if (ownerId != null) {
+        await tx`select set_config('app.current_user_id', ${String(ownerId)}, true)`;
+      }
+      return tx`SELECT external_id FROM payments WHERE order_id = ${order.id} ORDER BY id DESC LIMIT 1`;
+    });
     const preferenceId = payRows[0]?.external_id ?? null;
 
     // 2. Connected account via the SECURITY DEFINER reader (bypasses RLS); decrypt in-process.
@@ -98,7 +102,8 @@ async function GET(request) {
       }
     }
 
-    // 3c. Re-fetch the preference to confirm it's valid + who the collector is (no secrets).
+    // 3c. Re-fetch the preference: who is the collector, is it a valid marketplace pref,
+    //     and does it carry a sandbox_init_point (test) vs only init_point (prod)?
     let preference = null;
     if (preferenceId) {
       const pf = await mpGet(
@@ -109,12 +114,29 @@ async function GET(request) {
         http: pf.http,
         id: pf.body?.id ?? null,
         collector_id: pf.body?.collector_id ?? null,
+        client_id: pf.body?.client_id ?? null,
         marketplace: pf.body?.marketplace ?? null,
         marketplace_fee: pf.body?.marketplace_fee ?? null,
+        operation_type: pf.body?.operation_type ?? null,
         external_reference: pf.body?.external_reference ?? null,
+        has_init_point: pf.body?.init_point != null,
+        has_sandbox_init_point: pf.body?.sandbox_init_point != null,
+        site_id: pf.body?.site_id ?? null,
         error: pf.http >= 400 ? pf.body : undefined,
       };
     }
+
+    // 3d. Who is the connected seller, per MercadoPago? Confirms test-user status + site.
+    const meRes = await mpGet("https://api.mercadopago.com/users/me", token);
+    const seller = {
+      http: meRes.http,
+      id: meRes.body?.id ?? null,
+      nickname: meRes.body?.nickname ?? null,
+      site_id: meRes.body?.site_id ?? null,
+      tags: meRes.body?.tags ?? null, // test users carry a "test_user" tag
+      user_type: meRes.body?.user_type ?? null,
+      error: meRes.http >= 400 ? meRes.body : undefined,
+    };
 
     return Response.json({
       order: {
@@ -126,11 +148,11 @@ async function GET(request) {
         created_at: order.created_at,
       },
       account_ref: acct.account_ref,
+      seller,
       preference,
       merchant_orders: {
         http: mo.http,
         count: elements.length,
-        // Verbatim MP body (transaction data only — no PawPi secrets).
         raw: mo.body,
         payment_summaries: moPaymentSummaries,
       },
