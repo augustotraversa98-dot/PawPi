@@ -155,7 +155,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 // in @testing-library/react-native, which requires Node's `console` module and
 // fails to bundle for Hermes. Jest uses its own resolver, so unit tests are
 // unaffected by this blockList.
-const TEST_FILE_BLOCKLIST = /\.(test|spec)\.[jt]sx?$/;
+//
+// The infix `[^/\\]*` matters: besides `*.test.jsx` / `*.spec.tsx` we also have
+// variant test files like `hub.test.tz-negative.jsx` (the negative-timezone jest
+// suite, #281). Anchoring `.test.`/`.spec.` straight to the extension missed those,
+// so they leaked into the bundle and broke every production build. Match any dotted
+// segment(s) between `.test.`/`.spec.` and the JS extension.
+const TEST_FILE_BLOCKLIST = /\.(test|spec)\.[^/\\]*[jt]sx?$/;
 const existingBlockList = config.resolver.blockList;
 config.resolver.blockList = Array.isArray(existingBlockList)
   ? [...existingBlockList, TEST_FILE_BLOCKLIST]
