@@ -94,9 +94,14 @@ export async function createCheckout({ order, account, idempotencyKey }) {
         currency_id: order.currency,
       },
     ],
-    marketplace_fee: fee / 100,
     external_reference: String(order.id),
   };
+  // Split fee ONLY when the platform actually takes a commission. MP accepts marketplace_fee:0,
+  // but a zero-value split is a needless edge case on the money path — omit it so a
+  // no-commission charge is a plain payment to the seller. Set PLATFORM_COMMISSION_BPS to enable
+  // the split. (Diagnosis note: with the fee at 0, this is NOT what makes a sandbox charge fail —
+  // preference creation returns 201 either way; the charge-step failure is buyer/test-user side.)
+  if (fee > 0) preference.marketplace_fee = fee / 100;
   // Wire the IPN/webhook per-preference so MercadoPago POSTs the payment status back to
   // OUR endpoint — the ONLY signal that flips an order to 'paid' (there is no return
   // deep-link). Without this, reconciliation depends solely on a webhook URL registered

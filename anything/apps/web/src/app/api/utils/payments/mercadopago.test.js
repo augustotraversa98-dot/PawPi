@@ -166,15 +166,39 @@ describe('createCheckout notification_url (webhook wiring)', () => {
       json: async () => ({ id: 'pref_1', init_point: 'https://mp/checkout' }),
     });
   });
+  const SAVED_BPS = process.env.PLATFORM_COMMISSION_BPS;
   afterEach(() => {
     fetchSpy.mockRestore();
     if (SAVED_BASE === undefined) delete process.env.APP_BASE_URL;
     else process.env.APP_BASE_URL = SAVED_BASE;
+    if (SAVED_BPS === undefined) delete process.env.PLATFORM_COMMISSION_BPS;
+    else process.env.PLATFORM_COMMISSION_BPS = SAVED_BPS;
   });
 
   function bodyOfLastCall() {
     return JSON.parse(fetchSpy.mock.calls.at(-1)[1].body);
   }
+
+  it('OMITS marketplace_fee when there is no platform commission (no zero-value split)', async () => {
+    delete process.env.PLATFORM_COMMISSION_BPS; // → commission 0
+    await createCheckout({
+      order: { id: 42, amount_cents: 500000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 'provider-token' },
+      idempotencyKey: 'order-42',
+    });
+    expect(bodyOfLastCall()).not.toHaveProperty('marketplace_fee');
+  });
+
+  it('INCLUDES marketplace_fee (in currency units) when a commission is configured', async () => {
+    process.env.PLATFORM_COMMISSION_BPS = '500'; // 5%
+    await createCheckout({
+      order: { id: 42, amount_cents: 500000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 'provider-token' },
+      idempotencyKey: 'order-42',
+    });
+    // 5% of 5000 ARS = 250 ARS (commissionCents floors to cents, /100 → currency units).
+    expect(bodyOfLastCall().marketplace_fee).toBe(250);
+  });
 
   it('webhookUrl builds the public endpoint from a https APP_BASE_URL and strips trailing slash', () => {
     process.env.APP_BASE_URL = 'https://pawpi.info/';
