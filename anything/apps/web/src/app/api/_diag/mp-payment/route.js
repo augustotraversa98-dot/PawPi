@@ -126,6 +126,40 @@ async function GET(request) {
       };
     }
 
+    // 3c-bis. Direct payments search — catches a REJECTED payment even when no merchant_order
+    //         exists. By external_reference, and a recent-list fallback for any stray attempt.
+    const paySearchRef = await mpGet(
+      `https://api.mercadopago.com/v1/payments/search?external_reference=${order.id}`,
+      token,
+    );
+    const paySearchRecent = await mpGet(
+      `https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&limit=5`,
+      token,
+    );
+    const summarizePaySearch = (b) =>
+      Array.isArray(b?.results)
+        ? b.results.map((p) => ({
+            id: p.id,
+            status: p.status,
+            status_detail: p.status_detail,
+            external_reference: p.external_reference,
+            payment_method_id: p.payment_method_id,
+            date_created: p.date_created,
+          }))
+        : b;
+    const payments_search = {
+      by_external_reference: {
+        http: paySearchRef.http,
+        total: paySearchRef.body?.paging?.total ?? null,
+        results: summarizePaySearch(paySearchRef.body),
+      },
+      recent_on_seller: {
+        http: paySearchRecent.http,
+        total: paySearchRecent.body?.paging?.total ?? null,
+        results: summarizePaySearch(paySearchRecent.body),
+      },
+    };
+
     // 3d. Who is the connected seller, per MercadoPago? Confirms test-user status + site.
     const meRes = await mpGet("https://api.mercadopago.com/users/me", token);
     const seller = {
@@ -156,6 +190,7 @@ async function GET(request) {
         raw: mo.body,
         payment_summaries: moPaymentSummaries,
       },
+      payments_search,
       payments,
     });
   } catch (e) {
