@@ -12,6 +12,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { serializeError } from 'serialize-error';
+import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
 import { getHTMLForErrorPage } from './get-html-for-error-page';
 import { isAuthAction } from './is-auth-action';
@@ -42,11 +43,35 @@ const adapter = NeonAdapter(pool);
 
 const app = new Hono();
 
+const _meter = metrics.getMeter('pawpi-http');
+const _httpDuration = _meter.createHistogram('http.server.request.duration', {
+  description: 'Duration of inbound HTTP requests',
+  unit: 's',
+  advice: {
+    explicitBucketBoundaries: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  },
+});
+
 app.use('*', requestId());
 
 app.use('*', (c, next) => {
   const requestId = c.get('requestId');
   return als.run({ requestId }, () => next());
+});
+
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  try {
+    await next();
+  } finally {
+    try {
+      _httpDuration.record((Date.now() - start) / 1000, {
+        http_request_method: c.req.method,
+        http_route: c.req.routePath || 'unmatched',
+        http_response_status_code: String(c.res?.status ?? 0),
+      });
+    } catch {}
+  }
 });
 
 app.use(contextStorage());
