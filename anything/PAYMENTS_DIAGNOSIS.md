@@ -74,9 +74,10 @@ Test added: *"a single paid service is auto-selected so booking CHARGES without 
 `requested` booking **without** checking whether its order is paid; declining auto-refunds an approved payment
 (`:153-169`). The founder wants "payment at booking time." Checkout *does* open at request time (once the
 service is selected), but nothing stops a vet accepting an unpaid one.
-- **Recommended:** keep charge-at-request, and **gate the vet's `confirm` on `orders.status='paid'`** for
-  bookings that carry an `order_id` (unpaid → vet can only cancel). Money-adjacent + changes the provider
-  inbox UX, so it is **PROPOSED**, not auto-applied.
+- **✅ IMPLEMENTED (Fix 5):** the vet's `confirm` is now **gated on `orders.status='paid'`** for bookings that
+  carry an `order_id` (`providers/[id]/bookings/[appointmentId]/route.js` — confirm action). A `pending`/`failed`/
+  missing payment returns **409 `{reason:'unpaid'}`** and writes nothing; free / pay-in-person bookings (no
+  `order_id`) confirm exactly as before. This never marks anything paid — it only refuses to accept the unpaid.
 
 ---
 
@@ -252,7 +253,14 @@ No premature/`paid` write exists on any path. ✅
   without the user having to tap the service chip. Test: *"a single paid service is auto-selected so booking
   CHARGES without tapping the chip."* ⚠️ **Requires a fresh EAS build to reach the device.**
 
-**Verification:** web `vitest run` **1484 passed**; web `react-router build` ✅; `tsc` baseline unchanged
+### Fix 5 — Vet cannot accept an unpaid booking · **P1 · low risk**
+`anything/apps/web/src/app/api/providers/[id]/bookings/[appointmentId]/route.js` (confirm action)
+- A booking that carries an `order_id` can only be `confirm`ed once `orders.status='paid'` (which only a
+  signature-verified webhook sets). `pending`/`failed`/missing → **409 `{reason:'unpaid', payment_status}`**,
+  no write. Free / pay-in-person bookings (no `order_id`) are unaffected. Tests added in `route.test.js`
+  (paid→confirms; pending→409; missing order→409; no-order_id→confirms with no order lookup).
+
+**Verification:** web `vitest run` **1488 passed**; web `react-router build` ✅; `tsc` baseline unchanged
 (124 pre-existing `TS7016` route-type errors, **0 new**, none in my files); mobile `jest` for the touched
 suites — StorefrontCatalog 10 ✅, BookingFormModal **17** ✅, provider + storefront 14 ✅. No live charge run.
 
@@ -302,7 +310,7 @@ suites — StorefrontCatalog 10 ✅, BookingFormModal **17** ✅, provider + sto
 | **P0** | Register webhook URL + confirm secret in MP dashboard | founder | S | — | you |
 | **P0** | Connect Vet Krauss's MP account (OAuth) + verify `provider_payment_accounts` row | founder | S | — | you |
 | **P1** | Stop faking "Order placed"/"Request sent!" on unpaid | code (me) | S | low | ✅ done |
-| **P1** | Gate vet `confirm` on `orders.status='paid'` for paid bookings (product decision) | founder+code | M | med | proposed |
+| **P1** | Gate vet `confirm` on `orders.status='paid'` for paid bookings | code (me) | M | low | ✅ done |
 | **P1** | Daycare: honest unpaid handling (decide hard-fail vs pay-later) | founder+code | S | med | proposed |
 | **P2** | `back_urls`/auto-return + app deep-link back from MP | code | M | med | proposed |
 | **P2** | Reconcile cron (`getStatus` for stuck `pending`) | code | M | low | proposed |

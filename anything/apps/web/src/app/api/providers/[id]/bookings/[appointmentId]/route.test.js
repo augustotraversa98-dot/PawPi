@@ -113,6 +113,60 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
     expect(res.status).toBe(409);
   });
 
+  // ---- confirm PAYMENT GATE (pay-before-accept): a booking that carries an order_id
+  //      cannot be confirmed until its order is 'paid'. Free / pay-in-person bookings
+  //      (no order_id) are unaffected. ----
+  it('confirm: paid booking (order_id, order paid) → confirmed', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [{ status: 'paid' }], // order lookup — settled
+      [{ id: 55, booking_status: 'confirmed' }], // update
+    );
+    const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ booking: { id: 55, booking_status: 'confirmed' } });
+    // The UPDATE actually ran (last query), proving the gate let it through.
+    expect(lastQueryText()).toContain('UPDATE vet_appointments');
+    expect(lastValues()).toContain('confirmed');
+  });
+
+  it('confirm: unpaid booking (order pending) → 409 reason=unpaid, NO write', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [{ status: 'pending' }], // order lookup — not settled
+    );
+    const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.reason).toBe('unpaid');
+    expect(body.payment_status).toBe('pending');
+    // Gate ran BEFORE any UPDATE — the last query is the order lookup, not a write.
+    expect(lastQueryText()).toContain('FROM orders');
+    expect(lastQueryText()).not.toContain('UPDATE vet_appointments');
+  });
+
+  it('confirm: booking whose order row is missing → 409 (never confirm an unpaid one)', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [], // order lookup — no row
+    );
+    const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+    expect(res.status).toBe(409);
+    expect((await res.json()).reason).toBe('unpaid');
+  });
+
+  it('confirm: free/pay-in-person booking (no order_id) confirms without an order lookup', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: null }], // load
+      [{ id: 55, booking_status: 'confirmed' }], // update (no order lookup in between)
+    );
+    const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+    expect(res.status).toBe(200);
+    // Exactly: profile, membership, load, update — 4 queries, no `FROM orders` gate.
+    expect(sql).toHaveBeenCalledTimes(4);
+    expect(lastQueryText()).toContain('UPDATE vet_appointments');
+  });
+
   it('confirm + assign: assigns active staff while confirming', async () => {
     arrange(
       [{ id: 55, booking_status: 'requested', status: 'scheduled' }], // load

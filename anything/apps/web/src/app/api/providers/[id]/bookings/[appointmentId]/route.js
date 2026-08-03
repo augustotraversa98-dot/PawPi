@@ -106,6 +106,30 @@ async function PATCH(request, { params }) {
           { status: 409 },
         );
       }
+      // PAYMENT GATE (pay-before-accept): a booking that carries an order_id — a paid,
+      // charge-at-request service (0070 payment_policy deposit/full) — may only be
+      // confirmed once its payment is SETTLED (orders.status='paid', which only a
+      // signature-verified MercadoPago webhook sets). A pending/failed/absent payment
+      // must NOT be acceptable. Pay-in-person / free bookings carry NO order_id and are
+      // unaffected. This never marks anything paid; it only refuses to confirm the unpaid.
+      const orderId = rows[0].order_id;
+      if (orderId != null) {
+        const orderRows = await sql`
+          SELECT status FROM orders WHERE id = ${orderId} LIMIT 1
+        `;
+        const orderStatus = orderRows[0]?.status ?? null;
+        if (orderStatus !== "paid") {
+          return Response.json(
+            {
+              error:
+                "This booking hasn't been paid yet — it can't be confirmed until the customer's payment is completed.",
+              reason: "unpaid",
+              payment_status: orderStatus,
+            },
+            { status: 409 },
+          );
+        }
+      }
       // Optionally assign-while-confirming. Do NOT touch reminder_enabled/status.
       if (staffUserId !== undefined && staffUserId !== null) {
         const err = await assertActiveStaff(staffUserId);
