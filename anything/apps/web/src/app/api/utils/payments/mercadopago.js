@@ -75,7 +75,7 @@ export async function exchangeOAuthCode(code) {
 // Create a split-payment Checkout preference on the provider's connected account.
 // `account` is the provider_payment_accounts row (carries the provider's access_token).
 // Returns { externalId, checkoutUrl, commissionCents } — the layer persists these.
-export async function createCheckout({ order, account, idempotencyKey }) {
+export async function createCheckout({ order, account, idempotencyKey, payer }) {
   const cfg = mercadopagoConfig();
   if (!cfg) throw new PaymentsNotConfiguredError(RAIL);
   if (!account?.access_token) {
@@ -85,23 +85,36 @@ export async function createCheckout({ order, account, idempotencyKey }) {
     throw new ProviderPaymentAccountError(RAIL, 'not_connected');
   }
   const fee = commissionCents(order.amount_cents);
+  // Richer item metadata (id/description/category_id) improves MercadoPago's "Calidad de
+  // integración" score. All ADDITIVE — amounts and the split (marketplace_fee) are
+  // untouched.
   const preference = {
     items: [
       {
+        id: String(order.id),
         title: `PawPi ${order.kind} #${order.id}`,
+        description: `PawPi ${order.kind} order #${order.id}`,
+        category_id: itemCategory(order.kind),
         quantity: 1,
         unit_price: order.amount_cents / 100,
         currency_id: order.currency,
       },
     ],
     external_reference: String(order.id),
+    // Shown on the payer's card statement — MP recommends a stable descriptor.
+    statement_descriptor: 'PAWPI',
   };
   // Split fee ONLY when the platform actually takes a commission. MP accepts marketplace_fee:0,
   // but a zero-value split is a needless edge case on the money path — omit it so a
   // no-commission charge is a plain payment to the seller. Set PLATFORM_COMMISSION_BPS to enable
-  // the split. (Diagnosis note: with the fee at 0, this is NOT what makes a sandbox charge fail —
-  // preference creation returns 201 either way; the charge-step failure is buyer/test-user side.)
+  // the split.
   if (fee > 0) preference.marketplace_fee = fee / 100;
+  // Payer identity of the paying owner. MercadoPago's own integration checklist flags a
+  // missing payer as a quality gap and a known trigger of the generic "algo salió mal"
+  // (PXB01) at checkout. Purely additive: we send ONLY the fields we actually have and
+  // NEVER an empty string (each is included only when present).
+  const payerFields = buildPayer(payer);
+  if (payerFields) preference.payer = payerFields;
   // Wire the IPN/webhook per-preference so MercadoPago POSTs the payment status back to
   // OUR endpoint — the ONLY signal that flips an order to 'paid' (there is no return
   // deep-link). Without this, reconciliation depends solely on a webhook URL registered
@@ -111,6 +124,15 @@ export async function createCheckout({ order, account, idempotencyKey }) {
   // notification_url (tests/local keep today's behaviour).
   const notificationUrl = webhookUrl();
   if (notificationUrl) preference.notification_url = notificationUrl;
+  // Return URLs the payer is bounced back to after paying. MercadoPago's testing
+  // checklist REQUIRES valid HTTPS return URLs; auto_return only fires when back_urls is
+  // present, so we set them together and ONLY when a public https base is configured
+  // (same omit-in-tests/local guard as notification_url — never send a bad/localhost URL).
+  const back = backUrls();
+  if (back) {
+    preference.back_urls = back;
+    preference.auto_return = 'approved';
+  }
 
   const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
     method: 'POST',
@@ -225,6 +247,41 @@ export function webhookUrl() {
   const base = process.env.APP_BASE_URL;
   if (!base || !/^https:\/\//i.test(base)) return null;
   return `${base.replace(/\/+$/, '')}/api/payments/webhooks/mercadopago`;
+}
+
+// Build the { success, failure, pending } return URLs from a PUBLIC https APP_BASE_URL.
+// Returns null for an unset/non-public base so we never send a bad (localhost/http) URL —
+// MercadoPago's checklist requires valid HTTPS return URLs, and auto_return needs them.
+export function backUrls() {
+  const base = process.env.APP_BASE_URL;
+  if (!base || !/^https:\/\//i.test(base)) return null;
+  const root = base.replace(/\/+$/, '');
+  return {
+    success: `${root}/?payment=success`,
+    failure: `${root}/?payment=failure`,
+    pending: `${root}/?payment=pending`,
+  };
+}
+
+// Map an order kind to a MercadoPago item category_id (used only to enrich the item for
+// the quality score). Everything but a physical 'product' is a service in our catalog.
+function itemCategory(kind) {
+  return kind === 'product' ? 'others' : 'services';
+}
+
+// Assemble a MercadoPago `payer` object from whatever owner fields we have, dropping any
+// that are missing/blank so we NEVER send an empty string. Returns null when nothing is
+// present (the caller then omits `payer` entirely).
+function buildPayer(payer) {
+  if (!payer || typeof payer !== 'object') return null;
+  const out = {};
+  const name = typeof payer.name === 'string' ? payer.name.trim() : '';
+  const surname = typeof payer.surname === 'string' ? payer.surname.trim() : '';
+  const email = typeof payer.email === 'string' ? payer.email.trim() : '';
+  if (name) out.name = name;
+  if (surname) out.surname = surname;
+  if (email) out.email = email;
+  return Object.keys(out).length ? out : null;
 }
 
 // timing-safe hex comparison that never throws on length mismatch.

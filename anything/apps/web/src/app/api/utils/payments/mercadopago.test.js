@@ -10,9 +10,14 @@ import {
   getPaymentStatus,
   exchangeOAuthCode,
   webhookUrl,
+  backUrls,
   RAIL,
 } from './mercadopago';
-import { PaymentsNotConfiguredError, ProviderPaymentAccountError } from './config';
+import {
+  PaymentsNotConfiguredError,
+  ProviderPaymentAccountError,
+  commissionCents,
+} from './config';
 
 // MercadoPago adapter — the SIGNATURE-VERIFICATION + pure mapping surface. Real HMAC is
 // computed so the test proves a forged signature is rejected and a valid one accepted.
@@ -232,5 +237,162 @@ describe('createCheckout notification_url (webhook wiring)', () => {
       idempotencyKey: 'order-42',
     });
     expect(bodyOfLastCall()).not.toHaveProperty('notification_url');
+  });
+});
+
+// Integration-quality enrichment (Calidad de integración): payer, richer items,
+// back_urls + auto_return, statement_descriptor. ALL additive — amounts + marketplace_fee
+// must stay exactly as before.
+describe('createCheckout quality enrichment', () => {
+  const SAVED_BASE = process.env.APP_BASE_URL;
+  let fetchSpy;
+  beforeEach(() => {
+    configure();
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'pref_1', init_point: 'https://mp/checkout' }),
+    });
+  });
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    if (SAVED_BASE === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = SAVED_BASE;
+  });
+  function bodyOfLastCall() {
+    return JSON.parse(fetchSpy.mock.calls.at(-1)[1].body);
+  }
+
+  it('does NOT change amounts or the split (enrichment leaves unit_price + fee behavior intact)', async () => {
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    const body = bodyOfLastCall();
+    expect(body.items[0].unit_price).toBe(50);
+    expect(body.items[0].quantity).toBe(1);
+    expect(body.items[0].currency_id).toBe('ARS');
+    // Fee behavior is owned by the marketplace_fee-omit hardening: at zero commission the
+    // split is omitted, otherwise it equals commissionCents. Enrichment must not alter it.
+    const expectedFee = commissionCents(5000);
+    if (expectedFee > 0) expect(body.marketplace_fee).toBe(expectedFee / 100);
+    else expect(body).not.toHaveProperty('marketplace_fee');
+    expect(body.external_reference).toBe('7');
+  });
+
+  it('enriches the item (id/description/category_id) and sets statement_descriptor', async () => {
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    const body = bodyOfLastCall();
+    expect(body.items[0]).toMatchObject({
+      id: '7',
+      title: 'PawPi booking #7',
+      description: 'PawPi booking order #7',
+      category_id: 'services',
+    });
+    expect(body.statement_descriptor).toBe('PAWPI');
+  });
+
+  it('categorizes a physical product as "others" and a service as "services"', async () => {
+    await createCheckout({
+      order: { id: 8, amount_cents: 1000, currency: 'ARS', kind: 'product' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    expect(bodyOfLastCall().items[0].category_id).toBe('others');
+  });
+
+  it('includes payer with ONLY the fields present (no empty strings)', async () => {
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+      payer: { name: 'Ada', surname: 'Lovelace', email: 'ada@pawpi.info' },
+    });
+    expect(bodyOfLastCall().payer).toEqual({
+      name: 'Ada',
+      surname: 'Lovelace',
+      email: 'ada@pawpi.info',
+    });
+  });
+
+  it('drops missing/blank payer fields and omits payer entirely when nothing is present', async () => {
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+      payer: { name: 'Ada', surname: '   ', email: undefined },
+    });
+    expect(bodyOfLastCall().payer).toEqual({ name: 'Ada' });
+
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+      payer: { name: '', email: '' },
+    });
+    expect(bodyOfLastCall()).not.toHaveProperty('payer');
+  });
+
+  it('omits payer entirely when none is provided', async () => {
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    expect(bodyOfLastCall()).not.toHaveProperty('payer');
+  });
+
+  it('sets back_urls (https) + auto_return when a public base URL is configured', async () => {
+    process.env.APP_BASE_URL = 'https://pawpi-production.up.railway.app/';
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    const body = bodyOfLastCall();
+    expect(body.back_urls).toEqual({
+      success: 'https://pawpi-production.up.railway.app/?payment=success',
+      failure: 'https://pawpi-production.up.railway.app/?payment=failure',
+      pending: 'https://pawpi-production.up.railway.app/?payment=pending',
+    });
+    expect(body.auto_return).toBe('approved');
+  });
+
+  it('omits back_urls + auto_return when no public base URL is configured', async () => {
+    delete process.env.APP_BASE_URL;
+    await createCheckout({
+      order: { id: 7, amount_cents: 5000, currency: 'ARS', kind: 'booking' },
+      account: { access_token: 't' },
+      idempotencyKey: 'k',
+    });
+    const body = bodyOfLastCall();
+    expect(body).not.toHaveProperty('back_urls');
+    expect(body).not.toHaveProperty('auto_return');
+  });
+});
+
+describe('backUrls helper', () => {
+  const SAVED_BASE = process.env.APP_BASE_URL;
+  afterEach(() => {
+    if (SAVED_BASE === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = SAVED_BASE;
+  });
+  it('builds https return URLs and strips a trailing slash', () => {
+    process.env.APP_BASE_URL = 'https://pawpi.info/';
+    expect(backUrls()).toEqual({
+      success: 'https://pawpi.info/?payment=success',
+      failure: 'https://pawpi.info/?payment=failure',
+      pending: 'https://pawpi.info/?payment=pending',
+    });
+  });
+  it('returns null for an unset or non-public base', () => {
+    delete process.env.APP_BASE_URL;
+    expect(backUrls()).toBe(null);
+    process.env.APP_BASE_URL = 'http://localhost:4000';
+    expect(backUrls()).toBe(null);
   });
 });

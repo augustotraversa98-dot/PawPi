@@ -102,7 +102,19 @@ export async function createCheckout(order, { rail, idempotencyKey }) {
       ? await loadProviderAccount(order.provider_id, rail)
       : null;
 
-  const result = await adapter.createCheckout({ order, account, idempotencyKey });
+  // MercadoPago raises its integration-quality score (and avoids the generic PXB01 error)
+  // when the preference carries the paying owner's identity. We resolve it here — the only
+  // place with DB access — and hand it to the adapter, which sends ONLY the fields present.
+  // Best-effort + ADDITIVE: a missing profile never blocks checkout.
+  const payer =
+    rail === 'mercadopago' ? await loadOwnerPayer(order.owner_user_id) : null;
+
+  const result = await adapter.createCheckout({
+    order,
+    account,
+    idempotencyKey,
+    payer,
+  });
 
   // Persist the attempt as a pending payment. ON CONFLICT (idempotency_key) keeps a
   // retried checkout from creating a duplicate ledger row.
@@ -230,6 +242,40 @@ export async function payout(provider, amountCents, { rail }) {
 async function loadOrder(orderId) {
   const rows = await sql`SELECT * FROM orders WHERE id = ${orderId} LIMIT 1`;
   return rows[0] ?? null;
+}
+
+// Resolve the paying owner's { name, surname, email } for the MercadoPago payer block.
+// The display name lives on user_profiles.full_name (fallback auth_users.name) and the
+// email on auth_users.email; we split the full name into first token = name, remainder =
+// surname. Runs under the paying owner's identity reading their OWN row. Best-effort: any
+// error or missing data returns null so checkout proceeds WITHOUT the payer block (the
+// field is additive — never a checkout blocker).
+async function loadOwnerPayer(ownerUserId) {
+  if (ownerUserId == null) return null;
+  try {
+    const rows = await sql`
+      SELECT up.full_name, au.name AS auth_name, au.email
+      FROM user_profiles up
+      LEFT JOIN auth_users au ON au.id = up.auth_user_id
+      WHERE up.id = ${ownerUserId}
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row) return null;
+    const payer = {};
+    const fullName = String(row.full_name || row.auth_name || '').trim();
+    if (fullName) {
+      const parts = fullName.split(/\s+/);
+      payer.name = parts[0];
+      if (parts.length > 1) payer.surname = parts.slice(1).join(' ');
+    }
+    const email = String(row.email || '').trim();
+    if (email) payer.email = email;
+    return Object.keys(payer).length ? payer : null;
+  } catch {
+    // Never let payer enrichment break a checkout — the field is purely additive.
+    return null;
+  }
 }
 
 // Pull (externalReference, rawStatus) out of a rail's webhook body. Kept tiny + per-rail

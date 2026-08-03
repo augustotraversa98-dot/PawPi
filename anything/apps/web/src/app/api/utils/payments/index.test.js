@@ -89,10 +89,13 @@ describe('createCheckout', () => {
     expect(sql).not.toHaveBeenCalled();
   });
 
-  it('mercadopago: loads the provider account, calls the adapter, inserts a pending payment', async () => {
+  it('mercadopago: loads the provider account + owner payer, calls the adapter, inserts a pending payment', async () => {
     configureMp();
     const account = { access_token: 'tok' };
     sql.mockResolvedValueOnce([account]); // loadProviderAccount
+    sql.mockResolvedValueOnce([
+      { full_name: 'Ada Lovelace', auth_name: null, email: 'ada@pawpi.info' },
+    ]); // loadOwnerPayer
     mp.createCheckout.mockResolvedValue({
       externalId: 'pref_1',
       checkoutUrl: 'https://mp/checkout',
@@ -105,22 +108,51 @@ describe('createCheckout', () => {
       idempotencyKey: 'k1',
     });
 
+    // The adapter receives the resolved payer (split full name + email) — ADDITIVE only.
     expect(mp.createCheckout).toHaveBeenCalledWith({
       order: ORDER,
       account,
       idempotencyKey: 'k1',
+      payer: { name: 'Ada', surname: 'Lovelace', email: 'ada@pawpi.info' },
     });
     expect(res.checkoutUrl).toBe('https://mp/checkout');
     expect(res.payment).toMatchObject({ id: 99, status: 'pending' });
     // The account is read via the SECURITY DEFINER reader (0072), NOT a direct SELECT that the
     // paying customer's admin-only RLS would deny.
     expect(sql.mock.calls[0][0].join(' ')).toContain('app_get_provider_payment_account');
+    // The payer is resolved from the owner's own profile row joined to auth_users.
+    expect(sql.mock.calls[1][0].join(' ')).toContain('FROM user_profiles');
     // The INSERT bound the order id, rail, external id, and idempotency key.
-    const insertCall = sql.mock.calls[1];
+    const insertCall = sql.mock.calls[2];
     expect(insertCall[0].join(' ')).toContain('INSERT INTO payments');
     expect(insertCall).toEqual(
       expect.arrayContaining([10, 'mercadopago', 'pref_1', 'k1']),
     );
+  });
+
+  it('mercadopago: an owner with no name/email yields NO payer (never empty strings)', async () => {
+    configureMp();
+    sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
+    sql.mockResolvedValueOnce([{ full_name: '  ', auth_name: null, email: '' }]); // loadOwnerPayer
+    mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u', commissionCents: 0 });
+    sql.mockResolvedValueOnce([{ id: 1, status: 'pending' }]); // INSERT
+
+    await createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' });
+
+    expect(mp.createCheckout.mock.calls[0][0].payer).toBeNull();
+  });
+
+  it('mercadopago: a payer-load DB error never blocks checkout (payer=null)', async () => {
+    configureMp();
+    sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
+    sql.mockRejectedValueOnce(new Error('rls denied')); // loadOwnerPayer throws
+    mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u', commissionCents: 0 });
+    sql.mockResolvedValueOnce([{ id: 1, status: 'pending' }]); // INSERT
+
+    const res = await createCheckout(ORDER, { rail: 'mercadopago', idempotencyKey: 'k1' });
+
+    expect(mp.createCheckout.mock.calls[0][0].payer).toBeNull();
+    expect(res.payment).toMatchObject({ id: 1 });
   });
 
   it('mercadopago: a stored token that no longer decrypts (rotated key) → ProviderPaymentAccountError token_invalid, NOT a 500', async () => {
@@ -314,6 +346,7 @@ describe('decrypt-on-read (ticket 2.16)', () => {
     sql.mockResolvedValueOnce([
       { id: 1, rail: 'mercadopago', access_token: encryptToken('PLAINTEXT_TOKEN') },
     ]); // loadProviderAccount
+    sql.mockResolvedValueOnce([]); // loadOwnerPayer (no profile → null)
     mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u' });
     sql.mockResolvedValueOnce([{ id: 99, status: 'pending' }]); // INSERT payment
 
@@ -329,6 +362,7 @@ describe('decrypt-on-read (ticket 2.16)', () => {
     sql.mockResolvedValueOnce([
       { id: 1, rail: 'mercadopago', access_token: 'legacy-plain' },
     ]);
+    sql.mockResolvedValueOnce([]); // loadOwnerPayer (no profile → null)
     mp.createCheckout.mockResolvedValue({ externalId: 'pref_1', checkoutUrl: 'u' });
     sql.mockResolvedValueOnce([{ id: 99, status: 'pending' }]);
 
