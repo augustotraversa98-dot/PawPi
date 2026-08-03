@@ -170,6 +170,55 @@ describe('RLS 2.3 — provider_payment_accounts (provider-admin only; tokens nev
       `),
     ).rejects.toThrow(/row-level security/i);
   });
+
+  // The payment layer's DEFINER reader (0072): the PAYING customer's checkout must be able to
+  // load the provider's connected account (to build a split-payment checkout) WITHOUT weakening
+  // the admin-only policy for direct reads. This is the fix for "provider hasn't connected
+  // MercadoPago" firing on a genuinely-connected provider.
+  it('DEFINER reader returns P\'s account to the PAYER (A) — the checkout path — while a direct read stays ZERO', async () => {
+    await asApp(A.profileId, async (tx) => {
+      // Direct read: still denied (invariant preserved).
+      expect(await tx`select id from provider_payment_accounts`).toHaveLength(0);
+      // DEFINER reader: returns the provider's account (incl. token) for the trusted layer.
+      const rows = await tx`select * from app_get_provider_payment_account(${P}::int, 'mercadopago')`;
+      expect(ids(rows)).toEqual([ACCT_P]);
+      expect(rows[0].access_token).toBe('TOPSECRET');
+      expect(rows[0].status).toBe('connected');
+    });
+  });
+
+  it('DEFINER reader mirrors disconnect→reconnect: null token when disconnected, live token after reconnect', async () => {
+    // Disconnect (what DELETE .../mercadopago does): clear tokens + status='disconnected'.
+    await raw`
+      update provider_payment_accounts
+      set access_token = null, refresh_token = null, status = 'disconnected'
+      where id = ${ACCT_P}
+    `;
+    await asApp(A.profileId, async (tx) => {
+      const disc = await tx`select * from app_get_provider_payment_account(${P}::int, 'mercadopago')`;
+      // Row is found, but no usable token → the layer's "not connected" branch fires (correct).
+      expect(disc[0].access_token).toBeNull();
+      expect(disc[0].status).toBe('disconnected');
+    });
+    // Reconnect (what the OAuth callback UPSERT does): fresh token + status='connected'.
+    await raw`
+      update provider_payment_accounts
+      set access_token = 'FRESH_TOKEN', refresh_token = 'FRESH_REFRESH', status = 'connected'
+      where id = ${ACCT_P}
+    `;
+    await asApp(A.profileId, async (tx) => {
+      const recon = await tx`select * from app_get_provider_payment_account(${P}::int, 'mercadopago')`;
+      // Now the checkout sees a connected account with a usable token.
+      expect(recon[0].status).toBe('connected');
+      expect(recon[0].access_token).toBe('FRESH_TOKEN');
+    });
+  });
+
+  it('DEFINER reader returns ZERO rows for a provider with no account (clean not-connected)', async () => {
+    await asApp(A.profileId, async (tx) => {
+      expect(await tx`select * from app_get_provider_payment_account(${Q}::int, 'mercadopago')`).toHaveLength(0);
+    });
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

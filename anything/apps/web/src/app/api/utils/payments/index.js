@@ -51,10 +51,13 @@ export function getAdapter(rail) {
 // adapter always receives PLAINTEXT tokens and stays unchanged. A legacy/plaintext value (no
 // "enc:v1:" prefix) passes through decryptToken unchanged; a null/absent token is left as-is.
 async function loadProviderAccount(providerId, rail) {
+  // Read via the SECURITY DEFINER reader (0072), NOT a direct SELECT: this runs under the
+  // PAYING CUSTOMER's identity, and provider_payment_accounts is provider-admin-only RLS
+  // (0024), so a direct SELECT returns ZERO rows and checkout would wrongly report the
+  // provider as "not connected". The definer function returns the provider's account for the
+  // trusted payment layer without weakening the admin-only policy for direct table reads.
   const rows = await sql`
-    SELECT * FROM provider_payment_accounts
-    WHERE provider_id = ${providerId} AND rail = ${rail}
-    LIMIT 1
+    SELECT * FROM app_get_provider_payment_account(${providerId}::int, ${rail})
   `;
   const account = rows[0] ?? null;
   if (account) {

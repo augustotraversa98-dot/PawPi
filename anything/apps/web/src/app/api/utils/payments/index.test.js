@@ -112,6 +112,9 @@ describe('createCheckout', () => {
     });
     expect(res.checkoutUrl).toBe('https://mp/checkout');
     expect(res.payment).toMatchObject({ id: 99, status: 'pending' });
+    // The account is read via the SECURITY DEFINER reader (0072), NOT a direct SELECT that the
+    // paying customer's admin-only RLS would deny.
+    expect(sql.mock.calls[0][0].join(' ')).toContain('app_get_provider_payment_account');
     // The INSERT bound the order id, rail, external id, and idempotency key.
     const insertCall = sql.mock.calls[1];
     expect(insertCall[0].join(' ')).toContain('INSERT INTO payments');
