@@ -24,6 +24,7 @@ import {
 import { decryptToken, TokenCryptoConfigError } from './tokenCrypto';
 import * as mercadopago from './mercadopago';
 import * as binance from './binance';
+import { paymentSuccess, paymentFailure } from '@/lib/metrics';
 
 // Adapter registry — keyed by rail. Adding a rail = adding one entry here (no rail is
 // special-cased anywhere else in the layer).
@@ -324,6 +325,12 @@ export async function applyPaymentStatus(payment, status, rawStatus) {
     SET status = ${status}, raw_status = ${rawStatus ?? null}, updated_at = now()
     WHERE id = ${payment.id}
   `;
+  try {
+    if (payment.status !== status) {
+      if (status === 'approved') paymentSuccess.add(1, { rail: payment.rail ?? 'unknown' });
+      else if (status === 'failed') paymentFailure.add(1, { rail: payment.rail ?? 'unknown' });
+    }
+  } catch {}
   const orderStatus =
     status === 'approved'
       ? 'paid'

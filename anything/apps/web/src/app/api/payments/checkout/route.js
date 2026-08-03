@@ -8,6 +8,7 @@ import {
   PaymentsNotConfiguredError,
   ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
+import { paymentAttempt } from "@/lib/metrics";
 
 // POST /api/payments/checkout — the OWNER starts a payment (ticket 2.3). Creates an
 // `orders` row for a (kind, provider, amount) plus, via the provider-agnostic payment
@@ -97,6 +98,8 @@ async function POST(request) {
     // 2. Create the rail checkout + pending payment via the provider-agnostic layer.
     const idempotencyKey = idempotency_key || `order-${order.id}`;
     const result = await createCheckout(order, { rail, idempotencyKey });
+
+    try { paymentAttempt.add(1, { rail }); } catch {}
 
     return Response.json(
       {
