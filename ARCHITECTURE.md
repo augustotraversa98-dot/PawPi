@@ -4,6 +4,8 @@
 
 > **Standing convention:** `docs/*.md` specs and `PawPi_instructions.md` are version-controlled — when you edit one, commit it in the same change so the remote stays current.
 
+> **Observability & self-healing loop:** see [docs/observability/OPERATIONS.md](docs/observability/OPERATIONS.md) — Grafana metrics/alerts plus the alert→Claude→PR autofix loop.
+
 ---
 
 ## 1. Repo Layout

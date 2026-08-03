@@ -7,6 +7,10 @@ Monorepo-style layout (not a true monorepo — two independent apps):
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for a full inventory and [supabase/SCHEMA_NOTES.md](supabase/SCHEMA_NOTES.md) for the database.
 
+## Documentation
+
+See [docs/README.md](docs/README.md) for the documentation index (observability runbook + planning history).
+
 ## Running locally on a physical iPhone
 
 The mobile app (Expo Go on a real iPhone) talks to the backend running on your Mac.
