@@ -1,0 +1,138 @@
+name: Claude autofix (Grafana alert)
+
+# Triggered by the app's /api/internal/grafana-alert relay via repository_dispatch.
+# Claude investigates the alert + code, applies a MINIMAL fix, and opens a PR.
+# It never pushes to main — your existing CI (ci.yml) gates the PR and you merge.
+#
+# Claude auth — set ONE of these repo secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN   uses your existing Claude Pro/Max subscription (no extra
+#                             $$). Generate by running `claude setup-token` locally.
+#   ANTHROPIC_API_KEY         pay-per-use Anthropic API billing (fallback if you don't
+#                             have a Pro/Max subscription).
+# Optional repo secrets (give Claude read-only context to investigate):
+#   GRAFANA_URL         e.g. https://<stack>.grafana.net
+#   GRAFANA_TOKEN       Grafana Cloud read token (query Prometheus/Loki)
+
+on:
+  repository_dispatch:
+    types: [grafana-alert]
+  workflow_dispatch:
+    inputs:
+      alertname:
+        description: 'Alert name (manual test)'
+        required: true
+        default: 'ManualTest'
+      summary:
+        description: 'Alert summary (manual test)'
+        required: false
+        default: 'Manual invocation for testing the loop'
+
+concurrency:
+  # One investigation per alert name at a time; cancel stale re-fires.
+  group: autofix-${{ github.event.client_payload.alertname || github.event.inputs.alertname }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Assemble alert context
+        id: ctx
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          IN_NAME: ${{ github.event.inputs.alertname }}
+          IN_SUMMARY: ${{ github.event.inputs.summary }}
+        run: |
+          if [ -n "$IN_NAME" ]; then
+            echo "{\"alertname\":\"$IN_NAME\",\"summary\":\"$IN_SUMMARY\",\"source\":\"manual\"}" > /tmp/alert.json
+          else
+            echo "$PAYLOAD" > /tmp/alert.json
+          fi
+          echo "Alert context:"; cat /tmp/alert.json
+
+      - name: Run Claude investigation
+        env:
+          # The CLI uses whichever of these is set. Prefer the subscription token.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+        run: |
+          ALERT_JSON="$(cat /tmp/alert.json)"
+          PROMPT=$(cat <<PROMPT_EOF
+          You are an on-call engineer for the PawPi app (a dog-owner app; the web/API
+          service lives in anything/apps/web — a React Router v7 + Hono server on
+          Railway, Supabase Postgres, MercadoPago payments). A Grafana alert fired:
+
+          ${ALERT_JSON}
+
+          Investigate and, IF you find a clear, low-risk root cause, apply the SMALLEST
+          possible fix. Follow these hard rules:
+          - Only edit files under anything/apps/. Never touch secrets, .env, CI, or infra.
+          - Do NOT change payment-charging or auth-token logic without writing WHY in the
+            report and keeping the change minimal + clearly flagged for human review.
+          - Never delete data-bearing code paths. Prefer guards, null-checks, error
+            handling, and narrow fixes over refactors.
+          - If the root cause is NOT clear, or a safe fix isn't obvious, make NO code
+            changes — just write the diagnosis.
+          - Always write a report to /tmp/incident.md with: what the alert means, your
+            root-cause hypothesis, the exact change you made (or why you made none), and
+            how to verify. Keep it short and concrete.
+          - If you edited code, run the web unit tests: cd anything/apps/web && npm test
+            (install deps first if needed). Only keep the change if tests pass.
+
+          Begin now. End by confirming /tmp/incident.md is written.
+          PROMPT_EOF
+          )
+          # NOTE: verify these flags against your installed claude-code version.
+          claude -p "$PROMPT" \
+            --permission-mode acceptEdits \
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash" \
+            --output-format text || echo "claude exited non-zero (continuing to PR/issue step)"
+          if [ ! -f /tmp/incident.md ]; then
+            echo "No incident report produced." > /tmp/incident.md
+          fi
+
+      - name: Open PR (if code changed) or Issue (diagnosis only)
+        # Use AUTOFIX_PAT (a fine-grained PAT with Contents+PR write) so the PR
+        # actually triggers ci.yml. A PR opened with the default GITHUB_TOKEN does
+        # NOT trigger other workflows (GitHub loop-prevention) — CI would be skipped.
+        env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          ALERT_NAME=$(node -e "console.log(require('/tmp/alert.json').alertname||'alert')")
+          BRANCH="autofix/${ALERT_NAME}-${{ github.run_id }}"
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "pawpi-autofix[bot]"
+            git config user.email "autofix@pawpi.app"
+            git checkout -b "$BRANCH"
+            git add -A
+            git commit -m "autofix: investigate ${ALERT_NAME}"
+            git push origin "$BRANCH"
+            gh pr create \
+              --title "🤖 Autofix proposal: ${ALERT_NAME}" \
+              --body-file /tmp/incident.md \
+              --base main --head "$BRANCH" \
+              --label "autofix" || true
+          else
+            gh issue create \
+              --title "🔎 Grafana alert (no auto-fix): ${ALERT_NAME}" \
+              --body-file /tmp/incident.md \
+              --label "autofix,needs-human" || true
+          fi
