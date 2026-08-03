@@ -66,8 +66,6 @@ async function POST(request) {
     labels: first.labels || {},
     generatorURL: first.generatorURL || '',
     panelURL: first.panelURL || '',
-    firingCount: firing.length,
-    receivedAt: new Date().toISOString(),
   };
 
   const token = process.env.GITHUB_DISPATCH_TOKEN;
