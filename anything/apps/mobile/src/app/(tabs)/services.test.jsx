@@ -1,129 +1,144 @@
-// Render pins for the Pet Services hub category grid (bottom-nav entry):
-//   - ALL catalog categories render as cards (Veterinary + Grooming + Dog Walking +
-//     Daycare & Boarding live + coming-soon);
-//   - the LIVE Veterinary / Grooming / Dog Walking / Daycare cards navigate to their
-//     canonical discover/book flow;
-//   - coming-soon cards are signposts: badged "Coming soon" and NOT tappable
-//     (no navigation, no fake data behind them).
-// The router is mocked, so this exercises the screen wiring.
+// Services TAB SHELL (two-pane redesign): a segmented [Discover | My Activity] toggle over
+// two panes — Discover = the headerless unified discovery, My Activity = the consolidated
+// owner surface. Asserts: both segments render, Discover is the default (chips + search
+// visible, activity hidden), tapping My Activity swaps panes, the unread badge shows on the
+// My Activity segment, and toggling back works. All data hooks, router, expo-location,
+// MapLocationView, the bottom sheet and i18n are mocked; i18n resolves REAL en.json.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, waitFor, fireEvent } from "@testing-library/react-native";
 
+let mockDiscover;
+let mockUnread = 0;
 const mockPush = jest.fn();
+const mockReq = jest.fn();
+const mockPos = jest.fn();
+const mockEmptyQ = { data: [], isLoading: false, refetch: jest.fn() };
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: mockPush }),
+  useLocalSearchParams: () => ({}),
 }));
-jest.mock("lucide-react-native", () =>
-  new Proxy({}, { get: () => () => null }),
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
 );
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+jest.mock("@/components/RefreshableScrollView", () => {
+  const { View } = require("react-native");
+  return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
+});
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: (...a) => mockReq(...a),
+  getCurrentPositionAsync: (...a) => mockPos(...a),
+}));
+jest.mock("@/hooks/useProviders", () => ({
+  useDiscoverProviders: () => mockDiscover,
+  useUnreadCount: () => ({ data: mockUnread }),
+  useMyBookings: () => ({
+    data: { upcoming: [], past: [] },
+    isLoading: false,
+    refetch: jest.fn(),
+  }),
+  useWalkSessions: () => mockEmptyQ,
+  useDaycareStays: () => mockEmptyQ,
+  useSittingVisits: () => mockEmptyQ,
+  useShopOrders: () => mockEmptyQ,
+  useShopSubscriptions: () => mockEmptyQ,
+}));
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: { id: 1 } }),
+}));
+jest.mock("@/hooks/useIsWideScreen", () => ({
+  useIsWideScreen: () => false,
+}));
+jest.mock("@/components/Map/MapLocationView", () => {
+  const { View } = require("react-native");
+  return ({ testID }) => <View testID={testID} />;
+});
+jest.mock("@gorhom/bottom-sheet", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const BottomSheet = React.forwardRef(({ children }, ref) => {
+    React.useImperativeHandle(ref, () => ({ snapToIndex: jest.fn() }));
+    return <View>{children}</View>;
+  });
+  return {
+    __esModule: true,
+    default: BottomSheet,
+    BottomSheetScrollView: ({ children }) => <View>{children}</View>,
+  };
+});
 
 import ServicesScreen from "./services";
 
-// Every catalog category is now LIVE (ticket 2.12 flips Adoption live — the last card).
-const COMING_SOON = [];
+const ok = (data) => ({ data, isLoading: false, isError: false, refetch: jest.fn() });
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockUnread = 0;
+  mockReq.mockResolvedValue({ status: "denied" }); // no location → deterministic list
+  mockPos.mockResolvedValue({ coords: { latitude: 0, longitude: 0 } });
+  mockDiscover = ok([{ id: 1, slug: "a", name: "A Co", capabilities: ["vet"] }]);
 });
 
-test("renders the full category grid (every category live, none coming-soon)", () => {
-  const { getByText, queryAllByText } = render(<ServicesScreen />);
-  expect(getByText("Veterinary")).toBeTruthy();
-  expect(getByText("Adoption")).toBeTruthy();
-  // No category carries a "Coming soon" badge anymore — all flows are live.
-  expect(queryAllByText("Coming soon")).toHaveLength(COMING_SOON.length);
+test("renders both segments and defaults to Discover (chips + search, no internal header)", async () => {
+  const { getByText, getByTestId, getByPlaceholderText, queryByTestId, queryByText } =
+    render(<ServicesScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  // Both segments present.
+  expect(getByTestId("services-seg-discover")).toBeTruthy();
+  expect(getByTestId("services-seg-activity")).toBeTruthy();
+  expect(getByText("Discover")).toBeTruthy();
+  expect(getByText("My Activity")).toBeTruthy();
+  // Discover pane content is visible…
+  expect(getByTestId("discover-cat-all")).toBeTruthy();
+  expect(getByPlaceholderText("Search providers")).toBeTruthy();
+  // …the discovery's OWN header is suppressed (the toggle replaces it)…
+  expect(queryByTestId("services-activity-action")).toBeNull();
+  expect(queryByText("Find trusted pet care near you")).toBeNull();
+  // …and the activity pane is not mounted.
+  expect(queryByTestId("activity-messages")).toBeNull();
 });
 
-// Services Hub P2: the Veterinary/Grooming/Telehealth tiles now open the UNIFIED
-// discovery screen with the Veterinary category pre-applied (vet/groomer/telehealth).
-test("tapping the Veterinary card opens unified discover (Veterinary category)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Veterinary"));
-  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
+test("tapping My Activity swaps to the activity pane and hides discovery", async () => {
+  const { getByTestId, queryByTestId } = render(<ServicesScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+
+  fireEvent.press(getByTestId("services-seg-activity"));
+  // Activity sections now render…
+  expect(getByTestId("activity-messages")).toBeTruthy();
+  expect(getByTestId("activity-orders")).toBeTruthy();
+  expect(getByTestId("activity-upcoming-empty")).toBeTruthy();
+  // …and discovery is gone.
+  expect(queryByTestId("discover-cat-all")).toBeNull();
+  expect(queryByTestId("discover-card-1")).toBeNull();
 });
 
-test("tapping the Grooming card opens unified discover (Veterinary category)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Grooming"));
-  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
+test("toggling back to Discover restores the discovery pane", async () => {
+  const { getByTestId, queryByTestId } = render(<ServicesScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+
+  fireEvent.press(getByTestId("services-seg-activity"));
+  expect(getByTestId("activity-messages")).toBeTruthy();
+
+  fireEvent.press(getByTestId("services-seg-discover"));
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  expect(queryByTestId("activity-messages")).toBeNull();
 });
 
-test("tapping the Telehealth card opens unified discover (Veterinary category)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Telehealth"));
-  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=veterinary");
+test("the My Activity segment shows the unread badge when unread > 0", async () => {
+  mockUnread = 5;
+  const { getByTestId, queryByTestId } = render(<ServicesScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  expect(getByTestId("services-seg-activity-badge")).toBeTruthy();
+  expect(queryByTestId("services-seg-discover-badge")).toBeNull(); // no badge on Discover
 });
 
-// Regression guard for the More-tab corruption (ticket 2.19): NO Services card may push
-// into the (tabs)/more/ stack. They must all open the root-level `service/` stack, which
-// presents over the tabs and never buries the More tab root.
-test("no Services card routes into the More tab stack (2.19 regression)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  for (const title of [
-    "Veterinary",
-    "Telehealth",
-    "Grooming",
-    "Dog Walking",
-    "Daycare & Boarding",
-    "Pet Sitting",
-    "Training",
-    "Shop",
-    "Adoption",
-  ]) {
-    fireEvent.press(getByText(title));
-  }
-  for (const call of mockPush.mock.calls) {
-    const target = typeof call[0] === "string" ? call[0] : call[0]?.pathname;
-    expect(String(target)).not.toContain("/(tabs)/more/");
-    expect(String(target).startsWith("/service/")).toBe(true);
-  }
-});
-
-test("tapping the live Dog Walking card opens the walking discover/live flow", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Dog Walking"));
-  expect(mockPush).toHaveBeenCalledWith("/service/walking");
-});
-
-test("tapping the live Daycare & Boarding card opens the daycare discover/book flow", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Daycare & Boarding"));
-  expect(mockPush).toHaveBeenCalledWith("/service/daycare");
-});
-
-test("tapping the live Pet Sitting card opens the sitting discover/book flow", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Pet Sitting"));
-  expect(mockPush).toHaveBeenCalledWith("/service/sitting");
-});
-
-test("tapping the live Training card opens the PROVIDER training service (not the self tab)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Training"));
-  expect(mockPush).toHaveBeenCalledWith("/service/training");
-});
-
-test("tapping the Shop card opens unified discover (Shops category)", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Shop"));
-  expect(mockPush).toHaveBeenCalledWith("/service/discover?category=shops");
-});
-
-test("tapping the live Adoption card opens the adoption discover flow", () => {
-  const { getByText } = render(<ServicesScreen />);
-  fireEvent.press(getByText("Adoption"));
-  expect(mockPush).toHaveBeenCalledWith("/service/adoption");
-});
-
-test("coming-soon cards do NOT navigate into any flow", () => {
-  const { getByText } = render(<ServicesScreen />);
-  for (const title of COMING_SOON) {
-    fireEvent.press(getByText(title));
-  }
-  expect(mockPush).not.toHaveBeenCalled();
+test("no unread → no badge on either segment", async () => {
+  const { getByTestId, queryByTestId } = render(<ServicesScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  expect(queryByTestId("services-seg-activity-badge")).toBeNull();
 });

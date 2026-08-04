@@ -39,8 +39,10 @@ import {
   useProviderProfile,
   useProviderReviews,
   useStartThread,
+  useMyBookings,
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
+import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import StorefrontCatalog from "@/components/Providers/StorefrontCatalog";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
@@ -88,6 +90,7 @@ export default function ProviderScreen() {
   const [showBooking, setShowBooking] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false); // in-storefront shop (P4a)
   const [showCapChooser, setShowCapChooser] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [bookingCapability, setBookingCapability] = useState(null);
   const { mutate: startThread, isPending: startingThread } = useStartThread();
   const { data: currentPet } = useCurrentPet();
@@ -137,6 +140,19 @@ export default function ProviderScreen() {
   // Reviews for this provider (ticket 2.2). Keyed by id once the profile resolves.
   const { data: reviews } = useProviderReviews(provider?.id);
   const reviewList = reviews ?? [];
+
+  // "Leave a review" entry point: shown ONLY when the signed-in owner has a COMPLETED booking
+  // with THIS provider (from the owner's own past bookings). The backend still enforces the
+  // completed-booking + one-per-booking gate — this is just the storefront entry point. The
+  // booking supplies the pet the review is filed under. String-compare the ids (porsager may
+  // surface either as a string).
+  const { data: myBookings } = useMyBookings();
+  const eligibleReviewBooking = (myBookings?.past ?? []).find(
+    (b) =>
+      provider?.id != null &&
+      String(b.provider_id) === String(provider.id) &&
+      b.status === "completed",
+  );
 
   // "from" price for the Book CTA so cost is visible without scrolling to the
   // Services section (conversion). Cheapest priced service; null → no teaser.
@@ -574,6 +590,30 @@ export default function ProviderScreen() {
 
           {/* Reviews (ticket 2.2) — real data; empty state when none. */}
           <Section title="Reviews">
+            {/* Owner entry point to leave a review — only with a completed booking here. */}
+            {eligibleReviewBooking ? (
+              <PressableScale
+                testID="storefront-review-cta"
+                onPress={() => setShowReview(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t("storefront.leaveReview")}
+                style={{
+                  backgroundColor: COLORS.coral,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.md + 2,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: SPACING.sm,
+                  marginBottom: SPACING.md,
+                }}
+              >
+                <Star size={18} color="#FFF" fill="#FFF" />
+                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+                  {t("storefront.leaveReview")}
+                </Text>
+              </PressableScale>
+            ) : null}
             {reviewList.length === 0 ? (
               <Card
                 level="sm"
@@ -761,6 +801,15 @@ export default function ProviderScreen() {
         shop={showCatalog ? provider : null}
         petId={petId}
         onClose={() => setShowCatalog(false)}
+      />
+
+      {/* Leave-a-review — reuses the shared modal; opened only from the eligible CTA above. */}
+      <WriteReviewModal
+        visible={showReview}
+        onClose={() => setShowReview(false)}
+        providerId={provider?.id}
+        providerName={provider?.name}
+        petId={eligibleReviewBooking?.pet_id}
       />
 
       {/* Capability chooser — only when a provider offers several bookable services and

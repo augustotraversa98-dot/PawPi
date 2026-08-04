@@ -43,6 +43,35 @@ export function useAllCareAccessGrants() {
   });
 }
 
+// Owner-initiated sharing — create an ACTIVE grant to a provider for a pet (booking detail →
+// "Share clinic history"). POST /api/care-access/grants; the backend dedups an existing active
+// grant. On success, invalidate the pet's grant list + the cross-pet "all" list so the trust
+// state flips to Shared immediately. mutateAsync({ petId, providerId, scopes? }) → { grant }.
+export function useCreateCareGrant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ petId, providerId, scopes }) => {
+      const response = await fetch(`/api/care-access/grants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ petId, providerId, scopes }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to share records");
+      }
+      return response.json(); // { grant, deduped? }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["care-access-grants", variables?.petId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["care-access-grants", "all"] });
+    },
+  });
+}
+
 // Approve / deny / revoke a single grant. The backend flips the grant's status
 // (approve pending→active, deny pending→revoked, revoke active→revoked), which
 // assertCareAccess honors instantly — so on success we just invalidate this pet's

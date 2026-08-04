@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // query (single tagged template carrying the owner scope + optional filters).
 // Isolation: the WHERE owner_user_id = me clause is what excludes other owners.
 
-import { GET } from './route';
+import { GET, POST } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
@@ -92,5 +92,128 @@ describe('GET /api/care-access/grants', () => {
     const values = lastValues();
     expect(values).toContain(7);
     expect(values).toContain(null);
+  });
+});
+
+// POST /api/care-access/grants — owner-initiated "Share clinic history". sql call order:
+// 1) resolveUserId profile, 2) pet-ownership, 3) provider-published, 4) dedup, 5) INSERT.
+const postReq = (body) =>
+  new Request('http://localhost/api/care-access/grants', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+const allQueryTexts = () => sql.mock.calls.map((c) => (c[0] ?? []).join(' '));
+const allBound = () => sql.mock.calls.flatMap((c) => c.slice(1));
+
+describe('POST /api/care-access/grants', () => {
+  it('401 when unauthenticated', async () => {
+    auth.mockResolvedValue(null);
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(401);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('400 when petId or providerId is missing', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // resolveUserId
+    const res = await POST(postReq({ petId: 5 }));
+    expect(res.status).toBe(400);
+  });
+
+  it("creates an ACTIVE owner grant defaulting to the 'medical_read' scope assertCareAccess honors", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId → 7
+      .mockResolvedValueOnce([{ id: 5 }]) // pet belongs to me
+      .mockResolvedValueOnce([{ id: 9 }]) // provider published
+      .mockResolvedValueOnce([]) // dedup: none
+      .mockResolvedValueOnce([
+        { id: 100, pet_id: 5, owner_user_id: 7, provider_id: 9, scopes: ['medical_read'], status: 'active', requested_by: 'owner' },
+      ]); // INSERT
+
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(201);
+    const { grant } = await res.json();
+    expect(grant.status).toBe('active');
+    expect(grant.requested_by).toBe('owner');
+    // The stored scope is the granular read scope (NOT the coarse 'medical' no-op) — so a
+    // provider `medical_read = ANY(scopes)` gate would now match this grant.
+    expect(grant.scopes).toContain('medical_read');
+
+    const insertText = allQueryTexts().find((t) => t.includes('INSERT INTO care_access_grants'));
+    expect(insertText).toBeTruthy();
+    // owner id (7) is bound (owner_user_id = me), and 'medical_read' is the bound scope.
+    expect(allBound()).toContain(7);
+    expect(allBound()).toContainEqual(['medical_read']);
+    expect(allBound()).not.toContainEqual(['medical', 'vaccinations']);
+  });
+
+  it('uses the caller-supplied scopes when provided (valid vocabulary)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 100, status: 'active' }]);
+
+    await POST(postReq({ petId: 5, providerId: 9, scopes: ['medical_read', 'appointments'] }));
+    expect(allBound()).toContainEqual(['medical_read', 'appointments']);
+  });
+
+  it('400 when a scope is outside the shared care-access vocabulary (the no-op guard)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // resolveUserId only — reject before any DB write
+
+    const res = await POST(postReq({ petId: 5, providerId: 9, scopes: ['medical', 'vaccinations'] }));
+    expect(res.status).toBe(400);
+    // Never reached the pet lookup or INSERT.
+    expect(allQueryTexts().some((t) => t.includes('care_access_grants'))).toBe(false);
+    expect(allQueryTexts().some((t) => t.includes('FROM pets'))).toBe(false);
+  });
+
+  it('DEDUPS: an active grant already covering medical_read is returned, no INSERT', async () => {
+    auth.mockResolvedValue(SESSION);
+    const existing = { id: 50, status: 'active', scopes: ['medical_read'] };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ id: 5 }]) // pet
+      .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([existing]); // dedup HIT → return
+
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.grant.id).toBe(50);
+    expect(body.deduped).toBe(true);
+    // The dedup query binds the requested scope for the `scopes @> …` cover check.
+    expect(allBound()).toContainEqual(['medical_read']);
+    // No INSERT was issued.
+    expect(allQueryTexts().some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
+  });
+
+  it("404 when the pet does NOT belong to the caller (owner-scoped)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([]); // pet not owned by me → no row
+
+    const res = await POST(postReq({ petId: 999, providerId: 9 }));
+    expect(res.status).toBe(404);
+    // Never reached the provider check or INSERT.
+    expect(allQueryTexts().some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
+  });
+
+  it('404 when the provider is not found / not published', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet ok
+      .mockResolvedValueOnce([]); // provider not published → no row
+
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(404);
   });
 });

@@ -262,6 +262,67 @@
       "adoption": "Adopción"
     }
   },
+  "activity": {
+    "title": "Actividad",
+    "subtitle": "Tus mensajes y reservas activas",
+    "a11yOpen": "Abre tu actividad",
+    "messages": "Mensajes",
+    "unread": "{{count}} sin leer",
+    "emptyMessages": "Aún no tienes mensajes",
+    "liveWalk": "Paseo en curso",
+    "liveWalkSub": "Sigue el paseo de tu perro en vivo",
+    "upcoming": "Próximas",
+    "emptyBookings": "Aún no tienes reservas activas",
+    "daycare": "Estadías de guardería",
+    "sitting": "Visitas de cuidado",
+    "active": "{{count}} activas",
+    "emptyDaycare": "Sin estadías activas",
+    "emptySitting": "Sin visitas activas",
+    "shopping": "Compras",
+    "orders": "Mis pedidos",
+    "orderCount": "{{count}} pedidos",
+    "emptyOrders": "Aún no tienes pedidos",
+    "autoReorder": "Reposición automática",
+    "emptyAutoReorder": "Sin planes activos",
+    "past": "Pasadas",
+    "pastCount": "Pasadas ({{count}})",
+    "pastToggleA11y": "Muestra u oculta tus reservas pasadas",
+    "pastSeeAll": "Ver todas ({{count}})",
+    "pastTitle": "Reservas pasadas",
+    "emptyPast": "No tienes reservas pasadas"
+  },
+  "services": {
+    "segDiscover": "Descubrir",
+    "segActivity": "Mi actividad"
+  },
+  "bookingSummary": {
+    "title": "Resumen de la reserva",
+    "service": "Servicio",
+    "whatWasDone": "Qué se hizo",
+    "status": "Estado",
+    "when": "Cuándo",
+    "provider": "Proveedor",
+    "pet": "Mascota",
+    "paid": "Pagado",
+    "notRecorded": "Sin registrar",
+    "none": "—",
+    "viewProvider": "Ver proveedor",
+    "leaveReview": "Dejar una reseña",
+    "location": "Ubicación",
+    "closedNow": "Cerrado ahora",
+    "getDirections": "Cómo llegar",
+    "messageProvider": "Enviar mensaje",
+    "shareTitle": "Compartir historia clínica",
+    "shareBody": "Dale a este proveedor acceso a los registros médicos y las vacunas de tu mascota.",
+    "shareRecords": "Compartir registros médicos",
+    "shared": "Compartido",
+    "revoke": "Revocar",
+    "revokeTitle": "¿Revocar el acceso?",
+    "revokeBody": "Este proveedor ya no podrá ver los registros de tu mascota.",
+    "shareErrorTitle": "No pudimos compartir los registros",
+    "errorTitle": "No pudimos cargar esta reserva",
+    "errorBody": "Puede que se haya eliminado, o que algo haya salido mal."
+  },
   "storefront": {
     "shop": "Tienda",
     "searchInStore": "Buscar en esta tienda",
@@ -276,6 +337,7 @@
     "removeOne": "Quitar uno",
     "deliveryPickup": "Opciones de envío y retiro en el pago",
     "favorite": "Favorito",
-    "chooseServiceTitle": "¿Qué te gustaría reservar?"
+    "chooseServiceTitle": "¿Qué te gustaría reservar?",
+    "leaveReview": "Dejar una reseña"
   }
 }

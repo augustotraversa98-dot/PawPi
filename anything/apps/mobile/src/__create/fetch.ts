@@ -35,6 +35,14 @@ const isSecondPartyURL = (url: string) => {
   return url.startsWith('/_create/');
 };
 
+// An /api route on our own backend (relative "/api/…" or the absolute base-URL form). Used only
+// by the misrouted-API guard below.
+const isApiURL = (url: string) => {
+  const base = process.env.EXPO_PUBLIC_BASE_URL;
+  const path = base && url.startsWith(base) ? url.slice(base.length) : url;
+  return path.startsWith('/api/') || path === '/api';
+};
+
 type Params = Parameters<typeof expoFetch>;
 const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
@@ -104,10 +112,29 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const fetchImpl = isFormDataBody ? originalFetch : expoFetch;
 
-  return fetchImpl(finalInput, {
+  const response = await fetchImpl(finalInput, {
     ...init,
     headers: finalHeaders,
   });
+
+  // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —
+  // HTTP 200 with an HTML body. Callers do `if (!res.ok) throw; await res.json()`, so res.ok is
+  // true and res.json() then throws a cryptic SyntaxError, surfacing as confusing failures
+  // app-wide. When an /api route returns an OK status but an HTML content-type, fail cleanly here
+  // with a clear message instead. Left untouched: legitimate JSON, non-OK responses (the existing
+  // error path — the guard only runs when res.ok), and intentionally non-JSON endpoints
+  // (text/calendar ICS, etc. — only text/html trips this).
+  if (isApiURL(url) && response.ok) {
+    const contentType = response.headers?.get?.('content-type') ?? '';
+    if (contentType.includes('text/html')) {
+      throw new Error(
+        `Unexpected HTML response from API route "${url}" (status ${response.status}). ` +
+          'The backend is likely missing this endpoint.',
+      );
+    }
+  }
+
+  return response;
 };
 
 export default fetchToWeb;

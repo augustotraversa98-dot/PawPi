@@ -40,10 +40,12 @@ jest.mock("@/components/Providers/StorefrontCatalog", () => (props) => {
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 7, name: "Rex" } }),
 }));
+jest.mock("@/components/Providers/WriteReviewModal", () => () => null);
 jest.mock("@/hooks/useProviders", () => ({
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
+  useMyBookings: () => ({ data: { upcoming: [], past: [] } }),
 }));
 
 import ProviderScreen from "./provider";

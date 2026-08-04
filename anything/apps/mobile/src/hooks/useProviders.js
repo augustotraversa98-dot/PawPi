@@ -70,6 +70,25 @@ export function useMyBookings() {
   });
 }
 
+// One booking's owner-scoped detail (GET /api/me/bookings/[id]) for the read-only booking
+// summary screen: service/notes/status/date/time/provider/pet + the SETTLED payment
+// (data.booking.paid = { amount_cents, currency } | null). Owner-scoped server-side; another
+// owner's id 404s → query error. Disabled until an id is known.
+export function useBookingDetail(id) {
+  return useQuery({
+    queryKey: ["my-bookings", "detail", id],
+    enabled: id != null,
+    queryFn: async () => {
+      const response = await fetch(`/api/me/bookings/${encodeURIComponent(id)}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch booking");
+      }
+      const data = await response.json();
+      return data.booking;
+    },
+  });
+}
+
 // One published provider's PUBLIC profile: { provider, locations, services }.
 // Disabled until a slug is known; a draft/unknown slug 404s → query error.
 export function useProviderProfile(slug) {

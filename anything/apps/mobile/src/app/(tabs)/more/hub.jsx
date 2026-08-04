@@ -2,63 +2,24 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  Calendar,
-  ShoppingBag,
-  ShieldCheck,
-  RefreshCw,
-  Heart,
-  ChevronRight,
-  Clock,
-  MapPin,
-} from "lucide-react-native";
+import { ArrowLeft, ShieldCheck, Heart, ChevronRight } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import {
-  useMyBookings,
-  useShopOrders,
-  useShopSubscriptions,
-  useAdoptionFavorites,
-} from "@/hooks/useProviders";
+import { useAdoptionFavorites } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
-import { formatDisplayDate } from "@/utils/canonicalDateTime";
-import { canOwnerJoinTelehealthNow } from "@/utils/telehealthJoinGate";
 
-// MY HUB (Phase 2 ticket 2.14) — the owner's single place tying the super-app together. It
-// SURFACES + LINKS INTO the existing per-feature screens; it does NOT duplicate them. Sections:
-//   - My bookings   (GET /api/me/bookings — upcoming/past across ALL services, 2.4)
-//   - My orders     (GET /api/shop/orders — shop order history, 2.11)
-//   - Auto-reorder  (GET /api/shop/subscriptions — shop subscriptions, 2.3/2.11)
+// MY HUB (Phase 2 ticket 2.14) — the owner's account-style hub. Bookings, orders, auto-reorder
+// and pet-friendly places moved to the Services tab's "My Activity" pane (two-pane redesign),
+// so this now SURFACES + LINKS INTO only the account-scoped surfaces that don't belong there:
 //   - Who has access(GET /api/care-access/grants — care_access_grants, 2.x)
 //   - Saved dogs    (GET /api/adoption/favorites — favorited adoption listings, 2.12)
-// Every read is OWNER-scoped server-side (owner_user_id = me); no cross-owner data, no fake
-// metrics. Empty → empty states. Tapping a section opens the real feature screen.
-
-// For orders.created_at only (timestamptz) — appointment_date is a date-only
-// column and must go through formatDisplayDate() instead (see below).
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
+// Every read is OWNER-scoped server-side; no fake metrics. Empty → empty states. Tapping a
+// section opens the real feature screen.
 
 function isGrantActive(g) {
   if (g.status !== "active") return false;
   if (!g.expires_at) return true;
   return new Date(g.expires_at).getTime() > Date.now();
-}
-
-function money(cents, currency = "ARS") {
-  if (cents == null) return "";
-  return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
 function SectionCard({ title, Icon, count, onPress, children }) {
@@ -118,7 +79,7 @@ function SectionCard({ title, Icon, count, onPress, children }) {
   );
 }
 
-function Row({ primary, secondary, badge, badgeHighlight, onPress }) {
+function Row({ primary, secondary, badge, onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -147,8 +108,8 @@ function Row({ primary, secondary, badge, badgeHighlight, onPress }) {
           style={{
             fontSize: 12,
             fontWeight: "700",
-            color: badgeHighlight ? COLORS.coral : COLORS.terracotta,
-            textTransform: badgeHighlight ? "none" : "capitalize",
+            color: COLORS.terracotta,
+            textTransform: "capitalize",
             marginRight: onPress ? 4 : 0,
           }}
         >
@@ -168,61 +129,19 @@ function Empty({ text }) {
   );
 }
 
-// Route a booking row to the right existing per-service screen — mirrors the openProvider
-// pattern used by every service/*.jsx discovery screen. Telehealth has no provider-profile
-// booking surface of its own (service/telehealth.jsx IS the consult list + join screen), so
-// it goes straight there instead of /service/provider.
-// A telehealth booking the owner can join RIGHT NOW gets a "Join now" badge instead of its
-// plain booking_status, so the row doesn't read as an indistinguishable tap-through (Task 2).
-// Reuses the same eligibility rule as the Telehealth screen's join gate (telehealthJoinGate.js)
-// — within 5 minutes of the scheduled time, or once the vet has already started the call.
-function isJoinableTelehealthBooking(booking) {
-  return (
-    booking.capability === "telehealth" &&
-    canOwnerJoinTelehealthNow(booking, { sessionStatus: booking.telehealth_session_status })
-  );
-}
-
-function openBooking(router, booking) {
-  if (booking.capability === "telehealth") {
-    router.push("/service/telehealth");
-    return;
-  }
-  if (!booking.provider_slug) return;
-  router.push({
-    pathname: "/service/provider",
-    params: { slug: booking.provider_slug, capability: booking.capability },
-  });
-}
-
 export default function MyHubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const bookings = useMyBookings();
-  const orders = useShopOrders();
-  const subs = useShopSubscriptions();
   const grants = useAllCareAccessGrants();
   const favorites = useAdoptionFavorites();
 
-  const upcoming = bookings.data?.upcoming ?? [];
-  const past = bookings.data?.past ?? [];
-  const orderList = orders.data ?? [];
-  const subList = (subs.data ?? []).filter((s) => s.status === "active");
   const activeGrants = (grants.data ?? []).filter(isGrantActive);
   const favList = favorites.data ?? [];
 
-  const loading =
-    bookings.isLoading &&
-    orders.isLoading &&
-    subs.isLoading &&
-    grants.isLoading &&
-    favorites.isLoading;
+  const loading = grants.isLoading && favorites.isLoading;
 
   const refetch = () => {
-    bookings.refetch();
-    orders.refetch();
-    subs.refetch();
     grants.refetch();
     favorites.refetch();
   };
@@ -258,100 +177,6 @@ export default function MyHubScreen() {
           refetch={refetch}
           contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
         >
-          {/* My bookings — across all services */}
-          <SectionCard
-            title="My bookings"
-            Icon={Calendar}
-            count={upcoming.length}
-          >
-            {upcoming.length === 0 && past.length === 0 ? (
-              <Empty text="No bookings yet." />
-            ) : (
-              <>
-                {upcoming.slice(0, 4).map((b) => {
-                  const joinableNow = isJoinableTelehealthBooking(b);
-                  return (
-                    <Row
-                      key={b.id}
-                      primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-                      secondary={`${b.service_name || b.capability || "Booking"} · ${formatDisplayDate(
-                        b.appointment_date,
-                      )}`}
-                      badge={joinableNow ? "Join now" : b.booking_status}
-                      badgeHighlight={joinableNow}
-                      onPress={() => openBooking(router, b)}
-                    />
-                  );
-                })}
-                {upcoming.length === 0 && past.length > 0 ? (
-                  <Empty text="No upcoming bookings — see past visits below." />
-                ) : null}
-                {past.slice(0, 3).map((b) => (
-                  <Row
-                    key={b.id}
-                    primary={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-                    secondary={`Past · ${formatDisplayDate(b.appointment_date)}`}
-                    badge={b.status}
-                    onPress={() => openBooking(router, b)}
-                  />
-                ))}
-              </>
-            )}
-          </SectionCard>
-
-          {/* Pet-friendly places directory (ticket 2.73) */}
-          <SectionCard
-            title="Pet-friendly places"
-            Icon={MapPin}
-            onPress={() => router.push("/service/places")}
-          >
-            <Empty text="Find parks, cafés, hotels and more near you." />
-          </SectionCard>
-
-          {/* My orders — shop history */}
-          <SectionCard
-            title="My orders"
-            Icon={ShoppingBag}
-            count={orderList.length}
-            onPress={() => router.push("/service/shop")}
-          >
-            {orderList.length === 0 ? (
-              <Empty text="No orders yet." />
-            ) : (
-              orderList.slice(0, 4).map((o) => (
-                <Row
-                  key={o.id}
-                  primary={o.provider_name || "Shop"}
-                  secondary={`${money(o.amount_cents, o.currency)} · ${formatDate(
-                    o.created_at,
-                  )}`}
-                  badge={o.fulfillment_status || o.status}
-                />
-              ))
-            )}
-          </SectionCard>
-
-          {/* Auto-reorder subscriptions */}
-          <SectionCard
-            title="Auto-reorder"
-            Icon={RefreshCw}
-            count={subList.length}
-            onPress={() => router.push("/service/shop")}
-          >
-            {subList.length === 0 ? (
-              <Empty text="No active auto-reorder plans." />
-            ) : (
-              subList.slice(0, 4).map((s) => (
-                <Row
-                  key={s.id}
-                  primary={s.product_name || s.provider_name || "Plan"}
-                  secondary={`Every ${s.plan} · qty ${s.quantity}`}
-                  badge={s.status}
-                />
-              ))
-            )}
-          </SectionCard>
-
           {/* Who has access */}
           <SectionCard
             title="Who has access"
