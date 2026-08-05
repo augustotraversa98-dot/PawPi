@@ -1,0 +1,64 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API",
+  "elements": [
+    {
+      "type": "node",
+      "id": 4678791275,
+      "lat": -34.4714357,
+      "lon": -58.5137323,
+      "tags": {
+        "amenity": "cafe",
+        "dog": "yes",
+        "name": "Espresso Costa",
+        "addr:street": "Cosme Beccar",
+        "addr:housenumber": "216",
+        "addr:suburb": "San Isidro",
+        "contact:website": "https://espressocosta.example"
+      }
+    },
+    {
+      "type": "way",
+      "id": 473633239,
+      "center": { "lat": -34.4694002, "lon": -58.5092865 },
+      "tags": {
+        "amenity": "restaurant",
+        "dog": "yes",
+        "name": "Andy's",
+        "addr:city": "San Isidro"
+      }
+    },
+    {
+      "type": "node",
+      "id": 11688432238,
+      "lat": -34.5182842,
+      "lon": -58.4719849,
+      "tags": {
+        "leisure": "dog_park",
+        "name": "Canil del Paseo Costero"
+      }
+    },
+    {
+      "type": "node",
+      "id": 9990001,
+      "lat": -34.5,
+      "lon": -58.5,
+      "tags": {
+        "amenity": "pub",
+        "dog": "yes",
+        "phone": "+54 11 5555-1234"
+      }
+    },
+    {
+      "type": "node",
+      "id": 9990002,
+      "lat": -34.51,
+      "lon": -58.51,
+      "tags": {
+        "amenity": "ice_cream",
+        "dog": "yes",
+        "name": "Heladería Patagonia"
+      }
+    }
+  ]
+}

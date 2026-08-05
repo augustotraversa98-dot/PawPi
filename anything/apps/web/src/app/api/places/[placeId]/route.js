@@ -1,17 +1,21 @@
 import { auth } from "@/auth";
-import { placeDetails } from "@/app/api/utils/places";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { getPlaceById } from "@/app/api/utils/placesQuery";
 
-// GET /api/places/[placeId] — full detail for one place (Wave 7 ticket 2.73). Auth-gated; key-gated
-// server-side. When the key is unset it returns { configured: false, place: null } (HTTP 200).
+// GET /api/places/[placeId] — detail for one place from the PawPi-owned catalog (0075), replacing
+// the Google Places detail proxy. Auth-gated read of a published, non-deleted row; 404 otherwise.
+// The nested reviews route (./reviews) is unchanged and keys off this same id.
 async function GET(request, { params }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const result = await placeDetails(params.placeId);
-    return Response.json(result);
+    const place = await getPlaceById(params.placeId);
+    if (!place) {
+      return Response.json({ error: "Place not found" }, { status: 404 });
+    }
+    return Response.json({ place });
   } catch (e) {
     console.error("[GET /api/places/[placeId]] Error:", e?.message);
     return Response.json({ error: "Failed to load place" }, { status: 500 });
