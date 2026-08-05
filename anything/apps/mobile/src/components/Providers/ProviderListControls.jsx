@@ -21,20 +21,31 @@ export const PROVIDER_SORTS = [
   { key: "reviews", labelKey: "providers.sortMostReviewed" },
 ];
 
-export function useProviderListFilter(providers) {
+// options.extraText (optional): (provider) => string[] appended to the searchable text for
+// that provider. Lets a caller broaden matching (e.g. by service type) without changing the
+// name/bio/provider_type default. Omitting options keeps the legacy behavior byte-for-byte.
+export function useProviderListFilter(providers, options) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("relevance");
+  const extraText = options?.extraText;
 
   const filtered = useMemo(() => {
     const list = Array.isArray(providers) ? providers.slice() : [];
     const q = query.trim().toLowerCase();
     const matched = q
-      ? list.filter((p) =>
-          [p?.name, p?.bio, p?.provider_type].some(
+      ? list.filter((p) => {
+          const extra =
+            typeof extraText === "function" ? extraText(p) : [];
+          return [
+            p?.name,
+            p?.bio,
+            p?.provider_type,
+            ...(Array.isArray(extra) ? extra : []),
+          ].some(
             (field) =>
               typeof field === "string" && field.toLowerCase().includes(q),
-          ),
-        )
+          );
+        })
       : list;
 
     if (sort === "rating") {
@@ -51,7 +62,7 @@ export function useProviderListFilter(providers) {
       );
     }
     return matched;
-  }, [providers, query, sort]);
+  }, [providers, query, sort, extraText]);
 
   return { query, setQuery, sort, setSort, filtered };
 }

@@ -6,6 +6,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { VALID_CARE_SCOPES } from "@/app/api/utils/careAccess";
 
 // POST /api/providers/[id]/access-requests — provider staff request SCOPED access
 // to a pet, tied (optionally) to a booking. Ticket 7 (docs/provider-design.md §2
@@ -27,16 +28,8 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
 
-// The only valid scope values (docs/provider-design.md §2).
-const VALID_SCOPES = [
-  "medical_read",
-  "medical_write",
-  "vaccinations_write",
-  "appointments",
-  "health_logs_read",
-  "health_logs_write",
-  "messaging",
-];
+// The only valid scope values (docs/provider-design.md §2) — the shared care-access vocabulary.
+const VALID_SCOPES = VALID_CARE_SCOPES;
 
 async function POST(request, { params }) {
   try {

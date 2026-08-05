@@ -27,6 +27,7 @@ jest.mock("@/components/RefreshableScrollView", () => {
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
 });
 jest.mock("@/components/Providers/BookingFormModal", () => () => null);
+jest.mock("@/components/Providers/WriteReviewModal", () => () => null);
 jest.mock("@/components/Providers/RatingBadge", () => () => null);
 jest.mock("@/components/Providers/StorefrontCatalog", () => () => null);
 jest.mock("@/hooks/usePetProfile", () => ({
@@ -36,6 +37,7 @@ jest.mock("@/hooks/useProviders", () => ({
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
+  useMyBookings: () => ({ data: { upcoming: [], past: [] } }),
 }));
 
 import ProviderScreen from "./provider";

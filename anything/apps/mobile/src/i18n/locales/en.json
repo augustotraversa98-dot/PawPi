@@ -262,6 +262,67 @@
       "adoption": "Adoption"
     }
   },
+  "activity": {
+    "title": "Activity",
+    "subtitle": "Your messages and active bookings",
+    "a11yOpen": "Open your activity",
+    "messages": "Messages",
+    "unread": "{{count}} unread",
+    "emptyMessages": "No messages yet",
+    "liveWalk": "Live walk in progress",
+    "liveWalkSub": "Follow your dog's walk live",
+    "upcoming": "Upcoming",
+    "emptyBookings": "No active bookings yet",
+    "daycare": "Daycare stays",
+    "sitting": "Sitting visits",
+    "active": "{{count}} active",
+    "emptyDaycare": "No active stays",
+    "emptySitting": "No active visits",
+    "shopping": "Shopping",
+    "orders": "My orders",
+    "orderCount": "{{count}} orders",
+    "emptyOrders": "No orders yet",
+    "autoReorder": "Auto-reorder",
+    "emptyAutoReorder": "No active plans",
+    "past": "Past",
+    "pastCount": "Past ({{count}})",
+    "pastToggleA11y": "Show or hide past bookings",
+    "pastSeeAll": "See all ({{count}})",
+    "pastTitle": "Past bookings",
+    "emptyPast": "No past bookings"
+  },
+  "services": {
+    "segDiscover": "Discover",
+    "segActivity": "My Activity"
+  },
+  "bookingSummary": {
+    "title": "Booking summary",
+    "service": "Service",
+    "whatWasDone": "What was done",
+    "status": "Status",
+    "when": "When",
+    "provider": "Provider",
+    "pet": "Pet",
+    "paid": "Paid",
+    "notRecorded": "Not recorded",
+    "none": "—",
+    "viewProvider": "View provider",
+    "leaveReview": "Leave a review",
+    "location": "Location",
+    "closedNow": "Closed now",
+    "getDirections": "Get directions",
+    "messageProvider": "Message provider",
+    "shareTitle": "Share clinic history",
+    "shareBody": "Give this provider access to your pet's medical records and vaccinations.",
+    "shareRecords": "Share medical records",
+    "shared": "Shared",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke access?",
+    "revokeBody": "This provider will no longer be able to see this pet's records.",
+    "shareErrorTitle": "Couldn't share records",
+    "errorTitle": "Couldn't load this booking",
+    "errorBody": "It may have been removed, or something went wrong."
+  },
   "storefront": {
     "shop": "Shop",
     "searchInStore": "Search this store",
@@ -276,6 +337,7 @@
     "removeOne": "Remove one",
     "deliveryPickup": "Delivery & pickup options shown at checkout",
     "favorite": "Favorite",
-    "chooseServiceTitle": "What would you like to book?"
+    "chooseServiceTitle": "What would you like to book?",
+    "leaveReview": "Leave a review"
   }
 }

@@ -62,3 +62,55 @@ test('does not leak the token to third-party hosts', async () => {
   const [, init] = expoFetch.mock.calls[0];
   expect(init?.headers?.get?.('authorization') ?? null).toBeNull();
 });
+
+// Misrouted-API guard: a backend missing an /api route serves the SPA app-shell (200 text/html).
+// Without the guard, callers' `await res.json()` throws a cryptic SyntaxError. The guard turns
+// that into a clear error, while leaving JSON / non-OK / other content-types untouched.
+const resp = ({ ok, status, contentType, json }) => ({
+  ok,
+  status,
+  headers: { get: (h) => (h.toLowerCase() === 'content-type' ? contentType : null) },
+  json,
+});
+
+test('an OK /api response with an HTML body throws a CLEAR error (not a JSON SyntaxError)', async () => {
+  expoFetch.mockResolvedValueOnce(
+    resp({ ok: true, status: 200, contentType: 'text/html; charset=utf-8' }),
+  );
+
+  const err = await fetchToWeb('/api/me/bookings/xyz').catch((e) => e);
+  expect(err).toBeInstanceOf(Error);
+  expect(err.message).toMatch(/HTML response from API route "\/api\/me\/bookings\/xyz"/i);
+  // It must NOT be the old cryptic JSON parse failure.
+  expect(err.message).not.toMatch(/JSON|Unexpected token/i);
+});
+
+test('a normal 200 JSON /api response is returned unchanged (no throw)', async () => {
+  const payload = { hello: 'world' };
+  expoFetch.mockResolvedValueOnce(
+    resp({ ok: true, status: 200, contentType: 'application/json', json: async () => payload }),
+  );
+
+  const res = await fetchToWeb('/api/pets');
+  expect(res.ok).toBe(true);
+  expect(await res.json()).toEqual(payload);
+});
+
+test('a non-OK response is passed through unchanged, even with an HTML body (existing error path)', async () => {
+  expoFetch.mockResolvedValueOnce(
+    resp({ ok: false, status: 401, contentType: 'text/html' }),
+  );
+
+  const res = await fetchToWeb('/api/pets'); // does NOT throw
+  expect(res.ok).toBe(false);
+  expect(res.status).toBe(401);
+});
+
+test('an intentionally non-JSON /api endpoint (text/calendar) is NOT treated as an error', async () => {
+  expoFetch.mockResolvedValueOnce(
+    resp({ ok: true, status: 200, contentType: 'text/calendar; charset=utf-8' }),
+  );
+
+  const res = await fetchToWeb('/api/calendar/booking-123.ics');
+  expect(res.ok).toBe(true); // passed through, no throw
+});

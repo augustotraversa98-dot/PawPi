@@ -79,6 +79,7 @@ jest.mock("@gorhom/bottom-sheet", () => {
 });
 
 import DiscoverScreen from "./discover";
+import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
 
 const ok = (data) => ({ data, isLoading: false, isError: false, refetch: jest.fn() });
 
@@ -113,7 +114,7 @@ test("merged list: a vet+grooming provider appears ONCE with both capability chi
   expect(getByTestId("discover-cap-1-groomer")).toBeTruthy();
 });
 
-test("search filters by name; category chips filter by capability set", async () => {
+test("search filters by name; single-service category chips filter by capability", async () => {
   mockDiscover = ok([
     { id: 1, slug: "vet-co", name: "Vet Co", capabilities: ["vet"] },
     { id: 2, slug: "shop-co", name: "Shop Co", capabilities: ["shop"] },
@@ -122,18 +123,89 @@ test("search filters by name; category chips filter by capability set", async ()
   const { getByTestId, getByPlaceholderText, queryByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
 
-  fireEvent.press(getByTestId("discover-cat-veterinary"));
+  // Vet chip → only the vet provider.
+  fireEvent.press(getByTestId("discover-cat-vet"));
   expect(getByTestId("discover-card-1")).toBeTruthy();
-  expect(getByTestId("discover-card-3")).toBeTruthy();
   expect(queryByTestId("discover-card-2")).toBeNull();
+  expect(queryByTestId("discover-card-3")).toBeNull();
 
-  fireEvent.press(getByTestId("discover-cat-shops"));
+  // Grooming chip → only the groomer (multi-capability provider still matches).
+  fireEvent.press(getByTestId("discover-cat-groomer"));
+  expect(getByTestId("discover-card-3")).toBeTruthy();
+  expect(queryByTestId("discover-card-1")).toBeNull();
+
+  // Telehealth chip → the same multi-capability provider.
+  fireEvent.press(getByTestId("discover-cat-telehealth"));
+  expect(getByTestId("discover-card-3")).toBeTruthy();
+  expect(queryByTestId("discover-card-1")).toBeNull();
+
+  // Shop chip (shop + pharmacy) → only the shop.
+  fireEvent.press(getByTestId("discover-cat-shop"));
   expect(getByTestId("discover-card-2")).toBeTruthy();
   expect(queryByTestId("discover-card-1")).toBeNull();
 
   fireEvent.press(getByTestId("discover-cat-all"));
   fireEvent.changeText(getByPlaceholderText("Search providers"), "groom");
   expect(getByTestId("discover-card-3")).toBeTruthy();
+  expect(queryByTestId("discover-card-1")).toBeNull();
+});
+
+test("renders all 12 category chips (all + 11 service types)", async () => {
+  mockDiscover = ok([{ id: 1, slug: "a", name: "A Co", capabilities: ["vet"] }]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  for (const key of [
+    "all",
+    "vet",
+    "telehealth",
+    "groomer",
+    "walker",
+    "daycare",
+    "sitter",
+    "trainer",
+    "shop",
+    "adoption",
+    "transport",
+    "insurance",
+  ]) {
+    expect(getByTestId(`discover-cat-${key}`)).toBeTruthy();
+  }
+});
+
+test("alias resolves legacy category params (veterinary→vet); unknown→all", async () => {
+  mockParams = { category: "veterinary" };
+  mockDiscover = ok([
+    { id: 1, slug: "vet-co", name: "Vet Co", capabilities: ["vet"] },
+    { id: 2, slug: "shop-co", name: "Shop Co", capabilities: ["shop"] },
+  ]);
+  let scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  expect(scr.queryByTestId("discover-card-2")).toBeNull(); // "veterinary" → vet chip pre-applied
+  scr.unmount();
+
+  // Unrecognized param falls back to "all" (both providers visible).
+  mockParams = { category: "banana" };
+  scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  expect(scr.getByTestId("discover-card-2")).toBeTruthy();
+});
+
+test("search by service TYPE returns a provider whose name lacks the type", async () => {
+  mockDiscover = ok([
+    { id: 1, slug: "happy-paws", name: "Happy Paws", capabilities: ["vet"] },
+    { id: 2, slug: "chez-toto", name: "Chez Toto", capabilities: ["groomer"] },
+  ]);
+  const { getByTestId, getByPlaceholderText, queryByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+
+  // "vet" matches by capability slug — neither name contains "vet".
+  fireEvent.changeText(getByPlaceholderText("Search providers"), "vet");
+  expect(getByTestId("discover-card-1")).toBeTruthy();
+  expect(queryByTestId("discover-card-2")).toBeNull();
+
+  // "grooming" matches by the LOCALIZED capability label (discover.cap.groomer = "Grooming").
+  fireEvent.changeText(getByPlaceholderText("Search providers"), "grooming");
+  expect(getByTestId("discover-card-2")).toBeTruthy();
   expect(queryByTestId("discover-card-1")).toBeNull();
 });
 
@@ -251,7 +323,105 @@ test("card tap opens the provider profile by slug (and selects it)", async () =>
   });
 });
 
+// ───────────────────────── interim legacy routing bridge ─────────────────────────
+// Types the storefront can't serve yet (adoption/insurance/transport) open their working
+// legacy screen; storefront wins for any bookable/shop capability (incl. mixed providers).
+test("adoption-only provider taps through to the adoption screen (with providerId)", async () => {
+  mockDiscover = ok([
+    { id: 7, slug: "rescue", name: "Rescue Co", capabilities: ["adoption"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-7")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-7"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/adoption",
+    params: { providerId: 7 },
+  });
+});
+
+test("insurance-only provider routes to the insurance screen (no param)", async () => {
+  mockDiscover = ok([
+    { id: 8, slug: "safe-pet", name: "Safe Pet", capabilities: ["insurance"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-8")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-8"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/insurance" });
+});
+
+test("transport-only provider routes to the transport screen (no param)", async () => {
+  mockDiscover = ok([
+    { id: 9, slug: "pet-taxi", name: "Pet Taxi", capabilities: ["transport"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-9")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-9"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/transport" });
+});
+
+test("bookable (vet) and shop providers still open the storefront", async () => {
+  mockDiscover = ok([
+    { id: 1, slug: "vet-co", name: "Vet Co", capabilities: ["vet"] },
+    { id: 2, slug: "shop-co", name: "Shop Co", capabilities: ["shop"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-1"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/provider",
+    params: { slug: "vet-co" },
+  });
+  fireEvent.press(getByTestId("discover-card-2"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/provider",
+    params: { slug: "shop-co" },
+  });
+});
+
+test("mixed provider (vet + adoption) → storefront wins", async () => {
+  mockDiscover = ok([
+    { id: 5, slug: "mixed", name: "Mixed Co", capabilities: ["vet", "adoption"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-5")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-5"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/provider",
+    params: { slug: "mixed" },
+  });
+});
+
+test("provider with empty / unknown capabilities falls back to the storefront", async () => {
+  mockDiscover = ok([
+    { id: 3, slug: "empty", name: "Empty Co", capabilities: [] },
+    { id: 4, slug: "weird", name: "Weird Co", capabilities: ["mystery"] },
+  ]);
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-3")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-card-3"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/provider",
+    params: { slug: "empty" },
+  });
+  fireEvent.press(getByTestId("discover-card-4"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/provider",
+    params: { slug: "weird" },
+  });
+});
+
 // ─────────────────────────────────── P3 ───────────────────────────────────
+test("phone default view is the LIST (map mounts only after toggling)", async () => {
+  mockDiscover = ok([
+    { id: 1, slug: "a", name: "A Co", capabilities: ["vet"], lat: "-34.6", lng: "-58.4" },
+  ]);
+  const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  // list is the initial mode: the map is not mounted, the toggle is available
+  expect(queryByTestId("discover-map")).toBeNull();
+  expect(getByTestId("discover-view-toggle")).toBeTruthy();
+});
+
 test("list⇄map toggle switches between the list and the map (iOS)", async () => {
   mockDiscover = ok([
     { id: 1, slug: "a", name: "A Co", capabilities: ["vet"], lat: "-34.6", lng: "-58.4" },
@@ -365,10 +535,31 @@ test("P2 filters still apply in map mode", async () => {
   // both visible in map mode
   expect(getByTestId("discover-card-1")).toBeTruthy();
   expect(getByTestId("discover-card-2")).toBeTruthy();
-  // apply Shops category → only the shop remains, and only its pin
-  fireEvent.press(getByTestId("discover-cat-shops"));
+  // apply Shop category → only the shop remains, and only its pin
+  fireEvent.press(getByTestId("discover-cat-shop"));
   expect(getByTestId("discover-card-2")).toBeTruthy();
   expect(queryByTestId("discover-card-1")).toBeNull();
   expect(getByTestId("map-marker-2")).toBeTruthy();
   expect(queryByTestId("map-marker-1")).toBeNull();
+});
+
+// ─────────────────────────── showHeader prop (tab shell) ───────────────────────────
+test("showHeader={false} suppresses the internal header but keeps chips + search", async () => {
+  mockDiscover = ok([{ id: 1, slug: "a", name: "A Co", capabilities: ["vet"] }]);
+  const { getByTestId, getByPlaceholderText, queryByText } = render(
+    <ServicesDiscovery variant="landing" showHeader={false} />,
+  );
+  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+  // Internal header (title + subtitle) is gone…
+  expect(queryByText("Services")).toBeNull();
+  expect(queryByText("Find trusted pet care near you")).toBeNull();
+  // …but the discovery controls still render.
+  expect(getByTestId("discover-cat-all")).toBeTruthy();
+  expect(getByPlaceholderText("Search providers")).toBeTruthy();
+});
+
+test("showHeader defaults to true for the landing variant (title shown)", async () => {
+  mockDiscover = ok([{ id: 1, slug: "a", name: "A Co", capabilities: ["vet"] }]);
+  const { getByText } = render(<ServicesDiscovery variant="landing" />);
+  await waitFor(() => expect(getByText("Services")).toBeTruthy());
 });

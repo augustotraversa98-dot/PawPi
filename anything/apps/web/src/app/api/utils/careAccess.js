@@ -21,6 +21,21 @@
 
 import sql from './sql';
 
+// The enumerated care_access scope vocabulary (docs/provider-design.md §2). This is the SINGLE
+// source of truth honored by assertCareAccess (`requiredScope = ANY (scopes)`): every route that
+// creates a grant — provider-requested (providers/[id]/access-requests) or owner-initiated
+// (care-access/grants POST) — validates its scopes against THIS list, so a grant can never store
+// a scope the enforcement layer won't match (the class of bug that made owner sharing a no-op).
+export const VALID_CARE_SCOPES = [
+  'medical_read',
+  'medical_write',
+  'vaccinations_write',
+  'appointments',
+  'health_logs_read',
+  'health_logs_write',
+  'messaging',
+];
+
 /**
  * 403-shaped error consistent with route error handling: carries a `.status` of
  * 403 and a human message. A calling route converts it, e.g.

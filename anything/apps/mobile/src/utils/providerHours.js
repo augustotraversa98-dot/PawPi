@@ -12,7 +12,8 @@
 //   ["09:00-13:00", "15:00-19:00"]           → multiple ranges (strings)
 //   { open: "09:00", close: "17:00" }        → one range (object)
 //   [{ open, close }, ...]                    → multiple ranges (objects)
-// A range whose close <= open spans midnight (overnight). Anything unrecognized → null.
+// A range whose close < open spans midnight (overnight); close === open is degenerate and
+// treated as closed. Anything unrecognized → null.
 
 const DAY_ABBR = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DAY_FULL = [
@@ -70,14 +71,37 @@ function normalizeRanges(value) {
   return ranges.length ? ranges : null;
 }
 
+// Parsed ranges for a given weekday, or null when that day has none we can use (missing key,
+// "closed"/null/false, or unparseable). The previous-day spillover below doesn't distinguish
+// those cases — it only ever reads overnight ranges to prove OPEN.
+function rangesForDow(hoursJson, byLower, dow) {
+  const key = byLower.get(DAY_ABBR[dow]) ?? byLower.get(DAY_FULL[dow]);
+  if (key == null) return null;
+  const value = hoursJson[key];
+  if (value == null || value === false) return null;
+  if (typeof value === "string" && value.trim().toLowerCase() === "closed") return null;
+  return normalizeRanges(value);
+}
+
 export function deriveOpenNow(hoursJson, date = new Date()) {
   if (hoursJson == null || typeof hoursJson !== "object" || Array.isArray(hoursJson)) {
     return null;
   }
-  const dow = date.getDay(); // 0 = Sunday
   const byLower = new Map(
     Object.keys(hoursJson).map((k) => [k.toLowerCase(), k]),
   );
+  const dow = date.getDay(); // 0 = Sunday
+  const now = date.getHours() * 60 + date.getMinutes();
+
+  // Previous-day overnight SPILLOVER: a range that spans midnight (close < open) keeps the
+  // provider open into the early hours of the NEXT day, so a caller at 05:00 is still inside
+  // yesterday's overnight shift. Honour it before deciding today. This is purely additive —
+  // it can only prove OPEN (true); it never turns an unknown/closed result into null/false.
+  const prevRanges = rangesForDow(hoursJson, byLower, (dow + 6) % 7);
+  if (prevRanges && prevRanges.some(([o, c]) => c < o && now < c)) {
+    return true;
+  }
+
   const todayKey = byLower.get(DAY_ABBR[dow]) ?? byLower.get(DAY_FULL[dow]);
   if (todayKey == null) return null; // no entry for today → unknown
 
@@ -90,6 +114,5 @@ export function deriveOpenNow(hoursJson, date = new Date()) {
   const ranges = normalizeRanges(value);
   if (ranges == null) return null; // present but unparseable → unknown
 
-  const now = date.getHours() * 60 + date.getMinutes();
   return ranges.some(([o, c]) => rangeContains(o, c, now));
 }
