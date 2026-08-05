@@ -26,6 +26,7 @@ import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import LocationField from "@/components/Map/LocationField";
 import { useShopProducts, useShopCheckout } from "@/hooks/useProviders";
 import { formatMoney } from "@/utils/money";
 
@@ -52,6 +53,16 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
   // ── cart + checkout: reused verbatim from the original shop.jsx ShopCatalogModal ──
   const [cart, setCart] = useState({}); // productId -> qty
   const checkout = useShopCheckout();
+
+  // Fulfillment (P4b): the buyer picks Pickup or Delivery at checkout. Default 'pickup'
+  // (matches the order column default). Delivery collects an address via the shared
+  // LocationField (same pattern as the pharmacy rxf flow) — the merchant fulfills it.
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [fulfillment, setFulfillment] = useState("pickup");
+  const [address, setAddress] = useState(null); // { lat, lng, address }
+  const canPay =
+    fulfillment === "pickup" ||
+    (fulfillment === "delivery" && !!address?.address?.trim());
 
   const reset = () => setCart({});
 
@@ -80,11 +91,16 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
 
   const doCheckout = async () => {
     if (!petId) {
-      Alert.alert("Add a pet first", "Set up a pet to check out.");
+      Alert.alert(t("storefront.addPetTitle"), t("storefront.addPetBody"));
       return;
     }
     if (cartLines.length === 0) return;
+    // Delivery requires an address (the server re-validates); guard here too.
+    if (fulfillment === "delivery" && !address?.address?.trim()) return;
     try {
+      // P4b: fulfillment_type + shipping_address are ADDITIVE on the SAME payload — the
+      // rail (mercadopago) and every existing field are unchanged. A pickup order sends
+      // 'pickup' + null, reproducing the pre-P4b request exactly.
       const res = await checkout.mutateAsync({
         petId,
         provider_id: shop.id,
@@ -93,6 +109,15 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
           quantity: l.qty,
         })),
         rail: "mercadopago",
+        fulfillment_type: fulfillment,
+        shipping_address:
+          fulfillment === "delivery"
+            ? {
+                address: address.address,
+                lat: address.lat ?? null,
+                lng: address.lng ?? null,
+              }
+            : null,
       });
       const payUrl = res.checkoutUrl || res.deeplink;
       if (payUrl) {
@@ -104,17 +129,21 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
           "Finish paying in MercadoPago to confirm your order. It isn't confirmed until your payment goes through.",
         );
         reset();
+        setShowCheckout(false);
         onClose();
       } else {
         // 201 but no checkout URL → payment could NOT be started. Never claim success:
-        // nothing was charged. Keep the cart open so the buyer can retry.
+        // nothing was charged. Keep the checkout sheet open so the buyer can retry.
         Alert.alert(
           "Payment couldn't start",
           "We couldn't open the payment window, so nothing was charged. Please try again.",
         );
       }
     } catch (e) {
-      Alert.alert("Couldn't check out", e.message || "Please try again.");
+      Alert.alert(
+        t("storefront.checkoutFailedTitle"),
+        e.message || t("storefront.checkoutFailedBody"),
+      );
     }
   };
   // ─────────────────────────────────────────────────────────────────────────────
@@ -329,24 +358,154 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
           >
             <PressableScale
               testID="storefront-checkout"
-              onPress={doCheckout}
-              disabled={checkout.isPending}
+              onPress={() => setShowCheckout(true)}
               style={{
                 backgroundColor: COLORS.coral,
                 borderRadius: RADIUS.control,
                 paddingVertical: 15,
                 alignItems: "center",
-                opacity: checkout.isPending ? 0.6 : 1,
               }}
             >
               <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                {checkout.isPending
-                  ? "Checking out…"
-                  : `Checkout · ${money(total, shop?.currency)}`}
+                {t("storefront.checkoutTotal", { total: money(total, shop?.currency) })}
               </Text>
             </PressableScale>
           </GlassSurface>
         ) : null}
+
+        {/* Checkout sheet (P4b): choose Pickup or Delivery, add an address for delivery,
+            then Pay via the EXISTING checkout. */}
+        <Modal
+          visible={showCheckout}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCheckout(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              justifyContent: "flex-end",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: COLORS.cream,
+                borderTopLeftRadius: RADIUS.card,
+                borderTopRightRadius: RADIUS.card,
+                padding: SPACING.lg,
+                paddingBottom: SPACING.xxl,
+                maxHeight: "88%",
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: SPACING.md,
+                }}
+              >
+                <Text style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown }]}>
+                  {t("storefront.checkout")}
+                </Text>
+                <PressableScale
+                  testID="storefront-checkout-close"
+                  onPress={() => setShowCheckout(false)}
+                  accessibilityLabel={t("common.close")}
+                >
+                  <X size={22} color={COLORS.warmBrown} />
+                </PressableScale>
+              </View>
+
+              {/* Pickup / Delivery toggle */}
+              <View style={{ flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md }}>
+                {[
+                  { key: "pickup", label: t("storefront.pickup") },
+                  { key: "delivery", label: t("storefront.delivery") },
+                ].map(({ key, label }) => {
+                  const selected = fulfillment === key;
+                  return (
+                    <PressableScale
+                      key={key}
+                      testID={`storefront-fulfillment-${key}`}
+                      onPress={() => setFulfillment(key)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      style={{
+                        flex: 1,
+                        alignItems: "center",
+                        paddingVertical: SPACING.md,
+                        borderRadius: RADIUS.control,
+                        borderWidth: 1.5,
+                        borderColor: selected ? COLORS.coral : COLORS.peach,
+                        backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
+                      }}
+                    >
+                      <Text
+                        style={[
+                          TYPE.headline,
+                          { fontWeight: "800", color: selected ? COLORS.coral : COLORS.mutedBrown },
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+
+              {fulfillment === "pickup" ? (
+                <View
+                  testID="storefront-pickup-info"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: SPACING.sm,
+                    padding: SPACING.md,
+                    backgroundColor: COLORS.sand,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: COLORS.peach,
+                    marginBottom: SPACING.md,
+                  }}
+                >
+                  <Package size={16} color={COLORS.mutedBrown} />
+                  <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, flex: 1, fontWeight: "500" }]}>
+                    {t("storefront.pickupInfo", { store: shop?.name || t("storefront.shop") })}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ marginBottom: SPACING.md }}>
+                  <LocationField
+                    value={address}
+                    onChange={setAddress}
+                    label={t("storefront.deliveryAddress")}
+                  />
+                </View>
+              )}
+
+              <PressableScale
+                testID="storefront-pay"
+                onPress={doCheckout}
+                disabled={!canPay || checkout.isPending}
+                style={{
+                  backgroundColor: COLORS.coral,
+                  borderRadius: RADIUS.control,
+                  paddingVertical: 15,
+                  alignItems: "center",
+                  opacity: !canPay || checkout.isPending ? 0.6 : 1,
+                }}
+              >
+                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+                  {checkout.isPending
+                    ? t("storefront.checkingOut")
+                    : t("storefront.payTotal", { total: money(total, shop?.currency) })}
+                </Text>
+              </PressableScale>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Modal>
   );

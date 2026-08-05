@@ -338,6 +338,22 @@
     "deliveryPickup": "Opciones de envío y retiro en el pago",
     "favorite": "Favorito",
     "chooseServiceTitle": "¿Qué te gustaría reservar?",
-    "leaveReview": "Dejar una reseña"
+    "leaveReview": "Dejar una reseña",
+    "checkout": "Pagar",
+    "checkoutTotal": "Pagar · {{total}}",
+    "checkingOut": "Procesando…",
+    "pay": "Pagar",
+    "payTotal": "Pagar · {{total}}",
+    "pickup": "Retiro",
+    "delivery": "Envío",
+    "deliveryAddress": "Dirección de envío",
+    "pickupInfo": "Retiralo en {{store}}",
+    "addPetTitle": "Primero agrega una mascota",
+    "addPetBody": "Configura una mascota para poder pagar.",
+    "orderPlacedTitle": "Pedido realizado",
+    "orderPlacedPayBody": "Completa tu pago en la ventana de checkout.",
+    "orderPlacedBody": "Tu pedido está en camino.",
+    "checkoutFailedTitle": "No se pudo completar el pago",
+    "checkoutFailedBody": "Inténtalo de nuevo."
   }
 }

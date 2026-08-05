@@ -18,6 +18,18 @@ jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
 });
+// LocationField stub: tapping it reports an address, like the real map picker.
+jest.mock("@/components/Map/LocationField", () => {
+  const { Text, TouchableOpacity } = require("react-native");
+  return ({ onChange, value }) => (
+    <TouchableOpacity
+      testID="mock-location-field"
+      onPress={() => onChange({ lat: 1, lng: 2, address: "123 Test St" })}
+    >
+      <Text>{value?.address || "no-address"}</Text>
+    </TouchableOpacity>
+  );
+});
 jest.mock("@/hooks/useProviders", () => ({
   useShopProducts: () => ({ data: mockProducts, isLoading: false }),
   useShopCheckout: () => ({ mutateAsync: mockCheckout, isPending: false }),
@@ -62,7 +74,15 @@ const renderCatalog = () =>
 beforeEach(() => {
   mockProducts = PRODUCTS;
   mockCheckout.mockReset();
+  mockCheckout.mockResolvedValue({ checkoutUrl: null }); // no pay URL → "payment couldn't start"
 });
+
+// Add the in-stock product to the cart and open the checkout sheet.
+function openCheckoutSheet(scr) {
+  fireEvent.press(scr.getByTestId("storefront-product-1"));
+  fireEvent.press(scr.getByTestId("storefront-detail-add"));
+  fireEvent.press(scr.getByTestId("storefront-checkout"));
+}
 
 test("renders a product grid card per product", () => {
   const { getByTestId, getByText } = renderCatalog();
@@ -128,7 +148,8 @@ test("empty store shows a real empty state (no fakes)", () => {
 
 // Checkout honesty (payments money path): the order is only PENDING until the payment
 // webhook confirms it, so the UI must send the buyer to pay and must NEVER claim success
-// when no payment window opened.
+// when no payment window opened. Post-P4b the cart bar opens the checkout SHEET, so paying
+// is a two-step tap (open sheet → Pay, pickup by default).
 describe("checkout does not fake a paid order", () => {
   let alertSpy;
   let openSpy;
@@ -143,9 +164,8 @@ describe("checkout does not fake a paid order", () => {
 
   const addToCartAndCheckout = () => {
     const utils = renderCatalog();
-    fireEvent.press(utils.getByTestId("storefront-product-1"));
-    fireEvent.press(utils.getByTestId("storefront-detail-add"));
-    fireEvent.press(utils.getByTestId("storefront-checkout"));
+    openCheckoutSheet(utils); // product-1 → add → open the checkout sheet
+    fireEvent.press(utils.getByTestId("storefront-pay")); // default pickup → fires checkout
     return utils;
   };
 
@@ -174,4 +194,61 @@ describe("checkout does not fake a paid order", () => {
       expect(call[0]).not.toMatch(/order placed/i);
     }
   });
+});
+
+// ─────────────────────────── P4b: pickup / delivery + address ───────────────────────────
+test("checkout sheet shows translated Pickup/Delivery with pickup default + info", () => {
+  const scr = renderCatalog();
+  openCheckoutSheet(scr);
+  expect(scr.getByText("Pickup")).toBeTruthy();
+  expect(scr.getByText("Delivery")).toBeTruthy();
+  // Pickup is the default → the pickup info line shows, no address field.
+  expect(scr.getByTestId("storefront-pickup-info")).toBeTruthy();
+  expect(scr.queryByTestId("mock-location-field")).toBeNull();
+});
+
+test("a PICKUP order pays with fulfillment_type 'pickup' and no address", () => {
+  const scr = renderCatalog();
+  openCheckoutSheet(scr);
+  fireEvent.press(scr.getByTestId("storefront-pay"));
+  expect(mockCheckout).toHaveBeenCalledTimes(1);
+  const payload = mockCheckout.mock.calls[0][0];
+  expect(payload.fulfillment_type).toBe("pickup");
+  expect(payload.shipping_address).toBeNull();
+  expect(payload.rail).toBe("mercadopago"); // rail unchanged
+});
+
+test("DELIVERY requires an address before paying", () => {
+  const scr = renderCatalog();
+  openCheckoutSheet(scr);
+  fireEvent.press(scr.getByTestId("storefront-fulfillment-delivery"));
+  // Address field appears; no address yet → paying does nothing.
+  expect(scr.getByTestId("mock-location-field")).toBeTruthy();
+  fireEvent.press(scr.getByTestId("storefront-pay"));
+  expect(mockCheckout).not.toHaveBeenCalled();
+});
+
+test("a DELIVERY order pays with the chosen address", () => {
+  const scr = renderCatalog();
+  openCheckoutSheet(scr);
+  fireEvent.press(scr.getByTestId("storefront-fulfillment-delivery"));
+  fireEvent.press(scr.getByTestId("mock-location-field")); // sets "123 Test St"
+  fireEvent.press(scr.getByTestId("storefront-pay"));
+  expect(mockCheckout).toHaveBeenCalledTimes(1);
+  const payload = mockCheckout.mock.calls[0][0];
+  expect(payload.fulfillment_type).toBe("delivery");
+  expect(payload.shipping_address).toEqual({
+    address: "123 Test St",
+    lat: 1,
+    lng: 2,
+  });
+});
+
+test("checkout strings are translated (no hardcoded English key leaks)", () => {
+  const scr = renderCatalog();
+  fireEvent.press(scr.getByTestId("storefront-product-1"));
+  fireEvent.press(scr.getByTestId("storefront-detail-add"));
+  // Cart bar uses the translated "Checkout · {{total}}" (not a raw key).
+  expect(scr.queryByText("storefront.checkoutTotal")).toBeNull();
+  expect(scr.getByTestId("storefront-checkout")).toBeTruthy();
 });
