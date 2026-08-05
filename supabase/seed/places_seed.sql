@@ -6,18 +6,36 @@
 -- (the table has a public-read policy and NO write policy, so only an admin/service role can
 -- populate it — same reason a migration is hand-applied).
 --
--- IDEMPOTENT + re-runnable: every row is an INSERT … ON CONFLICT (id) DO UPDATE, keyed on the
--- stable text id (osm-<type>-<id> / curated-<slug>). Re-running refreshes fields + updated_at;
--- it never duplicates and never resurrects a hidden/deleted row's deleted_at. Wrapped in a
--- transaction so it is all-or-nothing.
+-- DEDUPED: each physical venue appears ONCE. Where a curated row was the same venue as an OSM
+-- element (its source_url points at that element), we KEEP the osm-* row (the importer re-runs
+-- and maintains it) and DROP the curated-* twin. The one-time DELETE below removes the 9 curated
+-- twin rows already inserted in prod by the previous seed; they are absent from the upserts.
+--
+-- IDEMPOTENT + re-runnable: the DELETE is a no-op once the twins are gone, and every row is an
+-- INSERT … ON CONFLICT (id) DO UPDATE keyed on the stable text id (osm-<type>-<id> /
+-- curated-<slug>). Re-running refreshes fields + updated_at; it never duplicates and never
+-- resurrects a hidden/deleted row's deleted_at. Wrapped in a transaction so it is all-or-nothing.
 --
 -- Sources: OpenStreetMap/Overpass (dog=yes venues + leisure=dog_park over CABA + Zona Norte)
 -- and data/seed/places_curated.json (coord-less rows geocoded via OSM Nominatim; misses left
 -- NULL — never fabricated). Regenerate with: node scripts/places/generate-seed-sql.mjs
 --
--- Rows: 73 total (59 osm, 14 curated).
+-- Rows: 64 total (59 osm, 5 curated); 9 curated twin(s) deleted.
 
 BEGIN;
+
+-- ── one-time cleanup: remove the 9 curated-* duplicate rows already inserted in prod ──
+DELETE FROM places WHERE id IN (
+  'curated-oveja-negra-san-isidro',
+  'curated-la-farolita-de-beccar-san-isidro',
+  'curated-espresso-costa-san-isidro',
+  'curated-andy-s-san-isidro',
+  'curated-temple-san-isidro',
+  'curated-cafe-bar-don-martin-san-isidro',
+  'curated-la-romana-san-isidro',
+  'curated-preto-coffee-san-isidro',
+  'curated-canil-del-paseo-costero-san-isidro'
+);
 
 INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
   VALUES ('osm-node-1701185132', 'Oveja Negra', 'bar', 'Boulogne Sur Mer', 'Buenos Aires', 'Avenida Fondo de la Legua 425', -34.496972, -58.5464247, NULL, NULL, '+54 11 3437-1404', 'Tagged dog=yes in OpenStreetMap.', 'osm', 'https://www.openstreetmap.org/node/1701185132', 'high', 'published')
@@ -1260,187 +1278,7 @@ INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, w
     updated_at = now();
 
 INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-oveja-negra-san-isidro', 'Oveja Negra', 'brewery', 'San Isidro', 'Buenos Aires', 'Av. Fondo de la Legua 425, Boulogne', -34.496972, -58.5464247, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/node/1701185132', 'high', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-la-farolita-de-beccar-san-isidro', 'La Farolita de Beccar', 'restaurant', 'San Isidro', 'Buenos Aires', 'Av. Centenario 2000, Beccar', -34.4604861, -58.5281536, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/node/4630611745', 'high', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-espresso-costa-san-isidro', 'Espresso Costa', 'cafe', 'San Isidro', 'Buenos Aires', 'Cosme Beccar 216, San Isidro', -34.4714357, -58.5137323, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/node/4678791275', 'high', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-andy-s-san-isidro', 'Andy''s', 'restaurant', 'San Isidro', 'Buenos Aires', 'Av. 25 de Mayo 272, San Isidro', -34.4694002, -58.5092865, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/way/473633239', 'high', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-temple-san-isidro', 'Temple', 'brewery', 'San Isidro', 'Buenos Aires', 'Juan Segundo Fernández 20, Boulogne', -34.4919952, -58.5475215, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/way/624134474', 'high', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
   VALUES ('curated-gluck-san-isidro', 'Glück', 'cafe', 'San Isidro', 'Buenos Aires', 'Av. Santa Fe 2835, Martínez', -34.4975495, -58.4980074, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap; likely cafe/pastry.', 'curated', 'https://www.openstreetmap.org/node/4660373376', 'medium', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-cafe-bar-don-martin-san-isidro', 'Café Bar Don Martín', 'cafe', 'San Isidro', 'Buenos Aires', 'Diagonal Salta 801', -34.4917739, -58.5113329, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap; coords inside San Isidro partido.', 'curated', 'https://www.openstreetmap.org/way/464000314', 'medium', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-la-romana-san-isidro', 'La Romana', 'restaurant', 'San Isidro', 'Buenos Aires', NULL, -34.468392, -58.5026645, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap; Acassuso/San Isidro area.', 'curated', 'https://www.openstreetmap.org/node/13316400170', 'medium', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-preto-coffee-san-isidro', 'Preto Coffee', 'cafe', 'San Isidro', 'Buenos Aires', NULL, -34.4718879, -58.5133572, NULL, NULL, NULL, 'Tagged dog=yes in OpenStreetMap; San Isidro centro.', 'curated', 'https://www.openstreetmap.org/node/11990763666', 'medium', 'published')
-  ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    category = EXCLUDED.category,
-    neighborhood = EXCLUDED.neighborhood,
-    city = EXCLUDED.city,
-    address = EXCLUDED.address,
-    lat = EXCLUDED.lat,
-    lng = EXCLUDED.lng,
-    website = EXCLUDED.website,
-    instagram = EXCLUDED.instagram,
-    phone = EXCLUDED.phone,
-    pet_friendly_note = EXCLUDED.pet_friendly_note,
-    source = EXCLUDED.source,
-    source_url = EXCLUDED.source_url,
-    confidence = EXCLUDED.confidence,
-    status = EXCLUDED.status,
-    updated_at = now();
-
-INSERT INTO places (id, name, category, neighborhood, city, address, lat, lng, website, instagram, phone, pet_friendly_note, source, source_url, confidence, status)
-  VALUES ('curated-canil-del-paseo-costero-san-isidro', 'Canil del Paseo Costero', 'park', 'San Isidro', 'Buenos Aires', 'Paseo Costero, San Isidro', -34.5182842, -58.4719849, NULL, NULL, NULL, 'Fenced dog park (leisure=dog_park) in OpenStreetMap.', 'curated', 'https://www.openstreetmap.org/node/11688432238', 'medium', 'published')
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     category = EXCLUDED.category,

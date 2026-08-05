@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import {
   OVERPASS_ENDPOINT, OVERPASS_QUERY, overpassToPlaces,
-  curatedRowToPlace, geocodePlace, PLACE_COLUMNS,
+  curatedRowToPlace, geocodePlace, dedupeCuratedAgainstOsm, PLACE_COLUMNS,
 } from './parse.mjs';
 import { sleep } from './lib.mjs';
 
@@ -55,17 +55,25 @@ function upsertStatement(place) {
   );
 }
 
+// Overpass can return a transient 429/504 under load. Retry a FEW times with polite backoff
+// (etiquette-compliant: one query, backing off, not hammering) before giving up.
 async function fetchOverpass() {
-  const res = await fetch(OVERPASS_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'PawPi/1.0 (pet-friendly places importer; contact augusto@pawpi.info)',
-    },
-    body: new URLSearchParams({ data: OVERPASS_QUERY }),
-  });
-  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
-  return res.json();
+  const backoffsMs = [15000, 30000, 45000];
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(OVERPASS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'PawPi/1.0 (pet-friendly places importer; contact augusto@pawpi.info)',
+      },
+      body: new URLSearchParams({ data: OVERPASS_QUERY }),
+    });
+    if (res.ok) return res.json();
+    const transient = res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504;
+    if (!transient || attempt >= backoffsMs.length) throw new Error(`Overpass HTTP ${res.status}`);
+    console.warn(`[gen] Overpass HTTP ${res.status} — retrying in ${backoffsMs[attempt] / 1000}s (attempt ${attempt + 1}/${backoffsMs.length})`);
+    await sleep(backoffsMs[attempt]);
+  }
 }
 
 async function main() {
@@ -76,12 +84,19 @@ async function main() {
   const osmElements = overpassJson.elements?.length ?? 0;
   console.log(`[gen] Overpass: ${osmElements} elements → ${osmRows.length} mappable OSM places`);
 
-  // 2. Curated + geocode
+  // 2. Curated — map, then DEDUPE against the OSM import (drop curated twins of an osm-* row).
   const curatedRaw = JSON.parse(readFileSync(SEED_JSON, 'utf8'));
   const curatedRows = curatedRaw.map(curatedRowToPlace);
+  const { kept: curatedKept, dropped: curatedDropped } = dedupeCuratedAgainstOsm(curatedRows, osmRows);
+  const deletedIds = curatedDropped.map((r) => r.id);
+  console.log(
+    `[gen] curated: ${curatedRows.length} → kept ${curatedKept.length}, dropped ${curatedDropped.length} OSM-duplicate twin(s)`,
+  );
+
+  // 3. Geocode ONLY the kept curated rows that lack coords (no point geocoding dropped twins).
   let geocoded = 0;
   const nullCoord = [];
-  for (const row of curatedRows) {
+  for (const row of curatedKept) {
     if (row.lat != null && row.lng != null) continue;
     const hit = await geocodePlace(row);
     if (hit) {
@@ -95,10 +110,10 @@ async function main() {
     await sleep(1100); // Nominatim ≤1 req/s
   }
 
-  const all = [...osmRows, ...curatedRows];
+  const all = [...osmRows, ...curatedKept];
   for (const p of all) if (p.lat == null || p.lng == null) nullCoord.push(p);
 
-  // 3. Emit SQL
+  // 4. Emit SQL
   const header =
     `-- supabase/seed/places_seed.sql — PawPi pet-friendly places DATA SEED (generated).\n` +
     `--\n` +
@@ -108,23 +123,35 @@ async function main() {
     `-- (the table has a public-read policy and NO write policy, so only an admin/service role can\n` +
     `-- populate it — same reason a migration is hand-applied).\n` +
     `--\n` +
-    `-- IDEMPOTENT + re-runnable: every row is an INSERT … ON CONFLICT (id) DO UPDATE, keyed on the\n` +
-    `-- stable text id (osm-<type>-<id> / curated-<slug>). Re-running refreshes fields + updated_at;\n` +
-    `-- it never duplicates and never resurrects a hidden/deleted row's deleted_at. Wrapped in a\n` +
-    `-- transaction so it is all-or-nothing.\n` +
+    `-- DEDUPED: each physical venue appears ONCE. Where a curated row was the same venue as an OSM\n` +
+    `-- element (its source_url points at that element), we KEEP the osm-* row (the importer re-runs\n` +
+    `-- and maintains it) and DROP the curated-* twin. The one-time DELETE below removes the ${deletedIds.length} curated\n` +
+    `-- twin rows already inserted in prod by the previous seed; they are absent from the upserts.\n` +
+    `--\n` +
+    `-- IDEMPOTENT + re-runnable: the DELETE is a no-op once the twins are gone, and every row is an\n` +
+    `-- INSERT … ON CONFLICT (id) DO UPDATE keyed on the stable text id (osm-<type>-<id> /\n` +
+    `-- curated-<slug>). Re-running refreshes fields + updated_at; it never duplicates and never\n` +
+    `-- resurrects a hidden/deleted row's deleted_at. Wrapped in a transaction so it is all-or-nothing.\n` +
     `--\n` +
     `-- Sources: OpenStreetMap/Overpass (dog=yes venues + leisure=dog_park over CABA + Zona Norte)\n` +
     `-- and data/seed/places_curated.json (coord-less rows geocoded via OSM Nominatim; misses left\n` +
     `-- NULL — never fabricated). Regenerate with: node scripts/places/generate-seed-sql.mjs\n` +
     `--\n` +
-    `-- Rows: ${all.length} total (${osmRows.length} osm, ${curatedRows.length} curated).\n\n` +
+    `-- Rows: ${all.length} total (${osmRows.length} osm, ${curatedKept.length} curated); ${deletedIds.length} curated twin(s) deleted.\n\n` +
     `BEGIN;\n\n`;
+
+  // One-time cleanup of the curated duplicate rows already inserted in prod by the previous seed.
+  const cleanup =
+    `-- ── one-time cleanup: remove the ${deletedIds.length} curated-* duplicate rows already inserted in prod ──\n` +
+    `DELETE FROM places WHERE id IN (\n` +
+    deletedIds.map((id) => `  ${sqlStr(id)}`).join(',\n') +
+    `\n);\n\n`;
 
   const body = all.map(upsertStatement).join('\n\n') + '\n';
   const footer = `\nCOMMIT;\n`;
 
   mkdirSync(OUT_DIR, { recursive: true });
-  writeFileSync(OUT_FILE, header + body + footer, 'utf8');
+  writeFileSync(OUT_FILE, header + cleanup + body + footer, 'utf8');
 
   // Report data (printed for the human summary).
   const groupBy = (rows, key) =>
@@ -139,6 +166,7 @@ async function main() {
   console.log(`coords: ${withCoords} with, ${all.length - withCoords} NULL`);
   console.log('geocoded this run:', geocoded);
   console.log('NULL-coord rows:', JSON.stringify(nullCoord.map((r) => ({ id: r.id, name: r.name, source: r.source }))));
+  console.log(`deleted (curated twins) [${deletedIds.length}]:`, JSON.stringify(deletedIds));
 }
 
 main().catch((e) => {

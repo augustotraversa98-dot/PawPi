@@ -145,6 +145,31 @@ export function curatedRowToPlace(row) {
   };
 }
 
+// Extract the canonical osm-<type>-<id> id from an openstreetmap.org element URL, else null. Used
+// to detect a curated row that is really the SAME venue as an OSM element (the curated row's
+// source_url points at that element).
+export function osmIdFromUrl(url) {
+  if (!url) return null;
+  const m = String(url).match(/openstreetmap\.org\/(node|way|relation)\/(\d+)/);
+  return m ? `osm-${m[1]}-${m[2]}` : null;
+}
+
+// Drop curated rows that DUPLICATE an OSM element already present in the OSM import — matched by the
+// curated row's source_url pointing at that OSM element. Returns { kept, dropped }. Rationale: the
+// OSM importer re-runs and maintains the osm-* row, so the curated twin adds nothing and would just
+// reappear as a dup after the next import; a curated row with NO OSM twin is kept. Pure (no I/O).
+export function dedupeCuratedAgainstOsm(curatedRows, osmRows) {
+  const osmIds = new Set(osmRows.map((r) => r.id));
+  const kept = [];
+  const dropped = [];
+  for (const row of curatedRows) {
+    const twinId = osmIdFromUrl(row.source_url);
+    if (twinId && osmIds.has(twinId)) dropped.push(row);
+    else kept.push(row);
+  }
+  return { kept, dropped };
+}
+
 // The ordered column list for an upsert — shared by the runner so INSERT columns and the row keys
 // stay in lockstep. deleted_at is intentionally excluded (a re-import must never resurrect a row
 // an admin hid/deleted by clobbering deleted_at; ON CONFLICT updates only these columns).

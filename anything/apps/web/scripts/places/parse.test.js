@@ -9,6 +9,8 @@ import {
   overpassElementToPlace,
   curatedRowToPlace,
   geocodePlace,
+  osmIdFromUrl,
+  dedupeCuratedAgainstOsm,
   PLACE_COLUMNS,
 } from './parse.mjs';
 
@@ -146,6 +148,66 @@ describe('curatedRowToPlace (real seed file)', () => {
     const b = curated.map(curatedRowToPlace).map((r) => r.id);
     expect(a).toEqual(b);
     expect(new Set(a).size).toBe(a.length); // no id collisions across the seed
+  });
+});
+
+describe('osmIdFromUrl', () => {
+  it('extracts osm-<type>-<id> from an OSM element URL, else null', () => {
+    expect(osmIdFromUrl('https://www.openstreetmap.org/node/123')).toBe('osm-node-123');
+    expect(osmIdFromUrl('https://www.openstreetmap.org/way/473633239')).toBe('osm-way-473633239');
+    expect(osmIdFromUrl('https://www.guiapetfriendly.com/item_detalle.php?id=47')).toBeNull();
+    expect(osmIdFromUrl(null)).toBeNull();
+  });
+
+  it('maps the real curated OSM-referencing rows to their expected twin ids', () => {
+    const byName = (n) => curatedRowToPlace(curated.find((r) => r.name === n));
+    expect(osmIdFromUrl(byName('Oveja Negra').source_url)).toBe('osm-node-1701185132');
+    expect(osmIdFromUrl(byName("Andy's").source_url)).toBe('osm-way-473633239');
+    expect(osmIdFromUrl(byName('Glück').source_url)).toBe('osm-node-4660373376');
+    // Non-OSM curated sources have no twin.
+    expect(osmIdFromUrl(byName('Soffice Pastelería').source_url)).toBeNull();
+  });
+});
+
+describe('dedupeCuratedAgainstOsm', () => {
+  it('drops curated rows whose source_url points at an OSM element present in the import; keeps the rest', () => {
+    const osmRows = [{ id: 'osm-node-100' }, { id: 'osm-way-200' }];
+    const curatedRows = [
+      { id: 'curated-a', source_url: 'https://www.openstreetmap.org/node/100' }, // twin present → drop
+      { id: 'curated-b', source_url: 'https://www.openstreetmap.org/way/200' }, // twin present → drop
+      { id: 'curated-c', source_url: 'https://www.openstreetmap.org/node/999' }, // twin ABSENT → keep
+      { id: 'curated-d', source_url: 'https://example.com/x' }, // non-OSM → keep
+      { id: 'curated-e', source_url: null }, // no source → keep
+    ];
+    const { kept, dropped } = dedupeCuratedAgainstOsm(curatedRows, osmRows);
+    expect(dropped.map((r) => r.id)).toEqual(['curated-a', 'curated-b']);
+    expect(kept.map((r) => r.id)).toEqual(['curated-c', 'curated-d', 'curated-e']);
+  });
+
+  it('keeps every curated row when the OSM import is empty', () => {
+    const curatedRows = curated.map(curatedRowToPlace);
+    const { kept, dropped } = dedupeCuratedAgainstOsm(curatedRows, []);
+    expect(dropped).toHaveLength(0);
+    expect(kept).toHaveLength(curated.length);
+  });
+
+  it('given the real curated twins in the OSM set, keeps exactly the 5 no-twin rows', () => {
+    const curatedRows = curated.map(curatedRowToPlace);
+    // Simulate an OSM import that contains every OSM element the curated rows reference EXCEPT
+    // Glück's (node 4660373376) — matching the live data where Glück has no OSM twin.
+    const referencedOsmIds = curatedRows
+      .map((r) => osmIdFromUrl(r.source_url))
+      .filter((id) => id && id !== 'osm-node-4660373376');
+    const osmRows = referencedOsmIds.map((id) => ({ id }));
+    const { kept, dropped } = dedupeCuratedAgainstOsm(curatedRows, osmRows);
+    expect(dropped).toHaveLength(9);
+    expect(kept.map((r) => r.id).sort()).toEqual([
+      'curated-gluck-san-isidro',
+      'curated-ibis-pilar-pilar',
+      'curated-plaza-castiglia-canil-san-isidro',
+      'curated-soffice-pasteleria-san-isidro',
+      'curated-suss-cupcake-cafe-san-isidro',
+    ]);
   });
 });
 
