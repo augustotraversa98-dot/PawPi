@@ -50,6 +50,8 @@ import {
   resolveInitialCategory,
 } from "@/constants/servicesCategories";
 
+// See the PR description for the filter/map overhaul overview (compact pickers, multi-select,
+// location search, viewport "Search this area", pin See-more).
 // UNIFIED Services discovery (Services Hub P2 + P3, merged over providers + pet-friendly PLACES).
 // ONE search / filter / list / map over the unified /api/services/discover feed:
 //   • mobile (narrow): full-screen map + a draggable bottom-sheet list + a list⇄map toggle,
