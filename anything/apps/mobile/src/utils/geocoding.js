@@ -50,6 +50,43 @@ export async function reverseGeocode(lat, lng) {
 }
 
 /**
+ * Forward-geocode a free-text LOCATION (city / neighborhood) to { lat, lng, label } via the FREE
+ * OSM Nominatim API — used by the Services Discover area filter ("search a location"). Nominatim
+ * asks for a descriptive User-Agent and ≤1 request/second; this is only ever called on an explicit
+ * user submit (naturally well under 1/s), so no client-side throttle is needed. Takes the TOP
+ * result's coordinates and a short label (the first part of display_name, e.g. "Pilar"). Resolves to
+ * null (never throws) for blank input, no match, a non-OK response, or a network error, so the caller
+ * can show a "location not found" message and NEVER fabricates coordinates.
+ */
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+
+export async function geocodeLocation(text) {
+  const query = (text || "").trim();
+  if (!query) return null;
+  try {
+    const url = `${NOMINATIM_SEARCH_URL}?format=json&limit=1&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        // Descriptive User-Agent per the Nominatim usage policy.
+        "User-Agent": "PawPi/1.0 (pet services discovery; https://pawpi.info)",
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const top = Array.isArray(data) ? data[0] : null;
+    if (!top) return null;
+    const lat = Number(top.lat);
+    const lng = Number(top.lon);
+    if (!isValidCoord(lat, lng)) return null;
+    const label = String(top.display_name || query).split(",")[0].trim() || query;
+    return { lat, lng, label };
+  } catch (err) {
+    console.warn("[geocoding] geocodeLocation failed", err?.message);
+    return null;
+  }
+}
+
+/**
  * Forward-geocode a typed address to { lat, lng }. Resolves to null (never
  * throws) for blank input, no match, or a geocoding error — callers show a
  * "couldn't find that address" fallback rather than crashing or silently

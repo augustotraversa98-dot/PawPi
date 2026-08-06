@@ -98,7 +98,7 @@ test("renders both segments and defaults to Discover (chips + search, no interna
   expect(getByText("Discover")).toBeTruthy();
   expect(getByText("My Activity")).toBeTruthy();
   // Discover pane content is visible…
-  expect(getByTestId("discover-cat-all")).toBeTruthy();
+  expect(getByTestId("discover-filter-category")).toBeTruthy();
   expect(getByPlaceholderText("Search services & places")).toBeTruthy();
   // …the discovery's OWN header is suppressed (the toggle replaces it)…
   expect(queryByTestId("services-activity-action")).toBeNull();
@@ -117,7 +117,7 @@ test("tapping My Activity swaps to the activity pane and hides discovery", async
   expect(getByTestId("activity-orders")).toBeTruthy();
   expect(getByTestId("activity-upcoming-empty")).toBeTruthy();
   // …and discovery is gone.
-  expect(queryByTestId("discover-cat-all")).toBeNull();
+  expect(queryByTestId("discover-filter-category")).toBeNull();
   expect(queryByTestId("discover-card-1")).toBeNull();
 });
 
