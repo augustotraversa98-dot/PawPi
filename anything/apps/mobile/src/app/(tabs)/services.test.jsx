@@ -34,8 +34,10 @@ jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: (...a) => mockReq(...a),
   getCurrentPositionAsync: (...a) => mockPos(...a),
 }));
+jest.mock("@/hooks/useServicesDiscover", () => ({
+  useServicesDiscover: () => mockDiscover,
+}));
 jest.mock("@/hooks/useProviders", () => ({
-  useDiscoverProviders: () => mockDiscover,
   useUnreadCount: () => ({ data: mockUnread }),
   useMyBookings: () => ({
     data: { upcoming: [], past: [] },
@@ -81,7 +83,9 @@ beforeEach(() => {
   mockUnread = 0;
   mockReq.mockResolvedValue({ status: "denied" }); // no location → deterministic list
   mockPos.mockResolvedValue({ coords: { latitude: 0, longitude: 0 } });
-  mockDiscover = ok([{ id: 1, slug: "a", name: "A Co", capabilities: ["vet"] }]);
+  mockDiscover = ok([
+    { type: "provider", id: 1, slug: "a", name: "A Co", capabilities: ["vet"] },
+  ]);
 });
 
 test("renders both segments and defaults to Discover (chips + search, no internal header)", async () => {
@@ -95,7 +99,7 @@ test("renders both segments and defaults to Discover (chips + search, no interna
   expect(getByText("My Activity")).toBeTruthy();
   // Discover pane content is visible…
   expect(getByTestId("discover-cat-all")).toBeTruthy();
-  expect(getByPlaceholderText("Search providers")).toBeTruthy();
+  expect(getByPlaceholderText("Search services & places")).toBeTruthy();
   // …the discovery's OWN header is suppressed (the toggle replaces it)…
   expect(queryByTestId("services-activity-action")).toBeNull();
   expect(queryByText("Find trusted pet care near you")).toBeNull();

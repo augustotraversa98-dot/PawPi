@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   RefreshCw,
   Clock,
+  MapPin,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -191,6 +192,16 @@ export default function MyActivity() {
         }
         badge={activeVisits.length > 0 ? activeVisits.length : null}
         onPress={() => router.push("/sitter-visits")}
+      />
+
+      {/* Saved places doorway → the favorites list (places are saved from the place detail screen;
+          discovery flows through the unified Discover pane). */}
+      <HubRow
+        testID="activity-saved-places"
+        Icon={MapPin}
+        title={t("activity.savedPlaces")}
+        subtitle={t("activity.savedPlacesSub")}
+        onPress={() => router.push("/service/places")}
       />
 
       {/* Shopping — orders + auto-reorder (both live in the shop screen; mirror My Hub). */}
