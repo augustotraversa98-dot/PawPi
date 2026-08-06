@@ -29,7 +29,7 @@ import {
   List as ListIcon,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
-import { TYPE, RADIUS, SPACING, MATERIALS, BLUR, ELEVATION } from "@/constants/theme";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import MapLocationView from "@/components/Map/MapLocationView";
@@ -51,8 +51,9 @@ import {
 } from "@/constants/servicesCategories";
 
 // See the PR description for the filter/map overhaul overview (compact pickers, multi-select,
-// location search, viewport "Search this area", pin See-more).
+// location search, live viewport filtering, pin select-to-top).
 // UNIFIED Services discovery (Services Hub P2 + P3, merged over providers + pet-friendly PLACES).
+// Device-QA refinements: compact category pills, location-only Area picker, pin select-to-top, live viewport list.
 // ONE search / filter / list / map over the unified /api/services/discover feed:
 //   • mobile (narrow): full-screen map + a draggable bottom-sheet list + a list⇄map toggle,
 //     with a SLIM filter bar (Category + Area buttons) pinned over the map;
@@ -60,8 +61,9 @@ import {
 //   • two-way pin↔card highlight.
 //
 // UX: category + area are picked from two COMPACT FILTER BUTTONS that open pickers (no more long
-// scrolling chip rows). Category + neighborhood are SERVER-side filters (passed to the API); search
-// (q), the sorts (rating / reviews / nearest) and open-now stay CLIENT-side. open-now applies to
+// scrolling chip rows). Categories are filtered CLIENT-side (multi-select union); the Area picker is
+// a location search + near-me geo (no enumerated neighborhoods). search (q), the sorts (rating /
+// reviews / nearest) and open-now stay CLIENT-side. open-now applies to
 // PROVIDERS only — places have no hours, so they are always included. "Search near me" requests the
 // device location and switches the sort to Nearest so results bias to nearby.
 //
@@ -108,8 +110,8 @@ function hasCoords(it) {
 }
 
 // Is an item inside the map's visible region? region is react-native-maps' { latitude, longitude,
-// latitudeDelta, longitudeDelta } (center + full span). Used by "Search this area" to narrow the list
-// to what's on screen. Coord-less items are never "in" a viewport.
+// latitudeDelta, longitudeDelta } (center + full span). Used by the LIVE viewport filter to narrow the
+// list to what's on screen as the map pans. Coord-less items are never "in" a viewport.
 function inRegion(it, region) {
   if (!region) return true;
   const lat = Number(it?.lat);
@@ -164,7 +166,6 @@ export default function ServicesDiscovery({
     const init = resolveInitialCategory(initialCategory);
     return init === "all" ? [] : [init];
   });
-  const [neighborhood, setNeighborhood] = useState(null);
   const [nearMe, setNearMe] = useState(false);
   // Free-text location search (Area picker). `locationLabel` (short name, e.g. "Pilar") also flags
   // that the active geo came from a searched location → radius-bound + recenter the map.
@@ -179,12 +180,10 @@ export default function ServicesDiscovery({
   const [selectedId, setSelectedId] = useState(null);
   const [catPickerOpen, setCatPickerOpen] = useState(false);
   const [areaPickerOpen, setAreaPickerOpen] = useState(false);
-  // "Search this area": the applied map viewport (narrows the list + pins to what's on screen), and a
-  // flag that the user has panned since the last search (shows the "Search this area" button). The
-  // latest settled region is kept in a ref so tapping the button applies exactly what's visible.
+  // LIVE viewport: the current map region narrows the list + pins to what's on screen (map/split only).
+  // Updated on every settled pan/zoom, DEBOUNCED so rapid gestures don't thrash the list.
   const [viewportRegion, setViewportRegion] = useState(null);
-  const [mapMoved, setMapMoved] = useState(false);
-  const pendingRegionRef = useRef(null);
+  const regionDebounceRef = useRef(null);
   // The two picker groups are collapsible so the list stays short (both open by default).
   const [servicesExpanded, setServicesExpanded] = useState(true);
   const [placesExpanded, setPlacesExpanded] = useState(true);
@@ -218,14 +217,8 @@ export default function ServicesDiscovery({
 
   // Categories are MULTI-SELECT and filtered CLIENT-side (see categoryFiltered), so we fetch the BASE
   // set (category 'all' = both sources) once and let the union filter drive the list AND the map pins
-  // instantly. Neighborhood stays SERVER-side, but only applies when a place is in scope (an all/place
-  // selection) — a provider-only selection ignores it. lat/lng attach distance_km + nearest ordering.
-  const placeInScope =
-    selectedCats.length === 0 || selectedCats.some((k) => PLACE_CATEGORY_KEYS.has(k));
-  const effectiveNeighborhood = placeInScope ? neighborhood : null;
-
+  // instantly. lat/lng attach distance_km + nearest ordering.
   const { data: items, isLoading, isError, refetch } = useServicesDiscover({
-    neighborhood: effectiveNeighborhood,
     ...(coord ? { lat: coord.lat, lng: coord.lng } : {}),
     // A searched location bounds results to its radius; device/near-me geo stays unbounded.
     ...(locationLabel && coord ? { radius: LOCATION_SEARCH_RADIUS_KM } : {}),
@@ -289,27 +282,29 @@ export default function ServicesDiscovery({
     [coord],
   );
 
-  // Neighborhood options accumulate across loads (a server-side neighborhood filter shrinks the
-  // returned set, so we remember every place-neighborhood ever seen to keep the picker stable +
-  // clearable). Only offered for "all" or a place category — neighborhoods don't apply to providers.
-  const seenNeighborhoods = useRef(new Set());
-  const neighborhoods = useMemo(() => {
-    for (const it of raw) {
-      if (it.type === "place" && it.neighborhood) {
-        seenNeighborhoods.current.add(it.neighborhood);
-      }
-    }
-    return Array.from(seenNeighborhoods.current).sort((a, b) => a.localeCompare(b));
-  }, [raw]);
-  const areaNeighborhoods = placeInScope ? neighborhoods : [];
+  const mapEngineOk = isMapEngineOk();
+  const showToggle = !isWide && mapEngineOk;
+  const layout = isWide ? "split" : mode === "map" && mapEngineOk ? "map" : "list";
+  // Viewport filtering only bites when the map is actually on screen (map mode / wide split); list-only
+  // mode always shows the full filtered set.
+  const mapVisible = layout === "split" || layout === "map";
 
-  // What the list + map actually show: the filtered set, further narrowed to the map viewport when
-  // "Search this area" is active (both list AND pins follow the viewport). No viewport → full set.
-  const displayItems = useMemo(
-    () =>
-      viewportRegion ? filtered.filter((it) => inRegion(it, viewportRegion)) : filtered,
-    [filtered, viewportRegion],
-  );
+  // What the list + map actually show: the filtered set, LIVE-narrowed to the current map viewport
+  // while the map is visible (both list AND pins follow the viewport), then the selected item (if any)
+  // hoisted to the TOP so a tapped pin surfaces its card first. No viewport → full filtered set.
+  const displayItems = useMemo(() => {
+    const base =
+      mapVisible && viewportRegion
+        ? filtered.filter((it) => inRegion(it, viewportRegion))
+        : filtered;
+    if (!selectedId) return base;
+    const idx = base.findIndex((it) => it.id === selectedId);
+    if (idx <= 0) return base;
+    const copy = base.slice();
+    const [sel] = copy.splice(idx, 1);
+    copy.unshift(sel);
+    return copy;
+  }, [filtered, viewportRegion, mapVisible, selectedId]);
 
   // Map data: only the shown items that actually have a location (providers OR places).
   const withCoords = useMemo(() => displayItems.filter(hasCoords), [displayItems]);
@@ -327,14 +322,6 @@ export default function ServicesDiscovery({
     () => withCoords.findIndex((it) => it.id === selectedId),
     [withCoords, selectedId],
   );
-  const selectedItem = useMemo(
-    () => displayItems.find((it) => it.id === selectedId) ?? null,
-    [displayItems, selectedId],
-  );
-
-  const mapEngineOk = isMapEngineOk();
-  const showToggle = !isWide && mapEngineOk;
-  const layout = isWide ? "split" : mode === "map" && mapEngineOk ? "map" : "list";
 
   const hasItems = raw.length > 0;
 
@@ -352,16 +339,7 @@ export default function ServicesDiscovery({
     setSelectedId(null);
   };
 
-  const onSelectArea = (name) => {
-    setNeighborhood(name);
-    setNearMe(false);
-    setLocationLabel(null);
-    setLocationNotFound(false);
-    setAreaPickerOpen(false);
-  };
-
   const onSelectAllAreas = () => {
-    setNeighborhood(null);
     setNearMe(false);
     setLocationLabel(null);
     setLocationNotFound(false);
@@ -383,7 +361,6 @@ export default function ServicesDiscovery({
       const ln = pos?.coords?.longitude;
       if (Number.isFinite(la) && Number.isFinite(ln)) {
         setCoord({ lat: la, lng: ln });
-        setNeighborhood(null);
         setNearMe(true);
         setLocationLabel(null);
         setLocationNotFound(false);
@@ -410,7 +387,6 @@ export default function ServicesDiscovery({
     }
     setCoord({ lat: result.lat, lng: result.lng });
     setLocationLabel(result.label);
-    setNeighborhood(null);
     setNearMe(false);
     setSort("nearest");
     setLocationQuery("");
@@ -432,15 +408,13 @@ export default function ServicesDiscovery({
     selectedCats.includes(c.key),
   ).length;
 
-  const areaActive = effectiveNeighborhood != null || nearMe || locationLabel != null;
+  const areaActive = nearMe || locationLabel != null;
   const areaLabel =
-    effectiveNeighborhood != null
-      ? effectiveNeighborhood
-      : locationLabel != null
-        ? locationLabel
-        : nearMe
-          ? t("discover.searchNearMe")
-          : t("discover.allAreas");
+    locationLabel != null
+      ? locationLabel
+      : nearMe
+        ? t("discover.searchNearMe")
+        : t("discover.allAreas");
 
   const openItem = (it) => {
     setSelectedId(it.id); // selecting a card highlights its pin
@@ -465,28 +439,30 @@ export default function ServicesDiscovery({
     router.push({ pathname: "/service/provider", params: { slug: it.slug } });
   };
 
+  // Tapping a pin: raise the sheet, highlight the pin's card, and (via displayItems) hoist that item
+  // to the TOP of the list so it's the first card. Drill-in still happens by tapping the list card.
   const onMarkerPress = (_i, point) => {
-    setSelectedId(point.id); // tapping a pin highlights its card
+    setSelectedId(point.id);
     sheetRef.current?.snapToIndex?.(1); // bring the sheet up so the card is visible
   };
 
-  // Map pan/zoom settled: only react to USER gestures (ignore the initial/programmatic region set),
-  // keep the latest region, and reveal the "Search this area" button. onRegionChangeComplete already
-  // fires only once movement stops, so this needs no extra debounce.
+  // Map pan/zoom settled: LIVE-narrow the list + pins to what's on screen. React only to USER gestures
+  // (ignore the initial/programmatic region set), DEBOUNCED ~400ms so a fast drag settles once.
   const onMapRegionChange = (region, details) => {
     if (!details?.isGesture) return;
-    pendingRegionRef.current = region;
-    setMapMoved(true);
+    if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
+    regionDebounceRef.current = setTimeout(() => setViewportRegion(region), 400);
   };
-  // Apply the current viewport → the list + pins narrow to what's on screen.
-  const onSearchThisArea = () => {
-    if (pendingRegionRef.current) setViewportRegion(pendingRegionRef.current);
-    setMapMoved(false);
-  };
+  // Drop the pending debounce on unmount so a late timer can't set state on a gone component.
+  useEffect(
+    () => () => {
+      if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
+    },
+    [],
+  );
 
   const clearFilters = () => {
     setSelectedCats([]);
-    setNeighborhood(null);
     setNearMe(false);
     setLocationLabel(null);
     setLocationNotFound(false);
@@ -494,7 +470,6 @@ export default function ServicesDiscovery({
     setQuery("");
     setSort("relevance");
     setViewportRegion(null);
-    setMapMoved(false);
   };
 
   // ─────────────────────────── shared render pieces ───────────────────────────
@@ -687,44 +662,6 @@ export default function ServicesDiscovery({
       </Text>
     ) : null;
 
-  // "Search this area" pill — shown after a user pans/zooms the map (map + split only).
-  const searchAreaButton = mapMoved ? (
-    <PressableScale
-      testID="discover-search-area"
-      onPress={onSearchThisArea}
-      accessibilityRole="button"
-      style={{
-        alignSelf: "center",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingHorizontal: SPACING.lg,
-        paddingVertical: SPACING.sm,
-        borderRadius: RADIUS.chip,
-        backgroundColor: COLORS.coral,
-        ...ELEVATION.sm,
-      }}
-    >
-      <Navigation size={14} color="#fff" />
-      <Text style={[TYPE.footnote, { color: "#fff", fontWeight: "800" }]}>
-        {t("discover.searchThisArea")}
-      </Text>
-    </PressableScale>
-  ) : null;
-
-  // Pin → mini-card: the tapped item's name + a "See more" that drills in like the list. Floats over
-  // the map (`bottom` differs between the narrow map's sheet and the wide split's map column).
-  const renderMapCard = (bottom) =>
-    selectedItem ? (
-      <MapMiniCard
-        item={selectedItem}
-        t={t}
-        bottom={bottom}
-        onSeeMore={() => openItem(selectedItem)}
-        onClose={() => setSelectedId(null)}
-      />
-    ) : null;
-
   const mapNode = (
     <DiscoverMap
       markers={markers}
@@ -771,18 +708,7 @@ export default function ServicesDiscovery({
             {results}
           </RefreshableScrollView>
         </View>
-        <View style={{ flex: 1 }}>
-          {mapNode}
-          {mapMoved ? (
-            <View
-              pointerEvents="box-none"
-              style={{ position: "absolute", top: SPACING.md, left: 0, right: 0 }}
-            >
-              {searchAreaButton}
-            </View>
-          ) : null}
-          {renderMapCard(SPACING.lg)}
-        </View>
+        <View style={{ flex: 1 }}>{mapNode}</View>
       </View>
     );
   } else if (layout === "map") {
@@ -806,9 +732,7 @@ export default function ServicesDiscovery({
           {toggle}
           {filterBar}
           {offMapNote}
-          {searchAreaButton}
         </View>
-        {renderMapCard(Math.round(winHeight * 0.27))}
         <BottomSheet ref={sheetRef} index={0} snapPoints={snapPoints}>
           <BottomSheetScrollView
             contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}
@@ -871,8 +795,9 @@ export default function ServicesDiscovery({
 
       {body}
 
-      {/* Category picker: MULTI-SELECT. "All" clears the selection; the Services + Places groups are
-          collapsible (with a per-group selected count). Toggling an option keeps the picker open. */}
+      {/* Category picker: MULTI-SELECT. Options are COMPACT wrapped pills (many visible at once). "All"
+          is a distinct pill at top that clears the selection; the Services + Places groups are
+          collapsible (with a per-group selected count). Toggling a pill keeps the picker open. */}
       <PickerModal
         visible={catPickerOpen}
         testID="discover-category-picker"
@@ -880,12 +805,14 @@ export default function ServicesDiscovery({
         onClose={() => setCatPickerOpen(false)}
         insets={insets}
       >
-        <PickerOption
-          testID="discover-catopt-all"
-          label={t("discover.cat.all")}
-          selected={selectedCats.length === 0}
-          onPress={clearCategories}
-        />
+        <View style={PILL_WRAP}>
+          <CategoryPill
+            testID="discover-catopt-all"
+            label={t("discover.cat.all")}
+            selected={selectedCats.length === 0}
+            onPress={clearCategories}
+          />
+        </View>
         <GroupHeader
           testID="discover-catgroup-services"
           label={t("discover.groupServices")}
@@ -893,17 +820,19 @@ export default function ServicesDiscovery({
           expanded={servicesExpanded}
           onPress={() => setServicesExpanded((v) => !v)}
         />
-        {servicesExpanded
-          ? SERVICE_CATEGORIES.map((c) => (
-              <PickerOption
+        {servicesExpanded ? (
+          <View style={PILL_WRAP}>
+            {SERVICE_CATEGORIES.map((c) => (
+              <CategoryPill
                 key={c.key}
                 testID={`discover-catopt-${c.key}`}
                 label={t(c.labelKey)}
                 selected={selectedCats.includes(c.key)}
                 onPress={() => toggleCategory(c.key)}
               />
-            ))
-          : null}
+            ))}
+          </View>
+        ) : null}
         <GroupHeader
           testID="discover-catgroup-places"
           label={t("discover.groupPlaces")}
@@ -911,20 +840,23 @@ export default function ServicesDiscovery({
           expanded={placesExpanded}
           onPress={() => setPlacesExpanded((v) => !v)}
         />
-        {placesExpanded
-          ? PLACE_CATEGORIES.map((c) => (
-              <PickerOption
+        {placesExpanded ? (
+          <View style={PILL_WRAP}>
+            {PLACE_CATEGORIES.map((c) => (
+              <CategoryPill
                 key={c.key}
                 testID={`discover-catopt-${c.key}`}
                 label={t(c.labelKey)}
                 selected={selectedCats.includes(c.key)}
                 onPress={() => toggleCategory(c.key)}
               />
-            ))
-          : null}
+            ))}
+          </View>
+        ) : null}
       </PickerModal>
 
-      {/* Area picker: free-text location search + All areas + Search near me + neighborhoods. */}
+      {/* Area picker: free-text location search + All areas + Search near me (no enumerated
+          neighborhoods — they don't scale as the catalog grows). */}
       <PickerModal
         visible={areaPickerOpen}
         testID="discover-area-picker"
@@ -994,7 +926,7 @@ export default function ServicesDiscovery({
         <PickerOption
           testID="discover-areaopt-all"
           label={t("discover.allAreas")}
-          selected={neighborhood == null && !nearMe && locationLabel == null}
+          selected={!nearMe && locationLabel == null}
           onPress={onSelectAllAreas}
         />
         <PickerOption
@@ -1004,15 +936,6 @@ export default function ServicesDiscovery({
           icon={Navigation}
           onPress={onSelectNearMe}
         />
-        {areaNeighborhoods.map((n) => (
-          <PickerOption
-            key={n}
-            testID={`discover-areaopt-${n}`}
-            label={n}
-            selected={neighborhood === n}
-            onPress={() => onSelectArea(n)}
-          />
-        ))}
       </PickerModal>
     </View>
   );
@@ -1211,6 +1134,49 @@ function PickerOption({ testID, label, selected, onPress, icon: Icon }) {
   );
 }
 
+// Row of category pills wraps to as many lines as needed so many categories are visible at once.
+const PILL_WRAP = {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: SPACING.sm,
+  marginBottom: SPACING.xs,
+};
+
+// A COMPACT, content-sized category chip for the category picker's wrapped grid (multi-select).
+// Selected → coral border + tint + Check; otherwise a quiet peach outline.
+function CategoryPill({ testID, label, selected, onPress }) {
+  return (
+    <TouchableOpacity
+      testID={testID}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.chip,
+        borderWidth: 1.5,
+        borderColor: selected ? COLORS.coral : COLORS.peach,
+        backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
+      }}
+    >
+      <Text
+        style={[
+          TYPE.footnote,
+          { fontWeight: "700", color: selected ? COLORS.coral : COLORS.mutedBrown },
+        ]}
+      >
+        {label}
+      </Text>
+      {selected ? <Check size={14} color={COLORS.coral} /> : null}
+    </TouchableOpacity>
+  );
+}
+
 // iOS → the real Apple map; everywhere else → a clean placeholder (no key/engine), never a
 // blank/gray map or crash.
 function DiscoverMap({ markers, selectedIndex, onMarkerPress, onRegionChange, height, t, center }) {
@@ -1268,82 +1234,6 @@ function DiscoverMap({ markers, selectedIndex, onMarkerPress, onRegionChange, he
   );
 }
 
-// Mini-card shown when a pin is tapped: the item's name + a "See more" that drills in exactly like a
-// list card, plus a close ✕. Floats over the map at the given `bottom` offset.
-function MapMiniCard({ item, t, bottom, onSeeMore, onClose }) {
-  const isPlace = item.type === "place";
-  return (
-    <View
-      testID="discover-map-card"
-      style={{ position: "absolute", left: SPACING.lg, right: SPACING.lg, bottom }}
-    >
-      <Card
-        level="md"
-        borderColor={COLORS.coral}
-        style={{
-          padding: SPACING.md + 2,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: SPACING.md,
-          borderWidth: 2,
-        }}
-      >
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: RADIUS.control - 2,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {isPlace ? (
-            <MapPin size={20} color={COLORS.coral} />
-          ) : (
-            <Store size={20} color={COLORS.coral} />
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            testID="discover-map-card-name"
-            numberOfLines={1}
-            style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}
-          >
-            {item.name}
-          </Text>
-          <PressableScale
-            testID="discover-map-seemore"
-            onPress={onSeeMore}
-            accessibilityRole="button"
-            style={{
-              marginTop: 4,
-              alignSelf: "flex-start",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
-              {t("discover.seeMore")}
-            </Text>
-            <ChevronRight size={16} color={COLORS.coral} />
-          </PressableScale>
-        </View>
-        <TouchableOpacity
-          testID="discover-map-card-close"
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.close")}
-          hitSlop={8}
-          style={{ padding: 4 }}
-        >
-          <X size={18} color={COLORS.mutedBrown} />
-        </TouchableOpacity>
-      </Card>
-    </View>
-  );
-}
 
 // One unified result — a PROVIDER or a PLACE. Cards show name, category/capabilities, rating
 // (RatingBadge) and distance. Providers show their capability chips; places show a single category

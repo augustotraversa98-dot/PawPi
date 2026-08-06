@@ -12,7 +12,7 @@
 
 import React from "react";
 import * as RN from "react-native";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
 let mockResolve; // (opts) => { data, isLoading, isError, refetch }
 let lastOpts;
@@ -118,20 +118,10 @@ const SHOP = { type: "provider", id: 2, slug: "shop-co", name: "Shop Co", capabi
 const CAFE = { type: "place", id: "cafe-x", name: "Cafe X", category: "cafe", neighborhood: "Palermo", lat: "-34.58", lng: "-58.42", avg_rating: 4.0, review_count: 3 };
 const PARK = { type: "place", id: "park-y", name: "Park Y", category: "park", neighborhood: "Belgrano", lat: null, lng: null };
 
-// Category-aware resolver mirroring the server: a provider category → providers only, a place
-// category → places only, "all"/undefined → both; neighborhood filters places.
-function categoryAware(opts) {
-  const cat = opts?.category;
-  let data;
-  if (cat === "vet") data = [VET];
-  else if (cat === "shop") data = [SHOP];
-  else if (cat === "cafe") data = [CAFE];
-  else if (cat === "park") data = [PARK];
-  else data = [VET, SHOP, CAFE, PARK]; // all
-  if (opts?.neighborhood) {
-    data = data.filter((it) => it.type !== "place" || it.neighborhood === opts.neighborhood);
-  }
-  return ok(data);
+// The pane fetches the BASE set once (categories + area are filtered CLIENT-side, no server params),
+// so the resolver always returns all four; category/area narrowing is exercised client-side.
+function categoryAware() {
+  return ok([VET, SHOP, CAFE, PARK]);
 }
 
 function setPlatform(os) {
@@ -326,31 +316,20 @@ test("a zero-result category selection shows no-results with a working Clear fil
 });
 
 // ─────────────────────────── area picker ───────────────────────────
-test("Area button opens the picker; selecting a neighborhood filters + highlights; hidden for provider categories", async () => {
+test("Area picker offers ONLY the location search + All areas + Search near me (no enumerated neighborhoods)", async () => {
   const scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy());
 
   openAreaPicker(scr);
   expect(scr.getByTestId("discover-area-picker")).toBeTruthy();
+  expect(scr.getByTestId("discover-location-input")).toBeTruthy();
   expect(scr.getByTestId("discover-areaopt-all")).toBeTruthy();
   expect(scr.getByTestId("discover-areaopt-near")).toBeTruthy();
-  expect(scr.getByTestId("discover-areaopt-Palermo")).toBeTruthy();
-
-  fireEvent.press(scr.getByTestId("discover-areaopt-Palermo"));
-  expect(lastOpts.neighborhood).toBe("Palermo");
-  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
-  expect(scr.queryByTestId("discover-card-park-y")).toBeNull();
-  const areaBtn = scr.getByTestId("discover-filter-area");
-  expect(areaBtn.props.accessibilityState.selected).toBe(true);
-  expect(areaBtn.props.accessibilityLabel).toBe("Area: Palermo");
-
-  // Select ONLY a provider category → places out of scope → area picker drops neighborhoods and the
-  // Area button falls back to "All areas".
-  pickOneCategory(scr, "vet");
-  expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: All areas");
-  openAreaPicker(scr);
+  // the old data-derived neighborhood rows are gone (they don't scale as the catalog grows)
   expect(scr.queryByTestId("discover-areaopt-Palermo")).toBeNull();
-  expect(scr.getByTestId("discover-areaopt-all")).toBeTruthy();
+  expect(scr.queryByTestId("discover-areaopt-Belgrano")).toBeNull();
+  // and no neighborhood is passed server-side anymore
+  expect(lastOpts.neighborhood).toBeUndefined();
 });
 
 test("area picker 'Search near me' requests geolocation and applies the Nearest sort", async () => {
@@ -507,68 +486,90 @@ test("pins reflect the filtered set: a category filter removes the other type's 
   expect(scr.queryByTestId("map-marker-1")).toBeNull();
 });
 
-test("'Search this area' narrows the list + pins to the current viewport", async () => {
+test("panning the map LIVE-narrows the list + pins to the viewport (debounced), no button", async () => {
   // A tight viewport around Vet Co (-34.6,-58.4) that excludes Cafe X (-34.58,-58.42).
   mockRegion = { latitude: -34.6, longitude: -58.4, latitudeDelta: 0.02, longitudeDelta: 0.02 };
   const scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
   fireEvent.press(scr.getByTestId("discover-view-map"));
 
-  // both located items visible + no "Search this area" until the user moves the map
+  // both located items visible; the old "Search this area" button is gone for good
   expect(scr.getByTestId("discover-card-1")).toBeTruthy();
   expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
   expect(scr.queryByTestId("discover-search-area")).toBeNull();
 
-  // pan settles → button appears
+  jest.useFakeTimers();
   fireEvent.press(scr.getByTestId("map-fire-region"));
-  expect(scr.getByTestId("discover-search-area")).toBeTruthy();
+  // debounce not yet elapsed → list unchanged
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+  act(() => jest.advanceTimersByTime(400));
+  jest.useRealTimers();
 
-  // apply → list + pins narrow to the viewport (Vet Co in, Cafe X out)
-  fireEvent.press(scr.getByTestId("discover-search-area"));
+  // after the debounce the list + pins narrow to the viewport (Vet Co in, Cafe X out), no tap needed
   expect(scr.getByTestId("discover-card-1")).toBeTruthy();
   expect(scr.queryByTestId("discover-card-cafe-x")).toBeNull();
   expect(scr.getByTestId("map-marker-1")).toBeTruthy();
   expect(scr.queryByTestId("map-marker-cafe-x")).toBeNull();
-  // applying dismisses the button until the next move
+  // still no button
   expect(scr.queryByTestId("discover-search-area")).toBeNull();
 });
 
-test("a programmatic region change (no gesture) does NOT show 'Search this area'", async () => {
+test("a programmatic region change (no gesture) does NOT narrow the list", async () => {
+  mockRegion = { latitude: -34.6, longitude: -58.4, latitudeDelta: 0.02, longitudeDelta: 0.02 };
   const scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
   fireEvent.press(scr.getByTestId("discover-view-map"));
+
+  jest.useFakeTimers();
   // a non-gesture region settle (initial mount / programmatic recenter) is ignored
   fireEvent.press(scr.getByTestId("map-fire-region-programmatic"));
-  expect(scr.queryByTestId("discover-search-area")).toBeNull();
-  // a real user gesture does show it
+  act(() => jest.advanceTimersByTime(400));
+  // both still shown — no viewport narrowing
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+
+  // a real user gesture DOES narrow it
   fireEvent.press(scr.getByTestId("map-fire-region"));
-  expect(scr.getByTestId("discover-search-area")).toBeTruthy();
+  act(() => jest.advanceTimersByTime(400));
+  jest.useRealTimers();
+  expect(scr.queryByTestId("discover-card-cafe-x")).toBeNull();
 });
 
-test("tapping a pin highlights the card and shows a 'See more' that drills into the detail (place)", async () => {
+test("tapping a pin raises the sheet, highlights the item, and moves it to the TOP of the list (no callout)", async () => {
+  // Cafe X is NOT first in the fetched order, so hoisting-to-top is observable.
+  mockResolve = () =>
+    ok([
+      { type: "provider", id: 1, slug: "vet-co", name: "Vet Co", capabilities: ["vet"], lat: "-34.6", lng: "-58.4" },
+      { type: "place", id: "cafe-x", name: "Cafe X", category: "cafe", lat: "-34.58", lng: "-58.42" },
+    ]);
   const scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
   fireEvent.press(scr.getByTestId("discover-view-map"));
+
+  // the old pin mini-card / "See more" callout no longer exists
   expect(scr.queryByTestId("discover-map-card")).toBeNull();
+  // Vet Co is first before any pin tap
+  const idsBefore = scr
+    .getAllByTestId(/^discover-card-(1|cafe-x)$/)
+    .map((n) => n.props.testID);
+  expect(idsBefore[0]).toBe("discover-card-1");
 
   fireEvent.press(scr.getByTestId("map-marker-cafe-x"));
-  expect(scr.getByTestId("discover-card-cafe-x-selected")).toBeTruthy(); // pin↔card highlight kept
-  expect(scr.getByTestId("discover-map-card")).toBeTruthy();
-  expect(scr.getByTestId("discover-map-card-name").props.children).toBe("Cafe X");
-  expect(mockPush).not.toHaveBeenCalled(); // pin tap alone doesn't navigate
 
-  fireEvent.press(scr.getByTestId("discover-map-seemore"));
+  // highlighted (pin↔card), no callout, no navigation on the pin tap itself
+  expect(scr.getByTestId("discover-card-cafe-x-selected")).toBeTruthy();
+  expect(scr.queryByTestId("discover-map-card")).toBeNull();
+  expect(scr.queryByTestId("discover-map-seemore")).toBeNull();
+  expect(mockPush).not.toHaveBeenCalled();
+  // the tapped item is now first in the list
+  const idsAfter = scr
+    .getAllByTestId(/^discover-card-(1|cafe-x)$/)
+    .map((n) => n.props.testID);
+  expect(idsAfter[0]).toBe("discover-card-cafe-x");
+
+  // drill-in still happens by tapping the list card (existing routing)
+  fireEvent.press(scr.getByTestId("discover-card-cafe-x"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/place", params: { id: "cafe-x" } });
-});
-
-test("'See more' on a provider pin routes to the storefront (same drill-in as the list)", async () => {
-  const scr = render(<DiscoverScreen />);
-  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
-  fireEvent.press(scr.getByTestId("discover-view-map"));
-  fireEvent.press(scr.getByTestId("map-marker-1"));
-  expect(scr.getByTestId("discover-map-card-name").props.children).toBe("Vet Co");
-  fireEvent.press(scr.getByTestId("discover-map-seemore"));
-  expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/provider", params: { slug: "vet-co" } });
 });
 
 // ─────────────────────────── sorts (mixed types) ───────────────────────────
