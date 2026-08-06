@@ -14,11 +14,16 @@ import {
   formatReverseGeocodeResult,
   reverseGeocode,
   forwardGeocode,
+  geocodeLocation,
 } from "./geocoding";
 
 beforeEach(() => {
   mockReverseGeocodeAsync.mockReset();
   mockGeocodeAsync.mockReset();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe("formatReverseGeocodeResult", () => {
@@ -106,5 +111,54 @@ describe("forwardGeocode", () => {
   it("resolves to null (never throws) when expo-location rejects", async () => {
     mockGeocodeAsync.mockRejectedValue(new Error("network error"));
     await expect(forwardGeocode("somewhere")).resolves.toBeNull();
+  });
+});
+
+describe("geocodeLocation (Nominatim)", () => {
+  it("returns { lat, lng, label } from the top result and hits Nominatim with a User-Agent", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [
+        { lat: "-34.4589", lon: "-58.9142", display_name: "Pilar, Buenos Aires, Argentina" },
+      ],
+    }));
+    const res = await geocodeLocation("Pilar, Buenos Aires");
+    expect(res).toEqual({ lat: -34.4589, lng: -58.9142, label: "Pilar" });
+    const [url, opts] = global.fetch.mock.calls[0];
+    expect(url).toContain("nominatim.openstreetmap.org/search");
+    expect(url).toContain("format=json");
+    expect(url).toContain("q=Pilar%2C%20Buenos%20Aires");
+    expect(opts.headers["User-Agent"]).toMatch(/PawPi/);
+  });
+
+  it("returns null for blank input without calling fetch", async () => {
+    global.fetch = jest.fn();
+    expect(await geocodeLocation("   ")).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns null when Nominatim has no match (empty array)", async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => [] }));
+    expect(await geocodeLocation("nowhere at all")).toBeNull();
+  });
+
+  it("returns null on a non-OK response", async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, json: async () => [] }));
+    expect(await geocodeLocation("Pilar")).toBeNull();
+  });
+
+  it("returns null (never throws) when the top result has invalid coords", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [{ lat: "abc", lon: "xyz", display_name: "Bad" }],
+    }));
+    expect(await geocodeLocation("Pilar")).toBeNull();
+  });
+
+  it("returns null (never throws) when fetch rejects", async () => {
+    global.fetch = jest.fn(async () => {
+      throw new Error("offline");
+    });
+    await expect(geocodeLocation("Pilar")).resolves.toBeNull();
   });
 });

@@ -53,6 +53,12 @@ function regionFor(pts) {
  *       behaviour is unchanged for existing callers (places/events/transport/adoption).
  *   selectedIndex?: number                        — ADDITIVE: highlights that marker
  *       (coral pin). Absent/-1 → all markers use the default pin.
+ *   center?: { lat, lng }                          — ADDITIVE: recenters the map on this point
+ *       (e.g. a searched location) regardless of the markers, remounting so it moves live. Absent →
+ *       the region is derived from the markers/polyline as before.
+ *   onRegionChange?: (region, details) => void     — ADDITIVE: reports the visible region once a
+ *       pan/zoom settles (react-native-maps' onRegionChangeComplete; `details.isGesture` tells a
+ *       user move from a programmatic one). Absent → not wired, behaviour unchanged.
  *   testID?: string
  */
 export default function MapLocationView({
@@ -63,12 +69,24 @@ export default function MapLocationView({
   interactive = false,
   onMarkerPress,
   selectedIndex = -1,
+  center,
+  onRegionChange,
   testID = "map-location-view",
 }) {
   const { t } = useTranslation();
   const allMarkers = [...toPoints(points), ...toPoints(markers)];
   const line = toPoints(polyline);
-  const region = regionFor(allMarkers.length ? allMarkers : line);
+  // An explicit center (a searched location) wins over the marker-derived region so the map shows
+  // that area even when it has no pins yet.
+  const centerPt = center && isValidCoord(center.lat, center.lng) ? center : null;
+  const region = centerPt
+    ? {
+        latitude: centerPt.lat,
+        longitude: centerPt.lng,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      }
+    : regionFor(allMarkers.length ? allMarkers : line);
 
   if (!region) {
     return (
@@ -108,11 +126,17 @@ export default function MapLocationView({
         testID={`${testID}-map`}
         provider={PROVIDER_DEFAULT}
         style={{ flex: 1 }}
+        // Remount on a new center so the map jumps to a freshly searched location (initialRegion
+        // only applies at mount). No center → stable key, behaviour unchanged.
+        key={centerPt ? `c-${centerPt.lat}-${centerPt.lng}` : undefined}
         initialRegion={region}
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={false}
         pitchEnabled={false}
+        onRegionChangeComplete={
+          onRegionChange ? (r, details) => onRegionChange(r, details) : undefined
+        }
       >
         {allMarkers.map((p, i) => (
           <Marker

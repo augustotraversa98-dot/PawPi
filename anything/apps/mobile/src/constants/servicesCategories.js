@@ -7,19 +7,23 @@
 // differs from the capability where the label differs: grooming→groomer, walking→walker,
 // sitting→sitter, training→trainer). PLACE categories → the endpoint filters places.category.
 
-// Provider categories, in chip display order. `labelKey` reuses the existing discover.cap.* catalog.
+// Provider categories, in chip display order. `labelKey` reuses the existing discover.cap.* catalog;
+// `capability` is the backing provider_capabilities value (mirrors the web util) — the friendly key
+// differs from the capability only where the label does (grooming→groomer, etc.). `capability` lets
+// the pane filter providers CLIENT-side for multi-select (a provider matches a selected category when
+// its capabilities include that category's capability).
 export const SERVICE_CATEGORIES = [
-  { key: "vet", labelKey: "discover.cap.vet" },
-  { key: "telehealth", labelKey: "discover.cap.telehealth" },
-  { key: "grooming", labelKey: "discover.cap.groomer" },
-  { key: "walking", labelKey: "discover.cap.walker" },
-  { key: "daycare", labelKey: "discover.cap.daycare" },
-  { key: "sitting", labelKey: "discover.cap.sitter" },
-  { key: "training", labelKey: "discover.cap.trainer" },
-  { key: "shop", labelKey: "discover.cap.shop" },
-  { key: "adoption", labelKey: "discover.cap.adoption" },
-  { key: "transport", labelKey: "discover.cap.transport" },
-  { key: "insurance", labelKey: "discover.cap.insurance" },
+  { key: "vet", labelKey: "discover.cap.vet", capability: "vet" },
+  { key: "telehealth", labelKey: "discover.cap.telehealth", capability: "telehealth" },
+  { key: "grooming", labelKey: "discover.cap.groomer", capability: "groomer" },
+  { key: "walking", labelKey: "discover.cap.walker", capability: "walker" },
+  { key: "daycare", labelKey: "discover.cap.daycare", capability: "daycare" },
+  { key: "sitting", labelKey: "discover.cap.sitter", capability: "sitter" },
+  { key: "training", labelKey: "discover.cap.trainer", capability: "trainer" },
+  { key: "shop", labelKey: "discover.cap.shop", capability: "shop" },
+  { key: "adoption", labelKey: "discover.cap.adoption", capability: "adoption" },
+  { key: "transport", labelKey: "discover.cap.transport", capability: "transport" },
+  { key: "insurance", labelKey: "discover.cap.insurance", capability: "insurance" },
 ];
 
 // Place categories, in chip display order. New i18n keys (discover.placeCat.*).

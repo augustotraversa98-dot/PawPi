@@ -1,11 +1,12 @@
 // Unified Services discovery (providers + pet-friendly PLACES) over /api/services/discover:
 //   • merged list of BOTH types; provider cards show capability chips, place cards a category chip;
-//   • category chips (unified taxonomy) route SERVER-side to the right source (mock is category-aware);
+//   • COMPACT FILTER BUTTONS (Category + Area) open pickers; selecting routes SERVER-side to the
+//     right source (mock is category-aware) and highlights the button;
+//   • "Search near me" requests geolocation and applies the Nearest sort;
 //   • client-side q search + sorts (rating/reviews/nearest) + open-now (providers only);
-//   • neighborhood "by area" filter passes neighborhood (places only; hidden for provider categories);
 //   • drill-in by type: place → /service/place, provider → storefront / legacy bridge;
-//   • P3 map: markers for BOTH types with coords, list⇄map toggle, pin↔card highlight, wide split,
-//     Android/web degrade; five states.
+//   • P3 map: SLIM overlay (toggle + filter bar), sheet defaults to the lowest snap, markers for
+//     BOTH types, pin↔card highlight, wide split, Android/web degrade; five states.
 // The discovery hook, router, expo-location, MapLocationView, the bottom sheet and i18n are mocked.
 // i18n resolves REAL en.json.
 
@@ -49,11 +50,26 @@ let mockWide = false;
 jest.mock("@/hooks/useIsWideScreen", () => ({
   useIsWideScreen: () => mockWide,
 }));
+let mockRegion; // region a test wants the map to report on the next "fire region" press
 jest.mock("@/components/Map/MapLocationView", () => {
   const { View, Text, TouchableOpacity } = require("react-native");
-  return ({ points = [], onMarkerPress, selectedIndex, testID }) => (
+  return ({ points = [], onMarkerPress, onRegionChange, selectedIndex, center, testID }) => (
     <View testID={testID}>
       <Text testID="map-selected-index">{String(selectedIndex)}</Text>
+      <Text testID="map-center">{center ? `${center.lat},${center.lng}` : "none"}</Text>
+      {/* Simulate a user pan settling on `mockRegion` (gesture) vs a programmatic move (no gesture). */}
+      <TouchableOpacity
+        testID="map-fire-region"
+        onPress={() => onRegionChange && onRegionChange(mockRegion, { isGesture: true })}
+      >
+        <Text>region</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        testID="map-fire-region-programmatic"
+        onPress={() => onRegionChange && onRegionChange(mockRegion, { isGesture: false })}
+      >
+        <Text>region-programmatic</Text>
+      </TouchableOpacity>
       {points.map((p, i) => (
         <TouchableOpacity
           key={p.id}
@@ -66,12 +82,23 @@ jest.mock("@/components/Map/MapLocationView", () => {
     </View>
   );
 });
+let mockGeocode; // (query) => { lat, lng, label } | null
+jest.mock("@/utils/geocoding", () => ({
+  geocodeLocation: (...a) => mockGeocode(...a),
+}));
+// Bottom sheet stub: render children plainly AND expose the default `index` so the test can assert
+// the sheet opens at the lower peek snap.
 jest.mock("@gorhom/bottom-sheet", () => {
   const React = require("react");
-  const { View } = require("react-native");
-  const BottomSheet = React.forwardRef(({ children }, ref) => {
+  const { View, Text } = require("react-native");
+  const BottomSheet = React.forwardRef(({ children, index }, ref) => {
     React.useImperativeHandle(ref, () => ({ snapToIndex: jest.fn() }));
-    return <View>{children}</View>;
+    return (
+      <View>
+        <Text testID="discover-sheet-index">{String(index)}</Text>
+        {children}
+      </View>
+    );
   });
   return {
     __esModule: true,
@@ -111,6 +138,19 @@ function setPlatform(os) {
   Object.defineProperty(RN.Platform, "OS", { configurable: true, get: () => os });
 }
 
+// Helpers to drive the compact filter pickers. Categories are MULTI-SELECT, so the picker stays open
+// on toggle and is dismissed via its backdrop.
+const openCatPicker = (scr) => fireEvent.press(scr.getByTestId("discover-filter-category"));
+const closeCatPicker = (scr) =>
+  fireEvent.press(scr.getByTestId("discover-category-picker-backdrop"));
+const toggleCat = (scr, key) => fireEvent.press(scr.getByTestId(`discover-catopt-${key}`));
+const pickOneCategory = (scr, key) => {
+  openCatPicker(scr);
+  toggleCat(scr, key);
+  closeCatPicker(scr);
+};
+const openAreaPicker = (scr) => fireEvent.press(scr.getByTestId("discover-filter-area"));
+
 beforeEach(() => {
   mockPush.mockReset();
   mockParams = {};
@@ -120,6 +160,8 @@ beforeEach(() => {
   setPlatform("ios");
   mockWide = false;
   mockResolve = categoryAware;
+  mockGeocode = jest.fn(async () => null); // default: no match; tests override
+  mockRegion = { latitude: 0, longitude: 0, latitudeDelta: 1, longitudeDelta: 1 };
 });
 
 afterEach(() => {
@@ -131,42 +173,267 @@ afterEach(() => {
 test("merged list renders BOTH types: provider (capability chip) + place (category chip)", async () => {
   const { getByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
-  // provider + place both present
-  expect(getByTestId("discover-card-1")).toBeTruthy();
   expect(getByTestId("discover-card-cafe-x")).toBeTruthy();
-  // provider shows its capability chip; place shows its category chip
   expect(getByTestId("discover-cap-1-vet")).toBeTruthy();
   expect(getByTestId("discover-placecat-cafe-x-cafe")).toBeTruthy();
 });
 
-// ─────────────────────────── category routing (server-side) ───────────────────────────
-test("provider category chip → providers only; place category chip → places only", async () => {
+// ─────────────────────────── compact filter buttons ───────────────────────────
+test("the filter bar shows two compact buttons, not the old long chip rows", async () => {
   const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
-
-  // Vet chip → the hook is asked for category 'vet' and only the provider shows.
-  fireEvent.press(getByTestId("discover-cat-vet"));
-  expect(lastOpts.category).toBe("vet");
-  expect(getByTestId("discover-card-1")).toBeTruthy();
-  expect(queryByTestId("discover-card-cafe-x")).toBeNull();
-
-  // Cafe chip → category 'cafe', only the place shows.
-  fireEvent.press(getByTestId("discover-cat-cafe"));
-  expect(lastOpts.category).toBe("cafe");
-  expect(getByTestId("discover-card-cafe-x")).toBeTruthy();
-  expect(queryByTestId("discover-card-1")).toBeNull();
+  expect(getByTestId("discover-filter-category")).toBeTruthy();
+  expect(getByTestId("discover-filter-area")).toBeTruthy();
+  // old chip testIDs are gone
+  expect(queryByTestId("discover-cat-vet")).toBeNull();
+  expect(queryByTestId("discover-area-Palermo")).toBeNull();
+  // default (All) → neither button highlighted
+  expect(getByTestId("discover-filter-category").props.accessibilityState.selected).toBe(false);
+  expect(getByTestId("discover-filter-area").props.accessibilityState.selected).toBe(false);
 });
 
-test("renders All + every provider + place category chip", async () => {
-  const { getByTestId } = render(<DiscoverScreen />);
-  await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
+test("Category button opens the picker; selecting filters the list + highlights the button", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+
+  // tapping opens the picker
+  fireEvent.press(scr.getByTestId("discover-filter-category"));
+  expect(scr.getByTestId("discover-category-picker")).toBeTruthy();
+
+  // toggle Vet → client-side union shows providers only; button highlighted + labelled
+  fireEvent.press(scr.getByTestId("discover-catopt-vet"));
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.queryByTestId("discover-card-cafe-x")).toBeNull();
+  const catBtn = scr.getByTestId("discover-filter-category");
+  expect(catBtn.props.accessibilityState.selected).toBe(true);
+  expect(catBtn.props.accessibilityLabel).toBe("Category: Vet");
+});
+
+test("category picker lists All + every Services + Places option", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-filter-category"));
   for (const key of [
     "all",
     "vet", "telehealth", "grooming", "walking", "daycare", "sitting", "training", "shop", "adoption", "transport", "insurance",
     "restaurant", "cafe", "bakery", "brewery", "bar", "park", "hotel", "market",
   ]) {
-    expect(getByTestId(`discover-cat-${key}`)).toBeTruthy();
+    expect(scr.getByTestId(`discover-catopt-${key}`)).toBeTruthy();
   }
+});
+
+test("place category option → places only", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  pickOneCategory(scr, "cafe");
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("discover-card-1")).toBeNull();
+});
+
+test("multi-select shows the UNION across types (list + map pins)", async () => {
+  // all four have coords so map-pin exclusion is meaningful
+  mockResolve = () =>
+    ok([
+      { type: "provider", id: 1, slug: "vet-co", name: "Vet Co", capabilities: ["vet"], lat: "-34.6", lng: "-58.4" },
+      { type: "provider", id: 2, slug: "shop-co", name: "Shop Co", capabilities: ["shop"], lat: "-34.6", lng: "-58.5" },
+      { type: "place", id: "cafe-x", name: "Cafe X", category: "cafe", lat: "-34.58", lng: "-58.42" },
+      { type: "place", id: "park-y", name: "Park Y", category: "park", lat: "-34.55", lng: "-58.45" },
+    ]);
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+
+  openCatPicker(scr);
+  toggleCat(scr, "vet");
+  toggleCat(scr, "cafe");
+  closeCatPicker(scr);
+
+  // union: vet provider + cafe place; shop provider + park place are excluded
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("discover-card-2")).toBeNull();
+  expect(scr.queryByTestId("discover-card-park-y")).toBeNull();
+  expect(scr.getByTestId("discover-filter-category").props.accessibilityLabel).toBe("Category: 2 selected");
+
+  // map pins reflect the same union
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  expect(scr.getByTestId("map-marker-1")).toBeTruthy();
+  expect(scr.getByTestId("map-marker-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("map-marker-2")).toBeNull();
+  expect(scr.queryByTestId("map-marker-park-y")).toBeNull();
+});
+
+test("picker groups collapse and expand (per-group selected count)", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  openCatPicker(scr);
+  // both groups expanded by default
+  expect(scr.getByTestId("discover-catopt-vet")).toBeTruthy();
+  expect(scr.getByTestId("discover-catopt-cafe")).toBeTruthy();
+
+  // select two Services → the Services group shows a "(2)" count
+  toggleCat(scr, "vet");
+  toggleCat(scr, "shop");
+  expect(scr.getByTestId("discover-catgroup-services-count").props.children).toBe("(2)");
+
+  // collapse Services → its options hide; Places stays expanded
+  fireEvent.press(scr.getByTestId("discover-catgroup-services"));
+  expect(scr.queryByTestId("discover-catopt-vet")).toBeNull();
+  expect(scr.getByTestId("discover-catopt-cafe")).toBeTruthy();
+
+  // expand again → options return
+  fireEvent.press(scr.getByTestId("discover-catgroup-services"));
+  expect(scr.getByTestId("discover-catopt-vet")).toBeTruthy();
+});
+
+test("Clear (✕ on the button) resets categories to All", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  openCatPicker(scr);
+  toggleCat(scr, "vet");
+  toggleCat(scr, "shop");
+  closeCatPicker(scr);
+  expect(scr.getByTestId("discover-filter-category").props.accessibilityLabel).toBe("Category: 2 selected");
+
+  fireEvent.press(scr.getByTestId("discover-filter-category-clear"));
+  const btn = scr.getByTestId("discover-filter-category");
+  expect(btn.props.accessibilityState.selected).toBe(false);
+  expect(btn.props.accessibilityLabel).toBe("Category: All");
+  // everything is back
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+});
+
+test("the picker's 'All' row also clears the selection", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  openCatPicker(scr);
+  toggleCat(scr, "vet");
+  fireEvent.press(scr.getByTestId("discover-catopt-all"));
+  closeCatPicker(scr);
+  expect(scr.getByTestId("discover-filter-category").props.accessibilityLabel).toBe("Category: All");
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+});
+
+test("a zero-result category selection shows no-results with a working Clear filters", async () => {
+  // the fixtures have no 'bakery', so selecting only bakery yields nothing
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  pickOneCategory(scr, "bakery");
+  expect(scr.getByTestId("discover-no-results")).toBeTruthy();
+  fireEvent.press(scr.getByTestId("discover-clear-filters"));
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+});
+
+// ─────────────────────────── area picker ───────────────────────────
+test("Area button opens the picker; selecting a neighborhood filters + highlights; hidden for provider categories", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy());
+
+  openAreaPicker(scr);
+  expect(scr.getByTestId("discover-area-picker")).toBeTruthy();
+  expect(scr.getByTestId("discover-areaopt-all")).toBeTruthy();
+  expect(scr.getByTestId("discover-areaopt-near")).toBeTruthy();
+  expect(scr.getByTestId("discover-areaopt-Palermo")).toBeTruthy();
+
+  fireEvent.press(scr.getByTestId("discover-areaopt-Palermo"));
+  expect(lastOpts.neighborhood).toBe("Palermo");
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("discover-card-park-y")).toBeNull();
+  const areaBtn = scr.getByTestId("discover-filter-area");
+  expect(areaBtn.props.accessibilityState.selected).toBe(true);
+  expect(areaBtn.props.accessibilityLabel).toBe("Area: Palermo");
+
+  // Select ONLY a provider category → places out of scope → area picker drops neighborhoods and the
+  // Area button falls back to "All areas".
+  pickOneCategory(scr, "vet");
+  expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: All areas");
+  openAreaPicker(scr);
+  expect(scr.queryByTestId("discover-areaopt-Palermo")).toBeNull();
+  expect(scr.getByTestId("discover-areaopt-all")).toBeTruthy();
+});
+
+test("area picker 'Search near me' requests geolocation and applies the Nearest sort", async () => {
+  mockReq.mockResolvedValue({ status: "granted" });
+  mockPos.mockResolvedValue({ coords: { latitude: -34.6, longitude: -58.4 } });
+  mockResolve = () =>
+    ok([
+      { type: "provider", id: 1, slug: "far", name: "Far One", capabilities: ["vet"], distance_km: 9.2 },
+      { type: "place", id: "near", name: "Near One", category: "cafe", distance_km: 0.8 },
+    ]);
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByText("Far One")).toBeTruthy());
+
+  openAreaPicker(scr);
+  fireEvent.press(scr.getByTestId("discover-areaopt-near"));
+  await waitFor(() => expect(mockReq).toHaveBeenCalled());
+
+  const { Text } = require("react-native");
+  const order = () =>
+    scr
+      .UNSAFE_getAllByType(Text)
+      .map((n) => (typeof n.props.children === "string" ? n.props.children : null))
+      .filter((s) => s === "Far One" || s === "Near One");
+  await waitFor(() => expect(order()[0]).toBe("Near One")); // nearest first
+  // Area button reflects the near-me selection.
+  expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: Search near me");
+  expect(scr.getByTestId("discover-filter-area").props.accessibilityState.selected).toBe(true);
+});
+
+test("Area picker: searching a location geocodes, biases geo + radius, recenters the map, labels the button", async () => {
+  mockGeocode = jest.fn(async () => ({ lat: -34.46, lng: -58.91, label: "Pilar" }));
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+
+  openAreaPicker(scr);
+  fireEvent.changeText(scr.getByTestId("discover-location-input"), "Pilar, Buenos Aires");
+  fireEvent(scr.getByTestId("discover-location-input"), "submitEditing");
+
+  await waitFor(() => expect(mockGeocode).toHaveBeenCalledWith("Pilar, Buenos Aires"));
+  // geo applied to the discovery query (lat/lng + radius-bounded)
+  await waitFor(() => expect(lastOpts.lat).toBe(-34.46));
+  expect(lastOpts.lng).toBe(-58.91);
+  expect(lastOpts.radius).toBe(25);
+  // the Area button is labelled with the chosen location + highlighted
+  const areaBtn = scr.getByTestId("discover-filter-area");
+  expect(areaBtn.props.accessibilityLabel).toBe("Area: Pilar");
+  expect(areaBtn.props.accessibilityState.selected).toBe(true);
+  // the map recenters on the searched location
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  expect(scr.getByTestId("map-center").props.children).toBe("-34.46,-58.91");
+});
+
+test("Area picker: a location with no match shows 'location not found' and never fabricates coords", async () => {
+  mockGeocode = jest.fn(async () => null);
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+
+  openAreaPicker(scr);
+  fireEvent.changeText(scr.getByTestId("discover-location-input"), "asdfghjkl");
+  fireEvent(scr.getByTestId("discover-location-input"), "submitEditing");
+
+  await waitFor(() => expect(scr.getByTestId("discover-location-notfound")).toBeTruthy());
+  // picker stays open; no location applied; no geo radius
+  expect(scr.getByTestId("discover-area-picker")).toBeTruthy();
+  expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: All areas");
+  expect(lastOpts.radius).toBeUndefined();
+});
+
+test("Area picker: choosing All areas clears a searched location", async () => {
+  mockGeocode = jest.fn(async () => ({ lat: -34.46, lng: -58.91, label: "Pilar" }));
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+
+  openAreaPicker(scr);
+  fireEvent.changeText(scr.getByTestId("discover-location-input"), "Pilar");
+  fireEvent(scr.getByTestId("discover-location-input"), "submitEditing");
+  await waitFor(() =>
+    expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: Pilar"),
+  );
+
+  openAreaPicker(scr);
+  fireEvent.press(scr.getByTestId("discover-areaopt-all"));
+  expect(scr.getByTestId("discover-filter-area").props.accessibilityLabel).toBe("Area: All areas");
 });
 
 // ─────────────────────────── q search (client-side) ───────────────────────────
@@ -198,67 +465,126 @@ test("adoption-only provider still routes to the legacy adoption screen (bridge 
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/adoption", params: { providerId: 7 } });
 });
 
-// ─────────────────────────── neighborhood filter ───────────────────────────
-test("neighborhood chips filter places (passed to API); hidden for provider categories", async () => {
-  const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
-  await waitFor(() => expect(getByTestId("discover-card-cafe-x")).toBeTruthy());
-
-  // Area chips appear for the 'all' view (places carry neighborhoods).
-  expect(getByTestId("discover-area-Palermo")).toBeTruthy();
-  fireEvent.press(getByTestId("discover-area-Palermo"));
-  expect(lastOpts.neighborhood).toBe("Palermo");
-  // Palermo cafe stays; the Belgrano park is filtered out by the (mocked) server.
-  expect(getByTestId("discover-card-cafe-x")).toBeTruthy();
-  expect(queryByTestId("discover-card-park-y")).toBeNull();
-
-  // Switching to a provider category hides the area row (neighborhoods don't apply to providers).
-  fireEvent.press(getByTestId("discover-cat-vet"));
-  expect(queryByTestId("discover-area-Palermo")).toBeNull();
-});
-
 // ─────────────────────────── map includes places ───────────────────────────
 test("map markers include BOTH providers and places that have coords", async () => {
   const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-view-toggle")).toBeTruthy());
   fireEvent.press(getByTestId("discover-view-map"));
-  expect(getByTestId("map-marker-1")).toBeTruthy(); // provider pin
-  expect(getByTestId("map-marker-cafe-x")).toBeTruthy(); // place pin
-  expect(queryByTestId("map-marker-park-y")).toBeNull(); // no coords → no pin
-  expect(getByTestId("discover-offmap-note")).toBeTruthy(); // some items off the map
+  expect(getByTestId("map-marker-1")).toBeTruthy();
+  expect(getByTestId("map-marker-cafe-x")).toBeTruthy();
+  expect(queryByTestId("map-marker-park-y")).toBeNull();
+  expect(getByTestId("discover-offmap-note")).toBeTruthy();
+});
+
+// ─────────────────────────── map overlay + sheet snap ───────────────────────────
+test("map overlay is the slim bar (toggle + filter buttons + note), not the chip rows", async () => {
+  const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-view-toggle")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-view-map"));
+  expect(getByTestId("discover-map-overlay")).toBeTruthy();
+  expect(getByTestId("discover-filter-category")).toBeTruthy();
+  expect(getByTestId("discover-filter-area")).toBeTruthy();
+  expect(queryByTestId("discover-cat-vet")).toBeNull(); // old chip rows gone
+});
+
+test("map bottom sheet defaults to the lowest peek snap (index 0)", async () => {
+  const { getByTestId } = render(<DiscoverScreen />);
+  await waitFor(() => expect(getByTestId("discover-view-toggle")).toBeTruthy());
+  fireEvent.press(getByTestId("discover-view-map"));
+  expect(getByTestId("discover-sheet-index").props.children).toBe("0");
+});
+
+test("pins reflect the filtered set: a category filter removes the other type's pin", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  // both located items have a pin
+  expect(scr.getByTestId("map-marker-1")).toBeTruthy(); // provider Vet Co
+  expect(scr.getByTestId("map-marker-cafe-x")).toBeTruthy(); // place Cafe X
+  // filter to cafe → only the place pin remains
+  pickOneCategory(scr, "cafe");
+  expect(scr.getByTestId("map-marker-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("map-marker-1")).toBeNull();
+});
+
+test("'Search this area' narrows the list + pins to the current viewport", async () => {
+  // A tight viewport around Vet Co (-34.6,-58.4) that excludes Cafe X (-34.58,-58.42).
+  mockRegion = { latitude: -34.6, longitude: -58.4, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+
+  // both located items visible + no "Search this area" until the user moves the map
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
+  expect(scr.queryByTestId("discover-search-area")).toBeNull();
+
+  // pan settles → button appears
+  fireEvent.press(scr.getByTestId("map-fire-region"));
+  expect(scr.getByTestId("discover-search-area")).toBeTruthy();
+
+  // apply → list + pins narrow to the viewport (Vet Co in, Cafe X out)
+  fireEvent.press(scr.getByTestId("discover-search-area"));
+  expect(scr.getByTestId("discover-card-1")).toBeTruthy();
+  expect(scr.queryByTestId("discover-card-cafe-x")).toBeNull();
+  expect(scr.getByTestId("map-marker-1")).toBeTruthy();
+  expect(scr.queryByTestId("map-marker-cafe-x")).toBeNull();
+  // applying dismisses the button until the next move
+  expect(scr.queryByTestId("discover-search-area")).toBeNull();
+});
+
+test("a programmatic region change (no gesture) does NOT show 'Search this area'", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  // a non-gesture region settle (initial mount / programmatic recenter) is ignored
+  fireEvent.press(scr.getByTestId("map-fire-region-programmatic"));
+  expect(scr.queryByTestId("discover-search-area")).toBeNull();
+  // a real user gesture does show it
+  fireEvent.press(scr.getByTestId("map-fire-region"));
+  expect(scr.getByTestId("discover-search-area")).toBeTruthy();
+});
+
+test("tapping a pin highlights the card and shows a 'See more' that drills into the detail (place)", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  expect(scr.queryByTestId("discover-map-card")).toBeNull();
+
+  fireEvent.press(scr.getByTestId("map-marker-cafe-x"));
+  expect(scr.getByTestId("discover-card-cafe-x-selected")).toBeTruthy(); // pin↔card highlight kept
+  expect(scr.getByTestId("discover-map-card")).toBeTruthy();
+  expect(scr.getByTestId("discover-map-card-name").props.children).toBe("Cafe X");
+  expect(mockPush).not.toHaveBeenCalled(); // pin tap alone doesn't navigate
+
+  fireEvent.press(scr.getByTestId("discover-map-seemore"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/place", params: { id: "cafe-x" } });
+});
+
+test("'See more' on a provider pin routes to the storefront (same drill-in as the list)", async () => {
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  fireEvent.press(scr.getByTestId("discover-view-map"));
+  fireEvent.press(scr.getByTestId("map-marker-1"));
+  expect(scr.getByTestId("discover-map-card-name").props.children).toBe("Vet Co");
+  fireEvent.press(scr.getByTestId("discover-map-seemore"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/service/provider", params: { slug: "vet-co" } });
 });
 
 // ─────────────────────────── sorts (mixed types) ───────────────────────────
 test("Top rated / Most reviewed reorder the merged list; Nearest only with location", async () => {
   const { getByText, queryByText, UNSAFE_getAllByType } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByText("Vet Co")).toBeTruthy());
-  expect(queryByText("Nearest")).toBeNull(); // no location
+  expect(queryByText("Nearest")).toBeNull();
   const { Text } = require("react-native");
   const order = () =>
     UNSAFE_getAllByType(Text)
       .map((n) => (typeof n.props.children === "string" ? n.props.children : null))
       .filter((s) => s === "Vet Co" || s === "Cafe X");
   fireEvent.press(getByText("Top rated"));
-  expect(order()[0]).toBe("Vet Co"); // 4.9 > 4.0
+  expect(order()[0]).toBe("Vet Co");
   fireEvent.press(getByText("Most reviewed"));
-  expect(order()[0]).toBe("Cafe X"); // 3 > 2
-});
-
-test("Nearest sort orders by distance_km when location is granted", async () => {
-  mockReq.mockResolvedValue({ status: "granted" });
-  mockPos.mockResolvedValue({ coords: { latitude: -34.6, longitude: -58.4 } });
-  mockResolve = () =>
-    ok([
-      { type: "provider", id: 1, slug: "far", name: "Far One", capabilities: ["vet"], distance_km: 9.2 },
-      { type: "place", id: "near", name: "Near One", category: "cafe", distance_km: 0.8 },
-    ]);
-  const { getByText, UNSAFE_getAllByType } = render(<DiscoverScreen />);
-  await waitFor(() => expect(getByText("Nearest")).toBeTruthy());
-  fireEvent.press(getByText("Nearest"));
-  const { Text } = require("react-native");
-  const names = UNSAFE_getAllByType(Text)
-    .map((n) => (typeof n.props.children === "string" ? n.props.children : null))
-    .filter((s) => s === "Far One" || s === "Near One");
-  expect(names[0]).toBe("Near One");
+  expect(order()[0]).toBe("Cafe X");
 });
 
 // ─────────────────────────── open-now (providers only) ───────────────────────────
@@ -274,10 +600,10 @@ test("open-now hides a proven-closed PROVIDER, keeps unknown providers AND all p
   const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
   fireEvent.press(getByTestId("discover-opennow"));
-  expect(getByTestId("discover-card-1")).toBeTruthy(); // open
-  expect(queryByTestId("discover-card-2")).toBeNull(); // proven closed → hidden
-  expect(getByTestId("discover-card-3")).toBeTruthy(); // unknown hours → kept
-  expect(getByTestId("discover-card-cafe-z")).toBeTruthy(); // place → always kept
+  expect(getByTestId("discover-card-1")).toBeTruthy();
+  expect(queryByTestId("discover-card-2")).toBeNull();
+  expect(getByTestId("discover-card-3")).toBeTruthy();
+  expect(getByTestId("discover-card-cafe-z")).toBeTruthy();
   jest.useRealTimers();
 });
 
@@ -325,7 +651,7 @@ test("phone default view is the LIST; map mounts only after toggling", async () 
 });
 
 test("marker press highlights that card (no navigation); card select highlights its pin", async () => {
-  const { getByTestId, queryByTestId } = render(<DiscoverScreen />);
+  const { getByTestId } = render(<DiscoverScreen />);
   await waitFor(() => expect(getByTestId("discover-view-toggle")).toBeTruthy());
   fireEvent.press(getByTestId("discover-view-map"));
 
@@ -334,8 +660,8 @@ test("marker press highlights that card (no navigation); card select highlights 
   expect(mockPush).not.toHaveBeenCalled();
 
   fireEvent.press(getByTestId("discover-card-1"));
-  expect(getByTestId("map-selected-index").props.children).toBe("0"); // index of provider id 1
-  expect(mockPush).toHaveBeenCalled(); // card tap navigates
+  expect(getByTestId("map-selected-index").props.children).toBe("0");
+  expect(mockPush).toHaveBeenCalled();
 });
 
 test("wide screens render a side-by-side split with list + map (iOS)", async () => {
@@ -345,6 +671,8 @@ test("wide screens render a side-by-side split with list + map (iOS)", async () 
   expect(getByTestId("discover-card-1")).toBeTruthy();
   expect(getByTestId("discover-map")).toBeTruthy();
   expect(queryByTestId("discover-view-toggle")).toBeNull();
+  // the filter bar still renders in the split
+  expect(getByTestId("discover-filter-category")).toBeTruthy();
 });
 
 test("Android degrades: no map toggle, list-only, no crash", async () => {
@@ -365,33 +693,33 @@ test("web wide split shows the map placeholder (no engine), never a blank map", 
 });
 
 // ─────────────────────────── deep-link category param ───────────────────────────
-test("initialCategory aliases resolve (veterinary→vet) and place categories pass through", async () => {
+test("initialCategory seeds the selection (alias veterinary→vet); place category too", async () => {
   mockParams = { category: "veterinary" };
   let scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
-  expect(lastOpts.category).toBe("vet"); // alias resolved
+  // seeded to the vet category → client-side filter shows providers only, button pre-selected
+  expect(scr.queryByTestId("discover-card-cafe-x")).toBeNull();
+  expect(scr.getByTestId("discover-filter-category").props.accessibilityLabel).toBe("Category: Vet");
   scr.unmount();
 
   mockParams = { category: "cafe" };
   scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy());
-  expect(lastOpts.category).toBe("cafe"); // place category passes through
+  expect(scr.queryByTestId("discover-card-1")).toBeNull();
 });
 
 // ─────────────────────────── showHeader (tab shell) ───────────────────────────
-test("showHeader={false} suppresses the internal header but keeps chips + search", async () => {
+test("showHeader={false} suppresses the internal header but keeps the filter bar + search", async () => {
   const { getByTestId, getByPlaceholderText, queryByText } = render(
     <ServicesDiscovery variant="landing" showHeader={false} />,
   );
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
   expect(queryByText("Find trusted pet care near you")).toBeNull();
-  expect(getByTestId("discover-cat-all")).toBeTruthy();
+  expect(getByTestId("discover-filter-category")).toBeTruthy();
   expect(getByPlaceholderText("Search services & places")).toBeTruthy();
 });
 
 test("showHeader defaults to true for the landing variant (header shown)", async () => {
-  // The header carries the unique subtitle (the "Services" title now also matches the chip
-  // group label, so assert the subtitle instead).
   const { getByText } = render(<ServicesDiscovery variant="landing" />);
   await waitFor(() =>
     expect(getByText("Find trusted pet care near you")).toBeTruthy(),
