@@ -53,6 +53,7 @@ import {
 // See the PR description for the filter/map overhaul overview (compact pickers, multi-select,
 // location search, live viewport filtering, pin select-to-top).
 // UNIFIED Services discovery (Services Hub P2 + P3, merged over providers + pet-friendly PLACES).
+// Device-QA refinements: compact category pills, location-only Area picker, pin select-to-top, live viewport list.
 // ONE search / filter / list / map over the unified /api/services/discover feed:
 //   • mobile (narrow): full-screen map + a draggable bottom-sheet list + a list⇄map toggle,
 //     with a SLIM filter bar (Category + Area buttons) pinned over the map;

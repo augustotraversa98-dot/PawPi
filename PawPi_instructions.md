@@ -949,3 +949,7 @@ post-login redirect points at an unreachable host ("site can't be reached" / iOS
 self-heals (comments out any active AUTH_URL line on startup). Do NOT re-add AUTH_URL for local/device dev.
 
 Follow these instructions when working in this project.
+
+## CC prompts — combine CI-green + merge into ONE prompt
+
+When handing Tats a prompt to push a branch / open a PR, ALWAYS combine getting **CI green** AND the **merge** into a single prompt (do not split them into two). Logic: if CI is green it is good to merge; worst case a later enhancement is needed, which is always true anyway. The combined prompt should: push → open PR → wait for CI (retrigger with a minimal real commit if Actions does not schedule) → IF all green, merge with a merge commit (repo convention) + delete the branch + confirm the Railway deploy healthy; IF any job is red, STOP and report the failure (do not merge). Still state new-vs-same CC chat.
