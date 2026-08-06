@@ -173,6 +173,13 @@ test("a telehealth upcoming booking routes to the consult screen", async () => {
   expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
 });
 
+test("Saved places doorway routes to the favorites list (/service/places)", async () => {
+  const { getByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-saved-places")).toBeTruthy());
+  fireEvent.press(getByTestId("activity-saved-places"));
+  expect(mockPush).toHaveBeenCalledWith("/service/places");
+});
+
 // ── new Shopping section ──────────────────────────────────────────────────────
 test("Shopping: My orders routes to /service/shop and counts orders", async () => {
   mockOrders = q([{ id: 1 }, { id: 2 }, { id: 3 }]);

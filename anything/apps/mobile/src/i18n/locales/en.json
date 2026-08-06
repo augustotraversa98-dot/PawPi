@@ -148,7 +148,49 @@
     "noSaved": "No saved places yet.",
     "openNow": "Open now",
     "closed": "Closed",
-    "directions": "Directions"
+    "directions": "Directions",
+    "savedTitle": "Saved places",
+    "remove": "Remove"
+  },
+  "placeReviews": {
+    "title": "Place",
+    "notFound": "Place not found",
+    "sectionTitle": "Pet reviews",
+    "mostOwnersSay": "Most owners say:",
+    "empty": "No pet reviews yet — be the first.",
+    "rateCta": "Rate this place",
+    "editCta": "Edit your review",
+    "save": "Save",
+    "saved": "Saved",
+    "directions": "Directions",
+    "anonReviewer": "Pet parent",
+    "modalTitle": "Rate this place",
+    "editTitle": "Edit your review",
+    "overallLabel": "Overall rating",
+    "welcomeLabel": "How pet-welcoming is it?",
+    "amenitiesLabel": "Pet amenities",
+    "commentPlaceholder": "Share a few words (optional)",
+    "submit": "Submit review",
+    "submitFailedTitle": "Couldn't submit",
+    "submitFailedBody": "Please try again.",
+    "welcome": {
+      "royalty": "Treated like royalty",
+      "very_welcoming": "Very welcoming",
+      "allowed": "Pets allowed",
+      "patio_only": "Patio only",
+      "not_for_pets": "Not for pets"
+    },
+    "amenity": {
+      "water_bowls": "Water bowls",
+      "treats": "Treats",
+      "pet_menu": "Pet menu",
+      "indoor_allowed": "Indoor allowed",
+      "outdoor_patio": "Outdoor patio",
+      "off_leash_area": "Off-leash area",
+      "poop_bags": "Poop bags",
+      "shade_ac": "Shade / AC",
+      "size_or_breed_limits": "Size or breed limits"
+    }
   },
   "events": {
     "title": "Events & meetups",
@@ -242,10 +284,25 @@
     "emptyBody": "Trusted pet businesses are joining PawPi. Check back soon.",
     "noResultsTitle": "No matches",
     "noResultsBody": "No providers match your search or filters.",
+    "searchUnifiedPlaceholder": "Search services & places",
+    "groupServices": "Services",
+    "groupPlaces": "Places",
+    "byArea": "Area",
+    "allAreas": "All areas",
     "cat": {
       "all": "All",
       "veterinary": "Veterinary",
       "shops": "Shops"
+    },
+    "placeCat": {
+      "restaurant": "Restaurants",
+      "cafe": "Cafés",
+      "bakery": "Bakeries",
+      "brewery": "Breweries",
+      "bar": "Bars",
+      "park": "Parks",
+      "hotel": "Hotels",
+      "market": "Markets"
     },
     "cap": {
       "vet": "Vet",
@@ -278,6 +335,8 @@
     "active": "{{count}} active",
     "emptyDaycare": "No active stays",
     "emptySitting": "No active visits",
+    "savedPlaces": "Saved places",
+    "savedPlacesSub": "Your pet-friendly favorites",
     "shopping": "Shopping",
     "orders": "My orders",
     "orderCount": "{{count}} orders",

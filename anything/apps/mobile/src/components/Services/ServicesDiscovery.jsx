@@ -16,8 +16,8 @@ import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   ArrowLeft,
   Store,
-  ChevronRight,
   MapPin,
+  ChevronRight,
   Navigation,
   Map as MapIcon,
   List as ListIcon,
@@ -27,7 +27,7 @@ import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import MapLocationView from "@/components/Map/MapLocationView";
-import { useDiscoverProviders } from "@/hooks/useProviders";
+import { useServicesDiscover } from "@/hooks/useServicesDiscover";
 import { useIsWideScreen } from "@/hooks/useIsWideScreen";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
@@ -35,76 +35,48 @@ import ProviderListControls, {
   PROVIDER_SORTS,
 } from "@/components/Providers/ProviderListControls";
 import { deriveOpenNow } from "@/utils/providerHours";
+import {
+  SERVICE_CATEGORIES,
+  PLACE_CATEGORIES,
+  PROVIDER_CATEGORY_KEYS,
+  PLACE_CATEGORY_KEYS,
+  resolveInitialCategory,
+} from "@/constants/servicesCategories";
 
-// Unified Services discovery (Services Hub P2 + P3). ONE merged, deduped list of PUBLISHED
-// providers across capabilities, now with a MAP:
+// UNIFIED Services discovery (Services Hub P2 + P3, now merged over providers + pet-friendly PLACES).
+// ONE search / filter / list / map over the unified /api/services/discover feed:
 //   • mobile (narrow): full-screen map + a draggable bottom-sheet list + a list⇄map toggle,
 //     with the category chips pinned over the map;
 //   • wide screens (web / iPad): a true side-by-side split (list left, map right);
 //   • two-way pin↔card highlight.
-// Category / search / sort / open-now (P2) keep working in every mode. Pet-friendly places
-// are still deferred (self-sourced, later); the storefront is P4.
 //
-// This body backs BOTH the Services TAB LANDING (variant "landing" — a tab root, no back
-// arrow) and the pushed /service/discover screen (variant "screen" — with a back arrow).
+// Category (unified taxonomy) + neighborhood are SERVER-side filters (passed to the API); search (q),
+// the sorts (rating / reviews / nearest) and open-now stay CLIENT-side over the fetched items so
+// type-ahead + service-type matching keep working. open-now applies to PROVIDERS only — places have
+// no hours, so they are always included.
 //
-// MAP ENGINE: iOS uses Apple Maps (react-native-maps PROVIDER_DEFAULT — free, no key).
-// Android has no Google Maps key configured and web maps aren't wired, so the map DEGRADES
-// to a clean "coming soon" placeholder there (never a blank/gray map or a crash) and the
-// narrow list⇄map toggle is hidden — the list is always fully usable. See DiscoverMap.
-
-// One chip per service type: the "all" chip shows everything, each other chip filters
-// provider.capabilities to that service. labelKey reuses the existing discover.cap.* /
-// discover.cat.all catalog (no new strings). categoryMatches drives BOTH the list and the
-// map markers, so a chip filters the pins and the cards together.
-const CATEGORIES = [
-  { key: "all", capabilities: null, labelKey: "discover.cat.all" },
-  { key: "vet", capabilities: ["vet"], labelKey: "discover.cap.vet" },
-  { key: "telehealth", capabilities: ["telehealth"], labelKey: "discover.cap.telehealth" },
-  { key: "groomer", capabilities: ["groomer"], labelKey: "discover.cap.groomer" },
-  { key: "walker", capabilities: ["walker"], labelKey: "discover.cap.walker" },
-  { key: "daycare", capabilities: ["daycare"], labelKey: "discover.cap.daycare" },
-  { key: "sitter", capabilities: ["sitter"], labelKey: "discover.cap.sitter" },
-  { key: "trainer", capabilities: ["trainer"], labelKey: "discover.cap.trainer" },
-  { key: "shop", capabilities: ["shop", "pharmacy"], labelKey: "discover.cap.shop" },
-  { key: "adoption", capabilities: ["adoption"], labelKey: "discover.cap.adoption" },
-  { key: "transport", capabilities: ["transport"], labelKey: "discover.cap.transport" },
-  { key: "insurance", capabilities: ["insurance"], labelKey: "discover.cap.insurance" },
-];
-
-// Backward-compat for the old grouped chip keys still used in deep links (e.g. the retired
-// grid pushed ?category=veterinary / ?category=shops). Resolve → the closest single-service
-// chip; anything unrecognized falls back to "all".
-const CATEGORY_ALIASES = { veterinary: "vet", shops: "shop" };
-
-function resolveInitialCategory(raw) {
-  if (typeof raw === "string") {
-    if (CATEGORIES.some((c) => c.key === raw)) return raw;
-    if (CATEGORY_ALIASES[raw]) return CATEGORY_ALIASES[raw];
-  }
-  return "all";
-}
-
-function categoryMatches(provider, category) {
-  const def = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
-  if (!def.capabilities) return true; // "all"
-  const caps = Array.isArray(provider?.capabilities) ? provider.capabilities : [];
-  return caps.some((c) => def.capabilities.includes(c));
-}
+// This body backs BOTH the Services TAB LANDING (variant "landing" — a tab root, no back arrow) and
+// the pushed /service/discover screen (variant "screen" — with a back arrow).
+//
+// MAP ENGINE: iOS uses Apple Maps (react-native-maps PROVIDER_DEFAULT — free, no key). Android has no
+// Google Maps key and web maps aren't wired, so the map DEGRADES to a clean "coming soon" placeholder
+// there (never a blank/gray map or a crash) and the narrow list⇄map toggle is hidden. See DiscoverMap.
 
 function formatKm(km) {
   if (km == null) return null;
-  return km < 10 ? km.toFixed(1) : String(Math.round(km));
+  const n = Number(km);
+  if (!Number.isFinite(n)) return null;
+  return n < 10 ? n.toFixed(1) : String(Math.round(n));
 }
 
-// Coords come back from the P1 projection as numeric(9,6) — porsager surfaces them as
-// strings, so coerce and validate before mapping. A provider without a location has null.
-function hasCoords(p) {
-  const lat = Number(p?.lat);
-  const lng = Number(p?.lng);
+// Coords come back as numeric — porsager surfaces them as strings, so coerce and validate before
+// mapping. An item without a location has null lat/lng.
+function hasCoords(it) {
+  const lat = Number(it?.lat);
+  const lng = Number(it?.lng);
   return (
-    p?.lat != null &&
-    p?.lng != null &&
+    it?.lat != null &&
+    it?.lng != null &&
     Number.isFinite(lat) &&
     Number.isFinite(lng) &&
     Math.abs(lat) <= 90 &&
@@ -112,14 +84,13 @@ function hasCoords(p) {
   );
 }
 
-// Only iOS has a working, keyless map engine today (Apple Maps). Android has no Google
-// Maps key and web maps aren't wired → placeholder. A function (not a module const) so the
-// platform is read at render time.
+// Only iOS has a working, keyless map engine today (Apple Maps). Android has no Google Maps key and
+// web maps aren't wired → placeholder. A function (not a module const) so the platform is read at
+// render time.
 const isMapEngineOk = () => Platform.OS === "ios";
 
-// Interim routing bridge (storefront parity for these is deferred to P6). The storefront
-// (/service/provider) fully serves bookable + shop providers today, so it WINS for any
-// provider that has one of these — including mixed providers.
+// Provider routing bridge (UNCHANGED from the provider-only pane). The storefront (/service/provider)
+// serves bookable + shop providers and WINS for any provider that has one (incl. mixed providers).
 const STOREFRONT_CAPS = [
   "vet",
   "telehealth",
@@ -131,8 +102,7 @@ const STOREFRONT_CAPS = [
   "shop",
   "pharmacy",
 ];
-// Types the storefront can't serve yet open their existing, working legacy screen instead
-// of dead-ending. Adoption's screen reads a providerId; insurance/transport take no param.
+// Types the storefront can't serve yet open their existing legacy screen instead of dead-ending.
 const LEGACY_BRIDGE = {
   adoption: "/service/adoption",
   insurance: "/service/insurance",
@@ -154,6 +124,7 @@ export default function ServicesDiscovery({
   const [category, setCategory] = useState(() =>
     resolveInitialCategory(initialCategory),
   );
+  const [neighborhood, setNeighborhood] = useState(null);
   const [openNow, setOpenNow] = useState(false);
   const [coord, setCoord] = useState(null);
   const [denied, setDenied] = useState(false);
@@ -187,28 +158,38 @@ export default function ServicesDiscovery({
     };
   }, []);
 
-  const { data: providers, isLoading, isError, refetch } = useDiscoverProviders(
-    coord ? { lat: coord.lat, lng: coord.lng } : {},
-  );
+  // Category + neighborhood are SERVER-side (passed to the API); the returned items are already
+  // scoped to the right source(s). lat/lng attach distance_km + nearest-first ordering.
+  const { data: items, isLoading, isError, refetch } = useServicesDiscover({
+    category,
+    neighborhood,
+    ...(coord ? { lat: coord.lat, lng: coord.lng } : {}),
+  });
 
-  const raw = useMemo(() => providers ?? [], [providers]);
+  const raw = useMemo(() => items ?? [], [items]);
 
+  // open-now (client-side) hides only providers PROVEN closed; places (no hours) always stay.
   const preFiltered = useMemo(() => {
-    let list = raw.filter((p) => categoryMatches(p, category));
-    if (openNow) list = list.filter((p) => deriveOpenNow(p?.hours_json) !== false);
-    return list;
-  }, [raw, category, openNow]);
+    if (!openNow) return raw;
+    return raw.filter(
+      (it) => it.type === "place" || deriveOpenNow(it?.hours_json) !== false,
+    );
+  }, [raw, openNow]);
 
-  // Broaden search to the SERVICE TYPE too: append each capability slug plus its localized
-  // label so typing "vet" / "veterinaria" or "grooming" / "peluquería" matches a provider
-  // whose name/bio doesn't contain the word. Name/bio/provider_type matching is unchanged.
+  // Broaden search to the SERVICE TYPE / PLACE CATEGORY too: append each provider capability slug +
+  // its localized label, or the place category slug + its label, so typing "vet"/"veterinaria" or
+  // "cafe"/"café" matches even when the name doesn't contain the word.
   const extraText = useCallback(
-    (p) => [
-      ...(Array.isArray(p.capabilities) ? p.capabilities : []),
-      ...(Array.isArray(p.capabilities)
-        ? p.capabilities.map((c) => t(`discover.cap.${c}`))
-        : []),
-    ],
+    (it) => {
+      if (it.type === "place") {
+        return [
+          it.category,
+          it.category ? t(`discover.placeCat.${it.category}`) : null,
+        ].filter(Boolean);
+      }
+      const caps = Array.isArray(it.capabilities) ? it.capabilities : [];
+      return [...caps, ...caps.map((c) => t(`discover.cap.${c}`))];
+    },
     [t],
   );
 
@@ -225,20 +206,36 @@ export default function ServicesDiscovery({
     [coord],
   );
 
-  // Map data: only the filtered providers that actually have a location.
+  // Neighborhood options accumulate across loads (a server-side neighborhood filter shrinks the
+  // returned set, so we remember every place-neighborhood ever seen to keep the selector stable +
+  // clearable). Only shown for "all" or a place category — neighborhoods don't apply to providers.
+  const seenNeighborhoods = useRef(new Set());
+  const neighborhoods = useMemo(() => {
+    for (const it of raw) {
+      if (it.type === "place" && it.neighborhood) {
+        seenNeighborhoods.current.add(it.neighborhood);
+      }
+    }
+    return Array.from(seenNeighborhoods.current).sort((a, b) => a.localeCompare(b));
+  }, [raw]);
+  const showNeighborhoods =
+    (category === "all" || PLACE_CATEGORY_KEYS.has(category)) &&
+    neighborhoods.length > 0;
+
+  // Map data: only the filtered items that actually have a location (providers OR places).
   const withCoords = useMemo(() => filtered.filter(hasCoords), [filtered]);
   const markers = useMemo(
     () =>
-      withCoords.map((p) => ({
-        lat: Number(p.lat),
-        lng: Number(p.lng),
-        id: p.id,
-        title: p.name,
+      withCoords.map((it) => ({
+        lat: Number(it.lat),
+        lng: Number(it.lng),
+        id: it.id,
+        title: it.name,
       })),
     [withCoords],
   );
   const selectedIndex = useMemo(
-    () => withCoords.findIndex((p) => p.id === selectedId),
+    () => withCoords.findIndex((it) => it.id === selectedId),
     [withCoords, selectedId],
   );
 
@@ -246,26 +243,37 @@ export default function ServicesDiscovery({
   const showToggle = !isWide && mapEngineOk;
   const layout = isWide ? "split" : mode === "map" && mapEngineOk ? "map" : "list";
 
-  const hasProviders = raw.length > 0;
+  const hasItems = raw.length > 0;
 
-  const openProvider = (p) => {
-    setSelectedId(p.id); // selecting a card highlights its pin
-    const caps = Array.isArray(p.capabilities) ? p.capabilities : [];
-    // Storefront serves bookable + shop providers today and wins for mixed providers. Only
-    // when a provider has NONE of those do we consider the interim legacy bridge.
+  const onSelectCategory = (key) => {
+    setCategory(key);
+    // A provider-only category can't be scoped by neighborhood — clear it so a stale area filter
+    // never lingers (hidden) under a provider view.
+    if (PROVIDER_CATEGORY_KEYS.has(key)) setNeighborhood(null);
+    setSelectedId(null);
+  };
+
+  const openItem = (it) => {
+    setSelectedId(it.id); // selecting a card highlights its pin
+    if (it.type === "place") {
+      router.push({ pathname: "/service/place", params: { id: it.id } });
+      return;
+    }
+    // Provider bridge (unchanged). Storefront serves bookable + shop providers and wins for mixed
+    // providers; only a provider with NONE of those uses the interim legacy bridge.
+    const caps = Array.isArray(it.capabilities) ? it.capabilities : [];
     if (!caps.some((c) => STOREFRONT_CAPS.includes(c))) {
       const bridgeCap = caps.find((c) => LEGACY_BRIDGE[c]);
       if (bridgeCap) {
         router.push(
           bridgeCap === "adoption"
-            ? { pathname: LEGACY_BRIDGE.adoption, params: { providerId: p.id } }
+            ? { pathname: LEGACY_BRIDGE.adoption, params: { providerId: it.id } }
             : { pathname: LEGACY_BRIDGE[bridgeCap] },
         );
         return;
       }
     }
-    // Storefront (default + fallback for unknown/absent caps).
-    router.push({ pathname: "/service/provider", params: { slug: p.slug } });
+    router.push({ pathname: "/service/provider", params: { slug: it.slug } });
   };
 
   const onMarkerPress = (_i, point) => {
@@ -275,6 +283,7 @@ export default function ServicesDiscovery({
 
   const clearFilters = () => {
     setCategory("all");
+    setNeighborhood(null);
     setOpenNow(false);
     setQuery("");
     setSort("relevance");
@@ -350,44 +359,70 @@ export default function ServicesDiscovery({
     </View>
   ) : null;
 
+  // Unified category chips: All, then the "Services" group (provider categories), then the "Places"
+  // group (place categories). Group labels are inline non-interactive dividers.
   const categoryChips = (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       style={{ marginBottom: SPACING.md }}
-      contentContainerStyle={{ gap: SPACING.sm }}
+      contentContainerStyle={{ gap: SPACING.sm, alignItems: "center" }}
     >
-      {CATEGORIES.map((c) => {
-        const selected = category === c.key;
-        return (
-          <PressableScale
-            key={c.key}
-            testID={`discover-cat-${c.key}`}
-            onPress={() => setCategory(c.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            style={{
-              paddingHorizontal: SPACING.md + 2,
-              paddingVertical: SPACING.sm,
-              borderRadius: RADIUS.chip,
-              backgroundColor: selected ? COLORS.coral : COLORS.card,
-              borderWidth: 1,
-              borderColor: COLORS.peach,
-            }}
-          >
-            <Text
-              style={[
-                TYPE.subhead,
-                { fontWeight: "700", color: selected ? "#fff" : COLORS.warmBrown },
-              ]}
-            >
-              {t(c.labelKey)}
-            </Text>
-          </PressableScale>
-        );
-      })}
+      <Chip
+        testID="discover-cat-all"
+        label={t("discover.cat.all")}
+        selected={category === "all"}
+        onPress={() => onSelectCategory("all")}
+      />
+      <GroupLabel text={t("discover.groupServices")} />
+      {SERVICE_CATEGORIES.map((c) => (
+        <Chip
+          key={c.key}
+          testID={`discover-cat-${c.key}`}
+          label={t(c.labelKey)}
+          selected={category === c.key}
+          onPress={() => onSelectCategory(c.key)}
+        />
+      ))}
+      <GroupLabel text={t("discover.groupPlaces")} />
+      {PLACE_CATEGORIES.map((c) => (
+        <Chip
+          key={c.key}
+          testID={`discover-cat-${c.key}`}
+          label={t(c.labelKey)}
+          selected={category === c.key}
+          onPress={() => onSelectCategory(c.key)}
+        />
+      ))}
     </ScrollView>
   );
+
+  // Lightweight "by area" filter — only for place-bearing views. Clearable via "All areas".
+  const neighborhoodChips = showNeighborhoods ? (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginBottom: SPACING.md }}
+      contentContainerStyle={{ gap: SPACING.sm, alignItems: "center" }}
+    >
+      <GroupLabel text={t("discover.byArea")} />
+      <Chip
+        testID="discover-area-all"
+        label={t("discover.allAreas")}
+        selected={neighborhood == null}
+        onPress={() => setNeighborhood(null)}
+      />
+      {neighborhoods.map((n) => (
+        <Chip
+          key={n}
+          testID={`discover-area-${n}`}
+          label={n}
+          selected={neighborhood === n}
+          onPress={() => setNeighborhood(n)}
+        />
+      ))}
+    </ScrollView>
+  ) : null;
 
   const searchAndSort = (
     <>
@@ -397,7 +432,7 @@ export default function ServicesDiscovery({
         sort={sort}
         setSort={setSort}
         sorts={sorts}
-        placeholder={t("discover.searchPlaceholder")}
+        placeholder={t("discover.searchUnifiedPlaceholder")}
       />
       <View style={{ marginBottom: SPACING.md + 2 }}>
         <PressableScale
@@ -453,13 +488,13 @@ export default function ServicesDiscovery({
         }
       />
     ) : (
-      filtered.map((p) => (
+      filtered.map((it) => (
         <ResultCard
-          key={p.id}
-          provider={p}
+          key={`${it.type}-${it.id}`}
+          item={it}
           t={t}
-          selected={p.id === selectedId}
-          onPress={() => openProvider(p)}
+          selected={it.id === selectedId}
+          onPress={() => openItem(it)}
         />
       ))
     );
@@ -500,7 +535,7 @@ export default function ServicesDiscovery({
     );
   } else if (isError) {
     body = <ErrorState onRetry={refetch} t={t} />;
-  } else if (!hasProviders) {
+  } else if (!hasItems) {
     body = (
       <EmptyState
         testID="discover-empty"
@@ -519,6 +554,7 @@ export default function ServicesDiscovery({
           >
             {deniedBanner}
             {categoryChips}
+            {neighborhoodChips}
             {searchAndSort}
             {offMapNote}
             {results}
@@ -545,6 +581,7 @@ export default function ServicesDiscovery({
         >
           {toggle}
           {categoryChips}
+          {neighborhoodChips}
           {offMapNote}
         </View>
         <BottomSheet ref={sheetRef} index={1} snapPoints={snapPoints}>
@@ -567,49 +604,45 @@ export default function ServicesDiscovery({
         {deniedBanner}
         {toggle}
         {categoryChips}
+        {neighborhoodChips}
         {searchAndSort}
         {results}
       </RefreshableScrollView>
     );
   }
 
-  // Landing = the Services TAB ROOT: no back arrow, title is the tab name. Screen = the
-  // pushed /service/discover: back arrow + Discover title. When showHeader is false the
-  // parent (the Services tab shell with its [Discover | My Activity] toggle) owns the top
-  // chrome, so we suppress this internal header AND its Activity icon entirely — the chips,
-  // search and list/map render directly under the parent's header.
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {showHeader ? (
-      <GlassSurface
-        intensity={BLUR.thick}
-        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
-        contentStyle={{
-          paddingTop: insets.top,
-          paddingHorizontal: SPACING.xl,
-          paddingBottom: SPACING.md + 2,
-          flexDirection: "row",
-          alignItems: "center",
-        }}
-      >
-        {isLanding ? null : (
-          <PressableScale
-            onPress={() => router.back()}
-            accessibilityLabel={t("common.back")}
-            style={{ marginRight: SPACING.md + 2 }}
-          >
-            <ArrowLeft size={22} color={COLORS.warmBrown} />
-          </PressableScale>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            {isLanding ? t("tabs.services") : t("discover.title")}
-          </Text>
-          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            {t("discover.subtitle")}
-          </Text>
-        </View>
-      </GlassSurface>
+        <GlassSurface
+          intensity={BLUR.thick}
+          style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+          contentStyle={{
+            paddingTop: insets.top,
+            paddingHorizontal: SPACING.xl,
+            paddingBottom: SPACING.md + 2,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          {isLanding ? null : (
+            <PressableScale
+              onPress={() => router.back()}
+              accessibilityLabel={t("common.back")}
+              style={{ marginRight: SPACING.md + 2 }}
+            >
+              <ArrowLeft size={22} color={COLORS.warmBrown} />
+            </PressableScale>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
+              {isLanding ? t("tabs.services") : t("discover.title")}
+            </Text>
+            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
+              {t("discover.subtitle")}
+            </Text>
+          </View>
+        </GlassSurface>
       ) : null}
 
       {body}
@@ -617,9 +650,57 @@ export default function ServicesDiscovery({
   );
 }
 
+// A category / area chip.
+function Chip({ testID, label, selected, onPress }) {
+  return (
+    <PressableScale
+      testID={testID}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={{
+        paddingHorizontal: SPACING.md + 2,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.chip,
+        backgroundColor: selected ? COLORS.coral : COLORS.card,
+        borderWidth: 1,
+        borderColor: COLORS.peach,
+      }}
+    >
+      <Text
+        style={[
+          TYPE.subhead,
+          { fontWeight: "700", color: selected ? "#fff" : COLORS.warmBrown },
+        ]}
+      >
+        {label}
+      </Text>
+    </PressableScale>
+  );
+}
+
+// Non-interactive group divider between the Services and Places chip sets.
+function GroupLabel({ text }) {
+  return (
+    <Text
+      style={[
+        TYPE.caption,
+        {
+          color: COLORS.mutedBrown,
+          fontWeight: "800",
+          textTransform: "uppercase",
+          letterSpacing: 0.4,
+          paddingHorizontal: SPACING.xs,
+        },
+      ]}
+    >
+      {text}
+    </Text>
+  );
+}
+
 // iOS → the real Apple map; everywhere else → a clean placeholder (no key/engine), never a
-// blank/gray map or crash. Kept out of the main component so the react-native-maps import
-// is only exercised where it renders.
+// blank/gray map or crash.
 function DiscoverMap({ markers, selectedIndex, onMarkerPress, height, t }) {
   if (!isMapEngineOk()) {
     return (
@@ -673,12 +754,16 @@ function DiscoverMap({ markers, selectedIndex, onMarkerPress, height, t }) {
   );
 }
 
-function ResultCard({ provider, onPress, t, selected }) {
-  const caps = Array.isArray(provider.capabilities) ? provider.capabilities : [];
-  const km = formatKm(provider.distance_km);
+// One unified result — a PROVIDER or a PLACE. Cards show name, category/capabilities, rating
+// (RatingBadge) and distance. Providers show their capability chips; places show a single category
+// chip. logo/photo are not in the unified projection, so a typed icon placeholder is shown.
+function ResultCard({ item, onPress, t, selected }) {
+  const isPlace = item.type === "place";
+  const caps = Array.isArray(item.capabilities) ? item.capabilities : [];
+  const km = formatKm(item.distance_km);
   return (
     <PressableScale
-      testID={`discover-card-${provider.id}`}
+      testID={`discover-card-${item.id}`}
       onPress={onPress}
       accessibilityState={{ selected: !!selected }}
       style={{ marginBottom: SPACING.md + 2 }}
@@ -694,56 +779,63 @@ function ResultCard({ provider, onPress, t, selected }) {
           borderWidth: selected ? 2 : undefined,
         }}
       >
-        {/* Selected marker for the pin↔card two-way highlight (also a test hook). */}
-        {selected ? (
-          <View testID={`discover-card-${provider.id}-selected`} />
-        ) : null}
-        {provider.logo_url ? (
-          <Image
-            source={{ uri: provider.logo_url }}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: RADIUS.control - 2,
-              backgroundColor: COLORS.sand,
-            }}
-          />
-        ) : (
-          <View
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: RADIUS.control - 2,
-              backgroundColor: COLORS.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
+        {selected ? <View testID={`discover-card-${item.id}-selected`} /> : null}
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: RADIUS.control - 2,
+            backgroundColor: COLORS.sand,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {isPlace ? (
+            <MapPin size={24} color={COLORS.coral} />
+          ) : (
             <Store size={24} color={COLORS.coral} />
-          </View>
-        )}
+          )}
+        </View>
 
         <View style={{ flex: 1 }}>
           <Text
             style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}
             numberOfLines={1}
           >
-            {provider.name}
+            {item.name}
           </Text>
 
-          {caps.length > 0 ? (
+          {/* Providers → capability chips; places → one category chip. */}
+          {isPlace ? (
+            item.category ? (
+              <View
+                style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}
+              >
+                <View
+                  testID={`discover-placecat-${item.id}-${item.category}`}
+                  style={{
+                    paddingHorizontal: SPACING.sm,
+                    paddingVertical: 2,
+                    borderRadius: RADIUS.chip,
+                    backgroundColor: COLORS.coral + "14",
+                    borderWidth: 1,
+                    borderColor: COLORS.peach,
+                  }}
+                >
+                  <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "700" }]}>
+                    {t(`discover.placeCat.${item.category}`)}
+                  </Text>
+                </View>
+              </View>
+            ) : null
+          ) : caps.length > 0 ? (
             <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: SPACING.xs,
-                marginTop: SPACING.xs,
-              }}
+              style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}
             >
               {caps.map((c) => (
                 <View
                   key={c}
-                  testID={`discover-cap-${provider.id}-${c}`}
+                  testID={`discover-cap-${item.id}-${c}`}
                   style={{
                     paddingHorizontal: SPACING.sm,
                     paddingVertical: 2,
@@ -769,10 +861,7 @@ function ResultCard({ provider, onPress, t, selected }) {
               marginTop: SPACING.xs,
             }}
           >
-            <RatingBadge
-              avgRating={provider.avg_rating}
-              reviewCount={provider.review_count}
-            />
+            <RatingBadge avgRating={item.avg_rating} reviewCount={item.review_count} />
             {km != null ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                 <Navigation size={12} color={COLORS.mutedBrown} />
@@ -783,15 +872,15 @@ function ResultCard({ provider, onPress, t, selected }) {
             ) : null}
           </View>
 
-          {provider.bio ? (
+          {item.address ? (
             <Text
               style={[
                 TYPE.subhead,
                 { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs },
               ]}
-              numberOfLines={2}
+              numberOfLines={1}
             >
-              {provider.bio}
+              {item.address}
             </Text>
           ) : null}
         </View>
