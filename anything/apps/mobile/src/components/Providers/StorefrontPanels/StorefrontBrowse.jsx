@@ -20,6 +20,9 @@ export default function StorefrontBrowse({
   // The inline provider storefront (PR-3b) shows a quick "+" per card; the catalog modal does
   // not (tapping a card opens the detail there). Off by default → the modal is unchanged.
   showQuickAdd = false,
+  // "Order again" rail: products this buyer previously ordered here that are still available.
+  // Derived by the caller from order history (real data only). Empty → the rail renders nothing.
+  orderAgain = [],
   t,
 }) {
   // In-store search + category filter (session-local, same as the modal today).
@@ -48,6 +51,48 @@ export default function StorefrontBrowse({
 
   return (
     <>
+      {/* "Order again" rail — above the grid; only when the buyer has prior, still-available
+          purchases here (the caller passes an empty list otherwise → nothing renders). */}
+      {orderAgain.length > 0 ? (
+        <View style={{ marginBottom: SPACING.md }}>
+          <Text
+            style={[
+              TYPE.subhead,
+              {
+                fontWeight: "800",
+                color: COLORS.mutedBrown,
+                letterSpacing: 0.6,
+                marginBottom: SPACING.sm,
+              },
+            ]}
+          >
+            {t("storefront.orderAgain").toUpperCase()}
+          </Text>
+          <ScrollView
+            testID="storefront-orderagain-rail"
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: SPACING.sm + 2 }}
+          >
+            {orderAgain.map((p) => (
+              <ProductGridCard
+                key={`oa-${p.id}`}
+                product={p}
+                t={t}
+                idPrefix="storefront-orderagain"
+                width={150}
+                isFavorite={favorites.has(p.id)}
+                onToggleFavorite={() => onToggleFavorite(p.id)}
+                onPress={() => onOpenDetail(p.id)}
+                showQuickAdd={showQuickAdd}
+                qty={cartQtyFor ? cartQtyFor(p.id) : 0}
+                onQuickAdd={() => onQuickAdd?.(p)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {/* Search within the store */}
       <View
         style={{
@@ -149,14 +194,18 @@ function ProductGridCard({
   showQuickAdd,
   qty = 0,
   onQuickAdd,
+  // Namespaces this card's testIDs so a product shown in BOTH the grid and the "Order again"
+  // rail doesn't collide. Default keeps the original grid testIDs unchanged.
+  idPrefix = "storefront",
+  width = "48%",
   t,
 }) {
   const soldOut = product.stock_qty <= 0;
   return (
     <PressableScale
-      testID={`storefront-product-${product.id}`}
+      testID={`${idPrefix}-product-${product.id}`}
       onPress={onPress}
-      style={{ width: "48%", marginBottom: SPACING.md }}
+      style={{ width, marginBottom: SPACING.md }}
     >
       <Card
         level="sm"
@@ -185,7 +234,7 @@ function ProductGridCard({
             </View>
           )}
           <PressableScale
-            testID={`storefront-fav-${product.id}`}
+            testID={`${idPrefix}-fav-${product.id}`}
             onPress={onToggleFavorite}
             accessibilityLabel={t("storefront.favorite")}
             hitSlop={8}
@@ -218,14 +267,14 @@ function ProductGridCard({
             >
               {qty > 0 ? (
                 <Text
-                  testID={`storefront-qty-${product.id}`}
+                  testID={`${idPrefix}-qty-${product.id}`}
                   style={[TYPE.caption, { fontWeight: "800", color: "#FFF", letterSpacing: 0 }]}
                 >
                   {qty}
                 </Text>
               ) : null}
               <PressableScale
-                testID={`storefront-quickadd-${product.id}`}
+                testID={`${idPrefix}-quickadd-${product.id}`}
                 onPress={onQuickAdd}
                 accessibilityRole="button"
                 accessibilityLabel={t("storefront.addToCart")}

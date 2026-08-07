@@ -33,6 +33,7 @@ import {
   useProviderReviews,
   useStartThread,
   useMyBookings,
+  useShopOrders,
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
@@ -143,6 +144,31 @@ export default function ProviderScreen() {
     [shopProducts, detailId],
   );
 
+  // "Order again" rail (client-derived, no backend): the distinct products this buyer has
+  // previously ordered FROM THIS PROVIDER that are STILL available in the current catalog,
+  // newest-purchased first, capped. Real data only — empty (no history / none available) →
+  // StorefrontBrowse renders nothing. Only fetch the order history for a shop.
+  const { data: myOrders } = useShopOrders({ enabled: isShop });
+  const orderAgain = useMemo(() => {
+    if (!isShop || !provider?.id) return [];
+    const byId = new Map(shopProducts.map((p) => [String(p.id), p]));
+    const seen = new Set();
+    const rail = [];
+    // Orders arrive newest-first; keep first-seen (newest-purchased) order.
+    for (const order of myOrders ?? []) {
+      if (String(order.provider_id) !== String(provider.id)) continue;
+      for (const item of order.items ?? []) {
+        const key = item.product_id == null ? null : String(item.product_id);
+        if (key == null || seen.has(key)) continue;
+        seen.add(key);
+        const prod = byId.get(key); // intersect with the live/active catalog
+        if (prod) rail.push(prod);
+        if (rail.length >= 10) return rail;
+      }
+    }
+    return rail;
+  }, [isShop, provider?.id, myOrders, shopProducts]);
+
   // The capability a booking is FOR: an explicit deep-link param wins; else the sole
   // bookable capability; else chosen from the chooser. Fixes the book/route 'vet' default
   // gotcha — a grooming-only provider books as 'groomer', telehealth as 'telehealth'.
@@ -244,6 +270,7 @@ export default function ProviderScreen() {
             cartQtyFor={(pid) => cart.cart[pid] ?? 0}
             onQuickAdd={(p) => cart.setQty(p.id, 1, p.stock_qty)}
             showQuickAdd
+            orderAgain={orderAgain}
             t={t}
           />
         );
