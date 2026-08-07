@@ -112,6 +112,54 @@ describe("capability-aware booking", () => {
   });
 });
 
+describe("tap a service to book (feat/tap-service-to-book)", () => {
+  const SERVICE = { id: 9, name: "Checkup", price_cents: 3000, image_urls: [] };
+
+  test("single bookable cap (vet): tapping a service preselects it, resolves vet, no chooser", () => {
+    mockProfile = profileWith({ capabilities: ["vet"], services: [SERVICE] });
+    const { getByTestId, queryByTestId } = render(<ProviderScreen />);
+    fireEvent.press(getByTestId("service-row-9"));
+    expect(bookingProps.service).toEqual(SERVICE);
+    expect(bookingProps.capability).toBe("vet");
+    expect(queryByTestId("storefront-cap-choose-vet")).toBeNull();
+  });
+
+  test("vet + telehealth: tapping a service resolves vet (telehealth is a modality), NO chooser", () => {
+    mockProfile = profileWith({
+      capabilities: ["vet", "telehealth"],
+      services: [SERVICE],
+    });
+    const { getByTestId, queryByTestId } = render(<ProviderScreen />);
+    fireEvent.press(getByTestId("service-row-9"));
+    expect(bookingProps.service).toEqual(SERVICE);
+    expect(bookingProps.capability).toBe("vet");
+    expect(queryByTestId("storefront-cap-choose-vet")).toBeNull();
+  });
+
+  test("vet + groomer (unrelated): tapping a service shows the chooser, then preselects the service", () => {
+    mockProfile = profileWith({
+      capabilities: ["vet", "groomer"],
+      services: [SERVICE],
+    });
+    const { getByTestId } = render(<ProviderScreen />);
+    fireEvent.press(getByTestId("service-row-9"));
+    // The service is already carried through while the chooser is open.
+    expect(bookingProps.service).toEqual(SERVICE);
+    expect(getByTestId("storefront-cap-choose-vet")).toBeTruthy();
+    expect(getByTestId("storefront-cap-choose-groomer")).toBeTruthy();
+    fireEvent.press(getByTestId("storefront-cap-choose-groomer"));
+    expect(bookingProps.capability).toBe("groomer");
+    expect(bookingProps.service).toEqual(SERVICE);
+  });
+
+  test("the bottom Book button opens booking with NO preselected service", () => {
+    mockProfile = profileWith({ capabilities: ["vet"], services: [SERVICE] });
+    const { getByTestId } = render(<ProviderScreen />);
+    fireEvent.press(getByTestId("storefront-book-cta"));
+    expect(bookingProps.service).toBeNull();
+  });
+});
+
 describe("per-type primary action", () => {
   test("SHOP-only provider shows the Shop CTA, not Book", () => {
     mockProfile = profileWith({ capabilities: ["shop"] });

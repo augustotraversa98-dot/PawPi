@@ -101,6 +101,10 @@ export default function BookingFormModal({
   services = [],
   capabilities = [],
   capability,
+  // A specific service tapped in the storefront (feat/tap-service-to-book). When given, it is
+  // preselected and the in-modal service selector is collapsed to a static line. Absent (the
+  // bottom "Book" button) → the full selector renders exactly as before.
+  service,
 }) {
   const { data: currentPet } = useCurrentPet();
   const book = useBookProvider();
@@ -159,12 +163,28 @@ export default function BookingFormModal({
         : 0;
   const requiresPayment = paymentPolicy !== "none" && chargeCents > 0;
 
+  // A tapped storefront service (feat/tap-service-to-book) is preselected and the selector is
+  // hidden. This takes precedence over the single-service auto-preselect below, and keys only
+  // on `service`/`visible` (NOT `services`) so a background re-fetch never overrides it.
+  useEffect(() => {
+    if (visible && service?.id != null) {
+      setServiceId(service.id);
+    }
+  }, [visible, service]);
+
   // A provider whose ONLY service requires payment must NOT be silently booked for free:
   // when there's exactly one active service, preselect it so its price/policy applies (the
   // user can still switch to "General"). Without this, the default "General" (serviceId=null)
   // books a FREE request even for a paid single-service vet — no charge, no MercadoPago.
+  // Skipped when a `service` was explicitly passed (that effect owns the selection).
   useEffect(() => {
-    if (visible && !serviceTouched.current && serviceId == null && services.length === 1) {
+    if (
+      visible &&
+      !service &&
+      !serviceTouched.current &&
+      serviceId == null &&
+      services.length === 1
+    ) {
       setServiceId(services[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,36 +374,56 @@ export default function BookingFormModal({
         </View>
       )}
 
-      {/* Service (optional) */}
-      <SectionLabel>Service</SectionLabel>
-      <View
-        style={{ flexDirection: "row", flexWrap: "wrap", gap: 9, marginBottom: 18 }}
-      >
-        <Chip
-          label="General"
-          selected={serviceId == null}
-          onPress={() => {
-            serviceTouched.current = true;
-            setServiceId(null);
+      {/* Service — a tapped storefront service is preselected and shown as a static line
+          (selector collapsed); otherwise the full "General" + per-service chip selector. */}
+      {service ? (
+        <Text
+          testID="booking-service-preselected"
+          style={{
+            fontSize: 15,
+            fontWeight: "700",
+            color: COLORS.warmBrown,
+            marginTop: 4,
+            marginBottom: 18,
           }}
-        />
-        {services.map((s) => (
-          <Chip
-            key={s.id}
-            label={
-              formatPrice(s.price_cents)
-                ? `${s.name} · ${formatPrice(s.price_cents)}`
-                : s.name
-            }
-            selected={serviceId === s.id}
-            onPress={() => {
-              serviceTouched.current = true;
-              setServiceId(s.id);
-            }}
-            testID={`booking-service-${s.id}`}
-          />
-        ))}
-      </View>
+        >
+          {formatPrice(service.price_cents)
+            ? `${t("booking.bookingService", { name: service.name })} · ${formatPrice(service.price_cents)}`
+            : t("booking.bookingService", { name: service.name })}
+        </Text>
+      ) : (
+        <>
+          <SectionLabel>Service</SectionLabel>
+          <View
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: 9, marginBottom: 18 }}
+          >
+            <Chip
+              label="General"
+              selected={serviceId == null}
+              onPress={() => {
+                serviceTouched.current = true;
+                setServiceId(null);
+              }}
+            />
+            {services.map((s) => (
+              <Chip
+                key={s.id}
+                label={
+                  formatPrice(s.price_cents)
+                    ? `${s.name} · ${formatPrice(s.price_cents)}`
+                    : s.name
+                }
+                selected={serviceId === s.id}
+                onPress={() => {
+                  serviceTouched.current = true;
+                  setServiceId(s.id);
+                }}
+                testID={`booking-service-${s.id}`}
+              />
+            ))}
+          </View>
+        </>
+      )}
 
       {requiresPayment && (
         <View
