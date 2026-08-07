@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   useDiscoverProviders,
   useProviderProfile,
+  useProviderAvailability,
   useBookProvider,
   useDaycareStays,
   useBookDaycareStay,
@@ -161,6 +162,80 @@ describe("useProviderProfile", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error.message).toMatch(/failed to fetch provider/i);
+  });
+});
+
+describe("useProviderAvailability (PR-1 contract)", () => {
+  test("is disabled until providerId + from + to are known", async () => {
+    global.fetch = jest.fn();
+    const { result } = renderHook(
+      () => useProviderAvailability(undefined, { from: "2026-06-01", to: "2026-06-30" }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("builds the from/to/capability query and returns { time_zone, availability }", async () => {
+    const payload = {
+      time_zone: "America/Argentina/Buenos_Aires",
+      availability: [
+        {
+          date: "2026-06-15",
+          slots: [
+            { start: "2026-06-15T12:00:00.000Z", end: "2026-06-15T12:30:00.000Z" },
+          ],
+        },
+      ],
+    };
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => payload }));
+
+    const { result } = renderHook(
+      () =>
+        useProviderAvailability(100, {
+          from: "2026-06-01",
+          to: "2026-06-30",
+          capability: "vet",
+        }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe(
+      "/api/providers/100/availability?from=2026-06-01&to=2026-06-30&capability=vet",
+    );
+    expect(result.current.data).toEqual(payload);
+  });
+
+  test("adds staff_user_id when supplied", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ time_zone: "UTC", availability: [] }),
+    }));
+    const { result } = renderHook(
+      () =>
+        useProviderAvailability(100, {
+          from: "2026-06-01",
+          to: "2026-06-30",
+          capability: "vet",
+          staffUserId: 7,
+        }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).toBe(
+      "/api/providers/100/availability?from=2026-06-01&to=2026-06-30&capability=vet&staff_user_id=7",
+    );
+  });
+
+  test("throws when the response is not ok", async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, json: async () => ({}) }));
+    const { result } = renderHook(
+      () => useProviderAvailability(100, { from: "2026-06-01", to: "2026-06-30" }),
+      { wrapper: makeWrapper(makeClient()) },
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.message).toMatch(/failed to fetch availability/i);
   });
 });
 

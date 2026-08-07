@@ -193,6 +193,44 @@ export function useBookProvider() {
   });
 }
 
+// A provider's OPEN bookable slots over a date range (GET /api/providers/[id]/availability,
+// PR-1). Returns { time_zone, availability:[{date, slots:[{start,end}]}] } — slots are
+// ABSOLUTE-UTC instants the picker formats in time_zone. Disabled until providerId + from +
+// to are known; every param is in the key so each month/capability/staff caches separately
+// (the OSDE-style picker refetches per visible month).
+export function useProviderAvailability(
+  providerId,
+  { from, to, capability, staffUserId } = {},
+) {
+  return useQuery({
+    queryKey: [
+      "providers",
+      "availability",
+      providerId,
+      { from, to, capability, staffUserId },
+    ],
+    enabled: providerId != null && !!from && !!to,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("from", from);
+      params.set("to", to);
+      if (capability) params.set("capability", capability);
+      if (staffUserId != null) params.set("staff_user_id", String(staffUserId));
+      const response = await fetch(
+        `/api/providers/${providerId}/availability?${params.toString()}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch availability");
+      }
+      const data = await response.json();
+      return {
+        time_zone: data.time_zone ?? null,
+        availability: data.availability ?? [],
+      };
+    },
+  });
+}
+
 // --- owner ↔ provider chat / messaging (Phase 2 ticket 2.5) -----------------
 // These wrap the participant-scoped thread/message routes (0031 RLS is the real
 // guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,

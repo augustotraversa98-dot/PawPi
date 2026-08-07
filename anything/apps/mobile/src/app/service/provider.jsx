@@ -606,6 +606,7 @@ export default function ProviderScreen() {
         provider={provider}
         locations={locations}
         services={services}
+        capabilities={capabilities}
         capability={resolvedBookingCapability}
       />
 

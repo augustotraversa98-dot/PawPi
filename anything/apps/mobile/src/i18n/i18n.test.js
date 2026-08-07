@@ -44,6 +44,9 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["health", "trackerSoon"],
     ["health", "trackerSoonBody"],
     ["common", "yourPet"],
+    ["booking", "reserveSlot"],
+    ["booking", "noSlots"],
+    ["booking", "modalityVideo"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");
