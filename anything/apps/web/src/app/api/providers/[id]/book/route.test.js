@@ -142,6 +142,7 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([{ id: 5 }]) // pet owned
       .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }]) // provider
       .mockResolvedValueOnce([{ id: 3, name: 'Annual Checkup', active: true }]) // service
+      .mockResolvedValueOnce([]) // provider_availability: no windows → enforcement skipped
       .mockResolvedValueOnce([CREATED]); // insert
 
     const res = await POST(bookReq({ ...VALID, service_id: 3 }), PARAMS);
@@ -173,6 +174,7 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // no availability windows
       .mockResolvedValueOnce([{ id: 1, title: 'Appointment with Happy Vet' }]);
 
     const res = await POST(bookReq(VALID), PARAMS);
@@ -188,6 +190,7 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // no availability windows
       .mockResolvedValueOnce([{ id: 1 }]); // insert
 
     const res = await POST(bookReq(VALID), PARAMS);
@@ -206,6 +209,7 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }]) // pet owned
       .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // no availability windows
       .mockResolvedValueOnce([{ id: 1, calendar_event_id: 'evt-abc' }]); // insert
 
     const res = await POST(bookReq({ ...VALID, calendar_event_id: 'evt-abc' }), PARAMS);
@@ -242,6 +246,7 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 100, name: 'Pet Spa', status: 'published' }])
       .mockResolvedValueOnce([{ '?column?': 1 }]) // capability held
+      .mockResolvedValueOnce([]) // no availability windows
       .mockResolvedValueOnce([{ id: 9 }]); // insert
 
     const res = await POST(bookReq({ ...VALID, capability: 'groomer' }), PARAMS);
@@ -257,7 +262,8 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([{ id: 100, name: 'Spa', status: 'published' }])
       .mockResolvedValueOnce([{ '?column?': 1 }]) // capability held
       .mockResolvedValueOnce([{ id: 11 }]) // staff active
-      .mockResolvedValueOnce([{ id: 77 }]); // clash found
+      .mockResolvedValueOnce([]) // no availability windows → enforcement skipped
+      .mockResolvedValueOnce([{ id: 77 }]); // double-book clash found
 
     const res = await POST(
       bookReq({
@@ -278,9 +284,125 @@ describe('POST /api/providers/[id]/book', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }]) // pet owned
       .mockResolvedValueOnce([{ id: 100, name: 'Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // no availability windows
       .mockResolvedValueOnce([]); // order lookup: no row
 
     const res = await POST(bookReq({ ...VALID, order_id: 999 }), PARAMS);
     expect(res.status).toBe(400);
+  });
+
+  // ── PR-3: server-side slot enforcement (the 15:03 fix) ────────────────────────
+  // 2026-07-01 is a Wednesday (weekday 2). Provider zone UTC so 09:00 composes to
+  // 09:00Z, keeping the assertions offset-free. A window 09:00–10:00 @30 → slots at
+  // 09:00 and 09:30.
+  const SLOT_PROVIDER = { id: 100, name: 'Slot Vet', status: 'published', time_zone: 'UTC' };
+  const WINDOW = { weekday: 2, start_time: '09:00', end_time: '10:00', slot_minutes: 30 };
+  const enforcedBase = () =>
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([SLOT_PROVIDER]) // provider (+ time_zone)
+      .mockResolvedValueOnce([WINDOW]); // provider_availability: HAS a window
+
+  it('slot-based provider: an aligned in-window time books (201)', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([]) // taken bookings
+      .mockResolvedValueOnce([]) // imported busy
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '09:00' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it('slot-based provider: a misaligned sub-slot time (09:03) is rejected 422', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([]) // taken
+      .mockResolvedValueOnce([]); // busy
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '09:03' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe('selected_slot_unavailable');
+  });
+
+  it('slot-based provider: the classic 15:03 (outside hours + misaligned) is rejected 422', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '15:03' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it('slot-based provider: a time outside working hours (12:00) is rejected 422', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '12:00' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it('slot-based provider: an already-taken aligned slot is rejected 409', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([
+        { start: '2026-07-01T09:00:00.000Z', end: '2026-07-01T09:30:00.000Z' },
+      ]) // the 09:00 slot is already booked
+      .mockResolvedValueOnce([]); // busy
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '09:00' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('selected_slot_unavailable');
+  });
+
+  it('slot-based provider: enforcement also applies when the client sends start_at (201 for an aligned slot)', async () => {
+    auth.mockResolvedValue(SESSION);
+    enforcedBase()
+      .mockResolvedValueOnce([]) // taken
+      .mockResolvedValueOnce([]) // imported busy (enforcement)
+      .mockResolvedValueOnce([]) // imported busy (existing start_at check)
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+    const res = await POST(
+      bookReq({
+        petId: 5,
+        appointment_date: '2026-07-01',
+        appointment_time: '09:00',
+        start_at: '2026-07-01T09:00:00.000Z',
+        end_at: '2026-07-01T09:30:00.000Z',
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+    // The slot is persisted so the 0030 double-book index engages.
+    expect(lastValues()).toContain('2026-07-01T09:00:00.000Z');
+  });
+
+  it('provider with NO windows: an arbitrary time still books (behavior preserved)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'No-Windows Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // provider_availability: NO windows → enforcement skipped
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+    const res = await POST(
+      bookReq({ petId: 5, appointment_date: '2026-07-01', appointment_time: '15:03' }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201); // unchanged: no windows, no enforcement
   });
 });

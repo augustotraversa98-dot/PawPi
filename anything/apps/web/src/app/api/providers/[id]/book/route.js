@@ -4,6 +4,20 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
 import { getCalendarSync } from "@/app/api/utils/calendarSync";
+import {
+  generateSlotsForDate,
+  isSlotBookable,
+  composeIso,
+  timeToMinutes,
+  DEFAULT_TIME_ZONE,
+} from "@/app/api/utils/availability";
+
+/** Add `n` days to a 'YYYY-MM-DD' string, returning a 'YYYY-MM-DD' string. */
+function addDays(dateStr, n) {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 // POST /api/providers/[id]/book — the pet's OWNER books this provider.
 // Ticket 6a (vet) GENERALIZED by ticket 2.4 (docs/phase2-tickets/2.4-generalized-
@@ -95,8 +109,9 @@ async function POST(request, { params }) {
     }
 
     // Provider must exist AND be published — cannot book a draft/unknown provider.
+    // time_zone (0076) is read here for the PR-3 slot-enforcement composition below.
     const providerRows = await sql`
-      SELECT id, name, status FROM providers WHERE id = ${providerId}
+      SELECT id, name, status, time_zone FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json(
@@ -166,6 +181,119 @@ async function POST(request, { params }) {
         return Response.json(
           { error: "Selected staff member is not active for this provider" },
           { status: 400 },
+        );
+      }
+    }
+
+    // SLOT ENFORCEMENT (PR-3 — the 15:03 fix). If the provider has availability windows for
+    // the resolved capability, the requested time MUST land on an OPEN generated slot — the
+    // SAME slots GET /availability produces (generateSlotsForDate / subtractTaken, via
+    // isSlotBookable). Providers/capabilities with NO windows (daycare/sitter/walker, or any
+    // unconfigured provider) skip this entirely and behave exactly as before.
+    const timeZone = provider.time_zone || DEFAULT_TIME_ZONE;
+
+    // Windows for the resolved capability (capability-specific OR provider-wide NULL), and
+    // for the named staff member (theirs OR provider-wide NULL) when a staff booking. The
+    // two tagged-template variants mirror GET /availability and keep us off the
+    // sql(string,array) gotcha.
+    const windows =
+      staff_user_id !== undefined && staff_user_id !== null
+        ? await sql`
+            SELECT weekday, start_time, end_time, slot_minutes
+            FROM provider_availability
+            WHERE provider_id = ${providerId}
+              AND active = true
+              AND (staff_user_id = ${staff_user_id} OR staff_user_id IS NULL)
+              AND (capability = ${resolvedCapability} OR capability IS NULL)
+          `
+        : await sql`
+            SELECT weekday, start_time, end_time, slot_minutes
+            FROM provider_availability
+            WHERE provider_id = ${providerId}
+              AND active = true
+              AND (capability = ${resolvedCapability} OR capability IS NULL)
+          `;
+
+    if (windows.length > 0) {
+      // The requested slot start as an absolute UTC instant: the client's start_at (mobile
+      // sends it), else composed from appointment_date + appointment_time in the provider
+      // zone — composed IDENTICALLY to the generated slots so an aligned time matches exactly.
+      const requestedStart = start_at
+        ? new Date(start_at).toISOString()
+        : composeIso(
+            appointment_date,
+            timeToMinutes(appointment_time),
+            timeZone,
+          );
+
+      // The already-taken set — identical to GET /availability: live (requested|confirmed)
+      // bookings for the day (+ staff filter when a staff booking) plus imported external-
+      // calendar busy windows (via the DEFINER app_provider_busy_windows).
+      const rangeEnd = addDays(appointment_date, 1);
+      const bookingRows =
+        staff_user_id !== undefined && staff_user_id !== null
+          ? await sql`
+              SELECT start_at AS start, end_at AS end
+              FROM vet_appointments
+              WHERE provider_id = ${providerId}
+                AND staff_user_id = ${staff_user_id}
+                AND deleted_at IS NULL
+                AND booking_status = ANY (ARRAY['requested','confirmed'])
+                AND start_at IS NOT NULL
+                AND start_at >= ${appointment_date}
+                AND start_at < ${rangeEnd}
+            `
+          : await sql`
+              SELECT start_at AS start, end_at AS end
+              FROM vet_appointments
+              WHERE provider_id = ${providerId}
+                AND deleted_at IS NULL
+                AND booking_status = ANY (ARRAY['requested','confirmed'])
+                AND start_at IS NOT NULL
+                AND start_at >= ${appointment_date}
+                AND start_at < ${rangeEnd}
+            `;
+      const taken = bookingRows.map((t) => ({
+        start: new Date(t.start).toISOString(),
+        end: t.end
+          ? new Date(t.end).toISOString()
+          : new Date(t.start).toISOString(),
+      }));
+      try {
+        const busyRows = await sql`
+          SELECT starts_at AS start, ends_at AS end
+          FROM app_provider_busy_windows(${providerId}, ${appointment_date}, ${rangeEnd})
+        `;
+        for (const r of busyRows) {
+          taken.push({
+            start: new Date(r.start).toISOString(),
+            end: new Date(r.end).toISOString(),
+          });
+        }
+      } catch (busyErr) {
+        console.error(
+          "[POST /api/providers/[id]/book] imported busy (non-fatal):",
+          busyErr.message,
+        );
+      }
+
+      // Alignment is EXACT slot-start (not isSlotBookable's containment, which would admit a
+      // sub-slot time like 15:03 — the very bug this fixes). If the requested instant is not
+      // a generated slot start → 422 (misaligned / outside working hours). If it aligns but
+      // that exact slot is taken (isSlotBookable subtracts the taken set) → 409.
+      const slot = generateSlotsForDate(appointment_date, windows, timeZone).find(
+        (o) => o.start === requestedStart,
+      );
+      if (!slot) {
+        return Response.json(
+          { error: "selected_slot_unavailable" },
+          { status: 422 },
+        );
+      }
+      if (!isSlotBookable(slot, windows, taken, timeZone)) {
+        return Response.json(
+          { error: "selected_slot_unavailable" },
+          { status: 409 },
         );
       }
     }
