@@ -59,29 +59,33 @@ describe('GET availability', () => {
     expect(res.status).toBe(400);
   });
 
-  it('computes open slots from windows minus taken bookings', async () => {
+  it('computes open slots (in the provider zone) minus taken bookings', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // profile
-      .mockResolvedValueOnce([{ id: 100, status: 'published' }]) // provider published
-      // windows: Monday 09:00–11:00 hourly
+      // provider published, Buenos Aires zone (window times are local; 09:00 BA = 12:00 UTC)
+      .mockResolvedValueOnce([
+        { id: 100, status: 'published', time_zone: 'America/Argentina/Buenos_Aires' },
+      ])
+      // windows: Monday 09:00–11:00 hourly (BA local)
       .mockResolvedValueOnce([
         { weekday: 0, start_time: '09:00', end_time: '11:00', slot_minutes: 60, staff_user_id: null, capability: null },
       ])
-      // taken: the 09:00 slot is booked
+      // taken: the 09:00 BA (= 12:00 UTC) slot is booked
       .mockResolvedValueOnce([
-        { start: '2026-06-15T09:00:00.000Z', end: '2026-06-15T10:00:00.000Z' },
+        { start: '2026-06-15T12:00:00.000Z', end: '2026-06-15T13:00:00.000Z' },
       ]);
 
     // 2026-06-15 is a Monday.
     const res = await GET(getReq('from=2026-06-15&to=2026-06-15'), PARAMS);
     expect(res.status).toBe(200);
     const body = await res.json();
+    expect(body.time_zone).toBe('America/Argentina/Buenos_Aires');
     expect(body.availability).toHaveLength(1);
     expect(body.availability[0].date).toBe('2026-06-15');
-    // 09:00 taken → only 10:00 open
+    // 09:00 BA taken → only 10:00 BA (= 13:00 UTC) open
     expect(body.availability[0].slots).toEqual([
-      { start: '2026-06-15T10:00:00.000Z', end: '2026-06-15T11:00:00.000Z' },
+      { start: '2026-06-15T13:00:00.000Z', end: '2026-06-15T14:00:00.000Z' },
     ]);
   });
 

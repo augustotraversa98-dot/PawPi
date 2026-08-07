@@ -29,9 +29,29 @@ describe("generateSlotsForDate", () => {
     { weekday: 0, start_time: "09:00", end_time: "11:00", slot_minutes: 60 }, // Mon
   ];
 
-  it("generates back-to-back slots for the matching weekday", () => {
-    // 2026-06-15 is a Monday.
+  it("generates back-to-back slots in the provider zone (default BA, UTC-3)", () => {
+    // 2026-06-15 is a Monday. 09:00 Buenos Aires = 12:00 UTC (offset -3h).
     const slots = generateSlotsForDate("2026-06-15", windows);
+    expect(slots).toEqual([
+      { start: "2026-06-15T12:00:00.000Z", end: "2026-06-15T13:00:00.000Z" },
+      { start: "2026-06-15T13:00:00.000Z", end: "2026-06-15T14:00:00.000Z" },
+    ]);
+  });
+
+  it("applies the -3h Buenos Aires offset to every slot boundary", () => {
+    // 09:00–11:00 BA @ 30 min → 09:00/09:30/10:00/10:30 local = 12:00/12:30/13:00/13:30 UTC.
+    const w = [{ weekday: 0, start_time: "09:00", end_time: "11:00", slot_minutes: 30 }];
+    const slots = generateSlotsForDate("2026-06-15", w);
+    expect(slots.map((s) => s.start)).toEqual([
+      "2026-06-15T12:00:00.000Z",
+      "2026-06-15T12:30:00.000Z",
+      "2026-06-15T13:00:00.000Z",
+      "2026-06-15T13:30:00.000Z",
+    ]);
+  });
+
+  it("composes in an explicitly-passed zone (UTC → no shift)", () => {
+    const slots = generateSlotsForDate("2026-06-15", windows, "UTC");
     expect(slots).toEqual([
       { start: "2026-06-15T09:00:00.000Z", end: "2026-06-15T10:00:00.000Z" },
       { start: "2026-06-15T10:00:00.000Z", end: "2026-06-15T11:00:00.000Z" },
@@ -73,9 +93,10 @@ describe("isSlotBookable", () => {
   const windows = [
     { weekday: 0, start_time: "09:00", end_time: "11:00", slot_minutes: 60 },
   ];
+  // 09:00–10:00 Buenos Aires = 12:00–13:00 UTC (the first open slot for the Mon window).
   const reqSlot = {
-    start: "2026-06-15T09:00:00.000Z",
-    end: "2026-06-15T10:00:00.000Z",
+    start: "2026-06-15T12:00:00.000Z",
+    end: "2026-06-15T13:00:00.000Z",
   };
 
   it("accepts a slot that matches an open generated slot", () => {
@@ -87,9 +108,10 @@ describe("isSlotBookable", () => {
   });
 
   it("rejects a slot outside any window", () => {
+    // 15:00–16:00 UTC = 12:00–13:00 BA — past the 11:00 BA window end.
     const outside = {
-      start: "2026-06-15T12:00:00.000Z",
-      end: "2026-06-15T13:00:00.000Z",
+      start: "2026-06-15T15:00:00.000Z",
+      end: "2026-06-15T16:00:00.000Z",
     };
     expect(isSlotBookable(outside, windows, [])).toBe(false);
   });
