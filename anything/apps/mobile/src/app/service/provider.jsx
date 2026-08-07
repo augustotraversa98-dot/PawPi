@@ -548,6 +548,7 @@ export default function ProviderScreen() {
                   },
                 );
               }}
+              testID="storefront-message-cta"
               accessibilityRole="button"
               accessibilityLabel={t("providers.messageA11y")}
               style={{
@@ -600,8 +601,10 @@ export default function ProviderScreen() {
               </PressableScale>
             ) : null}
 
-            {/* Book — capability-aware (opens the chooser first when there are several). */}
-            {showBook ? (
+            {/* Book — per-service booking lives on each Services card now; this bottom CTA is
+                only a fallback for a bookable provider that lists ZERO services (still
+                bookable). Capability-aware (opens the chooser first when there are several). */}
+            {showBook && services.length === 0 ? (
               <PressableScale
                 testID="storefront-book-cta"
                 onPress={openBooking}

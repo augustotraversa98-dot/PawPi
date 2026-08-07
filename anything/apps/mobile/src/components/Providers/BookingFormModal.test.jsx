@@ -134,8 +134,24 @@ test("only days WITH availability are selectable; empty days are disabled", () =
 
   expect(view.getByTestId(`booking-day-${TODAY}`).props.accessibilityState.disabled).toBe(false);
   expect(view.getByTestId(`booking-day-${EMPTY_DAY}`).props.accessibilityState.disabled).toBe(true);
-  // The available day auto-selects, so its slot chip is present.
+  // Progressive disclosure: slots appear only AFTER the date is tapped.
+  fireEvent.press(view.getByTestId(`booking-day-${TODAY}`));
   expect(view.getByTestId(`booking-slot-${SLOT_START}`)).toBeTruthy();
+});
+
+// ── Progressive slot disclosure ───────────────────────────────────────────────
+test("no time slots are shown until a date is selected", () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const view = renderForm();
+
+  // On open: a prompt to pick a date, and NO slot chips yet.
+  expect(view.getByTestId("booking-pick-date")).toBeTruthy();
+  expect(view.queryByTestId(`booking-slot-${SLOT_START}`)).toBeNull();
+
+  // Selecting the date reveals its slots and hides the prompt.
+  fireEvent.press(view.getByTestId(`booking-day-${TODAY}`));
+  expect(view.getByTestId(`booking-slot-${SLOT_START}`)).toBeTruthy();
+  expect(view.queryByTestId("booking-pick-date")).toBeNull();
 });
 
 test("the CTA does not book until a slot is selected, then books once", async () => {
@@ -143,11 +159,11 @@ test("the CTA does not book until a slot is selected, then books once", async ()
   const view = renderForm();
 
   // No slot chosen yet → pressing the reserve CTA must not create a booking.
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   expect(mockMutateAsync).not.toHaveBeenCalled();
 
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
 });
 
@@ -167,7 +183,7 @@ test("blocks (alerts, no POST) when there is no active pet", () => {
   const view = renderForm();
 
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   expect(mockMutateAsync).not.toHaveBeenCalled();
   expect(Alert.alert).toHaveBeenCalledWith("No active pet", expect.any(String));
@@ -190,7 +206,7 @@ test("Confirm books with petId, provider id, the slot, and the derived provider-
   );
 
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   const arg = mockMutateAsync.mock.calls[0][0];
@@ -215,7 +231,7 @@ test("only sends service/location ids that belong to this provider", async () =>
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5")); // from SERVICES
   fireEvent.press(view.getByTestId("booking-location-8")); // from LOCATIONS
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   const arg = mockMutateAsync.mock.calls[0][0];
@@ -227,7 +243,7 @@ test("defaults capability to 'vet'", async () => {
   mockCurrentPet = { id: 7, name: "Rex" };
   const view = renderForm();
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].capability).toBe("vet");
 });
@@ -244,7 +260,7 @@ test("a groomer capability books with capability 'groomer'", async () => {
     />,
   );
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].capability).toBe("groomer");
 });
@@ -289,7 +305,7 @@ test("does NOT add to calendar unless the toggle is on (calendar_event_id undefi
   mockCurrentPet = { id: 7, name: "Rex" };
   const view = renderForm();
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockAddBookingToCalendar).not.toHaveBeenCalled();
   expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBeUndefined();
@@ -300,7 +316,7 @@ test("toggling add-to-calendar creates the event and persists the id on the book
   const view = renderForm();
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-add-calendar"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockAddBookingToCalendar).toHaveBeenCalled());
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBe("evt-1");
@@ -312,7 +328,7 @@ test("a denied calendar permission still books (no calendar_event_id)", async ()
   const view = renderForm();
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-add-calendar"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].calendar_event_id).toBeUndefined();
 });
@@ -331,7 +347,7 @@ test("telehealth capability uses the telehealth calendar builder", async () => {
   );
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-add-calendar"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockAddTelehealthToCalendar).toHaveBeenCalled());
   expect(mockAddBookingToCalendar).not.toHaveBeenCalled();
 });
@@ -354,7 +370,7 @@ test("a groomer booking sends recurrence_rule ONLY when the owner opts in", asyn
   // Without opting in → no recurrence_rule.
   let view = renderGroomer();
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].recurrence_rule).toBeUndefined();
 
@@ -365,7 +381,7 @@ test("a groomer booking sends recurrence_rule ONLY when the owner opts in", asyn
   view = renderGroomer();
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-recurrence"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].recurrence_rule).toBe(
     "FREQ=WEEKLY;INTERVAL=6",
@@ -386,7 +402,7 @@ test("a single paid service is auto-selected so booking CHARGES without tapping 
   expect(view.queryByTestId("booking-payment-note")).toBeTruthy();
 
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, amount_cents: 5000 });
@@ -403,7 +419,7 @@ test("a 'full' policy service starts checkout, links the order, and opens Mercad
   );
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, amount_cents: 5000 });
@@ -424,7 +440,7 @@ test("a 'deposit' policy charges the deposit amount, not the full price", async 
   );
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockCheckoutMutateAsync.mock.calls[0][0].amount_cents).toBe(1500);
@@ -436,7 +452,7 @@ test("a 'none' policy service books free — no checkout, no order_id, no redire
   const view = renderForm(); // SERVICES service 5 has no payment_policy → 'none'
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockCheckoutMutateAsync).not.toHaveBeenCalled();
@@ -451,7 +467,7 @@ test("if checkout fails (e.g. provider not connected → 503) it does NOT create
   );
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync).not.toHaveBeenCalled(); // no booking created
@@ -466,7 +482,7 @@ test("a paid service whose checkout returns no URL is NOT mislabeled 'Request se
   );
   selectSlot(view);
   fireEvent.press(view.getByTestId("booking-service-5"));
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(901);
@@ -540,7 +556,7 @@ test("switching to Videollamada books the telehealth capability", async () => {
   );
   fireEvent.press(view.getByTestId("booking-modality-video"));
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].capability).toBe("telehealth");
 });
@@ -559,7 +575,7 @@ test("a preselected `service` shows a static line, hides the chip selector, and 
   // Slot picker (vet default) is present — the flow drops straight into availability.
   expect(view.getByTestId(`booking-day-${TODAY}`)).toBeTruthy();
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(5);
 });
@@ -582,7 +598,7 @@ test("the `service` prop overrides single-service auto-preselect and survives a 
   view.rerender(<BookingFormModal {...props} services={[...services]} />);
 
   selectSlot(view);
-  fireEvent.press(view.getByText("booking.reserveSlot"));
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(6);
 });
@@ -593,4 +609,39 @@ test("with no `service` prop (bottom Book) the full service selector still rende
   expect(view.queryByTestId("booking-service-preselected")).toBeNull();
   expect(view.getByTestId("booking-service-5")).toBeTruthy();
   expect(view.getByText("General")).toBeTruthy();
+});
+
+// ── Booking-flow polish: CTA amount + reason removal ───────────────────────────
+test("the confirm CTA shows the selected service's price (pay-later) or the charge (deposit)", () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  // 'none' policy (SERVICES id 5 = $50, auto-preselected) → informational service price.
+  const free = renderForm();
+  expect(free.getByText(/booking\.reserveSlot · \$50/)).toBeTruthy();
+  free.unmount();
+
+  // 'deposit' policy → the CTA reflects the DEPOSIT charged ($15), not the full price.
+  const dep = render(
+    <BookingFormModal
+      visible
+      onClose={jest.fn()}
+      provider={PROVIDER}
+      locations={[]}
+      services={[
+        { id: 5, name: "Groom", price_cents: 5000, deposit_cents: 1500, payment_policy: "deposit", active: true },
+      ]}
+    />,
+  );
+  expect(dep.getByText(/booking\.reserveSlot · \$15/)).toBeTruthy();
+});
+
+test("the reason chips are gone and reason_for_visit is no longer sent", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const view = renderForm();
+  // The old "Reason" section (capability reason chips) is no longer rendered.
+  expect(view.queryByText("Reason")).toBeNull();
+
+  selectSlot(view);
+  fireEvent.press(view.getByText(/booking\.reserveSlot/));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].reason_for_visit).toBeUndefined();
 });

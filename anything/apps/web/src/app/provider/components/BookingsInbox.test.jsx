@@ -148,6 +148,13 @@ describe("BookingsInbox", () => {
     expect(screen.getByText("No bookings yet")).toBeInTheDocument();
   });
 
+  it("renders the customer's notes for a booking", () => {
+    setBookings([{ ...REQUESTED, notes: "Limps on left hind leg" }]);
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.getByText("Notes")).toBeInTheDocument(); // column header
+    expect(screen.getByText("Limps on left hind leg")).toBeInTheDocument();
+  });
+
   it("shows Confirm only for requested bookings and calls the confirm action", () => {
     render(<BookingsInbox providerId={3} />);
     const confirmButtons = screen.getAllByText("Confirm");

@@ -152,8 +152,18 @@ describe("tap a service to book (feat/tap-service-to-book)", () => {
     expect(bookingProps.service).toEqual(SERVICE);
   });
 
-  test("the bottom Book button opens booking with NO preselected service", () => {
+  test("with services, the per-card Book replaces the bottom Book CTA (Message remains)", () => {
     mockProfile = profileWith({ capabilities: ["vet"], services: [SERVICE] });
+    const { getByTestId, queryByTestId } = render(<ProviderScreen />);
+    // Bottom from-price Book CTA is gone; the service card carries its own Book.
+    expect(queryByTestId("storefront-book-cta")).toBeNull();
+    expect(getByTestId("service-book-9")).toBeTruthy();
+    // Message stays.
+    expect(getByTestId("storefront-message-cta")).toBeTruthy();
+  });
+
+  test("a bookable provider with ZERO services keeps the fallback bottom Book (no preselection)", () => {
+    mockProfile = profileWith({ capabilities: ["vet"], services: [] });
     const { getByTestId } = render(<ProviderScreen />);
     fireEvent.press(getByTestId("storefront-book-cta"));
     expect(bookingProps.service).toBeNull();

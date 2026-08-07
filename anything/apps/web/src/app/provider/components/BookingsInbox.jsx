@@ -230,6 +230,23 @@ export default function BookingsInbox({ providerId }) {
         id: "service",
         header: "Service",
       }),
+      // The owner's free-text note for the visit (replaces the old reason chips on mobile).
+      // Truncated with the full text on hover; blank when none so the cell stays quiet.
+      columnHelper.accessor((row) => row.notes || "", {
+        id: "notes",
+        header: "Notes",
+        cell: (info) => {
+          const v = info.getValue();
+          return v ? (
+            <span
+              className="block max-w-[220px] truncate text-[#7A6254]"
+              title={v}
+            >
+              {v}
+            </span>
+          ) : null;
+        },
+      }),
       columnHelper.accessor((row) => row.booking_status, {
         id: "status",
         header: "Status",

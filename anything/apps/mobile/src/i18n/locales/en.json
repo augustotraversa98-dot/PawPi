@@ -262,7 +262,8 @@
     "nextMonth": "Next month",
     "pickSlotTitle": "Pick a time",
     "pickSlotBody": "Choose an available slot to book.",
-    "bookingService": "Booking: {{name}}"
+    "bookingService": "Booking: {{name}}",
+    "pickDateForSlots": "Pick a date to see available times"
   },
   "providers": {
     "searchPlaceholder": "Search by name",
