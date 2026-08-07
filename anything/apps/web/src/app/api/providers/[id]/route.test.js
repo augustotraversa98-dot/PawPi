@@ -80,6 +80,24 @@ describe('GET /api/providers/[id]', () => {
       capabilities: ['shop', 'vet'],
     });
   });
+
+  it('the provider row query aggregates avg_rating + review_count (storefront preview header, 2b)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
+      .mockResolvedValueOnce([{ id: 100 }]) // provider row
+      .mockResolvedValueOnce([]) // staff
+      .mockResolvedValueOnce([]); // capabilities
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    await GET(new Request('http://localhost/api/providers/100'), PARAMS);
+
+    // Second query is the provider-row lookup; it now carries the rating aggregate.
+    const providerQuery = sql.mock.calls[1][0].join(' ');
+    expect(providerQuery).toContain('avg_rating');
+    expect(providerQuery).toContain('review_count');
+    expect(providerQuery).toContain('provider_reviews');
+  });
 });
 
 describe('PATCH /api/providers/[id] — profile fields only', () => {

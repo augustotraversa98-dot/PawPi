@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Store, Loader2, Send, Trash2, ImageIcon } from "lucide-react";
+import { Store, Loader2, Send, Trash2, ImageIcon, Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProvider,
@@ -10,6 +10,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
+import StorefrontPreview from "./StorefrontPreview";
 
 // /provider/storefront — the provider's STOREFRONT composer (ticket 2.22). Set the
 // cover banner, compose posts (text + images via Storage), and list/delete posts.
@@ -17,6 +18,10 @@ import ImageUploader from "./ImageUploader";
 // (services/items/reviews come from their own sections). Real data only — empty
 // states where there's nothing.
 export default function ProviderStorefront({ providerId }) {
+  // Two views of the storefront: EDIT (cover + posts composer, existing) and a read-only
+  // "View as customer" preview (Phase 2b) that renders the store as a customer sees it.
+  const [view, setView] = useState("edit");
+
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <div className="mb-6 flex items-center gap-3">
@@ -34,14 +39,47 @@ export default function ProviderStorefront({ providerId }) {
         </div>
       </div>
 
-      <CoverEditor providerId={providerId} />
-      <ComposePost providerId={providerId} />
+      {/* Edit vs. read-only customer preview. */}
+      <div className="mb-6 inline-flex rounded-xl border p-1" style={{ borderColor: COLORS.peach }}>
+        <ViewTab active={view === "edit"} onClick={() => setView("edit")} Icon={Pencil}>
+          Edit
+        </ViewTab>
+        <ViewTab active={view === "preview"} onClick={() => setView("preview")} Icon={Eye}>
+          View as customer
+        </ViewTab>
+      </div>
 
-      <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Posts
-      </h2>
-      <PostList providerId={providerId} />
+      {view === "preview" ? (
+        <StorefrontPreview providerId={providerId} />
+      ) : (
+        <>
+          <CoverEditor providerId={providerId} />
+          <ComposePost providerId={providerId} />
+
+          <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
+            Posts
+          </h2>
+          <PostList providerId={providerId} />
+        </>
+      )}
     </div>
+  );
+}
+
+function ViewTab({ active, onClick, Icon, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+      style={{
+        backgroundColor: active ? COLORS.coral : "transparent",
+        color: active ? "#fff" : "#7A6254",
+      }}
+    >
+      <Icon className="h-4 w-4" />
+      {children}
+    </button>
   );
 }
 

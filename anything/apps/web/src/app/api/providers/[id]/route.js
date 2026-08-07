@@ -49,8 +49,16 @@ async function GET(request, { params }) {
     // Any active staff member may read.
     await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
+    // avg_rating + review_count (ticket 2.2) are computed here too — same correlated
+    // subqueries as the public route — so the extranet "view-as-customer" preview (2b) can
+    // render the store header rating for the owner's OWN provider, including a DRAFT one
+    // (this route is membership-gated, not published-gated). Additive: extra keys only.
     const providers = await sql`
-      SELECT * FROM providers WHERE id = ${providerId} LIMIT 1
+      SELECT
+        p.*,
+        (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+        (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
+      FROM providers p WHERE p.id = ${providerId} LIMIT 1
     `;
     if (providers.length === 0) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
