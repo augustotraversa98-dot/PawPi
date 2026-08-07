@@ -12,6 +12,11 @@ vi.mock("../hooks/useProviders", () => ({
   useProviderLocations: vi.fn(),
   useProviderReviews: vi.fn(),
 }));
+// The editor is its own component (2c-ii) with its own hooks/tests — stub it so this suite
+// stays focused on the read-only preview + the edit toggle wiring.
+vi.mock("./StorefrontEditor", () => ({
+  default: () => <div data-testid="storefront-editor-stub" />,
+}));
 
 import {
   useProvider,
@@ -111,6 +116,16 @@ describe("StorefrontPreview", () => {
   it("shows a draft banner for an unpublished provider", () => {
     setup({ provider: { ...PUBLISHED, status: "draft" }, capabilities: ["vet"], services: [{ id: 1, name: "X", price_cents: 100, active: true }] });
     expect(screen.getByText(/Draft preview/i)).toBeTruthy();
+  });
+
+  it("has an 'Edit storefront' toggle that swaps the read-only view for the editor", () => {
+    setup({ provider: PUBLISHED, capabilities: ["vet"], services: [{ id: 1, name: "Checkup", price_cents: 5000, active: true }] });
+    // Read-only view first (no editor).
+    expect(screen.queryByTestId("storefront-editor-stub")).toBeNull();
+    fireEvent.click(screen.getByTestId("storefront-edit-toggle"));
+    // Now the editor is shown in place of the read-only shell.
+    expect(screen.getByTestId("storefront-editor-stub")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Services" })).toBeNull();
   });
 
   it("does not render a discount badge when compare_at_cents is absent", () => {
