@@ -59,6 +59,20 @@ describe("GET /api/providers/[id]/shop-products", () => {
     const json = await res.json();
     expect(json.products).toEqual(PRODUCTS);
   });
+
+  it("orders featured-first → sort_order → recency and projects the merchandising columns (Phase 2a)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ has: true }]) // capability
+      .mockResolvedValueOnce([]); // products
+    await GET(getReq(), PARAMS);
+    const q = allQueryText();
+    expect(q).toContain("ORDER BY is_featured DESC, sort_order ASC, created_at DESC");
+    expect(q).toContain("is_featured");
+    expect(q).toContain("sort_order");
+    expect(q).toContain("compare_at_cents");
+  });
 });
 
 describe("POST /api/providers/[id]/shop-products", () => {

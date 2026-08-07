@@ -32,12 +32,20 @@ export const STOREFRONT_TAB_LABELS = {
 
 // Resolve the ordered storefront tabs for a provider's public profile.
 // Returns [{ key, labelKey, panel }] — key/panel are the same generic section id.
+//
+// sectionOrder (provider.storefront_section_order, Phase 2a) is an OPTIONAL per-provider
+// override. When a non-empty array, it reorders the sections this archetype allows: keys
+// are honored in the given order, but VALIDATED against the archetype's allowed + present
+// sections (unknown / removed / empty keys are dropped), and any allowed-but-missing
+// section — e.g. a first-ever product the owner never arranged — is appended in the default
+// order. NULL / absent → today's archetype default, unchanged.
 export function getStorefrontTabs({
   capabilities = [],
   locations = [],
   services = [],
   products = [],
   posts = [],
+  sectionOrder = null,
 } = {}) {
   // Same axis as the screen's CTA block: a SHOP holds a shop/pharmacy capability OR any
   // product; a BOOKABLE provider holds any bookable capability.
@@ -73,7 +81,29 @@ export function getStorefrontTabs({
     order = ["services", "posts", "reviews", "about"];
   }
 
-  return order
-    .filter((key) => has[key])
-    .map((key) => ({ key, labelKey: STOREFRONT_TAB_LABELS[key], panel: key }));
+  // Default result: the archetype's allowed sections that have data (today's behavior).
+  const allowed = order.filter((key) => has[key]);
+
+  // Optional per-provider override — reorder `allowed` by sectionOrder, drop anything not
+  // allowed/present, then append any allowed sections the override left out (default order).
+  let resolved = allowed;
+  if (Array.isArray(sectionOrder) && sectionOrder.length > 0) {
+    const allowedSet = new Set(allowed);
+    const seen = new Set();
+    const overrideOrdered = [];
+    for (const key of sectionOrder) {
+      if (allowedSet.has(key) && !seen.has(key)) {
+        seen.add(key);
+        overrideOrdered.push(key);
+      }
+    }
+    const missing = allowed.filter((key) => !seen.has(key));
+    resolved = [...overrideOrdered, ...missing];
+  }
+
+  return resolved.map((key) => ({
+    key,
+    labelKey: STOREFRONT_TAB_LABELS[key],
+    panel: key,
+  }));
 }

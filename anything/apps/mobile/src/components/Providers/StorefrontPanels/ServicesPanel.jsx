@@ -5,10 +5,12 @@ import { Card } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { Section, Row, formatPrice } from "./primitives";
+import { FeaturedBadge } from "./catalogShared";
 
 // Services section (moved verbatim from app/service/provider.jsx). Presentational: takes the
-// already-fetched active services. Renders nothing when there are none.
-export default function ServicesPanel({ services = [] }) {
+// already-fetched active services. Renders nothing when there are none. A featured service
+// (Phase 2a) shows a Featured pill next to its name.
+export default function ServicesPanel({ services = [], t }) {
   if (services.length === 0) return null;
   return (
     <Section title="Services">
@@ -26,9 +28,14 @@ export default function ServicesPanel({ services = [] }) {
               alignItems: "center",
             }}
           >
-            <Text style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}>
-              {s.name}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, flex: 1 }}>
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown, flexShrink: 1 }]}>
+                {s.name}
+              </Text>
+              {s.is_featured && t ? (
+                <FeaturedBadge t={t} testID={`service-featured-${s.id}`} />
+              ) : null}
+            </View>
             {formatPrice(s.price_cents) ? (
               <Text style={[TYPE.headline, { color: COLORS.coral }]}>
                 {formatPrice(s.price_cents)}

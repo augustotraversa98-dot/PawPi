@@ -234,6 +234,7 @@ export default function ProviderScreen() {
     services,
     products,
     posts,
+    sectionOrder: provider?.storefront_section_order,
   });
   const activeKey = tabs.some((tab) => tab.key === activeTab)
     ? activeTab
@@ -254,7 +255,7 @@ export default function ProviderScreen() {
   const renderPanel = (key) => {
     switch (key) {
       case "services":
-        return <ServicesPanel services={services} />;
+        return <ServicesPanel services={services} t={t} />;
       case "items":
         // The Items tab IS the store: the inline browse grid backed by the shared cart.
         return cart.isLoading ? (

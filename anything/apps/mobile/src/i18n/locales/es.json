@@ -433,6 +433,8 @@
     "removeOne": "Quitar uno",
     "deliveryPickup": "Opciones de envío y retiro en el pago",
     "favorite": "Favorito",
+    "featured": "Destacado",
+    "discountPct": "-{{pct}}%",
     "chooseServiceTitle": "¿Qué te gustaría reservar?",
     "leaveReview": "Dejar una reseña",
     "checkout": "Pagar",
