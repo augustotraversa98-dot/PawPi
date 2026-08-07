@@ -251,6 +251,18 @@
     "couldNotAdd": "Couldn't add to calendar, but it's still saved.",
     "rsvpFirst": "RSVP \"going\" to add this event to your calendar"
   },
+  "booking": {
+    "reserveSlot": "Reserve appointment",
+    "modality": "Modality",
+    "modalityInPerson": "In person",
+    "modalityVideo": "Video call",
+    "whenLabel": "When",
+    "noSlots": "No available slots for this month",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "pickSlotTitle": "Pick a time",
+    "pickSlotBody": "Choose an available slot to book."
+  },
   "providers": {
     "searchPlaceholder": "Search by name",
     "sortSuggested": "Suggested",

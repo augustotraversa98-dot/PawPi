@@ -18,6 +18,12 @@ import {
   addBookingToCalendar,
   addTelehealthToCalendar,
 } from "@/utils/calendarIntegration";
+import BookingSlotPicker from "@/components/Providers/BookingSlotPicker";
+import {
+  isSlotCapability,
+  IN_PERSON_SLOT_CAPABILITIES,
+  slotZonedParts,
+} from "@/utils/providerSlots";
 
 // Per-capability copy so the SAME modal serves vet / grooming / walking / daycare /
 // sitting / training (ticket 2.4 — generalize the book flow to any capability). Falls
@@ -93,6 +99,7 @@ export default function BookingFormModal({
   provider,
   locations = [],
   services = [],
+  capabilities = [],
   capability,
 }) {
   const { data: currentPet } = useCurrentPet();
@@ -102,16 +109,38 @@ export default function BookingFormModal({
 
   // The capability this booking is for: explicit prop, else the provider's primary
   // type, else 'vet' (the pre-2.4 default). Drives the copy + the booking payload.
-  const resolvedCapability = capability ?? provider?.provider_type ?? "vet";
-  const copy = copyForCapability(resolvedCapability);
+  const baseCapability = capability ?? provider?.provider_type ?? "vet";
+
+  // Slot-based capabilities (vet/groomer/trainer/telehealth) use the OSDE-style slot picker
+  // (PR-2); the rest (daycare/sitter/walker) keep the free-form date/time flow, unchanged.
+  const slotBased = isSlotCapability(baseCapability);
+
+  // Modality (Presencial / Videollamada) — only offered when the booking's base capability
+  // is a presencial slot capability AND the provider ALSO holds telehealth. Presencial =
+  // baseCapability; Videollamada = 'telehealth'. A single modality shows no tabs.
+  const showModalityTabs =
+    slotBased &&
+    IN_PERSON_SLOT_CAPABILITIES.includes(baseCapability) &&
+    capabilities.includes("telehealth");
+  const [modality, setModality] = useState(baseCapability);
+  // Re-sync the modality when the modal (re)opens or the base capability changes.
+  useEffect(() => {
+    setModality(baseCapability);
+  }, [baseCapability, visible]);
+  const activeCapability = showModalityTabs ? modality : baseCapability;
+
+  const copy = copyForCapability(activeCapability);
 
   const [serviceId, setServiceId] = useState(null); // null = "General"
   // Once the user taps any service chip (incl. "General") we stop auto-preselecting so we
   // never override an explicit choice on a background re-fetch.
   const serviceTouched = useRef(false);
   const [locationId, setLocationId] = useState(null);
-  const [date, setDate] = useState(""); // canonical YYYY-MM-DD from DateField
-  const [time, setTime] = useState(""); // canonical HH:MM from TimeField
+  const [date, setDate] = useState(""); // canonical YYYY-MM-DD from DateField (free-form flow)
+  const [time, setTime] = useState(""); // canonical HH:MM from TimeField (free-form flow)
+  // Slot-based flow: the chosen { start, end } (absolute-UTC) + the provider tz it came in.
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [slotTimeZone, setSlotTimeZone] = useState(null);
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [repeat, setRepeat] = useState(false); // recurring cycle (2.6 grooming)
@@ -147,6 +176,8 @@ export default function BookingFormModal({
     setLocationId(null);
     setDate("");
     setTime("");
+    setSelectedSlot(null);
+    setSlotTimeZone(null);
     setReason("");
     setNotes("");
     setRepeat(false);
@@ -163,12 +194,36 @@ export default function BookingFormModal({
       );
       return;
     }
-    if (!date || !time) {
-      Alert.alert(
-        "Pick a date and time",
-        `Choose when you'd like the ${copy.noun}.`,
-      );
-      return;
+    // Resolve the appointment date/time. Slot-based: derive them (in the provider tz) from
+    // the chosen absolute-UTC slot, and carry start_at/end_at. Free-form: the DateField/
+    // TimeField values, no slot.
+    let appointmentDate;
+    let appointmentTime;
+    let startAt;
+    let endAt;
+    if (slotBased) {
+      if (!selectedSlot || !slotTimeZone) {
+        Alert.alert(
+          t("booking.pickSlotTitle"),
+          t("booking.pickSlotBody"),
+        );
+        return;
+      }
+      const parts = slotZonedParts(selectedSlot.start, slotTimeZone);
+      appointmentDate = parts.date;
+      appointmentTime = parts.time;
+      startAt = selectedSlot.start;
+      endAt = selectedSlot.end;
+    } else {
+      if (!date || !time) {
+        Alert.alert(
+          "Pick a date and time",
+          `Choose when you'd like the ${copy.noun}.`,
+        );
+        return;
+      }
+      appointmentDate = date;
+      appointmentTime = time;
     }
 
     // Add-to-calendar (2.80): OPTIONAL and best-effort. Create the device event up front
@@ -179,14 +234,14 @@ export default function BookingFormModal({
       const selectedService = services.find((s) => s.id === serviceId);
       const item = {
         title: selectedService?.name,
-        appointment_date: date,
-        appointment_time: time,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
         provider_name: provider?.name,
         reason_for_visit: reason || undefined,
         notes: notes || undefined,
       };
       const result =
-        resolvedCapability === "telehealth"
+        activeCapability === "telehealth"
           ? await addTelehealthToCalendar(item, currentPet.name)
           : await addBookingToCalendar(item, currentPet.name);
       if (result.success) calendarEventId = result.eventId;
@@ -207,13 +262,18 @@ export default function BookingFormModal({
       await book.mutateAsync({
         providerId: provider.id,
         petId: currentPet.id,
-        // The capability this booking is for (default 'vet' keeps the prior behaviour).
-        capability: resolvedCapability,
+        // The capability this booking is for (default 'vet' keeps the prior behaviour); the
+        // active modality when Presencial/Videollamada tabs are shown.
+        capability: activeCapability,
         // Only send ids when chosen; both are ids from THIS provider's profile.
         service_id: serviceId ?? undefined,
         provider_location_id: locationId ?? undefined,
-        appointment_date: date,
-        appointment_time: time,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        // Slot-based booking: the discrete slot as absolute-UTC instants (PR-1's contract).
+        // Free-form capabilities send neither, exactly as before.
+        start_at: startAt,
+        end_at: endAt,
         reason_for_visit: reason || undefined,
         notes: notes || undefined,
         // Recurring cycle (2.6): when the owner opts in, carry the capability's RRULE so
@@ -263,10 +323,17 @@ export default function BookingFormModal({
           : `Add a pet to book a ${copy.noun}`
       }
       icon={copy.icon}
-      ctaLabel={book.isPending ? "Sending…" : `Confirm ${copy.noun}`}
+      ctaLabel={
+        book.isPending
+          ? "Sending…"
+          : slotBased
+            ? t("booking.reserveSlot")
+            : `Confirm ${copy.noun}`
+      }
       ctaColor={COLORS.coral}
       onCtaPress={handleConfirm}
-      ctaDisabled={book.isPending}
+      // Slot-based: the CTA stays disabled until a discrete slot is chosen (OSDE flow).
+      ctaDisabled={book.isPending || (slotBased && !selectedSlot)}
       backgroundColor={COLORS.cream}
     >
       {!currentPet?.id && (
@@ -369,16 +436,66 @@ export default function BookingFormModal({
         </>
       )}
 
-      {/* Date + Time — shared canonical fields */}
-      <SectionLabel>Date</SectionLabel>
-      <View style={{ marginBottom: 16 }}>
-        <DateField value={date} onChange={setDate} testID="booking-date" />
-      </View>
+      {/* When — slot-based capabilities (vet/groomer/trainer/telehealth) use the OSDE-style
+          picker (modality tabs → month calendar → discrete slots). Non-slot capabilities keep
+          the free-form DateField/TimeField, unchanged. */}
+      {slotBased ? (
+        <>
+          {showModalityTabs && (
+            <>
+              <SectionLabel>{t("booking.modality")}</SectionLabel>
+              <View style={{ flexDirection: "row", gap: 9, marginBottom: 16 }}>
+                <Chip
+                  label={t("booking.modalityInPerson")}
+                  selected={modality !== "telehealth"}
+                  onPress={() => {
+                    setModality(baseCapability);
+                    setSelectedSlot(null);
+                    setSlotTimeZone(null);
+                  }}
+                  testID="booking-modality-presencial"
+                />
+                <Chip
+                  label={t("booking.modalityVideo")}
+                  selected={modality === "telehealth"}
+                  onPress={() => {
+                    setModality("telehealth");
+                    setSelectedSlot(null);
+                    setSlotTimeZone(null);
+                  }}
+                  testID="booking-modality-video"
+                />
+              </View>
+            </>
+          )}
+          <SectionLabel>{t("booking.whenLabel")}</SectionLabel>
+          <View style={{ marginBottom: 16 }}>
+            <BookingSlotPicker
+              key={activeCapability}
+              providerId={provider?.id}
+              capability={activeCapability}
+              selected={selectedSlot}
+              onSelect={(slot, tz) => {
+                setSelectedSlot(slot);
+                setSlotTimeZone(tz);
+              }}
+              t={t}
+            />
+          </View>
+        </>
+      ) : (
+        <>
+          <SectionLabel>Date</SectionLabel>
+          <View style={{ marginBottom: 16 }}>
+            <DateField value={date} onChange={setDate} testID="booking-date" />
+          </View>
 
-      <SectionLabel>Time</SectionLabel>
-      <View style={{ marginBottom: 16 }}>
-        <TimeField value={time} onChange={setTime} testID="booking-time" />
-      </View>
+          <SectionLabel>Time</SectionLabel>
+          <View style={{ marginBottom: 16 }}>
+            <TimeField value={time} onChange={setTime} testID="booking-time" />
+          </View>
+        </>
+      )}
 
       {/* Reason (optional chips) — capability-specific; hidden when none defined. */}
       {copy.reasons.length > 0 && (
