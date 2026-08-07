@@ -392,6 +392,15 @@
     "errorBody": "Puede que se haya eliminado, o que algo haya salido mal."
   },
   "storefront": {
+    "tabs": {
+      "services": "Servicios",
+      "items": "Productos",
+      "posts": "Publicaciones",
+      "reviews": "Reseñas",
+      "locations": "Ubicaciones",
+      "about": "Información"
+    },
+    "aboutEmpty": "Todavía no hay más información.",
     "shop": "Tienda",
     "searchInStore": "Buscar en esta tienda",
     "allCategories": "Todos",

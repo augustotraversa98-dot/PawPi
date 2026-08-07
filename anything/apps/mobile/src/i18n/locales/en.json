@@ -392,6 +392,15 @@
     "errorBody": "It may have been removed, or something went wrong."
   },
   "storefront": {
+    "tabs": {
+      "services": "Services",
+      "items": "Items",
+      "posts": "Posts",
+      "reviews": "Reviews",
+      "locations": "Locations",
+      "about": "About"
+    },
+    "aboutEmpty": "No additional details yet.",
     "shop": "Shop",
     "searchInStore": "Search this store",
     "allCategories": "All",
