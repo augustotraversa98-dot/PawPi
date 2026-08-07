@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, Image, ScrollView, TextInput } from "react-native";
-import { Search, Heart, Package } from "lucide-react-native";
+import { Search, Heart, Package, Plus } from "lucide-react-native";
 import { Card, PressableScale } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
@@ -15,10 +15,11 @@ export default function StorefrontBrowse({
   favorites,
   onToggleFavorite,
   onOpenDetail,
-  // eslint-disable-next-line no-unused-vars
-  cartQtyFor, // PR-3b inline quick-add — unused in the modal
-  // eslint-disable-next-line no-unused-vars
-  onQuickAdd, // PR-3b inline quick-add — unused in the modal
+  cartQtyFor,
+  onQuickAdd,
+  // The inline provider storefront (PR-3b) shows a quick "+" per card; the catalog modal does
+  // not (tapping a card opens the detail there). Off by default → the modal is unchanged.
+  showQuickAdd = false,
   t,
 }) {
   // In-store search + category filter (session-local, same as the modal today).
@@ -129,6 +130,9 @@ export default function StorefrontBrowse({
               isFavorite={favorites.has(p.id)}
               onToggleFavorite={() => onToggleFavorite(p.id)}
               onPress={() => onOpenDetail(p.id)}
+              showQuickAdd={showQuickAdd}
+              qty={cartQtyFor ? cartQtyFor(p.id) : 0}
+              onQuickAdd={() => onQuickAdd?.(p)}
             />
           ))}
         </View>
@@ -137,7 +141,16 @@ export default function StorefrontBrowse({
   );
 }
 
-function ProductGridCard({ product, onPress, onToggleFavorite, isFavorite, t }) {
+function ProductGridCard({
+  product,
+  onPress,
+  onToggleFavorite,
+  isFavorite,
+  showQuickAdd,
+  qty = 0,
+  onQuickAdd,
+  t,
+}) {
   const soldOut = product.stock_qty <= 0;
   return (
     <PressableScale
@@ -191,6 +204,45 @@ function ProductGridCard({ product, onPress, onToggleFavorite, isFavorite, t }) 
               fill={isFavorite ? COLORS.coral : "none"}
             />
           </PressableScale>
+          {/* Quick "+" add (inline storefront only; sold-out cards aren't addable). */}
+          {showQuickAdd && !soldOut ? (
+            <View
+              style={{
+                position: "absolute",
+                bottom: 6,
+                right: 6,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {qty > 0 ? (
+                <Text
+                  testID={`storefront-qty-${product.id}`}
+                  style={[TYPE.caption, { fontWeight: "800", color: "#FFF", letterSpacing: 0 }]}
+                >
+                  {qty}
+                </Text>
+              ) : null}
+              <PressableScale
+                testID={`storefront-quickadd-${product.id}`}
+                onPress={onQuickAdd}
+                accessibilityRole="button"
+                accessibilityLabel={t("storefront.addToCart")}
+                hitSlop={8}
+                style={{
+                  backgroundColor: COLORS.coral,
+                  borderRadius: 999,
+                  width: 30,
+                  height: 30,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Plus size={18} color="#FFF" />
+              </PressableScale>
+            </View>
+          ) : null}
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 }}>
           <Text

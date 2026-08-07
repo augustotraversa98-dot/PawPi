@@ -12,6 +12,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 let mockProfile;
 let bookingProps;
 let catalogShop;
+let mockShopProducts = []; // the inline Items grid's stock-aware products (useShopProducts)
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -46,6 +47,8 @@ jest.mock("@/hooks/useProviders", () => ({
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
   useMyBookings: () => ({ data: { upcoming: [], past: [] } }),
+  useShopProducts: () => ({ data: mockShopProducts, isLoading: false }),
+  useShopCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 import ProviderScreen from "./provider";
@@ -69,6 +72,7 @@ function profileWith({ capabilities = [], products = [], services = [] }) {
 beforeEach(() => {
   bookingProps = undefined;
   catalogShop = "unset";
+  mockShopProducts = [];
 });
 
 describe("capability-aware booking", () => {
@@ -141,13 +145,22 @@ describe("per-type primary action", () => {
   });
 });
 
-describe("shop entry opens the in-storefront catalog", () => {
-  test("tapping Shop opens StorefrontCatalog for this provider", () => {
-    mockProfile = profileWith({ capabilities: ["shop"] });
+describe("shop entry selects the Items tab (inline storefront)", () => {
+  test("tapping Shop makes the Items tab the active panel", () => {
+    // A mixed provider (services + shop) defaults to the Services tab, so pressing Shop is an
+    // observable switch to the inline Items store (no modal is opened anymore).
+    mockProfile = profileWith({
+      capabilities: ["vet", "shop"],
+      services: [{ id: 9, name: "Checkup", price_cents: 3000, image_urls: [] }],
+      products: [{ id: 5, name: "Kibble", price_cents: 5000, image_urls: [] }],
+    });
+    mockShopProducts = [
+      { id: 5, name: "Kibble", price_cents: 5000, stock_qty: 4, image_urls: [] },
+    ];
     const { getByTestId } = render(<ProviderScreen />);
-    expect(catalogShop).toBeNull(); // closed initially
+    const display = (el) => el.props.style?.display;
+    expect(display(getByTestId("storefront-panel-items"))).toBe("none");
     fireEvent.press(getByTestId("storefront-shop-cta"));
-    expect(catalogShop).toBeTruthy();
-    expect(catalogShop.id).toBe(1);
+    expect(display(getByTestId("storefront-panel-items"))).toBe("flex");
   });
 });

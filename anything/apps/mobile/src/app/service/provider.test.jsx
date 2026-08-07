@@ -8,6 +8,7 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 let mockProfile;
+let mockShopProducts = []; // the inline Items grid's stock-aware products (useShopProducts)
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -38,6 +39,8 @@ jest.mock("@/hooks/useProviders", () => ({
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
   useMyBookings: () => ({ data: { upcoming: [], past: [] } }),
+  useShopProducts: () => ({ data: mockShopProducts, isLoading: false }),
+  useShopCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 import ProviderScreen from "./provider";
@@ -48,6 +51,10 @@ const baseProvider = {
   name: "Happy Paws Clinic",
   provider_type: "vet",
 };
+
+beforeEach(() => {
+  mockShopProducts = [];
+});
 
 test("renders one image per service image_url", () => {
   mockProfile = {
@@ -90,8 +97,14 @@ test("renders no service images when a service has none (placeholder, no fakes)"
   expect(queryAllByTestId("service-image")).toHaveLength(0);
 });
 
-// Ticket 2.22 — storefront sections (cover, items, posts).
-test("renders the storefront cover, items, and posts when present", () => {
+// Ticket 2.22 + PR-3b — storefront sections (cover, the inline Items grid, posts).
+test("renders the storefront cover, inline product grid, and posts when present", () => {
+  // The Items tab is present (profile has products) and the inline grid renders the
+  // stock-aware useShopProducts rows.
+  mockShopProducts = [
+    { id: 20, name: "Kibble", price_cents: 5000, stock_qty: 5, image_urls: ["https://x/k.png"] },
+    { id: 21, name: "Toy", price_cents: 1500, stock_qty: 5, image_urls: [] },
+  ];
   mockProfile = {
     data: {
       provider: { ...baseProvider, cover_image_url: "https://x/cover.png" },
@@ -113,7 +126,9 @@ test("renders the storefront cover, items, and posts when present", () => {
 
   const { getByText, getAllByTestId, getByTestId } = render(<ProviderScreen />);
   expect(getByTestId("storefront-cover")).toBeTruthy();
-  expect(getAllByTestId("storefront-item")).toHaveLength(2);
+  // Inline browse grid (ProductGridCard) replaces the old storefront-item teaser.
+  expect(getByTestId("storefront-product-20")).toBeTruthy();
+  expect(getByTestId("storefront-product-21")).toBeTruthy();
   expect(getByText("Kibble")).toBeTruthy();
   expect(getAllByTestId("storefront-post")).toHaveLength(2);
   expect(getByText("Open this weekend!")).toBeTruthy();
@@ -161,6 +176,7 @@ test("storefront degrades cleanly: no cover/items/posts → those sections are a
 
   const { queryByTestId, queryAllByTestId } = render(<ProviderScreen />);
   expect(queryByTestId("storefront-cover")).toBeNull();
-  expect(queryAllByTestId("storefront-item")).toHaveLength(0);
+  // No products → no Items tab (and no inline grid).
+  expect(queryByTestId("storefront-panel-items")).toBeNull();
   expect(queryAllByTestId("storefront-post")).toHaveLength(0);
 });

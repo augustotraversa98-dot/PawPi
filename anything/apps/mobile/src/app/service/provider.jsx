@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -36,16 +36,21 @@ import {
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
-import StorefrontCatalog from "@/components/Providers/StorefrontCatalog";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
 import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
-import ItemsPanel from "@/components/Providers/StorefrontPanels/ItemsPanel";
+import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
+import ProductDetail from "@/components/Providers/StorefrontPanels/ProductDetail";
+import {
+  StorefrontCartBar,
+  StorefrontCheckoutSheet,
+} from "@/components/Providers/StorefrontPanels/StorefrontCheckout";
 import PostsPanel from "@/components/Providers/StorefrontPanels/PostsPanel";
 import ReviewsPanel from "@/components/Providers/StorefrontPanels/ReviewsPanel";
 import LocationsPanel from "@/components/Providers/StorefrontPanels/LocationsPanel";
 import AboutPanel from "@/components/Providers/StorefrontPanels/AboutPanel";
 import { getStorefrontTabs } from "@/constants/storefrontTabs";
 import { deriveOpenNow } from "@/utils/providerHours";
+import { useStorefrontCart } from "@/hooks/useStorefrontCart";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatMoney } from "@/utils/money";
 import { LinearGradient } from "expo-linear-gradient";
@@ -95,7 +100,7 @@ export default function ProviderScreen() {
 
   const { data, isLoading, isError, refetch } = useProviderProfile(slugStr);
   const [showBooking, setShowBooking] = useState(false);
-  const [showCatalog, setShowCatalog] = useState(false); // in-storefront shop (P4a)
+  const [detailId, setDetailId] = useState(null); // inline storefront product detail (P4b/3b)
   const [showCapChooser, setShowCapChooser] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [bookingCapability, setBookingCapability] = useState(null);
@@ -122,6 +127,21 @@ export default function ProviderScreen() {
     capabilities.some((c) => SHOP_CAPS.includes(c)) || products.length > 0;
   const showShop = isShop;
   const showBook = bookableCaps.length > 0 || !isShop;
+
+  // Screen-level shared cart (PR-3a seam): the Items tab IS the store — an inline browse grid,
+  // a quick "+" add, a cart bar + checkout sheet, and tap-card → product detail, all backed by
+  // the SAME cart/checkout the Shop screen uses. Only fetches products for a shop (else null →
+  // useShopProducts is disabled). The hook already clears the cart + closes the sheet on a
+  // successful redirect; inline has no modal to close, so onComplete is a no-op (the inline
+  // counterpart to the modal's onClose).
+  const cart = useStorefrontCart(isShop ? provider : null, petId, {
+    onComplete: () => {},
+  });
+  const shopProducts = cart.products ?? [];
+  const detailProduct = useMemo(
+    () => shopProducts.find((p) => String(p.id) === String(detailId)) ?? null,
+    [shopProducts, detailId],
+  );
 
   // The capability a booking is FOR: an explicit deep-link param wins; else the sole
   // bookable capability; else chosen from the chooser. Fixes the book/route 'vet' default
@@ -210,8 +230,22 @@ export default function ProviderScreen() {
       case "services":
         return <ServicesPanel services={services} />;
       case "items":
-        return (
-          <ItemsPanel products={products} onOpenCatalog={() => setShowCatalog(true)} />
+        // The Items tab IS the store: the inline browse grid backed by the shared cart.
+        return cart.isLoading ? (
+          <View style={{ paddingVertical: SPACING.xxl, alignItems: "center" }}>
+            <ActivityIndicator color={COLORS.coral} />
+          </View>
+        ) : (
+          <StorefrontBrowse
+            products={shopProducts}
+            favorites={cart.favorites}
+            onToggleFavorite={cart.toggleFavorite}
+            onOpenDetail={setDetailId}
+            cartQtyFor={(pid) => cart.cart[pid] ?? 0}
+            onQuickAdd={(p) => cart.setQty(p.id, 1, p.stock_qty)}
+            showQuickAdd
+            t={t}
+          />
         );
       case "posts":
         return <PostsPanel posts={posts} />;
@@ -375,16 +409,28 @@ export default function ProviderScreen() {
           rating + "from" price so social proof and cost stay visible without
           scrolling back up (conversion quick wins). */}
       {provider && (
-        <View
-          style={{
-            paddingTop: SPACING.md,
-            paddingHorizontal: SPACING.lg,
-            paddingBottom: insets.bottom + SPACING.lg,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.peach,
-            backgroundColor: COLORS.card,
-          }}
-        >
+        <>
+          {/* Inline cart bar — sits just above the pinned action bar; only when non-empty. */}
+          {cart.cartLines.length > 0 ? (
+            <StorefrontCartBar
+              visible
+              pinned={false}
+              total={cart.total}
+              currency={provider?.currency}
+              onOpenCheckout={() => cart.setShowCheckout(true)}
+              t={t}
+            />
+          ) : null}
+          <View
+            style={{
+              paddingTop: SPACING.md,
+              paddingHorizontal: SPACING.lg,
+              paddingBottom: insets.bottom + SPACING.lg,
+              borderTopWidth: 1,
+              borderTopColor: COLORS.peach,
+              backgroundColor: COLORS.card,
+            }}
+          >
           {(avgRating != null || fromPrice != null) && (
             <View
               style={{
@@ -464,7 +510,7 @@ export default function ProviderScreen() {
             {showShop ? (
               <PressableScale
                 testID="storefront-shop-cta"
-                onPress={() => setShowCatalog(true)}
+                onPress={() => setActiveTab("items")}
                 accessibilityRole="button"
                 accessibilityLabel={t("storefront.shop")}
                 style={{
@@ -523,7 +569,8 @@ export default function ProviderScreen() {
               </PressableScale>
             ) : null}
           </View>
-        </View>
+          </View>
+        </>
       )}
 
       <BookingFormModal
@@ -535,12 +582,71 @@ export default function ProviderScreen() {
         capability={resolvedBookingCapability}
       />
 
-      {/* In-storefront shop (P4a): the SAME cart + checkout the Shop screen uses. */}
-      <StorefrontCatalog
-        shop={showCatalog ? provider : null}
-        petId={petId}
-        onClose={() => setShowCatalog(false)}
-      />
+      {/* Inline checkout sheet — only mounted when the cart has lines (reuses the shared
+          pickup/delivery sheet + the SAME cart → useShopCheckout → MercadoPago money path). */}
+      {cart.cartLines.length > 0 ? (
+        <StorefrontCheckoutSheet
+          visible={cart.showCheckout}
+          onClose={() => cart.setShowCheckout(false)}
+          fulfillment={cart.fulfillment}
+          onSelectFulfillment={cart.setFulfillment}
+          address={cart.address}
+          onChangeAddress={cart.setAddress}
+          canPay={cart.canPay}
+          isPending={cart.checkout.isPending}
+          total={cart.total}
+          currency={provider?.currency}
+          storeName={provider?.name}
+          onPay={cart.doCheckout}
+          t={t}
+        />
+      ) : null}
+
+      {/* Inline product detail — opened by tapping a card; reuses the shared ProductDetail. */}
+      <Modal
+        visible={!!detailProduct}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setDetailId(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
+          <GlassSurface
+            intensity={BLUR.thick}
+            style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+            contentStyle={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.sm,
+              padding: SPACING.lg,
+            }}
+          >
+            <PressableScale
+              testID="storefront-detail-back"
+              onPress={() => setDetailId(null)}
+              accessibilityLabel={t("common.back")}
+            >
+              <ArrowLeft size={22} color={COLORS.warmBrown} />
+            </PressableScale>
+            <Text
+              style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown, flex: 1 }]}
+              numberOfLines={1}
+            >
+              {detailProduct?.name || t("storefront.shop")}
+            </Text>
+          </GlassSurface>
+          {detailProduct ? (
+            <ProductDetail
+              product={detailProduct}
+              t={t}
+              qty={cart.cart[detailProduct.id] ?? 0}
+              isFavorite={cart.favorites.has(detailProduct.id)}
+              onToggleFavorite={() => cart.toggleFavorite(detailProduct.id)}
+              onAdd={() => cart.setQty(detailProduct.id, 1, detailProduct.stock_qty)}
+              onRemove={() => cart.setQty(detailProduct.id, -1, detailProduct.stock_qty)}
+            />
+          ) : null}
+        </View>
+      </Modal>
 
       {/* Leave-a-review — reuses the shared modal; opened only from the eligible CTA above. */}
       <WriteReviewModal

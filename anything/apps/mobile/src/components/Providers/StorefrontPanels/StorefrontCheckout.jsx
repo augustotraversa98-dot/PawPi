@@ -12,20 +12,33 @@ import { money } from "./catalogShared";
 // StorefrontCatalog — same testIDs, same copy, same money path (nothing here touches checkout
 // logic; it just calls the handlers the hook provides).
 
-// Pinned cart bar — only shown when the cart has lines (the modal rendered it conditionally).
-export function StorefrontCartBar({ visible, total, currency, onOpenCheckout, t }) {
+// Cart bar — only shown when the cart has lines. `pinned` (default) absolutely pins it to the
+// bottom, as the catalog modal does; the inline provider storefront passes pinned={false} so it
+// sits in normal flow just above the screen's own pinned action bar.
+export function StorefrontCartBar({
+  visible,
+  total,
+  currency,
+  onOpenCheckout,
+  t,
+  pinned = true,
+}) {
   if (!visible) return null;
   return (
     <GlassSurface
       intensity={BLUR.thick}
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderTopWidth: 1,
-        borderColor: MATERIALS.glassBorder,
-      }}
+      style={
+        pinned
+          ? {
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderTopWidth: 1,
+              borderColor: MATERIALS.glassBorder,
+            }
+          : { borderTopWidth: 1, borderColor: MATERIALS.glassBorder }
+      }
       contentStyle={{ padding: SPACING.lg }}
     >
       <PressableScale
