@@ -79,6 +79,14 @@ export const postsUrl = (providerId) => `/api/providers/${providerId}/posts`;
 export const postUrl = (providerId, postId) =>
   `/api/providers/${providerId}/posts/${postId}`;
 
+export const reviewsKey = (providerId) => [
+  "provider-reviews",
+  String(providerId ?? ""),
+];
+
+export const reviewsUrl = (providerId) =>
+  `/api/providers/${providerId}/reviews`;
+
 export const locationsKey = (providerId) => [
   "provider-locations",
   String(providerId ?? ""),
@@ -615,6 +623,27 @@ export function useProviderPosts(providerId) {
       return data.posts ?? [];
     },
     enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Read this provider's reviews for the storefront preview (2b), via the existing public
+// reviews endpoint. That endpoint 404s for a DRAFT/unpublished provider (published-gated) —
+// which is fine for a read-only preview: on any error we simply resolve to an empty list so
+// a draft preview shows the "no reviews yet" state rather than throwing. retry:false so the
+// guaranteed draft 404 isn't retried.
+export function useProviderReviews(providerId) {
+  return useQuery({
+    queryKey: reviewsKey(providerId),
+    queryFn: async () => {
+      try {
+        const data = await getJson(reviewsUrl(providerId));
+        return data.reviews ?? [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: providerId != null && providerId !== "",
+    retry: false,
   });
 }
 
