@@ -1403,6 +1403,62 @@ export function useUpdateShopProduct(providerId) {
   });
 }
 
+// --- Storefront merchandising (Phase 2c) --------------------------------------
+// The editor's reorder + section-order writes (2c-i endpoints). Featured/discount edits reuse
+// useUpdateShopProduct / useUpdateService (their PATCH routes accept is_featured +
+// compare_at_cents). Each invalidates the read the "view-as-customer" preview consumes.
+
+// PATCH providers.storefront_section_order (owner|admin). mutateAsync(section_order:string[]|null).
+export function useSetStorefrontLayout(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (section_order) => {
+      const data = await getJson(`/api/providers/${providerId}/storefront-layout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section_order }),
+      });
+      return data.section_order;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: providerKey(providerId) }),
+  });
+}
+
+// PATCH .../shop-products/reorder (owner|admin). mutateAsync(ordered_ids:number[]).
+export function useReorderShopProducts(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordered_ids) => {
+      await getJson(`/api/providers/${providerId}/shop-products/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ordered_ids }),
+      });
+      return ordered_ids;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: shopProductsKey(providerId) }),
+  });
+}
+
+// PATCH .../services/reorder (owner|admin). mutateAsync(ordered_ids:number[]).
+export function useReorderServices(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordered_ids) => {
+      await getJson(`/api/providers/${providerId}/services/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ordered_ids }),
+      });
+      return ordered_ids;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: servicesKey(providerId) }),
+  });
+}
+
 // Soft-delete a product (DELETE .../shop-products/[productId] → active=false).
 export function useDeleteShopProduct(providerId) {
   const queryClient = useQueryClient();

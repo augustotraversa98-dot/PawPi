@@ -12,6 +12,7 @@ import {
   Facebook,
   Map as MapIcon,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import {
   useProvider,
@@ -24,6 +25,7 @@ import {
 import { getStorefrontTabs } from "../lib/storefrontTabs";
 import { deriveOpenNow } from "../lib/openNow";
 import { COLORS } from "../lib/colors";
+import StorefrontEditor from "./StorefrontEditor";
 
 // /provider/storefront → "View as customer" (Storefront Phase 2b). A READ-ONLY, faithful web
 // re-render of the mobile storefront shell (StoreHeader → tab bar → panels) so the owner sees
@@ -116,12 +118,18 @@ export default function StorefrontPreview({ providerId }) {
     sectionOrder: provider?.storefront_section_order,
   });
   const [activeKey, setActiveKey] = useState(null);
+  const [editing, setEditing] = useState(false);
   const active = tabs.some((tab) => tab.key === activeKey)
     ? activeKey
     : tabs[0]?.key;
   // Shop / fallback archetypes have no Locations tab → fold locations into About.
   const includeLocationsInAbout =
     locations.length > 0 && !tabs.some((tab) => tab.key === "locations");
+
+  // Edit mode (Phase 2c-ii) is the editable twin; the read-only render below is unchanged (2b).
+  if (editing) {
+    return <StorefrontEditor providerId={providerId} onDone={() => setEditing(false)} />;
+  }
 
   if (pLoading) {
     return (
@@ -139,6 +147,19 @@ export default function StorefrontPreview({ providerId }) {
 
   return (
     <div className="mx-auto w-full max-w-[420px] px-3 py-6">
+      <div className="mb-3 flex justify-end">
+        <button
+          type="button"
+          data-testid="storefront-edit-toggle"
+          onClick={() => setEditing(true)}
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold"
+          style={{ color: COLORS.brown, border: `1px solid ${COLORS.peach}` }}
+        >
+          <Pencil className="h-4 w-4" style={{ color: COLORS.coral }} />
+          Edit storefront
+        </button>
+      </div>
+
       {/* Owner-only banner — the preview shows more than the live store (drafts + hidden items). */}
       <div
         className="mb-3 rounded-xl border px-3 py-2 text-center text-xs font-semibold"
