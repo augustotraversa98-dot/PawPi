@@ -80,6 +80,26 @@ export default function ServicesPanel({ services = [], t, onPressService }) {
                 ))}
               </View>
             ) : null}
+            {/* Compact per-service Book CTA — same entry point as tapping the card. */}
+            {onPressService ? (
+              <PressableScale
+                testID={`service-book-${s.id}`}
+                onPress={() => onPressService(s)}
+                accessibilityRole="button"
+                style={{
+                  alignSelf: "flex-start",
+                  marginTop: SPACING.md,
+                  backgroundColor: COLORS.coral,
+                  borderRadius: RADIUS.control,
+                  paddingHorizontal: SPACING.lg,
+                  paddingVertical: SPACING.sm,
+                }}
+              >
+                <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
+                  {t ? t("providers.book") : "Book"}
+                </Text>
+              </PressableScale>
+            ) : null}
           </Card>
         );
         return onPressService ? (

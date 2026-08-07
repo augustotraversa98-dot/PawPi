@@ -262,7 +262,8 @@
     "nextMonth": "Mes siguiente",
     "pickSlotTitle": "Elige un horario",
     "pickSlotBody": "Elige un turno disponible para reservar.",
-    "bookingService": "Reservando: {{name}}"
+    "bookingService": "Reservando: {{name}}",
+    "pickDateForSlots": "Elige una fecha para ver los horarios"
   },
   "providers": {
     "searchPlaceholder": "Buscar por nombre",

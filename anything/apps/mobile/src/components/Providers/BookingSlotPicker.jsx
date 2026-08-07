@@ -61,11 +61,11 @@ export default function BookingSlotPicker({
   }, [data]);
 
   const [day, setDay] = useState(null);
-  // Keep the open day valid for the current data: default to the first available day, and
-  // clear a day that no longer has slots (after month nav / capability switch).
+  // Progressive disclosure: NO day is auto-selected — the user taps a date to reveal its
+  // slots. We only CLEAR a stale day (one that lost its slots after month nav / capability
+  // switch); we never default to the first available day.
   useEffect(() => {
-    if (day && byDay.has(day)) return;
-    setDay([...byDay.keys()].sort()[0] ?? null);
+    if (day && !byDay.has(day)) setDay(null);
   }, [byDay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const weeks = buildMonthMatrix(visible.year, visible.month);
@@ -208,6 +208,14 @@ export default function BookingSlotPicker({
             style={{ color: COLORS.mutedBrown, fontSize: 14, textAlign: "center" }}
           >
             {t("booking.noSlots")}
+          </Text>
+        ) : !day ? (
+          // Progressive disclosure: no slots until a date is chosen (keeps the form compact).
+          <Text
+            testID="booking-pick-date"
+            style={{ color: COLORS.mutedBrown, fontSize: 14, textAlign: "center" }}
+          >
+            {t("booking.pickDateForSlots")}
           </Text>
         ) : (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>

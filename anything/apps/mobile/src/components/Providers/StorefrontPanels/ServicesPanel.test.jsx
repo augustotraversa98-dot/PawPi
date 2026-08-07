@@ -33,12 +33,22 @@ test("tapping a service row calls onPressService with that service", () => {
   expect(onPressService).toHaveBeenCalledWith(SERVICES[1]);
 });
 
-test("without onPressService the rows are non-interactive (no row tap targets)", () => {
+test("each card shows a Book CTA that opens booking for that service", () => {
+  const onPressService = jest.fn();
+  const { getByTestId } = render(
+    <ServicesPanel services={SERVICES} t={t} onPressService={onPressService} />,
+  );
+  fireEvent.press(getByTestId("service-book-5"));
+  expect(onPressService).toHaveBeenCalledWith(SERVICES[0]);
+});
+
+test("without onPressService the rows are non-interactive (no row/book targets)", () => {
   const { queryByTestId, getByText } = render(
     <ServicesPanel services={SERVICES} t={t} />,
   );
   expect(queryByTestId("service-row-5")).toBeNull();
   expect(queryByTestId("service-row-6")).toBeNull();
+  expect(queryByTestId("service-book-5")).toBeNull();
   // The content still renders.
   expect(getByText("Checkup")).toBeTruthy();
 });

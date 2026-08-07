@@ -19,6 +19,7 @@ import {
   addTelehealthToCalendar,
 } from "@/utils/calendarIntegration";
 import BookingSlotPicker from "@/components/Providers/BookingSlotPicker";
+import { formatMoney } from "@/utils/money";
 import {
   isSlotCapability,
   IN_PERSON_SLOT_CAPABILITIES,
@@ -27,18 +28,16 @@ import {
 
 // Per-capability copy so the SAME modal serves vet / grooming / walking / daycare /
 // sitting / training (ticket 2.4 — generalize the book flow to any capability). Falls
-// back to a generic "service" label for any capability not listed. Vet stays exactly as
-// it was (icon, title, reason chips) so the existing flow is unchanged.
+// back to a generic "service" label for any capability not listed. (The old per-capability
+// "reason" chips were removed — the free-text Notes field replaces them.)
 const CAPABILITY_COPY = {
   vet: {
     icon: "🏥",
     noun: "appointment",
-    reasons: ["Checkup", "Vaccination", "Injury", "Dental", "Grooming"],
   },
   groomer: {
     icon: "✂️",
     noun: "grooming",
-    reasons: ["Full groom", "Bath & tidy", "Nail trim", "De-shed"],
     // Grooming is naturally a recurring cycle (ticket 2.6). Offer "every 6 weeks" so the
     // booking carries a recurrence_rule (2.4) and the EXISTING reminder engine nudges the
     // owner to re-book — no new reminder path. iCal RRULE; INTERVAL=6 weeks.
@@ -47,18 +46,17 @@ const CAPABILITY_COPY = {
   walker: {
     icon: "🐾",
     noun: "walk",
-    reasons: ["30 min walk", "60 min walk", "Group walk", "Puppy walk"],
     // Walking supports both on-demand (a one-off slot — leave Repeat off) and a RECURRING
     // weekly pack walk (ticket 2.7). Opting in carries a weekly recurrence_rule (2.4) so
     // the EXISTING reminder engine nudges the owner — no new reminder path. iCal RRULE.
     recurrence: { label: "Repeat weekly (pack walk)", rule: "FREQ=WEEKLY;INTERVAL=1" },
   },
-  daycare: { icon: "🏠", noun: "daycare", reasons: ["Half day", "Full day", "Recurring"] },
-  sitter: { icon: "🧸", noun: "sitting", reasons: ["Drop-in", "Overnight", "House sit"] },
-  trainer: { icon: "🎓", noun: "training", reasons: ["Puppy basics", "Obedience", "Behaviour", "1-on-1"] },
+  daycare: { icon: "🏠", noun: "daycare" },
+  sitter: { icon: "🧸", noun: "sitting" },
+  trainer: { icon: "🎓", noun: "training" },
 };
 
-const DEFAULT_COPY = { icon: "📅", noun: "service", reasons: [] };
+const DEFAULT_COPY = { icon: "📅", noun: "service" };
 
 function copyForCapability(capability) {
   return CAPABILITY_COPY[capability] ?? DEFAULT_COPY;
@@ -145,7 +143,6 @@ export default function BookingFormModal({
   // Slot-based flow: the chosen { start, end } (absolute-UTC) + the provider tz it came in.
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [slotTimeZone, setSlotTimeZone] = useState(null);
-  const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [repeat, setRepeat] = useState(false); // recurring cycle (2.6 grooming)
   const [addCal, setAddCal] = useState(false); // add to phone calendar (2.80)
@@ -162,6 +159,13 @@ export default function BookingFormModal({
         ? Number(chosenService?.deposit_cents) || 0
         : 0;
   const requiresPayment = paymentPolicy !== "none" && chargeCents > 0;
+
+  // Amount to surface on the confirm CTA: the actual charge when a payment is taken at booking
+  // (deposit/full), else the selected service's price as the informational total. Null when no
+  // priced service is selected ("General") → the CTA shows no amount. Payment logic unchanged.
+  const ctaAmountCents = requiresPayment
+    ? chargeCents
+    : chosenService?.price_cents ?? null;
 
   // A tapped storefront service (feat/tap-service-to-book) is preselected and the selector is
   // hidden. This takes precedence over the single-service auto-preselect below, and keys only
@@ -198,7 +202,6 @@ export default function BookingFormModal({
     setTime("");
     setSelectedSlot(null);
     setSlotTimeZone(null);
-    setReason("");
     setNotes("");
     setRepeat(false);
     setAddCal(false);
@@ -257,7 +260,6 @@ export default function BookingFormModal({
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
         provider_name: provider?.name,
-        reason_for_visit: reason || undefined,
         notes: notes || undefined,
       };
       const result =
@@ -294,7 +296,6 @@ export default function BookingFormModal({
         // Free-form capabilities send neither, exactly as before.
         start_at: startAt,
         end_at: endAt,
-        reason_for_visit: reason || undefined,
         notes: notes || undefined,
         // Recurring cycle (2.6): when the owner opts in, carry the capability's RRULE so
         // the booking recurs and the existing reminder engine nudges a re-book.
@@ -343,13 +344,15 @@ export default function BookingFormModal({
           : `Add a pet to book a ${copy.noun}`
       }
       icon={copy.icon}
-      ctaLabel={
-        book.isPending
-          ? "Sending…"
-          : slotBased
-            ? t("booking.reserveSlot")
-            : `Confirm ${copy.noun}`
-      }
+      ctaLabel={(() => {
+        if (book.isPending) return "Sending…";
+        const base = slotBased ? t("booking.reserveSlot") : `Confirm ${copy.noun}`;
+        // Show the selected service's amount on the CTA (charge for deposit/full, price for
+        // pay-later); no amount when no priced service is selected.
+        return ctaAmountCents != null
+          ? `${base} · ${formatMoney(ctaAmountCents, provider?.currency)}`
+          : base;
+      })()}
       ctaColor={COLORS.coral}
       onCtaPress={handleConfirm}
       // Slot-based: the CTA stays disabled until a discrete slot is chosen (OSDE flow).
@@ -537,31 +540,8 @@ export default function BookingFormModal({
         </>
       )}
 
-      {/* Reason (optional chips) — capability-specific; hidden when none defined. */}
-      {copy.reasons.length > 0 && (
-        <>
-          <SectionLabel>Reason</SectionLabel>
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 9,
-              marginBottom: 18,
-            }}
-          >
-            {copy.reasons.map((r) => (
-              <Chip
-                key={r}
-                label={r}
-                selected={reason === r}
-                onPress={() => setReason((cur) => (cur === r ? "" : r))}
-              />
-            ))}
-          </View>
-        </>
-      )}
-
-      {/* Notes (optional) */}
+      {/* Notes (optional) — replaces the old per-capability "reason" chips: free text is the
+          single place the owner tells the provider what the visit is about. */}
       <SectionLabel>Notes</SectionLabel>
       <TextInput
         placeholder="Describe symptoms or special needs…"
