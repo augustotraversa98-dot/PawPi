@@ -87,6 +87,19 @@ describe('PATCH /api/providers/[id]/services/[serviceId]', () => {
     expect(valuesOf(1)).toEqual(expect.arrayContaining(['9', '100']));
   });
 
+  it('accepts is_featured and binds it into the COALESCE update (Phase 2c-i)', async () => {
+    auth.mockResolvedValue(SESSION);
+    const UPDATED = { id: 9, provider_id: 100, is_featured: true };
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([UPDATED]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await PATCH(patchReq({ is_featured: true }), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect(queryTextOf(1)).toContain('is_featured = COALESCE(');
+    expect(valuesOf(1)).toContain(true);
+  });
+
   it('PATCH active=true reactivates a soft-deleted service', async () => {
     auth.mockResolvedValue(SESSION);
     const REACTIVATED = { id: 9, provider_id: 100, active: true };

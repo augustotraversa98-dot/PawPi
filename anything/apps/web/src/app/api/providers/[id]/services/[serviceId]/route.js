@@ -56,6 +56,7 @@ async function PATCH(request, { params }) {
       image_urls,
       payment_policy,
       nightly_rate_cents,
+      is_featured,
     } = body;
 
     // Scoped by id AND provider_id — cross-provider writes match no row -> 404.
@@ -74,6 +75,7 @@ async function PATCH(request, { params }) {
         image_urls = COALESCE(${Array.isArray(image_urls) ? image_urls : null}, image_urls),
         payment_policy = COALESCE(${payment_policy ?? null}, payment_policy),
         nightly_rate_cents = COALESCE(${nightly_rate_cents ?? null}, nightly_rate_cents),
+        is_featured = COALESCE(${is_featured === undefined ? null : is_featured}, is_featured),
         updated_at = NOW()
       WHERE id = ${serviceId} AND provider_id = ${providerId}
       RETURNING *

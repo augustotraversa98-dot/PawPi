@@ -60,6 +60,37 @@ async function PATCH(request, { params }) {
       return Response.json({ error: imageError }, { status: 400 });
     }
 
+    // compare_at_cents (the "was" price for a discount badge, 0077) — null clears the
+    // discount; a number MUST be a non-negative int AND exceed the EFFECTIVE price (the new
+    // price_cents when it is also being set in this PATCH, else the stored one). This mirrors
+    // the 0077 CHECK (compare_at_cents IS NULL OR compare_at_cents > price_cents) so a bad
+    // value fails with a clean 422 instead of a DB error.
+    if (body.compare_at_cents !== undefined && body.compare_at_cents !== null) {
+      if (!Number.isInteger(body.compare_at_cents) || body.compare_at_cents < 0) {
+        return Response.json(
+          { error: "compare_at_cents must be a non-negative integer or null" },
+          { status: 422 },
+        );
+      }
+      let effectivePrice = body.price_cents;
+      if (!Number.isInteger(effectivePrice)) {
+        const rows = await sql`
+          SELECT price_cents FROM shop_products
+          WHERE id = ${productId} AND provider_id = ${providerId}
+        `;
+        if (rows.length === 0) {
+          return Response.json({ error: "Product not found" }, { status: 404 });
+        }
+        effectivePrice = rows[0].price_cents;
+      }
+      if (body.compare_at_cents <= effectivePrice) {
+        return Response.json(
+          { error: "compare_at_cents must be greater than price_cents" },
+          { status: 422 },
+        );
+      }
+    }
+
     // COALESCE keeps unspecified fields. RLS (admin_all) + the provider_id filter scope the
     // row to THIS shop's admin — a non-admin updates ZERO rows (handled as 404 below).
     const updated = await sql`
@@ -76,6 +107,9 @@ async function PATCH(request, { params }) {
         category = COALESCE(${body.category ?? null}, category),
         is_rx = COALESCE(${body.is_rx === undefined ? null : body.is_rx}, is_rx),
         active = COALESCE(${body.active === undefined ? null : body.active}, active),
+        is_featured = COALESCE(${body.is_featured === undefined ? null : body.is_featured}, is_featured),
+        compare_at_cents = CASE WHEN ${body.compare_at_cents !== undefined}
+          THEN ${body.compare_at_cents ?? null} ELSE compare_at_cents END,
         updated_at = now()
       WHERE id = ${productId} AND provider_id = ${providerId}
       RETURNING *
