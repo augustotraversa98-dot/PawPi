@@ -4,11 +4,8 @@ import {
   Text,
   Image,
   ScrollView,
-  TextInput,
   ActivityIndicator,
   Modal,
-  Alert,
-  Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,171 +14,59 @@ import {
   Plus,
   Minus,
   Package,
-  Pill,
-  Search,
   Heart,
   Truck,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
-import { Card, PressableScale, GlassSurface } from "@/components/ui";
+import { PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import LocationField from "@/components/Map/LocationField";
-import { useShopProducts, useShopCheckout } from "@/hooks/useProviders";
-import { formatMoney } from "@/utils/money";
+import { useStorefrontCart } from "@/hooks/useStorefrontCart";
+import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
+import {
+  StorefrontCartBar,
+  StorefrontCheckoutSheet,
+} from "@/components/Providers/StorefrontPanels/StorefrontCheckout";
+import { money, RxBadge, CatalogEmptyState } from "@/components/Providers/StorefrontPanels/catalogShared";
 
 // Shared store storefront (Services Hub P4a). The mini-shop used by BOTH the Shop screen
-// (app/service/shop.jsx) and a provider's storefront (app/service/provider.jsx): search
-// within the store, browse categories, a product grid with favorites, and a PRODUCT DETAIL
-// view (carousel, price, read-more description, stock, Rx, a delivery/pickup info line) →
-// ADD TO CART → checkout.
+// (app/service/shop.jsx) and a provider's storefront (app/service/provider.jsx): search within
+// the store, browse categories, a product grid with favorites, and a PRODUCT DETAIL view
+// (carousel, price, read-more description, stock, Rx, a delivery/pickup info line) → ADD TO CART
+// → checkout.
 //
-// IMPORTANT (P4a): the cart + checkout logic is reused EXACTLY as it shipped in shop.jsx —
-// the same local {productId: qty} cart, the same setQty clamp, and the same
-// useShopCheckout() POST with rail 'mercadopago'. Nothing on the money path changed here;
-// P4b owns checkout wiring / delivery / live payment. Only browsing UI (search, categories,
-// favorites, product detail) was added on top.
-
-function money(cents, currency = "ARS") {
-  return formatMoney(cents, currency) ?? "";
-}
-
+// PR-3a (behavior-preserving extraction): the cart + checkout logic now lives in
+// useStorefrontCart, the browse UI in StorefrontBrowse, and the cart/checkout UI in
+// StorefrontCartBar + StorefrontCheckoutSheet — so PR-3b can render the browse surface inline.
+// This component is now a thin composition of those pieces; the money path (cart →
+// useShopCheckout → MercadoPago) is unchanged. onComplete=onClose keeps the modal
+// behavior-identical (a successful redirect resets the cart, closes the sheet, and closes the
+// modal, exactly as before).
 export default function StorefrontCatalog({ shop, petId, onClose }) {
   const { t } = useTranslation();
-  const { data: products, isLoading } = useShopProducts(shop?.id);
 
-  // ── cart + checkout: reused verbatim from the original shop.jsx ShopCatalogModal ──
-  const [cart, setCart] = useState({}); // productId -> qty
-  const checkout = useShopCheckout();
+  const {
+    products,
+    isLoading,
+    cart,
+    cartLines,
+    total,
+    setQty,
+    favorites,
+    toggleFavorite,
+    fulfillment,
+    setFulfillment,
+    address,
+    setAddress,
+    canPay,
+    showCheckout,
+    setShowCheckout,
+    doCheckout,
+    checkout,
+  } = useStorefrontCart(shop, petId, { onComplete: onClose });
 
-  // Fulfillment (P4b): the buyer picks Pickup or Delivery at checkout. Default 'pickup'
-  // (matches the order column default). Delivery collects an address via the shared
-  // LocationField (same pattern as the pharmacy rxf flow) — the merchant fulfills it.
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [fulfillment, setFulfillment] = useState("pickup");
-  const [address, setAddress] = useState(null); // { lat, lng, address }
-  const canPay =
-    fulfillment === "pickup" ||
-    (fulfillment === "delivery" && !!address?.address?.trim());
-
-  const reset = () => setCart({});
-
-  const cartLines = useMemo(() => {
-    if (!products) return [];
-    return Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([pid, qty]) => {
-        const product = products.find((p) => String(p.id) === String(pid));
-        return product ? { product, qty } : null;
-      })
-      .filter(Boolean);
-  }, [cart, products]);
-
-  const total = cartLines.reduce(
-    (sum, l) => sum + l.product.price_cents * l.qty,
-    0,
-  );
-
-  const setQty = (productId, delta, stockQty) => {
-    setCart((prev) => {
-      const next = Math.max(0, Math.min(stockQty ?? 99, (prev[productId] ?? 0) + delta));
-      return { ...prev, [productId]: next };
-    });
-  };
-
-  const doCheckout = async () => {
-    if (!petId) {
-      Alert.alert(t("storefront.addPetTitle"), t("storefront.addPetBody"));
-      return;
-    }
-    if (cartLines.length === 0) return;
-    // Delivery requires an address (the server re-validates); guard here too.
-    if (fulfillment === "delivery" && !address?.address?.trim()) return;
-    try {
-      // P4b: fulfillment_type + shipping_address are ADDITIVE on the SAME payload — the
-      // rail (mercadopago) and every existing field are unchanged. A pickup order sends
-      // 'pickup' + null, reproducing the pre-P4b request exactly.
-      const res = await checkout.mutateAsync({
-        petId,
-        provider_id: shop.id,
-        items: cartLines.map((l) => ({
-          product_id: l.product.id,
-          quantity: l.qty,
-        })),
-        rail: "mercadopago",
-        fulfillment_type: fulfillment,
-        shipping_address:
-          fulfillment === "delivery"
-            ? {
-                address: address.address,
-                lat: address.lat ?? null,
-                lng: address.lng ?? null,
-              }
-            : null,
-      });
-      const payUrl = res.checkoutUrl || res.deeplink;
-      if (payUrl) {
-        // Send the buyer to MercadoPago. The order stays PENDING until the payment
-        // webhook confirms it — so we must NOT tell them it's "placed"/on its way yet.
-        Linking.openURL(payUrl).catch(() => {});
-        Alert.alert(
-          "Complete your payment",
-          "Finish paying in MercadoPago to confirm your order. It isn't confirmed until your payment goes through.",
-        );
-        reset();
-        setShowCheckout(false);
-        onClose();
-      } else {
-        // 201 but no checkout URL → payment could NOT be started. Never claim success:
-        // nothing was charged. Keep the checkout sheet open so the buyer can retry.
-        Alert.alert(
-          "Payment couldn't start",
-          "We couldn't open the payment window, so nothing was charged. Please try again.",
-        );
-      }
-    } catch (e) {
-      Alert.alert(
-        t("storefront.checkoutFailedTitle"),
-        e.message || t("storefront.checkoutFailedBody"),
-      );
-    }
-  };
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // Browsing UI state (new): in-store search, category filter, favorites, and which
-  // product's detail is open. Favorites are session-local this phase (no backend yet).
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState(null); // null = all
-  const [favorites, setFavorites] = useState(() => new Set());
+  // Which product's detail is open (view-only local state; the cart lives in the hook).
   const [detailId, setDetailId] = useState(null);
-
-  const toggleFavorite = (id) =>
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  const categories = useMemo(() => {
-    const set = new Set(
-      (products ?? []).map((p) => p.category).filter((c) => !!c),
-    );
-    return Array.from(set);
-  }, [products]);
-
-  const visibleProducts = useMemo(() => {
-    const list = products ?? [];
-    const q = query.trim().toLowerCase();
-    return list.filter((p) => {
-      if (category && p.category !== category) return false;
-      if (!q) return true;
-      return (
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.category && p.category.toLowerCase().includes(q))
-      );
-    });
-  }, [products, query, category]);
 
   const detailProduct = useMemo(
     () => (products ?? []).find((p) => String(p.id) === String(detailId)) ?? null,
@@ -249,340 +134,50 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
           />
         ) : !products || products.length === 0 ? (
           <View style={{ padding: SPACING.lg }}>
-            <EmptyState body={t("storefront.noProducts")} />
+            <CatalogEmptyState body={t("storefront.noProducts")} />
           </View>
         ) : (
           <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 140 }}>
-            {/* Search within the store */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: SPACING.sm,
-                backgroundColor: COLORS.card,
-                borderRadius: RADIUS.control,
-                borderWidth: 1,
-                borderColor: COLORS.peach,
-                paddingHorizontal: SPACING.md,
-                paddingVertical: SPACING.sm + 2,
-                marginBottom: SPACING.md,
-              }}
-            >
-              <Search size={18} color={COLORS.mutedBrown} />
-              <TextInput
-                testID="storefront-search"
-                value={query}
-                onChangeText={setQuery}
-                placeholder={t("storefront.searchInStore")}
-                placeholderTextColor={COLORS.mutedBrown}
-                autoCorrect={false}
-                style={[TYPE.subhead, { flex: 1, color: COLORS.warmBrown, padding: 0 }]}
-              />
-            </View>
-
-            {/* Category chips (only when the store tags categories) */}
-            {categories.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ marginBottom: SPACING.md }}
-                contentContainerStyle={{ gap: SPACING.sm }}
-              >
-                {[null, ...categories].map((c) => {
-                  const selected = category === c;
-                  const label = c == null ? t("storefront.allCategories") : c;
-                  return (
-                    <PressableScale
-                      key={c ?? "__all"}
-                      testID={`storefront-cat-${c ?? "all"}`}
-                      onPress={() => setCategory(c)}
-                      accessibilityState={{ selected }}
-                      style={{
-                        paddingHorizontal: SPACING.md + 2,
-                        paddingVertical: SPACING.sm,
-                        borderRadius: RADIUS.chip,
-                        backgroundColor: selected ? COLORS.coral : COLORS.card,
-                        borderWidth: 1,
-                        borderColor: COLORS.peach,
-                      }}
-                    >
-                      <Text
-                        style={[
-                          TYPE.subhead,
-                          { fontWeight: "700", color: selected ? "#fff" : COLORS.warmBrown },
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </PressableScale>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
-
-            {/* Product grid */}
-            {visibleProducts.length === 0 ? (
-              <EmptyState body={t("storefront.noProducts")} />
-            ) : (
-              <View
-                style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}
-              >
-                {visibleProducts.map((p) => (
-                  <ProductGridCard
-                    key={p.id}
-                    product={p}
-                    t={t}
-                    isFavorite={favorites.has(p.id)}
-                    onToggleFavorite={() => toggleFavorite(p.id)}
-                    onPress={() => setDetailId(p.id)}
-                  />
-                ))}
-              </View>
-            )}
+            <StorefrontBrowse
+              products={products}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
+              onOpenDetail={setDetailId}
+              cartQtyFor={(pid) => cart[pid] ?? 0}
+              onQuickAdd={(p) => setQty(p.id, 1, p.stock_qty)}
+              t={t}
+            />
           </RefreshableScrollView>
         )}
 
-        {/* Cart bar — verbatim from the original shop flow. */}
-        {cartLines.length > 0 ? (
-          <GlassSurface
-            intensity={BLUR.thick}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderTopWidth: 1,
-              borderColor: MATERIALS.glassBorder,
-            }}
-            contentStyle={{ padding: SPACING.lg }}
-          >
-            <PressableScale
-              testID="storefront-checkout"
-              onPress={() => setShowCheckout(true)}
-              style={{
-                backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.control,
-                paddingVertical: 15,
-                alignItems: "center",
-              }}
-            >
-              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                {t("storefront.checkoutTotal", { total: money(total, shop?.currency) })}
-              </Text>
-            </PressableScale>
-          </GlassSurface>
-        ) : null}
+        {/* Cart bar — verbatim from the original shop flow (now driven by the hook). */}
+        <StorefrontCartBar
+          visible={cartLines.length > 0}
+          total={total}
+          currency={shop?.currency}
+          onOpenCheckout={() => setShowCheckout(true)}
+          t={t}
+        />
 
         {/* Checkout sheet (P4b): choose Pickup or Delivery, add an address for delivery,
             then Pay via the EXISTING checkout. */}
-        <Modal
+        <StorefrontCheckoutSheet
           visible={showCheckout}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowCheckout(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.35)",
-              justifyContent: "flex-end",
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: COLORS.cream,
-                borderTopLeftRadius: RADIUS.card,
-                borderTopRightRadius: RADIUS.card,
-                padding: SPACING.lg,
-                paddingBottom: SPACING.xxl,
-                maxHeight: "88%",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: SPACING.md,
-                }}
-              >
-                <Text style={[TYPE.title2, { fontSize: 18, color: COLORS.warmBrown }]}>
-                  {t("storefront.checkout")}
-                </Text>
-                <PressableScale
-                  testID="storefront-checkout-close"
-                  onPress={() => setShowCheckout(false)}
-                  accessibilityLabel={t("common.close")}
-                >
-                  <X size={22} color={COLORS.warmBrown} />
-                </PressableScale>
-              </View>
-
-              {/* Pickup / Delivery toggle */}
-              <View style={{ flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md }}>
-                {[
-                  { key: "pickup", label: t("storefront.pickup") },
-                  { key: "delivery", label: t("storefront.delivery") },
-                ].map(({ key, label }) => {
-                  const selected = fulfillment === key;
-                  return (
-                    <PressableScale
-                      key={key}
-                      testID={`storefront-fulfillment-${key}`}
-                      onPress={() => setFulfillment(key)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      style={{
-                        flex: 1,
-                        alignItems: "center",
-                        paddingVertical: SPACING.md,
-                        borderRadius: RADIUS.control,
-                        borderWidth: 1.5,
-                        borderColor: selected ? COLORS.coral : COLORS.peach,
-                        backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
-                      }}
-                    >
-                      <Text
-                        style={[
-                          TYPE.headline,
-                          { fontWeight: "800", color: selected ? COLORS.coral : COLORS.mutedBrown },
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </PressableScale>
-                  );
-                })}
-              </View>
-
-              {fulfillment === "pickup" ? (
-                <View
-                  testID="storefront-pickup-info"
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: SPACING.sm,
-                    padding: SPACING.md,
-                    backgroundColor: COLORS.sand,
-                    borderRadius: RADIUS.md,
-                    borderWidth: 1,
-                    borderColor: COLORS.peach,
-                    marginBottom: SPACING.md,
-                  }}
-                >
-                  <Package size={16} color={COLORS.mutedBrown} />
-                  <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, flex: 1, fontWeight: "500" }]}>
-                    {t("storefront.pickupInfo", { store: shop?.name || t("storefront.shop") })}
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ marginBottom: SPACING.md }}>
-                  <LocationField
-                    value={address}
-                    onChange={setAddress}
-                    label={t("storefront.deliveryAddress")}
-                  />
-                </View>
-              )}
-
-              <PressableScale
-                testID="storefront-pay"
-                onPress={doCheckout}
-                disabled={!canPay || checkout.isPending}
-                style={{
-                  backgroundColor: COLORS.coral,
-                  borderRadius: RADIUS.control,
-                  paddingVertical: 15,
-                  alignItems: "center",
-                  opacity: !canPay || checkout.isPending ? 0.6 : 1,
-                }}
-              >
-                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                  {checkout.isPending
-                    ? t("storefront.checkingOut")
-                    : t("storefront.payTotal", { total: money(total, shop?.currency) })}
-                </Text>
-              </PressableScale>
-            </View>
-          </View>
-        </Modal>
+          onClose={() => setShowCheckout(false)}
+          fulfillment={fulfillment}
+          onSelectFulfillment={setFulfillment}
+          address={address}
+          onChangeAddress={setAddress}
+          canPay={canPay}
+          isPending={checkout.isPending}
+          total={total}
+          currency={shop?.currency}
+          storeName={shop?.name}
+          onPay={doCheckout}
+          t={t}
+        />
       </View>
     </Modal>
-  );
-}
-
-function ProductGridCard({ product, onPress, onToggleFavorite, isFavorite, t }) {
-  const soldOut = product.stock_qty <= 0;
-  return (
-    <PressableScale
-      testID={`storefront-product-${product.id}`}
-      onPress={onPress}
-      style={{ width: "48%", marginBottom: SPACING.md }}
-    >
-      <Card
-        level="sm"
-        radius={RADIUS.md}
-        borderColor={COLORS.peach}
-        style={{ padding: SPACING.sm + 2, opacity: soldOut ? 0.6 : 1 }}
-      >
-        <View>
-          {Array.isArray(product.image_urls) && product.image_urls[0] ? (
-            <Image
-              source={{ uri: product.image_urls[0] }}
-              style={{ width: "100%", height: 110, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
-            />
-          ) : (
-            <View
-              style={{
-                width: "100%",
-                height: 110,
-                borderRadius: RADIUS.control,
-                backgroundColor: COLORS.sand,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Package size={26} color={COLORS.coral} />
-            </View>
-          )}
-          <PressableScale
-            testID={`storefront-fav-${product.id}`}
-            onPress={onToggleFavorite}
-            accessibilityLabel={t("storefront.favorite")}
-            hitSlop={8}
-            style={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              backgroundColor: COLORS.card,
-              borderRadius: 999,
-              padding: 5,
-            }}
-          >
-            <Heart
-              size={16}
-              color={COLORS.coral}
-              fill={isFavorite ? COLORS.coral : "none"}
-            />
-          </PressableScale>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 }}>
-          <Text
-            style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown, flexShrink: 1 }]}
-            numberOfLines={1}
-          >
-            {product.name}
-          </Text>
-          {product.is_rx ? <RxBadge /> : null}
-        </View>
-        <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral, marginTop: 2 }]}>
-          {money(product.price_cents, product.currency)}
-        </Text>
-        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 2 }]}>
-          {soldOut ? t("storefront.soldOut") : t("storefront.inStock", { count: product.stock_qty })}
-        </Text>
-      </Card>
-    </PressableScale>
   );
 }
 
@@ -758,47 +353,5 @@ function ProductDetail({ product, qty, onAdd, onRemove, isFavorite, onToggleFavo
         </GlassSurface>
       )}
     </View>
-  );
-}
-
-function RxBadge() {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        backgroundColor: COLORS.terracotta + "22",
-        borderRadius: RADIUS.chip,
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-      }}
-    >
-      <Pill size={11} color={COLORS.terracotta} />
-      <Text style={[TYPE.caption, { fontSize: 10, fontWeight: "800", color: COLORS.terracotta, letterSpacing: 0 }]}>
-        Rx
-      </Text>
-    </View>
-  );
-}
-
-function EmptyState({ body }) {
-  return (
-    <Card
-      level="sm"
-      radius={RADIUS.card}
-      borderColor={COLORS.peach}
-      style={{ padding: SPACING.xxl + SPACING.xs, alignItems: "center" }}
-    >
-      <Package size={32} color={COLORS.mutedBrown} />
-      <Text
-        style={[
-          TYPE.subhead,
-          { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.md, textAlign: "center" },
-        ]}
-      >
-        {body}
-      </Text>
-    </Card>
   );
 }
