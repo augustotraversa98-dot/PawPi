@@ -9,6 +9,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import {
   generateSlotsForDate,
   subtractTaken,
+  DEFAULT_TIME_ZONE,
 } from "@/app/api/utils/availability";
 import { getCalendarSync } from "@/app/api/utils/calendarSync";
 
@@ -48,13 +49,16 @@ async function GET(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    // Public read: the provider must exist AND be published (same gate as /book).
+    // Public read: the provider must exist AND be published (same gate as /book). time_zone
+    // (0076) is the zone the window wall-clock times are local to — threaded into slot
+    // generation so "09:00" means 09:00 for the provider.
     const providerRows = await sql`
-      SELECT id, status FROM providers WHERE id = ${providerId}
+      SELECT id, status, time_zone FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
+    const timeZone = providerRows[0].time_zone || DEFAULT_TIME_ZONE;
 
     const { searchParams } = new URL(request.url);
     const from = searchParams.get("from");
@@ -168,7 +172,7 @@ async function GET(request, { params }) {
     let guard = 0;
     while (cursor <= to && guard < MAX_RANGE_DAYS) {
       const open = subtractTaken(
-        generateSlotsForDate(cursor, windows),
+        generateSlotsForDate(cursor, windows, timeZone),
         [...takenSlots, ...externalBusy, ...importedBusy],
       );
       days.push({ date: cursor, slots: open });
@@ -176,7 +180,10 @@ async function GET(request, { params }) {
       guard += 1;
     }
 
-    return Response.json({ availability: days });
+    // Return absolute-UTC slots plus the provider's zone so the client renders local time
+    // consistently (each `date` is the provider-local calendar day; `slots[].start/end` are
+    // UTC instants). PR-2's picker keys off `time_zone` for its day/slot labels.
+    return Response.json({ time_zone: timeZone, availability: days });
   } catch (error) {
     console.error(
       "[GET /api/providers/[id]/availability] Error:",
