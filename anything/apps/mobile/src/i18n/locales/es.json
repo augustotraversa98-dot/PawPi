@@ -401,6 +401,8 @@
       "about": "Información"
     },
     "aboutEmpty": "Todavía no hay más información.",
+    "openNow": "Abierto ahora",
+    "closed": "Cerrado",
     "shop": "Tienda",
     "searchInStore": "Buscar en esta tienda",
     "allCategories": "Todos",
