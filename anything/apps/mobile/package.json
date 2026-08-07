@@ -137,6 +137,9 @@
   "jest": {
     "preset": "jest-expo",
     "globalSetup": "<rootDir>/jest.tz.setup.js",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.rntl.js"
+    ],
     "testMatch": [
       "**/*.test.{js,jsx,ts,tsx}"
     ]

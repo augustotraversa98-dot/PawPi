@@ -4,7 +4,7 @@ import {
   Text,
   Image,
   ActivityIndicator,
-  Linking,
+  ScrollView,
   Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,16 +13,9 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Stethoscope,
-  MapPin,
-  Phone,
-  Clock,
   Calendar,
   Star,
   MessageSquare,
-  Globe,
-  Instagram,
-  Facebook,
-  Map,
   ShoppingBag,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
@@ -33,7 +26,7 @@ import {
   MATERIALS,
   BLUR,
 } from "@/constants/theme";
-import { Card, PressableScale, GlassSurface } from "@/components/ui";
+import { PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useProviderProfile,
@@ -43,9 +36,15 @@ import {
 } from "@/hooks/useProviders";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
-import RatingBadge from "@/components/Providers/RatingBadge";
 import StorefrontCatalog from "@/components/Providers/StorefrontCatalog";
-import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
+import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
+import ItemsPanel from "@/components/Providers/StorefrontPanels/ItemsPanel";
+import PostsPanel from "@/components/Providers/StorefrontPanels/PostsPanel";
+import ReviewsPanel from "@/components/Providers/StorefrontPanels/ReviewsPanel";
+import LocationsPanel from "@/components/Providers/StorefrontPanels/LocationsPanel";
+import AboutPanel from "@/components/Providers/StorefrontPanels/AboutPanel";
+import { getStorefrontTabs } from "@/constants/storefrontTabs";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatMoney } from "@/utils/money";
 
@@ -74,6 +73,12 @@ function formatPrice(cents, currency) {
 // A published provider's public profile + a "Book appointment" CTA. Receives the
 // provider slug as a route param; reads it via useProviderProfile (404 → friendly
 // not-found). The booking form posts for the active pet.
+//
+// Storefront shell (redesign Phase 1): a hero cover → sticky StoreHeader (name + tappable
+// rating that jumps to Reviews) → horizontal tab bar → the active tab's panel. The tab set
+// is resolved per provider type by getStorefrontTabs. Inactive panels are MOUNTED but hidden
+// (display:none), never unmounted, so every section is always in the tree. The pinned bottom
+// action bar + the capability→CTA logic below are unchanged from the pre-shell screen.
 export default function ProviderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -92,6 +97,7 @@ export default function ProviderScreen() {
   const [showCapChooser, setShowCapChooser] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [bookingCapability, setBookingCapability] = useState(null);
+  const [activeTab, setActiveTab] = useState(null); // storefront shell active tab key
   const { mutate: startThread, isPending: startingThread } = useStartThread();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
@@ -162,6 +168,58 @@ export default function ProviderScreen() {
   const fromPrice = servicePrices.length ? Math.min(...servicePrices) : null;
   const avgRating = provider?.avg_rating;
   const reviewCount = provider?.review_count ?? 0;
+
+  // Storefront tabs for this provider type (presence-aware; Reviews always present). The
+  // active tab defaults to the first; a stale key (after data change) falls back to it.
+  const tabs = getStorefrontTabs({
+    capabilities,
+    locations,
+    services,
+    products,
+    posts,
+  });
+  const activeKey = tabs.some((tab) => tab.key === activeTab)
+    ? activeTab
+    : tabs[0]?.key;
+  // When there's no dedicated Locations tab (shop / fallback archetypes), fold locations
+  // into the About panel so they're never lost.
+  const includeLocationsInAbout =
+    locations.length > 0 && !tabs.some((tab) => tab.key === "locations");
+
+  const renderPanel = (key) => {
+    switch (key) {
+      case "services":
+        return <ServicesPanel services={services} />;
+      case "items":
+        return (
+          <ItemsPanel products={products} onOpenCatalog={() => setShowCatalog(true)} />
+        );
+      case "posts":
+        return <PostsPanel posts={posts} />;
+      case "reviews":
+        return (
+          <ReviewsPanel
+            reviews={reviewList}
+            eligibleReviewBooking={eligibleReviewBooking}
+            onLeaveReview={() => setShowReview(true)}
+            t={t}
+          />
+        );
+      case "locations":
+        return <LocationsPanel locations={locations} />;
+      case "about":
+        return (
+          <AboutPanel
+            provider={provider}
+            locations={locations}
+            includeLocations={includeLocationsInAbout}
+            t={t}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -243,392 +301,33 @@ export default function ProviderScreen() {
             />
           ) : null}
 
-          {/* Header card */}
-          <Card
-            level="md"
-            radius={RADIUS.card}
-            style={{
-              padding: SPACING.lg + 2,
-              marginBottom: SPACING.lg,
-              flexDirection: "row",
-              gap: SPACING.md + 2,
-              alignItems: "center",
-            }}
-          >
-            {provider.logo_url ? (
-              <Image
-                source={{ uri: provider.logo_url }}
-                style={{ width: 60, height: 60, borderRadius: RADIUS.control, backgroundColor: COLORS.sand }}
-              />
-            ) : (
-              <View
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: RADIUS.control,
-                  backgroundColor: COLORS.sand,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Stethoscope size={28} color={COLORS.coral} />
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={[TYPE.title2, { fontSize: 19, lineHeight: 24, color: COLORS.warmBrown }]}>
-                {provider.name}
-              </Text>
-              {/* Capability chips (P4a) — one per capability the provider holds; falls back
-                  to the display-only provider_type label when capabilities aren't set. */}
-              {capabilities.length > 0 ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: SPACING.xs,
-                    marginTop: 4,
-                  }}
-                >
-                  {capabilities.map((c) => (
-                    <View
-                      key={c}
-                      testID={`provider-cap-${c}`}
-                      style={{
-                        paddingHorizontal: SPACING.sm,
-                        paddingVertical: 2,
-                        borderRadius: RADIUS.chip,
-                        backgroundColor: COLORS.coral + "14",
-                        borderWidth: 1,
-                        borderColor: COLORS.peach,
-                      }}
-                    >
-                      <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "700" }]}>
-                        {t(`discover.cap.${c}`)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : provider.provider_type ? (
-                <Text
-                  style={[
-                    TYPE.footnote,
-                    {
-                      fontWeight: "700",
-                      color: COLORS.coral,
-                      marginTop: 2,
-                      textTransform: "capitalize",
-                    },
-                  ]}
-                >
-                  {provider.provider_type}
-                </Text>
-              ) : null}
-              <View style={{ marginTop: 6 }}>
-                <RatingBadge
-                  avgRating={provider.avg_rating}
-                  reviewCount={provider.review_count}
-                  size="lg"
-                />
-              </View>
-            </View>
-          </Card>
+          {/* Sticky store header (name + tappable rating summary → Reviews). */}
+          <StoreHeader
+            provider={provider}
+            capabilities={capabilities}
+            onJumpToReviews={() => setActiveTab("reviews")}
+            t={t}
+          />
 
-          {provider.bio ? (
-            <Text
-              style={[
-                TYPE.callout,
-                {
-                  color: COLORS.mutedBrown,
-                  lineHeight: 20,
-                  marginBottom: SPACING.lg + 2,
-                },
-              ]}
+          {/* Horizontal tab bar (mirrors the shop.jsx pill pattern). */}
+          <StorefrontTabBar
+            tabs={tabs}
+            activeKey={activeKey}
+            onSelect={setActiveTab}
+            t={t}
+          />
+
+          {/* Panels — MOUNTED but only the active one is visible (display:none hides the
+              rest). Every section stays in the tree, so all testIDs resolve without nav. */}
+          {tabs.map((tab) => (
+            <View
+              key={tab.key}
+              testID={`storefront-panel-${tab.key}`}
+              style={{ display: tab.key === activeKey ? "flex" : "none" }}
             >
-              {provider.bio}
-            </Text>
-          ) : null}
-
-          {/* Public business links (ticket 2.20) — tappable; only rendered when present. */}
-          <ProviderLinks provider={provider} />
-
-          {/* Locations */}
-          {locations.length > 0 && (
-            <Section title="Locations">
-              {locations.map((l) => (
-                <Card
-                  key={l.id}
-                  level="sm"
-                  radius={RADIUS.md}
-                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
-                >
-                  <Text
-                    style={[TYPE.headline, { color: COLORS.warmBrown }]}
-                  >
-                    {l.name}
-                  </Text>
-                  {l.address ? (
-                    <Row icon={<MapPin size={13} color={COLORS.mutedBrown} />}>
-                      {l.address}
-                    </Row>
-                  ) : null}
-                  {l.phone ? (
-                    <Row icon={<Phone size={13} color={COLORS.mutedBrown} />}>
-                      {l.phone}
-                    </Row>
-                  ) : null}
-                </Card>
-              ))}
-            </Section>
-          )}
-
-          {/* Services */}
-          {services.length > 0 && (
-            <Section title="Services">
-              {services.map((s) => (
-                <Card
-                  key={s.id}
-                  level="sm"
-                  radius={RADIUS.md}
-                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}
-                    >
-                      {s.name}
-                    </Text>
-                    {formatPrice(s.price_cents) ? (
-                      <Text
-                        style={[TYPE.headline, { color: COLORS.coral }]}
-                      >
-                        {formatPrice(s.price_cents)}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {s.description ? (
-                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
-                      {s.description}
-                    </Text>
-                  ) : null}
-                  {s.duration_min ? (
-                    <Row icon={<Clock size={13} color={COLORS.mutedBrown} />}>
-                      {`${s.duration_min} min`}
-                    </Row>
-                  ) : null}
-                  {Array.isArray(s.image_urls) && s.image_urls.length > 0 ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: SPACING.sm,
-                        marginTop: SPACING.sm + 2,
-                      }}
-                    >
-                      {s.image_urls.map((uri, i) => (
-                        <Image
-                          key={`${s.id}-img-${i}`}
-                          testID="service-image"
-                          source={{ uri }}
-                          style={{
-                            width: 72,
-                            height: 72,
-                            borderRadius: RADIUS.control,
-                            backgroundColor: COLORS.sand,
-                          }}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                </Card>
-              ))}
-            </Section>
-          )}
-
-          {/* Items (ticket 2.22 / P4a) — the provider's shop catalog summary. Tapping any
-              item opens the IN-STOREFRONT catalog (StorefrontCatalog) for this provider,
-              reusing the existing cart + checkout — no separate Shop screen hop. */}
-          {products.length > 0 && (
-            <Section title="Items">
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: SPACING.sm + 2,
-                }}
-              >
-                {products.map((p) => (
-                  <PressableScale
-                    key={p.id}
-                    testID="storefront-item"
-                    onPress={() => setShowCatalog(true)}
-                    style={{
-                      width: "47%",
-                      backgroundColor: COLORS.card,
-                      borderRadius: RADIUS.md,
-                      padding: SPACING.sm + 2,
-                      borderWidth: 1,
-                      borderColor: COLORS.peach,
-                    }}
-                  >
-                    {Array.isArray(p.image_urls) && p.image_urls[0] ? (
-                      <Image
-                        source={{ uri: p.image_urls[0] }}
-                        style={{
-                          width: "100%",
-                          height: 90,
-                          borderRadius: RADIUS.control,
-                          backgroundColor: COLORS.sand,
-                        }}
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          width: "100%",
-                          height: 90,
-                          borderRadius: RADIUS.control,
-                          backgroundColor: COLORS.sand,
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }}
-                      >
-                        <ShoppingBag size={22} color={COLORS.coral} />
-                      </View>
-                    )}
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        TYPE.subhead,
-                        { fontWeight: "800", color: COLORS.warmBrown, marginTop: 6 },
-                      ]}
-                    >
-                      {p.name}
-                    </Text>
-                    {formatPrice(p.price_cents, p.currency) ? (
-                      <Text
-                        style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral }]}
-                      >
-                        {formatPrice(p.price_cents, p.currency)}
-                      </Text>
-                    ) : null}
-                  </PressableScale>
-                ))}
-              </View>
-            </Section>
-          )}
-
-          {/* Posts (ticket 2.22) — the provider's storefront feed; newest first. */}
-          {posts.length > 0 && (
-            <Section title="Posts">
-              {posts.map((post) => (
-                <Card
-                  key={post.id}
-                  testID="storefront-post"
-                  level="sm"
-                  radius={RADIUS.md}
-                  style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
-                >
-                  {/* Body + Report/Block menu (Guideline 1.2) — the menu hides Report on
-                      the staff author's own post (is_own); non-owners can Report + Block. */}
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm }}>
-                    {post.body ? (
-                      <Text
-                        style={[
-                          TYPE.callout,
-                          { flex: 1, color: COLORS.warmBrown, lineHeight: 20 },
-                        ]}
-                      >
-                        {post.body}
-                      </Text>
-                    ) : (
-                      <View style={{ flex: 1 }} />
-                    )}
-                    <ModerationMenu
-                      targetType="provider_post"
-                      targetId={post.id}
-                      authorUserId={post.author_user_id}
-                      isOwn={!!post.is_own}
-                      iconSize={18}
-                    />
-                  </View>
-                  {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: SPACING.sm,
-                        // The body row above is always rendered now (it carries the
-                        // moderation menu even when there is no body), so this margin is
-                        // unconditional — SPACING.sm + 2 is the same 10pt as before.
-                        marginTop: SPACING.sm + 2,
-                      }}
-                    >
-                      {post.image_urls.map((uri, i) => (
-                        <Image
-                          key={`${post.id}-img-${i}`}
-                          testID="storefront-post-image"
-                          source={{ uri }}
-                          style={{
-                            width: 96,
-                            height: 96,
-                            borderRadius: RADIUS.control,
-                            backgroundColor: COLORS.sand,
-                          }}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                </Card>
-              ))}
-            </Section>
-          )}
-
-          {/* Reviews (ticket 2.2) — real data; empty state when none. */}
-          <Section title="Reviews">
-            {/* Owner entry point to leave a review — only with a completed booking here. */}
-            {eligibleReviewBooking ? (
-              <PressableScale
-                testID="storefront-review-cta"
-                onPress={() => setShowReview(true)}
-                accessibilityRole="button"
-                accessibilityLabel={t("storefront.leaveReview")}
-                style={{
-                  backgroundColor: COLORS.coral,
-                  borderRadius: RADIUS.control,
-                  padding: SPACING.md + 2,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: SPACING.sm,
-                  marginBottom: SPACING.md,
-                }}
-              >
-                <Star size={18} color="#FFF" fill="#FFF" />
-                <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                  {t("storefront.leaveReview")}
-                </Text>
-              </PressableScale>
-            ) : null}
-            {reviewList.length === 0 ? (
-              <Card
-                level="sm"
-                radius={RADIUS.md}
-                style={{ padding: SPACING.lg }}
-              >
-                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
-                  No reviews yet. After a completed appointment you can be the
-                  first to leave one.
-                </Text>
-              </Card>
-            ) : (
-              reviewList.map((rv) => <ReviewCard key={rv.id} review={rv} />)
-            )}
-          </Section>
+              {renderPanel(tab.key)}
+            </View>
+          ))}
         </RefreshableScrollView>
       )}
 
@@ -872,134 +571,47 @@ export default function ProviderScreen() {
   );
 }
 
-function Section({ title, children }) {
+// Horizontal storefront tab bar — mirrors the pill pattern in app/service/shop.jsx for visual
+// consistency. Each pill carries a storefront-tab-{key} testID and reflects selection via
+// accessibilityState. Local navigation only (sets the active tab); no data.
+function StorefrontTabBar({ tabs, activeKey, onSelect, t }) {
+  if (tabs.length <= 1) return null;
   return (
-    <View style={{ marginBottom: SPACING.lg + 2 }}>
-      <Text
-        style={[
-          TYPE.subhead,
-          {
-            fontWeight: "800",
-            color: COLORS.mutedBrown,
-            marginBottom: SPACING.md,
-            letterSpacing: 0.6,
-          },
-        ]}
-      >
-        {title.toUpperCase()}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function ReviewCard({ review }) {
-  const date = review.created_at
-    ? new Date(review.created_at).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
-  return (
-    <Card
-      level="sm"
-      radius={RADIUS.md}
-      style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginBottom: SPACING.lg }}
+      contentContainerStyle={{ gap: SPACING.sm }}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Text
-          style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}
-          numberOfLines={1}
-        >
-          {review.reviewer_name || "Pet parent"}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-          <Star size={13} color={COLORS.coral} fill={COLORS.coral} />
-          <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown }]}>
-            {review.rating}
-          </Text>
-          {/* Report this review (T4). */}
-          <ModerationMenu targetType="review" targetId={review.id} iconSize={15} />
-        </View>
-      </View>
-      {review.pet_name ? (
-        <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}>
-          with {review.pet_name}
-        </Text>
-      ) : null}
-      {review.body ? (
-        <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 6, lineHeight: 19 }]}>
-          {review.body}
-        </Text>
-      ) : null}
-      {date ? (
-        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 6 }]}>
-          {date}
-        </Text>
-      ) : null}
-    </Card>
-  );
-}
-
-function Row({ icon, children }) {
-  return (
-    <View
-      style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 6 }}
-    >
-      {icon}
-      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", flex: 1 }]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-// Public business links (ticket 2.20). Renders only the links that exist (no fake/empty
-// rows); each opens externally via Linking. The provider profile is public, so these are
-// safe to surface read-only.
-function ProviderLinks({ provider }) {
-  const links = [
-    { url: provider?.website_url, label: "Website", Icon: Globe },
-    { url: provider?.instagram_url, label: "Instagram", Icon: Instagram },
-    { url: provider?.facebook_url, label: "Facebook", Icon: Facebook },
-    { url: provider?.google_maps_url, label: "Google Maps", Icon: Map },
-  ].filter((l) => typeof l.url === "string" && l.url.trim().length > 0);
-
-  if (links.length === 0) return null;
-
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm + 2, marginBottom: SPACING.lg + 2 }}>
-      {links.map(({ url, label, Icon }) => (
-        <PressableScale
-          key={label}
-          onPress={() => Linking.openURL(url.trim())}
-          accessibilityRole="link"
-          accessibilityLabel={label}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            backgroundColor: COLORS.sand,
-            borderRadius: RADIUS.chip,
-            paddingHorizontal: SPACING.md,
-            paddingVertical: 7,
-            borderWidth: 1,
-            borderColor: COLORS.peach,
-          }}
-        >
-          <Icon size={15} color={COLORS.coral} />
-          <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.warmBrown }]}>
-            {label}
-          </Text>
-        </PressableScale>
-      ))}
-    </View>
+      {tabs.map((tab) => {
+        const selected = tab.key === activeKey;
+        return (
+          <PressableScale
+            key={tab.key}
+            testID={`storefront-tab-${tab.key}`}
+            onPress={() => onSelect(tab.key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            style={{
+              paddingHorizontal: SPACING.lg - 2,
+              paddingVertical: SPACING.sm,
+              borderRadius: RADIUS.chip,
+              borderWidth: 1,
+              borderColor: selected ? COLORS.coral : COLORS.peach,
+              backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
+            }}
+          >
+            <Text
+              style={[
+                TYPE.subhead,
+                { fontWeight: "700", color: selected ? COLORS.coral : COLORS.warmBrown },
+              ]}
+            >
+              {t(tab.labelKey)}
+            </Text>
+          </PressableScale>
+        );
+      })}
+    </ScrollView>
   );
 }
