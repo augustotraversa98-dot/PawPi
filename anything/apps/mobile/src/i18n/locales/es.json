@@ -153,6 +153,10 @@
     "remove": "Quitar"
   },
   "placeReviews": {
+    "tabs": {
+      "overview": "Resumen",
+      "reviews": "Reseñas"
+    },
     "title": "Lugar",
     "notFound": "No encontramos este lugar",
     "sectionTitle": "Reseñas de mascotas",
