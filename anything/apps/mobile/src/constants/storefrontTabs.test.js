@@ -85,4 +85,65 @@ describe("getStorefrontTabs", () => {
       expect(tab.panel).toBe(tab.key);
     }
   });
+
+  describe("sectionOrder override (Phase 2a)", () => {
+    const mixed = {
+      capabilities: ["vet", "shop"],
+      services: [{ id: 1 }],
+      products: [{ id: 2 }],
+      posts: [{ id: 3 }],
+      locations: [{ id: 4 }],
+    };
+    // Default (no override) for the mixed archetype, for reference.
+    const mixedDefault = ["services", "items", "posts", "reviews", "locations", "about"];
+
+    test("NULL / absent sectionOrder leaves today's archetype order unchanged", () => {
+      expect(keys(mixed)).toEqual(mixedDefault);
+      expect(keys({ ...mixed, sectionOrder: null })).toEqual(mixedDefault);
+    });
+
+    test("an empty override array is ignored (falls back to the default order)", () => {
+      expect(keys({ ...mixed, sectionOrder: [] })).toEqual(mixedDefault);
+    });
+
+    test("a full valid override is honored in the given order", () => {
+      expect(
+        keys({ ...mixed, sectionOrder: ["items", "services", "about", "reviews", "posts", "locations"] }),
+      ).toEqual(["items", "services", "about", "reviews", "posts", "locations"]);
+    });
+
+    test("unknown / not-present keys in the override are dropped", () => {
+      // "clearance" is not a real section; "locations" IS present here so it survives.
+      expect(
+        keys({ ...mixed, sectionOrder: ["clearance", "items", "services"] }),
+      ).toEqual(["items", "services", "posts", "reviews", "locations", "about"]);
+    });
+
+    test("allowed-but-omitted sections are appended in the default order", () => {
+      // Override only names items + services; the rest append in default order.
+      expect(keys({ ...mixed, sectionOrder: ["items", "services"] })).toEqual([
+        "items",
+        "services",
+        "posts",
+        "reviews",
+        "locations",
+        "about",
+      ]);
+    });
+
+    test("a section absent from data is never introduced by the override", () => {
+      // Bookable vet with no products: "items" in the override must NOT appear.
+      const bookable = { capabilities: ["vet"], services: [{ id: 1 }], posts: [{ id: 2 }], locations: [{ id: 3 }] };
+      const k = keys({ ...bookable, sectionOrder: ["items", "reviews", "services"] });
+      expect(k).not.toContain("items");
+      expect(k[0]).toBe("reviews");
+      expect(k[1]).toBe("services");
+    });
+
+    test("duplicate keys in the override are de-duplicated", () => {
+      expect(
+        keys({ ...mixed, sectionOrder: ["items", "items", "services"] }),
+      ).toEqual(["items", "services", "posts", "reviews", "locations", "about"]);
+    });
+  });
 });

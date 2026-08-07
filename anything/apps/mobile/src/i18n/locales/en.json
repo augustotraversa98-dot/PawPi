@@ -433,6 +433,8 @@
     "removeOne": "Remove one",
     "deliveryPickup": "Delivery & pickup options shown at checkout",
     "favorite": "Favorite",
+    "featured": "Featured",
+    "discountPct": "-{{pct}}%",
     "chooseServiceTitle": "What would you like to book?",
     "leaveReview": "Leave a review",
     "checkout": "Checkout",

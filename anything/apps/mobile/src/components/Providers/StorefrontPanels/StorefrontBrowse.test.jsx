@@ -65,3 +65,27 @@ test("empty product list shows the real empty state", () => {
   const { getByText } = renderBrowse({ products: [] });
   expect(getByText("This store hasn't listed any products yet.")).toBeTruthy();
 });
+
+// Merchandising badges (Phase 2a) — the grid card surfaces Featured + Discount only when set.
+test("a featured product card shows the Featured badge; a plain one does not", () => {
+  const { getByTestId, queryByTestId } = renderBrowse({
+    products: [
+      { id: 1, name: "Kibble", price_cents: 500000, currency: "ARS", stock_qty: 5, image_urls: [], is_featured: true },
+      { id: 2, name: "Chew Toy", price_cents: 150000, currency: "ARS", stock_qty: 3, image_urls: [] },
+    ],
+  });
+  expect(getByTestId("storefront-featured-1")).toBeTruthy();
+  expect(queryByTestId("storefront-featured-2")).toBeNull();
+});
+
+test("a discounted product card shows the discount badge; a plain one does not", () => {
+  const { getByTestId, queryByTestId, getByText } = renderBrowse({
+    products: [
+      { id: 1, name: "Kibble", price_cents: 80000, compare_at_cents: 100000, currency: "ARS", stock_qty: 5, image_urls: [] },
+      { id: 2, name: "Chew Toy", price_cents: 150000, currency: "ARS", stock_qty: 3, image_urls: [] },
+    ],
+  });
+  expect(getByTestId("storefront-discount-1")).toBeTruthy();
+  expect(getByText("-20%")).toBeTruthy();
+  expect(queryByTestId("storefront-discount-2")).toBeNull();
+});

@@ -42,6 +42,7 @@ async function GET(request, { params }) {
       SELECT
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url, p.cover_image_url,
         p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
+        p.storefront_section_order,
         (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
         (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
       FROM providers p
@@ -63,10 +64,10 @@ async function GET(request, { params }) {
     `;
 
     const services = await sql`
-      SELECT id, name, description, duration_min, price_cents, deposit_cents, payment_policy, image_urls, active
+      SELECT id, name, description, duration_min, price_cents, deposit_cents, payment_policy, image_urls, active, is_featured, sort_order
       FROM provider_services
       WHERE provider_id = ${provider.id} AND active = true
-      ORDER BY created_at ASC
+      ORDER BY is_featured DESC, sort_order ASC, created_at ASC
     `;
 
     // Capabilities (ticket 2.1) — the services this published provider offers, public.
@@ -80,10 +81,10 @@ async function GET(request, { params }) {
     // Storefront ITEMS (ticket 2.22) — this provider's ACTIVE shop products (public catalog
     // summary). Empty when the provider has no shop / no active products.
     const products = await sql`
-      SELECT id, name, description, image_urls, price_cents, currency, category, is_rx
+      SELECT id, name, description, image_urls, price_cents, currency, category, is_rx, is_featured, sort_order, compare_at_cents
       FROM shop_products
       WHERE provider_id = ${provider.id} AND active = true
-      ORDER BY created_at DESC, id DESC
+      ORDER BY is_featured DESC, sort_order ASC, created_at DESC, id DESC
     `;
 
     // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated.

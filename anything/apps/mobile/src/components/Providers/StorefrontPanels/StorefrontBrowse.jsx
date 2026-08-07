@@ -4,7 +4,7 @@ import { Search, Heart, Package, Plus } from "lucide-react-native";
 import { Card, PressableScale } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
-import { money, RxBadge, CatalogEmptyState } from "./catalogShared";
+import { money, RxBadge, CatalogEmptyState, FeaturedBadge, DiscountBadge } from "./catalogShared";
 
 // The in-store browse surface (PR-3a extraction; presentational only): search + category chips +
 // product grid, exactly as they render in the StorefrontCatalog modal today. It owns NO cart or
@@ -233,6 +233,12 @@ function ProductGridCard({
               <Package size={26} color={COLORS.coral} />
             </View>
           )}
+          {/* Featured pill (Phase 2a) — overlays the image top-left, opposite the heart. */}
+          {product.is_featured ? (
+            <View style={{ position: "absolute", top: 6, left: 6 }}>
+              <FeaturedBadge t={t} testID={`${idPrefix}-featured-${product.id}`} />
+            </View>
+          ) : null}
           <PressableScale
             testID={`${idPrefix}-fav-${product.id}`}
             onPress={onToggleFavorite}
@@ -305,6 +311,13 @@ function ProductGridCard({
         <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral, marginTop: 2 }]}>
           {money(product.price_cents, product.currency)}
         </Text>
+        <DiscountBadge
+          priceCents={product.price_cents}
+          compareAtCents={product.compare_at_cents}
+          currency={product.currency}
+          t={t}
+          testID={`${idPrefix}-discount-${product.id}`}
+        />
         <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: 2 }]}>
           {soldOut ? t("storefront.soldOut") : t("storefront.inStock", { count: product.stock_qty })}
         </Text>

@@ -48,10 +48,11 @@ async function GET(request, { params }) {
     const products = await sql`
       SELECT
         id, provider_id, name, description, image_urls, price_cents, currency,
-        stock_qty, category, is_rx, active, created_at, updated_at
+        stock_qty, category, is_rx, active, is_featured, sort_order, compare_at_cents,
+        created_at, updated_at
       FROM shop_products
       WHERE provider_id = ${providerId}
-      ORDER BY active DESC, created_at DESC, id DESC
+      ORDER BY is_featured DESC, sort_order ASC, created_at DESC, id DESC
     `;
 
     return Response.json({ products });

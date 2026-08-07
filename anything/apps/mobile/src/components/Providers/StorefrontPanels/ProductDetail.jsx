@@ -5,7 +5,7 @@ import { PressableScale, GlassSurface } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import { money, RxBadge } from "./catalogShared";
+import { money, RxBadge, FeaturedBadge, DiscountBadge } from "./catalogShared";
 
 // Product detail view (carousel, price, read-more description, stock, Rx, delivery/pickup info)
 // + add-to-cart bar. Relocated VERBATIM out of StorefrontCatalog (PR-3b) so BOTH the catalog
@@ -88,7 +88,17 @@ export default function ProductDetail({
             {money(product.price_cents, product.currency)}
           </Text>
           {product.is_rx ? <RxBadge /> : null}
+          {product.is_featured ? (
+            <FeaturedBadge t={t} testID="storefront-detail-featured" />
+          ) : null}
         </View>
+        <DiscountBadge
+          priceCents={product.price_cents}
+          compareAtCents={product.compare_at_cents}
+          currency={product.currency}
+          t={t}
+          testID="storefront-detail-discount"
+        />
 
         <Text
           style={[

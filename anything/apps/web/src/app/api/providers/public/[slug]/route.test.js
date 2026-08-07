@@ -157,6 +157,35 @@ describe('GET /api/providers/public/[slug]', () => {
     expect(allQueryText()).not.toContain('care_access');
   });
 
+  it('Phase 2a: services + products order featured-first and project the merchandising columns; provider projects storefront_section_order', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }]) // provider lookup
+      .mockResolvedValueOnce([]) // locations
+      .mockResolvedValueOnce([]) // services
+      .mockResolvedValueOnce([]) // capabilities
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]); // posts
+
+    await GET(req(), PARAMS);
+
+    // Provider lookup (call 0) projects the section-order override column.
+    expect(sql.mock.calls[0][0].join(' ')).toContain('storefront_section_order');
+
+    // Services (call 2): featured-first ordering + is_featured/sort_order in the projection.
+    const svcText = sql.mock.calls[2][0].join(' ');
+    expect(svcText).toContain('ORDER BY is_featured DESC, sort_order ASC, created_at ASC');
+    expect(svcText).toContain('is_featured');
+    expect(svcText).toContain('sort_order');
+
+    // Products (call 4): featured-first ordering + the discount/sort/featured projection.
+    const prodText = sql.mock.calls[4][0].join(' ');
+    expect(prodText).toContain('ORDER BY is_featured DESC, sort_order ASC, created_at DESC');
+    expect(prodText).toContain('is_featured');
+    expect(prodText).toContain('sort_order');
+    expect(prodText).toContain('compare_at_cents');
+  });
+
   it('ticket 2.2: the provider lookup aggregates avg_rating + review_count', async () => {
     auth.mockResolvedValue(SESSION);
     sql
