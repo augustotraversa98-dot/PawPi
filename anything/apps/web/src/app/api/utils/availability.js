@@ -60,8 +60,10 @@ function tzOffsetMs(timeZone, instant) {
  * First treats the wall time as if it were UTC, then corrects by the zone's offset; a
  * second pass re-evaluates the offset at the corrected instant so it stays exact across a
  * DST transition (the default zone has no DST, but a provider elsewhere might).
+ * Exported so the book WRITE path composes a requested instant identically to the slots
+ * generated here — the read and write paths must agree on what "09:00" means.
  */
-function composeIso(dateStr, minutes, timeZone) {
+export function composeIso(dateStr, minutes, timeZone) {
   const h = String(Math.floor(minutes / 60)).padStart(2, "0");
   const m = String(minutes % 60).padStart(2, "0");
   const guess = new Date(`${dateStr}T${h}:${m}:00.000Z`);
