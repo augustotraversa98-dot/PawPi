@@ -45,8 +45,10 @@ import ReviewsPanel from "@/components/Providers/StorefrontPanels/ReviewsPanel";
 import LocationsPanel from "@/components/Providers/StorefrontPanels/LocationsPanel";
 import AboutPanel from "@/components/Providers/StorefrontPanels/AboutPanel";
 import { getStorefrontTabs } from "@/constants/storefrontTabs";
+import { deriveOpenNow } from "@/utils/providerHours";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatMoney } from "@/utils/money";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Storefront primary-action buckets (Services Hub P4a). A provider's capabilities[] (from
 // the public profile) decide the primary action: a SHOP (shop/pharmacy or any products)
@@ -169,6 +171,15 @@ export default function ProviderScreen() {
   const avgRating = provider?.avg_rating;
   const reviewCount = provider?.review_count ?? 0;
 
+  // Header meta (Phase-2 polish) — real data only. "Open now" from the primary location's
+  // free-form hours (deriveOpenNow returns true/false/null; null renders nothing). The "from"
+  // price reuses the same cheapest-service teaser as the pinned bar.
+  const openNow = deriveOpenNow(locations[0]?.hours_json);
+  const fromPriceLabel =
+    fromPrice != null
+      ? t("providers.fromPrice", { price: formatPrice(fromPrice) })
+      : null;
+
   // Storefront tabs for this provider type (presence-aware; Reviews always present). The
   // active tab defaults to the first; a stale key (after data change) falls back to it.
   const tabs = getStorefrontTabs({
@@ -185,6 +196,14 @@ export default function ProviderScreen() {
   // into the About panel so they're never lost.
   const includeLocationsInAbout =
     locations.length > 0 && !tabs.some((tab) => tab.key === "locations");
+
+  // Sticky tab bar (Phase-2): pin the tab bar under the top glass bar while the active panel
+  // scrolls. The tab bar is the direct child right after the (optional) cover + the header, so
+  // its index is coverOffset + 1. Only sticky when the bar actually renders (>1 tab).
+  const stickyHeaderIndices =
+    tabs.length > 1
+      ? [(provider?.cover_image_url ? 1 : 0) + 1]
+      : undefined;
 
   const renderPanel = (key) => {
     switch (key) {
@@ -284,21 +303,40 @@ export default function ProviderScreen() {
       ) : (
         <RefreshableScrollView
           refetch={refetch}
+          stickyHeaderIndices={stickyHeaderIndices}
           contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 120 }}
         >
-          {/* Storefront cover banner (ticket 2.22) — only when set. */}
+          {/* Storefront hero (ticket 2.22 + Phase-2 polish) — only when a cover is set. A taller
+              banner with a subtle top scrim so overlaid controls stay legible over a bright
+              image. The storefront-cover testID + "render only when set" behavior are unchanged. */}
           {provider.cover_image_url ? (
-            <Image
-              testID="storefront-cover"
-              source={{ uri: provider.cover_image_url }}
+            <View
               style={{
                 width: "100%",
-                height: 140,
+                height: 200,
                 borderRadius: RADIUS.card,
                 marginBottom: SPACING.md + 2,
                 backgroundColor: COLORS.sand,
+                overflow: "hidden",
               }}
-            />
+            >
+              <Image
+                testID="storefront-cover"
+                source={{ uri: provider.cover_image_url }}
+                style={{ width: "100%", height: "100%" }}
+              />
+              <LinearGradient
+                pointerEvents="none"
+                colors={["rgba(0,0,0,0.32)", "rgba(0,0,0,0)"]}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 72,
+                }}
+              />
+            </View>
           ) : null}
 
           {/* Sticky store header (name + tappable rating summary → Reviews). */}
@@ -306,6 +344,8 @@ export default function ProviderScreen() {
             provider={provider}
             capabilities={capabilities}
             onJumpToReviews={() => setActiveTab("reviews")}
+            openNow={openNow}
+            fromPriceLabel={fromPriceLabel}
             t={t}
           />
 
@@ -577,13 +617,22 @@ export default function ProviderScreen() {
 function StorefrontTabBar({ tabs, activeKey, onSelect, t }) {
   if (tabs.length <= 1) return null;
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: SPACING.lg }}
-      contentContainerStyle={{ gap: SPACING.sm }}
+    // Opaque wrapper so the sticky bar cleanly covers the panel scrolling beneath it.
+    <View
+      style={{
+        backgroundColor: COLORS.cream,
+        marginBottom: SPACING.lg,
+        paddingBottom: SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.peach,
+      }}
     >
-      {tabs.map((tab) => {
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: SPACING.sm }}
+      >
+        {tabs.map((tab) => {
         const selected = tab.key === activeKey;
         return (
           <PressableScale
@@ -612,6 +661,7 @@ function StorefrontTabBar({ tabs, activeKey, onSelect, t }) {
           </PressableScale>
         );
       })}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

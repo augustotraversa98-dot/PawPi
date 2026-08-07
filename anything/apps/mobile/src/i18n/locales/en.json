@@ -401,6 +401,8 @@
       "about": "About"
     },
     "aboutEmpty": "No additional details yet.",
+    "openNow": "Open now",
+    "closed": "Closed",
     "shop": "Shop",
     "searchInStore": "Search this store",
     "allCategories": "All",
