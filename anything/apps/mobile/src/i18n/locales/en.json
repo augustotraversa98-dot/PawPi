@@ -153,6 +153,10 @@
     "remove": "Remove"
   },
   "placeReviews": {
+    "tabs": {
+      "overview": "Overview",
+      "reviews": "Reviews"
+    },
     "title": "Place",
     "notFound": "Place not found",
     "sectionTitle": "Pet reviews",
