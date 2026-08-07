@@ -105,6 +105,10 @@ export default function ProviderScreen() {
   const [showCapChooser, setShowCapChooser] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [bookingCapability, setBookingCapability] = useState(null);
+  // The service the user tapped in the storefront (feat/tap-service-to-book). Non-null →
+  // BookingFormModal opens with it preselected and the service selector collapsed. Cleared
+  // on modal close and whenever the no-preselection bottom "Book" button is used.
+  const [preselectedService, setPreselectedService] = useState(null);
   const [activeTab, setActiveTab] = useState(null); // storefront shell active tab key
   const { mutate: startThread, isPending: startingThread } = useStartThread();
   const { data: currentPet } = useCurrentPet();
@@ -178,11 +182,35 @@ export default function ProviderScreen() {
     (bookableCaps.length === 1 ? bookableCaps[0] : undefined);
 
   const openBooking = () => {
+    // Bottom "Book" button: no service preselected → the modal shows the full selector.
+    setPreselectedService(null);
     // Multiple bookable capabilities and none preselected → ask which one first.
     if (!bookingCapability && !capabilityStr && bookableCaps.length > 1) {
       setShowCapChooser(true);
     } else {
       setShowBooking(true);
+    }
+  };
+  // Tap a specific SERVICE row → open booking with it preselected (feat/tap-service-to-book).
+  // Capability resolution treats telehealth as a MODALITY (an in-modal tab), not a separate
+  // grid: prefer the deep-link param, else the sole non-telehealth bookable cap, else the sole
+  // bookable cap. Only when several UNRELATED base caps exist (e.g. vet + groomer) do we fall
+  // back to the capability chooser — the preselected service carries through the pick.
+  const openBookingForService = (service) => {
+    const baseCaps = bookableCaps.filter((c) => c !== "telehealth");
+    const cap =
+      capabilityStr ??
+      (baseCaps.length === 1
+        ? baseCaps[0]
+        : bookableCaps.length === 1
+          ? bookableCaps[0]
+          : undefined);
+    setPreselectedService(service);
+    if (cap) {
+      setBookingCapability(cap);
+      setShowBooking(true);
+    } else {
+      setShowCapChooser(true);
     }
   };
   const pickBookingCapability = (cap) => {
@@ -255,7 +283,13 @@ export default function ProviderScreen() {
   const renderPanel = (key) => {
     switch (key) {
       case "services":
-        return <ServicesPanel services={services} t={t} />;
+        return (
+          <ServicesPanel
+            services={services}
+            t={t}
+            onPressService={openBookingForService}
+          />
+        );
       case "items":
         // The Items tab IS the store: the inline browse grid backed by the shared cart.
         return cart.isLoading ? (
@@ -603,12 +637,16 @@ export default function ProviderScreen() {
 
       <BookingFormModal
         visible={showBooking}
-        onClose={() => setShowBooking(false)}
+        onClose={() => {
+          setShowBooking(false);
+          setPreselectedService(null);
+        }}
         provider={provider}
         locations={locations}
         services={services}
         capabilities={capabilities}
         capability={resolvedBookingCapability}
+        service={preselectedService}
       />
 
       {/* Inline checkout sheet — only mounted when the cart has lines (reuses the shared

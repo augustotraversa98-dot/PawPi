@@ -544,3 +544,53 @@ test("switching to Videollamada books the telehealth capability", async () => {
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].capability).toBe("telehealth");
 });
+
+// ── feat/tap-service-to-book: a preselected service collapses the selector ─────
+test("a preselected `service` shows a static line, hides the chip selector, and books it", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const preselect = { id: 5, name: "Checkup", price_cents: 5000, active: true };
+  const view = renderForm({ service: preselect });
+
+  // The static line replaces the "General" + per-service chip selector.
+  expect(view.getByTestId("booking-service-preselected")).toBeTruthy();
+  expect(view.queryByTestId("booking-service-5")).toBeNull();
+  expect(view.queryByText("General")).toBeNull();
+
+  // Slot picker (vet default) is present — the flow drops straight into availability.
+  expect(view.getByTestId(`booking-day-${TODAY}`)).toBeTruthy();
+  selectSlot(view);
+  fireEvent.press(view.getByText("booking.reserveSlot"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(5);
+});
+
+test("the `service` prop overrides single-service auto-preselect and survives a refetch", async () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  // The list holds only id 5, so auto-preselect would pick 5 — the tapped id 6 must win.
+  const tapped = { id: 6, name: "Consulta", price_cents: 3000, active: true };
+  const services = [{ id: 5, name: "Checkup", price_cents: 5000, active: true }];
+  const props = {
+    visible: true,
+    onClose: jest.fn(),
+    provider: PROVIDER,
+    locations: [],
+    services,
+    service: tapped,
+  };
+  const view = render(<BookingFormModal {...props} />);
+  // A background re-fetch swaps the services array reference — selection must not reset.
+  view.rerender(<BookingFormModal {...props} services={[...services]} />);
+
+  selectSlot(view);
+  fireEvent.press(view.getByText("booking.reserveSlot"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(6);
+});
+
+test("with no `service` prop (bottom Book) the full service selector still renders", () => {
+  mockCurrentPet = { id: 7, name: "Rex" };
+  const view = renderForm(); // no service prop
+  expect(view.queryByTestId("booking-service-preselected")).toBeNull();
+  expect(view.getByTestId("booking-service-5")).toBeTruthy();
+  expect(view.getByText("General")).toBeTruthy();
+});
