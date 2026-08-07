@@ -1000,9 +1000,10 @@ export function useShopProducts(providerId) {
 }
 
 // The owner's product ORDER HISTORY (GET /api/shop/orders). Empty → [].
-export function useShopOrders() {
+export function useShopOrders({ enabled = true } = {}) {
   return useQuery({
     queryKey: ["shop-orders", "owner"],
+    enabled,
     queryFn: async () => {
       const response = await fetch(`/api/shop/orders`);
       if (!response.ok) {

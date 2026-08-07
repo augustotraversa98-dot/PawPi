@@ -49,6 +49,7 @@ jest.mock("@/hooks/useProviders", () => ({
   useMyBookings: () => mockBookings,
   useShopProducts: () => ({ data: [], isLoading: false }),
   useShopCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useShopOrders: () => ({ data: [] }),
 }));
 
 import ProviderScreen from "./provider";
