@@ -117,6 +117,35 @@ test("pull-to-refresh refetches the bookings list (and the other lists it render
   expect(mockSubs.refetch).toHaveBeenCalled();
 });
 
+test("refresh handler returns an awaitable that resolves only after the refetches settle (drives the spinner)", async () => {
+  // A controllable refetch: the combined promise must NOT resolve until this one does, so
+  // RefreshableScrollView keeps its spinner up for the real duration (like the Discovery pane).
+  let resolveBookings;
+  mockMyBookings = q(
+    { upcoming: [], past: [] },
+    { refetch: jest.fn(() => new Promise((r) => (resolveBookings = r))) },
+  );
+  const { getByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-messages")).toBeTruthy());
+
+  const result = mockCapturedRefetch();
+  // The handler returns a thenable so the caller (RefreshableScrollView/useRefresh) can await it.
+  expect(typeof result.then).toBe("function");
+
+  let settled = false;
+  result.then(() => {
+    settled = true;
+  });
+  // Still pending while the bookings refetch is in flight → spinner stays visible.
+  await Promise.resolve();
+  expect(settled).toBe(false);
+
+  await act(async () => {
+    resolveBookings();
+  });
+  expect(settled).toBe(true);
+});
+
 test("Messages row routes to /provider-messages and shows the unread badge", async () => {
   mockUnread = q(4);
   const { getByTestId } = render(<MyActivity />);

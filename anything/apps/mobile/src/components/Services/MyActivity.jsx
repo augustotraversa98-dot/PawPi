@@ -117,18 +117,20 @@ export default function MyActivity() {
   // pet, so they never hang; every count settles in as its query resolves).
   const loading = bookings.isLoading;
 
-  const refetch = () => {
-    bookings.refetch();
-    unread.refetch();
-    orders.refetch();
-    subs.refetch();
-    savedPlaces.refetch();
-    if (petId != null) {
-      walks.refetch();
-      daycare.refetch();
-      sitting.refetch();
-    }
-  };
+  // Return the combined promise (like the Discovery pane's single refetch) so
+  // RefreshableScrollView can AWAIT it and keep the pull-to-refresh spinner up until every
+  // list has settled. Same queries as before — only the awaitable is now returned.
+  const refetch = () =>
+    Promise.all([
+      bookings.refetch(),
+      unread.refetch(),
+      orders.refetch(),
+      subs.refetch(),
+      savedPlaces.refetch(),
+      ...(petId != null
+        ? [walks.refetch(), daycare.refetch(), sitting.refetch()]
+        : []),
+    ]);
 
   if (loading) {
     return (
