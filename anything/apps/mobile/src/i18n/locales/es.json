@@ -68,7 +68,19 @@
     "filterRequests": "Solicitudes",
     "accessProviderFallback": "Un proveedor de cuidado",
     "accessRequestBody": "quiere acceso a la ficha de {{pet}}",
-    "vetNoteBody": "añadió una nota a {{pet}}"
+    "vetNoteBody": "añadió una nota a {{pet}}",
+    "filterBookings": "Reservas",
+    "bookingHint": "Toca para ver tu reserva",
+    "bookingServiceFallback": "tu reserva",
+    "bookingProviderFallback": "el proveedor",
+    "booking_requested": "Solicitud enviada — {{service}} · {{date}} en {{provider}}",
+    "booking_confirmed": "Confirmada — {{service}} · {{date}} en {{provider}}",
+    "booking_declined": "Rechazada — {{service}} · {{date}} en {{provider}}",
+    "booking_cancelled": "Cancelada — {{service}} · {{date}} en {{provider}}",
+    "booking_requestedFallback": "Solicitud de reserva enviada",
+    "booking_confirmedFallback": "Reserva confirmada",
+    "booking_declinedFallback": "Reserva rechazada",
+    "booking_cancelledFallback": "Reserva cancelada"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",

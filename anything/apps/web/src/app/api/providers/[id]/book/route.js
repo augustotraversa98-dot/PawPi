@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { safeNotify, bookingNotifyBody } from "@/app/api/utils/notify";
 import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
 import { getCalendarSync } from "@/app/api/utils/calendarSync";
 import {
@@ -486,6 +487,34 @@ async function POST(request, { params }) {
           sessErr.message,
         );
       }
+    }
+
+    // OWNER NOTIFICATION (booking created). Surface the new booking in the owner's
+    // Feed → Notifications, deep-linking to /service/booking-summary?id=<appointment id>.
+    // actor = null: this is a SYSTEM notification the owner triggers on THEMSELVES, so a
+    // real actor would hit the recipient === actor self-notify no-op. Fire-and-never-throw.
+    //   • confirmed (auto-confirm, unpaid) → 'booking_confirmed'
+    //   • otherwise                         → 'booking_requested'
+    // SKIP a paid booking that stays 'requested' pending payment: the owner instead gets
+    // the provider-confirm notification once the payment clears (avoids a premature ping).
+    const isPaidPending =
+      order_id != null && resolvedBookingStatus !== "confirmed";
+    if (!isPaidPending) {
+      await safeNotify({
+        recipient: userId,
+        actor: null,
+        type:
+          resolvedBookingStatus === "confirmed"
+            ? "booking_confirmed"
+            : "booking_requested",
+        subjectRef: String(created[0].id),
+        body: bookingNotifyBody({
+          service: service?.name ?? null,
+          provider: provider.name,
+          date: appointment_date,
+          time: appointment_time,
+        }),
+      });
     }
 
     return Response.json({ appointment: created[0] }, { status: 201 });

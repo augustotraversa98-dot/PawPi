@@ -7,6 +7,7 @@ import {
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { refund } from "@/app/api/utils/payments";
+import { safeNotify, bookingNotifyBody } from "@/app/api/utils/notify";
 
 // PATCH /api/providers/[id]/bookings/[appointmentId] — act on ONE booking.
 // Ticket 6b (docs/provider-design.md §4 item 6, provider half). The provider's
@@ -63,17 +64,49 @@ async function PATCH(request, { params }) {
 
     // Cross-provider isolation: load the target scoped to BOTH ids. Another
     // provider's appointment id (or a soft-deleted one) matches no row → 404.
+    // owner_user_id + provider/service names + the appointment date/time are pulled so a
+    // lifecycle change can notify the OWNER (below) with the display context the bell needs.
     const rows = await sql`
-      SELECT id, booking_status, status, order_id FROM vet_appointments
-      WHERE id = ${appointmentId}
-        AND provider_id = ${providerId}
-        AND deleted_at IS NULL
+      SELECT
+        va.id,
+        va.booking_status,
+        va.status,
+        va.order_id,
+        va.owner_user_id,
+        va.appointment_date,
+        va.appointment_time,
+        p.name AS provider_name,
+        s.name AS service_name
+      FROM vet_appointments va
+      LEFT JOIN providers p ON p.id = va.provider_id
+      LEFT JOIN provider_services s ON s.id = va.service_id
+      WHERE va.id = ${appointmentId}
+        AND va.provider_id = ${providerId}
+        AND va.deleted_at IS NULL
       LIMIT 1
     `;
     if (rows.length === 0) {
       return Response.json({ error: "Booking not found" }, { status: 404 });
     }
     const currentStatus = rows[0].booking_status;
+
+    // Notify the booking's OWNER of a lifecycle change, deep-linking to the booking
+    // summary (/service/booking-summary?id=<appointment id>). actor = the acting staff
+    // member; recipient = the owner (a DIFFERENT user, so app_notify's cross-user insert
+    // path applies). Fire-and-never-throw — a notify failure must never fail the action.
+    const notifyOwner = (type) =>
+      safeNotify({
+        recipient: rows[0].owner_user_id,
+        actor: userId,
+        type,
+        subjectRef: String(appointmentId),
+        body: bookingNotifyBody({
+          service: rows[0].service_name ?? null,
+          provider: rows[0].provider_name ?? null,
+          date: rows[0].appointment_date,
+          time: rows[0].appointment_time,
+        }),
+      });
 
     // Cancel any still-open telehealth session linked to this booking (0040 telehealth_sessions,
     // booking_id FK). Keeps the owner's consult card in sync with a declined/cancelled booking so
@@ -157,6 +190,7 @@ async function PATCH(request, { params }) {
           WHERE id = ${appointmentId} AND provider_id = ${providerId}
           RETURNING *
         `;
+        await notifyOwner("booking_confirmed");
         return Response.json({ booking: updated[0] });
       }
       const updated = await sql`
@@ -165,6 +199,7 @@ async function PATCH(request, { params }) {
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
         RETURNING *
       `;
+      await notifyOwner("booking_confirmed");
       return Response.json({ booking: updated[0] });
     }
 
@@ -218,6 +253,7 @@ async function PATCH(request, { params }) {
         }
       }
 
+      await notifyOwner("booking_declined");
       return Response.json({ booking: updated[0], refund: refundResult });
     }
 
@@ -241,6 +277,7 @@ async function PATCH(request, { params }) {
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
         RETURNING *
       `;
+      await notifyOwner("booking_cancelled");
       return Response.json({ booking: updated[0] });
     }
 

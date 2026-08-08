@@ -25,6 +25,13 @@ const lastCall = () => sql.mock.calls[sql.mock.calls.length - 1];
 const lastQueryText = () => (lastCall()?.[0] ?? []).join(' ');
 const lastValues = () => lastCall()?.slice(1) ?? [];
 
+// The owner notification a lifecycle change emits via safeNotify (0080). Existing tests
+// load a booking row WITHOUT owner_user_id, so safeNotify guards out (no app_notify call)
+// and their lastCall assertions keep pointing at the UPDATE.
+const notifyCall = () =>
+  sql.mock.calls.find((c) => (c?.[0] ?? []).join(' ').includes('app_notify'));
+const notifyValues = () => notifyCall()?.slice(1) ?? [];
+
 const patchReq = (body) =>
   new Request('http://localhost/api/providers/100/bookings/55', {
     method: 'PATCH',
@@ -401,5 +408,81 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
       PARAMS,
     );
     expect(res.status).toBe(409);
+  });
+
+  // ── Owner notification on a lifecycle change (0080) ──────────────────────────
+  // The acting staff member (userId 7 via resolveUserId) notifies the booking OWNER
+  // (a DIFFERENT user), deep-linking to the summary (subject_ref = appointment id).
+  describe('owner notification (0080)', () => {
+    // Loaded booking row now carries owner_user_id + provider/service context.
+    const LOADED = {
+      id: 55,
+      booking_status: 'requested',
+      status: 'scheduled',
+      order_id: null,
+      owner_user_id: 33,
+      appointment_date: '2026-07-01',
+      appointment_time: '09:00',
+      provider_name: 'Happy Vet',
+      service_name: 'Checkup',
+    };
+
+    it('confirm notifies the owner: booking_confirmed, actor=staff, subject_ref=id', async () => {
+      arrange(
+        [LOADED], // load (has owner_user_id)
+        [{ id: 55, booking_status: 'confirmed' }], // update
+      );
+      const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+      expect(res.status).toBe(200);
+
+      expect(notifyCall()).toBeTruthy();
+      const values = notifyValues();
+      expect(values).toContain(33); // recipient = owner
+      expect(values).toContain(7); // actor = acting staff
+      expect(values).toContain('booking_confirmed');
+      expect(values).toContain('55'); // subject_ref = appointment id
+    });
+
+    it('decline notifies the owner: booking_declined', async () => {
+      arrange(
+        [LOADED], // load
+        [], // telehealth session cascade
+        [{ id: 55, booking_status: 'declined' }], // update
+      );
+      const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
+      expect(res.status).toBe(200);
+
+      expect(notifyCall()).toBeTruthy();
+      const values = notifyValues();
+      expect(values).toContain(33);
+      expect(values).toContain(7);
+      expect(values).toContain('booking_declined');
+    });
+
+    it('cancel notifies the owner: booking_cancelled', async () => {
+      arrange(
+        [{ ...LOADED, booking_status: 'confirmed' }], // load (confirmed → cancellable)
+        [], // telehealth session cascade
+        [{ id: 55, booking_status: 'cancelled' }], // update
+      );
+      const res = await PATCH(patchReq({ action: 'cancel' }), PARAMS);
+      expect(res.status).toBe(200);
+
+      expect(notifyCall()).toBeTruthy();
+      const values = notifyValues();
+      expect(values).toContain(33);
+      expect(values).toContain(7);
+      expect(values).toContain('booking_cancelled');
+    });
+
+    it('complete does NOT notify (only confirm/decline/cancel do)', async () => {
+      arrange(
+        [{ ...LOADED, booking_status: 'confirmed' }], // load
+        [{ id: 55, booking_status: 'completed', status: 'completed' }], // update
+      );
+      const res = await PATCH(patchReq({ action: 'complete' }), PARAMS);
+      expect(res.status).toBe(200);
+      expect(notifyCall()).toBeUndefined();
+    });
   });
 });

@@ -68,7 +68,19 @@
     "filterRequests": "Requests",
     "accessProviderFallback": "A care provider",
     "accessRequestBody": "wants access to {{pet}}'s records",
-    "vetNoteBody": "added a note to {{pet}}"
+    "vetNoteBody": "added a note to {{pet}}",
+    "filterBookings": "Bookings",
+    "bookingHint": "Tap to view your booking",
+    "bookingServiceFallback": "your booking",
+    "bookingProviderFallback": "the provider",
+    "booking_requested": "Request sent — {{service}} · {{date}} at {{provider}}",
+    "booking_confirmed": "Confirmed — {{service}} · {{date}} at {{provider}}",
+    "booking_declined": "Declined — {{service}} · {{date}} at {{provider}}",
+    "booking_cancelled": "Cancelled — {{service}} · {{date}} at {{provider}}",
+    "booking_requestedFallback": "Booking request sent",
+    "booking_confirmedFallback": "Booking confirmed",
+    "booking_declinedFallback": "Booking declined",
+    "booking_cancelledFallback": "Booking cancelled"
   },
   "map": {
     "setOnMap": "Set location on map",

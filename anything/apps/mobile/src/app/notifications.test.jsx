@@ -220,12 +220,13 @@ test("Requests filter shows only care-access requests", () => {
   expect(queryByText("pawed your post")).toBeNull();
 });
 
-test("all seven filter chips render in the row (2.33 layout fix)", () => {
+test("all filter chips render in the row (2.33 layout fix)", () => {
   const { getByText, UNSAFE_getAllByType } = render(<NotificationsScreen />);
-  // All seven options render...
+  // All options render (Requests + Bookings are localized labels)...
   for (const label of [
     "All",
     "Requests",
+    "Bookings",
     "Walks",
     "Feeding",
     "Paws",
@@ -243,6 +244,57 @@ test("all seven filter chips render in the row (2.33 layout fix)", () => {
     return flat && flat.alignItems === "center";
   });
   expect(chipRow).toBeTruthy();
+});
+
+// ── Booking-lifecycle notifications (0080) ───────────────────────────────────
+const dbBooking = {
+  id: 55,
+  type: "booking_confirmed",
+  subject_ref: "55", // = appointment id
+  body: JSON.stringify({
+    service: "Grooming",
+    provider: "Pet Spa",
+    date: "2026-07-01",
+    time: "09:00",
+  }),
+  read_at: null,
+  created_at: "2026-06-17T12:00:00.000Z",
+  actor_username: null,
+  actor_avatar: null,
+};
+
+test("a booking notification renders the localized title from the JSON payload", () => {
+  mockDbNotifications = [dbBooking];
+  const { getByText } = render(<NotificationsScreen />);
+  // Interpolated template: "Confirmed — {{service}} · {{date}} at {{provider}}".
+  // The time portion is device 12/24h-dependent, so match around it.
+  expect(getByText(/Confirmed — Grooming · 1 July 2026.*at Pet Spa/)).toBeTruthy();
+});
+
+test("a booking notification falls back to a generic per-type title when the payload is absent", () => {
+  mockDbNotifications = [{ ...dbBooking, body: null }];
+  const { getByText } = render(<NotificationsScreen />);
+  expect(getByText("Booking confirmed")).toBeTruthy();
+});
+
+test("tapping a booking notification opens the booking summary and marks it read", () => {
+  mockDbNotifications = [dbBooking];
+  const { getByText } = render(<NotificationsScreen />);
+  fireEvent.press(getByText(/Confirmed — Grooming/));
+  expect(mockMarkRead).toHaveBeenCalledWith({ ids: [55] });
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/booking-summary",
+    params: { id: "55" },
+  });
+});
+
+test("the Bookings filter shows only booking notifications", () => {
+  mockDbNotifications = [dbBooking, dbPaw];
+  const { getByText, queryByText } = render(<NotificationsScreen />);
+  fireEvent.press(getByText("Bookings"));
+  expect(getByText(/Confirmed — Grooming/)).toBeTruthy();
+  expect(queryByText("pawed your post")).toBeNull();
+  expect(queryByText("Walk time")).toBeNull();
 });
 
 test("empty state when there are no notifications", () => {
