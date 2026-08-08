@@ -49,6 +49,9 @@ export default function ProviderProfile({ providerId }) {
   const update = useUpdateProviderProfile(providerId);
   const setStatus = useSetProviderStatus(providerId);
   const enrich = useEnrichProvider(providerId);
+  // The auto-confirm toggle saves instantly (like publish), so it uses its own mutation
+  // instance to keep its pending state separate from the profile-form Save button.
+  const bookingSettings = useUpdateProviderProfile(providerId);
 
   const {
     register,
@@ -105,6 +108,22 @@ export default function ProviderProfile({ providerId }) {
       },
       onError: (err) => toast.error(err?.message || "Couldn't change status"),
     });
+  };
+
+  const autoConfirm = provider?.auto_confirm_bookings === true;
+  const onToggleAutoConfirm = () => {
+    const next = !autoConfirm;
+    bookingSettings.mutate(
+      { auto_confirm_bookings: next },
+      {
+        onSuccess: () =>
+          toast.success(
+            next ? "New bookings will auto-confirm" : "Auto-confirm turned off",
+          ),
+        onError: (err) =>
+          toast.error(err?.message || "Couldn't update booking settings"),
+      },
+    );
   };
 
   // Confirm-first import (ticket 2.21): fetch a PROPOSED draft from the provider's links and
@@ -192,6 +211,14 @@ export default function ProviderProfile({ providerId }) {
         onToggle={onToggleStatus}
         pending={setStatus.isPending}
       />
+
+      <div className="mt-4">
+        <BookingSettingsCard
+          autoConfirm={autoConfirm}
+          onToggle={onToggleAutoConfirm}
+          pending={bookingSettings.isPending}
+        />
+      </div>
 
       <form
         onSubmit={handleSubmit(onSave)}
@@ -329,6 +356,52 @@ function StatusCard({ isPublished, slug, onToggle, pending }) {
           <Globe className="h-4 w-4" />
         )}
         {isPublished ? "Unpublish" : "Publish"}
+      </button>
+    </div>
+  );
+}
+
+// Booking settings — the auto-confirm toggle (0079). Saves instantly on toggle (like publish),
+// so there is no Save button here. When ON, new bookings are accepted without a manual step;
+// bookings that require upfront payment are still confirmed only after payment clears.
+function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#FFD9B3] bg-white p-6">
+      <div className="max-w-lg">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#7A6254]">
+            Automatically confirm new bookings
+          </span>
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={
+              autoConfirm
+                ? { backgroundColor: "#E5F4EC", color: "#1F7A4D" }
+                : { backgroundColor: "#EFEAE6", color: "#7A6254" }
+            }
+          >
+            {autoConfirm && <Check className="h-3 w-3" />}
+            {autoConfirm ? "On" : "Off"}
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-[#7A6254]">
+          New bookings are accepted automatically. Bookings that require upfront payment are
+          still confirmed after payment.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className="flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-bold transition-opacity disabled:opacity-60"
+        style={
+          autoConfirm
+            ? { borderColor: "#FFD9B3", color: "#7A6254", backgroundColor: "#FFF7EF" }
+            : { borderColor: "transparent", color: "#fff", backgroundColor: COLORS.coral }
+        }
+      >
+        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {autoConfirm ? "Turn off" : "Turn on"}
       </button>
     </div>
   );

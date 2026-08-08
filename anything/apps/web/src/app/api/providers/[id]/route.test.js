@@ -176,6 +176,56 @@ describe('PATCH /api/providers/[id] — profile fields only', () => {
     expect(values).toEqual(['https://x/cover.png', '100']);
   });
 
+  it('owner persists auto_confirm_bookings via the whitelist (0079)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+    sql.unsafe.mockResolvedValueOnce([{ id: 100, auto_confirm_bookings: true }]);
+
+    const res = await PATCH(patchReq({ auto_confirm_bookings: true }), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).provider.auto_confirm_bookings).toBe(true);
+    const [updateQuery, values] = sql.unsafe.mock.calls[0];
+    expect(updateQuery).toContain('auto_confirm_bookings =');
+    expect(values).toEqual([true, '100']);
+  });
+
+  it('owner can turn auto_confirm_bookings OFF — false is persisted, not dropped (0079)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+    sql.unsafe.mockResolvedValueOnce([{ id: 100, auto_confirm_bookings: false }]);
+
+    const res = await PATCH(patchReq({ auto_confirm_bookings: false }), PARAMS);
+
+    expect(res.status).toBe(200);
+    const [, values] = sql.unsafe.mock.calls[0];
+    expect(values).toEqual([false, '100']);
+  });
+
+  it('rejects a non-boolean auto_confirm_bookings → 400, no write (0079)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await PATCH(patchReq({ auto_confirm_bookings: 'yes' }), PARAMS);
+
+    expect(res.status).toBe(400);
+    expect(sql.unsafe).not.toHaveBeenCalled();
+  });
+
+  it('non-owner/admin cannot set auto_confirm_bookings → 403 (0079)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockRejectedValue(forbidden());
+
+    const res = await PATCH(patchReq({ auto_confirm_bookings: true }), PARAMS);
+
+    expect(res.status).toBe(403);
+    expect(sql.unsafe).not.toHaveBeenCalled();
+  });
+
   it('cannot change owner_user_profile_id or status via the profile path', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

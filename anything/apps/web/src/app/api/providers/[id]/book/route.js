@@ -111,7 +111,7 @@ async function POST(request, { params }) {
     // Provider must exist AND be published — cannot book a draft/unknown provider.
     // time_zone (0076) is read here for the PR-3 slot-enforcement composition below.
     const providerRows = await sql`
-      SELECT id, name, status, time_zone FROM providers WHERE id = ${providerId}
+      SELECT id, name, status, time_zone, auto_confirm_bookings FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json(
@@ -376,8 +376,17 @@ async function POST(request, { params }) {
     const resolvedTitle =
       title || service?.name || `Appointment with ${provider.name}`;
 
+    // AUTO-CONFIRM (0079). When the provider opted in, a new booking is created already
+    // 'confirmed' — no manual accept step. EXCEPT a booking that carries an order_id (a
+    // deposit/full pre-payment, 0070): it stays 'requested' until payment clears, preserving
+    // the pay-before-accept gate the provider confirm route enforces. Provider not opted in
+    // (the default), or any paid booking → 'requested', exactly as before.
+    const resolvedBookingStatus =
+      provider.auto_confirm_bookings && !order_id ? "confirmed" : "requested";
+
     // Insert the booking. reminder_enabled is intentionally omitted so it keeps the
-    // table default (do NOT change reminder behavior). booking_status='requested',
+    // table default (do NOT change reminder behavior). booking_status=resolvedBookingStatus
+    // (usually 'requested'; 'confirmed' only when auto-confirm is on and unpaid — see above),
     // source='owner', status='scheduled' (the existing lifecycle column). The 2.4
     // generalized columns (capability/slot/recurrence/order) are bound here; a vet
     // booking sends capability 'vet' + nulls for the rest, reproducing the pre-2.4 row.
@@ -424,7 +433,7 @@ async function POST(request, { params }) {
         ${meet_and_greet === true},
         ${calendar_event_id ?? null},
         ${"owner"},
-        ${"requested"},
+        ${resolvedBookingStatus},
         ${"scheduled"}
       )
       RETURNING *
