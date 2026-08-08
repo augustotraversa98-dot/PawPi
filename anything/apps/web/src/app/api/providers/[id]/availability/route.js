@@ -4,6 +4,7 @@ import {
   requireProviderRole,
   ALLOWED_CAPABILITIES,
 } from "@/app/api/utils/providerAuth";
+import { invalidSlotMinutes } from "@/app/api/utils/providerValidation";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import {
@@ -252,6 +253,10 @@ async function POST(request, { params }) {
       !ALLOWED_CAPABILITIES.includes(capability)
     ) {
       return Response.json({ error: "Invalid capability" }, { status: 400 });
+    }
+    const slotError = invalidSlotMinutes(slot_minutes);
+    if (slotError) {
+      return Response.json({ error: slotError }, { status: 400 });
     }
 
     // If a staff member is named it must be ACTIVE staff of THIS provider.

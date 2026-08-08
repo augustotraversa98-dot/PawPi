@@ -3,7 +3,9 @@ import {
   invalidLocationFields,
   invalidServiceFields,
   invalidImageUrls,
+  invalidSlotMinutes,
   MAX_IMAGE_URLS,
+  MAX_SLOT_MINUTES,
 } from './providerValidation';
 
 // Pins the behavior of the provider location/service validators after they were
@@ -147,5 +149,26 @@ describe('invalidImageUrls (ticket 2.23)', () => {
     expect(invalidImageUrls(['ok', '  '])).toBe(
       'image_urls must be non-empty URL strings',
     );
+  });
+});
+
+describe('invalidSlotMinutes', () => {
+  it('allows absent (undefined/null) — the create defaults it', () => {
+    expect(invalidSlotMinutes(undefined)).toBe(null);
+    expect(invalidSlotMinutes(null)).toBe(null);
+  });
+
+  it('accepts positive integers up to the cap', () => {
+    expect(invalidSlotMinutes(15)).toBe(null);
+    expect(invalidSlotMinutes(30)).toBe(null);
+    expect(invalidSlotMinutes(MAX_SLOT_MINUTES)).toBe(null);
+  });
+
+  it('rejects non-positive, non-integer, and oversized values', () => {
+    const msg = `slot_minutes must be a positive integer no greater than ${MAX_SLOT_MINUTES}`;
+    expect(invalidSlotMinutes(0)).toBe(msg);
+    expect(invalidSlotMinutes(-30)).toBe(msg);
+    expect(invalidSlotMinutes(30.5)).toBe(msg);
+    expect(invalidSlotMinutes(MAX_SLOT_MINUTES + 1)).toBe(msg);
   });
 });

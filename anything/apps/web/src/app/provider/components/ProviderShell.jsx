@@ -21,6 +21,7 @@ import {
   Store,
   CalendarDays,
   CalendarClock,
+  Clock,
   Pill,
   Shield,
 } from "lucide-react";
@@ -84,6 +85,13 @@ const NAV_ITEMS = [
     Icon: MapPin,
     enabled: true,
     href: "/provider/locations",
+  },
+  {
+    key: "availability",
+    label: "Availability",
+    Icon: Clock,
+    enabled: true,
+    href: "/provider/availability",
   },
   {
     key: "calendar-import",
