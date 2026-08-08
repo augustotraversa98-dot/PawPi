@@ -25,10 +25,20 @@ const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
 const PARAMS = { params: { id: '100' } };
 
-// Last sql call = the INSERT. Its query text + bound values let us assert shape.
-const lastCall = () => sql.mock.calls[sql.mock.calls.length - 1];
-const lastQueryText = () => (lastCall()?.[0] ?? []).join(' ');
-const lastValues = () => lastCall()?.slice(1) ?? [];
+// These helpers target the vet_appointments INSERT specifically (not literally the last
+// sql call): an owner notification now fires via safeNotify AFTER the insert, so the last
+// call may be the app_notify SELECT.
+const insertCall = () =>
+  sql.mock.calls.find((c) =>
+    (c?.[0] ?? []).join(' ').includes('INSERT INTO vet_appointments'),
+  );
+const lastQueryText = () => (insertCall()?.[0] ?? []).join(' ');
+const lastValues = () => insertCall()?.slice(1) ?? [];
+
+// The owner notification the route emits after a successful booking (0080).
+const notifyCall = () =>
+  sql.mock.calls.find((c) => (c?.[0] ?? []).join(' ').includes('app_notify'));
+const notifyValues = () => notifyCall()?.slice(1) ?? [];
 
 const bookReq = (body) =>
   new Request('http://localhost/api/providers/100/book', {
@@ -473,6 +483,72 @@ describe('POST /api/providers/[id]/book', () => {
       PARAMS,
     );
     expect(res.status).toBe(201); // unchanged: no windows, no enforcement
+  });
+});
+
+// ── Owner notification on booking created (0080) ───────────────────────────────
+// The route emits ONE owner notification after a successful insert, via safeNotify
+// (SELECT app_notify) with actor=null (system notification, so it isn't swallowed by
+// the recipient===actor self-notify no-op), subject_ref = the appointment id.
+describe('POST /api/providers/[id]/book — owner notification (0080)', () => {
+  it('auto-confirmed (unpaid) booking → notifies booking_confirmed, actor null, subject_ref=id', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile → 7
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([
+        { id: 100, name: 'Auto Vet', status: 'published', auto_confirm_bookings: true },
+      ]) // provider (auto-confirm ON)
+      .mockResolvedValueOnce([]) // no availability windows
+      .mockResolvedValueOnce([{ id: 1 }]); // insert → appointment id 1
+
+    const res = await POST(bookReq(VALID), PARAMS);
+    expect(res.status).toBe(201);
+
+    const values = notifyValues();
+    expect(notifyCall()).toBeTruthy();
+    expect(values).toContain(7); // recipient = the owner
+    expect(values).toContain(null); // actor = null (system notification)
+    expect(values).toContain('booking_confirmed');
+    expect(values).toContain('1'); // subject_ref = String(appointment id)
+  });
+
+  it('plain requested booking (no order) → notifies booking_requested, actor null', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Manual Vet', status: 'published' }]) // no auto-confirm
+      .mockResolvedValueOnce([]) // no availability windows
+      .mockResolvedValueOnce([{ id: 2 }]); // insert → id 2
+
+    const res = await POST(bookReq(VALID), PARAMS);
+    expect(res.status).toBe(201);
+
+    const values = notifyValues();
+    expect(notifyCall()).toBeTruthy();
+    expect(values).toContain(7);
+    expect(values).toContain(null);
+    expect(values).toContain('booking_requested');
+    expect(values).toContain('2');
+  });
+
+  it('paid booking that stays requested pending payment → NO create notification', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([
+        { id: 100, name: 'Auto Vet', status: 'published', auto_confirm_bookings: true },
+      ]) // provider (auto-confirm ON, but a paid booking stays requested)
+      .mockResolvedValueOnce([]) // no availability windows
+      .mockResolvedValueOnce([{ id: 999 }]) // deposit order lookup
+      .mockResolvedValueOnce([{ id: 3 }]); // insert → id 3
+
+    const res = await POST(bookReq({ ...VALID, order_id: 999 }), PARAMS);
+    expect(res.status).toBe(201);
+    // The owner gets the provider-confirm notification once payment clears, not now.
+    expect(notifyCall()).toBeUndefined();
   });
 });
 

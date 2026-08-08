@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ShieldCheck,
   FileText,
+  CalendarCheck,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ import {
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 import { useRecentVetNotes } from "@/hooks/useRecentVetNotes";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 
 // A vet-authored note stays in the bell for this long, then ages out (there is no
 // read-state store yet — see useRecentVetNotes). Keeps the signal fresh, not spammy.
@@ -38,12 +40,22 @@ const VET_NOTE_WINDOW_MS = 1000 * 60 * 60 * 24 * 14;
 const FILTER_OPTIONS = [
   "All",
   "Requests",
+  "Bookings",
   "Walks",
   "Feeding",
   "Paws",
   "Barks",
   "Training",
 ];
+
+// The four booking-lifecycle notification types (0080). They share one deep-link
+// target (the booking summary), one icon, and the "Bookings" filter chip.
+const BOOKING_TYPES = new Set([
+  "booking_requested",
+  "booking_confirmed",
+  "booking_declined",
+  "booking_cancelled",
+]);
 
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
 // into the screen's item shape. Tagged _source:"access" so a tap routes to the
@@ -79,10 +91,58 @@ function mapAccessGrant(g, t) {
   };
 }
 
+// Build the localized title/message for a booking-lifecycle notification (0080). The
+// server stores a compact JSON body ({ service, provider, date, time }); we parse it and
+// interpolate a per-type template in the RECIPIENT's language, formatting the date/time
+// in-locale. If the payload is missing/unparseable we fall back to a generic per-type
+// title. TITLE = the interpolated lifecycle line; MESSAGE = a "tap to view" hint.
+function bookingDisplay(n, t) {
+  let payload = null;
+  try {
+    payload = n.body ? JSON.parse(n.body) : null;
+  } catch (e) {
+    payload = null;
+  }
+  if (!payload) {
+    return {
+      title: t(`notifications.${n.type}Fallback`),
+      message: t("notifications.bookingHint"),
+    };
+  }
+  const when = [formatDisplayDate(payload.date), formatDisplayTime(payload.time)]
+    .filter(Boolean)
+    .join(" · ");
+  const title = t(`notifications.${n.type}`, {
+    service: payload.service || t("notifications.bookingServiceFallback"),
+    provider: payload.provider || t("notifications.bookingProviderFallback"),
+    date: when,
+  });
+  return { title, message: t("notifications.bookingHint") };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
+// Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
 const TYPE_LABEL = { paw: "New paw", bark: "New bark", follow: "New follower" };
-function mapDbNotification(n) {
+function mapDbNotification(n, t) {
+  if (BOOKING_TYPES.has(n.type)) {
+    const { title, message } = bookingDisplay(n, t);
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title,
+      message,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: null,
+      // subject_ref = the appointment id → deep-link to the booking summary.
+      relatedBookingId: n.subject_ref,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   return {
     id: `db-${n.id}`,
     _source: "db",
@@ -100,6 +160,9 @@ function mapDbNotification(n) {
 }
 
 const NotificationIcon = ({ type }) => {
+  if (BOOKING_TYPES.has(type)) {
+    return <CalendarCheck size={18} color={COLORS.sageDark} />;
+  }
   switch (type) {
     case "walk":
       return <MapPin size={18} color={COLORS.sage} />;
@@ -135,10 +198,15 @@ const formatTimestamp = (timestamp) => {
   return then.toLocaleDateString();
 };
 
-// Only the "Requests" chip is a new (localized) label here; the other chips are
+// The "Requests" and "Bookings" chips have localized labels; the other chips are
 // pre-existing copy owned by the i18n extraction branch, so they pass through.
+const FILTER_LABEL_KEYS = {
+  Requests: "notifications.filterRequests",
+  Bookings: "notifications.filterBookings",
+};
 function filterLabel(filter, t) {
-  return filter === "Requests" ? t("notifications.filterRequests") : filter;
+  const key = FILTER_LABEL_KEYS[filter];
+  return key ? t(key) : filter;
 }
 
 export default function NotificationsScreen() {
@@ -177,7 +245,7 @@ export default function NotificationsScreen() {
   // notifications from the API + pending care-access requests + recent vet notes,
   // newest first. No mock data.
   const reminderNotifs = (storeNotifications || []).filter((n) => n.reminderId);
-  const socialNotifs = (dbNotifications || []).map(mapDbNotification);
+  const socialNotifs = (dbNotifications || []).map((n) => mapDbNotification(n, t));
   const accessNotifs = (careGrants || [])
     .filter((g) => g.status === "pending")
     .map((g) => mapAccessGrant(g, t));
@@ -200,6 +268,7 @@ export default function NotificationsScreen() {
   // Filter notifications
   const filteredNotifications = merged.filter((notif) => {
     if (selectedFilter === "All") return true;
+    if (selectedFilter === "Bookings") return BOOKING_TYPES.has(notif.type);
     const typeMap = {
       Requests: "access",
       Walks: "walk",
@@ -226,7 +295,13 @@ export default function NotificationsScreen() {
 
     if (notif._source === "db") {
       if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
-      if (notif.relatedPetId) {
+      if (notif.relatedBookingId) {
+        // Booking lifecycle → open the booking summary (id = appointment id).
+        router.push({
+          pathname: "/service/booking-summary",
+          params: { id: String(notif.relatedBookingId) },
+        });
+      } else if (notif.relatedPetId) {
         router.push({
           pathname: "/pet-profile",
           params: { petId: String(notif.relatedPetId) },
