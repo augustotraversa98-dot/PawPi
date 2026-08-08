@@ -190,6 +190,68 @@ describe('POST /api/providers/[id]/book', () => {
     expect(lastValues()).toContain('Appointment with Happy Vet');
   });
 
+  // ── Auto-confirm (0079): provider opts into accepting bookings with no manual step ──
+  describe('auto-confirm (0079)', () => {
+    it('provider auto_confirm ON + no order_id → booking_status confirmed', async () => {
+      auth.mockResolvedValue(SESSION);
+      sql
+        .mockResolvedValueOnce([PROFILE_ROW]) // profile
+        .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+        .mockResolvedValueOnce([
+          { id: 100, name: 'Auto Vet', status: 'published', auto_confirm_bookings: true },
+        ]) // provider (auto-confirm ON)
+        .mockResolvedValueOnce([]) // no availability windows
+        .mockResolvedValueOnce([{ id: 1 }]); // insert
+
+      const res = await POST(bookReq(VALID), PARAMS);
+
+      expect(res.status).toBe(201);
+      const values = lastValues();
+      expect(values).toContain('confirmed'); // auto-confirmed, no manual accept
+      expect(values).not.toContain('requested');
+    });
+
+    it('provider auto_confirm ON + order_id present → stays requested (payment gate preserved)', async () => {
+      auth.mockResolvedValue(SESSION);
+      sql
+        .mockResolvedValueOnce([PROFILE_ROW]) // profile
+        .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+        .mockResolvedValueOnce([
+          { id: 100, name: 'Auto Vet', status: 'published', auto_confirm_bookings: true },
+        ]) // provider (auto-confirm ON)
+        .mockResolvedValueOnce([]) // no availability windows
+        .mockResolvedValueOnce([{ id: 999 }]) // order lookup: the owner's deposit order
+        .mockResolvedValueOnce([{ id: 1 }]); // insert
+
+      const res = await POST(bookReq({ ...VALID, order_id: 999 }), PARAMS);
+
+      expect(res.status).toBe(201);
+      const values = lastValues();
+      // A paid (order-carrying) booking is NOT auto-confirmed — payment must clear first.
+      expect(values).toContain('requested');
+      expect(values).not.toContain('confirmed');
+    });
+
+    it('provider auto_confirm OFF → requested (unchanged)', async () => {
+      auth.mockResolvedValue(SESSION);
+      sql
+        .mockResolvedValueOnce([PROFILE_ROW]) // profile
+        .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+        .mockResolvedValueOnce([
+          { id: 100, name: 'Manual Vet', status: 'published', auto_confirm_bookings: false },
+        ]) // provider (auto-confirm OFF)
+        .mockResolvedValueOnce([]) // no availability windows
+        .mockResolvedValueOnce([{ id: 1 }]); // insert
+
+      const res = await POST(bookReq(VALID), PARAMS);
+
+      expect(res.status).toBe(201);
+      const values = lastValues();
+      expect(values).toContain('requested');
+      expect(values).not.toContain('confirmed');
+    });
+  });
+
   // ── Ticket 2.4: generalized booking (capability / slot / deposit) ──────────────
   it('vet booking inserts capability "vet" and the generalized columns', async () => {
     auth.mockResolvedValue(SESSION);

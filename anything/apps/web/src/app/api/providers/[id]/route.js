@@ -30,6 +30,9 @@ const PROFILE_FIELDS = [
   "google_maps_url",
   // Storefront banner (ticket 2.22) — optional; set from the Storefront section.
   "cover_image_url",
+  // Auto-confirm new bookings (0079) — a boolean operational setting, owner|admin only like
+  // every field here. Boolean-validated below before it reaches the SET list.
+  "auto_confirm_bookings",
 ];
 
 // Get one provider — requires active staff membership (any role) or 403.
@@ -106,6 +109,18 @@ async function PATCH(request, { params }) {
     await requireProviderRole(providerId, userId);
 
     const body = (await request.json()) ?? {};
+
+    // auto_confirm_bookings (0079) is a boolean column — reject any non-boolean so a stray
+    // value can't be bound into it (the other whitelist fields are free-text).
+    if (
+      body.auto_confirm_bookings !== undefined &&
+      typeof body.auto_confirm_bookings !== "boolean"
+    ) {
+      return Response.json(
+        { error: "auto_confirm_bookings must be a boolean" },
+        { status: 400 },
+      );
+    }
 
     // Re-validate slug uniqueness if it changed — exclude this provider so a
     // no-op slug write doesn't collide with itself.
