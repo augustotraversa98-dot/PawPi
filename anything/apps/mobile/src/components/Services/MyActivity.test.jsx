@@ -4,9 +4,12 @@
 // mocked; i18n resolves REAL en.json.
 
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
 const mockPush = jest.fn();
+// The mocked RefreshableScrollView captures the `refetch` prop MyActivity wires to pull-to-refresh
+// so a test can invoke it directly (the real RefreshControl gesture can't fire in jsdom).
+let mockCapturedRefetch;
 
 let mockMyBookings;
 let mockUnread;
@@ -30,7 +33,12 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
-  return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
+  return {
+    RefreshableScrollView: ({ refetch, children }) => {
+      mockCapturedRefetch = refetch;
+      return <View>{children}</View>;
+    },
+  };
 });
 jest.mock("@/hooks/useProviders", () => ({
   useMyBookings: () => mockMyBookings,
@@ -54,6 +62,7 @@ const q = (data, extra = {}) => ({ data, isLoading: false, refetch: jest.fn(), .
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockCapturedRefetch = undefined;
   mockMyBookings = q({ upcoming: [], past: [] });
   mockUnread = q(0);
   mockWalkSessions = q([]);
@@ -91,6 +100,21 @@ test("empty states across every section, no fabricated rows", async () => {
   expect(getByTestId("activity-autoreorder")).toBeTruthy();
   // No pending section when there are no requested bookings.
   expect(queryByTestId("activity-pending-heading")).toBeNull();
+});
+
+test("pull-to-refresh refetches the bookings list (and the other lists it renders)", async () => {
+  const { getByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-messages")).toBeTruthy());
+  expect(mockCapturedRefetch).toEqual(expect.any(Function));
+  act(() => {
+    mockCapturedRefetch();
+  });
+  // The primary aggregator (useMyBookings) refetches, so a just-made booking appears…
+  expect(mockMyBookings.refetch).toHaveBeenCalled();
+  // …alongside the other lists the pane surfaces.
+  expect(mockUnread.refetch).toHaveBeenCalled();
+  expect(mockOrders.refetch).toHaveBeenCalled();
+  expect(mockSubs.refetch).toHaveBeenCalled();
 });
 
 test("Messages row routes to /provider-messages and shows the unread badge", async () => {
@@ -264,13 +288,35 @@ test("a cancelled/declined future booking is excluded from Pending AND Upcoming 
   // Cancelled/declined future bookings never render as a Pending or Upcoming row…
   expect(queryByTestId("activity-booking-43")).toBeNull();
   expect(queryByTestId("activity-booking-44")).toBeNull();
-  // …they fold into Past (count reflects the two closed bookings, kept as history).
-  expect(getByText("Past (2)")).toBeTruthy();
+  // …they fold into Past & others (count reflects the two closed bookings, kept as history).
+  expect(getByText("Past & others (2)")).toBeTruthy();
   fireEvent.press(getByTestId("activity-past-toggle"));
   expect(getByTestId("activity-past-43")).toBeTruthy();
   expect(getByTestId("activity-past-43-status")).toBeTruthy();
   expect(getByText("Cancelled")).toBeTruthy();
   expect(getByText("Declined")).toBeTruthy();
+  // A closed (cancelled/declined) row is NOT a genuinely-past booking: its subtitle shows just
+  // the date, never a misleading "Past ·" prefix.
+  expect(getByText("3 September 2026")).toBeTruthy();
+  expect(getByText("4 September 2026")).toBeTruthy();
+});
+
+test("a genuinely-past booking keeps the 'Past ·' subtitle prefix; a cancelled row does not", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      { id: 61, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "cancelled", appointment_date: "2026-09-03", provider_slug: "happy-paws" },
+    ],
+    past: [
+      { id: 62, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "completed", appointment_date: "2026-01-05", provider_slug: "happy-paws" },
+    ],
+  });
+  const { getByTestId, getByText } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-past-toggle")).toBeTruthy());
+  fireEvent.press(getByTestId("activity-past-toggle"));
+  // Genuine past-dated (completed) row keeps the prefix…
+  expect(getByText("Past · 5 January 2026")).toBeTruthy();
+  // …the cancelled row shows the bare date, no prefix.
+  expect(getByText("3 September 2026")).toBeTruthy();
 });
 
 test("a confirmed future booking stays in Upcoming (never demoted to Past)", async () => {
@@ -418,8 +464,8 @@ test("Past is collapsed by default: rows hidden, heading shows a real count", as
   });
   const { getByTestId, queryByTestId, getByText } = render(<MyActivity />);
   await waitFor(() => expect(getByTestId("activity-past-toggle")).toBeTruthy());
-  // Count reflects past.length…
-  expect(getByText("Past (3)")).toBeTruthy();
+  // Count reflects past.length under the renamed "Past & others" heading…
+  expect(getByText("Past & others (3)")).toBeTruthy();
   // …and the rows are hidden until expanded (no empty row either — there IS past data).
   expect(queryByTestId("activity-past-21")).toBeNull();
   expect(queryByTestId("activity-past-empty")).toBeNull();

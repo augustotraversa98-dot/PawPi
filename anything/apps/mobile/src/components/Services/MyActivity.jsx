@@ -48,6 +48,11 @@ import BookingStatusChip from "@/components/Providers/BookingStatusChip";
 const isActiveStay = (s) => s?.status === "booked" || s?.status === "checked_in";
 // A sitting visit is "active" until it's completed or cancelled.
 const isActiveVisit = (v) => v?.status !== "completed" && v?.status !== "cancelled";
+// A cancelled/declined booking is a CLOSED record, not a genuinely-past booking (per #321 both
+// live in the Past & others section). Module-scoped so the Past partition and PastBookingRow's
+// label logic agree on what counts as closed.
+const isClosedBooking = (b) =>
+  b?.booking_status === "cancelled" || b?.booking_status === "declined";
 
 // Route an UPCOMING booking to its detail. A telehealth booking keeps its own consult screen
 // (the join surface) ONLY when a session actually exists; a pending/no-session telehealth
@@ -86,10 +91,8 @@ export default function MyActivity() {
   const upcoming = bookings.data?.upcoming ?? [];
   // A cancelled/declined booking must never read as Pending or Upcoming regardless of date — the
   // endpoint buckets by appointment_date only, so a future-dated cancellation still lands in
-  // `upcoming`. Partition those out here and fold them into Past/History (record kept), where
-  // their status chip explains what happened.
-  const isClosedBooking = (b) =>
-    b.booking_status === "cancelled" || b.booking_status === "declined";
+  // `upcoming`. Partition those out here (isClosedBooking, module-scoped) and fold them into
+  // Past/History (record kept), where their status chip explains what happened.
   const liveUpcoming = upcoming.filter((b) => !isClosedBooking(b));
   const closedUpcoming = upcoming.filter(isClosedBooking);
   // Pending (requested) bookings the provider hasn't confirmed yet get their own section above
@@ -265,7 +268,7 @@ export default function MyActivity() {
           never grows into a long list; the heading shows a real count + a chevron. */}
       {past.length === 0 ? (
         <>
-          <SectionHeading text={t("activity.past")} />
+          <SectionHeading text={t("activity.pastAndOthers")} />
           <EmptyRow testID="activity-past-empty" text={t("activity.emptyPast")} />
         </>
       ) : (
@@ -349,12 +352,16 @@ export function UpcomingBookingRow({ booking }) {
 export function PastBookingRow({ booking }) {
   const router = useRouter();
   const { t } = useTranslation();
+  // Cancelled/declined bookings share this section (per #321) but aren't genuinely past — show
+  // just the date, never a misleading "Past ·" prefix. Real past-dated rows keep the prefix.
+  const date = formatDisplayDate(booking.appointment_date);
+  const subtitle = isClosedBooking(booking) ? date : `${t("activity.past")} · ${date}`;
   return (
     <HubRow
       testID={`activity-past-${booking.id}`}
       Icon={Clock}
       title={`${booking.provider_name || "Provider"} · ${booking.pet_name || "Pet"}`}
-      subtitle={`${t("activity.past")} · ${formatDisplayDate(booking.appointment_date)}`}
+      subtitle={subtitle}
       trailing={
         <BookingStatusChip
           status={booking.booking_status}
