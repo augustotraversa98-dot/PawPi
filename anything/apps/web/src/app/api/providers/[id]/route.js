@@ -33,7 +33,23 @@ const PROFILE_FIELDS = [
   // Auto-confirm new bookings (0079) — a boolean operational setting, owner|admin only like
   // every field here. Boolean-validated below before it reaches the SET list.
   "auto_confirm_bookings",
+  // IANA time zone (0076) — the zone the availability window wall-clock times are local to, so
+  // the slot engine composes "09:00" correctly. IANA-validated below before it reaches the SET
+  // list; a bad zone would break slot math for every booking.
+  "time_zone",
 ];
+
+// Is `tz` a real IANA time zone? Intl throws a RangeError for anything the platform's
+// time-zone database doesn't know, so a successful construction is the validation.
+function isValidTimeZone(tz) {
+  if (typeof tz !== "string" || tz.trim() === "") return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Get one provider — requires active staff membership (any role) or 403.
 async function GET(request, { params }) {
@@ -118,6 +134,18 @@ async function PATCH(request, { params }) {
     ) {
       return Response.json(
         { error: "auto_confirm_bookings must be a boolean" },
+        { status: 400 },
+      );
+    }
+
+    // time_zone (0076) must be a real IANA zone — never persist garbage, which would break
+    // slot composition for every booking.
+    if (
+      body.time_zone !== undefined &&
+      !isValidTimeZone(body.time_zone)
+    ) {
+      return Response.json(
+        { error: "time_zone must be a valid IANA time zone" },
         { status: 400 },
       );
     }

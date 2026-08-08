@@ -140,6 +140,32 @@ describe('POST availability', () => {
     expect(res.status).toBe(400);
   });
 
+  it('non-positive slot_minutes → 400, no insert', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([ACTIVE_ADMIN]);
+    const res = await POST(
+      postReq({ weekday: 0, start_time: '09:00', end_time: '17:00', slot_minutes: 0 }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+    // profile + membership only; no INSERT.
+    expect(sql).toHaveBeenCalledTimes(2);
+  });
+
+  it('oversized slot_minutes → 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([ACTIVE_ADMIN]);
+    const res = await POST(
+      postReq({ weekday: 0, start_time: '09:00', end_time: '17:00', slot_minutes: 5000 }),
+      PARAMS,
+    );
+    expect(res.status).toBe(400);
+  });
+
   it('happy path: inserts a window', async () => {
     auth.mockResolvedValue(SESSION);
     sql

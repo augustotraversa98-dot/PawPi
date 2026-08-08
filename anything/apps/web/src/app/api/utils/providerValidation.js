@@ -69,6 +69,25 @@ export function invalidServiceFields(body) {
   return null;
 }
 
+// Availability slot length (provider_availability.slot_minutes). A slot step must be a
+// positive integer; MAX_SLOT_MINUTES caps it at a full day so a runaway value can't be
+// stored (the DB CHECK only enforces > 0). Shared by the availability create + edit routes.
+export const MAX_SLOT_MINUTES = 1440;
+
+// Validate an optional slot_minutes field. Returns an error message or null. Absent
+// (undefined/null) is allowed (the create defaults it to 30).
+export function invalidSlotMinutes(slot_minutes) {
+  if (slot_minutes === undefined || slot_minutes === null) return null;
+  if (
+    !Number.isInteger(slot_minutes) ||
+    slot_minutes <= 0 ||
+    slot_minutes > MAX_SLOT_MINUTES
+  ) {
+    return `slot_minutes must be a positive integer no greater than ${MAX_SLOT_MINUTES}`;
+  }
+  return null;
+}
+
 // Max images a single service/product may carry (ticket 2.23). A sane cap so a
 // runaway client can't store an unbounded array.
 export const MAX_IMAGE_URLS = 8;

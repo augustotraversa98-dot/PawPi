@@ -226,6 +226,53 @@ describe('PATCH /api/providers/[id] — profile fields only', () => {
     expect(sql.unsafe).not.toHaveBeenCalled();
   });
 
+  it('owner persists a valid IANA time_zone via the whitelist (0076)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+    sql.unsafe.mockResolvedValueOnce([
+      { id: 100, time_zone: 'America/Argentina/Buenos_Aires' },
+    ]);
+
+    const res = await PATCH(
+      patchReq({ time_zone: 'America/Argentina/Buenos_Aires' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).provider.time_zone).toBe(
+      'America/Argentina/Buenos_Aires',
+    );
+    const [updateQuery, values] = sql.unsafe.mock.calls[0];
+    expect(updateQuery).toContain('time_zone =');
+    expect(values).toEqual(['America/Argentina/Buenos_Aires', '100']);
+  });
+
+  it('rejects an invalid time_zone → 400, no write (0076)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'owner' });
+
+    const res = await PATCH(patchReq({ time_zone: 'Mars/Olympus_Mons' }), PARAMS);
+
+    expect(res.status).toBe(400);
+    expect(sql.unsafe).not.toHaveBeenCalled();
+  });
+
+  it('non-owner/admin cannot set time_zone → 403 (0076)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockRejectedValue(forbidden());
+
+    const res = await PATCH(
+      patchReq({ time_zone: 'America/Argentina/Buenos_Aires' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(403);
+    expect(sql.unsafe).not.toHaveBeenCalled();
+  });
+
   it('cannot change owner_user_profile_id or status via the profile path', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);

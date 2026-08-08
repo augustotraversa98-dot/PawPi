@@ -746,6 +746,97 @@ export function useDeleteLocation(providerId) {
   });
 }
 
+// --- availability windows (Hours editor) ------------------------------------
+// The provider's raw weekly bookable windows — the config surface behind the slot engine.
+// Distinct from the public slot-computing GET: this reads the raw provider_availability ROWS
+// (provider-wide only) via the owner endpoint so the editor can list/add/edit/delete them.
+
+export const availabilityWindowsKey = (providerId) => [
+  "provider-availability-windows",
+  String(providerId ?? ""),
+];
+
+// The base collection (POST create lives here); the raw owner read is the /windows child.
+export const availabilityUrl = (providerId) =>
+  `/api/providers/${providerId}/availability`;
+
+export const availabilityWindowsUrl = (providerId) =>
+  `/api/providers/${providerId}/availability/windows`;
+
+export const availabilityWindowUrl = (providerId, availabilityId) =>
+  `/api/providers/${providerId}/availability/${availabilityId}`;
+
+// Raw provider-wide windows + a count of the non-provider-wide (per-staff/capability/location)
+// windows the editor does not manage. Disabled until a providerId is known.
+export function useAvailabilityWindows(providerId) {
+  return useQuery({
+    queryKey: availabilityWindowsKey(providerId),
+    queryFn: () => getJson(availabilityWindowsUrl(providerId)),
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Create a provider-wide window (owner|admin) via the existing POST. body { weekday*,
+// start_time*, end_time*, slot_minutes? } — staff/capability/location are left NULL server-side.
+export function useCreateAvailabilityWindow(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(availabilityUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.availability;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: availabilityWindowsKey(providerId),
+      });
+    },
+  });
+}
+
+// Update a window (owner|admin). { availabilityId, ...changes } — partial PATCH; the server
+// validates the merged result (start<end, sane slot_minutes).
+export function useUpdateAvailabilityWindow(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ availabilityId, ...changes }) => {
+      const data = await getJson(
+        availabilityWindowUrl(providerId, availabilityId),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(changes),
+        },
+      );
+      return data.availability;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: availabilityWindowsKey(providerId),
+      });
+    },
+  });
+}
+
+// Delete a window (owner|admin) — HARD delete (the row is removed).
+export function useDeleteAvailabilityWindow(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (availabilityId) =>
+      getJson(availabilityWindowUrl(providerId, availabilityId), {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: availabilityWindowsKey(providerId),
+      });
+    },
+  });
+}
+
 // --- calendar import feeds (ticket 2.84) ------------------------------------
 // A provider's external iCal/ICS feeds + their imported busy blocks. Feeds are managed by
 // owner/admin; busy blocks are read-only (written only by the sync DEFINER). Disabled until a
