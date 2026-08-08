@@ -455,5 +455,9 @@
     "orderPlacedBody": "Tu pedido está en camino.",
     "checkoutFailedTitle": "No se pudo completar el pago",
     "checkoutFailedBody": "Inténtalo de nuevo."
+  },
+  "telehealth": {
+    "availableAt": "Tu videoconsulta estará disponible el {{date}} a las {{time}}.",
+    "availableWhenVetStarts": "Podrás unirte cuando tu veterinario/a inicie la llamada."
   }
 }

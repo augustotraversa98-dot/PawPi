@@ -35,6 +35,11 @@ jest.mock("@/hooks/useProviders", () => ({
   useTelehealthSessions: () => mockConsults,
   useJoinTelehealth: () => ({ mutateAsync: mockJoin, isPending: false }),
 }));
+// t() resolves against the REAL English catalog (with {{var}} interpolation), so the gated
+// "available at …" copy is asserted as real strings and a mistyped key would render raw.
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 
 import TelehealthScreen from "./telehealth";
 
@@ -127,8 +132,32 @@ test("a consult more than 5 minutes before its scheduled time shows a friendly w
 
   const { getByText, queryByText } = render(<TelehealthScreen />);
   expect(queryByText("Join video consult")).toBeNull();
-  expect(getByText(/you can join in/i)).toBeTruthy();
+  // Localized time-gate copy: "Your video consult will be available on {date} at {time}."
+  expect(getByText(/will be available on/i)).toBeTruthy();
   expect(mockJoin).not.toHaveBeenCalled();
+});
+
+// Inside the early-join window (scheduled within 5 minutes of the appointment time) the Join
+// affordance IS shown — the gate hides Join only BEFORE the window.
+test("a consult within 5 minutes of its scheduled time shows the Join button", () => {
+  const soon = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+  const pad = (n) => String(n).padStart(2, "0");
+  mockConsults = {
+    data: [
+      {
+        id: 9,
+        provider_id: 10,
+        provider_name: "Tele Vet Co",
+        status: "scheduled",
+        appointment_date: `${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())}`,
+        appointment_time: `${pad(soon.getHours())}:${pad(soon.getMinutes())}`,
+      },
+    ],
+  };
+
+  const { getByText, queryByText } = render(<TelehealthScreen />);
+  expect(getByText("Join video consult")).toBeTruthy();
+  expect(queryByText(/will be available on/i)).toBeNull();
 });
 
 // If the client-side pre-check lets a tap through (uncertain data, clock skew, etc.) and the

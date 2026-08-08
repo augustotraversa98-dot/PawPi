@@ -12,7 +12,14 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+// getActiveTx/runWithTx are consumed by withSavepoint (utils/requestContext) around the
+// telehealth session insert. With no active tx (unit context) getActiveTx returns null, so
+// withSavepoint runs its callback directly against the mocked `sql`.
+vi.mock('@/app/api/utils/sql', () => ({
+  default: vi.fn(),
+  getActiveTx: () => null,
+  runWithTx: (_tx, fn) => fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
@@ -404,5 +411,92 @@ describe('POST /api/providers/[id]/book', () => {
       PARAMS,
     );
     expect(res.status).toBe(201); // unchanged: no windows, no enforcement
+  });
+});
+
+// ── Telehealth session at booking (Phase 1, solo providers) ────────────────────
+// When a telehealth appointment is booked AND the provider has exactly one eligible
+// active staffer, the route pre-creates a telehealth_sessions row assigned to that
+// vet (linked by booking_id). Zero/multiple eligible staff → nothing. The session
+// insert is savepointed so its failure never fails the booking. Non-telehealth
+// bookings never touch telehealth_sessions.
+describe('POST /api/providers/[id]/book — telehealth session at booking', () => {
+  // The telehealth flow adds two sql calls after the appointment insert: the solo-staff
+  // resolver SELECT, then (only when it returns an id) the telehealth_sessions INSERT.
+  const teleReq = () => bookReq({ ...VALID, capability: 'telehealth' });
+  const sessionInsertCall = () =>
+    sql.mock.calls.find((c) =>
+      (c[0] ?? []).join(' ').includes('INSERT INTO telehealth_sessions'),
+    );
+
+  it('solo provider: creates a scheduled session assigned to the lone staff, linked by booking_id', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile (resolveUserId → 7)
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Solo Vet', status: 'published' }]) // provider
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // telehealth capability held
+      .mockResolvedValueOnce([]) // no availability windows
+      .mockResolvedValueOnce([{ id: 55 }]) // insert vet_appointments → booking id 55
+      .mockResolvedValueOnce([{ staff_user_id: 9 }]) // resolver: exactly one eligible staff
+      .mockResolvedValueOnce([]); // telehealth_sessions insert
+
+    const res = await POST(teleReq(), PARAMS);
+    expect(res.status).toBe(201);
+
+    const insert = sessionInsertCall();
+    expect(insert).toBeTruthy();
+    const values = insert.slice(1);
+    expect(values).toContain(55); // booking_id = the created appointment
+    expect(values).toContain(9); // staff_user_id = the resolved lone vet
+    expect(values).toContain(7); // owner_user_id = the booking owner
+    // status is a SQL literal, not a bound value → assert it in the query text.
+    expect((insert[0] ?? []).join(' ')).toContain("'scheduled'");
+  });
+
+  it('zero/multiple eligible staff (resolver null): creates NO session, booking still 201', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'Multi Vet', status: 'published' }])
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // telehealth held
+      .mockResolvedValueOnce([]) // no windows
+      .mockResolvedValueOnce([{ id: 56 }]) // insert booking
+      .mockResolvedValueOnce([{ staff_user_id: null }]); // resolver: zero or multiple → null
+
+    const res = await POST(teleReq(), PARAMS);
+    expect(res.status).toBe(201);
+    expect(sessionInsertCall()).toBeUndefined(); // never inserted a session
+  });
+
+  it('a session-insert failure does NOT fail the booking', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'Solo Vet', status: 'published' }])
+      .mockResolvedValueOnce([{ '?column?': 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 57 }]) // booking inserted
+      .mockResolvedValueOnce([{ staff_user_id: 9 }]) // resolver
+      .mockRejectedValueOnce(new Error('insert boom')); // session insert blows up
+
+    const res = await POST(teleReq(), PARAMS);
+    expect(res.status).toBe(201); // booking survives the non-fatal session failure
+  });
+
+  it('non-telehealth booking never touches telehealth_sessions', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 100, name: 'Happy Vet', status: 'published' }])
+      .mockResolvedValueOnce([]) // no windows
+      .mockResolvedValueOnce([{ id: 1 }]); // insert (plain vet booking)
+
+    const res = await POST(bookReq(VALID), PARAMS); // default capability 'vet'
+    expect(res.status).toBe(201);
+    expect(sessionInsertCall()).toBeUndefined();
   });
 });
