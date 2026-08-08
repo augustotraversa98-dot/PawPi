@@ -75,6 +75,19 @@ async function PATCH(request, { params }) {
     }
     const currentStatus = rows[0].booking_status;
 
+    // Cancel any still-open telehealth session linked to this booking (0040 telehealth_sessions,
+    // booking_id FK). Keeps the owner's consult card in sync with a declined/cancelled booking so
+    // it never lingers as "Scheduled". Only scheduled/in_progress sessions are touched (an already
+    // ended session is left as history); a booking with no consult is a no-op.
+    const cancelLinkedTelehealthSession = async (bookingId) => {
+      await sql`
+        UPDATE telehealth_sessions
+        SET status = ${"cancelled"}, updated_at = NOW()
+        WHERE booking_id = ${bookingId}
+          AND status IN ('scheduled', 'in_progress')
+      `;
+    };
+
     // Validate the assignee is ACTIVE provider_staff of THIS provider. Returns a
     // {error,status} object on failure, or null when ok (or no assignee given and
     // none required — the caller decides if it's required).
@@ -164,6 +177,10 @@ async function PATCH(request, { params }) {
           { status: 409 },
         );
       }
+      // Cascade to the linked telehealth consult so it doesn't keep reading "Scheduled"/"Consult
+      // ended" after the booking is dead. Only a still-open session (scheduled/in_progress) is
+      // cancelled; a no-op when the booking has no consult. Same request tx as the update below.
+      await cancelLinkedTelehealthSession(appointmentId);
       const updated = await sql`
         UPDATE vet_appointments
         SET booking_status = ${"declined"},
@@ -213,6 +230,8 @@ async function PATCH(request, { params }) {
           { status: 409 },
         );
       }
+      // Same cascade as decline — a cancelled booking cancels its linked (still-open) consult.
+      await cancelLinkedTelehealthSession(appointmentId);
       const updated = await sql`
         UPDATE vet_appointments
         SET booking_status = ${"cancelled"},

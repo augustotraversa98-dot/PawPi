@@ -33,6 +33,7 @@ import {
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useSavedPlaces } from "@/hooks/usePlaces";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import BookingStatusChip from "@/components/Providers/BookingStatusChip";
 
 // My Activity — the consolidated owner surface for bookings, reservations, appointments,
 // messages and shopping. It ONLY surfaces + LINKS INTO existing management screens; it
@@ -83,11 +84,21 @@ export default function MyActivity() {
   const savedPlaces = useSavedPlaces();
 
   const upcoming = bookings.data?.upcoming ?? [];
+  // A cancelled/declined booking must never read as Pending or Upcoming regardless of date — the
+  // endpoint buckets by appointment_date only, so a future-dated cancellation still lands in
+  // `upcoming`. Partition those out here and fold them into Past/History (record kept), where
+  // their status chip explains what happened.
+  const isClosedBooking = (b) =>
+    b.booking_status === "cancelled" || b.booking_status === "declined";
+  const liveUpcoming = upcoming.filter((b) => !isClosedBooking(b));
+  const closedUpcoming = upcoming.filter(isClosedBooking);
   // Pending (requested) bookings the provider hasn't confirmed yet get their own section above
   // Upcoming, so a request awaiting acceptance is never mistaken for a confirmed booking.
-  const pendingUpcoming = upcoming.filter((b) => b.booking_status === "requested");
-  const confirmedUpcoming = upcoming.filter((b) => b.booking_status !== "requested");
-  const past = bookings.data?.past ?? [];
+  const pendingUpcoming = liveUpcoming.filter((b) => b.booking_status === "requested");
+  const confirmedUpcoming = liveUpcoming.filter((b) => b.booking_status !== "requested");
+  // Cancelled/declined future bookings sit at the top of Past (most recent first, ahead of the
+  // genuinely past-dated rows the endpoint returns).
+  const past = [...closedUpcoming, ...(bookings.data?.past ?? [])];
   const unreadCount = unread.data ?? 0;
   const liveWalk = (walks.data ?? []).find((s) => s.status === "in_progress") ?? null;
   const activeStays = (daycare.data ?? []).filter(isActiveStay);
@@ -307,13 +318,11 @@ export default function MyActivity() {
 }
 
 // One UPCOMING/PENDING booking row → its detail (openBooking). Shared by the Pending-requests
-// and Upcoming sections so both render identically and route the same way. A 'requested' booking
-// carries a compact "Pending" badge so it reads as awaiting the provider's confirmation; a
-// confirmed booking has none. Pulls router + t itself so it's self-contained.
+// and Upcoming sections so both render identically and route the same way. Each row carries a
+// status chip (Pending / Confirmed / …) so its state is never ambiguous. Pulls router itself so
+// it's self-contained.
 export function UpcomingBookingRow({ booking }) {
   const router = useRouter();
-  const { t } = useTranslation();
-  const isPending = booking.booking_status === "requested";
   return (
     <HubRow
       testID={`activity-booking-${booking.id}`}
@@ -322,7 +331,12 @@ export function UpcomingBookingRow({ booking }) {
       subtitle={`${booking.service_name || booking.capability || "Booking"} · ${formatDisplayDate(
         booking.appointment_date,
       )}`}
-      badge={isPending ? t("activity.pending") : null}
+      trailing={
+        <BookingStatusChip
+          status={booking.booking_status}
+          testID={`activity-booking-${booking.id}-status`}
+        />
+      }
       onPress={() => openBooking(router, booking)}
     />
   );
@@ -330,7 +344,8 @@ export function UpcomingBookingRow({ booking }) {
 
 // One PAST booking row → the read-only booking summary. Shared so the My Activity Past
 // section and the full /service/past-bookings history render identically (same icon, title,
-// subtitle and routing). Pulls router + t itself so it's self-contained.
+// subtitle and routing). Carries the same status chip so a cancelled/declined/completed row is
+// clearly labelled. Pulls router itself so it's self-contained.
 export function PastBookingRow({ booking }) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -340,6 +355,12 @@ export function PastBookingRow({ booking }) {
       Icon={Clock}
       title={`${booking.provider_name || "Provider"} · ${booking.pet_name || "Pet"}`}
       subtitle={`${t("activity.past")} · ${formatDisplayDate(booking.appointment_date)}`}
+      trailing={
+        <BookingStatusChip
+          status={booking.booking_status}
+          testID={`activity-past-${booking.id}-status`}
+        />
+      }
       onPress={() =>
         router.push({
           pathname: "/service/booking-summary",
@@ -371,7 +392,7 @@ function SectionHeading({ text, testID }) {
   );
 }
 
-function HubRow({ testID, Icon, title, subtitle, badge, accent, onPress }) {
+function HubRow({ testID, Icon, title, subtitle, badge, trailing, accent, onPress }) {
   return (
     <PressableScale
       testID={testID}
@@ -419,7 +440,11 @@ function HubRow({ testID, Icon, title, subtitle, badge, accent, onPress }) {
             </Text>
           ) : null}
         </View>
-        {badge != null ? (
+        {/* A `trailing` node (e.g. a booking status chip) takes the badge slot when present;
+            otherwise the numeric count badge renders as before. */}
+        {trailing != null ? (
+          trailing
+        ) : badge != null ? (
           <View
             testID={testID ? `${testID}-badge` : undefined}
             style={{
