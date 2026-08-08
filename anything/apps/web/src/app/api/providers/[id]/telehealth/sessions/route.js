@@ -21,7 +21,14 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // the CONSULT NOTE is written later through the existing notes route (medical_write). The
 // session is the live/operational video record only.
 //
-// Idempotent ("ensure"): if this vet already has a session for the booking, return it.
+// CLAIM-OR-ENSURE (0081, multi-vet). A telehealth booking may already carry an UNASSIGNED
+// session pre-created at booking time for a MULTI-VET provider (staff_user_id NULL). Under RLS
+// (0040) the vet can neither see nor update that unassigned row, so the assignment runs through
+// the SECURITY DEFINER app_claim_telehealth_session: it claims the unassigned session for the
+// caller (atomic compare-and-swap), returns it if already the caller's (solo / re-join), returns
+// another vet's row when they claimed first, or NULL when no session exists yet / the caller
+// isn't an eligible claimer. NULL falls back to today's self-assigned insert (legacy bookings).
+
 async function POST(request, { params }) {
   try {
     const session = await auth();
@@ -66,16 +73,25 @@ async function POST(request, { params }) {
     }
     const ownerUserId = petRows[0].owner_user_id;
 
-    // ENSURE — return the vet's existing session for this booking if it exists.
-    const existing = await sql`
-      SELECT * FROM telehealth_sessions
-      WHERE booking_id = ${booking_id} AND staff_user_id = ${staffUserId}
-      LIMIT 1
+    // CLAIM the booking's session for this caller (or ensure my existing one). See the header.
+    const claimRows = await sql`
+      SELECT * FROM app_claim_telehealth_session(${booking_id})
     `;
-    if (existing.length > 0) {
-      return Response.json({ session: existing[0] }, { status: 200 });
+    const claimed = claimRows[0];
+    if (claimed?.id != null) {
+      // A session exists. Mine (just claimed, or already assigned to me) → return it (idempotent).
+      if (claimed.staff_user_id === staffUserId) {
+        return Response.json({ session: claimed }, { status: 200 });
+      }
+      // Another eligible vet holds this consult — I lost the claim.
+      return Response.json(
+        { error: "another vet has taken this consult" },
+        { status: 409 },
+      );
     }
 
+    // No session exists yet (legacy booking, or zero eligible staff at booking time) — fall back
+    // to the self-assigned insert. RLS telehealth_sessions_staff_insert gates it (active staff).
     const created = await sql`
       INSERT INTO telehealth_sessions (
         booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status

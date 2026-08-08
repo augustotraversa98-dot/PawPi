@@ -453,15 +453,21 @@ async function POST(request, { params }) {
       );
     }
 
-    // TELEHEALTH SESSION AT BOOKING (Phase 1, solo providers). For a telehealth booking, if
-    // the provider has EXACTLY ONE eligible active staffer (owner|vet), pre-create the
-    // video-consult session (0040) ASSIGNED to that vet + linked to this booking, so the
-    // owner's consult is immediately VISIBLE (time-gated until the appointment window; the
-    // Daily room is still created lazily on first in-window join). Zero/multiple eligible staff
-    // → create nothing and keep today's vet-first flow (app_provider_solo_telehealth_staff,
-    // 0078, returns NULL). The insert is owner-context — RLS telehealth_sessions_owner_all's
-    // WITH CHECK only constrains owner_user_id, so setting staff_user_id to the vet is allowed.
-    // Wrapped in a SAVEPOINT + try/catch so a session-insert failure rolls back ONLY the
+    // TELEHEALTH SESSION AT BOOKING (0040/0078/0081). For a telehealth booking, pre-create the
+    // video-consult session (0040) linked to this booking so the owner's consult is immediately
+    // VISIBLE (time-gated until the appointment window; the Daily room is still created lazily on
+    // first in-window join). Three cases, by eligible (owner|vet) active staff count:
+    //   • EXACTLY ONE (solo)  → session ASSIGNED to that lone vet (app_provider_solo_telehealth_
+    //                           staff, 0078, returns their id). Unchanged Phase-1 behaviour.
+    //   • TWO OR MORE (multi) → session UNASSIGNED (staff_user_id NULL); whichever eligible vet
+    //                           opens it CLAIMS it (app_claim_telehealth_session, 0081). The solo
+    //                           resolver returns NULL for zero OR multiple, so the boolean
+    //                           app_provider_has_telehealth_staff disambiguates: >=1 here means
+    //                           >=2 (not exactly one).
+    //   • ZERO                → create nothing (unchanged).
+    // The insert is owner-context — RLS telehealth_sessions_owner_all's WITH CHECK only constrains
+    // owner_user_id, so setting staff_user_id to the vet (solo) OR leaving it NULL (multi) is both
+    // allowed. Wrapped in a SAVEPOINT + try/catch so a session-insert failure rolls back ONLY the
     // savepoint and NEVER fails the booking (an un-savepointed failure would abort the whole
     // request transaction and 500 it — see withSavepoint in utils/requestContext).
     if (resolvedCapability === "telehealth") {
@@ -479,6 +485,21 @@ async function POST(request, { params }) {
                 ${created[0].id}, ${petId}, ${userId}, ${providerId}, ${soloStaffUserId}, 'scheduled'
               )
             `;
+          } else {
+            // MULTI-VET: unassigned session when >=1 eligible staffer exists (>=2 here, since
+            // exactly-one was handled above). Zero eligible → the boolean is false → no insert.
+            const hasStaffRows = await sql`
+              SELECT app_provider_has_telehealth_staff(${providerId}) AS has_staff
+            `;
+            if (hasStaffRows[0]?.has_staff === true) {
+              await sql`
+                INSERT INTO telehealth_sessions (
+                  booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status
+                ) VALUES (
+                  ${created[0].id}, ${petId}, ${userId}, ${providerId}, ${null}, 'scheduled'
+                )
+              `;
+            }
           }
         });
       } catch (sessErr) {

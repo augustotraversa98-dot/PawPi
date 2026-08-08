@@ -52,6 +52,17 @@ function asApp<T>(userId: number | null, fn: (tx: Sql) => Promise<T>): Promise<T
   });
 }
 
+// The MULTI-VET path: the OWNER pre-creates an UNASSIGNED session (staff_user_id NULL) for the
+// VIS telehealth booking. Reproduces exactly what book/route.js inserts when the solo resolver
+// returns NULL but app_provider_has_telehealth_staff is true.
+function ownerCreatesUnassignedSession(): Promise<{ id: number }[]> {
+  return asApp(O.profileId, (tx) => tx`
+    insert into telehealth_sessions (booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status)
+    values (${BOOK_ID}, ${O.petId}, ${O.profileId}, ${VIS_ID}, ${null}, 'scheduled')
+    returning id
+  `) as Promise<{ id: number }[]>;
+}
+
 beforeAll(async () => {
   raw = makeTestSql();
   const url = new URL(inject('TEST_DATABASE_URL') as string);
@@ -173,5 +184,88 @@ describe('owner-context session insert + participant visibility + no-dup ensure'
       limit 1
     `);
     expect(found.length).toBe(1); // ensure hits the existing row, so it returns it instead of inserting a second
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
+// MULTI-VET (0081): app_provider_has_telehealth_staff + app_claim_telehealth_session + the
+// partial UNIQUE(booking_id). Only real Postgres + RLS proves the claim path — a vet CANNOT
+// see or update an unassigned session under 0040, so the assignment must run through the
+// SECURITY DEFINER claim function.
+// ════════════════════════════════════════════════════════════════════════════════
+describe('app_provider_has_telehealth_staff (0081)', () => {
+  it('true when the provider has >=1 eligible active owner|vet staffer', async () => {
+    const multi = await asApp(O.profileId, (tx) => tx`select app_provider_has_telehealth_staff(${VIS_ID}) as has`);
+    expect(multi[0].has).toBe(true); // two active vets
+    const solo = await asApp(O.profileId, (tx) => tx`select app_provider_has_telehealth_staff(${SOLO_ID}) as has`);
+    expect(solo[0].has).toBe(true); // one active vet
+  });
+
+  it('false when zero eligible staff (ineligible role only, or all removed)', async () => {
+    const zero = await asApp(O.profileId, (tx) => tx`select app_provider_has_telehealth_staff(${ZERO_ID}) as has`);
+    expect(zero[0].has).toBe(false); // one active staffer, role 'staff'
+    const removed = await asApp(O.profileId, (tx) => tx`select app_provider_has_telehealth_staff(${REMOVED_ID}) as has`);
+    expect(removed[0].has).toBe(false); // one eligible staffer, but removed
+  });
+});
+
+describe('app_claim_telehealth_session (0081, staff self-claim)', () => {
+  it('an eligible vet claims the unassigned session — assigns self, and it persists', async () => {
+    await ownerCreatesUnassignedSession();
+    const claimed = await asApp(V_SOLO.profileId, (tx) => tx`select * from app_claim_telehealth_session(${BOOK_ID})`);
+    expect(claimed[0].staff_user_id).toBe(V_SOLO.profileId);
+    // The vet can now SEE its own row (staff_read lights up once staff_user_id = caller).
+    const check = await asApp(V_SOLO.profileId, (tx) => tx`select staff_user_id from telehealth_sessions where booking_id = ${BOOK_ID}`);
+    expect(check[0].staff_user_id).toBe(V_SOLO.profileId);
+  });
+
+  it('a second eligible vet racing to claim gets the already-assigned row — NO double-assign', async () => {
+    await ownerCreatesUnassignedSession();
+    await asApp(V_SOLO.profileId, (tx) => tx`select * from app_claim_telehealth_session(${BOOK_ID})`); // V_SOLO wins
+    const second = await asApp(V_B.profileId, (tx) => tx`select * from app_claim_telehealth_session(${BOOK_ID})`);
+    expect(second[0].staff_user_id).toBe(V_SOLO.profileId); // still the first claimer, not V_B
+  });
+
+  it('a non-staff caller cannot claim → NULL, session stays unassigned', async () => {
+    await ownerCreatesUnassignedSession();
+    const rows = await asApp(X.profileId, (tx) => tx`select (app_claim_telehealth_session(${BOOK_ID})).id as id`);
+    expect(rows[0].id).toBeNull();
+    const check = await asApp(O.profileId, (tx) => tx`select staff_user_id from telehealth_sessions where booking_id = ${BOOK_ID}`);
+    expect(check[0].staff_user_id).toBeNull();
+  });
+
+  it('an ineligible role (active staff, not owner|vet) cannot claim → NULL', async () => {
+    await seedStaff(raw, { providerId: VIS_ID, userProfileId: S_STAFF.profileId, role: 'staff', status: 'active' });
+    await ownerCreatesUnassignedSession();
+    const rows = await asApp(S_STAFF.profileId, (tx) => tx`select (app_claim_telehealth_session(${BOOK_ID})).id as id`);
+    expect(rows[0].id).toBeNull();
+  });
+
+  it('NULL when the booking has no session yet (eligible caller, nothing to claim)', async () => {
+    const rows = await asApp(V_SOLO.profileId, (tx) => tx`select (app_claim_telehealth_session(${BOOK_ID})).id as id`);
+    expect(rows[0].id).toBeNull(); // no session was created for BOOK_ID in this test
+  });
+});
+
+describe('multi-vet unassigned session — visibility + one-per-booking (0081)', () => {
+  it('owner SEES the unassigned session; an unassigned active vet does NOT until they claim it', async () => {
+    const [row] = await ownerCreatesUnassignedSession();
+    const ownerSees = await asApp(O.profileId, (tx) => tx`select id from telehealth_sessions where id = ${row.id}`);
+    expect(ownerSees.length).toBe(1); // owner_all branch
+    const vetBefore = await asApp(V_B.profileId, (tx) => tx`select id from telehealth_sessions where id = ${row.id}`);
+    expect(vetBefore.length).toBe(0); // unassigned → invisible to staff under 0040 (the crux)
+    await asApp(V_B.profileId, (tx) => tx`select * from app_claim_telehealth_session(${BOOK_ID})`);
+    const vetAfter = await asApp(V_B.profileId, (tx) => tx`select id from telehealth_sessions where id = ${row.id}`);
+    expect(vetAfter.length).toBe(1); // after claiming (staff_user_id = me), staff_read grants access
+  });
+
+  it('the partial UNIQUE(booking_id) blocks a duplicate session for the same booking', async () => {
+    await ownerCreatesUnassignedSession();
+    await expect(
+      asApp(O.profileId, (tx) => tx`
+        insert into telehealth_sessions (booking_id, pet_id, owner_user_id, provider_id, staff_user_id, status)
+        values (${BOOK_ID}, ${O.petId}, ${O.profileId}, ${VIS_ID}, ${null}, 'scheduled')
+      `),
+    ).rejects.toThrow(/duplicate key|unique/i);
   });
 });

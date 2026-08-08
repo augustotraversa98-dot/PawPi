@@ -62,34 +62,53 @@ describe("POST telehealth/sessions", () => {
     expect(res.status).toBe(400);
   });
 
-  it("creates the session assigned to the vet (201) when none exists yet", async () => {
+  it("falls back to a self-assigned INSERT (201) when no session exists yet", async () => {
     sql.mockResolvedValueOnce([{ id: 5, pet_id: 55 }]); // booking lookup
     sql.mockResolvedValueOnce([{ owner_user_id: 3 }]); // pet owner
-    sql.mockResolvedValueOnce([]); // existing-session check → none
+    sql.mockResolvedValueOnce([{ id: null, staff_user_id: null }]); // claim → NULL composite (no session)
     sql.mockResolvedValueOnce([
       { id: 1, booking_id: 5, pet_id: 55, owner_user_id: 3, provider_id: 100, staff_user_id: 7, status: "scheduled" },
-    ]); // INSERT
+    ]); // fallback INSERT
 
     const res = await POST(req({ booking_id: 5 }), PARAMS);
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.session).toMatchObject({ id: 1, staff_user_id: 7, status: "scheduled" });
 
+    const claim = sql.mock.calls[3];
+    expect(claim[0].join(" ")).toContain("app_claim_telehealth_session");
     const insert = sql.mock.calls[4];
     expect(insert[0].join(" ")).toContain("INSERT INTO telehealth_sessions");
     expect(insert).toEqual(expect.arrayContaining([5, 55, 3, "100", 7]));
   });
 
-  it("ENSURE: returns the existing session (200) without inserting a duplicate", async () => {
+  it("CLAIM: returns the session assigned to me (200) without inserting a duplicate", async () => {
+    // The definer claimed the unassigned booking-time session for me (staff_user_id = my id 7),
+    // OR it was already mine (solo / re-join) — either way it comes back assigned to me.
     sql.mockResolvedValueOnce([{ id: 5, pet_id: 55 }]); // booking lookup
     sql.mockResolvedValueOnce([{ owner_user_id: 3 }]); // pet owner
-    sql.mockResolvedValueOnce([{ id: 9, status: "scheduled", staff_user_id: 7 }]); // existing
+    sql.mockResolvedValueOnce([
+      { id: 9, booking_id: 5, staff_user_id: 7, status: "scheduled" },
+    ]); // claim → mine
 
     const res = await POST(req({ booking_id: 5 }), PARAMS);
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.session.id).toBe(9);
-    // No INSERT ran — only profile + booking + pet + existing checks (4 calls).
+    // No INSERT ran — only profile + booking + pet + claim (4 calls).
+    expect(sql).toHaveBeenCalledTimes(4);
+  });
+
+  it("409 when another vet already holds the consult", async () => {
+    sql.mockResolvedValueOnce([{ id: 5, pet_id: 55 }]); // booking lookup
+    sql.mockResolvedValueOnce([{ owner_user_id: 3 }]); // pet owner
+    sql.mockResolvedValueOnce([
+      { id: 9, booking_id: 5, staff_user_id: 8, status: "scheduled" },
+    ]); // claim → assigned to a DIFFERENT vet (8 ≠ me 7)
+
+    const res = await POST(req({ booking_id: 5 }), PARAMS);
+    expect(res.status).toBe(409);
+    // No INSERT ran — the loser never falls back.
     expect(sql).toHaveBeenCalledTimes(4);
   });
 });
