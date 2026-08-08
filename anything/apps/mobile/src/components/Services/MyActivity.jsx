@@ -31,6 +31,7 @@ import {
   useShopSubscriptions,
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useSavedPlaces } from "@/hooks/usePlaces";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 
 // My Activity — the consolidated owner surface for bookings, reservations, appointments,
@@ -47,11 +48,14 @@ const isActiveStay = (s) => s?.status === "booked" || s?.status === "checked_in"
 // A sitting visit is "active" until it's completed or cancelled.
 const isActiveVisit = (v) => v?.status !== "completed" && v?.status !== "cancelled";
 
-// Route an UPCOMING booking to its detail. Telehealth keeps its own consult screen (the join
-// surface); everything else opens the read-only booking summary (where/what was booked, notes,
-// and the owner "Share clinic history" action) — NOT the storefront Book CTA.
+// Route an UPCOMING booking to its detail. A telehealth booking keeps its own consult screen
+// (the join surface) ONLY when a session actually exists; a pending/no-session telehealth
+// booking has nothing there yet, so it opens the read-only booking summary like every other
+// capability instead of dead-ending on an empty consults screen. Everything else opens the
+// read-only booking summary (where/what was booked, notes, "Share clinic history") — NOT the
+// storefront Book CTA.
 function openBooking(router, booking) {
-  if (booking.capability === "telehealth") {
+  if (booking.capability === "telehealth" && booking.telehealth_session_status != null) {
     router.push("/service/telehealth");
     return;
   }
@@ -76,8 +80,13 @@ export default function MyActivity() {
   const sitting = useSittingVisits(petId);
   const orders = useShopOrders();
   const subs = useShopSubscriptions();
+  const savedPlaces = useSavedPlaces();
 
   const upcoming = bookings.data?.upcoming ?? [];
+  // Pending (requested) bookings the provider hasn't confirmed yet get their own section above
+  // Upcoming, so a request awaiting acceptance is never mistaken for a confirmed booking.
+  const pendingUpcoming = upcoming.filter((b) => b.booking_status === "requested");
+  const confirmedUpcoming = upcoming.filter((b) => b.booking_status !== "requested");
   const past = bookings.data?.past ?? [];
   const unreadCount = unread.data ?? 0;
   const liveWalk = (walks.data ?? []).find((s) => s.status === "in_progress") ?? null;
@@ -85,6 +94,7 @@ export default function MyActivity() {
   const activeVisits = (sitting.data ?? []).filter(isActiveVisit);
   const orderList = orders.data ?? [];
   const activeSubs = (subs.data ?? []).filter((s) => s.status === "active");
+  const savedCount = (savedPlaces.data ?? []).length;
 
   // Past is collapsed by default so it never grows into a long list (local-only, no persist).
   const [pastExpanded, setPastExpanded] = useState(false);
@@ -98,6 +108,7 @@ export default function MyActivity() {
     unread.refetch();
     orders.refetch();
     subs.refetch();
+    savedPlaces.refetch();
     if (petId != null) {
       walks.refetch();
       daycare.refetch();
@@ -147,62 +158,70 @@ export default function MyActivity() {
         onPress={() => router.push("/provider-messages")}
       />
 
-      {/* Upcoming appointments & reservations across all services (useMyBookings). */}
+      {/* Pending requests — bookings the owner made that the provider hasn't confirmed yet.
+          Shown ABOVE Upcoming so a request awaiting acceptance stands apart from a confirmed
+          booking; hidden entirely when there are none. */}
+      {pendingUpcoming.length > 0 ? (
+        <>
+          <SectionHeading
+            testID="activity-pending-heading"
+            text={t("activity.pendingRequests")}
+          />
+          {pendingUpcoming.slice(0, 5).map((b) => (
+            <UpcomingBookingRow key={b.id} booking={b} />
+          ))}
+        </>
+      ) : null}
+
+      {/* Upcoming appointments & reservations across all services (useMyBookings). Pending
+          (requested) bookings are pulled into their own section above; only confirmed/other
+          bookings render here. */}
       <SectionHeading text={t("activity.upcoming")} />
-      {upcoming.length === 0 ? (
+      {confirmedUpcoming.length === 0 ? (
         <EmptyRow testID="activity-upcoming-empty" text={t("activity.emptyBookings")} />
       ) : (
-        upcoming.slice(0, 5).map((b) => (
-          <HubRow
-            key={b.id}
-            testID={`activity-booking-${b.id}`}
-            Icon={Calendar}
-            title={`${b.provider_name || "Provider"} · ${b.pet_name || "Pet"}`}
-            subtitle={`${b.service_name || b.capability || "Booking"} · ${formatDisplayDate(
-              b.appointment_date,
-            )}`}
-            onPress={() => openBooking(router, b)}
-          />
+        confirmedUpcoming.slice(0, 5).map((b) => (
+          <UpcomingBookingRow key={b.id} booking={b} />
         ))
       )}
 
-      {/* Daycare stays doorway → the daycare screen (active stays live there). */}
-      <HubRow
-        testID="activity-daycare"
-        Icon={Home}
-        title={t("activity.daycare")}
-        subtitle={
-          activeStays.length > 0
-            ? t("activity.active", { count: activeStays.length })
-            : t("activity.emptyDaycare")
-        }
-        badge={activeStays.length > 0 ? activeStays.length : null}
-        onPress={() => router.push("/service/daycare")}
-      />
+      {/* Daycare stays doorway → the daycare screen (active stays live there). Hidden when there
+          are no active stays so the section shows no dead "no activity" clutter. */}
+      {activeStays.length > 0 ? (
+        <HubRow
+          testID="activity-daycare"
+          Icon={Home}
+          title={t("activity.daycare")}
+          subtitle={t("activity.active", { count: activeStays.length })}
+          badge={activeStays.length}
+          onPress={() => router.push("/service/daycare")}
+        />
+      ) : null}
 
-      {/* Sitting visits doorway → the sitter-visits screen. */}
-      <HubRow
-        testID="activity-sitting"
-        Icon={Heart}
-        title={t("activity.sitting")}
-        subtitle={
-          activeVisits.length > 0
-            ? t("activity.active", { count: activeVisits.length })
-            : t("activity.emptySitting")
-        }
-        badge={activeVisits.length > 0 ? activeVisits.length : null}
-        onPress={() => router.push("/sitter-visits")}
-      />
+      {/* Sitting visits doorway → the sitter-visits screen. Hidden when there are no active
+          visits. */}
+      {activeVisits.length > 0 ? (
+        <HubRow
+          testID="activity-sitting"
+          Icon={Heart}
+          title={t("activity.sitting")}
+          subtitle={t("activity.active", { count: activeVisits.length })}
+          badge={activeVisits.length}
+          onPress={() => router.push("/sitter-visits")}
+        />
+      ) : null}
 
       {/* Saved places doorway → the favorites list (places are saved from the place detail screen;
-          discovery flows through the unified Discover pane). */}
-      <HubRow
-        testID="activity-saved-places"
-        Icon={MapPin}
-        title={t("activity.savedPlaces")}
-        subtitle={t("activity.savedPlacesSub")}
-        onPress={() => router.push("/service/places")}
-      />
+          discovery flows through the unified Discover pane). Hidden when nothing is saved. */}
+      {savedCount > 0 ? (
+        <HubRow
+          testID="activity-saved-places"
+          Icon={MapPin}
+          title={t("activity.savedPlaces")}
+          subtitle={t("activity.savedPlacesSub")}
+          onPress={() => router.push("/service/places")}
+        />
+      ) : null}
 
       {/* Shopping — orders + auto-reorder (both live in the shop screen; mirror My Hub). */}
       <SectionHeading text={t("activity.shopping")} />
@@ -287,6 +306,28 @@ export default function MyActivity() {
   );
 }
 
+// One UPCOMING/PENDING booking row → its detail (openBooking). Shared by the Pending-requests
+// and Upcoming sections so both render identically and route the same way. A 'requested' booking
+// carries a compact "Pending" badge so it reads as awaiting the provider's confirmation; a
+// confirmed booking has none. Pulls router + t itself so it's self-contained.
+export function UpcomingBookingRow({ booking }) {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const isPending = booking.booking_status === "requested";
+  return (
+    <HubRow
+      testID={`activity-booking-${booking.id}`}
+      Icon={Calendar}
+      title={`${booking.provider_name || "Provider"} · ${booking.pet_name || "Pet"}`}
+      subtitle={`${booking.service_name || booking.capability || "Booking"} · ${formatDisplayDate(
+        booking.appointment_date,
+      )}`}
+      badge={isPending ? t("activity.pending") : null}
+      onPress={() => openBooking(router, booking)}
+    />
+  );
+}
+
 // One PAST booking row → the read-only booking summary. Shared so the My Activity Past
 // section and the full /service/past-bookings history render identically (same icon, title,
 // subtitle and routing). Pulls router + t itself so it's self-contained.
@@ -309,9 +350,10 @@ export function PastBookingRow({ booking }) {
   );
 }
 
-function SectionHeading({ text }) {
+function SectionHeading({ text, testID }) {
   return (
     <Text
+      testID={testID}
       style={[
         TYPE.footnote,
         {

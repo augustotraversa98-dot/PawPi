@@ -357,6 +357,8 @@
     "liveWalkSub": "Follow your dog's walk live",
     "upcoming": "Upcoming",
     "emptyBookings": "No active bookings yet",
+    "pending": "Pending",
+    "pendingRequests": "Pending requests",
     "daycare": "Daycare stays",
     "sitting": "Sitting visits",
     "active": "{{count}} active",
