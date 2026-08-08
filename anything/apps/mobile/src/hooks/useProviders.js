@@ -189,6 +189,10 @@ export function useBookProvider() {
       queryClient.invalidateQueries({
         queryKey: ["vet-appointment-reminders", petId],
       });
+      // The owner hub's My Activity reads useMyBookings (["my-bookings","owner"]); invalidate it
+      // so a just-made booking (free OR paid — both create the row through this mutation) appears
+      // immediately without a manual pull-to-refresh.
+      queryClient.invalidateQueries({ queryKey: ["my-bookings", "owner"] });
     },
   });
 }

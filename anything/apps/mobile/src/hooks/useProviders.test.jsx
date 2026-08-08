@@ -331,6 +331,10 @@ describe("useBookProvider", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["vet-appointment-reminders", 7],
     });
+    // The owner hub's My Activity (useMyBookings) must refresh so the new booking shows at once.
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["my-bookings", "owner"],
+    });
   });
 });
 
