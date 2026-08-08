@@ -40,6 +40,9 @@ jest.mock("@/hooks/useProviders", () => ({
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 1 } }),
 }));
+jest.mock("@/hooks/usePlaces", () => ({
+  useSavedPlaces: () => mockEmpty,
+}));
 
 import MyActivity from "./MyActivity";
 
