@@ -209,7 +209,7 @@ test("a telehealth booking with NO session routes to the booking summary (no dea
 });
 
 // ── Pending requests (requested bookings) ─────────────────────────────────────
-test("a requested booking gets a Pending badge; a confirmed one does not", async () => {
+test("each booking row shows a status chip (requested → Pending, confirmed → Confirmed), not a numeric badge", async () => {
   mockMyBookings = q({
     upcoming: [
       {
@@ -235,10 +235,56 @@ test("a requested booking gets a Pending badge; a confirmed one does not", async
   });
   const { getByTestId, getByText, queryByTestId } = render(<MyActivity />);
   await waitFor(() => expect(getByTestId("activity-booking-31")).toBeTruthy());
-  // The requested row carries a "Pending" badge; the confirmed row has none.
-  expect(getByTestId("activity-booking-31-badge")).toBeTruthy();
+  // Both rows carry a status chip — requested reads "Pending", confirmed reads "Confirmed".
+  expect(getByTestId("activity-booking-31-status")).toBeTruthy();
   expect(getByText("Pending")).toBeTruthy();
+  expect(getByTestId("activity-booking-32-status")).toBeTruthy();
+  expect(getByText("Confirmed")).toBeTruthy();
+  // Booking rows use the status chip, never the coral count badge.
+  expect(queryByTestId("activity-booking-31-badge")).toBeNull();
   expect(queryByTestId("activity-booking-32-badge")).toBeNull();
+});
+
+// ── Cancelled/declined visibility ─────────────────────────────────────────────
+test("a cancelled/declined future booking is excluded from Pending AND Upcoming and moves to Past with its status label", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      { id: 41, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "requested", appointment_date: "2026-09-01", provider_slug: "happy-paws" },
+      { id: 42, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "confirmed", appointment_date: "2026-09-02", provider_slug: "happy-paws" },
+      { id: 43, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "cancelled", appointment_date: "2026-09-03", provider_slug: "happy-paws" },
+      { id: 44, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "declined", appointment_date: "2026-09-04", provider_slug: "happy-paws" },
+    ],
+    past: [],
+  });
+  const { getByTestId, getByText, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-pending-heading")).toBeTruthy());
+  // The requested row is Pending; the confirmed row is Upcoming.
+  expect(getByTestId("activity-booking-41")).toBeTruthy();
+  expect(getByTestId("activity-booking-42")).toBeTruthy();
+  // Cancelled/declined future bookings never render as a Pending or Upcoming row…
+  expect(queryByTestId("activity-booking-43")).toBeNull();
+  expect(queryByTestId("activity-booking-44")).toBeNull();
+  // …they fold into Past (count reflects the two closed bookings, kept as history).
+  expect(getByText("Past (2)")).toBeTruthy();
+  fireEvent.press(getByTestId("activity-past-toggle"));
+  expect(getByTestId("activity-past-43")).toBeTruthy();
+  expect(getByTestId("activity-past-43-status")).toBeTruthy();
+  expect(getByText("Cancelled")).toBeTruthy();
+  expect(getByText("Declined")).toBeTruthy();
+});
+
+test("a confirmed future booking stays in Upcoming (never demoted to Past)", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      { id: 51, provider_name: "Happy Paws", pet_name: "Mango", capability: "vet", booking_status: "confirmed", appointment_date: "2026-09-02", provider_slug: "happy-paws" },
+    ],
+    past: [],
+  });
+  const { getByTestId, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-booking-51")).toBeTruthy());
+  expect(queryByTestId("activity-upcoming-empty")).toBeNull();
+  // Not moved into Past.
+  expect(getByTestId("activity-past-empty")).toBeTruthy();
 });
 
 test("Pending requests section lists requested bookings above Upcoming; confirmed stay under Upcoming", async () => {

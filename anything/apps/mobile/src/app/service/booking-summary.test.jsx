@@ -123,6 +123,20 @@ test("shows the settled amount when a payment is recorded", async () => {
   await waitFor(() => expect(getByText("ARS 100.00")).toBeTruthy());
 });
 
+test("shows the booking status as a styled chip (completed → Completed)", async () => {
+  mockDetail = ok(COMPLETED);
+  const { getByTestId, getByText } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByTestId("booking-summary-status-chip")).toBeTruthy());
+  expect(getByText("Completed")).toBeTruthy();
+});
+
+test("a cancelled booking reads 'Cancelled' in the status chip", async () => {
+  mockDetail = ok({ ...COMPLETED, booking_status: "cancelled", status: "cancelled" });
+  const { getByTestId, getByText } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByTestId("booking-summary-status-chip")).toBeTruthy());
+  expect(getByText("Cancelled")).toBeTruthy();
+});
+
 // ── Location ────────────────────────────────────────────────────────────────
 test("renders the Location section (name + address) with directions + message", async () => {
   mockDetail = ok(UPCOMING);

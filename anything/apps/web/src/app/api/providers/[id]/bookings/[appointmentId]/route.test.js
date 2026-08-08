@@ -192,6 +192,7 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
   it('decline: requested → declined sets status=cancelled AND reminder_enabled=false', async () => {
     arrange(
       [{ id: 55, booking_status: 'requested', status: 'scheduled' }], // load
+      [], // telehealth session cancel (cascade)
       [{ id: 55, booking_status: 'declined' }], // update
     );
 
@@ -208,6 +209,30 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
     expect(values).toContain(false); // reminder_enabled
   });
 
+  it('decline cancels the linked telehealth session (still-open sessions → cancelled)', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled' }], // load
+      [], // telehealth session cancel (cascade)
+      [{ id: 55, booking_status: 'declined' }], // update
+    );
+
+    const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
+    expect(res.status).toBe(200);
+
+    // A dedicated UPDATE on telehealth_sessions ran, scoped to this booking + only still-open
+    // sessions, setting status='cancelled'.
+    const sessionCall = sql.mock.calls.find((c) =>
+      (c[0] ?? []).join(' ').includes('telehealth_sessions'),
+    );
+    expect(sessionCall).toBeTruthy();
+    const text = (sessionCall[0] ?? []).join(' ');
+    expect(text).toContain('UPDATE telehealth_sessions');
+    expect(text).toContain("status IN ('scheduled', 'in_progress')");
+    const values = sessionCall.slice(1);
+    expect(values).toContain('cancelled');
+    expect(values).toContain('55'); // linked by booking_id = appointmentId
+  });
+
   it('decline on a non-requested booking → 409', async () => {
     arrange([{ id: 55, booking_status: 'confirmed', status: 'scheduled' }]);
     const res = await PATCH(patchReq({ action: 'decline' }), PARAMS);
@@ -217,6 +242,7 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
   it('decline: a PAID booking (approved payment on the order) is auto-refunded', async () => {
     arrange(
       [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [], // telehealth session cancel (cascade)
       [{ id: 55, booking_status: 'declined' }], // update
       [{ id: 5, order_id: 900, status: 'approved', rail: 'mercadopago' }], // approved payment
     );
@@ -232,6 +258,7 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
   it('decline: an UNPAID booking with an order (no approved payment) refunds nothing', async () => {
     arrange(
       [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [], // telehealth session cancel (cascade)
       [{ id: 55, booking_status: 'declined' }], // update
       [], // no approved payment
     );
@@ -245,6 +272,7 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
   it('decline: a refund FAILURE still declines the booking (best-effort, flagged)', async () => {
     arrange(
       [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: 900 }], // load
+      [], // telehealth session cancel (cascade)
       [{ id: 55, booking_status: 'declined' }], // update
       [{ id: 5, order_id: 900, status: 'approved', rail: 'mercadopago' }], // approved payment
     );
@@ -261,6 +289,7 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
   it('cancel: confirmed → cancelled sets status=cancelled + reminder_enabled=false', async () => {
     arrange(
       [{ id: 55, booking_status: 'confirmed', status: 'scheduled' }], // load
+      [], // telehealth session cancel (cascade)
       [{ id: 55, booking_status: 'cancelled' }], // update
     );
 
@@ -271,6 +300,36 @@ describe('PATCH /api/providers/[id]/bookings/[appointmentId]', () => {
     expect(values).toContain('cancelled'); // booking_status AND status both 'cancelled'
     expect(values).toContain(false); // reminder_enabled
     expect(lastQueryText()).toContain('reminder_enabled');
+  });
+
+  it('cancel cancels the linked telehealth session', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'confirmed', status: 'scheduled' }], // load
+      [], // telehealth session cancel (cascade)
+      [{ id: 55, booking_status: 'cancelled' }], // update
+    );
+
+    const res = await PATCH(patchReq({ action: 'cancel' }), PARAMS);
+    expect(res.status).toBe(200);
+    const sessionCall = sql.mock.calls.find((c) =>
+      (c[0] ?? []).join(' ').includes('telehealth_sessions'),
+    );
+    expect(sessionCall).toBeTruthy();
+    expect((sessionCall[0] ?? []).join(' ')).toContain('UPDATE telehealth_sessions');
+    expect(sessionCall.slice(1)).toContain('cancelled');
+  });
+
+  it('confirm/complete do NOT touch the telehealth session', async () => {
+    arrange(
+      [{ id: 55, booking_status: 'requested', status: 'scheduled', order_id: null }], // load
+      [{ id: 55, booking_status: 'confirmed' }], // update
+    );
+    const res = await PATCH(patchReq({ action: 'confirm' }), PARAMS);
+    expect(res.status).toBe(200);
+    const sessionCall = sql.mock.calls.find((c) =>
+      (c[0] ?? []).join(' ').includes('telehealth_sessions'),
+    );
+    expect(sessionCall).toBeFalsy();
   });
 
   // ---- complete (ticket 2.4) ----

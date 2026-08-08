@@ -48,6 +48,12 @@ export default function TelehealthScreen() {
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
   const { data: consults = [] } = useTelehealthSessions(petId);
+  // Active consults (scheduled/in_progress) first, closed ones (ended/cancelled) after — the sort
+  // is stable, so within each group the endpoint's newest-first order is preserved.
+  const isClosedConsult = (c) => c.status === "ended" || c.status === "cancelled";
+  const sortedConsults = [...consults].sort(
+    (a, b) => Number(isClosedConsult(a)) - Number(isClosedConsult(b)),
+  );
 
   const openProvider = (slug) => {
     router.push({
@@ -107,7 +113,7 @@ export default function TelehealthScreen() {
         {consults.length > 0 && (
           <View style={{ marginBottom: SPACING.sm }}>
             <SectionLabel>MY CONSULTS</SectionLabel>
-            {consults.map((c) => (
+            {sortedConsults.map((c) => (
               <ConsultCard key={c.id} consult={c} petId={petId} />
             ))}
           </View>
@@ -192,21 +198,25 @@ function ConsultCard({ consult, petId }) {
     }
   };
 
-  const statusLabel =
-    consult.status === "ended"
-      ? "Consult ended"
-      : consult.status === "cancelled"
-        ? "Cancelled"
-        : consult.status === "in_progress"
-          ? "In progress"
-          : "Scheduled";
+  // Distinct, localized label per session status — a cancelled consult reads "Cancelled", never
+  // "Consult ended". Unknown/missing status falls back to Scheduled.
+  const statusKey =
+    {
+      scheduled: "telehealth.statusScheduled",
+      in_progress: "telehealth.statusInProgress",
+      ended: "telehealth.statusEnded",
+      cancelled: "telehealth.statusCancelled",
+    }[consult.status] ?? "telehealth.statusScheduled";
+  const statusLabel = t(statusKey);
+  // Closed consults (ended/cancelled) are muted so active ones read first.
+  const closed = consult.status === "ended" || consult.status === "cancelled";
 
   return (
     <Card
       level="none"
       radius={RADIUS.control}
       borderColor={COLORS.peach}
-      style={{ padding: SPACING.lg, marginBottom: SPACING.md }}
+      style={{ padding: SPACING.lg, marginBottom: SPACING.md, opacity: closed ? 0.6 : 1 }}
     >
       <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
         {consult.provider_name || "Video consult"}

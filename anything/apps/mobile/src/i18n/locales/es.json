@@ -460,6 +460,17 @@
   },
   "telehealth": {
     "availableAt": "Tu videoconsulta estará disponible el {{date}} a las {{time}}.",
-    "availableWhenVetStarts": "Podrás unirte cuando tu veterinario/a inicie la llamada."
+    "availableWhenVetStarts": "Podrás unirte cuando tu veterinario/a inicie la llamada.",
+    "statusScheduled": "Programada",
+    "statusInProgress": "En curso",
+    "statusEnded": "Consulta finalizada",
+    "statusCancelled": "Cancelada"
+  },
+  "bookingStatus": {
+    "requested": "Pendiente",
+    "confirmed": "Confirmada",
+    "completed": "Completada",
+    "declined": "Rechazada",
+    "cancelled": "Cancelada"
   }
 }

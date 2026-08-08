@@ -111,6 +111,26 @@ test("an ended consult shows its status and no Join button", () => {
   expect(queryByText("Join video consult")).toBeNull();
 });
 
+// Distinct status labels (Task 3): each session status reads clearly and a CANCELLED consult
+// must read "Cancelled", never "Consult ended".
+test("a scheduled consult reads 'Scheduled'", () => {
+  mockConsults = {
+    data: [{ id: 9, provider_id: 10, provider_name: "Tele Vet Co", status: "scheduled" }],
+  };
+  const { getByText } = render(<TelehealthScreen />);
+  expect(getByText("Scheduled")).toBeTruthy();
+});
+
+test("a cancelled consult reads 'Cancelled' (not 'Consult ended') and has no Join button", () => {
+  mockConsults = {
+    data: [{ id: 9, provider_id: 10, provider_name: "Tele Vet Co", status: "cancelled" }],
+  };
+  const { getByText, queryByText } = render(<TelehealthScreen />);
+  expect(getByText("Cancelled")).toBeTruthy();
+  expect(queryByText("Consult ended")).toBeNull();
+  expect(queryByText("Join video consult")).toBeNull();
+});
+
 // Owner early-join gate (Task 3): more than 5 minutes before the scheduled appointment_date/
 // appointment_time shows a friendly "not time yet" message instead of the Join button, and
 // never even calls the join API.

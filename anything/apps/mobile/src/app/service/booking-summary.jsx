@@ -25,6 +25,9 @@ import {
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
+import BookingStatusChip, {
+  BOOKING_STATUSES,
+} from "@/components/Providers/BookingStatusChip";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { deriveOpenNow } from "@/utils/providerHours";
 
@@ -204,7 +207,20 @@ export default function BookingSummaryScreen() {
           <Card level="sm" borderColor={COLORS.peach} style={{ padding: SPACING.lg }}>
             <SummaryRow label={t("bookingSummary.service")} value={booking.service_name} />
             <SummaryRow label={t("bookingSummary.whatWasDone")} value={booking.notes} />
-            <SummaryRow label={t("bookingSummary.status")} value={booking.booking_status || booking.status} />
+            {/* A recognized booking_status renders the styled status chip; a legacy/unknown
+                status falls back to its raw lifecycle value so the row is never blank. */}
+            <SummaryRow
+              label={t("bookingSummary.status")}
+              value={booking.booking_status || booking.status}
+              valueNode={
+                BOOKING_STATUSES.includes(booking.booking_status) ? (
+                  <BookingStatusChip
+                    status={booking.booking_status}
+                    testID="booking-summary-status-chip"
+                  />
+                ) : undefined
+              }
+            />
             <SummaryRow label={t("bookingSummary.when")} value={when} />
             <SummaryRow label={t("bookingSummary.provider")} value={booking.provider_name} />
             <SummaryRow label={t("bookingSummary.pet")} value={booking.pet_name} />
@@ -434,7 +450,7 @@ export default function BookingSummaryScreen() {
   );
 }
 
-function SummaryRow({ label, value, emptyText, testID, last }) {
+function SummaryRow({ label, value, valueNode, emptyText, testID, last }) {
   const shown = value != null && value !== "";
   return (
     <View
@@ -458,14 +474,19 @@ function SummaryRow({ label, value, emptyText, testID, last }) {
       >
         {label}
       </Text>
-      <Text
-        style={[
-          TYPE.subhead,
-          { color: shown ? COLORS.warmBrown : COLORS.mutedBrown, fontWeight: "600", marginTop: 2 },
-        ]}
-      >
-        {shown ? value : emptyText || "—"}
-      </Text>
+      {/* A `valueNode` (e.g. a status chip) renders in place of the plain-text value. */}
+      {valueNode != null ? (
+        <View style={{ flexDirection: "row", marginTop: 4 }}>{valueNode}</View>
+      ) : (
+        <Text
+          style={[
+            TYPE.subhead,
+            { color: shown ? COLORS.warmBrown : COLORS.mutedBrown, fontWeight: "600", marginTop: 2 },
+          ]}
+        >
+          {shown ? value : emptyText || "—"}
+        </Text>
+      )}
     </View>
   );
 }
