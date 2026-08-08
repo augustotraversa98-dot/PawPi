@@ -357,6 +357,8 @@
     "liveWalkSub": "Sigue el paseo de tu perro en vivo",
     "upcoming": "Próximas",
     "emptyBookings": "Aún no tienes reservas activas",
+    "pending": "Pendiente",
+    "pendingRequests": "Solicitudes pendientes",
     "daycare": "Estadías de guardería",
     "sitting": "Visitas de cuidado",
     "active": "{{count}} activas",

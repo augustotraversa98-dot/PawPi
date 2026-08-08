@@ -15,6 +15,7 @@ let mockDaycareStays;
 let mockSittingVisits;
 let mockOrders;
 let mockSubs;
+let mockSavedPlaces;
 let mockCurrentPet;
 
 jest.mock("expo-router", () => ({
@@ -43,6 +44,9 @@ jest.mock("@/hooks/useProviders", () => ({
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => mockCurrentPet,
 }));
+jest.mock("@/hooks/usePlaces", () => ({
+  useSavedPlaces: () => mockSavedPlaces,
+}));
 
 import MyActivity from "./MyActivity";
 
@@ -57,6 +61,7 @@ beforeEach(() => {
   mockSittingVisits = q([]);
   mockOrders = q([]);
   mockSubs = q([]);
+  mockSavedPlaces = q([]);
   mockCurrentPet = { data: { id: 42 }, isLoading: false, hasPet: true };
 });
 
@@ -76,11 +81,16 @@ test("empty states across every section, no fabricated rows", async () => {
   expect(getByText("No messages yet")).toBeTruthy();
   expect(getByText("No orders yet")).toBeTruthy();
   expect(getByText("No past bookings")).toBeTruthy();
-  // Doorways still present.
-  expect(getByTestId("activity-daycare")).toBeTruthy();
-  expect(getByTestId("activity-sitting")).toBeTruthy();
+  // Empty doorways are hidden (no "no activity" clutter): daycare/sitting/saved-places.
+  expect(queryByTestId("activity-daycare")).toBeNull();
+  expect(queryByTestId("activity-sitting")).toBeNull();
+  expect(queryByTestId("activity-saved-places")).toBeNull();
+  // Messages + Shopping doorways stay (intentionally always present).
+  expect(getByTestId("activity-messages")).toBeTruthy();
   expect(getByTestId("activity-orders")).toBeTruthy();
   expect(getByTestId("activity-autoreorder")).toBeTruthy();
+  // No pending section when there are no requested bookings.
+  expect(queryByTestId("activity-pending-heading")).toBeNull();
 });
 
 test("Messages row routes to /provider-messages and shows the unread badge", async () => {
@@ -153,7 +163,7 @@ test("upcoming bookings render from useMyBookings and route to the booking detai
   });
 });
 
-test("a telehealth upcoming booking routes to the consult screen", async () => {
+test("a telehealth booking WITH a session routes to the consult screen", async () => {
   mockMyBookings = q({
     upcoming: [
       {
@@ -161,6 +171,7 @@ test("a telehealth upcoming booking routes to the consult screen", async () => {
         provider_name: "Tele Vet",
         pet_name: "Mango",
         capability: "telehealth",
+        telehealth_session_status: "scheduled",
         appointment_date: "2026-09-02",
         provider_slug: "tele-vet",
       },
@@ -173,11 +184,157 @@ test("a telehealth upcoming booking routes to the consult screen", async () => {
   expect(mockPush).toHaveBeenCalledWith("/service/telehealth");
 });
 
-test("Saved places doorway routes to the favorites list (/service/places)", async () => {
+test("a telehealth booking with NO session routes to the booking summary (no dead-end)", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      {
+        id: 13,
+        provider_name: "Tele Vet",
+        pet_name: "Mango",
+        capability: "telehealth",
+        telehealth_session_status: null,
+        appointment_date: "2026-09-03",
+        provider_slug: "tele-vet",
+      },
+    ],
+    past: [],
+  });
+  const { getByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-booking-13")).toBeTruthy());
+  fireEvent.press(getByTestId("activity-booking-13"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/booking-summary",
+    params: { id: 13 },
+  });
+});
+
+// ── Pending requests (requested bookings) ─────────────────────────────────────
+test("a requested booking gets a Pending badge; a confirmed one does not", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      {
+        id: 31,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "requested",
+        appointment_date: "2026-09-01",
+        provider_slug: "happy-paws",
+      },
+      {
+        id: 32,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "confirmed",
+        appointment_date: "2026-09-02",
+        provider_slug: "happy-paws",
+      },
+    ],
+    past: [],
+  });
+  const { getByTestId, getByText, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-booking-31")).toBeTruthy());
+  // The requested row carries a "Pending" badge; the confirmed row has none.
+  expect(getByTestId("activity-booking-31-badge")).toBeTruthy();
+  expect(getByText("Pending")).toBeTruthy();
+  expect(queryByTestId("activity-booking-32-badge")).toBeNull();
+});
+
+test("Pending requests section lists requested bookings above Upcoming; confirmed stay under Upcoming", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      {
+        id: 31,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "requested",
+        appointment_date: "2026-09-01",
+        provider_slug: "happy-paws",
+      },
+      {
+        id: 32,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "confirmed",
+        appointment_date: "2026-09-02",
+        provider_slug: "happy-paws",
+      },
+    ],
+    past: [],
+  });
+  const { getByTestId, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-pending-heading")).toBeTruthy());
+  // Both rows render (the requested in Pending, the confirmed under Upcoming).
+  expect(getByTestId("activity-booking-31")).toBeTruthy();
+  expect(getByTestId("activity-booking-32")).toBeTruthy();
+  // Upcoming is NOT empty (the confirmed booking lives there).
+  expect(queryByTestId("activity-upcoming-empty")).toBeNull();
+});
+
+test("Pending requests section is hidden when there are no requested bookings", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      {
+        id: 32,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "confirmed",
+        appointment_date: "2026-09-02",
+        provider_slug: "happy-paws",
+      },
+    ],
+    past: [],
+  });
+  const { getByTestId, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-booking-32")).toBeTruthy());
+  expect(queryByTestId("activity-pending-heading")).toBeNull();
+});
+
+test("only-pending upcoming: Pending section shows the request, Upcoming shows its empty state", async () => {
+  mockMyBookings = q({
+    upcoming: [
+      {
+        id: 31,
+        provider_name: "Happy Paws",
+        pet_name: "Mango",
+        capability: "vet",
+        booking_status: "requested",
+        appointment_date: "2026-09-01",
+        provider_slug: "happy-paws",
+      },
+    ],
+    past: [],
+  });
+  const { getByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-pending-heading")).toBeTruthy());
+  expect(getByTestId("activity-booking-31")).toBeTruthy();
+  // No confirmed bookings → Upcoming still shows its empty row.
+  expect(getByTestId("activity-upcoming-empty")).toBeTruthy();
+});
+
+test("Saved places doorway shows only when something is saved and routes to /service/places", async () => {
+  mockSavedPlaces = q([{ id: 1 }, { id: 2 }]);
   const { getByTestId } = render(<MyActivity />);
   await waitFor(() => expect(getByTestId("activity-saved-places")).toBeTruthy());
   fireEvent.press(getByTestId("activity-saved-places"));
   expect(mockPush).toHaveBeenCalledWith("/service/places");
+});
+
+test("Saved places doorway is hidden when nothing is saved", async () => {
+  const { getByTestId, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-messages")).toBeTruthy());
+  expect(queryByTestId("activity-saved-places")).toBeNull();
+});
+
+test("Daycare/Sitting doorways are hidden when there are no active stays/visits", async () => {
+  const { getByTestId, queryByTestId } = render(<MyActivity />);
+  await waitFor(() => expect(getByTestId("activity-messages")).toBeTruthy());
+  expect(queryByTestId("activity-daycare")).toBeNull();
+  expect(queryByTestId("activity-sitting")).toBeNull();
 });
 
 // ── new Shopping section ──────────────────────────────────────────────────────
