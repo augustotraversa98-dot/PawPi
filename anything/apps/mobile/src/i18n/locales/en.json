@@ -455,5 +455,9 @@
     "orderPlacedBody": "Your order is on its way.",
     "checkoutFailedTitle": "Couldn't check out",
     "checkoutFailedBody": "Please try again."
+  },
+  "telehealth": {
+    "availableAt": "Your video consult will be available on {{date}} at {{time}}.",
+    "availableWhenVetStarts": "You'll be able to join once your vet starts the call."
   }
 }

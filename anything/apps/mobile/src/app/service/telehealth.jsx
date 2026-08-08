@@ -30,7 +30,9 @@ import {
 } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import RatingBadge from "@/components/Providers/RatingBadge";
-import { isTelehealthJoinTooEarly, describeTelehealthJoinWait } from "@/utils/telehealthJoinGate";
+import { isTelehealthJoinTooEarly } from "@/utils/telehealthJoinGate";
+import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
+import { useTranslation } from "react-i18next";
 
 // Telehealth discovery + consults (ticket 2.18). A consult IS a normal booking — tapping a
 // vet opens the shared provider profile carrying capability='telehealth' (the generalized
@@ -141,9 +143,20 @@ export default function TelehealthScreen() {
 // video vendor (a clean message instead of a crash when video isn't configured).
 function ConsultCard({ consult, petId }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const joinTelehealth = useJoinTelehealth();
   const [error, setError] = useState(null);
   const [notReadyMessage, setNotReadyMessage] = useState(null);
+
+  // Localized "not time yet" copy: names the appointment date + time when we have them (the
+  // booking-linked case), else the vet-starts-the-call fallback (an unlinked ad-hoc session).
+  const joinWaitMessage = () => {
+    const date = formatDisplayDate(consult.appointment_date);
+    const time = formatDisplayTime(consult.appointment_time);
+    return date && time
+      ? t("telehealth.availableAt", { date, time })
+      : t("telehealth.availableWhenVetStarts");
+  };
 
   const joinable = consult.status === "scheduled" || consult.status === "in_progress";
   // Client-side pre-check (telehealthJoinGate.js) — only blocks when we can be SURE it's too
@@ -171,7 +184,7 @@ function ConsultCard({ consult, petId }) {
       if (e?.notReady) {
         // The server is the source of truth (clock skew, etc.) — same friendly copy as the
         // pre-check so the message is consistent either way.
-        setNotReadyMessage(describeTelehealthJoinWait(consult));
+        setNotReadyMessage(joinWaitMessage());
       } else {
         // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
         setError(e?.message || "Couldn't join the consult");
@@ -212,7 +225,7 @@ function ConsultCard({ consult, petId }) {
           }}
         >
           <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
-            {describeTelehealthJoinWait(consult)}
+            {joinWaitMessage()}
           </Text>
         </View>
       ) : joinable ? (
