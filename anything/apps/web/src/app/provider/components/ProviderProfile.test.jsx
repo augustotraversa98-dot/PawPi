@@ -137,6 +137,18 @@ describe("ProviderProfile", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the public-link fields behind the collapsed 'Public links' section", () => {
+    render(<ProviderProfile providerId={3} />);
+    // Essentials stay visible.
+    expect(screen.getByDisplayValue("Happy Paws")).toBeVisible();
+    // Bio + slug are present (they still seed/submit) but hidden until expanded.
+    const bio = screen.getByDisplayValue("We love dogs");
+    expect(bio).not.toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Public links" }));
+    expect(bio).toBeVisible();
+    expect(screen.getByDisplayValue("happy-paws")).toBeVisible();
+  });
+
   it("capability editor: enabling a capability POSTs it, disabling an on one DELETEs it", () => {
     render(<ProviderProfile providerId={3} />);
 

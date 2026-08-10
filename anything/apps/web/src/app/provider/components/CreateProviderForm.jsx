@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateProvider } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
+import { CAPABILITY_OPTIONS } from "../lib/capabilities";
+import AdvancedSection from "./AdvancedSection";
+
+// Client-side validity mirror (lib/capabilities mirrors the server's ALLOWED_CAPABILITIES).
+const VALID_CAPS = new Set(CAPABILITY_OPTIONS.map((c) => c.value));
 
 // Onboarding (create) — shown to a logged-in user who is staff of no provider.
 // Replaces c1's "coming soon" dead-end. On success useCreateProvider selects the
@@ -13,6 +19,7 @@ export default function CreateProviderForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -28,11 +35,37 @@ export default function CreateProviderForm() {
   });
   const { mutate, isPending } = useCreateProvider();
 
+  // Capability multi-select (Phase 3). Until the owner touches a chip, the selection
+  // is DERIVED from the chosen provider type (a sensible pre-select); once they toggle
+  // anything, `caps` takes over. Deriving (vs an effect) keeps type→cap in sync with no
+  // extra state churn. `resolveCaps` is the single source used for both render + submit.
+  const [caps, setCaps] = useState(new Set());
+  const [capsTouched, setCapsTouched] = useState(false);
+  const providerType = watch("provider_type");
+
+  const resolveCaps = (type) =>
+    capsTouched
+      ? caps
+      : new Set(type && VALID_CAPS.has(type) ? [type] : []);
+  const selectedCaps = resolveCaps(providerType);
+
+  const toggleCap = (value) => {
+    const next = new Set(selectedCaps);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    setCaps(next);
+    setCapsTouched(true);
+  };
+
   const onSubmit = (values) => {
+    // Resolve the final capability list (derived default when untouched). An empty
+    // list is sent as undefined so the POST route keeps its [provider_type] fallback.
+    const chosen = [...resolveCaps(values.provider_type)];
     mutate(
       {
         name: values.name.trim(),
         provider_type: values.provider_type,
+        capabilities: chosen.length ? chosen : undefined,
         bio: values.bio?.trim() || undefined,
         logo_url: values.logo_url?.trim() || undefined,
         // Optional public links (ticket 2.20).
@@ -108,40 +141,82 @@ export default function CreateProviderForm() {
             </select>
           </Field>
 
-          <Field label="Bio" hint="Optional">
-            <textarea
-              rows={3}
-              placeholder="Tell pet owners about your practice…"
-              {...register("bio")}
-              className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
+          {/* Capability multi-select (Phase 3) — what the business offers. Pre-selects the
+              capability matching the chosen type; the owner can add more so a new provider
+              isn't stuck with a single seeded capability. */}
+          <Field
+            label="What this business offers"
+            hint="You can change this later"
+          >
+            <div className="flex flex-wrap gap-2">
+              {CAPABILITY_OPTIONS.map(({ value, label }) => {
+                const on = selectedCaps.has(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleCap(value)}
+                    className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold"
+                    style={
+                      on
+                        ? {
+                            borderColor: "transparent",
+                            color: "#fff",
+                            backgroundColor: COLORS.coral,
+                          }
+                        : {
+                            borderColor: "#FFD9B3",
+                            color: "#7A6254",
+                            backgroundColor: "#FFF7EF",
+                          }
+                    }
+                  >
+                    {on && <Check className="h-3.5 w-3.5" />}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </Field>
 
-          <Field label="Logo URL" hint="Optional">
-            <input
-              type="text"
-              placeholder="https://…"
-              {...register("logo_url")}
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-          </Field>
+          {/* Optional profile + public-link fields (Phase 3): collapsed by default. */}
+          <AdvancedSection>
+            <Field label="Bio" hint="Optional">
+              <textarea
+                rows={3}
+                placeholder="Tell pet owners about your practice…"
+                {...register("bio")}
+                className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+              />
+            </Field>
 
-          {/* Public business links (ticket 2.20) — optional. */}
-          {[
-            { name: "website_url", label: "Website", ph: "https://…" },
-            { name: "instagram_url", label: "Instagram", ph: "https://instagram.com/…" },
-            { name: "facebook_url", label: "Facebook", ph: "https://facebook.com/…" },
-            { name: "google_maps_url", label: "Google Maps", ph: "https://maps.google.com/…" },
-          ].map((f) => (
-            <Field key={f.name} label={f.label} hint="Optional">
+            <Field label="Logo URL" hint="Optional">
               <input
                 type="text"
-                placeholder={f.ph}
-                {...register(f.name)}
+                placeholder="https://…"
+                {...register("logo_url")}
                 className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
               />
             </Field>
-          ))}
+
+            {/* Public business links (ticket 2.20) — optional. */}
+            {[
+              { name: "website_url", label: "Website", ph: "https://…" },
+              { name: "instagram_url", label: "Instagram", ph: "https://instagram.com/…" },
+              { name: "facebook_url", label: "Facebook", ph: "https://facebook.com/…" },
+              { name: "google_maps_url", label: "Google Maps", ph: "https://maps.google.com/…" },
+            ].map((f) => (
+              <Field key={f.name} label={f.label} hint="Optional">
+                <input
+                  type="text"
+                  placeholder={f.ph}
+                  {...register(f.name)}
+                  className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+              </Field>
+            ))}
+          </AdvancedSection>
 
           <button
             type="submit"

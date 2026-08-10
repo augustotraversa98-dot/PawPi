@@ -23,6 +23,7 @@ import {
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
 import { CAPABILITY_OPTIONS } from "../lib/capabilities";
+import AdvancedSection from "./AdvancedSection";
 
 // Profile screen — load the provider, edit profile fields, and publish/unpublish.
 // Loaded inside the shell so providerId is always resolved. Saves send ONLY the
@@ -259,35 +260,39 @@ export default function ProviderProfile({ providerId }) {
           </select>
         </Field>
 
-        <Field
-          label="Slug"
-          error={errors.slug?.message}
-          hint="Used in your public listing URL"
-        >
-          <input type="text" {...register("slug")} className={inputCls} />
-        </Field>
+        {/* Optional profile + public-link fields (Phase 3): collapsed by default,
+            still submit their values (changed-fields diff is unchanged). */}
+        <AdvancedSection label="Public links">
+          <Field
+            label="Slug"
+            error={errors.slug?.message}
+            hint="Used in your public listing URL"
+          >
+            <input type="text" {...register("slug")} className={inputCls} />
+          </Field>
 
-        <Field label="Bio" hint="Optional">
-          <textarea rows={3} {...register("bio")} className={`${inputCls} resize-y`} />
-        </Field>
+          <Field label="Bio" hint="Optional">
+            <textarea rows={3} {...register("bio")} className={`${inputCls} resize-y`} />
+          </Field>
 
-        <Field label="Logo URL" hint="Optional">
-          <input type="text" {...register("logo_url")} className={inputCls} />
-        </Field>
+          <Field label="Logo URL" hint="Optional">
+            <input type="text" {...register("logo_url")} className={inputCls} />
+          </Field>
 
-        {/* Public business links (ticket 2.20) — optional. */}
-        <Field label="Website" hint="Optional">
-          <input type="text" {...register("website_url")} className={inputCls} placeholder="https://…" />
-        </Field>
-        <Field label="Instagram" hint="Optional">
-          <input type="text" {...register("instagram_url")} className={inputCls} placeholder="https://instagram.com/…" />
-        </Field>
-        <Field label="Facebook" hint="Optional">
-          <input type="text" {...register("facebook_url")} className={inputCls} placeholder="https://facebook.com/…" />
-        </Field>
-        <Field label="Google Maps" hint="Optional">
-          <input type="text" {...register("google_maps_url")} className={inputCls} placeholder="https://maps.google.com/…" />
-        </Field>
+          {/* Public business links (ticket 2.20) — optional. */}
+          <Field label="Website" hint="Optional">
+            <input type="text" {...register("website_url")} className={inputCls} placeholder="https://…" />
+          </Field>
+          <Field label="Instagram" hint="Optional">
+            <input type="text" {...register("instagram_url")} className={inputCls} placeholder="https://instagram.com/…" />
+          </Field>
+          <Field label="Facebook" hint="Optional">
+            <input type="text" {...register("facebook_url")} className={inputCls} placeholder="https://facebook.com/…" />
+          </Field>
+          <Field label="Google Maps" hint="Optional">
+            <input type="text" {...register("google_maps_url")} className={inputCls} placeholder="https://maps.google.com/…" />
+          </Field>
+        </AdvancedSection>
 
         <button
           type="submit"

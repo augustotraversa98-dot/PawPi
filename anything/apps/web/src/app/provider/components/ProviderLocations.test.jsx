@@ -118,6 +118,32 @@ describe("ProviderLocations", () => {
     expect(createMutate).not.toHaveBeenCalled();
   });
 
+  it("keeps phone/map/coords/hours behind Advanced; expanding reveals them and their values still submit", async () => {
+    render(<ProviderLocations providerId={3} />);
+    fireEvent.click(screen.getByRole("button", { name: /add location/i }));
+    const dialog = screen.getByRole("dialog");
+
+    // Essentials visible.
+    expect(within(dialog).getByPlaceholderText("Main clinic")).toBeVisible();
+    expect(within(dialog).getByPlaceholderText("123 Bark Street")).toBeVisible();
+
+    // Phone (advanced) present but hidden until expanded.
+    const phone = within(dialog).getByPlaceholderText("+1 555 0100");
+    expect(phone).not.toBeVisible();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Advanced" }));
+    expect(phone).toBeVisible();
+
+    fireEvent.change(within(dialog).getByPlaceholderText("Main clinic"), {
+      target: { value: "Branch" },
+    });
+    fireEvent.change(phone, { target: { value: "+1 555 9999" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /add location/i }));
+
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    expect(createMutate.mock.calls[0][0].phone).toBe("+1 555 9999");
+  });
+
   it("Delete confirms (permanent) then DELETEs the location", () => {
     render(<ProviderLocations providerId={3} />);
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
