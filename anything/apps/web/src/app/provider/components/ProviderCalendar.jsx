@@ -8,8 +8,6 @@ import {
   Check,
   Ban,
   UserPlus,
-  MapPin,
-  Home,
   List,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,17 +23,20 @@ import { formatBookingWhen } from "../lib/bookingTime";
 import {
   rangeForView,
   viewDays,
-  hourRange,
-  indexByCell,
   ymd,
   hourLabel,
   dayHeader,
   addDays,
+  gridHours,
+  layoutDay,
+  zonedMinutes,
+  HOUR_PX,
 } from "../lib/calendar";
 
-// /provider/calendar — a week/day grid of this provider's bookings (ticket 2.24).
-// Dates are columns, times are rows; each booking sits in its start-hour cell. Click a
-// booking → a detail popover with the full booking-context info + the existing
+// /provider/calendar — a week/day grid of this provider's bookings (ticket 2.24; Phase 3
+// proportional layout). Dates are columns, time runs top-to-bottom; each booking is a
+// duration-sized block positioned by its start (provider zone), overlaps tiled into lanes.
+// Click a booking → a detail popover with the full booking-context info + the existing
 // confirm/decline/cancel/assign actions (reused from the inbox hook). Scoped to the
 // ACTIVE provider only. NO medical data is read on this path.
 function money(cents, currency = "ARS") {
@@ -78,8 +79,29 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
   );
 
   const days = useMemo(() => viewDays(view, anchor), [view, anchor]);
-  const rows = useMemo(() => hourRange(visibleBookings), [visibleBookings]);
-  const cells = useMemo(() => indexByCell(visibleBookings), [visibleBookings]);
+  // Visible hour band (provider zone), the axis rows, and the grid's pixel height.
+  const { startHour, endHour } = useMemo(
+    () => gridHours(visibleBookings, timeZone),
+    [visibleBookings, timeZone],
+  );
+  const hours = useMemo(
+    () => Array.from({ length: endHour - startHour }, (_, i) => startHour + i),
+    [startHour, endHour],
+  );
+  const gridStartMin = startHour * 60;
+  const gridHeightPx = (endHour - startHour) * HOUR_PX;
+  // Group bookings into day columns by their PROVIDER-zone calendar date (so a late/early
+  // booking lands in the right column); each column is laid out proportionally below.
+  const byDay = useMemo(() => {
+    const m = new Map();
+    for (const b of visibleBookings) {
+      const z = zonedMinutes(b.start_at, timeZone);
+      if (!z) continue;
+      if (!m.has(z.date)) m.set(z.date, []);
+      m.get(z.date).push(b);
+    }
+    return m;
+  }, [visibleBookings, timeZone]);
 
   const shift = (dir) =>
     setAnchor((a) => addDays(a, dir * (view === "day" ? 1 : 7)));
@@ -167,49 +189,72 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-[#FFD9B3] bg-white">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-b border-[#FFF1E2] bg-[#FFFBF6]">
-                <th className="w-16 px-2 py-2 text-[#7A6254]" />
-                {days.map((d) => (
-                  <th
-                    key={ymd(d)}
-                    className="px-2 py-2 text-center text-xs font-bold uppercase tracking-wide text-[#7A6254]"
-                  >
-                    {dayHeader(d)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((h) => (
-                <tr key={h} className="border-b border-[#FFF7EF] last:border-0">
-                  <td className="px-2 py-2 align-top text-[#B8A99D]">
-                    {hourLabel(h)}
-                  </td>
-                  {days.map((d) => {
-                    const list = cells.get(`${ymd(d)}|${h}`) ?? [];
-                    return (
-                      <td
-                        key={`${ymd(d)}-${h}`}
-                        className="min-w-[120px] border-l border-[#FFF7EF] px-1.5 py-1.5 align-top"
-                      >
-                        <div className="space-y-1">
-                          {list.map((b) => (
-                            <BookingChip
-                              key={b.id}
-                              booking={b}
-                              onClick={() => setSelected(b)}
-                            />
-                          ))}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
+          <div className="min-w-[640px]">
+            {/* Day headers, aligned over the columns (left gutter = the time axis). */}
+            <div className="flex border-b border-[#FFF1E2] bg-[#FFFBF6]">
+              <div className="w-14 flex-shrink-0" />
+              {days.map((d) => (
+                <div
+                  key={ymd(d)}
+                  className="flex-1 px-2 py-2 text-center text-xs font-bold uppercase tracking-wide text-[#7A6254]"
+                >
+                  {dayHeader(d)}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Proportional grid: a time axis + one relative-positioned column per day. */}
+            <div className="flex">
+              {/* Time axis — one labeled row per hour. */}
+              <div className="w-14 flex-shrink-0" style={{ height: gridHeightPx }}>
+                {hours.map((h) => (
+                  <div
+                    key={h}
+                    className="relative border-t border-[#FFF1E2]"
+                    style={{ height: HOUR_PX }}
+                  >
+                    <span className="absolute right-1.5 top-0.5 text-[10px] text-[#B8A99D]">
+                      {hourLabel(h)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Day columns — each booking is a duration-sized, absolutely-placed block. */}
+              {days.map((d) => {
+                const items = layoutDay(
+                  byDay.get(ymd(d)) ?? [],
+                  gridStartMin,
+                  timeZone,
+                );
+                return (
+                  <div
+                    key={ymd(d)}
+                    className="relative flex-1 border-l border-[#FFF7EF]"
+                    style={{ height: gridHeightPx }}
+                  >
+                    {/* Hour gridlines. */}
+                    {hours.map((h, i) => (
+                      <div
+                        key={h}
+                        className="absolute inset-x-0 border-t border-[#FFF7EF]"
+                        style={{ top: i * HOUR_PX }}
+                      />
+                    ))}
+                    {/* Duration-sized booking blocks. */}
+                    {items.map((it) => (
+                      <BookingBlock
+                        key={it.booking.id}
+                        item={it}
+                        onClick={() => setSelected(it.booking)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {visibleBookings.length === 0 && (
             <div className="px-6 py-12 text-center">
               <p className="text-sm font-semibold text-[#3B241B]">
@@ -235,38 +280,53 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
   );
 }
 
-function BookingChip({ booking: b, onClick }) {
+// One proportional booking block: absolutely positioned by wall-clock start, sized by
+// duration, placed into an overlap lane (left/width from lane/laneCount). Content scales
+// to the block — the time range always; the pet on a normal block; the service on a
+// taller one. A completed booking is muted; full detail is in the popover on click.
+function BookingBlock({ item, onClick }) {
+  const b = item.booking;
   const color = STATUS_COLOR[b.booking_status] || "#7A6254";
-  // Completed bookings stay on the grid as a muted, read-only record.
   const isMuted = b.booking_status === "completed";
+  const showPet = item.height >= 24;
+  const showService = item.height >= 46;
+  const widthPct = 100 / item.laneCount;
+  const leftPct = item.lane * widthPct;
   return (
     <button
       type="button"
       data-testid="calendar-booking"
       onClick={onClick}
-      className={`block w-full rounded-lg border-l-4 bg-[#FFF7EF] px-2 py-1 text-left${
+      title={`${item.timeLabel} · ${b.pet_name || "Booking"}`}
+      className={`absolute overflow-hidden rounded-md border-l-4 bg-[#FFF7EF] px-1.5 py-0.5 text-left leading-tight${
         isMuted ? " opacity-70" : ""
       }`}
-      style={{ borderColor: color }}
+      style={{
+        top: item.top,
+        height: item.height,
+        left: `${leftPct}%`,
+        width: `calc(${widthPct}% - 3px)`,
+        borderColor: color,
+      }}
     >
-      <span className="block truncate font-semibold text-[#3B241B]">
-        {b.pet_name || "Booking"}
-      </span>
-      <span className="block truncate text-[#7A6254]">
-        {b.service_name || b.capability || "—"}
-      </span>
-      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-[#7A6254]">
+      <span className="flex items-center gap-1 truncate text-[10px] font-semibold text-[#7A6254]">
         <span
-          className="inline-block h-2 w-2 rounded-full"
+          className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
           style={{ backgroundColor: b.paid ? "#1F7A4D" : "#D9A441" }}
           title={b.paid ? "Paid" : "Unpaid"}
         />
-        {b.location_name ? (
-          <MapPin className="h-3 w-3" />
-        ) : (
-          <Home className="h-3 w-3" />
-        )}
+        {item.timeLabel}
       </span>
+      {showPet && (
+        <span className="block truncate text-xs font-semibold text-[#3B241B]">
+          {b.pet_name || "Booking"}
+        </span>
+      )}
+      {showService && (
+        <span className="block truncate text-[11px] text-[#7A6254]">
+          {b.service_name || b.capability || "—"}
+        </span>
+      )}
     </button>
   );
 }

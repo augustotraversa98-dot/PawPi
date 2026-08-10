@@ -5,16 +5,20 @@ import {
   startOfWeek,
   viewDays,
   rangeForView,
-  bookingDayKey,
-  bookingHour,
-  hourRange,
-  indexByCell,
   hourLabel,
   dayHeader,
+  zonedMinutes,
+  durationMinutes,
+  gridHours,
+  layoutDay,
+  PX_PER_MIN,
+  MIN_BLOCK_PX,
 } from "./calendar";
 
-// Pure grid math for the bookings calendar (ticket 2.24). All local-time based —
-// the bookings are built from local Dates so getHours()/ymd are timezone-stable here.
+// Pure grid math for the bookings calendar (ticket 2.24; Phase 3 proportional layout).
+// Navigation math (ymd/startOfWeek/viewDays) is local-Date based; the placement helpers
+// (zonedMinutes/durationMinutes/gridHours/layoutDay) take absolute instants + a provider
+// zone, so they're asserted with explicit UTC/BA zones (tz-stable on any runner).
 
 // Wed 2026-06-17 (local). Its Monday is 2026-06-15.
 const WED = new Date(2026, 5, 17, 9, 0);
@@ -60,32 +64,120 @@ describe("viewDays / rangeForView", () => {
   });
 });
 
-describe("booking placement", () => {
-  const booking = (id, d) => ({ id, start_at: d.toISOString() });
-
-  it("derives the local day key + hour", () => {
-    const b = booking(1, new Date(2026, 5, 16, 14, 0));
-    expect(bookingDayKey(b)).toBe("2026-06-16");
-    expect(bookingHour(b)).toBe(14);
-    expect(bookingDayKey({})).toBeNull();
+describe("zonedMinutes", () => {
+  it("gives the wall-clock date + minutes in the given zone (DST-safe via Intl)", () => {
+    // 15:00 UTC in Buenos Aires (−03) is 12:00 → 720 minutes, same calendar date.
+    expect(
+      zonedMinutes("2026-06-16T15:00:00.000Z", "America/Argentina/Buenos_Aires"),
+    ).toEqual({ date: "2026-06-16", minutes: 720 });
+    // Same instant read in UTC is 15:00 → 900 minutes.
+    expect(zonedMinutes("2026-06-16T15:00:00.000Z", "UTC")).toEqual({
+      date: "2026-06-16",
+      minutes: 900,
+    });
   });
 
-  it("indexByCell buckets bookings by day|hour", () => {
-    const a = booking(1, new Date(2026, 5, 16, 14, 0));
-    const b = booking(2, new Date(2026, 5, 16, 14, 30)); // same cell as a
-    const c = booking(3, new Date(2026, 5, 17, 9, 0));
-    const map = indexByCell([a, b, c]);
-    expect(map.get("2026-06-16|14").map((x) => x.id)).toEqual([1, 2]);
-    expect(map.get("2026-06-17|9").map((x) => x.id)).toEqual([3]);
-    expect(map.get("2026-06-18|10")).toBeUndefined();
+  it("returns null for an unparseable instant", () => {
+    expect(zonedMinutes("nope", "UTC")).toBeNull();
+  });
+});
+
+describe("durationMinutes", () => {
+  it("is the absolute elapsed start→end in minutes", () => {
+    expect(
+      durationMinutes({
+        start_at: "2026-06-16T12:00:00.000Z",
+        end_at: "2026-06-16T13:00:00.000Z",
+      }),
+    ).toBe(60);
   });
 
-  it("hourRange covers business hours and widens to include outliers", () => {
-    expect(hourRange([])).toEqual([
-      7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-    ]);
-    const early = booking(1, new Date(2026, 5, 16, 6, 0));
-    expect(hourRange([early])[0]).toBe(6); // widened down to 6
+  it("defaults to 30 when the end is missing or not after the start", () => {
+    expect(durationMinutes({ start_at: "2026-06-16T12:00:00.000Z" })).toBe(30);
+    expect(
+      durationMinutes({
+        start_at: "2026-06-16T12:00:00.000Z",
+        end_at: "2026-06-16T12:00:00.000Z",
+      }),
+    ).toBe(30);
+  });
+});
+
+describe("gridHours", () => {
+  it("defaults to 7..20 and widens (in the provider zone) to fit outliers", () => {
+    expect(gridHours([], "UTC")).toEqual({ startHour: 7, endHour: 20 });
+    const early = { start_at: "2026-06-16T06:15:00.000Z", end_at: "2026-06-16T06:45:00.000Z" };
+    const late = { start_at: "2026-06-16T20:30:00.000Z", end_at: "2026-06-16T21:30:00.000Z" };
+    expect(gridHours([early, late], "UTC")).toEqual({ startHour: 6, endHour: 22 });
+  });
+});
+
+describe("layoutDay (proportional blocks + overlap lanes)", () => {
+  const gridStartMin = 9 * 60;
+  const at = (id, startISO, endISO) => ({ id, start_at: startISO, end_at: endISO });
+
+  it("sizes height by duration — a 60-min block is ~2× a 30-min block", () => {
+    const items = layoutDay(
+      [
+        at(1, "2026-06-16T09:00:00.000Z", "2026-06-16T09:30:00.000Z"), // 30 min
+        at(2, "2026-06-16T10:00:00.000Z", "2026-06-16T11:00:00.000Z"), // 60 min
+      ],
+      gridStartMin,
+      "UTC",
+    );
+    const h30 = items.find((i) => i.booking.id === 1).height;
+    const h60 = items.find((i) => i.booking.id === 2).height;
+    expect(h30).toBe(30 * PX_PER_MIN);
+    expect(h60).toBe(60 * PX_PER_MIN);
+    expect(h60).toBeCloseTo(2 * h30, 5);
+  });
+
+  it("positions top by start time (later start → larger top)", () => {
+    const items = layoutDay(
+      [
+        at(1, "2026-06-16T09:00:00.000Z", "2026-06-16T09:30:00.000Z"),
+        at(2, "2026-06-16T10:30:00.000Z", "2026-06-16T11:00:00.000Z"),
+      ],
+      gridStartMin,
+      "UTC",
+    );
+    const a = items.find((i) => i.booking.id === 1);
+    const b = items.find((i) => i.booking.id === 2);
+    expect(a.top).toBe(0); // 09:00 = grid start
+    expect(b.top).toBe(90 * PX_PER_MIN); // 10:30 is 90 min after 09:00
+    expect(b.top).toBeGreaterThan(a.top);
+  });
+
+  it("tiles overlapping bookings into equal side-by-side lanes; isolated stays full width", () => {
+    const items = layoutDay(
+      [
+        at(1, "2026-06-16T09:00:00.000Z", "2026-06-16T10:00:00.000Z"), // overlaps 2
+        at(2, "2026-06-16T09:30:00.000Z", "2026-06-16T10:30:00.000Z"), // overlaps 1
+        at(3, "2026-06-16T11:00:00.000Z", "2026-06-16T11:30:00.000Z"), // alone
+      ],
+      gridStartMin,
+      "UTC",
+    );
+    const b1 = items.find((i) => i.booking.id === 1);
+    const b2 = items.find((i) => i.booking.id === 2);
+    const b3 = items.find((i) => i.booking.id === 3);
+    // The two overlappers share a 2-lane cluster in distinct lanes (neither hidden).
+    expect(b1.laneCount).toBe(2);
+    expect(b2.laneCount).toBe(2);
+    expect(new Set([b1.lane, b2.lane])).toEqual(new Set([0, 1]));
+    // The isolated booking is full width.
+    expect(b3.laneCount).toBe(1);
+    expect(b3.lane).toBe(0);
+  });
+
+  it("clamps a tiny sub-slot block to the minimum height and keeps its time label", () => {
+    const items = layoutDay(
+      [at(1, "2026-06-16T09:00:00.000Z", "2026-06-16T09:05:00.000Z")], // 5 min
+      gridStartMin,
+      "UTC",
+    );
+    expect(items[0].height).toBe(MIN_BLOCK_PX); // 5*PX_PER_MIN < MIN_BLOCK_PX
+    expect(items[0].timeLabel).toBe("09:00–09:05");
   });
 });
 

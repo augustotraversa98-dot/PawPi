@@ -158,6 +158,75 @@ describe("ProviderCalendar", () => {
     expect(chip.className).toContain("opacity-70");
   });
 
+  it("renders a 60-min booking about twice the block height of a 30-min booking (proportional)", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [
+        {
+          ...BOOKING,
+          id: 1,
+          pet_name: "HalfHour",
+          start_at: new Date(2026, 5, 16, 9, 0).toISOString(),
+          end_at: new Date(2026, 5, 16, 9, 30).toISOString(),
+        },
+        {
+          ...BOOKING,
+          id: 2,
+          pet_name: "FullHour",
+          start_at: new Date(2026, 5, 16, 10, 0).toISOString(),
+          end_at: new Date(2026, 5, 16, 11, 0).toISOString(),
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    const blocks = screen.getAllByTestId("calendar-booking");
+    expect(blocks).toHaveLength(2);
+
+    const heightOf = (name) =>
+      parseFloat(
+        blocks.find((el) => within(el).queryByText(name)).style.height,
+      );
+    const half = heightOf("HalfHour");
+    const full = heightOf("FullHour");
+    expect(full).toBeGreaterThan(half);
+    expect(full).toBeCloseTo(2 * half, 1); // duration drives height
+  });
+
+  it("lays two time-overlapping bookings side-by-side (both visible, neither hidden)", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [
+        {
+          ...BOOKING,
+          id: 1,
+          pet_name: "OverlapA",
+          start_at: new Date(2026, 5, 16, 9, 0).toISOString(),
+          end_at: new Date(2026, 5, 16, 10, 0).toISOString(),
+        },
+        {
+          ...BOOKING,
+          id: 2,
+          pet_name: "OverlapB",
+          start_at: new Date(2026, 5, 16, 9, 30).toISOString(),
+          end_at: new Date(2026, 5, 16, 10, 30).toISOString(),
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    const blocks = screen.getAllByTestId("calendar-booking");
+    expect(blocks).toHaveLength(2);
+    // Both blocks are present (neither covers the other).
+    expect(screen.getByText("OverlapA")).toBeTruthy();
+    expect(screen.getByText("OverlapB")).toBeTruthy();
+    // Side-by-side: two distinct lane offsets, each half width.
+    const lefts = blocks.map((el) => el.style.left);
+    expect(new Set(lefts)).toEqual(new Set(["0%", "50%"]));
+  });
+
   it("the popover uses shared bookingActions: requested → Confirm + Decline + Assign, no Cancel", () => {
     useProviderBookingsCalendar.mockReturnValue({
       data: [bookingWith(1, "requested", 9, "ReqPet")],
