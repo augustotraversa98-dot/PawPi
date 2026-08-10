@@ -89,6 +89,52 @@ describe('GET availability', () => {
     ]);
   });
 
+  it('service_id → slots at the service duration (60-min service over a 30-min window)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([
+        { id: 100, status: 'published', time_zone: 'America/Argentina/Buenos_Aires' },
+      ])
+      // window: Monday 09:00–11:00 @ 30-min (BA local)
+      .mockResolvedValueOnce([
+        { weekday: 0, start_time: '09:00', end_time: '11:00', slot_minutes: 30, staff_user_id: null, capability: null },
+      ])
+      .mockResolvedValueOnce([{ duration_min: 60 }]) // service duration lookup
+      .mockResolvedValueOnce([]); // no taken
+    const res = await GET(getReq('from=2026-06-15&to=2026-06-15&service_id=5'), PARAMS);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // 60-min service → hourly slots (09:00/10:00 BA = 12:00/13:00 UTC), NOT the 30-min grid.
+    expect(body.availability[0].slots).toEqual([
+      { start: '2026-06-15T12:00:00.000Z', end: '2026-06-15T13:00:00.000Z' },
+      { start: '2026-06-15T13:00:00.000Z', end: '2026-06-15T14:00:00.000Z' },
+    ]);
+  });
+
+  it('no service_id → keeps the window slot_minutes grid (backward-compatible)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([
+        { id: 100, status: 'published', time_zone: 'America/Argentina/Buenos_Aires' },
+      ])
+      .mockResolvedValueOnce([
+        { weekday: 0, start_time: '09:00', end_time: '11:00', slot_minutes: 30, staff_user_id: null, capability: null },
+      ])
+      .mockResolvedValueOnce([]); // no taken (no service lookup happens without service_id)
+    const res = await GET(getReq('from=2026-06-15&to=2026-06-15'), PARAMS);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // 30-min window → four half-hour slots.
+    expect(body.availability[0].slots.map((s) => s.start)).toEqual([
+      '2026-06-15T12:00:00.000Z',
+      '2026-06-15T12:30:00.000Z',
+      '2026-06-15T13:00:00.000Z',
+      '2026-06-15T13:30:00.000Z',
+    ]);
+  });
+
   it('no windows → empty slots (empty state, no fake data)', async () => {
     auth.mockResolvedValue(SESSION);
     sql

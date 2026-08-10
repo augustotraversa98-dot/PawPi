@@ -194,6 +194,13 @@ export default function BookingFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, services]);
 
+  // Switching the service changes slot durations (30-min vs 1-hour grid), so any slot chosen
+  // under the previous service no longer applies — drop it so the CTA re-gates on a fresh pick.
+  useEffect(() => {
+    setSelectedSlot(null);
+    setSlotTimeZone(null);
+  }, [serviceId]);
+
   const resetAndClose = () => {
     serviceTouched.current = false;
     setServiceId(null);
@@ -517,6 +524,7 @@ export default function BookingFormModal({
               key={activeCapability}
               providerId={provider?.id}
               capability={activeCapability}
+              serviceId={serviceId}
               selected={selectedSlot}
               onSelect={(slot, tz) => {
                 setSelectedSlot(slot);

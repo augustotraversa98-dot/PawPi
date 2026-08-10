@@ -484,6 +484,59 @@ describe('POST /api/providers/[id]/book', () => {
     );
     expect(res.status).toBe(201); // unchanged: no windows, no enforcement
   });
+
+  // ── Service-duration slots (Phase 1): a 60-min service over 30-min windows ────────
+  // Same UTC provider + Wed 09:00–11:00 @30 window, but the booked SERVICE is 60-min, so
+  // the valid slot starts are 09:00 and 10:00 (NOT the 30-min grid). The service SELECT now
+  // returns duration_min; enforcement generates at that duration.
+  it('service-duration: a service-aligned start (09:00) books and stores end_at = start + service duration', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([SLOT_PROVIDER]) // provider (+ UTC time_zone)
+      .mockResolvedValueOnce([{ id: 7, name: 'Long Consult', active: true, duration_min: 60 }]) // service
+      .mockResolvedValueOnce([WINDOW]) // provider_availability: 30-min window
+      .mockResolvedValueOnce([]) // taken
+      .mockResolvedValueOnce([]) // imported busy (enforcement)
+      .mockResolvedValueOnce([{ id: 1 }]); // insert
+    const res = await POST(
+      bookReq({
+        petId: 5,
+        appointment_date: '2026-07-01',
+        appointment_time: '09:00',
+        service_id: 7,
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(201);
+    const values = lastValues();
+    expect(values).toContain('2026-07-01T09:00:00.000Z'); // start_at = the aligned slot start
+    expect(values).toContain('2026-07-01T10:00:00.000Z'); // end_at = start + 60 min (service duration)
+  });
+
+  it('service-duration: a start valid only at the 30-min grid (09:30) is rejected 422 for a 60-min service', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([SLOT_PROVIDER])
+      .mockResolvedValueOnce([{ id: 7, name: 'Long Consult', active: true, duration_min: 60 }]) // service
+      .mockResolvedValueOnce([WINDOW]) // 30-min window
+      .mockResolvedValueOnce([]) // taken
+      .mockResolvedValueOnce([]); // imported busy (enforcement)
+    const res = await POST(
+      bookReq({
+        petId: 5,
+        appointment_date: '2026-07-01',
+        appointment_time: '09:30', // a 30-min-grid start, but NOT a 60-min service slot start
+        service_id: 7,
+      }),
+      PARAMS,
+    );
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe('selected_slot_unavailable');
+  });
 });
 
 // ── Owner notification on booking created (0080) ───────────────────────────────
