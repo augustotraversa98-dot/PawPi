@@ -36,6 +36,11 @@ import CreateProviderForm from "./CreateProviderForm";
 // Staff (c2c), Clinical (c3), Chats (2.5), Sales (2.69) are wired and navigate to
 // their routes. Any remaining disabled entries are clearly-marked "coming soon"
 // stubs and never dead-end.
+//
+// `group` is a purely presentational bucket (Phase 1 nav grouping): the sidebar
+// renders items in array order, inserting a small header whenever the group
+// changes. `null` = the headerless top group. NAV_ITEMS is ordered to match the
+// grouped render (top → Schedule → Store → Care → Business); nothing is hidden.
 const NAV_ITEMS = [
   {
     key: "dashboard",
@@ -43,76 +48,7 @@ const NAV_ITEMS = [
     Icon: LayoutDashboard,
     enabled: true,
     href: "/provider",
-  },
-  {
-    key: "calendar",
-    label: "Calendar",
-    Icon: CalendarDays,
-    enabled: true,
-    href: "/provider/calendar",
-  },
-  {
-    key: "bookings",
-    label: "Bookings",
-    Icon: CalendarCheck,
-    enabled: true,
-    href: "/provider/bookings",
-  },
-  {
-    key: "profile",
-    label: "Profile",
-    Icon: Building2,
-    enabled: true,
-    href: "/provider/profile",
-  },
-  {
-    key: "storefront",
-    label: "Storefront",
-    Icon: Store,
-    enabled: true,
-    href: "/provider/storefront",
-  },
-  {
-    key: "services",
-    label: "Services",
-    Icon: Tag,
-    enabled: true,
-    href: "/provider/services",
-  },
-  {
-    key: "locations",
-    label: "Locations",
-    Icon: MapPin,
-    enabled: true,
-    href: "/provider/locations",
-  },
-  {
-    key: "availability",
-    label: "Availability",
-    Icon: Clock,
-    enabled: true,
-    href: "/provider/availability",
-  },
-  {
-    key: "calendar-import",
-    label: "Calendar import",
-    Icon: CalendarClock,
-    enabled: true,
-    href: "/provider/calendar-import",
-  },
-  {
-    key: "staff",
-    label: "Staff",
-    Icon: Users,
-    enabled: true,
-    href: "/provider/staff",
-  },
-  {
-    key: "clinical",
-    label: "Clinical",
-    Icon: Stethoscope,
-    enabled: true,
-    href: "/provider/clinical",
+    group: null,
   },
   {
     key: "chats",
@@ -120,20 +56,55 @@ const NAV_ITEMS = [
     Icon: MessageSquare,
     enabled: true,
     href: "/provider/chats",
+    group: null,
   },
   {
-    key: "daycare",
-    label: "Daycare",
-    Icon: Home,
+    key: "bookings",
+    label: "Bookings",
+    Icon: CalendarCheck,
     enabled: true,
-    href: "/provider/daycare",
+    href: "/provider/bookings",
+    group: "Schedule",
   },
   {
-    key: "training",
-    label: "Training",
-    Icon: GraduationCap,
+    key: "calendar",
+    label: "Calendar",
+    Icon: CalendarDays,
     enabled: true,
-    href: "/provider/training",
+    href: "/provider/calendar",
+    group: "Schedule",
+  },
+  {
+    key: "availability",
+    label: "Availability",
+    Icon: Clock,
+    enabled: true,
+    href: "/provider/availability",
+    group: "Schedule",
+  },
+  {
+    key: "calendar-import",
+    label: "Calendar import",
+    Icon: CalendarClock,
+    enabled: true,
+    href: "/provider/calendar-import",
+    group: "Schedule",
+  },
+  {
+    key: "storefront",
+    label: "Storefront",
+    Icon: Store,
+    enabled: true,
+    href: "/provider/storefront",
+    group: "Store",
+  },
+  {
+    key: "services",
+    label: "Services",
+    Icon: Tag,
+    enabled: true,
+    href: "/provider/services",
+    group: "Store",
   },
   {
     key: "shop",
@@ -141,20 +112,39 @@ const NAV_ITEMS = [
     Icon: ShoppingBag,
     enabled: true,
     href: "/provider/shop",
+    group: "Store",
   },
   {
-    key: "pharmacy",
-    label: "Rx Fulfillment",
-    Icon: Pill,
+    key: "locations",
+    label: "Locations",
+    Icon: MapPin,
     enabled: true,
-    href: "/provider/pharmacy",
+    href: "/provider/locations",
+    group: "Store",
   },
   {
-    key: "insurance",
-    label: "Policies",
-    Icon: Shield,
+    key: "clinical",
+    label: "Clinical",
+    Icon: Stethoscope,
     enabled: true,
-    href: "/provider/insurance",
+    href: "/provider/clinical",
+    group: "Care",
+  },
+  {
+    key: "daycare",
+    label: "Daycare",
+    Icon: Home,
+    enabled: true,
+    href: "/provider/daycare",
+    group: "Care",
+  },
+  {
+    key: "training",
+    label: "Training",
+    Icon: GraduationCap,
+    enabled: true,
+    href: "/provider/training",
+    group: "Care",
   },
   {
     key: "adoption",
@@ -162,6 +152,39 @@ const NAV_ITEMS = [
     Icon: PawPrint,
     enabled: true,
     href: "/provider/adoption",
+    group: "Care",
+  },
+  {
+    key: "pharmacy",
+    label: "Rx Fulfillment",
+    Icon: Pill,
+    enabled: true,
+    href: "/provider/pharmacy",
+    group: "Care",
+  },
+  {
+    key: "insurance",
+    label: "Policies",
+    Icon: Shield,
+    enabled: true,
+    href: "/provider/insurance",
+    group: "Care",
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    Icon: Building2,
+    enabled: true,
+    href: "/provider/profile",
+    group: "Business",
+  },
+  {
+    key: "staff",
+    label: "Staff",
+    Icon: Users,
+    enabled: true,
+    href: "/provider/staff",
+    group: "Business",
   },
   {
     key: "sales",
@@ -169,6 +192,7 @@ const NAV_ITEMS = [
     Icon: DollarSign,
     enabled: true,
     href: "/provider/sales",
+    group: "Business",
   },
 ];
 
@@ -232,6 +256,49 @@ function ProviderSwitcher({ providers, activeProviderId, onSelect }) {
   );
 }
 
+// One nav row — an enabled item is a real Link to its route; a disabled stub
+// stays an inert div so it never dead-ends. Extracted so the grouped render
+// stays readable. The active-key highlight + "Soon" pill are unchanged.
+function NavItem({ item, active }) {
+  const { key, label, Icon, enabled, href } = item;
+  const isActive = enabled && key === active;
+  const className = `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold ${
+    isActive
+      ? "text-white"
+      : enabled
+        ? "text-[#3B241B] hover:bg-[#FFF7EF]"
+        : "cursor-not-allowed text-[#B8A99D]"
+  }`;
+  const style = isActive ? { backgroundColor: COLORS.coral } : undefined;
+  const inner = (
+    <>
+      <span className="flex items-center gap-3">
+        <Icon className="h-4 w-4" />
+        {label}
+      </span>
+      {!enabled && (
+        <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 text-[10px] font-semibold text-[#B8A99D]">
+          Soon
+        </span>
+      )}
+    </>
+  );
+  return enabled ? (
+    <Link
+      to={href}
+      aria-current={isActive ? "page" : undefined}
+      className={className}
+      style={style}
+    >
+      {inner}
+    </Link>
+  ) : (
+    <div aria-disabled className={className}>
+      {inner}
+    </div>
+  );
+}
+
 function Sidebar({ active, providers, activeProviderId, onSelect }) {
   return (
     <aside className="flex w-64 flex-shrink-0 flex-col border-r border-[#FFD9B3] bg-white">
@@ -254,44 +321,19 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map(({ key, label, Icon, enabled, href }) => {
-          const isActive = enabled && key === active;
-          const className = `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold ${
-            isActive
-              ? "text-white"
-              : enabled
-                ? "text-[#3B241B] hover:bg-[#FFF7EF]"
-                : "cursor-not-allowed text-[#B8A99D]"
-          }`;
-          const style = isActive ? { backgroundColor: COLORS.coral } : undefined;
-          const inner = (
-            <>
-              <span className="flex items-center gap-3">
-                <Icon className="h-4 w-4" />
-                {label}
-              </span>
-              {!enabled && (
-                <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 text-[10px] font-semibold text-[#B8A99D]">
-                  Soon
-                </span>
+        {NAV_ITEMS.map((item, i) => {
+          // Insert a small group header whenever the group changes (skipping the
+          // headerless top group). Items are already in grouped order, so a
+          // simple "differs from the previous item" check is enough.
+          const showHeader = item.group && item.group !== NAV_ITEMS[i - 1]?.group;
+          return (
+            <div key={item.key}>
+              {showHeader && (
+                <p className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
+                  {item.group}
+                </p>
               )}
-            </>
-          );
-          // Enabled items are real links to their route; disabled stubs stay
-          // inert divs so they never dead-end.
-          return enabled ? (
-            <Link
-              key={key}
-              to={href}
-              aria-current={isActive ? "page" : undefined}
-              className={className}
-              style={style}
-            >
-              {inner}
-            </Link>
-          ) : (
-            <div key={key} aria-disabled className={className}>
-              {inner}
+              <NavItem item={item} active={active} />
             </div>
           );
         })}

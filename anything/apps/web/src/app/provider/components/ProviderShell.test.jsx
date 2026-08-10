@@ -92,4 +92,66 @@ describe("ProviderShell foundation", () => {
     // render-prop received the resolved active provider id
     expect(screen.getByText("active:1")).toBeInTheDocument();
   });
+
+  it("renders all 19 nav items, still one flat set of links", async () => {
+    mockProviders([{ id: 1, name: "Happy Paws", provider_type: "vet" }]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Happy Paws");
+
+    // Every section is still present and reachable — nothing was hidden by the
+    // Phase 1 grouping (purely presentational).
+    const labels = [
+      "Dashboard",
+      "Chats",
+      "Bookings",
+      "Calendar",
+      "Availability",
+      "Calendar import",
+      "Storefront",
+      "Services",
+      "Shop",
+      "Locations",
+      "Clinical",
+      "Daycare",
+      "Training",
+      "Adoption",
+      "Rx Fulfillment",
+      "Policies",
+      "Profile",
+      "Staff",
+      "Sales",
+    ];
+    for (const label of labels) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+    expect(screen.getAllByRole("link")).toHaveLength(labels.length);
+  });
+
+  it("renders the group headers in order and marks the active item", async () => {
+    mockProviders([{ id: 1, name: "Happy Paws", provider_type: "vet" }]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="clinical">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Happy Paws");
+
+    // Group headers present (Dashboard + Chats sit in the headerless top group).
+    for (const header of ["Schedule", "Store", "Care", "Business"]) {
+      expect(screen.getByText(header)).toBeInTheDocument();
+    }
+
+    // The active key is highlighted via aria-current on its link.
+    expect(screen.getByRole("link", { name: "Clinical" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "Bookings" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
 });
