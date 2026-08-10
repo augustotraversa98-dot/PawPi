@@ -91,19 +91,30 @@ function zonedDateStr(instant, timeZone) {
  * @param {string} dateStr           'YYYY-MM-DD' (the provider-local calendar date)
  * @param {Array<{weekday:number,start_time:string,end_time:string,slot_minutes:number}>} windows
  * @param {string} timeZone          IANA zone the window times are local to (default BA)
+ * @param {{stepMinutes?:number}} [options]  When stepMinutes>0 it is used as BOTH the step and
+ *   the slot length (slot.end = start + stepMinutes), overriding each window's slot_minutes —
+ *   this is how a booking's SERVICE duration drives granularity. Omitted → per-window slot_minutes.
  * @returns {Array<{start:string,end:string}>} ISO slots (absolute UTC), sorted, for that weekday's windows
  */
-export function generateSlotsForDate(dateStr, windows, timeZone = DEFAULT_TIME_ZONE) {
+export function generateSlotsForDate(
+  dateStr,
+  windows,
+  timeZone = DEFAULT_TIME_ZONE,
+  { stepMinutes } = {},
+) {
   const date = new Date(`${dateStr}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return [];
   const wd = weekdayMon0(date);
+
+  // A positive stepMinutes overrides every window's slot_minutes (service-duration slots).
+  const override = Number(stepMinutes) > 0 ? Number(stepMinutes) : null;
 
   const slots = [];
   for (const w of windows) {
     if (w.weekday !== wd) continue;
     const startM = timeToMinutes(w.start_time);
     const endM = timeToMinutes(w.end_time);
-    const step = w.slot_minutes > 0 ? w.slot_minutes : 30;
+    const step = override ?? (w.slot_minutes > 0 ? w.slot_minutes : 30);
     for (let m = startM; m + step <= endM; m += step) {
       slots.push({
         start: composeIso(dateStr, m, timeZone),
@@ -141,15 +152,27 @@ export function subtractTaken(candidates, taken) {
  * BEFORE insert so a clash returns a clean 409 (the DB partial-unique index is the
  * last-line race guard).
  *
+ * @param {{stepMinutes?:number}} [options]  Passed through to generateSlotsForDate so the open
+ *   slots are generated at the SAME granularity as `requested` (the service duration). Omitting
+ *   it would regenerate at window slot_minutes and wrongly reject a slot longer than one window step.
  * @returns {boolean}
  */
-export function isSlotBookable(requested, windows, taken, timeZone = DEFAULT_TIME_ZONE) {
+export function isSlotBookable(
+  requested,
+  windows,
+  taken,
+  timeZone = DEFAULT_TIME_ZONE,
+  { stepMinutes } = {},
+) {
   if (!requested?.start || !requested?.end) return false;
   if (requested.start >= requested.end) return false;
   // Generate against the slot's PROVIDER-LOCAL date (windows are keyed by local weekday +
   // wall-clock time), not the UTC date — they can differ for an early/late slot.
   const dateStr = zonedDateStr(new Date(requested.start), timeZone);
-  const open = subtractTaken(generateSlotsForDate(dateStr, windows, timeZone), taken);
+  const open = subtractTaken(
+    generateSlotsForDate(dateStr, windows, timeZone, { stepMinutes }),
+    taken,
+  );
   // The requested slot must coincide with (or sit within) an open generated slot.
   return open.some(
     (o) => requested.start >= o.start && requested.end <= o.end,

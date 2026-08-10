@@ -66,6 +66,8 @@ async function GET(request, { params }) {
     const to = searchParams.get("to") ?? from;
     const staffParam = searchParams.get("staff_user_id");
     const capability = searchParams.get("capability");
+    const serviceParam = searchParams.get("service_id");
+    const durationParam = searchParams.get("duration");
     const staffUserId = staffParam != null ? parseInt(staffParam, 10) : null;
 
     if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
@@ -99,6 +101,30 @@ async function GET(request, { params }) {
               AND active = true
               AND (${capability}::text IS NULL OR capability = ${capability} OR capability IS NULL)
           `;
+
+    // SERVICE-DURATION SLOTS. When a service_id (preferred) or a raw `duration` is given, slots
+    // are generated at the SERVICE's own duration (COALESCE(duration_min, 30)) instead of each
+    // window's slot_minutes — a 30-min service shows 30-min slots, a 1-hour service 1-hour slots.
+    // Neither given → stepMinutes stays null and generation keeps the per-window slot_minutes
+    // behavior (backward-compatible before the mobile picker/enforcement pass it).
+    let stepMinutes = null;
+    if (serviceParam != null) {
+      const serviceId = parseInt(serviceParam, 10);
+      if (Number.isFinite(serviceId)) {
+        const svc = await sql`
+          SELECT duration_min FROM provider_services
+          WHERE id = ${serviceId} AND provider_id = ${providerId}
+        `;
+        if (svc.length > 0) {
+          stepMinutes = Number(svc[0].duration_min) > 0 ? Number(svc[0].duration_min) : 30;
+        }
+      }
+    }
+    if (stepMinutes == null && durationParam != null) {
+      const d = parseInt(durationParam, 10);
+      if (Number.isFinite(d) && d > 0) stepMinutes = d;
+    }
+    const slotOptions = stepMinutes != null ? { stepMinutes } : {};
 
     // Load the already-taken slots in the range (live, slot-based bookings). A booking
     // with a staff filter only conflicts for that staff member.
@@ -173,7 +199,7 @@ async function GET(request, { params }) {
     let guard = 0;
     while (cursor <= to && guard < MAX_RANGE_DAYS) {
       const open = subtractTaken(
-        generateSlotsForDate(cursor, windows, timeZone),
+        generateSlotsForDate(cursor, windows, timeZone, slotOptions),
         [...takenSlots, ...externalBusy, ...importedBusy],
       );
       days.push({ date: cursor, slots: open });

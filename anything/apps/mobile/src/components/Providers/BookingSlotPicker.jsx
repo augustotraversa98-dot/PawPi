@@ -34,6 +34,7 @@ function monthLabel(year, month) {
 export default function BookingSlotPicker({
   providerId,
   capability,
+  serviceId,
   selected,
   onSelect,
   t,
@@ -44,10 +45,12 @@ export default function BookingSlotPicker({
     month: now.getMonth(),
   });
   const { from, to } = monthRange(visible.year, visible.month);
+  // serviceId in the key so switching service refetches slots at that service's duration.
   const { data, isLoading } = useProviderAvailability(providerId, {
     from,
     to,
     capability,
+    serviceId,
   });
   const timeZone = data?.time_zone ?? null;
 

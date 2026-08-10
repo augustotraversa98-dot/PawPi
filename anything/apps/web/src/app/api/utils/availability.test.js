@@ -68,6 +68,26 @@ describe("generateSlotsForDate", () => {
     const slots = generateSlotsForDate("2026-06-15", w);
     expect(slots).toHaveLength(1); // 9–10 only; 10–11 would exceed 10:30
   });
+
+  it("stepMinutes overrides slot_minutes as BOTH step and length (service-duration slots)", () => {
+    // A 30-min window, but a 60-min service → hourly slots, end = start + 60.
+    const w = [{ weekday: 0, start_time: "09:00", end_time: "11:00", slot_minutes: 30 }];
+    const slots = generateSlotsForDate("2026-06-15", w, "UTC", { stepMinutes: 60 });
+    expect(slots).toEqual([
+      { start: "2026-06-15T09:00:00.000Z", end: "2026-06-15T10:00:00.000Z" },
+      { start: "2026-06-15T10:00:00.000Z", end: "2026-06-15T11:00:00.000Z" },
+    ]);
+  });
+
+  it("falls back to slot_minutes when stepMinutes is absent or non-positive", () => {
+    const w = [{ weekday: 0, start_time: "09:00", end_time: "10:00", slot_minutes: 30 }];
+    // no options → slot_minutes (30) → two half-hour slots
+    expect(generateSlotsForDate("2026-06-15", w, "UTC")).toHaveLength(2);
+    // non-positive stepMinutes → ignored, slot_minutes still used
+    expect(
+      generateSlotsForDate("2026-06-15", w, "UTC", { stepMinutes: 0 }),
+    ).toHaveLength(2);
+  });
 });
 
 describe("slotsOverlap / subtractTaken", () => {

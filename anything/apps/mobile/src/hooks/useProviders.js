@@ -204,14 +204,14 @@ export function useBookProvider() {
 // (the OSDE-style picker refetches per visible month).
 export function useProviderAvailability(
   providerId,
-  { from, to, capability, staffUserId } = {},
+  { from, to, capability, staffUserId, serviceId } = {},
 ) {
   return useQuery({
     queryKey: [
       "providers",
       "availability",
       providerId,
-      { from, to, capability, staffUserId },
+      { from, to, capability, staffUserId, serviceId },
     ],
     enabled: providerId != null && !!from && !!to,
     queryFn: async () => {
@@ -220,6 +220,8 @@ export function useProviderAvailability(
       params.set("to", to);
       if (capability) params.set("capability", capability);
       if (staffUserId != null) params.set("staff_user_id", String(staffUserId));
+      // Slots render at the chosen SERVICE's duration when one is selected (COALESCE 30 server-side).
+      if (serviceId != null) params.set("service_id", String(serviceId));
       const response = await fetch(
         `/api/providers/${providerId}/availability?${params.toString()}`,
       );

@@ -143,7 +143,7 @@ async function POST(request, { params }) {
     let service = null;
     if (service_id !== undefined && service_id !== null) {
       const serviceRows = await sql`
-        SELECT id, name, active FROM provider_services
+        SELECT id, name, active, duration_min FROM provider_services
         WHERE id = ${service_id} AND provider_id = ${providerId}
       `;
       if (serviceRows.length === 0 || serviceRows[0].active !== true) {
@@ -192,6 +192,17 @@ async function POST(request, { params }) {
     // isSlotBookable). Providers/capabilities with NO windows (daycare/sitter/walker, or any
     // unconfigured provider) skip this entirely and behave exactly as before.
     const timeZone = provider.time_zone || DEFAULT_TIME_ZONE;
+
+    // Slot length = the BOOKED SERVICE's own duration (COALESCE(duration_min, 30)), replacing
+    // the window's slot_minutes as the granularity. No service chosen ("General") → 30.
+    const stepMinutes =
+      Number(service?.duration_min) > 0 ? Number(service.duration_min) : 30;
+
+    // The authoritative slot bounds stored on the booking. Default to the client values (the
+    // non-slot / free-form path); overridden below to the validated service-duration slot when
+    // enforcement runs, so end_at is server-derived (start + service duration), never trusted.
+    let resolvedStartAt = start_at ?? null;
+    let resolvedEndAt = end_at ?? null;
 
     // Windows for the resolved capability (capability-specific OR provider-wide NULL), and
     // for the named staff member (theirs OR provider-wide NULL) when a staff booking. The
@@ -279,24 +290,29 @@ async function POST(request, { params }) {
       }
 
       // Alignment is EXACT slot-start (not isSlotBookable's containment, which would admit a
-      // sub-slot time like 15:03 — the very bug this fixes). If the requested instant is not
-      // a generated slot start → 422 (misaligned / outside working hours). If it aligns but
-      // that exact slot is taken (isSlotBookable subtracts the taken set) → 409.
-      const slot = generateSlotsForDate(appointment_date, windows, timeZone).find(
-        (o) => o.start === requestedStart,
-      );
+      // sub-slot time like 15:03 — the very bug this fixes). Slots are generated at the SERVICE's
+      // duration (stepMinutes). If the requested instant is not a generated slot start → 422
+      // (misaligned / outside working hours). If it aligns but that exact slot is taken
+      // (isSlotBookable subtracts the taken set) → 409.
+      const slot = generateSlotsForDate(appointment_date, windows, timeZone, {
+        stepMinutes,
+      }).find((o) => o.start === requestedStart);
       if (!slot) {
         return Response.json(
           { error: "selected_slot_unavailable" },
           { status: 422 },
         );
       }
-      if (!isSlotBookable(slot, windows, taken, timeZone)) {
+      if (!isSlotBookable(slot, windows, taken, timeZone, { stepMinutes })) {
         return Response.json(
           { error: "selected_slot_unavailable" },
           { status: 409 },
         );
       }
+      // The generated slot's bounds are authoritative: start = the aligned slot start, end =
+      // start + service duration. The client's end_at is ignored for what we store.
+      resolvedStartAt = slot.start;
+      resolvedEndAt = slot.end;
     }
 
     // DOUBLE-BOOK PREVENTION (2.4). When a concrete slot (start_at/end_at) is given for
@@ -427,8 +443,8 @@ async function POST(request, { params }) {
         ${service_id ?? null},
         ${staff_user_id ?? null},
         ${resolvedCapability},
-        ${start_at ?? null},
-        ${end_at ?? null},
+        ${resolvedStartAt},
+        ${resolvedEndAt},
         ${recurrence_rule ?? null},
         ${order_id ?? null},
         ${meet_and_greet === true},
