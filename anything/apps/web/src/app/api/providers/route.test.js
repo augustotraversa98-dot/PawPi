@@ -268,9 +268,10 @@ describe('GET /api/providers — list the caller’s providers', () => {
     expect(sql).not.toHaveBeenCalled();
   });
 
-  it('returns only providers the caller is ACTIVE staff of', async () => {
+  it('returns only providers the caller is ACTIVE staff of, each with its capabilities[]', async () => {
     auth.mockResolvedValue(SESSION);
-    const MINE = [{ id: 100, name: 'Happy Paws' }];
+    // The list read now aggregates a capabilities text[] per row (Phase 2 nav filtering).
+    const MINE = [{ id: 100, name: 'Happy Paws', capabilities: ['shop', 'vet'] }];
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
       .mockResolvedValueOnce(MINE); // join provider_staff (active, this user)
@@ -280,10 +281,14 @@ describe('GET /api/providers — list the caller’s providers', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ providers: MINE });
 
-    // The list is scoped by the caller's membership: active staff of theirs only.
+    // The list is scoped by the caller's membership: active staff of theirs only,
+    // and each row carries an aggregated capabilities array.
     const text = queryTextOf(1);
     expect(text).toContain('JOIN provider_staff');
     expect(text).toContain("ps.status = 'active'");
+    expect(text).toContain('provider_capabilities');
+    expect(text).toContain('array_agg');
+    expect(text).toContain('AS capabilities');
     expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([7]));
   });
 });

@@ -55,6 +55,17 @@ export const providerKey = (providerId) => [
   String(providerId ?? ""),
 ];
 
+// A provider's capabilities (ticket 2.1). One cache entry per provider; the Profile
+// editor reads/writes this. Writes invalidate this key AND ["providers"] so the shell
+// nav (which filters sections by the active provider's capabilities) updates at once.
+export const capabilitiesKey = (providerId) => [
+  "provider-capabilities",
+  String(providerId ?? ""),
+];
+
+export const capabilitiesUrl = (providerId) =>
+  `/api/providers/${providerId}/capabilities`;
+
 // Services + locations (c2b). One cache entry per provider; the create/update/
 // delete mutations invalidate the matching key so the management screens refetch.
 export const servicesKey = (providerId) => [
@@ -534,6 +545,59 @@ export function useSetProviderStatus(providerId) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: providersKey() });
       queryClient.invalidateQueries({ queryKey: providerKey(providerId) });
+    },
+  });
+}
+
+// --- capabilities (ticket 2.1) ----------------------------------------------
+
+// This provider's capabilities (GET .../capabilities → string[]). Any active staff may
+// read. Disabled until a providerId is known.
+export function useProviderCapabilities(providerId) {
+  return useQuery({
+    queryKey: capabilitiesKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(capabilitiesUrl(providerId));
+      return data.capabilities ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Add (POST { capability }) / remove (DELETE ?capability=) a capability — owner|admin.
+// Both invalidate the capabilities cache AND ["providers"] so the shell nav re-filters
+// its sections immediately. A 403 (non-admin) / 400 (bad value) surfaces verbatim.
+export function useAddCapability(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (capability) => {
+      const data = await getJson(capabilitiesUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capability }),
+      });
+      return data.capabilities ?? [];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: capabilitiesKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: providersKey() });
+    },
+  });
+}
+
+export function useRemoveCapability(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (capability) => {
+      const data = await getJson(
+        `${capabilitiesUrl(providerId)}?capability=${encodeURIComponent(capability)}`,
+        { method: "DELETE" },
+      );
+      return data.capabilities ?? [];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: capabilitiesKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: providersKey() });
     },
   });
 }

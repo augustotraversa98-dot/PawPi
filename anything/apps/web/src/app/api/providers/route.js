@@ -177,8 +177,21 @@ async function GET(request) {
       return Response.json({ providers: [] });
     }
 
+    // Each row carries its capabilities as a text[] (ticket 2.1 → Phase 2 nav
+    // filtering): a correlated aggregate over provider_capabilities, COALESCEd to
+    // an empty array so a capability-less provider still returns [] (never null).
+    // The subquery reads under the caller's identity — provider_capabilities' SELECT
+    // policy (0027) allows any active staff of the provider, which this caller is.
     const providers = await sql`
-      SELECT p.*
+      SELECT p.*,
+        COALESCE(
+          (
+            SELECT array_agg(pc.capability ORDER BY pc.capability)
+            FROM provider_capabilities pc
+            WHERE pc.provider_id = p.id
+          ),
+          ARRAY[]::text[]
+        ) AS capabilities
       FROM providers p
       JOIN provider_staff ps ON ps.provider_id = p.id
       WHERE ps.user_profile_id = ${userId}

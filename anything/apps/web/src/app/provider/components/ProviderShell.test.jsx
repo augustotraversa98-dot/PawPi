@@ -1,6 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+
+// Every capability — a provider holding all of these sees every nav section.
+const ALL_CAPS = [
+  "vet",
+  "telehealth",
+  "groomer",
+  "walker",
+  "sitter",
+  "daycare",
+  "trainer",
+  "shop",
+  "pharmacy",
+  "adoption",
+  "transport",
+  "insurance",
+];
 
 // Authenticated user for every case here (the auth-redirect path is its own
 // concern). GET /api/providers is mocked at the fetch boundary.
@@ -94,7 +110,10 @@ describe("ProviderShell foundation", () => {
   });
 
   it("renders all 19 nav items, still one flat set of links", async () => {
-    mockProviders([{ id: 1, name: "Happy Paws", provider_type: "vet" }]);
+    // A provider holding every capability sees every section (nothing filtered out).
+    mockProviders([
+      { id: 1, name: "Happy Paws", provider_type: "vet", capabilities: ALL_CAPS },
+    ]);
     render(
       <MemoryRouter>
         <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
@@ -132,7 +151,10 @@ describe("ProviderShell foundation", () => {
   });
 
   it("renders the group headers in order and marks the active item", async () => {
-    mockProviders([{ id: 1, name: "Happy Paws", provider_type: "vet" }]);
+    // A vet is bookable and holds the vet capability → all four group headers appear.
+    mockProviders([
+      { id: 1, name: "Happy Paws", provider_type: "vet", capabilities: ["vet"] },
+    ]);
     render(
       <MemoryRouter>
         <ProviderShell active="clinical">{() => <div />}</ProviderShell>
@@ -153,5 +175,106 @@ describe("ProviderShell foundation", () => {
     expect(screen.getByRole("link", { name: "Bookings" })).not.toHaveAttribute(
       "aria-current",
     );
+  });
+
+  it("a shop-only provider sees the always-on set + Shop, and NO Care/Schedule modules", async () => {
+    mockProviders([
+      { id: 1, name: "Corner Pet Shop", provider_type: "shop", capabilities: ["shop"] },
+    ]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Corner Pet Shop");
+
+    // Always-on sections + Shop (its 'shop' capability) are shown.
+    for (const label of [
+      "Dashboard",
+      "Chats",
+      "Storefront",
+      "Shop",
+      "Profile",
+      "Staff",
+      "Sales",
+    ]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+
+    // No bookable (Schedule + Services + Locations) and no other Care module.
+    for (const label of [
+      "Bookings",
+      "Calendar",
+      "Availability",
+      "Calendar import",
+      "Services",
+      "Locations",
+      "Clinical",
+      "Daycare",
+      "Training",
+      "Adoption",
+      "Rx Fulfillment",
+      "Policies",
+    ]) {
+      expect(screen.queryByRole("link", { name: label })).not.toBeInTheDocument();
+    }
+
+    // A group with no visible items drops its header; Store/Business remain.
+    expect(screen.queryByText("Schedule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Care")).not.toBeInTheDocument();
+    expect(screen.getByText("Store")).toBeInTheDocument();
+    expect(screen.getByText("Business")).toBeInTheDocument();
+  });
+
+  it("a vet provider sees the Schedule group + Clinical (bookable + vet)", async () => {
+    mockProviders([
+      { id: 1, name: "Vet Co", provider_type: "vet", capabilities: ["vet"] },
+    ]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Vet Co");
+
+    for (const label of [
+      "Bookings",
+      "Calendar",
+      "Availability",
+      "Calendar import",
+      "Services",
+      "Locations",
+      "Clinical",
+    ]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+    // Shop needs the 'shop' capability, which a vet-only provider lacks.
+    expect(screen.queryByRole("link", { name: "Shop" })).not.toBeInTheDocument();
+  });
+
+  it("'Show all sections' reveals every section regardless of capability", async () => {
+    mockProviders([
+      { id: 1, name: "Corner Pet Shop", provider_type: "shop", capabilities: ["shop"] },
+    ]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Corner Pet Shop");
+
+    // Hidden before the toggle.
+    expect(screen.queryByRole("link", { name: "Clinical" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show all sections" }));
+
+    // Now every one of the 19 items is reachable.
+    expect(screen.getAllByRole("link")).toHaveLength(19);
+    expect(screen.getByRole("link", { name: "Clinical" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bookings" })).toBeInTheDocument();
+    // The toggle flips its label.
+    expect(
+      screen.getByRole("button", { name: "Show fewer sections" }),
+    ).toBeInTheDocument();
   });
 });

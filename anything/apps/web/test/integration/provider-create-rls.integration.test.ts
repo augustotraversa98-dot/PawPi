@@ -141,6 +141,10 @@ describe('POST /api/providers create under pawpi_app + FORCE RLS', () => {
     expect(listRes.status).toBe(200);
     const { providers } = await listRes.json();
     expect(providers.map((p: any) => p.id)).toEqual([provider.id]);
+    // Phase 2 nav filtering: the list read aggregates capabilities[] per row — proving
+    // the correlated subquery reads provider_capabilities under FORCE RLS as the caller
+    // (0027 SELECT allows any active staff of the provider).
+    expect(providers[0].capabilities).toEqual(['vet']);
   });
 
   it('multi-capability create writes every validated capability row', async () => {
@@ -155,6 +159,12 @@ describe('POST /api/providers create under pawpi_app + FORCE RLS', () => {
 
     const caps = await raw`select capability from provider_capabilities where provider_id = ${provider.id}`;
     expect(caps.map((c: any) => c.capability).sort()).toEqual(['shop', 'vet']);
+
+    // The list read returns every capability, aggregated + ordered (array_agg ORDER BY).
+    const listRes = await GET(providersRequest());
+    const { providers } = await listRes.json();
+    const listed = providers.find((p: any) => p.id === provider.id);
+    expect(listed.capabilities).toEqual(['shop', 'vet']);
   });
 
   it('ATOMIC: a forced failure on the capabilities insert rolls back the provider + owner staff', async () => {

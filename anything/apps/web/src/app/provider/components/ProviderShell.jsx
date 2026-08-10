@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router";
 import {
@@ -30,6 +30,7 @@ import { getProviderQueryClient } from "../lib/queryClient";
 import { COLORS } from "../lib/colors";
 import { useProviders, useMyProviderInvites } from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
+import { BOOKABLE_CAPS } from "../lib/storefrontTabs";
 import CreateProviderForm from "./CreateProviderForm";
 
 // Dashboard sections. Bookings (c1), Profile (c2a), Services + Locations (c2b),
@@ -196,6 +197,40 @@ const NAV_ITEMS = [
   },
 ];
 
+// Phase 2 — which capability (if any) unlocks each nav section. Any key NOT listed
+// here is ALWAYS shown (Dashboard, Profile, Storefront, Chats, Sales, Staff). The
+// value "bookable" means "any BOOKABLE_CAPS capability"; any other value is a single
+// required capability. This only controls what the sidebar shows BY DEFAULT — the
+// per-module server capability guards remain the real enforcement, and every route
+// still renders (a hidden module's page shows its own "doesn't offer this" CTA).
+const NAV_REQUIRES = {
+  bookings: "bookable",
+  calendar: "bookable",
+  availability: "bookable",
+  "calendar-import": "bookable",
+  services: "bookable",
+  locations: "bookable",
+  shop: "shop",
+  clinical: "vet",
+  daycare: "daycare",
+  training: "trainer",
+  adoption: "adoption",
+  pharmacy: "pharmacy",
+  insurance: "insurance",
+};
+
+// Is a nav item visible for a provider holding `capabilities`? `showAll` overrides
+// everything (the "Show all sections" escape hatch), so nothing is ever unreachable.
+function navItemVisible(item, capabilities, showAll) {
+  if (showAll) return true;
+  const req = NAV_REQUIRES[item.key];
+  if (!req) return true; // always-on section
+  if (req === "bookable") {
+    return capabilities.some((c) => BOOKABLE_CAPS.includes(c));
+  }
+  return capabilities.includes(req); // a single required capability
+}
+
 function FullScreen({ children }) {
   return (
     <div
@@ -299,7 +334,21 @@ function NavItem({ item, active }) {
   );
 }
 
-function Sidebar({ active, providers, activeProviderId, onSelect }) {
+function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }) {
+  // "Show all sections" reveals every item/group regardless of capability, so a
+  // hidden section is always reachable (client state; resets per shell mount).
+  const [showAll, setShowAll] = useState(false);
+
+  // Filter first, then render — group headers key off the FILTERED list, so a group
+  // with no visible items drops its header automatically. The currently-active
+  // section is never hidden (e.g. a deep link into a not-yet-enabled module still
+  // highlights its nav row instead of vanishing).
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      navItemVisible(item, capabilities, showAll) || item.key === active,
+  );
+  const hiddenCount = NAV_ITEMS.length - items.length;
+
   return (
     <aside className="flex w-64 flex-shrink-0 flex-col border-r border-[#FFD9B3] bg-white">
       <div className="flex items-center gap-2 px-5 py-5">
@@ -321,11 +370,11 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map((item, i) => {
+        {items.map((item, i) => {
           // Insert a small group header whenever the group changes (skipping the
           // headerless top group). Items are already in grouped order, so a
           // simple "differs from the previous item" check is enough.
-          const showHeader = item.group && item.group !== NAV_ITEMS[i - 1]?.group;
+          const showHeader = item.group && item.group !== items[i - 1]?.group;
           return (
             <div key={item.key}>
               {showHeader && (
@@ -338,6 +387,22 @@ function Sidebar({ active, providers, activeProviderId, onSelect }) {
           );
         })}
       </nav>
+
+      {/* Escape hatch: reveal every section regardless of capability. Only offered
+          when something is actually hidden (or already revealed), so a full-capability
+          provider never sees a no-op toggle. */}
+      {(showAll || hiddenCount > 0) && (
+        <div className="border-t border-[#FFF1E2] px-3 py-3">
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            aria-pressed={showAll}
+            className="w-full rounded-xl px-3 py-2 text-xs font-semibold text-[#7A6254] hover:bg-[#FFF7EF]"
+          >
+            {showAll ? "Show fewer sections" : "Show all sections"}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
@@ -443,6 +508,10 @@ function ProviderShellInner({ active, children }) {
   const content =
     typeof children === "function" ? children(activeProviderId) : children;
 
+  // The active provider's capabilities drive which nav sections show by default.
+  const activeProvider = providers.find((p) => p.id === activeProviderId);
+  const capabilities = activeProvider?.capabilities ?? [];
+
   return (
     <div
       className="flex min-h-screen w-full"
@@ -453,6 +522,7 @@ function ProviderShellInner({ active, children }) {
         providers={providers}
         activeProviderId={activeProviderId}
         onSelect={setSelectedProviderId}
+        capabilities={capabilities}
       />
       <main className="flex-1 overflow-x-auto">{content}</main>
     </div>
