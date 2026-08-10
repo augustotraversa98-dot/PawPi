@@ -59,7 +59,7 @@ describe("StorefrontPreview", () => {
     // Header
     expect(screen.getByText("Pet Bodega")).toBeTruthy();
     // Items tab is the default (shop-first archetype); no Services tab.
-    expect(screen.getByRole("button", { name: "Items" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Services/Products" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Services" })).toBeNull();
     // Featured + discount badges on the featured/discounted product.
     expect(screen.getByText("Featured")).toBeTruthy();

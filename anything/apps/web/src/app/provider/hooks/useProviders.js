@@ -735,6 +735,25 @@ export function useCreateProviderPost(providerId) {
   });
 }
 
+// Edit a post (any active staff). mutateAsync({ postId, body?, image_urls? }) — replaces
+// body/image_urls; needs text or at least one image; 400/404 surface verbatim.
+export function useUpdateProviderPost(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, ...body }) => {
+      const data = await getJson(postUrl(providerId, postId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.post;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: postsKey(providerId) });
+    },
+  });
+}
+
 // Soft-delete a post (any active staff).
 export function useDeleteProviderPost(providerId) {
   const queryClient = useQueryClient();

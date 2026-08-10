@@ -357,7 +357,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       aria-modal="true"
       aria-label={isEdit ? "Edit service" : "Add service"}
     >
-      <div className="w-full max-w-lg rounded-3xl bg-white p-7 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
             {isEdit ? "Edit service" : "Add service"}

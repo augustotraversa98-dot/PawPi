@@ -33,10 +33,15 @@ async function GET(request, { params }) {
 
     await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
+    // Manual merchandising order (0077): featured first, then the drag-set sort_order,
+    // then recency. Mirrors the shop-products GET and the public storefront read so the
+    // saved reorder actually drives what this endpoint returns. sort_order is NOT NULL
+    // (default 0), so no NULLS handling is needed; created_at ASC keeps the existing
+    // default order for never-arranged services (matches the services public read).
     const services = await sql`
       SELECT * FROM provider_services
       WHERE provider_id = ${providerId}
-      ORDER BY created_at ASC
+      ORDER BY is_featured DESC, sort_order ASC, created_at ASC
     `;
 
     return Response.json({ services });
