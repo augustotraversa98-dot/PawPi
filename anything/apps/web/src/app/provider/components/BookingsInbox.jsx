@@ -17,6 +17,7 @@ import {
   Stethoscope,
   Video,
   PhoneOff,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,8 +25,11 @@ import {
   useBookingAction,
   useProviderStaff,
   useEndTelehealthConsult,
+  useProvider,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import { formatBookingWhen } from "../lib/bookingTime";
+import { bookingActions } from "../lib/bookingActions";
 
 // Display name for a staff member, falling back to username then a raw id.
 function staffName(member, fallbackId) {
@@ -38,13 +42,22 @@ const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "requested", label: "Requested" },
   { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
   { value: "declined", label: "Declined" },
   { value: "cancelled", label: "Cancelled" },
+];
+
+// Client-side sort of the (unpaginated) inbox. Default matches the server's
+// appointment_date DESC ordering; "created" reveals newest-booked first.
+const SORT_OPTIONS = [
+  { value: "appointment", label: "Appointment date" },
+  { value: "created", label: "Date created" },
 ];
 
 const BADGE_STYLES = {
   requested: { bg: "#FFF1E2", fg: "#B75D32" },
   confirmed: { bg: "#E5F4EC", fg: "#1F7A4D" },
+  completed: { bg: "#EAF0F6", fg: "#33587A" },
   declined: { bg: "#FBE6E4", fg: "#B23B30" },
   cancelled: { bg: "#EFEAE6", fg: "#7A6254" },
 };
@@ -61,11 +74,32 @@ function StatusBadge({ status }) {
   );
 }
 
-function formatWhen(date, time) {
-  if (!date) return "—";
-  // time may be HH:MM or HH:MM:SS; keep HH:MM for display.
-  const t = time ? String(time).slice(0, 5) : "";
-  return t ? `${date} · ${t}` : date;
+// Sort keys — both descending (newest first). Slicing keeps the compare stable
+// whether appointment_date arrives as "2026-08-15" or a full ISO timestamp.
+function apptSortKey(b) {
+  return `${String(b.appointment_date ?? "").slice(0, 10)}T${String(
+    b.appointment_time ?? "",
+  ).slice(0, 5)}`;
+}
+function createdSortKey(b) {
+  return String(b.created_at ?? "");
+}
+
+// Free-text haystack for the search box: booking context + the booking number
+// (both "#3" and "3" so either query form matches).
+function searchHaystack(b) {
+  return [
+    b.pet_name,
+    b.owner_name,
+    b.service_name,
+    b.notes,
+    b.capability,
+    `#${b.id}`,
+    String(b.id),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 const columnHelper = createColumnHelper();
@@ -73,6 +107,8 @@ const columnHelper = createColumnHelper();
 export default function BookingsInbox({ providerId }) {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("appointment");
   const bookingStatus = statusFilter === "all" ? undefined : statusFilter;
 
   const {
@@ -81,6 +117,22 @@ export default function BookingsInbox({ providerId }) {
     isError,
     error,
   } = useProviderBookings(providerId, bookingStatus);
+
+  // The provider's IANA zone (providers.time_zone) so a booking's `start_at`
+  // renders in the provider's own wall-clock — same source ProviderAvailability uses.
+  const { data: providerData } = useProvider(providerId);
+  const timeZone = providerData?.provider?.time_zone;
+
+  // Search + sort are CLIENT-side: the inbox loads unpaginated, so no API change
+  // is needed. Status filtering stays server-side (a query param) as before.
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? (bookings ?? []).filter((b) => searchHaystack(b).includes(q))
+      : bookings ?? [];
+    const keyOf = sortBy === "created" ? createdSortKey : apptSortKey;
+    return [...filtered].sort((a, b) => keyOf(b).localeCompare(keyOf(a)));
+  }, [bookings, search, sortBy]);
 
   const { mutate, isPending, variables } = useBookingAction(providerId);
   const { mutate: endConsult, isPending: isEnding, variables: endingVars } =
@@ -211,11 +263,24 @@ export default function BookingsInbox({ providerId }) {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor((row) => formatWhen(row.appointment_date, row.appointment_time), {
+      // The booking number — reuses vet_appointments.id, matching the existing
+      // "Booking #<id>" convention (chats, pet record). Visible + searchable.
+      columnHelper.accessor((row) => row.id, {
+        id: "ref",
+        header: "Booking #",
+        cell: (info) => (
+          <span className="whitespace-nowrap font-semibold text-[#7A6254]">
+            {`#${info.getValue()}`}
+          </span>
+        ),
+      }),
+      columnHelper.accessor((row) => formatBookingWhen(row, timeZone), {
         id: "when",
         header: "Date & time",
         cell: (info) => (
-          <span className="font-medium text-[#3B241B]">{info.getValue()}</span>
+          <span className="whitespace-nowrap font-medium text-[#3B241B]">
+            {info.getValue()}
+          </span>
         ),
       }),
       columnHelper.accessor((row) => row.pet_name || "—", {
@@ -271,25 +336,16 @@ export default function BookingsInbox({ providerId }) {
         header: "Actions",
         cell: ({ row }) => {
           const b = row.original;
-          const status = b.booking_status;
-          const canConfirm = status === "requested";
-          const canDecline = status === "requested";
-          const canCancel = status === "requested" || status === "confirmed";
-          const canAssign = status === "requested" || status === "confirmed";
-          const canOpenRecord = b.pet_id != null;
-          // Telehealth consults can be joined while confirmed/in-progress (ticket 2.18).
-          const canJoinConsult =
-            b.capability === "telehealth" &&
-            (status === "confirmed" || status === "requested");
-          // End consult: only once a session actually exists (this vet has joined at least
-          // once — telehealth_session_id comes from the bookings SELECT's LATERAL join) and
-          // it isn't already ended/cancelled. Persists across page reloads since it's read
-          // from the DB, not local join-time state.
-          const canEndConsult =
-            b.capability === "telehealth" &&
-            b.telehealth_session_id != null &&
-            (b.telehealth_session_status === "scheduled" ||
-              b.telehealth_session_status === "in_progress");
+          // Status-correct action set (shared with the calendar popover in PR-B).
+          const {
+            canConfirm,
+            canDecline,
+            canCancel,
+            canAssign,
+            canOpenRecord,
+            canJoinConsult,
+            canEndConsult,
+          } = bookingActions(b);
           const busy = isPending && variables?.appointmentId === b.id;
           const ending =
             isEnding && endingVars?.sessionId === b.telehealth_session_id;
@@ -371,13 +427,13 @@ export default function BookingsInbox({ providerId }) {
       }),
     ],
     // handlers are stable enough for this screen; rebuild on pending change so
-    // the busy state reflects in the cells, and on staff load so the assigned
-    // column resolves names.
-    [isPending, variables, isEnding, endingVars, staffById],
+    // the busy state reflects in the cells, on staff load so the assigned column
+    // resolves names, and on timeZone load so the when column re-renders zoned.
+    [isPending, variables, isEnding, endingVars, staffById, timeZone],
   );
 
   const table = useReactTable({
-    data: bookings ?? [],
+    data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -400,7 +456,7 @@ export default function BookingsInbox({ providerId }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             to="/provider/calendar"
             className="inline-flex items-center gap-1.5 rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#7A6254]"
@@ -408,6 +464,33 @@ export default function BookingsInbox({ providerId }) {
             <CalendarDays className="h-4 w-4" />
             Calendar view
           </Link>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B8A99D]" />
+            <input
+              type="search"
+              aria-label="Search bookings"
+              placeholder="Search pet, owner, service, #id"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-56 rounded-xl border-2 border-[#FFD9B3] bg-white py-2 pl-9 pr-3 text-sm font-medium text-[#3B241B] outline-none focus:border-[#FF6F61]"
+            />
+          </div>
+          <label htmlFor="booking-sort" className="text-sm font-semibold text-[#7A6254]">
+            Sort
+          </label>
+          <select
+            id="booking-sort"
+            aria-label="Sort bookings"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61]"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
           <label
             htmlFor="booking-status-filter"
             className="text-sm font-semibold text-[#7A6254]"
@@ -445,13 +528,15 @@ export default function BookingsInbox({ providerId }) {
               {error?.message || "Please try again."}
             </p>
           </div>
-        ) : (bookings ?? []).length === 0 ? (
+        ) : rows.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-base font-semibold text-[#3B241B]">
-              No bookings yet
+              {search.trim() ? "No matching bookings" : "No bookings yet"}
             </p>
             <p className="mt-1 text-sm text-[#7A6254]">
-              When a pet owner books with you, it will appear here.
+              {search.trim()
+                ? "Try a different pet, owner, service, or booking number."
+                : "When a pet owner books with you, it will appear here."}
             </p>
           </div>
         ) : (

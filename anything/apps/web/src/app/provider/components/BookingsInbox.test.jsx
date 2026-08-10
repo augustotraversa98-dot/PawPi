@@ -17,6 +17,7 @@ vi.mock("../hooks/useProviders", () => ({
   useBookingAction: vi.fn(),
   useProviderStaff: vi.fn(),
   useEndTelehealthConsult: vi.fn(),
+  useProvider: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -27,6 +28,7 @@ import {
   useBookingAction,
   useProviderStaff,
   useEndTelehealthConsult,
+  useProvider,
 } from "../hooks/useProviders";
 import BookingsInbox from "./BookingsInbox";
 
@@ -128,6 +130,9 @@ beforeEach(() => {
     isError: false,
     error: null,
   });
+  useProvider.mockReturnValue({
+    data: { provider: { time_zone: "America/Argentina/Buenos_Aires" } },
+  });
   setBookings([REQUESTED, CONFIRMED]);
 });
 
@@ -137,7 +142,8 @@ describe("BookingsInbox", () => {
     expect(screen.getByText("Rex")).toBeInTheDocument();
     expect(screen.getByText("Sam Owner")).toBeInTheDocument();
     expect(screen.getByText("Checkup")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-01 · 09:00")).toBeInTheDocument();
+    // Wall-clock render — a clean "d MMM yyyy · HH:MM", no ISO zeros / trailing Z.
+    expect(screen.getByText("1 Jul 2026 · 09:00")).toBeInTheDocument();
     // null service_name renders the em-dash fallback.
     expect(screen.getByText("—")).toBeInTheDocument();
   });
@@ -178,13 +184,13 @@ describe("BookingsInbox", () => {
     );
   });
 
-  it("calls the cancel action (after confirm dialog)", () => {
+  it("calls the cancel action (after confirm dialog) for a confirmed booking", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<BookingsInbox providerId={3} />);
-    // Cancel is available on both rows; click the first.
-    fireEvent.click(screen.getAllByText("Cancel")[0]);
+    // Cancel is a confirmed-only action now (the confirmed row, id 2).
+    fireEvent.click(screen.getByText("Cancel"));
     expect(mutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "cancel" }),
+      expect.objectContaining({ appointmentId: 2, action: "cancel" }),
       expect.any(Object),
     );
   });
@@ -192,7 +198,7 @@ describe("BookingsInbox", () => {
   it("does NOT call the action when the cancel dialog is dismissed", () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<BookingsInbox providerId={3} />);
-    fireEvent.click(screen.getAllByText("Cancel")[0]);
+    fireEvent.click(screen.getByText("Cancel"));
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
@@ -277,13 +283,119 @@ describe("BookingsInbox", () => {
   });
 
   it("Open record navigates to the booking's pet clinical record", () => {
+    // Single booking so row order (now client-sorted) can't pick the wrong one.
+    setBookings([REQUESTED]);
     render(<BookingsInbox providerId={3} />);
-    // Every booking with a pet exposes Open record; click the first (Rex, pet 55).
-    fireEvent.click(screen.getAllByText("Open record")[0]);
+    // Rex (pet 55) exposes Open record.
+    fireEvent.click(screen.getByText("Open record"));
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const dest = navigateMock.mock.calls[0][0];
     expect(dest).toContain("/provider/pets/55/record");
     expect(dest).toContain("petName=Rex");
     expect(dest).toContain("bookingId=1");
+  });
+
+  it("renders the date/time as a clean 'd MMM yyyy · HH:MM' (no ISO zeros / trailing Z)", () => {
+    setBookings([
+      { ...REQUESTED, appointment_date: "2026-08-15", appointment_time: "14:30" },
+    ]);
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.getByText("15 Aug 2026 · 14:30")).toBeInTheDocument();
+    // No raw ISO leaked into the cell.
+    expect(screen.queryByText(/T\d{2}:\d{2}/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Z\b/)).not.toBeInTheDocument();
+  });
+
+  it("gates actions by status: requested → Confirm + Decline (no Cancel); confirmed → Cancel", () => {
+    render(<BookingsInbox providerId={3} />); // [REQUESTED, CONFIRMED]
+    // requested row offers Confirm + Decline...
+    expect(screen.getByText("Confirm")).toBeInTheDocument();
+    expect(screen.getByText("Decline")).toBeInTheDocument();
+    // ...and Cancel appears ONCE — on the confirmed row only, not the requested one.
+    expect(screen.getAllByText("Cancel")).toHaveLength(1);
+  });
+
+  it("declined / cancelled bookings expose no state-changing or End consult actions", () => {
+    setBookings([
+      { ...CONFIRMED, id: 4, booking_status: "declined" },
+      // A cancelled telehealth booking whose session is somehow still 'in_progress'
+      // must NOT offer End consult — the gate now also requires booking_status confirmed.
+      { ...TELEHEALTH_LIVE, id: 5, booking_status: "cancelled" },
+    ]);
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.queryByText("Confirm")).not.toBeInTheDocument();
+    expect(screen.queryByText("Decline")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancel")).not.toBeInTheDocument();
+    expect(screen.queryByText("Assign")).not.toBeInTheDocument();
+    expect(screen.queryByText("End consult")).not.toBeInTheDocument();
+    expect(screen.queryByText("Join consult")).not.toBeInTheDocument();
+  });
+
+  it("shows the booking number (#id) and search matches on it", () => {
+    render(<BookingsInbox providerId={3} />);
+    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText("#2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search bookings"), {
+      target: { value: "#2" },
+    });
+    // Only booking #2 (Milo) survives.
+    expect(screen.getByText("Milo")).toBeInTheDocument();
+    expect(screen.queryByText("Rex")).not.toBeInTheDocument();
+  });
+
+  it("search filters rows over pet / owner / service (case-insensitive)", () => {
+    render(<BookingsInbox providerId={3} />);
+    fireEvent.change(screen.getByLabelText("Search bookings"), {
+      target: { value: "rex" },
+    });
+    expect(screen.getByText("Rex")).toBeInTheDocument();
+    expect(screen.queryByText("Milo")).not.toBeInTheDocument();
+  });
+
+  it("sort toggle reorders rows by appointment date vs date created", () => {
+    // A is the later appointment but the older booking; B is the earlier
+    // appointment but the newer booking — so the two orders differ.
+    const A = {
+      ...REQUESTED,
+      id: 10,
+      pet_name: "Alpha",
+      appointment_date: "2026-07-20",
+      appointment_time: "09:00",
+      created_at: "2026-06-01T00:00:00.000Z",
+    };
+    const B = {
+      ...CONFIRMED,
+      id: 11,
+      pet_name: "Bravo",
+      appointment_date: "2026-07-10",
+      appointment_time: "09:00",
+      created_at: "2026-06-15T00:00:00.000Z",
+    };
+    setBookings([A, B]);
+    render(<BookingsInbox providerId={3} />);
+
+    const ids = () =>
+      screen.getAllByText(/^#\d+$/).map((el) => el.textContent);
+
+    // Default (appointment date, desc): later appointment (A, #10) first.
+    expect(ids()).toEqual(["#10", "#11"]);
+
+    // Date created (desc): newer booking (B, #11) first.
+    fireEvent.change(screen.getByLabelText("Sort bookings"), {
+      target: { value: "created" },
+    });
+    expect(ids()).toEqual(["#11", "#10"]);
+  });
+
+  it("offers a Completed status filter and renders its badge", () => {
+    setBookings([{ ...CONFIRMED, id: 6, booking_status: "completed" }]);
+    render(<BookingsInbox providerId={3} />);
+    // The chip exists...
+    expect(
+      screen.getByRole("option", { name: "Completed" }),
+    ).toBeInTheDocument();
+    // ...and a completed booking gets its own badge.
+    expect(screen.getByText("completed")).toBeInTheDocument();
   });
 });
