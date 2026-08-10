@@ -73,9 +73,19 @@ describe("ProviderAvailability", () => {
     expect(screen.getByText("Mon")).toBeInTheDocument();
     expect(screen.getByText("Sun")).toBeInTheDocument();
     expect(screen.getByText(/09:00 – 18:00/)).toBeInTheDocument();
-    expect(screen.getByText(/30 min slots/)).toBeInTheDocument();
+    // Open-hours only (Phase 2): no slot-length language in the row.
+    expect(screen.queryByText(/min slots/)).not.toBeInTheDocument();
     // Days with no window show "Closed".
     expect(screen.getAllByText("Closed").length).toBe(6);
+  });
+
+  it("is open-hours only — no slot-length field in the add/edit form", () => {
+    render(<ProviderAvailability providerId={3} />);
+    // Reworded subhead carries no slot-length language.
+    expect(screen.getByText(/open days & hours/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /add hours/i })[0]);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Slot length")).not.toBeInTheDocument();
   });
 
   it("saves the time zone via the profile PATCH when changed", () => {
@@ -107,17 +117,14 @@ describe("ProviderAvailability", () => {
     fireEvent.change(within(dialog).getByLabelText("End time"), {
       target: { value: "16:00" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Slot length"), {
-      target: { value: "60" },
-    });
     fireEvent.click(within(dialog).getByRole("button", { name: /add hours/i }));
 
     await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    // Open-hours only: the payload carries no slot_minutes (server defaults it).
     expect(createMutate.mock.calls[0][0]).toEqual({
       weekday: 0,
       start_time: "10:00",
       end_time: "16:00",
-      slot_minutes: 60,
       active: true,
     });
   });
@@ -145,16 +152,18 @@ describe("ProviderAvailability", () => {
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
 
     const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Slot length"), {
-      target: { value: "15" },
+    fireEvent.change(within(dialog).getByLabelText("End time"), {
+      target: { value: "17:00" },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: /save changes/i }));
 
     await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
     expect(updateMutate.mock.calls[0][0]).toMatchObject({
       availabilityId: 11,
-      slot_minutes: 15,
+      end_time: "17:00",
     });
+    // No slot_minutes in the payload (open-hours only).
+    expect(updateMutate.mock.calls[0][0]).not.toHaveProperty("slot_minutes");
   });
 
   it("Delete confirms then DELETEs the window", () => {

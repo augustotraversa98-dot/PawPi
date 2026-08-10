@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Clock, Plus, Pencil, Trash2, Loader2, X, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProvider,
@@ -13,14 +13,11 @@ import {
 import { COLORS } from "../lib/colors";
 import { WEEKDAYS } from "../lib/hours";
 
-// Availability (Hours) editor. Sets the working hours + slot length + time zone that feed the
-// slot engine, replacing the seeded Mon–Fri 09:00–18:00 defaults (0076). MVP scope: PROVIDER-WIDE
-// windows only — per-staff / per-capability / per-location windows are surfaced as a note (not
-// hidden) but edited elsewhere. Loaded inside the shell, so providerId is always resolved.
-
-// The slot lengths the editor offers (minutes). The backend accepts any positive value up to a
-// day; these are the sane presets.
-const SLOT_CHOICES = [15, 30, 60];
+// Open-hours editor. Sets the open days & hours + time zone the slot engine generates over
+// (slot LENGTH now comes from each service's duration — Phase 1 — so no slot-length control
+// here). Embedded in the Business Profile "Open hours" section (Phase 2). MVP scope:
+// PROVIDER-WIDE windows only — per-staff / per-capability / per-location windows are surfaced
+// as a note (not hidden) but edited elsewhere. providerId is always resolved by the caller.
 
 // 'HH:MM:SS' | 'HH:MM' → 'HH:MM' for the native time input; blank stays blank.
 function toHHMM(t) {
@@ -142,21 +139,10 @@ export default function ProviderAvailability({ providerId }) {
   const saving = create.isPending || update.isPending;
 
   return (
-    <div className="px-8 py-7">
-      <div className="mb-6 flex items-center gap-3">
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl"
-          style={{ backgroundColor: COLORS.peach }}
-        >
-          <Clock className="h-5 w-5" style={{ color: COLORS.terracotta }} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Availability</h1>
-          <p className="text-sm text-[#7A6254]">
-            Your bookable hours and slot length — this is what owners see when they book
-          </p>
-        </div>
-      </div>
+    <div>
+      <p className="mb-6 text-sm text-[#7A6254]">
+        Your open days &amp; hours — this is what owners see when they book
+      </p>
 
       {/* Time zone */}
       <div className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5">
@@ -251,9 +237,6 @@ export default function ProviderAvailability({ providerId }) {
                             className={`text-sm ${w.active ? "text-[#3B241B]" : "text-[#B8A99D] line-through"}`}
                           >
                             {toHHMM(w.start_time)} – {toHHMM(w.end_time)}
-                            <span className="ml-2 text-xs text-[#7A6254]">
-                              {w.slot_minutes} min slots
-                            </span>
                             {!w.active && (
                               <span className="ml-2 text-xs font-semibold text-[#B75D32]">
                                 Off
@@ -318,7 +301,6 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
       weekday: 0,
       start_time: "09:00",
       end_time: "18:00",
-      slot_minutes: 30,
       active: true,
     },
   });
@@ -328,7 +310,6 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
       weekday: win ? win.weekday : (weekday ?? 0),
       start_time: win ? toHHMM(win.start_time) : "09:00",
       end_time: win ? toHHMM(win.end_time) : "18:00",
-      slot_minutes: win ? win.slot_minutes : 30,
       active: win ? win.active : true,
     });
   }, [win, weekday, reset]);
@@ -345,7 +326,6 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
       weekday: Number(values.weekday),
       start_time: values.start_time,
       end_time: values.end_time,
-      slot_minutes: Number(values.slot_minutes),
       active: Boolean(values.active),
     });
   };
@@ -405,20 +385,6 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
               />
             </Field>
           </div>
-
-          <Field label="Slot length">
-            <select
-              aria-label="Slot length"
-              {...register("slot_minutes")}
-              className={inputCls}
-            >
-              {SLOT_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} minutes
-                </option>
-              ))}
-            </select>
-          </Field>
 
           <label className="flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
             <input type="checkbox" {...register("active")} />

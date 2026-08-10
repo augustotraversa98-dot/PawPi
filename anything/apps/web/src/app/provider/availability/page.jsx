@@ -1,13 +1,8 @@
-import ProviderShell from "../components/ProviderShell";
-import ProviderAvailability from "../components/ProviderAvailability";
+import { Navigate } from "react-router";
 
-// /provider/availability — set the working hours, slot length, and time zone that feed the
-// slot engine (replacing the seeded Mon–Fri 09:00–18:00 defaults). The shell resolves auth +
-// the active provider context and hands the resolved providerId to the screen.
+// /provider/availability — the open-hours editor moved into the Business Profile ("Open hours"
+// section) in Phase 2, and this nav item was removed. Redirect any bookmarked/old link to the
+// Profile so it never dead-ends.
 export default function ProviderAvailabilityPage() {
-  return (
-    <ProviderShell active="availability">
-      {(providerId) => <ProviderAvailability providerId={providerId} />}
-    </ProviderShell>
-  );
+  return <Navigate to="/provider/profile" replace />;
 }

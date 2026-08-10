@@ -186,6 +186,8 @@ describe("ProviderServices", () => {
     expect(within(dialog).getByPlaceholderText("Annual checkup")).toBeVisible();
     expect(within(dialog).getByPlaceholderText("30")).toBeVisible(); // duration
     expect(within(dialog).getByPlaceholderText("50.00")).toBeVisible(); // price
+    // Duration is a PRIMARY field with slot-length helper text (drives booking slot length).
+    expect(within(dialog).getByText(/sets the slot length/i)).toBeVisible();
 
     // An advanced field (deposit) is present but hidden until the section expands.
     const deposit = within(dialog).getByPlaceholderText("0.00");

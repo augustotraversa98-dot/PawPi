@@ -21,7 +21,6 @@ import {
   Store,
   CalendarDays,
   CalendarClock,
-  Clock,
   Pill,
   Shield,
 } from "lucide-react";
@@ -73,14 +72,6 @@ const NAV_ITEMS = [
     Icon: CalendarDays,
     enabled: true,
     href: "/provider/calendar",
-    group: "Schedule",
-  },
-  {
-    key: "availability",
-    label: "Availability",
-    Icon: Clock,
-    enabled: true,
-    href: "/provider/availability",
     group: "Schedule",
   },
   {
@@ -206,7 +197,6 @@ const NAV_ITEMS = [
 const NAV_REQUIRES = {
   bookings: "bookable",
   calendar: "bookable",
-  availability: "bookable",
   "calendar-import": "bookable",
   services: "bookable",
   locations: "bookable",

@@ -24,6 +24,7 @@ import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
 import { CAPABILITY_OPTIONS } from "../lib/capabilities";
 import AdvancedSection from "./AdvancedSection";
+import ProviderAvailability from "./ProviderAvailability";
 
 // Profile screen — load the provider, edit profile fields, and publish/unpublish.
 // Loaded inside the shell so providerId is always resolved. Saves send ONLY the
@@ -228,6 +229,15 @@ export default function ProviderProfile({ providerId }) {
 
       <div className="mt-4">
         <CapabilitiesCard providerId={providerId} />
+      </div>
+
+      {/* Open hours (Phase 2) — the availability editor, relocated from its own nav page into
+          a collapsible section here. Collapsed by default to keep Profile scannable; the editor
+          manages its own hooks/mutations (its data loads when the section mounts). */}
+      <div className="mt-4 rounded-2xl border border-[#FFD9B3] bg-white p-6">
+        <AdvancedSection label="Open hours">
+          <ProviderAvailability providerId={providerId} />
+        </AdvancedSection>
       </div>
 
       <form
