@@ -12,6 +12,11 @@ vi.mock("../hooks/useProviders", () => ({
   useProviderCapabilities: vi.fn(),
   useAddCapability: vi.fn(),
   useRemoveCapability: vi.fn(),
+  // Embedded Open-hours editor (Phase 2) — its hooks are mocked so Profile renders it.
+  useAvailabilityWindows: vi.fn(),
+  useCreateAvailabilityWindow: vi.fn(),
+  useUpdateAvailabilityWindow: vi.fn(),
+  useDeleteAvailabilityWindow: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
@@ -25,6 +30,10 @@ import {
   useProviderCapabilities,
   useAddCapability,
   useRemoveCapability,
+  useAvailabilityWindows,
+  useCreateAvailabilityWindow,
+  useUpdateAvailabilityWindow,
+  useDeleteAvailabilityWindow,
 } from "../hooks/useProviders";
 import ProviderProfile from "./ProviderProfile";
 
@@ -80,6 +89,20 @@ beforeEach(() => {
     isPending: false,
     variables: undefined,
   });
+  // Embedded Open-hours editor: no windows by default; its mutations are inert stubs.
+  useAvailabilityWindows.mockReturnValue({
+    data: { windows: [], scoped_count: 0 },
+    isLoading: false,
+    isError: false,
+    error: null,
+  });
+  useCreateAvailabilityWindow.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  useUpdateAvailabilityWindow.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  useDeleteAvailabilityWindow.mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    variables: undefined,
+  });
   setProvider(DRAFT);
 });
 
@@ -91,6 +114,14 @@ describe("ProviderProfile", () => {
     expect(screen.getByDisplayValue("We love dogs")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
     expect(screen.getByText("Publish")).toBeInTheDocument();
+  });
+
+  it("renders the relocated Open hours section (availability editor embedded here)", () => {
+    render(<ProviderProfile providerId={3} />);
+    // The collapsible section header + the embedded editor's reworded subhead (mounted
+    // even while collapsed) prove the availability editor now lives on Profile.
+    expect(screen.getByRole("button", { name: "Open hours" })).toBeInTheDocument();
+    expect(screen.getByText(/open days & hours/i)).toBeInTheDocument();
   });
 
   it("shows Published status + the public path and an Unpublish action", () => {

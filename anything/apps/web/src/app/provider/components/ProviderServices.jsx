@@ -386,30 +386,33 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Duration"
-              hint="minutes"
-              error={errors.duration_min?.message}
-            >
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="30"
-                {...register("duration_min")}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Price" hint="$" error={errors.price?.message}>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="50.00"
-                {...register("price")}
-                className={inputCls}
-              />
-            </Field>
-          </div>
+          <Field
+            label="Duration"
+            hint="minutes"
+            error={errors.duration_min?.message}
+          >
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="30"
+              {...register("duration_min")}
+              className={inputCls}
+            />
+            <p className="mt-1 text-xs text-[#7A6254]">
+              How long a booking of this service lasts — this sets the slot length customers
+              see. Leave blank to use 30 minutes.
+            </p>
+          </Field>
+
+          <Field label="Price" hint="$" error={errors.price?.message}>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="50.00"
+              {...register("price")}
+              className={inputCls}
+            />
+          </Field>
 
           {/* Less-common fields (Phase 3): still submit their values when collapsed. */}
           <AdvancedSection>

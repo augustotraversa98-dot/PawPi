@@ -109,7 +109,7 @@ describe("ProviderShell foundation", () => {
     expect(screen.getByText("active:1")).toBeInTheDocument();
   });
 
-  it("renders all 19 nav items, still one flat set of links", async () => {
+  it("renders all 18 nav items, still one flat set of links", async () => {
     // A provider holding every capability sees every section (nothing filtered out).
     mockProviders([
       { id: 1, name: "Happy Paws", provider_type: "vet", capabilities: ALL_CAPS },
@@ -128,7 +128,6 @@ describe("ProviderShell foundation", () => {
       "Chats",
       "Bookings",
       "Calendar",
-      "Availability",
       "Calendar import",
       "Storefront",
       "Services",
@@ -205,7 +204,6 @@ describe("ProviderShell foundation", () => {
     for (const label of [
       "Bookings",
       "Calendar",
-      "Availability",
       "Calendar import",
       "Services",
       "Locations",
@@ -240,7 +238,6 @@ describe("ProviderShell foundation", () => {
     for (const label of [
       "Bookings",
       "Calendar",
-      "Availability",
       "Calendar import",
       "Services",
       "Locations",
@@ -268,8 +265,8 @@ describe("ProviderShell foundation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show all sections" }));
 
-    // Now every one of the 19 items is reachable.
-    expect(screen.getAllByRole("link")).toHaveLength(19);
+    // Now every one of the 18 items is reachable.
+    expect(screen.getAllByRole("link")).toHaveLength(18);
     expect(screen.getByRole("link", { name: "Clinical" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Bookings" })).toBeInTheDocument();
     // The toggle flips its label.
