@@ -17,8 +17,11 @@ import {
   useProviderBookingsCalendar,
   useBookingAction,
   useProviderStaff,
+  useProvider,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import { bookingActions } from "../lib/bookingActions";
+import { formatBookingWhen } from "../lib/bookingTime";
 import {
   rangeForView,
   viewDays,
@@ -56,9 +59,27 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
   const { data: bookings, isLoading, isError, error } =
     useProviderBookingsCalendar(providerId, from, to);
 
+  // The provider's IANA zone (providers.time_zone) so the popover renders in the
+  // provider's own wall-clock — same source the inbox / ProviderAvailability use.
+  const { data: providerData } = useProvider(providerId);
+  const timeZone = providerData?.provider?.time_zone;
+
+  // Hide declined + cancelled from the grid (they only clutter it and dead-end the
+  // popover). Requested + confirmed stay actionable; completed stays as a muted,
+  // read-only record. Filtered client-side over the already-fetched window — no API
+  // change. (Only-requested+confirmed would just drop "completed" from this list.)
+  const visibleBookings = useMemo(
+    () =>
+      (bookings ?? []).filter(
+        (b) =>
+          b.booking_status !== "declined" && b.booking_status !== "cancelled",
+      ),
+    [bookings],
+  );
+
   const days = useMemo(() => viewDays(view, anchor), [view, anchor]);
-  const rows = useMemo(() => hourRange(bookings ?? []), [bookings]);
-  const cells = useMemo(() => indexByCell(bookings ?? []), [bookings]);
+  const rows = useMemo(() => hourRange(visibleBookings), [visibleBookings]);
+  const cells = useMemo(() => indexByCell(visibleBookings), [visibleBookings]);
 
   const shift = (dir) =>
     setAnchor((a) => addDays(a, dir * (view === "day" ? 1 : 7)));
@@ -189,7 +210,7 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
               ))}
             </tbody>
           </table>
-          {(bookings ?? []).length === 0 && (
+          {visibleBookings.length === 0 && (
             <div className="px-6 py-12 text-center">
               <p className="text-sm font-semibold text-[#3B241B]">
                 No bookings this {view}
@@ -206,6 +227,7 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
         <BookingDetail
           providerId={providerId}
           booking={selected}
+          timeZone={timeZone}
           onClose={() => setSelected(null)}
         />
       )}
@@ -215,12 +237,16 @@ export default function ProviderCalendar({ providerId, initialAnchor }) {
 
 function BookingChip({ booking: b, onClick }) {
   const color = STATUS_COLOR[b.booking_status] || "#7A6254";
+  // Completed bookings stay on the grid as a muted, read-only record.
+  const isMuted = b.booking_status === "completed";
   return (
     <button
       type="button"
       data-testid="calendar-booking"
       onClick={onClick}
-      className="block w-full rounded-lg border-l-4 bg-[#FFF7EF] px-2 py-1 text-left"
+      className={`block w-full rounded-lg border-l-4 bg-[#FFF7EF] px-2 py-1 text-left${
+        isMuted ? " opacity-70" : ""
+      }`}
       style={{ borderColor: color }}
     >
       <span className="block truncate font-semibold text-[#3B241B]">
@@ -245,7 +271,7 @@ function BookingChip({ booking: b, onClick }) {
   );
 }
 
-function BookingDetail({ providerId, booking: b, onClose }) {
+function BookingDetail({ providerId, booking: b, timeZone, onClose }) {
   const { mutate, isPending } = useBookingAction(providerId);
   const { data: staff } = useProviderStaff(providerId);
   const activeStaff = (staff ?? []).filter((m) => m.status === "active");
@@ -270,20 +296,14 @@ function BookingDetail({ providerId, booking: b, onClose }) {
     );
 
   const status = b.booking_status;
-  const canConfirm = status === "requested";
-  const canDecline = status === "requested";
-  const canCancel = status === "requested" || status === "confirmed";
-  const canAssign = status === "requested" || status === "confirmed";
+  // Shared per-status gating (same rules as the bookings inbox). The calendar
+  // popover only wires confirm/decline/cancel/assign — telehealth Join/End consult
+  // live in the inbox — so it reads just those flags. A completed booking yields
+  // none, leaving a graceful read-only view (the details below).
+  const { canConfirm, canDecline, canCancel, canAssign } = bookingActions(b);
   const value = money(b.value_cents, b.value_currency);
-  const when = b.start_at
-    ? new Date(b.start_at).toLocaleString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : `${b.appointment_date ?? ""} ${b.appointment_time ?? ""}`.trim();
+  // Provider-zone wall-clock (was the browser zone via toLocaleString).
+  const when = formatBookingWhen(b, timeZone);
 
   return (
     <div
@@ -299,6 +319,7 @@ function BookingDetail({ providerId, booking: b, onClose }) {
               {b.pet_name || "Booking"}
             </h2>
             <p className="text-sm text-[#7A6254]">{when}</p>
+            <p className="text-xs font-semibold text-[#B8A99D]">{`#${b.id}`}</p>
           </div>
           <button
             type="button"
@@ -368,8 +389,11 @@ function BookingDetail({ providerId, booking: b, onClose }) {
             {canAssign && (
               <Action label="Assign" Icon={UserPlus} variant="muted" disabled={isPending} onClick={() => setAssignOpen(true)} />
             )}
+            {/* Declined/cancelled never reach the grid; a completed booking is a
+                read-only record (the details above ARE the view), so it shows a
+                muted note rather than the old "No actions available" dead-end. */}
             {!canConfirm && !canDecline && !canCancel && !canAssign && (
-              <span className="text-xs text-[#B8A99D]">No actions available</span>
+              <span className="text-xs text-[#B8A99D]">Read-only booking</span>
             )}
           </div>
         )}
