@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // never a row delete). Scoped by BOTH provider :id and postId, so a post of another
 // provider matches no row → 404. auth(), `sql`, providerAuth mocked.
 
-import { DELETE, GET } from './route';
+import { DELETE, GET, PATCH } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 import { requireProviderRole } from '@/app/api/utils/providerAuth';
@@ -69,6 +69,67 @@ describe('DELETE /api/providers/[id]/posts/[postId]', () => {
     requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
 
     const res = await DELETE(deleteReq(), PARAMS);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// PATCH — EDIT body/image_urls (ticket 2.22). Any active staff may edit; replaces both fields
+// and enforces the "text or at least one image" invariant. Scoped by both ids + non-deleted.
+describe('PATCH /api/providers/[id]/posts/[postId]', () => {
+  const patchReq = (body) =>
+    new Request('http://localhost/api/providers/100/posts/9', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  it('non-staff → 403', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockRejectedValue(forbidden());
+
+    const res = await PATCH(patchReq({ body: 'Updated' }), PARAMS);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('staff → UPDATEs body + image_urls, scoped by both ids', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([
+        { id: 9, provider_id: 100, author_user_id: 5, body: 'Updated', image_urls: [] },
+      ]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(patchReq({ body: 'Updated', image_urls: [] }), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).post).toMatchObject({ id: 9, body: 'Updated' });
+    const text = queryTextOf(1);
+    expect(text).toContain('UPDATE provider_posts');
+    expect(text).toContain('image_urls =');
+    expect(text).toContain('deleted_at IS NULL');
+    expect(valuesOf(1)).toEqual(expect.arrayContaining(['9', '100']));
+  });
+
+  it('empty text and no images → 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(patchReq({ body: '   ', image_urls: [] }), PARAMS);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('cross-provider / deleted post → 404 (no row matches)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]); // no row
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(patchReq({ body: 'Updated' }), PARAMS);
 
     expect(res.status).toBe(404);
   });

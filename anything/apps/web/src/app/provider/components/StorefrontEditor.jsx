@@ -46,7 +46,7 @@ import { COLORS } from "../lib/colors";
 const MUTED = "#7A6254";
 const TAB_LABELS = {
   services: "Services",
-  items: "Items",
+  items: "Services/Products",
   posts: "Posts",
   reviews: "Reviews",
   locations: "Locations",

@@ -5,6 +5,7 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // One storefront post.
@@ -12,6 +13,11 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 //            provider is PUBLISHED and the post is non-deleted (author) AND non-hidden
 //            (moderation, Guideline 1.2). A hidden/removed/draft-provider post → 404 on direct
 //            view, the same window as the storefront list in providers/public/[slug].
+//   PATCH  — EDIT body/image_urls (ticket 2.22): any active staff member may edit (the
+//            storefront is the team's, same gate as POST). The composer reopens prefilled and
+//            re-saves the full post, so this REPLACES both fields and enforces the same
+//            "must carry text or an image" invariant as create. Scoped by provider :id AND
+//            postId AND deleted_at IS NULL — a post of another (or a deleted) provider 404s.
 //   DELETE — SOFT delete (ticket 2.22): any active staff member may remove a post (the
 //            storefront is the team's). Soft delete = set deleted_at (the public read filters
 //            deleted_at IS NULL), never a row delete, so the audit trail survives. Scoped by
@@ -60,6 +66,64 @@ async function GET(request, { params }) {
   }
 }
 
+async function PATCH(request, { params }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const providerId = params.id;
+    const postId = params.postId;
+    const userId = await resolveUserId(session.user.id);
+    if (userId === null) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // Any active staff member may edit (same gate as create/delete).
+    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
+
+    const payload = (await request.json()) ?? {};
+    const text = typeof payload.body === "string" ? payload.body.trim() : "";
+    const imageError = invalidImageUrls(payload.image_urls);
+    if (imageError) {
+      return Response.json({ error: imageError }, { status: 400 });
+    }
+    const images = Array.isArray(payload.image_urls) ? payload.image_urls : [];
+
+    // A post must carry SOMETHING — text or at least one image (mirrors POST).
+    if (text.length === 0 && images.length === 0) {
+      return Response.json(
+        { error: "A post needs text or at least one image" },
+        { status: 400 },
+      );
+    }
+
+    // Scoped by provider + postId + non-deleted; RLS (provider_posts_staff_all) also gates it.
+    const updated = await sql`
+      UPDATE provider_posts
+      SET body = ${text.length > 0 ? text : null}, image_urls = ${images}, updated_at = NOW()
+      WHERE id = ${postId} AND provider_id = ${providerId} AND deleted_at IS NULL
+      RETURNING id, provider_id, author_user_id, body, image_urls, created_at, updated_at
+    `;
+
+    if (updated.length === 0) {
+      return Response.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    return Response.json({ post: updated[0] });
+  } catch (error) {
+    if (error.status === 403) {
+      return Response.json({ error: error.message }, { status: 403 });
+    }
+    console.error(
+      "[PATCH /api/providers/[id]/posts/[postId]] Error:",
+      error.message,
+    );
+    return Response.json({ error: "Failed to update post" }, { status: 500 });
+  }
+}
+
 async function DELETE(request, { params }) {
   try {
     const session = await auth();
@@ -102,5 +166,6 @@ async function DELETE(request, { params }) {
 }
 
 const wrappedGET = withRequestContext(GET);
+const wrappedPATCH = withRequestContext(PATCH);
 const wrappedDELETE = withRequestContext(DELETE);
-export { wrappedGET as GET, wrappedDELETE as DELETE };
+export { wrappedGET as GET, wrappedPATCH as PATCH, wrappedDELETE as DELETE };

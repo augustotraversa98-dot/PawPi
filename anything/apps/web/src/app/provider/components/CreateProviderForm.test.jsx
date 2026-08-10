@@ -75,7 +75,7 @@ describe("CreateProviderForm (onboarding)", () => {
       target: { value: "vet" },
     });
     // Add the Shop capability on top of the pre-selected Vet default.
-    fireEvent.click(screen.getByRole("button", { name: "Shop" }));
+    fireEvent.click(screen.getByRole("button", { name: "Services/Products" }));
 
     fireEvent.click(screen.getByText("Create provider"));
     await waitFor(() => expect(mutateMock).toHaveBeenCalled());

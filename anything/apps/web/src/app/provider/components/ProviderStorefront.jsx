@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Store, Loader2, Send, Trash2, ImageIcon, Eye, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Store, Loader2, Send, Trash2, ImageIcon, Eye, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   useProvider,
   useUpdateProviderProfile,
   useProviderPosts,
   useCreateProviderPost,
+  useUpdateProviderPost,
   useDeleteProviderPost,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
@@ -21,6 +22,9 @@ export default function ProviderStorefront({ providerId }) {
   // Two views of the storefront: EDIT (cover + posts composer, existing) and a read-only
   // "View as customer" preview (Phase 2b) that renders the store as a customer sees it.
   const [view, setView] = useState("edit");
+  // The post currently being edited (null = compose a new one). Lifted here so the post list's
+  // Edit button prefills the shared composer above it.
+  const [editing, setEditing] = useState(null);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
@@ -54,12 +58,20 @@ export default function ProviderStorefront({ providerId }) {
       ) : (
         <>
           <CoverEditor providerId={providerId} />
-          <ComposePost providerId={providerId} />
+          <ComposePost
+            providerId={providerId}
+            editing={editing}
+            onDone={() => setEditing(null)}
+          />
 
           <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
             Posts
           </h2>
-          <PostList providerId={providerId} />
+          <PostList
+            providerId={providerId}
+            editingId={editing?.id ?? null}
+            onEdit={setEditing}
+          />
         </>
       )}
     </div>
@@ -115,10 +127,26 @@ function CoverEditor({ providerId }) {
   );
 }
 
-function ComposePost({ providerId }) {
+function ComposePost({ providerId, editing, onDone }) {
   const create = useCreateProviderPost(providerId);
+  const update = useUpdateProviderPost(providerId);
   const [body, setBody] = useState("");
   const [images, setImages] = useState([]);
+  const formRef = useRef(null);
+  const isEditing = editing != null;
+
+  // Prefill (and scroll to) the composer whenever a different post is chosen for editing;
+  // clear it when editing ends. Keyed on the post id so re-selecting the same post is a no-op.
+  useEffect(() => {
+    if (editing) {
+      setBody(editing.body ?? "");
+      setImages(Array.isArray(editing.image_urls) ? editing.image_urls : []);
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      setBody("");
+      setImages([]);
+    }
+  }, [editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (e) => {
     e.preventDefault();
@@ -127,21 +155,35 @@ function ComposePost({ providerId }) {
       return;
     }
     try {
-      await create.mutateAsync({ body: body.trim(), image_urls: images });
-      toast.success("Posted");
-      setBody("");
-      setImages([]);
+      if (isEditing) {
+        await update.mutateAsync({ postId: editing.id, body: body.trim(), image_urls: images });
+        toast.success("Post updated");
+        onDone?.();
+      } else {
+        await create.mutateAsync({ body: body.trim(), image_urls: images });
+        toast.success("Posted");
+        setBody("");
+        setImages([]);
+      }
     } catch (err) {
-      toast.error(err.message || "Couldn't post");
+      toast.error(err.message || (isEditing ? "Couldn't update" : "Couldn't post"));
     }
   };
 
+  const pending = isEditing ? update.isPending : create.isPending;
+
   return (
     <form
+      ref={formRef}
       onSubmit={submit}
       className="rounded-2xl border p-4"
       style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
     >
+      {isEditing && (
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#7A6254]">
+          Editing post
+        </p>
+      )}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -153,20 +195,39 @@ function ComposePost({ providerId }) {
       <div className="mt-3">
         <ImageUploader label="Photos" value={images} onChange={setImages} />
       </div>
-      <button
-        type="submit"
-        disabled={create.isPending}
-        className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-        style={{ backgroundColor: COLORS.coral }}
-      >
-        <Send className="h-4 w-4" />
-        {create.isPending ? "Posting…" : "Post"}
-      </button>
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ backgroundColor: COLORS.coral }}
+        >
+          <Send className="h-4 w-4" />
+          {isEditing
+            ? pending
+              ? "Saving…"
+              : "Save changes"
+            : pending
+              ? "Posting…"
+              : "Post"}
+        </button>
+        {isEditing && (
+          <button
+            type="button"
+            onClick={() => onDone?.()}
+            className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold text-[#7A6254]"
+            style={{ borderColor: COLORS.peach }}
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }
 
-function PostList({ providerId }) {
+function PostList({ providerId, editingId, onEdit }) {
   const { data: posts, isLoading, isError, error } = useProviderPosts(providerId);
   const del = useDeleteProviderPost(providerId);
 
@@ -215,7 +276,10 @@ function PostList({ providerId }) {
         <div
           key={p.id}
           className="rounded-2xl border p-4"
-          style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
+          style={{
+            borderColor: p.id === editingId ? COLORS.coral : COLORS.peach,
+            backgroundColor: "#fff",
+          }}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -227,13 +291,22 @@ function PostList({ providerId }) {
                 </p>
               )}
             </div>
-            <button
-              onClick={() => remove(p.id)}
-              aria-label="Delete post"
-              className="rounded-lg p-1.5 text-[#B4452F] hover:bg-[#FBE6E4]"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onEdit?.(p)}
+                aria-label="Edit post"
+                className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => remove(p.id)}
+                aria-label="Delete post"
+                className="rounded-lg p-1.5 text-[#B4452F] hover:bg-[#FBE6E4]"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           {Array.isArray(p.image_urls) && p.image_urls.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">

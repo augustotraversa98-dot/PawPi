@@ -40,7 +40,7 @@ const MUTED = "#7A6254";
 // English labels (the extranet is hardcoded-English; no i18n). Keyed by section/capability.
 const TAB_LABELS = {
   services: "Services",
-  items: "Items",
+  items: "Services/Products",
   posts: "Posts",
   reviews: "Reviews",
   locations: "Locations",
