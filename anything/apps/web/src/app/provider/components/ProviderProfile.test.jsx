@@ -9,6 +9,9 @@ vi.mock("../hooks/useProviders", () => ({
   useUpdateProviderProfile: vi.fn(),
   useSetProviderStatus: vi.fn(),
   useEnrichProvider: vi.fn(),
+  useProviderCapabilities: vi.fn(),
+  useAddCapability: vi.fn(),
+  useRemoveCapability: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
@@ -19,6 +22,9 @@ import {
   useUpdateProviderProfile,
   useSetProviderStatus,
   useEnrichProvider,
+  useProviderCapabilities,
+  useAddCapability,
+  useRemoveCapability,
 } from "../hooks/useProviders";
 import ProviderProfile from "./ProviderProfile";
 
@@ -34,6 +40,8 @@ const DRAFT = {
 
 let updateMutate;
 let statusMutate;
+let addCapMutate;
+let removeCapMutate;
 
 function setProvider(provider, extra = {}) {
   useProvider.mockReturnValue({
@@ -58,6 +66,20 @@ beforeEach(() => {
     isPending: false,
   });
   useEnrichProvider.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  addCapMutate = vi.fn();
+  removeCapMutate = vi.fn();
+  // The provider already offers the vet capability by default.
+  useProviderCapabilities.mockReturnValue({ data: ["vet"], isLoading: false });
+  useAddCapability.mockReturnValue({
+    mutate: addCapMutate,
+    isPending: false,
+    variables: undefined,
+  });
+  useRemoveCapability.mockReturnValue({
+    mutate: removeCapMutate,
+    isPending: false,
+    variables: undefined,
+  });
   setProvider(DRAFT);
 });
 
@@ -113,5 +135,19 @@ describe("ProviderProfile", () => {
     expect(
       await screen.findByText("slug already in use"),
     ).toBeInTheDocument();
+  });
+
+  it("capability editor: enabling a capability POSTs it, disabling an on one DELETEs it", () => {
+    render(<ProviderProfile providerId={3} />);
+
+    // The "What this business offers" editor is present.
+    expect(screen.getByText("What this business offers")).toBeInTheDocument();
+
+    // 'vet' is on (selected) → clicking it removes; 'Shop' is off → clicking it adds.
+    fireEvent.click(screen.getByRole("button", { name: "Shop" }));
+    expect(addCapMutate).toHaveBeenCalledWith("shop", expect.any(Object));
+
+    fireEvent.click(screen.getByRole("button", { name: "Vet clinic" }));
+    expect(removeCapMutate).toHaveBeenCalledWith("vet", expect.any(Object));
   });
 });

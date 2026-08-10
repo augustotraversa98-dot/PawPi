@@ -8,6 +8,7 @@ import {
   Check,
   Loader2,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -15,9 +16,13 @@ import {
   useUpdateProviderProfile,
   useSetProviderStatus,
   useEnrichProvider,
+  useProviderCapabilities,
+  useAddCapability,
+  useRemoveCapability,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
+import { CAPABILITY_OPTIONS } from "../lib/capabilities";
 
 // Profile screen — load the provider, edit profile fields, and publish/unpublish.
 // Loaded inside the shell so providerId is always resolved. Saves send ONLY the
@@ -220,6 +225,10 @@ export default function ProviderProfile({ providerId }) {
         />
       </div>
 
+      <div className="mt-4">
+        <CapabilitiesCard providerId={providerId} />
+      </div>
+
       <form
         onSubmit={handleSubmit(onSave)}
         className="mt-6 max-w-2xl space-y-5 rounded-2xl border border-[#FFD9B3] bg-white p-6"
@@ -403,6 +412,87 @@ function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
         {autoConfirm ? "Turn off" : "Turn on"}
       </button>
+    </div>
+  );
+}
+
+// Capability editor (ticket 2.1 → Phase 2). A multi-select of what the business
+// offers, wired to POST/DELETE .../capabilities (owner|admin). Each toggle invalidates
+// the ["providers"] query (see the hooks), so the shell sidebar re-filters its sections
+// immediately — this is the "enable path" for a hidden module. Non-admins get a 403
+// surfaced as a toast; the per-module server guards remain the real enforcement.
+function CapabilitiesCard({ providerId }) {
+  const { data: caps, isLoading } = useProviderCapabilities(providerId);
+  const add = useAddCapability(providerId);
+  const remove = useRemoveCapability(providerId);
+  const selected = new Set(caps ?? []);
+  const busy = add.isPending || remove.isPending;
+
+  const toggle = (value) => {
+    const mutation = selected.has(value) ? remove : add;
+    mutation.mutate(value, {
+      onError: (err) =>
+        toast.error(err?.message || "Couldn't update what you offer"),
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border border-[#FFD9B3] bg-white p-6">
+      <div className="mb-1 flex items-center gap-2">
+        <Layers className="h-4 w-4" style={{ color: COLORS.terracotta }} />
+        <span className="text-sm font-semibold text-[#7A6254]">
+          What this business offers
+        </span>
+      </div>
+      <p className="mb-4 max-w-lg text-sm text-[#7A6254]">
+        Turn services on or off. Your dashboard shows only the sections you offer —
+        enabling one here reveals its tools in the sidebar.
+      </p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-[#7A6254]">
+          <Loader2 className="h-4 w-4 animate-spin" style={{ color: COLORS.coral }} />
+          Loading…
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {CAPABILITY_OPTIONS.map(({ value, label }) => {
+            const on = selected.has(value);
+            const pendingThis =
+              (add.isPending && add.variables === value) ||
+              (remove.isPending && remove.variables === value);
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggle(value)}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-opacity disabled:opacity-60"
+                style={
+                  on
+                    ? {
+                        borderColor: "transparent",
+                        color: "#fff",
+                        backgroundColor: COLORS.coral,
+                      }
+                    : {
+                        borderColor: "#FFD9B3",
+                        color: "#7A6254",
+                        backgroundColor: "#FFF7EF",
+                      }
+                }
+              >
+                {pendingThis ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : on ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : null}
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
