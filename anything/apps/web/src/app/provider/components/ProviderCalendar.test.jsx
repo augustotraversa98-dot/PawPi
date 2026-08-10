@@ -214,14 +214,17 @@ describe("ProviderCalendar", () => {
   });
 
   it("renders the popover when in the provider's timezone and shows the #id", () => {
-    // 2026-06-16T22:30Z is 19:30 in Buenos Aires (UTC-3).
+    // A fixed UTC instant that lands in business hours in BOTH the CI runner (UTC,
+    // hour 15) and dev (Buenos Aires −03, hour 12) so the chip always places on the
+    // grid; the popover `when` is formatted with the explicit provider zone → 12:00.
     useProviderBookingsCalendar.mockReturnValue({
       data: [
         {
           ...BOOKING,
           id: 42,
           booking_status: "confirmed",
-          start_at: "2026-06-16T22:30:00.000Z",
+          start_at: "2026-06-16T15:00:00.000Z",
+          end_at: "2026-06-16T15:30:00.000Z",
         },
       ],
       isLoading: false,
@@ -232,7 +235,8 @@ describe("ProviderCalendar", () => {
     fireEvent.click(screen.getByTestId("calendar-booking"));
     const dialog = screen.getByRole("dialog");
 
-    expect(within(dialog).getByText("16 Jun 2026 · 19:30")).toBeTruthy();
+    // 15:00Z in America/Argentina/Buenos_Aires (−03) is 12:00.
+    expect(within(dialog).getByText("16 Jun 2026 · 12:00")).toBeTruthy();
     expect(within(dialog).getByText("#42")).toBeTruthy();
   });
 });
