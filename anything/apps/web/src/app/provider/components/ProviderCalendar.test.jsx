@@ -14,6 +14,7 @@ vi.mock("../hooks/useProviders", () => ({
   useProviderBookingsCalendar: vi.fn(),
   useBookingAction: vi.fn(),
   useProviderStaff: vi.fn(),
+  useProvider: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -21,6 +22,7 @@ import {
   useProviderBookingsCalendar,
   useBookingAction,
   useProviderStaff,
+  useProvider,
 } from "../hooks/useProviders";
 import ProviderCalendar from "./ProviderCalendar";
 
@@ -42,12 +44,27 @@ const BOOKING = {
   paid: true,
 };
 
+// A booking on the same Tue as BOOKING but a given status/hour, so all sit in-week.
+function bookingWith(id, status, hour, pet) {
+  return {
+    ...BOOKING,
+    id,
+    booking_status: status,
+    pet_name: pet,
+    start_at: new Date(2026, 5, 16, hour, 0).toISOString(),
+    end_at: new Date(2026, 5, 16, hour, 30).toISOString(),
+  };
+}
+
 const mutateMock = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
   useBookingAction.mockReturnValue({ mutate: mutateMock, isPending: false });
   useProviderStaff.mockReturnValue({ data: [] });
+  useProvider.mockReturnValue({
+    data: { provider: { time_zone: "America/Argentina/Buenos_Aires" } },
+  });
 });
 
 describe("ProviderCalendar", () => {
@@ -103,5 +120,119 @@ describe("ProviderCalendar", () => {
     render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
     expect(screen.getByText(/No bookings this week/i)).toBeTruthy();
     expect(screen.queryAllByTestId("calendar-booking")).toHaveLength(0);
+  });
+
+  it("hides declined + cancelled from the grid; keeps requested + confirmed + completed", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [
+        bookingWith(1, "requested", 9, "ReqPet"),
+        bookingWith(2, "confirmed", 10, "ConfPet"),
+        bookingWith(3, "completed", 11, "DonePet"),
+        bookingWith(4, "declined", 12, "DeclPet"),
+        bookingWith(5, "cancelled", 13, "CancPet"),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+
+    // Only the three non-terminal-negative statuses render.
+    expect(screen.getAllByTestId("calendar-booking")).toHaveLength(3);
+    expect(screen.getByText("ReqPet")).toBeTruthy();
+    expect(screen.getByText("ConfPet")).toBeTruthy();
+    expect(screen.getByText("DonePet")).toBeTruthy();
+    expect(screen.queryByText("DeclPet")).toBeNull();
+    expect(screen.queryByText("CancPet")).toBeNull();
+  });
+
+  it("renders a completed booking muted (read-only)", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [bookingWith(3, "completed", 11, "DonePet")],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    const chip = screen.getByTestId("calendar-booking");
+    expect(chip.className).toContain("opacity-70");
+  });
+
+  it("the popover uses shared bookingActions: requested → Confirm + Decline + Assign, no Cancel", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [bookingWith(1, "requested", 9, "ReqPet")],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    fireEvent.click(screen.getByTestId("calendar-booking"));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: /decline/i })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: /assign/i })).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: /cancel/i }),
+    ).toBeNull();
+  });
+
+  it("the popover uses shared bookingActions: confirmed → Cancel, not Confirm", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [bookingWith(2, "confirmed", 10, "ConfPet")],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    fireEvent.click(screen.getByTestId("calendar-booking"));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: /confirm/i }),
+    ).toBeNull();
+  });
+
+  it("a completed booking's popover shows no state-changing actions and no dead-end", () => {
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [bookingWith(3, "completed", 11, "DonePet")],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    fireEvent.click(screen.getByTestId("calendar-booking"));
+    const dialog = screen.getByRole("dialog");
+
+    for (const name of [/confirm/i, /decline/i, /cancel/i, /assign/i]) {
+      expect(within(dialog).queryByRole("button", { name })).toBeNull();
+    }
+    // Graceful read-only view — not the old "No actions available" dead-end.
+    expect(within(dialog).queryByText("No actions available")).toBeNull();
+    expect(within(dialog).getByText("Read-only booking")).toBeTruthy();
+  });
+
+  it("renders the popover when in the provider's timezone and shows the #id", () => {
+    // 2026-06-16T22:30Z is 19:30 in Buenos Aires (UTC-3).
+    useProviderBookingsCalendar.mockReturnValue({
+      data: [
+        {
+          ...BOOKING,
+          id: 42,
+          booking_status: "confirmed",
+          start_at: "2026-06-16T22:30:00.000Z",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ProviderCalendar providerId={100} initialAnchor={ANCHOR} />);
+    fireEvent.click(screen.getByTestId("calendar-booking"));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getByText("16 Jun 2026 · 19:30")).toBeTruthy();
+    expect(within(dialog).getByText("#42")).toBeTruthy();
   });
 });
