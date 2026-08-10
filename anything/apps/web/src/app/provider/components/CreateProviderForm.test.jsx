@@ -46,6 +46,45 @@ describe("CreateProviderForm (onboarding)", () => {
     );
   });
 
+  it("pre-selects the capability matching the chosen provider type and sends it on create", async () => {
+    render(<CreateProviderForm />);
+    fireEvent.change(screen.getByPlaceholderText("Happy Paws Veterinary"), {
+      target: { value: "New Vet" },
+    });
+    fireEvent.change(screen.getByLabelText("Provider type"), {
+      target: { value: "vet" },
+    });
+
+    // The capability matching the chosen type is pre-selected.
+    expect(screen.getByRole("button", { name: "Vet clinic" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    fireEvent.click(screen.getByText("Create provider"));
+    await waitFor(() => expect(mutateMock).toHaveBeenCalled());
+    expect(mutateMock.mock.calls[0][0].capabilities).toEqual(["vet"]);
+  });
+
+  it("lets the owner add another capability, sent alongside the type default", async () => {
+    render(<CreateProviderForm />);
+    fireEvent.change(screen.getByPlaceholderText("Happy Paws Veterinary"), {
+      target: { value: "Vet Shop" },
+    });
+    fireEvent.change(screen.getByLabelText("Provider type"), {
+      target: { value: "vet" },
+    });
+    // Add the Shop capability on top of the pre-selected Vet default.
+    fireEvent.click(screen.getByRole("button", { name: "Shop" }));
+
+    fireEvent.click(screen.getByText("Create provider"));
+    await waitFor(() => expect(mutateMock).toHaveBeenCalled());
+    expect([...mutateMock.mock.calls[0][0].capabilities].sort()).toEqual([
+      "shop",
+      "vet",
+    ]);
+  });
+
   it("does NOT submit when required fields are missing", async () => {
     render(<CreateProviderForm />);
     fireEvent.click(screen.getByText("Create provider"));

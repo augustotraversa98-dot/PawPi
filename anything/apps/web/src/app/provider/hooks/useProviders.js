@@ -450,11 +450,16 @@ export function useCreateProvider() {
     (s) => s.setSelectedProviderId,
   );
   return useMutation({
-    mutationFn: async ({ name, provider_type, bio, logo_url }) => {
+    mutationFn: async ({ name, provider_type, bio, logo_url, capabilities }) => {
+      // capabilities (Phase 3 onboarding multi-select) is optional; when omitted the
+      // POST route seeds [provider_type] as today. Only forward it when provided so an
+      // undefined value stays absent from the body (never sent as null).
+      const body = { name, provider_type, bio, logo_url };
+      if (capabilities !== undefined) body.capabilities = capabilities;
       const data = await getJson("/api/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, provider_type, bio, logo_url }),
+        body: JSON.stringify(body),
       });
       return data.provider;
     },

@@ -20,6 +20,7 @@ import {
 import { COLORS } from "../lib/colors";
 import { WEEKDAYS, hoursToRows, rowsToHours, hoursSummary } from "../lib/hours";
 import LocationMapPicker, { mapsConfigured } from "./LocationMapPicker";
+import AdvancedSection from "./AdvancedSection";
 
 // Locations management (c2b). Lists the provider's locations with add / edit /
 // delete. NOTE the asymmetry vs services: a location DELETE is a HARD delete (the
@@ -325,89 +326,92 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
             />
           </Field>
 
-          <Field label="Phone" hint="Optional">
-            <input
-              type="text"
-              placeholder="+1 555 0100"
-              {...register("phone")}
-              className={inputCls}
-            />
-          </Field>
+          {/* Less-common fields (Phase 3): still submit their values when collapsed. */}
+          <AdvancedSection>
+            <Field label="Phone" hint="Optional">
+              <input
+                type="text"
+                placeholder="+1 555 0100"
+                {...register("phone")}
+                className={inputCls}
+              />
+            </Field>
 
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
-              <MapPin className="h-4 w-4 text-[#B8A99D]" />
-              Pin on map
-              <span className="text-xs font-normal text-[#B8A99D]">
-                {mapsConfigured()
-                  ? "Click or drag to set the exact spot"
-                  : "Optional"}
-              </span>
-            </p>
-            <LocationMapPicker
-              lat={watchedLat}
-              lng={watchedLng}
-              onPick={onPick}
-            />
-            {mapsConfigured() && (
-              <p className="mb-3 mt-1.5 text-xs text-[#B8A99D]">
-                The pin keeps the coordinates below in sync.
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
+                <MapPin className="h-4 w-4 text-[#B8A99D]" />
+                Pin on map
+                <span className="text-xs font-normal text-[#B8A99D]">
+                  {mapsConfigured()
+                    ? "Click or drag to set the exact spot"
+                    : "Optional"}
+                </span>
               </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Latitude" hint="Optional" error={errors.lat?.message}>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="40.7128"
-                {...register("lat")}
-                className={inputCls}
+              <LocationMapPicker
+                lat={watchedLat}
+                lng={watchedLng}
+                onPick={onPick}
               />
-            </Field>
-            <Field label="Longitude" hint="Optional" error={errors.lng?.message}>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="-74.0060"
-                {...register("lng")}
-                className={inputCls}
-              />
-            </Field>
-          </div>
-
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
-              <Clock className="h-4 w-4 text-[#B8A99D]" />
-              Opening hours
-              <span className="text-xs font-normal text-[#B8A99D]">Optional</span>
-            </p>
-            <div className="space-y-2">
-              {WEEKDAYS.map((day) => (
-                <div key={day.key} className="flex items-center gap-3">
-                  <span className="w-10 text-sm font-semibold text-[#7A6254]">
-                    {day.label}
-                  </span>
-                  <input
-                    type="time"
-                    aria-label={`${day.label} open`}
-                    value={hourRows[day.key]?.open ?? ""}
-                    onChange={(e) => setHour(day.key, "open", e.target.value)}
-                    className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-                  />
-                  <span className="text-[#B8A99D]">–</span>
-                  <input
-                    type="time"
-                    aria-label={`${day.label} close`}
-                    value={hourRows[day.key]?.close ?? ""}
-                    onChange={(e) => setHour(day.key, "close", e.target.value)}
-                    className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-                  />
-                </div>
-              ))}
+              {mapsConfigured() && (
+                <p className="mb-3 mt-1.5 text-xs text-[#B8A99D]">
+                  The pin keeps the coordinates below in sync.
+                </p>
+              )}
             </div>
-          </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Latitude" hint="Optional" error={errors.lat?.message}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="40.7128"
+                  {...register("lat")}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Longitude" hint="Optional" error={errors.lng?.message}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="-74.0060"
+                  {...register("lng")}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
+                <Clock className="h-4 w-4 text-[#B8A99D]" />
+                Opening hours
+                <span className="text-xs font-normal text-[#B8A99D]">Optional</span>
+              </p>
+              <div className="space-y-2">
+                {WEEKDAYS.map((day) => (
+                  <div key={day.key} className="flex items-center gap-3">
+                    <span className="w-10 text-sm font-semibold text-[#7A6254]">
+                      {day.label}
+                    </span>
+                    <input
+                      type="time"
+                      aria-label={`${day.label} open`}
+                      value={hourRows[day.key]?.open ?? ""}
+                      onChange={(e) => setHour(day.key, "open", e.target.value)}
+                      className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                    />
+                    <span className="text-[#B8A99D]">–</span>
+                    <input
+                      type="time"
+                      aria-label={`${day.label} close`}
+                      value={hourRows[day.key]?.close ?? ""}
+                      onChange={(e) => setHour(day.key, "close", e.target.value)}
+                      className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AdvancedSection>
 
           <div className="flex justify-end gap-3 pt-2">
             <button

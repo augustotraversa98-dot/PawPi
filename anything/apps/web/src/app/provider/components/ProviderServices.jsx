@@ -10,6 +10,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
+import AdvancedSection from "./AdvancedSection";
 import DocumentCatalogImport from "./DocumentCatalogImport";
 import {
   centsToCurrency,
@@ -385,15 +386,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
             />
           </Field>
 
-          <Field label="Description" hint="Optional">
-            <textarea
-              rows={2}
-              {...register("description")}
-              className={`${inputCls} resize-y`}
-            />
-          </Field>
-
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Field
               label="Duration"
               hint="minutes"
@@ -416,6 +409,18 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
                 className={inputCls}
               />
             </Field>
+          </div>
+
+          {/* Less-common fields (Phase 3): still submit their values when collapsed. */}
+          <AdvancedSection>
+            <Field label="Description" hint="Optional">
+              <textarea
+                rows={2}
+                {...register("description")}
+                className={`${inputCls} resize-y`}
+              />
+            </Field>
+
             <Field label="Deposit" hint="$" error={errors.deposit?.message}>
               <input
                 type="text"
@@ -425,46 +430,42 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
                 className={inputCls}
               />
             </Field>
-          </div>
 
-          <Field
-            label="Payment for booking"
-            hint="when a customer requests this service"
-          >
-            <select {...register("payment_policy")} className={inputCls}>
-              <option value="none">No online payment — pay in person</option>
-              <option value="deposit">Deposit up front (the Deposit amount)</option>
-              <option value="full">Full price up front (the Price)</option>
-            </select>
-            <p className="mt-1 text-xs text-[#7A6254]">
-              Customers pay when they request the booking. If you decline a paid
-              request, they're refunded automatically.
-            </p>
-          </Field>
+            <Field
+              label="Payment for booking"
+              hint="when a customer requests this service"
+            >
+              <select {...register("payment_policy")} className={inputCls}>
+                <option value="none">No online payment — pay in person</option>
+                <option value="deposit">Deposit up front (the Deposit amount)</option>
+                <option value="full">Full price up front (the Price)</option>
+              </select>
+              <p className="mt-1 text-xs text-[#7A6254]">
+                Customers pay when they request the booking. If you decline a paid
+                request, they're refunded automatically.
+              </p>
+            </Field>
 
-          <Field
-            label="Nightly rate"
-            hint="daycare/boarding only — $ per night"
-            error={errors.nightly_rate?.message}
-          >
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="40.00"
-              {...register("nightly_rate")}
-              className={inputCls}
-            />
-            <p className="mt-1 text-xs text-[#7A6254]">
-              For a daycare stay, the customer is charged this rate × the number of
-              nights (when Payment is set to Full). Leave blank for other services.
-            </p>
-          </Field>
+            <Field
+              label="Nightly rate"
+              hint="daycare/boarding only — $ per night"
+              error={errors.nightly_rate?.message}
+            >
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="40.00"
+                {...register("nightly_rate")}
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs text-[#7A6254]">
+                For a daycare stay, the customer is charged this rate × the number of
+                nights (when Payment is set to Full). Leave blank for other services.
+              </p>
+            </Field>
 
-          <ImageUploader
-            label="Photos"
-            value={images}
-            onChange={setImages}
-          />
+            <ImageUploader label="Photos" value={images} onChange={setImages} />
+          </AdvancedSection>
 
           <div className="flex justify-end gap-3 pt-2">
             <button

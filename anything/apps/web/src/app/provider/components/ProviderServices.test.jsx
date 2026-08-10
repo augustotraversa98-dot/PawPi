@@ -152,6 +152,8 @@ describe("ProviderServices", () => {
     // Open the edit form for the first service (seeded with payment_policy).
     fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
     const dialog = screen.getByRole("dialog");
+    // payment_policy now lives behind the Advanced section — expand it first.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Advanced" }));
     const select = within(dialog).getByRole("combobox");
     expect(select.value).toBe("deposit");
   });
@@ -173,6 +175,34 @@ describe("ProviderServices", () => {
       await within(dialog).findByText(/enter a valid amount/i),
     ).toBeInTheDocument();
     expect(createMutate).not.toHaveBeenCalled();
+  });
+
+  it("keeps deposit/payment/nightly/photos/description behind Advanced; expanding reveals them and their values still submit", async () => {
+    render(<ProviderServices providerId={3} />);
+    fireEvent.click(screen.getByRole("button", { name: /add service/i }));
+    const dialog = screen.getByRole("dialog");
+
+    // Essentials are visible.
+    expect(within(dialog).getByPlaceholderText("Annual checkup")).toBeVisible();
+    expect(within(dialog).getByPlaceholderText("30")).toBeVisible(); // duration
+    expect(within(dialog).getByPlaceholderText("50.00")).toBeVisible(); // price
+
+    // An advanced field (deposit) is present but hidden until the section expands.
+    const deposit = within(dialog).getByPlaceholderText("0.00");
+    expect(deposit).not.toBeVisible();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Advanced" }));
+    expect(deposit).toBeVisible();
+
+    // A value set in the advanced section still submits.
+    fireEvent.change(within(dialog).getByPlaceholderText("Annual checkup"), {
+      target: { value: "Bath" },
+    });
+    fireEvent.change(deposit, { target: { value: "5.00" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /add service/i }));
+
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    expect(createMutate.mock.calls[0][0].deposit_cents).toBe(500);
   });
 
   it("Deactivate confirms then DELETEs (soft delete) the active service", () => {

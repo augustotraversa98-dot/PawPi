@@ -11,6 +11,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
+import AdvancedSection from "./AdvancedSection";
 
 // /provider/shop — the SHOP's catalog/inventory + order workspace (ticket 2.11). Manage
 // PRODUCTS (price, stock, Rx flag, active) and advance incoming ORDERS' FULFILLMENT
@@ -101,18 +102,11 @@ function CreateProductForm({ providerId }) {
       className="rounded-2xl border p-4"
       style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Product name"
-          className="rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: COLORS.peach }}
-        />
-        <input
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          placeholder="Category (food, toys, meds…)"
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
@@ -133,17 +127,28 @@ function CreateProductForm({ providerId }) {
           style={{ borderColor: COLORS.peach }}
         />
       </div>
+      {/* Less-common fields (Phase 3): state lives in this component, so their
+          values submit whether or not the section is expanded. */}
       <div className="mt-4">
-        <ImageUploader label="Product photos" value={images} onChange={setImages} />
+        <AdvancedSection>
+          <input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Category (food, toys, meds…)"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: COLORS.peach }}
+          />
+          <ImageUploader label="Product photos" value={images} onChange={setImages} />
+          <label className="flex items-center gap-2 text-sm text-[#7A6254]">
+            <input
+              type="checkbox"
+              checked={isRx}
+              onChange={(e) => setIsRx(e.target.checked)}
+            />
+            Requires a prescription (Rx) — buyers must have a vet relationship
+          </label>
+        </AdvancedSection>
       </div>
-      <label className="mt-3 flex items-center gap-2 text-sm text-[#7A6254]">
-        <input
-          type="checkbox"
-          checked={isRx}
-          onChange={(e) => setIsRx(e.target.checked)}
-        />
-        Requires a prescription (Rx) — buyers must have a vet relationship
-      </label>
       <button
         type="submit"
         disabled={create.isPending}
