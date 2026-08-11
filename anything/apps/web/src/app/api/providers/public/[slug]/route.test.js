@@ -81,7 +81,9 @@ describe('GET /api/providers/public/[slug]', () => {
       services: SERVICES,
       capabilities: ['shop', 'vet'],
       products: PRODUCTS,
-      posts: POSTS,
+      // Phase C: every post carries comment_count. The to_regclass probe is unmocked here, so the
+      // guard falls back to 0 (the real count path is covered by the integration test).
+      posts: POSTS.map((p) => ({ ...p, comment_count: 0 })),
     });
 
     // Services query is scoped to the resolved provider id and active=true only.

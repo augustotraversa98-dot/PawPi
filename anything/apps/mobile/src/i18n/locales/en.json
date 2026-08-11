@@ -469,7 +469,22 @@
     "orderPlacedPayBody": "Complete your payment in the checkout window.",
     "orderPlacedBody": "Your order is on its way.",
     "checkoutFailedTitle": "Couldn't check out",
-    "checkoutFailedBody": "Please try again."
+    "checkoutFailedBody": "Please try again.",
+    "comments": {
+      "title": "Comments",
+      "empty": "No comments yet.",
+      "placeholder": "Add a comment…",
+      "signInPrompt": "Sign in to comment",
+      "signInCta": "Sign in",
+      "postError": "Couldn't add your comment.",
+      "deleteError": "Couldn't remove the comment.",
+      "deleteConfirmTitle": "Remove comment?",
+      "deleteConfirmBody": "This comment will be removed.",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "countOne": "{{count}} comment",
+      "countOther": "{{count}} comments"
+    }
   },
   "telehealth": {
     "availableAt": "Your video consult will be available on {{date}} at {{time}}.",
