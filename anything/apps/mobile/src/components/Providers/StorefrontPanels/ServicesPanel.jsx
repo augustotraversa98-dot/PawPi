@@ -25,81 +25,80 @@ export default function ServicesPanel({ services = [], t, onPressService }) {
             radius={RADIUS.md}
             style={{ padding: SPACING.md + 2, marginBottom: SPACING.sm + 2 }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, flex: 1 }}>
-                <Text style={[TYPE.headline, { color: COLORS.warmBrown, flexShrink: 1 }]}>
-                  {s.name}
-                </Text>
-                {s.is_featured && t ? (
-                  <FeaturedBadge t={t} testID={`service-featured-${s.id}`} />
+            {/* Left = name + description + duration + images; Right = price with the Book button
+                directly beneath it (ticket 2.93 rev — tightens the card vertically). */}
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <View style={{ flex: 1, marginRight: SPACING.md }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
+                  <Text style={[TYPE.headline, { color: COLORS.warmBrown, flexShrink: 1 }]}>
+                    {s.name}
+                  </Text>
+                  {s.is_featured && t ? (
+                    <FeaturedBadge t={t} testID={`service-featured-${s.id}`} />
+                  ) : null}
+                </View>
+                {s.description ? (
+                  <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
+                    {s.description}
+                  </Text>
+                ) : null}
+                {s.duration_min ? (
+                  <Row icon={<Clock size={13} color={COLORS.mutedBrown} />}>
+                    {`${s.duration_min} min`}
+                  </Row>
+                ) : null}
+                {Array.isArray(s.image_urls) && s.image_urls.length > 0 ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: SPACING.sm,
+                      marginTop: SPACING.sm + 2,
+                    }}
+                  >
+                    {s.image_urls.map((uri, i) => (
+                      <Image
+                        key={`${s.id}-img-${i}`}
+                        testID="service-image"
+                        source={{ uri }}
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: RADIUS.control,
+                          backgroundColor: COLORS.sand,
+                        }}
+                      />
+                    ))}
+                  </View>
                 ) : null}
               </View>
-              {formatPrice(s.price_cents) ? (
-                <Text style={[TYPE.headline, { color: COLORS.coral }]}>
-                  {formatPrice(s.price_cents)}
-                </Text>
-              ) : null}
-            </View>
-            {s.description ? (
-              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 4 }]}>
-                {s.description}
-              </Text>
-            ) : null}
-            {s.duration_min ? (
-              <Row icon={<Clock size={13} color={COLORS.mutedBrown} />}>
-                {`${s.duration_min} min`}
-              </Row>
-            ) : null}
-            {Array.isArray(s.image_urls) && s.image_urls.length > 0 ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: SPACING.sm,
-                  marginTop: SPACING.sm + 2,
-                }}
-              >
-                {s.image_urls.map((uri, i) => (
-                  <Image
-                    key={`${s.id}-img-${i}`}
-                    testID="service-image"
-                    source={{ uri }}
+
+              {/* Right column — price on top, Book directly under it. */}
+              <View style={{ alignItems: "flex-end", gap: SPACING.sm }}>
+                {formatPrice(s.price_cents) ? (
+                  <Text style={[TYPE.headline, { color: COLORS.coral }]}>
+                    {formatPrice(s.price_cents)}
+                  </Text>
+                ) : null}
+                {onPressService ? (
+                  <PressableScale
+                    testID={`service-book-${s.id}`}
+                    onPress={() => onPressService(s)}
+                    accessibilityRole="button"
                     style={{
-                      width: 72,
-                      height: 72,
+                      backgroundColor: COLORS.coral,
                       borderRadius: RADIUS.control,
-                      backgroundColor: COLORS.sand,
+                      paddingHorizontal: SPACING.lg,
+                      paddingVertical: SPACING.sm,
                     }}
-                  />
-                ))}
+                  >
+                    <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
+                      {t ? t("providers.book") : "Book"}
+                    </Text>
+                  </PressableScale>
+                ) : null}
               </View>
-            ) : null}
-            {/* Compact per-service Book CTA — same entry point as tapping the card. */}
-            {onPressService ? (
-              <PressableScale
-                testID={`service-book-${s.id}`}
-                onPress={() => onPressService(s)}
-                accessibilityRole="button"
-                style={{
-                  alignSelf: "flex-start",
-                  marginTop: SPACING.md,
-                  backgroundColor: COLORS.coral,
-                  borderRadius: RADIUS.control,
-                  paddingHorizontal: SPACING.lg,
-                  paddingVertical: SPACING.sm,
-                }}
-              >
-                <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
-                  {t ? t("providers.book") : "Book"}
-                </Text>
-              </PressableScale>
-            ) : null}
+            </View>
           </Card>
         );
         return onPressService ? (

@@ -201,14 +201,17 @@ export default function ProviderScreen() {
       setShowBooking(true);
     }
   };
-  // Tap a specific SERVICE row → open booking with it preselected (feat/tap-service-to-book).
-  // Capability resolution treats telehealth as a MODALITY (an in-modal tab), not a separate
-  // grid: prefer the deep-link param, else the sole non-telehealth bookable cap, else the sole
-  // bookable cap. Only when several UNRELATED base caps exist (e.g. vet + groomer) do we fall
-  // back to the capability chooser — the preselected service carries through the pick.
+  // Tap a specific SERVICE row → ALWAYS open the booking form directly with that service
+  // preselected (ticket 2.93 rev). The service IS the choice, so we NEVER show the capability
+  // chooser here — asking "what would you like to book?" after the service is already chosen is
+  // nonsensical. Capability is derived when it's unambiguous (a capability the service itself
+  // carries, else the deep-link param, else the sole non-telehealth / sole bookable cap); when it
+  // can't be resolved (several unrelated caps, e.g. vet + groomer) we leave it undefined and the
+  // modal derives it from the provider — booking works with just the preselected service.
   const openBookingForService = (service) => {
     const baseCaps = bookableCaps.filter((c) => c !== "telehealth");
     const cap =
+      service?.capability ??
       capabilityStr ??
       (baseCaps.length === 1
         ? baseCaps[0]
@@ -216,12 +219,8 @@ export default function ProviderScreen() {
           ? bookableCaps[0]
           : undefined);
     setPreselectedService(service);
-    if (cap) {
-      setBookingCapability(cap);
-      setShowBooking(true);
-    } else {
-      setShowCapChooser(true);
-    }
+    setBookingCapability(cap ?? null);
+    setShowBooking(true);
   };
   const pickBookingCapability = (cap) => {
     setBookingCapability(cap);

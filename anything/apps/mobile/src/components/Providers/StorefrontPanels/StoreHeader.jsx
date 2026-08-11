@@ -78,51 +78,8 @@ export default function StoreHeader({
             {provider.bio}
           </Text>
         ) : null}
-        {/* Capability chips (P4a) — one per capability the provider holds; falls back to the
-            display-only provider_type label when capabilities aren't set. */}
-        {capabilities.length > 0 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: SPACING.xs,
-              marginTop: 4,
-            }}
-          >
-            {capabilities.map((c) => (
-              <View
-                key={c}
-                testID={`provider-cap-${c}`}
-                style={{
-                  paddingHorizontal: SPACING.sm,
-                  paddingVertical: 2,
-                  borderRadius: RADIUS.chip,
-                  backgroundColor: COLORS.coral + "14",
-                  borderWidth: 1,
-                  borderColor: COLORS.peach,
-                }}
-              >
-                <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "700" }]}>
-                  {t(`discover.cap.${c}`)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : provider.provider_type ? (
-          <Text
-            style={[
-              TYPE.footnote,
-              {
-                fontWeight: "700",
-                color: COLORS.coral,
-                marginTop: 2,
-                textTransform: "capitalize",
-              },
-            ]}
-          >
-            {provider.provider_type}
-          </Text>
-        ) : null}
+        {/* Offering chips were removed from the in-profile header (ticket 2.93 rev) — they wasted
+            vertical space here. The Discover / search cards still show them (ServicesDiscovery). */}
 
         {/* Meta row — each piece renders only when it has data (no fakes). */}
         <View
