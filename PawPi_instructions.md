@@ -965,6 +965,20 @@ hardening, and the redesign). Read that for detail.
     onto the post-detail header (Guideline 1.2 preserved). All new web reads exercised through the REAL router
     by URL (unit + integration). web vitest 1777→1779 · integration +1 (stats on the storefront read, paws
     table absent → 0) · mobile jest 1570→1582.
+  - **2.95 adoption visibility + apply** (web + mobile, **no migration**, attended → PR only, not auto-merged) —
+    fixes "as a pet owner I see nothing to adopt". Root cause: the owner browse (`GET /api/adoption/listings`)
+    HARD-filtered located shelters to a `radius_km` (default 100km) bounding box, so with sparse early data a
+    shelter WITH a map pin more than 100km away was dropped entirely (2.91 had rescued only *coordless*
+    shelters). Fix: **distance RANKS, it does not exclude** — the box is removed from the default browse and
+    gated behind an explicit opt-in `enforce_radius=true` (off by default). Every AVAILABLE dog of every
+    PUBLISHED provider is returned, sorted nearest-first when the owner shares location (coordless last),
+    featured/recent otherwise — a shelter across the country still appears, just ranked lower. New listings were
+    already visible-by-default: the create-listing INSERT relies on `adoptable_listings.status` default
+    `'available'` (0038), verified. Mobile: the Apply-to-adopt CTA now flips to a persistent **"Application
+    sent"** confirmation (no duplicate re-apply). No RLS change — only an over-eager distance EXCLUSION was
+    removed, not who-can-read. Browse read exercised through the REAL router by URL + the adoption-browse
+    integration suite (extended to prove a located shelter ~111km out now appears, ranked after nearer ones).
+    web vitest unchanged · integration +1 (far-located-still-appears) · mobile jest +1 (apply confirmation).
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

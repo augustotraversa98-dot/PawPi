@@ -12,8 +12,15 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // providers), so the joined read is safe as any authed owner.
 //
 // Filters (all optional, compose): gender, size, age_min/age_max (years), energy_level,
-// good_with_kids/cats/dogs, vaccination_status, provider_id, and location (lat+lng+radius_km
-// bounding box) or city. Nearest-first when lat+lng are valid; else featured-first then recent.
+// good_with_kids/cats/dogs, vaccination_status, provider_id, and city. Nearest-first when
+// lat+lng are valid; else featured-first then recent.
+//
+// DISTANCE RANKS, IT DOES NOT EXCLUDE (ticket 2.95). Sharing location only SORTS the results
+// nearest-first — every AVAILABLE dog of every PUBLISHED provider is returned regardless of
+// distance (a shelter across the country still appears, just ranked lower; coordless shelters
+// last). The old bounding-box that HID located-but-far shelters is now opt-in only: pass
+// enforce_radius=true (with lat+lng+radius_km) to re-apply it. Off by default so sparse early
+// data never leaves an owner staring at an empty browse.
 
 function num(v) {
   if (v == null || v === "") return null;
@@ -61,8 +68,12 @@ async function GET(request) {
     const lat = num(searchParams.get("lat"));
     const lng = num(searchParams.get("lng"));
     const radiusKm = num(searchParams.get("radius_km")) ?? 100;
+    // Radius filtering is OPT-IN (ticket 2.95): by default distance only RANKS results. Set
+    // enforce_radius=true to hard-filter located shelters to the bounding box below.
+    const enforceRadius = bool(searchParams.get("enforce_radius")) === true;
     const hasGeo =
       lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    const boxFilter = hasGeo && enforceRadius;
 
     // Bounding box for the radius pre-filter (1° lat ≈ 111km; lng shrinks by cos(lat)).
     const latPad = hasGeo ? radiusKm / 111 : null;
@@ -108,12 +119,12 @@ async function GET(request) {
         AND (${goodDogs}::bool IS NULL OR al.good_with_dogs = ${goodDogs})
         AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
         AND (
-          ${hasGeo ? false : true}
-          -- A shelter that hasn't set a map pin has no coords: still surface its dogs
-          -- (distance unknown → sorted last below) instead of hiding them entirely. The
-          -- radius box only filters shelters we CAN place. (ticket 2.91 — "not shown to
-          -- pet owners"). Without this, any owner who shares location never sees a
-          -- pin-less shelter's available dogs.
+          -- Default (ticket 2.95): NO distance exclusion — this whole clause is TRUE, so every
+          -- located-but-far shelter is returned and merely RANKED lower by the sort below. The
+          -- bounding box only kicks in when the caller opts in with enforce_radius=true.
+          ${boxFilter ? false : true}
+          -- A shelter that hasn't set a map pin has no coords: it always surfaces (distance
+          -- unknown → sorted last below), even under an opted-in radius. (ticket 2.91).
           OR loc.lat IS NULL OR loc.lng IS NULL
           OR (
             loc.lat BETWEEN ${latMin} AND ${latMax}
@@ -126,8 +137,9 @@ async function GET(request) {
     let listings = rows;
     let sort = "featured_recent";
     if (hasGeo) {
-      // Nearest-first: attach distance + sort ascending (rows lacking coords were already excluded
-      // by the bounding box above). Featured still bubbles up within the same proximity tie-break.
+      // Nearest-first: attach distance + sort ascending. Located shelters rank by real distance
+      // (near → far, none excluded); coordless shelters have null distance → sort last. Featured
+      // still bubbles up within the same proximity tie-break.
       listings = rows
         .map((r) => ({
           ...r,
