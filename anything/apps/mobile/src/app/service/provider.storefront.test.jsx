@@ -1,5 +1,6 @@
 // Storefront shell (Services Hub P4a): per-type primary action + capability-aware booking.
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 //   - a grooming-only provider books as `groomer`, telehealth as `telehealth`, vet as `vet`
 //     (NOT the book/route 'vet' default);
 //   - a multi-capability provider asks which service, then books under THAT capability;
@@ -137,20 +138,20 @@ describe("tap a service to book (feat/tap-service-to-book)", () => {
     expect(queryByTestId("storefront-cap-choose-vet")).toBeNull();
   });
 
-  test("vet + groomer (unrelated): tapping a service shows the chooser, then preselects the service", () => {
+  test("vet + groomer (unrelated): tapping a service opens booking DIRECTLY with it preselected — never the chooser (ticket 2.93 rev)", () => {
     mockProfile = profileWith({
       capabilities: ["vet", "groomer"],
       services: [SERVICE],
     });
-    const { getByTestId } = render(<ProviderScreen />);
+    const { getByTestId, queryByTestId } = render(<ProviderScreen />);
     fireEvent.press(getByTestId("service-row-9"));
-    // The service is already carried through while the chooser is open.
+    // The service is preselected and the booking form opens straight away…
     expect(bookingProps.service).toEqual(SERVICE);
-    expect(getByTestId("storefront-cap-choose-vet")).toBeTruthy();
-    expect(getByTestId("storefront-cap-choose-groomer")).toBeTruthy();
-    fireEvent.press(getByTestId("storefront-cap-choose-groomer"));
-    expect(bookingProps.capability).toBe("groomer");
-    expect(bookingProps.service).toEqual(SERVICE);
+    // …with NO per-service capability chooser (the service is already the choice).
+    expect(queryByTestId("storefront-cap-choose-vet")).toBeNull();
+    expect(queryByTestId("storefront-cap-choose-groomer")).toBeNull();
+    // Capability isn't forced when it can't be resolved → the modal derives it from the provider.
+    expect(bookingProps.capability).toBeUndefined();
   });
 
   test("with services, the per-card Book replaces the bottom Book CTA (Message remains)", () => {
@@ -186,13 +187,14 @@ describe("per-type primary action", () => {
     expect(queryByTestId("storefront-shop-cta")).toBeNull();
   });
 
-  test("a both-capabilities provider shows Book + Shop and capability chips", () => {
+  test("a both-capabilities provider shows Book + Shop (offering chips removed from the header, ticket 2.93 rev)", () => {
     mockProfile = profileWith({ capabilities: ["vet", "shop"] });
-    const { getByTestId } = render(<ProviderScreen />);
+    const { getByTestId, queryByTestId } = render(<ProviderScreen />);
     expect(getByTestId("storefront-book-cta")).toBeTruthy();
     expect(getByTestId("storefront-shop-cta")).toBeTruthy();
-    expect(getByTestId("provider-cap-vet")).toBeTruthy();
-    expect(getByTestId("provider-cap-shop")).toBeTruthy();
+    // The in-profile header no longer renders offering chips (they live on Discover cards).
+    expect(queryByTestId("provider-cap-vet")).toBeNull();
+    expect(queryByTestId("provider-cap-shop")).toBeNull();
   });
 
   test("products with no capability still count as a SHOP (Shop CTA present)", () => {

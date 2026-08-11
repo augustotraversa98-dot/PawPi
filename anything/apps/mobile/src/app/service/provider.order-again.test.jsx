@@ -1,5 +1,6 @@
 // "Order again" rail (storefront enhancement): above the Items grid, the distinct products this
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // buyer previously ordered FROM THIS PROVIDER that are still available, each a quick-add card.
 // Client-derived from useShopOrders — real data only, hidden when there's no usable history.
 

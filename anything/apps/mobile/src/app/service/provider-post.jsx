@@ -10,14 +10,25 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Dimensions,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Send, Trash2 } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Send,
+  Trash2,
+  PawPrint,
+  MessageCircle,
+  Store,
+  X,
+} from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
-import { TYPE, RADIUS, SPACING } from "@/constants/theme";
+import { TYPE, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { formatRelativeTime } from "@/utils/relativeTime";
@@ -28,10 +39,40 @@ import {
   useDeleteProviderPostComment,
 } from "@/hooks/useProviderPostComments";
 
-// Provider-post DETAIL (Phase C) — the drill-in from a tappable storefront post card. Renders the
-// post (body + images, passed via params so it shows instantly and guests can read without an
-// auth'd refetch) + its comment list. Signed-in users get a composer; guests get a
-// "sign in to comment" prompt but can still READ. Mirrors BarkModal's keyboard/composer pattern.
+const { width: SCREEN_W } = Dimensions.get("window");
+
+// Provider-post DETAIL — the drill-in from a tappable storefront Posts tile. Mirrors the PET post
+// detail (Feed/PostDetailModal): a business author row (logo + name + @handle + · time), the post
+// image(s) FULL-WIDTH and tap-to-enlarge (not a thumbnail), the caption, an engagement row (paws +
+// comments — paws stays 0 until ticket 2.94), then the comment list + composer. Guests read; a
+// signed-in owner comments (unchanged flow). The rich post (incl. the business identity) is handed
+// off in memory (ticket 2.88), so a cold deep-link degrades to comments-only, never a crash.
+
+// Business author avatar: the provider logo, or a fallback tile.
+function BusinessAvatar({ uri }) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.sand }}
+      />
+    );
+  }
+  return (
+    <View
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: COLORS.sand,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Store size={22} color={COLORS.coral} />
+    </View>
+  );
+}
 
 function Avatar({ uri, name }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase();
@@ -124,6 +165,15 @@ export default function ProviderPostScreen() {
 
   const images = Array.isArray(post?.image_urls) ? post.image_urls : [];
 
+  // Rich-detail derivations (ticket 2.93). The business identity rides along in the handoff; a cold
+  // deep-link (no stash) has none → the author row hides its name/handle but the post/comments still
+  // render. Paws stays 0 until 2.94 lands the paw primitive.
+  const [viewerUri, setViewerUri] = useState(null);
+  const business = post?.business ?? null;
+  const pawsCount = Number(post?.paw_count ?? 0);
+  const commentCount = comments.length;
+  const timestamp = post?.created_at ? formatRelativeTime(post.created_at) : "";
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       {/* Header */}
@@ -142,9 +192,23 @@ export default function ProviderPostScreen() {
         <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
-        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]} numberOfLines={1}>
-          {t("storefront.comments.title")}
+        <Text
+          style={[TYPE.title2, { color: COLORS.warmBrown, flex: 1 }]}
+          numberOfLines={1}
+        >
+          {t("storefront.social.postDetailTitle")}
         </Text>
+        {/* Report / Block this post (Guideline 1.2) — moved here from the storefront card since
+            the Posts grid tiles have no room for the menu. Hidden on the author's own post. */}
+        {post && post.id != null ? (
+          <ModerationMenu
+            targetType="provider_post"
+            targetId={post.id}
+            authorUserId={post.author_user_id}
+            isOwn={!!post.is_own}
+            iconSize={20}
+          />
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
@@ -157,37 +221,108 @@ export default function ProviderPostScreen() {
           contentContainerStyle={{ padding: SPACING.xl, paddingBottom: SPACING.xl }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* The post */}
+          {/* The post — mirrors the pet post detail (author row → full-width media → caption →
+              engagement row). */}
           {post ? (
             <View style={{ marginBottom: SPACING.lg }}>
-              {post.body ? (
-                <Text style={[TYPE.callout, { color: COLORS.warmBrown, lineHeight: 22 }]}>
-                  {post.body}
-                </Text>
-              ) : null}
+              {/* Author row — the BUSINESS (logo + name + @handle + · time). */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm + 2,
+                  marginBottom: SPACING.md,
+                }}
+              >
+                <BusinessAvatar uri={business?.logo_url} />
+                <View style={{ flex: 1 }}>
+                  {business?.name ? (
+                    <Text
+                      style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}
+                      numberOfLines={1}
+                    >
+                      {business.name}
+                    </Text>
+                  ) : null}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    {business?.slug ? (
+                      <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
+                        @{business.slug}
+                      </Text>
+                    ) : null}
+                    {business?.slug && timestamp ? (
+                      <Text style={{ color: COLORS.peach }}>·</Text>
+                    ) : null}
+                    {timestamp ? (
+                      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>{timestamp}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+
+              {/* Media — FULL-WIDTH (bleeds past the scroll padding), tap to enlarge. */}
               {images.length > 0 ? (
                 <View
                   style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: SPACING.sm,
-                    marginTop: post.body ? SPACING.md : 0,
+                    marginHorizontal: -SPACING.xl,
+                    marginBottom: post.body ? SPACING.md : 0,
                   }}
                 >
                   {images.map((uri, i) => (
-                    <Image
+                    <TouchableOpacity
                       key={`img-${i}`}
-                      source={{ uri }}
-                      style={{
-                        width: 108,
-                        height: 108,
-                        borderRadius: RADIUS.control,
-                        backgroundColor: COLORS.sand,
-                      }}
-                    />
+                      testID="provider-post-image"
+                      activeOpacity={0.95}
+                      onPress={() => setViewerUri(uri)}
+                      style={{ marginTop: i === 0 ? 0 : 2 }}
+                    >
+                      <Image
+                        source={{ uri }}
+                        style={{ width: SCREEN_W, height: SCREEN_W, backgroundColor: COLORS.sand }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                   ))}
                 </View>
               ) : null}
+
+              {/* Caption — business name (bold) + body, like the pet caption. */}
+              {post.body ? (
+                <Text style={[TYPE.body, { color: COLORS.warmBrown, lineHeight: 23 }]}>
+                  {business?.name ? (
+                    <Text style={{ fontWeight: "800" }}>{business.name} </Text>
+                  ) : null}
+                  {post.body}
+                </Text>
+              ) : null}
+
+              {/* Engagement row — paws (0 until ticket 2.94) + comments. */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.xl,
+                  marginTop: SPACING.md,
+                  paddingTop: SPACING.md,
+                  borderTopWidth: 1,
+                  borderTopColor: MATERIALS.hairline,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <PawPrint size={22} color={COLORS.mutedBrown} />
+                  <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
+                    {pawsCount} {t("storefront.social.paws")}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <MessageCircle size={20} color={COLORS.mutedBrown} />
+                  <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
+                    {commentCount === 1
+                      ? t("storefront.comments.countOne", { count: commentCount })
+                      : t("storefront.comments.countOther", { count: commentCount })}
+                  </Text>
+                </View>
+              </View>
             </View>
           ) : null}
 
@@ -362,6 +497,47 @@ export default function ProviderPostScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Full-screen image viewer (ticket 2.93) — tapping a post image opens it enlarged; tap
+          anywhere or the ✕ to close. Mounted only while open so it never counts as a stray Image. */}
+      {viewerUri ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setViewerUri(null)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.96)",
+              justifyContent: "center",
+            }}
+          >
+            <PressableScale
+              testID="provider-post-image-viewer-close"
+              onPress={() => setViewerUri(null)}
+              accessibilityRole="button"
+              accessibilityLabel={t("storefront.social.closeImage")}
+              style={{ position: "absolute", top: insets.top + 12, right: 20, zIndex: 2, padding: 8 }}
+            >
+              <X size={26} color="#FFF" />
+            </PressableScale>
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => setViewerUri(null)}
+              style={{ width: "100%", height: "100%", justifyContent: "center" }}
+            >
+              <Image
+                testID="provider-post-image-viewer"
+                source={{ uri: viewerUri }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }

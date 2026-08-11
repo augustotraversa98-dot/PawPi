@@ -1,5 +1,6 @@
 // Ticket 2.23 — service images on the public provider profile. A service that
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // carries image_urls renders one <Image testID="service-image"> per URL; a service
 // with no images renders none (the storefront shows just the text — no fakes).
 // The data hook + router + heavy child components are mocked, so this exercises the
@@ -132,34 +133,10 @@ test("renders the storefront cover, inline product grid, and posts when present"
   expect(getByTestId("storefront-product-20")).toBeTruthy();
   expect(getByTestId("storefront-product-21")).toBeTruthy();
   expect(getByText("Kibble")).toBeTruthy();
+  // Posts render as a moments-style image grid (ticket 2.93): one tappable tile per post. The
+  // image post shows its cover; the text-only post shows its body preview.
   expect(getAllByTestId("storefront-post")).toHaveLength(2);
-  expect(getByText("Open this weekend!")).toBeTruthy();
-  expect(getAllByTestId("storefront-post-image")).toHaveLength(1);
-});
-
-// Guideline 1.2 — storefront posts carry a Report/Block menu, hidden on your own post.
-test("storefront post shows a Report/Block menu for others, hidden on the author's own post", () => {
-  mockProfile = {
-    data: {
-      provider: baseProvider,
-      locations: [],
-      services: [],
-      products: [],
-      posts: [
-        { id: 40, body: "Theirs", image_urls: [], author_user_id: 99, is_own: false },
-        { id: 41, body: "Mine", image_urls: [], author_user_id: 7, is_own: true },
-      ],
-    },
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
-
-  const { getByText, queryAllByLabelText } = render(<ProviderScreen />);
-  expect(getByText("Theirs")).toBeTruthy();
-  expect(getByText("Mine")).toBeTruthy();
-  // Exactly one "More options" trigger — the non-own post. The author's own post hides it.
-  expect(queryAllByLabelText("More options")).toHaveLength(1);
+  expect(getByText("Thanks all")).toBeTruthy(); // the no-image post → text tile
 });
 
 test("storefront degrades cleanly: no cover/items/posts → those sections are absent", () => {

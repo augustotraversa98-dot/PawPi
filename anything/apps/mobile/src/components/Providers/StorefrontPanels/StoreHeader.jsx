@@ -57,51 +57,29 @@ export default function StoreHeader({
         <Text style={[TYPE.title2, { fontSize: 19, lineHeight: 24, color: COLORS.warmBrown }]}>
           {provider.name}
         </Text>
-        {/* Capability chips (P4a) — one per capability the provider holds; falls back to the
-            display-only provider_type label when capabilities aren't set. */}
-        {capabilities.length > 0 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: SPACING.xs,
-              marginTop: 4,
-            }}
-          >
-            {capabilities.map((c) => (
-              <View
-                key={c}
-                testID={`provider-cap-${c}`}
-                style={{
-                  paddingHorizontal: SPACING.sm,
-                  paddingVertical: 2,
-                  borderRadius: RADIUS.chip,
-                  backgroundColor: COLORS.coral + "14",
-                  borderWidth: 1,
-                  borderColor: COLORS.peach,
-                }}
-              >
-                <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "700" }]}>
-                  {t(`discover.cap.${c}`)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : provider.provider_type ? (
+        {/* @handle (from the provider slug) — mirrors the pet social profile's @handle so the
+            business profile reads the same way (ticket 2.93). */}
+        {provider.slug ? (
           <Text
-            style={[
-              TYPE.footnote,
-              {
-                fontWeight: "700",
-                color: COLORS.coral,
-                marginTop: 2,
-                textTransform: "capitalize",
-              },
-            ]}
+            testID="storefront-handle"
+            style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}
           >
-            {provider.provider_type}
+            @{provider.slug}
           </Text>
         ) : null}
+        {/* Info line — the business's own bio/tagline/description (the pet profile's "with
+            <owner>" analogue). Rendered only when set (no fakes). */}
+        {provider.bio ? (
+          <Text
+            testID="storefront-bio"
+            style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 3, lineHeight: 18 }]}
+            numberOfLines={3}
+          >
+            {provider.bio}
+          </Text>
+        ) : null}
+        {/* Offering chips were removed from the in-profile header (ticket 2.93 rev) — they wasted
+            vertical space here. The Discover / search cards still show them (ServicesDiscovery). */}
 
         {/* Meta row — each piece renders only when it has data (no fakes). */}
         <View

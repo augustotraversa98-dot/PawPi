@@ -100,15 +100,16 @@ async function GET(request, { params }) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    // comment_count (Phase C): VISIBLE comments per post, so mobile cards can show it. Computed in
-    // a SEPARATE, GUARDED query — provider_post_comments (migration 0082) is hand-applied to
-    // Supabase, so until then this endpoint must NOT reference the table (it would 500 the whole
-    // storefront). We probe to_regclass first and fall back to 0. Every post gets a comment_count.
+    // comment_count (Phase C) + total Barks (ticket 2.93): VISIBLE comments. provider_post_comments
+    // (migration 0082) is hand-applied to Supabase, so until then this endpoint must NOT reference
+    // the table (it would 500 the whole storefront). We probe to_regclass ONCE and reuse it for the
+    // per-post counts (mobile cards) AND the profile's total Barks stat; a missing table → 0.
     let commentCounts = {};
-    if (posts.length > 0) {
-      const probe = await sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`;
-      const hasComments = Array.isArray(probe) && probe[0]?.ok === true;
-      if (hasComments) {
+    let barksCount = 0;
+    const commentsProbe = await sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`;
+    const hasComments = Array.isArray(commentsProbe) && commentsProbe[0]?.ok === true;
+    if (hasComments) {
+      if (posts.length > 0) {
         const ids = posts.map((p) => p.id);
         const counts = await sql`
           SELECT post_id, count(*)::int AS n
@@ -116,13 +117,49 @@ async function GET(request, { params }) {
           WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
           GROUP BY post_id
         `;
-        commentCounts = Object.fromEntries(counts.map((r) => [r.post_id, r.n]));
+        commentCounts = Object.fromEntries((counts ?? []).map((r) => [r.post_id, r.n]));
       }
+      // Total visible comments across ALL this provider's visible posts (not just the page).
+      const barks = await sql`
+        SELECT count(*)::int AS n
+        FROM provider_post_comments c
+        JOIN provider_posts p ON p.id = c.post_id
+        WHERE p.provider_id = ${provider.id}
+          AND p.deleted_at IS NULL AND p.hidden_at IS NULL
+          AND c.deleted_at IS NULL AND c.hidden_at IS NULL
+      `;
+      barksCount = barks?.[0]?.n ?? 0;
     }
     const postsWithCounts = posts.map((p) => ({
       ...p,
       comment_count: commentCounts[p.id] ?? 0,
     }));
+
+    // Social stats for the business profile header (ticket 2.93): Posts · Paws · Barks. Followers
+    // is served by the follow endpoint (mobile reads it there). Real counts only.
+    //   • postsCount — this provider's visible (non-deleted, non-hidden) posts.
+    //   • pawsCount  — total likes across those posts. The provider_post_paws table lands in ticket
+    //     2.94; until then we probe to_regclass and DEGRADE to 0 (never reference a missing table).
+    const postsCountRows = await sql`
+      SELECT count(*)::int AS n
+      FROM provider_posts
+      WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
+    `;
+    const postsCount = postsCountRows?.[0]?.n ?? 0;
+
+    let pawsCount = 0;
+    const pawsProbe = await sql`SELECT to_regclass('public.provider_post_paws') IS NOT NULL AS ok`;
+    const hasPaws = Array.isArray(pawsProbe) && pawsProbe[0]?.ok === true;
+    if (hasPaws) {
+      const paws = await sql`
+        SELECT count(*)::int AS n
+        FROM provider_post_paws pp
+        JOIN provider_posts p ON p.id = pp.post_id
+        WHERE p.provider_id = ${provider.id}
+          AND p.deleted_at IS NULL AND p.hidden_at IS NULL
+      `;
+      pawsCount = paws?.[0]?.n ?? 0;
+    }
 
     return Response.json({
       provider,
@@ -131,6 +168,7 @@ async function GET(request, { params }) {
       capabilities,
       products,
       posts: postsWithCounts,
+      stats: { postsCount, pawsCount, barksCount },
     });
   } catch (error) {
     console.error("[GET /api/providers/public/[slug]] Error:", error.message);

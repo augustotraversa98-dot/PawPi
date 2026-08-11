@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ActivityIndicator, Alert } from "react-native";
+import { Text, ActivityIndicator, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { UserPlus, Check } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
@@ -20,7 +20,6 @@ export default function ProviderFollowButton({ providerId }) {
   const toggle = useToggleProviderFollow(providerId);
 
   const following = !!data?.following;
-  const followersCount = Number(data?.followersCount ?? 0);
 
   const onPress = () => {
     if (!isAuthenticated) {
@@ -39,49 +38,41 @@ export default function ProviderFollowButton({ providerId }) {
     );
   };
 
+  // The follower COUNT is intentionally not shown here anymore (ticket 2.93) — it lives in the
+  // Posts-tab stat row. This is just the toggle; the caller places it beside the Message action.
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
-      <PressableScale
-        testID="provider-follow-button"
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityState={{ selected: following }}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          paddingHorizontal: SPACING.lg,
-          paddingVertical: SPACING.sm + 2,
-          borderRadius: RADIUS.chip,
-          borderWidth: 1.5,
-          borderColor: following ? COLORS.peach : COLORS.coral,
-          backgroundColor: following ? COLORS.card : COLORS.coral,
-        }}
+    <PressableScale
+      testID="provider-follow-button"
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: following }}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.sm + 2,
+        borderRadius: RADIUS.chip,
+        borderWidth: 1.5,
+        borderColor: following ? COLORS.peach : COLORS.coral,
+        backgroundColor: following ? COLORS.card : COLORS.coral,
+      }}
+    >
+      {toggle.isPending ? (
+        <ActivityIndicator size="small" color={following ? COLORS.coral : "#FFF"} />
+      ) : following ? (
+        <Check size={16} color={COLORS.coral} />
+      ) : (
+        <UserPlus size={16} color="#FFF" />
+      )}
+      <Text
+        style={[
+          TYPE.footnote,
+          { fontWeight: "800", color: following ? COLORS.coral : "#FFF" },
+        ]}
       >
-        {toggle.isPending ? (
-          <ActivityIndicator size="small" color={following ? COLORS.coral : "#FFF"} />
-        ) : following ? (
-          <Check size={16} color={COLORS.coral} />
-        ) : (
-          <UserPlus size={16} color="#FFF" />
-        )}
-        <Text
-          style={[
-            TYPE.footnote,
-            { fontWeight: "800", color: following ? COLORS.coral : "#FFF" },
-          ]}
-        >
-          {following ? t("storefront.follow.following") : t("storefront.follow.follow")}
-        </Text>
-      </PressableScale>
-
-      {followersCount > 0 ? (
-        <Text testID="provider-follower-count" style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-          {followersCount === 1
-            ? t("storefront.follow.followersOne", { count: followersCount })
-            : t("storefront.follow.followersOther", { count: followersCount })}
-        </Text>
-      ) : null}
-    </View>
+        {following ? t("storefront.follow.following") : t("storefront.follow.follow")}
+      </Text>
+    </PressableScale>
   );
 }

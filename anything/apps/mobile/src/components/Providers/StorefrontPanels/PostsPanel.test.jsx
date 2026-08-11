@@ -60,3 +60,18 @@ describe("PostsPanel navigation (2.88)", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 });
+
+describe("PostsPanel moments grid (ticket 2.93)", () => {
+  it("renders one tile per post (image posts + text-only posts)", () => {
+    const posts = [
+      POST, // has an image
+      { id: 8, body: "Text only update", image_urls: [], comment_count: 0 },
+    ];
+    const { getAllByTestId, getByText } = render(
+      <PostsPanel posts={posts} providerId={42} />,
+    );
+    expect(getAllByTestId("storefront-post")).toHaveLength(2);
+    // The text-only post surfaces its body as the tile so nothing is lost.
+    expect(getByText("Text only update")).toBeTruthy();
+  });
+});

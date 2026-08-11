@@ -1,5 +1,6 @@
 // Storefront header polish (redesign Phase 1, PR-2): the StoreHeader meta row (open-now pill
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // wired to deriveOpenNow) and the promoted Instagram chip. deriveOpenNow is mocked so the
 // open/closed/unknown wiring is deterministic (the util has its own tests). Sticky tab bar is
 // covered by provider.tabs.test.jsx; this file re-checks a switch still works.
@@ -114,6 +115,27 @@ describe("promoted Instagram chip", () => {
     mockProfile = profile({});
     const { queryByTestId } = render(<ProviderScreen />);
     expect(queryByTestId("storefront-ig-chip")).toBeNull();
+  });
+});
+
+describe("social header identity (ticket 2.93)", () => {
+  test("shows the @handle (from slug) and the bio info line", () => {
+    mockProfile = profile({ bio: "The friendliest clinic in town" });
+    const { getByTestId, getByText, getAllByText } = render(<ProviderScreen />);
+    expect(getByTestId("storefront-handle")).toBeTruthy();
+    expect(getByText("@happy-paws")).toBeTruthy();
+    expect(getByTestId("storefront-bio")).toBeTruthy();
+    // The bio shows in the header info line (it also appears in the mounted-but-hidden About
+    // panel, so assert on presence, not uniqueness).
+    expect(getAllByText("The friendliest clinic in town").length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("omits the bio line when there is no bio (no fakes)", () => {
+    mockProfile = profile({});
+    const { queryByTestId } = render(<ProviderScreen />);
+    expect(queryByTestId("storefront-bio")).toBeNull();
+    // The @handle still shows (every published provider has a slug).
+    expect(queryByTestId("storefront-handle")).toBeTruthy();
   });
 });
 
