@@ -113,3 +113,16 @@ describe("PATCH shop-products/[productId] — merchandising fields (2c-i)", () =
     expect(queryTextOf(3)).toContain("compare_at_cents = CASE WHEN");
   });
 });
+
+// Defense-in-depth: a non-integer productId (a static path like "reorder" that reached this
+// dynamic handler) must 404 BEFORE any SQL — never bound as an integer in Postgres.
+describe("non-integer productId guard", () => {
+  it("PATCH with a non-numeric productId → 404, no SQL", async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await PATCH(patchReq({ name: "x" }), {
+      params: { id: "100", productId: "reorder" },
+    });
+    expect(res.status).toBe(404);
+    expect(sql).not.toHaveBeenCalled();
+  });
+});
