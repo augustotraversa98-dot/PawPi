@@ -951,6 +951,20 @@ hardening, and the redesign). Read that for detail.
     undefined_table (42P01) → not following / 0 followers / empty list, so the provider screen never crashes.
     All routes tested through the REAL router by URL (no static-vs-[param] shadowing on `/providers/following`).
     web vitest 1773→1777 · integration +8 (RLS own-row write, guest denied, degrade path) · mobile jest 1565→1570.
+  - **2.93 business Posts → pet-social-profile parity** (web + mobile, **no migration**, attended → PR only, not
+    auto-merged) — the business storefront now reads like a pet's social profile. Header gains an **@handle**
+    (from the provider slug) + an **info line** (bio); a **stat row** (Posts · Paws · Barks · Followers, no
+    "Following") styled exactly like the pet profile; the Posts tab becomes a **moments-style image grid**
+    whose tiles open the existing post detail (full-size images + comments — guests read, signed-in owners
+    comment). REUSE, not a parallel design: extracted `components/social/SocialStatRow` + `MomentsGrid` and
+    adopted them in BOTH the pet profile and the business storefront (pet-profile refactor is behavior-preserving).
+    Web: the public profile payload gains `stats { postsCount, pawsCount, barksCount }` — Barks from the 0082
+    comments; both edge tables `to_regclass`-guarded so a missing table degrades to 0. Followers is read live
+    from the follow endpoint (shared query, so it stays in sync with the Follow button). **Paws stays 0 until
+    2.94** lands `provider_post_paws` — the read never 500s. Moderation moved off the (now grid) post cards
+    onto the post-detail header (Guideline 1.2 preserved). All new web reads exercised through the REAL router
+    by URL (unit + integration). web vitest 1777→1779 · integration +1 (stats on the storefront read, paws
+    table absent → 0) · mobile jest 1570→1582.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

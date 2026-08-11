@@ -496,6 +496,15 @@
       "listTitle": "Negocios que seguís",
       "listEmpty": "Todavía no seguís ningún negocio.",
       "listSubtitle": "Los negocios que seguís aparecen acá."
+    },
+    "social": {
+      "posts": "Publicaciones",
+      "paws": "Patitas",
+      "barks": "Ladridos",
+      "followers": "Seguidores",
+      "postsTitle": "Publicaciones",
+      "emptyTitle": "Todavía no hay publicaciones",
+      "emptyBody": "Las publicaciones de este negocio aparecen acá."
     }
   },
   "telehealth": {

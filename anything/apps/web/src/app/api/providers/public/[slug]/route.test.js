@@ -84,6 +84,9 @@ describe('GET /api/providers/public/[slug]', () => {
       // Phase C: every post carries comment_count. The to_regclass probe is unmocked here, so the
       // guard falls back to 0 (the real count path is covered by the integration test).
       posts: POSTS.map((p) => ({ ...p, comment_count: 0 })),
+      // Ticket 2.93: social stats. The comment/paw to_regclass probes are unmocked here, so both
+      // degrade to 0 (real counts are proven in the integration test). postsCount is unmocked → 0.
+      stats: { postsCount: 0, pawsCount: 0, barksCount: 0 },
     });
 
     // Services query is scoped to the resolved provider id and active=true only.
@@ -186,6 +189,56 @@ describe('GET /api/providers/public/[slug]', () => {
     expect(prodText).toContain('is_featured');
     expect(prodText).toContain('sort_order');
     expect(prodText).toContain('compare_at_cents');
+  });
+
+  it('ticket 2.93: returns social stats { postsCount, pawsCount, barksCount }; paw/comment tables are to_regclass-guarded (degrade to 0)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }]) // provider
+      .mockResolvedValueOnce([]) // locations
+      .mockResolvedValueOnce([]) // services
+      .mockResolvedValueOnce([]) // capabilities
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]) // posts (empty page)
+      .mockResolvedValueOnce([{ ok: true }]) // comments table probe → present
+      // no per-post counts (posts page empty), then total barks:
+      .mockResolvedValueOnce([{ n: 7 }]) // total barks
+      .mockResolvedValueOnce([{ n: 4 }]) // postsCount
+      .mockResolvedValueOnce([{ ok: false }]); // paws table probe → missing (pre-2.94)
+
+    const res = await GET(req(), PARAMS);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.stats).toEqual({ postsCount: 4, pawsCount: 0, barksCount: 7 });
+
+    // Both edge tables are probed via to_regclass BEFORE any reference (degrade-clean).
+    const text = allQueryText();
+    expect(text).toContain("to_regclass('public.provider_post_comments')");
+    expect(text).toContain("to_regclass('public.provider_post_paws')");
+  });
+
+  it('ticket 2.93: when the comments table is absent, barksCount degrades to 0 with no barks/paws reads', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 100, slug: 'happy-paws' }]) // provider
+      .mockResolvedValueOnce([]) // locations
+      .mockResolvedValueOnce([]) // services
+      .mockResolvedValueOnce([]) // capabilities
+      .mockResolvedValueOnce([]) // products
+      .mockResolvedValueOnce([]) // posts
+      .mockResolvedValueOnce([{ ok: false }]) // comments probe → missing
+      .mockResolvedValueOnce([{ n: 2 }]) // postsCount
+      .mockResolvedValueOnce([{ ok: false }]); // paws probe → missing
+
+    const res = await GET(req(), PARAMS);
+    const body = await res.json();
+    expect(body.stats).toEqual({ postsCount: 2, pawsCount: 0, barksCount: 0 });
+    // Never SELECTs from the comment/paw tables when the probes report them absent (the barks +
+    // paws aggregate queries use the `c` / `pp` aliases; only the to_regclass probes may mention
+    // the table names).
+    const text = allQueryText();
+    expect(text).not.toContain('provider_post_comments c');
+    expect(text).not.toContain('provider_post_paws pp');
   });
 
   it('ticket 2.2: the provider lookup aggregates avg_rating + review_count', async () => {

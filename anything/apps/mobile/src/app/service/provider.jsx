@@ -39,6 +39,7 @@ import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
 import ProviderFollowButton from "@/components/Providers/ProviderFollowButton";
+import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessStatRow";
 import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
 import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
 import ProductDetail from "@/components/Providers/StorefrontPanels/ProductDetail";
@@ -121,6 +122,10 @@ export default function ProviderScreen() {
   // Storefront sections (ticket 2.22): the provider's shop items + posts feed.
   const products = data?.products ?? [];
   const posts = data?.posts ?? [];
+  // Social stats (ticket 2.93) — { postsCount, pawsCount, barksCount } from the public profile
+  // payload. Followers is read live by BusinessStatRow (shared follow query). Paws stays 0 until
+  // the 2.94 paw table exists (the server degrades a missing table to 0).
+  const stats = data?.stats;
   // Capabilities drive the per-type primary action (P4a). The public profile already
   // returns them; before P4a this screen ignored them.
   const capabilities = data?.capabilities ?? [];
@@ -451,8 +456,15 @@ export default function ProviderScreen() {
             {/* Follow / Following a business (ticket 2.92) — signed-in owners follow; guests are
                 prompted to sign in; follower count shown alongside. */}
             {provider?.id != null ? (
-              <View style={{ marginTop: -SPACING.sm, marginBottom: SPACING.lg }}>
+              <View style={{ marginTop: -SPACING.sm, marginBottom: SPACING.md }}>
                 <ProviderFollowButton providerId={provider.id} />
+              </View>
+            ) : null}
+            {/* Social stat row (ticket 2.93) — Posts · Paws · Barks · Followers, styled like the
+                pet social profile so a business profile reads the same. */}
+            {provider?.id != null ? (
+              <View style={{ marginBottom: SPACING.lg }}>
+                <BusinessStatRow providerId={provider.id} stats={stats} />
               </View>
             ) : null}
           </View>

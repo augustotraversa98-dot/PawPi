@@ -496,6 +496,15 @@
       "listTitle": "Businesses you follow",
       "listEmpty": "You're not following any businesses yet.",
       "listSubtitle": "Businesses you follow appear here."
+    },
+    "social": {
+      "posts": "Posts",
+      "paws": "Paws",
+      "barks": "Barks",
+      "followers": "Followers",
+      "postsTitle": "Posts",
+      "emptyTitle": "No posts yet",
+      "emptyBody": "This business's posts will appear here."
     }
   },
   "telehealth": {

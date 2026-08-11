@@ -1,12 +1,5 @@
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, PawPrint, Grid3X3, MessageCircle } from "lucide-react-native";
@@ -16,6 +9,8 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import { SocialStatRow } from "@/components/social/SocialStatRow";
+import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
@@ -33,9 +28,6 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
-
-const { width: SCREEN_W } = Dimensions.get("window");
-const IMG_SIZE = (SCREEN_W - 32 - 8) / 3;
 
 export default function PetProfileScreen({ embedded = false }) {
   const insets = useSafeAreaInsets();
@@ -161,36 +153,6 @@ export default function PetProfileScreen({ embedded = false }) {
     },
     [resolvedFollowsPetId, name, router],
   );
-
-  const StatPill = ({ value, label, color, onPress }) => {
-    const inner = (
-      <>
-        <Text
-          style={[TYPE.title2, { color: color || COLORS.warmBrown }]}
-        >
-          {value}
-        </Text>
-        <Text
-          style={[TYPE.caption, { color: COLORS.mutedBrown, marginTop: 2 }]}
-        >
-          {label}
-        </Text>
-      </>
-    );
-    if (onPress) {
-      return (
-        <TouchableOpacity
-          testID={`stat-${label}`}
-          onPress={onPress}
-          activeOpacity={0.7}
-          style={{ alignItems: "center", flex: 1 }}
-        >
-          {inner}
-        </TouchableOpacity>
-      );
-    }
-    return <View style={{ alignItems: "center", flex: 1 }}>{inner}</View>;
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -399,45 +361,36 @@ export default function PetProfileScreen({ embedded = false }) {
           )}
         </View>
 
-        {/* ── Stats strip ── */}
-        <View
-          style={{
-            backgroundColor: MATERIALS.surface,
-            flexDirection: "row",
-            paddingVertical: SPACING.lg + 2,
-            paddingHorizontal: SPACING.md,
-            borderBottomWidth: 1,
-            borderBottomColor: MATERIALS.hairline,
-            gap: 0,
-          }}
-        >
-          <StatPill value={stats?.totalPosts ?? 0} label="Daily posts" />
-          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
-          <StatPill
-            value={stats?.totalPaws ?? 0}
-            label="Paws"
-            color={COLORS.coral}
-          />
-          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
-          <StatPill value={stats?.totalBarks ?? 0} label="Barks" />
-          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
-          <StatPill
-            value={stats?.followers ?? 0}
-            label="Followers"
-            color={COLORS.sageDark}
-            onPress={
-              resolvedFollowsPetId ? () => openFollows("followers") : undefined
-            }
-          />
-          <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
-          <StatPill
-            value={stats?.following ?? 0}
-            label="Following"
-            onPress={
-              resolvedFollowsPetId ? () => openFollows("following") : undefined
-            }
-          />
-        </View>
+        {/* ── Stats strip (shared SocialStatRow — same row as the business storefront) ── */}
+        <SocialStatRow
+          stats={[
+            { key: "posts", value: stats?.totalPosts ?? 0, label: "Daily posts" },
+            {
+              key: "paws",
+              value: stats?.totalPaws ?? 0,
+              label: "Paws",
+              color: COLORS.coral,
+            },
+            { key: "barks", value: stats?.totalBarks ?? 0, label: "Barks" },
+            {
+              key: "followers",
+              value: stats?.followers ?? 0,
+              label: "Followers",
+              color: COLORS.sageDark,
+              onPress: resolvedFollowsPetId
+                ? () => openFollows("followers")
+                : undefined,
+            },
+            {
+              key: "following",
+              value: stats?.following ?? 0,
+              label: "Following",
+              onPress: resolvedFollowsPetId
+                ? () => openFollows("following")
+                : undefined,
+            },
+          ]}
+        />
 
         {/* ── Daily posts grid ── */}
         <View style={{ padding: SPACING.lg }}>
@@ -455,91 +408,52 @@ export default function PetProfileScreen({ embedded = false }) {
             </Text>
           </View>
 
-          {isLoading && posts.length === 0 ? (
-            <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
-              <ActivityIndicator size="large" color={COLORS.coral} />
-            </View>
-          ) : posts.length > 0 ? (
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: SPACING.xs,
-              }}
-            >
-              {posts.map((p) => (
-                <TouchableOpacity
-                  key={p.id}
-                  activeOpacity={0.88}
-                  onPress={() => openMoment(p)}
-                  style={{ position: "relative" }}
+          <MomentsGrid
+            isLoading={isLoading}
+            moments={posts.map((p) => ({
+              id: p.id,
+              imageUri: p.image_url,
+              post: p,
+              badge: {
+                icon: <PawPrint size={10} color="#FFF" fill="#FFF" />,
+                count: p.paw_count,
+              },
+            }))}
+            onOpen={(m) => openMoment(m.post)}
+            empty={
+              <View
+                style={{
+                  alignItems: "center",
+                  paddingVertical: SPACING.huge,
+                  backgroundColor: MATERIALS.surface,
+                  borderRadius: RADIUS.card,
+                  borderWidth: 1,
+                  borderColor: COLORS.peach,
+                  borderStyle: "dashed",
+                }}
+              >
+                <Text style={{ fontSize: 36 }}>🐾</Text>
+                <Text
+                  style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
                 >
-                  <Image
-                    source={{ uri: p.image_url }}
-                    style={{
-                      width: IMG_SIZE,
-                      height: IMG_SIZE,
-                      borderRadius: RADIUS.control,
-                      backgroundColor: MATERIALS.surfaceSunken,
-                    }}
-                    resizeMode="cover"
-                  />
-                  {/* Paw count badge */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      bottom: SPACING.xs + 2,
-                      left: SPACING.xs + 2,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      backgroundColor: "rgba(59,36,27,0.6)",
-                      borderRadius: RADIUS.chip,
-                      paddingHorizontal: 7,
-                      paddingVertical: 3,
-                      gap: 3,
-                    }}
-                  >
-                    <PawPrint size={10} color="#FFF" fill="#FFF" />
-                    <Text style={[TYPE.caption, { color: "#FFF", fontWeight: "700", letterSpacing: 0 }]}>
-                      {p.paw_count}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View
-              style={{
-                alignItems: "center",
-                paddingVertical: SPACING.huge,
-                backgroundColor: MATERIALS.surface,
-                borderRadius: RADIUS.card,
-                borderWidth: 1,
-                borderColor: COLORS.peach,
-                borderStyle: "dashed",
-              }}
-            >
-              <Text style={{ fontSize: 36 }}>🐾</Text>
-              <Text
-                style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
-              >
-                No daily posts yet
-              </Text>
-              <Text
-                style={[
-                  TYPE.subhead,
-                  {
-                    color: COLORS.mutedBrown,
-                    marginTop: SPACING.xs,
-                    textAlign: "center",
-                    paddingHorizontal: SPACING.xl,
-                  },
-                ]}
-              >
-                {name ? `${name}'s` : "These"} daily moments will appear here.
-              </Text>
-            </View>
-          )}
+                  No daily posts yet
+                </Text>
+                <Text
+                  style={[
+                    TYPE.subhead,
+                    {
+                      color: COLORS.mutedBrown,
+                      marginTop: SPACING.xs,
+                      textAlign: "center",
+                      paddingHorizontal: SPACING.xl,
+                    },
+                  ]}
+                >
+                  {name ? `${name}'s` : "These"} daily moments will appear here.
+                </Text>
+              </View>
+            }
+          />
         </View>
 
         {/* ── Pet info card ── */}

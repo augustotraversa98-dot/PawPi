@@ -18,6 +18,7 @@ import { ArrowLeft, Send, Trash2 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { formatRelativeTime } from "@/utils/relativeTime";
@@ -142,9 +143,23 @@ export default function ProviderPostScreen() {
         <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
-        <Text style={[TYPE.title2, { color: COLORS.warmBrown }]} numberOfLines={1}>
+        <Text
+          style={[TYPE.title2, { color: COLORS.warmBrown, flex: 1 }]}
+          numberOfLines={1}
+        >
           {t("storefront.comments.title")}
         </Text>
+        {/* Report / Block this post (Guideline 1.2) — moved here from the storefront card since
+            the Posts grid tiles have no room for the menu. Hidden on the author's own post. */}
+        {post && post.id != null ? (
+          <ModerationMenu
+            targetType="provider_post"
+            targetId={post.id}
+            authorUserId={post.author_user_id}
+            isOwn={!!post.is_own}
+            iconSize={20}
+          />
+        ) : null}
       </View>
 
       <KeyboardAvoidingView

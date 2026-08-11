@@ -692,6 +692,16 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   location-sharing owners (#342). **2.92** follow-a-business: pet owners follow providers
   (`provider_follows`, migration 0083 pending hand-apply) — follow/unfollow/count/list API + a mobile
   Follow toggle + "Businesses you follow" list; degrades cleanly until the migration lands. (2026-08-11.)
+- **2.93 (attended)** — business storefront Posts → pet-social-profile design parity. The business profile
+  now reads like a pet's: the storefront header shows an **@handle** (from the provider slug) + an **info
+  line** (its bio), a **stat row** (Posts · Paws · Barks · Followers) styled exactly like the pet profile,
+  and the Posts tab is a **moments-style image grid** whose tiles open the existing post detail (full-size
+  images + comments; guests read, signed-in owners comment). Reuses the pet profile via two extracted shared
+  components (`components/social/SocialStatRow` + `MomentsGrid`, now used by both screens). Web: the public
+  profile payload gains a `stats { postsCount, pawsCount, barksCount }` read (Barks from the 0082 comments,
+  both edge tables `to_regclass`-guarded so a missing table degrades to 0); Followers comes from the follow
+  endpoint. **Paws stays 0 until 2.94** adds `provider_post_paws` — the read never 500s. Moderation moved
+  from the (now grid) post cards onto the post detail header. No migration. (2026-08-11.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

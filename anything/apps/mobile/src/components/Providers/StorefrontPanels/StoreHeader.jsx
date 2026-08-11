@@ -57,6 +57,27 @@ export default function StoreHeader({
         <Text style={[TYPE.title2, { fontSize: 19, lineHeight: 24, color: COLORS.warmBrown }]}>
           {provider.name}
         </Text>
+        {/* @handle (from the provider slug) — mirrors the pet social profile's @handle so the
+            business profile reads the same way (ticket 2.93). */}
+        {provider.slug ? (
+          <Text
+            testID="storefront-handle"
+            style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700", marginTop: 2 }]}
+          >
+            @{provider.slug}
+          </Text>
+        ) : null}
+        {/* Info line — the business's own bio/tagline/description (the pet profile's "with
+            <owner>" analogue). Rendered only when set (no fakes). */}
+        {provider.bio ? (
+          <Text
+            testID="storefront-bio"
+            style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 3, lineHeight: 18 }]}
+            numberOfLines={3}
+          >
+            {provider.bio}
+          </Text>
+        ) : null}
         {/* Capability chips (P4a) — one per capability the provider holds; falls back to the
             display-only provider_type label when capabilities aren't set. */}
         {capabilities.length > 0 ? (

@@ -1,33 +1,29 @@
 import React from "react";
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MessageCircle } from "lucide-react-native";
-import { Card, PressableScale } from "@/components/ui";
-import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import { MessageCircle, Grid3X3 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
-import { TYPE, RADIUS, SPACING } from "@/constants/theme";
+import { TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
-import { Section } from "./primitives";
 
-// Posts section. Presentational: takes the already-fetched storefront feed (newest first). Each
-// post carries a Report/Block menu (Guideline 1.2) — hidden on the staff author's own post
-// (is_own). Renders nothing when empty.
+// Business Posts section (ticket 2.93) — the SAME moments-style image grid the pet social
+// profile uses, so a business profile reads like a pet's: image tiles (not a flat text+thumb
+// list), each tappable into the post detail (`provider-post.jsx`) for full-size images + the
+// comment flow (guest reads, signed-in owner comments — unchanged).
 //
-// Phase C: each card is now TAPPABLE → the provider-post detail screen (post + comments). The
-// post object is passed along so the detail renders instantly (guests can read without an auth'd
-// refetch). A comment-count affordance invites the tap. `providerId` is required to build the
-// detail route + comment API URL; when absent the card stays non-tappable.
+// Each post → one tile: its FIRST uploaded image is the cover; a text-only post shows a text
+// tile so nothing is lost. A comment-count badge (Barks/comments) sits on the tile. Tapping
+// hands the rich post off in memory + opens the detail route with clean, URL-safe params
+// (ticket 2.88's fix — never a JSON blob in the URL). `providerId` is required to route +
+// build the comment API URL; when absent the tiles stay inert.
 export default function PostsPanel({ posts = [], providerId }) {
   const router = useRouter();
   const { t } = useTranslation();
-  if (posts.length === 0) return null;
 
   const openPost = (post) => {
     if (providerId == null) return;
-    // Pass ONLY URL-safe primitives through navigation; hand the rich post (body + signed image
-    // URLs) off in memory so the deep-link URL stays clean and resolves to the detail screen
-    // instead of falling back to the /service root (ticket 2.88).
     stashProviderPost(String(providerId), String(post.id), post);
     router.push({
       pathname: "/service/provider-post",
@@ -35,90 +31,78 @@ export default function PostsPanel({ posts = [], providerId }) {
     });
   };
 
+  const moments = posts.map((post) => ({
+    id: post.id,
+    imageUri:
+      Array.isArray(post.image_urls) && post.image_urls.length > 0
+        ? post.image_urls[0]
+        : null,
+    body: post.body,
+    post,
+    badge: {
+      icon: <MessageCircle size={10} color="#FFF" />,
+      count: Number(post.comment_count ?? 0),
+    },
+  }));
+
   return (
-    <Section title="Posts">
-      {posts.map((post) => {
-        const count = Number(post.comment_count ?? 0);
-        return (
-          <PressableScale
-            key={post.id}
-            onPress={() => openPost(post)}
-            style={{ marginBottom: SPACING.sm + 2 }}
+    <View style={{ marginBottom: SPACING.lg }}>
+      {/* Section header — mirrors the pet profile's "Daily moments" header. */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.sm,
+          marginBottom: SPACING.md + 2,
+        }}
+      >
+        <Grid3X3 size={18} color={COLORS.warmBrown} />
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
+          {t("storefront.social.postsTitle")}
+        </Text>
+      </View>
+
+      <MomentsGrid
+        moments={moments}
+        onOpen={(m) => openPost(m.post)}
+        tileTestID="storefront-post"
+        empty={
+          <View
+            style={{
+              alignItems: "center",
+              paddingVertical: SPACING.huge,
+              backgroundColor: MATERIALS.surface,
+              borderRadius: RADIUS.card,
+              borderWidth: 1,
+              borderColor: COLORS.peach,
+              borderStyle: "dashed",
+            }}
           >
-            <Card
-              testID="storefront-post"
-              level="sm"
-              radius={RADIUS.md}
-              style={{ padding: SPACING.md + 2 }}
+            <Text style={{ fontSize: 34 }}>📸</Text>
+            <Text
+              style={[
+                TYPE.body,
+                { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md },
+              ]}
             >
-              {/* Body + Report/Block menu (Guideline 1.2) — the menu hides Report on the staff
-                  author's own post (is_own); non-owners can Report + Block. */}
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm }}>
-                {post.body ? (
-                  <Text
-                    style={[
-                      TYPE.callout,
-                      { flex: 1, color: COLORS.warmBrown, lineHeight: 20 },
-                    ]}
-                  >
-                    {post.body}
-                  </Text>
-                ) : (
-                  <View style={{ flex: 1 }} />
-                )}
-                <ModerationMenu
-                  targetType="provider_post"
-                  targetId={post.id}
-                  authorUserId={post.author_user_id}
-                  isOwn={!!post.is_own}
-                  iconSize={18}
-                />
-              </View>
-              {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: SPACING.sm,
-                    marginTop: SPACING.sm + 2,
-                  }}
-                >
-                  {post.image_urls.map((uri, i) => (
-                    <Image
-                      key={`${post.id}-img-${i}`}
-                      testID="storefront-post-image"
-                      source={{ uri }}
-                      style={{
-                        width: 96,
-                        height: 96,
-                        borderRadius: RADIUS.control,
-                        backgroundColor: COLORS.sand,
-                      }}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {/* Comment-count affordance (invites the tap into the detail screen). */}
-              <View
-                testID="storefront-post-comment-count"
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  marginTop: SPACING.sm + 2,
-                }}
-              >
-                <MessageCircle size={15} color={COLORS.mutedBrown} />
-                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                  {count === 1
-                    ? t("storefront.comments.countOne", { count })
-                    : t("storefront.comments.countOther", { count })}
-                </Text>
-              </View>
-            </Card>
-          </PressableScale>
-        );
-      })}
-    </Section>
+              {t("storefront.social.emptyTitle")}
+            </Text>
+            <Text
+              style={[
+                TYPE.subhead,
+                {
+                  color: COLORS.mutedBrown,
+                  marginTop: SPACING.xs,
+                  textAlign: "center",
+                  paddingHorizontal: SPACING.xl,
+                },
+              ]}
+            >
+              {t("storefront.social.emptyBody")}
+            </Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
