@@ -100,7 +100,7 @@ const NAV_ITEMS = [
   },
   {
     key: "shop",
-    label: "Services/Products",
+    label: "Products",
     Icon: ShoppingBag,
     enabled: true,
     href: "/provider/shop",

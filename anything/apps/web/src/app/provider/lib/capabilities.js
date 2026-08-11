@@ -11,7 +11,7 @@ export const CAPABILITY_OPTIONS = [
   { value: "sitter", label: "Pet sitting" },
   { value: "daycare", label: "Daycare / boarding" },
   { value: "trainer", label: "Training" },
-  { value: "shop", label: "Services/Products" },
+  { value: "shop", label: "Products" },
   { value: "pharmacy", label: "Rx fulfillment" },
   { value: "adoption", label: "Adoption" },
   { value: "transport", label: "Transport" },

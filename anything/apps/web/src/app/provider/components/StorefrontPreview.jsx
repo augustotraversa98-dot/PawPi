@@ -40,7 +40,7 @@ const MUTED = "#7A6254";
 // English labels (the extranet is hardcoded-English; no i18n). Keyed by section/capability.
 const TAB_LABELS = {
   services: "Services",
-  items: "Services/Products",
+  items: "Products",
   posts: "Posts",
   reviews: "Reviews",
   locations: "Locations",
@@ -101,7 +101,11 @@ function byMerchandising(createdDir) {
 export default function StorefrontPreview({ providerId }) {
   const { data: providerData, isLoading: pLoading } = useProvider(providerId);
   const { data: services = [] } = useProviderServices(providerId);
-  const { data: products = [] } = useShopProducts(providerId);
+  // Only a shop-capable provider can read shop-products (the endpoint 403s otherwise), so skip
+  // the fetch entirely for non-shop providers — no 403 refetch loop.
+  const { data: products = [] } = useShopProducts(providerId, {
+    enabled: (providerData?.capabilities ?? []).includes("shop"),
+  });
   const { data: posts = [] } = useProviderPosts(providerId);
   const { data: locations = [] } = useProviderLocations(providerId);
   const { data: reviews = [] } = useProviderReviews(providerId);

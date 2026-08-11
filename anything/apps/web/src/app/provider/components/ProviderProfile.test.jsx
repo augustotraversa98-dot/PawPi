@@ -186,8 +186,8 @@ describe("ProviderProfile", () => {
     // The "What this business offers" editor is present.
     expect(screen.getByText("What this business offers")).toBeInTheDocument();
 
-    // 'vet' is on (selected) → clicking it removes; 'Services/Products' is off → clicking it adds.
-    fireEvent.click(screen.getByRole("button", { name: "Services/Products" }));
+    // 'vet' is on (selected) → clicking it removes; 'Products' is off → clicking it adds.
+    fireEvent.click(screen.getByRole("button", { name: "Products" }));
     expect(addCapMutate).toHaveBeenCalledWith("shop", expect.any(Object));
 
     fireEvent.click(screen.getByRole("button", { name: "Vet clinic" }));

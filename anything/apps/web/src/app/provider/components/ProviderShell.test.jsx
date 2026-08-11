@@ -131,7 +131,7 @@ describe("ProviderShell foundation", () => {
       "Calendar import",
       "Storefront",
       "Services",
-      "Services/Products",
+      "Products",
       "Locations",
       "Clinical",
       "Daycare",
@@ -192,7 +192,7 @@ describe("ProviderShell foundation", () => {
       "Dashboard",
       "Chats",
       "Storefront",
-      "Services/Products",
+      "Products",
       "Profile",
       "Staff",
       "Sales",
@@ -245,8 +245,8 @@ describe("ProviderShell foundation", () => {
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
-    // The Services/Products page needs the 'shop' capability, which a vet-only provider lacks.
-    expect(screen.queryByRole("link", { name: "Services/Products" })).not.toBeInTheDocument();
+    // The Products page needs the 'shop' capability, which a vet-only provider lacks.
+    expect(screen.queryByRole("link", { name: "Products" })).not.toBeInTheDocument();
   });
 
   it("'Show all sections' reveals every section regardless of capability", async () => {
