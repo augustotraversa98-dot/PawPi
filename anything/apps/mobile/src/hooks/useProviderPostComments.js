@@ -26,7 +26,11 @@ export function useProviderPostComments(providerId, postId) {
   });
 }
 
-export function useAddProviderPostComment(providerId, postId) {
+// `petId` (the commenter's ACTIVE pet) attributes the comment to that pet, mirroring the pet-feed
+// bark. It's optional — a commenter with no active pet posts under their account (the server stores
+// pet_id NULL and the display falls back to the account). Passed at hook creation so the screen call
+// (`mutateAsync(text)`) stays unchanged.
+export function useAddProviderPostComment(providerId, postId, petId) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body) => {
@@ -35,7 +39,8 @@ export function useAddProviderPostComment(providerId, postId) {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ body }),
+          // petId is dropped from the JSON when undefined/null, so a pet-less commenter is unchanged.
+          body: JSON.stringify(petId != null ? { body, petId } : { body }),
         },
       );
       if (!res.ok) {

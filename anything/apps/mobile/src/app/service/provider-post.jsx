@@ -31,6 +31,7 @@ import { PressableScale } from "@/components/ui";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProfileId } from "@/hooks/useUserProfile";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getProviderPost } from "@/utils/providerPostHandoff";
 import {
@@ -125,8 +126,10 @@ export default function ProviderPostScreen() {
 
   const { isAuthenticated, signIn } = useAuth();
   const { data: myProfileId } = useMyProfileId();
+  // The active pet attributes the comment to that pet (name/@handle/avatar), like a pet-feed bark.
+  const { data: currentPet } = useCurrentPet();
   const { data: comments = [], isLoading } = useProviderPostComments(providerId, postId);
-  const addComment = useAddProviderPostComment(providerId, postId);
+  const addComment = useAddProviderPostComment(providerId, postId, currentPet?.id);
   const deleteComment = useDeleteProviderPostComment(providerId, postId);
 
   const [text, setText] = useState("");
@@ -346,6 +349,11 @@ export default function ProviderPostScreen() {
             comments.map((c) => {
               const mine =
                 myProfileId != null && String(c.author_user_id) === String(myProfileId);
+              // Attribute to the commenting PET (name/@handle/avatar), mirroring the pet feed.
+              // Legacy rows / pet-less commenters (no pet_* fields) fall back to the account.
+              const displayHandle = c.pet_handle || c.author_username;
+              const displayName = c.pet_name || c.author_name;
+              const displayAvatar = c.pet_avatar_url || c.author_avatar_url;
               return (
                 <View
                   key={c.id}
@@ -357,7 +365,7 @@ export default function ProviderPostScreen() {
                     alignItems: "flex-start",
                   }}
                 >
-                  <Avatar uri={c.author_avatar_url} name={c.author_name || c.author_username} />
+                  <Avatar uri={displayAvatar} name={displayName || displayHandle} />
                   <View
                     style={{
                       flex: 1,
@@ -377,7 +385,7 @@ export default function ProviderPostScreen() {
                       }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: "800", color: COLORS.coral }}>
-                        {c.author_username ? `@${c.author_username}` : c.author_name}
+                        {displayHandle ? `@${displayHandle}` : displayName}
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>

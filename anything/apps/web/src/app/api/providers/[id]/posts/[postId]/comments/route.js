@@ -17,6 +17,12 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 
 const isIntId = (v) => /^\d+$/.test(String(v));
 
+// Pre-migration degrade (0084): the pet_id column is hand-applied to Supabase AFTER this code
+// deploys. Any query that references pet_id must catch Postgres undefined_column (42703) and fall
+// back to the account-only path, so comments keep working (attributed to the account) until then.
+const UNDEFINED_COLUMN = "42703";
+const isMissingColumn = (e) => e?.code === UNDEFINED_COLUMN;
+
 async function GET(request, { params }) {
   try {
     const providerId = params.id;
@@ -30,17 +36,42 @@ async function GET(request, { params }) {
     // that even a signed-in author or provider admin — who CAN see their own removed rows via RLS
     // (needed for the soft-delete UPDATE) — never gets a removed comment back in this list. No
     // auth required.
-    const comments = await sql`
-      SELECT c.id, c.post_id, c.provider_id, c.author_user_id, c.body, c.created_at,
-             up.full_name AS author_name,
-             up.username AS author_username,
-             up.avatar_url AS author_avatar_url
-      FROM provider_post_comments c
-      JOIN user_profiles up ON up.id = c.author_user_id
-      WHERE c.post_id = ${postId} AND c.provider_id = ${providerId}
-        AND c.deleted_at IS NULL AND c.hidden_at IS NULL
-      ORDER BY c.created_at ASC, c.id ASC
-    `;
+    //
+    // Pet attribution (0084): LEFT JOIN pets so each comment carries the commenting PET's
+    // name/@handle/avatar (mirrors the barks GET). LEGACY rows (pet_id NULL, or a since-deleted
+    // pet) → the pet_* columns come back NULL and the client falls back to the account handle.
+    let comments;
+    try {
+      comments = await sql`
+        SELECT c.id, c.post_id, c.provider_id, c.author_user_id, c.body, c.created_at,
+               up.full_name AS author_name,
+               up.username AS author_username,
+               up.avatar_url AS author_avatar_url,
+               p.name AS pet_name,
+               p.handle AS pet_handle,
+               p.avatar_url AS pet_avatar_url
+        FROM provider_post_comments c
+        JOIN user_profiles up ON up.id = c.author_user_id
+        LEFT JOIN pets p ON p.id = c.pet_id
+        WHERE c.post_id = ${postId} AND c.provider_id = ${providerId}
+          AND c.deleted_at IS NULL AND c.hidden_at IS NULL
+        ORDER BY c.created_at ASC, c.id ASC
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      // Pre-migration: no pet_id column yet → account-only projection (unchanged pre-0084 behavior).
+      comments = await sql`
+        SELECT c.id, c.post_id, c.provider_id, c.author_user_id, c.body, c.created_at,
+               up.full_name AS author_name,
+               up.username AS author_username,
+               up.avatar_url AS author_avatar_url
+        FROM provider_post_comments c
+        JOIN user_profiles up ON up.id = c.author_user_id
+        WHERE c.post_id = ${postId} AND c.provider_id = ${providerId}
+          AND c.deleted_at IS NULL AND c.hidden_at IS NULL
+        ORDER BY c.created_at ASC, c.id ASC
+      `;
+    }
 
     return Response.json({ comments });
   } catch (error) {
@@ -94,21 +125,60 @@ async function POST(request, { params }) {
       return Response.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // author_user_id = current user; RLS insert policy + the table CHECK (non-empty body) are the
-    // backstop. provider_id is denormalized from the (verified) post.
-    const created = await sql`
-      INSERT INTO provider_post_comments (post_id, provider_id, author_user_id, body)
-      VALUES (${postId}, ${providerId}, ${userId}, ${text})
-      RETURNING id, post_id, provider_id, author_user_id, body, created_at
-    `;
+    // Pet attribution (0084): the comment is posted AS a pet, mirroring the bark POST. petId is
+    // OPTIONAL here (unlike barks — a provider-post commenter may have no active pet), but WHEN
+    // given it must be a pet the caller OWNS (same ownership check the bark POST uses), else 400.
+    const petIdRaw = bodyJson.petId;
+    let petId = null;
+    if (petIdRaw != null && isIntId(petIdRaw)) {
+      const ownedPet = await sql`
+        SELECT 1 FROM pets WHERE id = ${petIdRaw} AND owner_user_id = ${userId} LIMIT 1
+      `;
+      if (ownedPet.length === 0) {
+        return Response.json(
+          { error: "Pet not found or not owned by caller" },
+          { status: 400 },
+        );
+      }
+      petId = Number(petIdRaw);
+    }
 
-    const author = await sql`
-      SELECT full_name AS author_name, username AS author_username, avatar_url AS author_avatar_url
-      FROM user_profiles WHERE id = ${userId}
+    // author_user_id = current user; RLS insert policy + the table CHECK (non-empty body) are the
+    // backstop. provider_id is denormalized from the (verified) post. `storedPetId` reflects what
+    // ACTUALLY landed: pre-migration (no pet_id column) the insert degrades to account attribution,
+    // so the response must not claim a pet the row doesn't carry.
+    let created;
+    let storedPetId = petId;
+    try {
+      created = await sql`
+        INSERT INTO provider_post_comments (post_id, provider_id, author_user_id, pet_id, body)
+        VALUES (${postId}, ${providerId}, ${userId}, ${petId}, ${text})
+        RETURNING id, post_id, provider_id, author_user_id, body, created_at
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      // Pre-migration: no pet_id column yet → store without it (account attribution).
+      storedPetId = null;
+      created = await sql`
+        INSERT INTO provider_post_comments (post_id, provider_id, author_user_id, body)
+        VALUES (${postId}, ${providerId}, ${userId}, ${text})
+        RETURNING id, post_id, provider_id, author_user_id, body, created_at
+      `;
+    }
+
+    // Enrich with the author + (when stored) the pet identity — same shape the GET returns. The
+    // pet LEFT JOIN keys on the literal storedPetId (not the pet_id column), so this never 42703s;
+    // storedPetId is null pre-migration / when no pet was sent → pet_* come back NULL.
+    const enriched = await sql`
+      SELECT up.full_name AS author_name, up.username AS author_username, up.avatar_url AS author_avatar_url,
+             p.name AS pet_name, p.handle AS pet_handle, p.avatar_url AS pet_avatar_url
+      FROM user_profiles up
+      LEFT JOIN pets p ON p.id = ${storedPetId}
+      WHERE up.id = ${userId}
     `;
 
     return Response.json(
-      { comment: { ...created[0], ...(author[0] ?? {}) } },
+      { comment: { ...created[0], pet_id: storedPetId, ...(enriched[0] ?? {}) } },
       { status: 201 },
     );
   } catch (error) {
