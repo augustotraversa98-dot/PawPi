@@ -503,6 +503,8 @@
       "barks": "Ladridos",
       "followers": "Seguidores",
       "postsTitle": "Publicaciones",
+      "postDetailTitle": "Publicación",
+      "closeImage": "Cerrar imagen",
       "emptyTitle": "Todavía no hay publicaciones",
       "emptyBody": "Las publicaciones de este negocio aparecen acá."
     }

@@ -37,13 +37,12 @@ describe("ProviderFollowButton (2.92)", () => {
     expect(mockToggle.mock.calls[0][0]).toEqual({ following: false });
   });
 
-  it("shows Following + the follower count when already following", () => {
+  it("shows the Following label when already following; the follower COUNT is not here (ticket 2.93 → stat row)", () => {
     mockFollowData = { following: true, followersCount: 12 };
-    const { getByText, getByTestId } = render(<ProviderFollowButton providerId={5} />);
+    const { getByText, queryByTestId } = render(<ProviderFollowButton providerId={5} />);
     expect(getByText("storefront.follow.following")).toBeTruthy();
-    // count uses the plural key with the interpolated count.
-    expect(getByTestId("provider-follower-count")).toBeTruthy();
-    expect(getByText('storefront.follow.followersOther:{"count":12}')).toBeTruthy();
+    // The count moved to the Posts-tab stat row — the button no longer renders it.
+    expect(queryByTestId("provider-follower-count")).toBeNull();
   });
 
   it("a guest is prompted to sign in and does NOT toggle", () => {

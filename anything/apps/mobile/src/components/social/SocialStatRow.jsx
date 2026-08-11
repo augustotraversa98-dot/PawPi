@@ -21,14 +21,18 @@ export function SocialStatRow({ stats = [] }) {
         borderBottomColor: MATERIALS.hairline,
       }}
     >
-      {stats.map((stat, i) => (
-        <React.Fragment key={stat.key ?? stat.label}>
-          {i > 0 ? (
-            <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
-          ) : null}
-          <StatPill {...stat} />
-        </React.Fragment>
-      ))}
+      {stats.map((stat, i) => {
+        // Pull `key` out of the spread — React keys must be passed directly, never spread.
+        const { key, ...pill } = stat;
+        return (
+          <React.Fragment key={key ?? stat.label}>
+            {i > 0 ? (
+              <View style={{ width: 1, backgroundColor: MATERIALS.hairline }} />
+            ) : null}
+            <StatPill {...pill} />
+          </React.Fragment>
+        );
+      })}
     </View>
   );
 }

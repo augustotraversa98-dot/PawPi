@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   Stethoscope,
   Calendar,
-  Star,
   MessageSquare,
   ShoppingBag,
 } from "lucide-react-native";
@@ -138,6 +137,11 @@ export default function ProviderScreen() {
     capabilities.some((c) => SHOP_CAPS.includes(c)) || products.length > 0;
   const showShop = isShop;
   const showBook = bookableCaps.length > 0 || !isShop;
+  // The pinned bottom bar only holds Shop/Book now (the trust strip was removed, ticket 2.93).
+  // It renders ONLY when there's a CTA to show — a shop, or a bookable provider with zero services
+  // (booking otherwise lives on each service card) — so a bookable-with-services provider (e.g.
+  // Northside) gets no empty bar.
+  const hasBottomCta = showShop || (showBook && services.length === 0);
 
   // Screen-level shared cart (PR-3a seam): the Items tab IS the store — an inline browse grid,
   // a quick "+" add, a cart bar + checkout sheet, and tap-card → product detail, all backed by
@@ -248,8 +252,6 @@ export default function ProviderScreen() {
     .map((s) => s.price_cents)
     .filter((c) => c != null);
   const fromPrice = servicePrices.length ? Math.min(...servicePrices) : null;
-  const avgRating = provider?.avg_rating;
-  const reviewCount = provider?.review_count ?? 0;
 
   // Header meta (Phase-2 polish) — real data only. "Open now" from the primary location's
   // free-form hours (deriveOpenNow returns true/false/null; null renders nothing). The "from"
@@ -259,6 +261,8 @@ export default function ProviderScreen() {
     fromPrice != null
       ? t("providers.fromPrice", { price: formatPrice(fromPrice) })
       : null;
+  // avg_rating / review_count are shown by the StoreHeader's RatingBadge (reads them off the
+  // provider directly); the removed bottom trust strip was their only other consumer.
 
   // Storefront tabs for this provider type (presence-aware; Reviews always present). The
   // active tab defaults to the first; a stale key (after data change) falls back to it.
@@ -316,7 +320,31 @@ export default function ProviderScreen() {
           />
         );
       case "posts":
-        return <PostsPanel posts={posts} providerId={provider?.id} />;
+        // Stat row (ticket 2.93) lives at the TOP of the Posts tab only — Posts · Paws · Barks ·
+        // Followers, above the image grid. It is NOT in the always-visible header, so it never
+        // shows under Services / Reviews / etc.
+        return (
+          <>
+            {provider?.id != null ? (
+              <View style={{ marginBottom: SPACING.md }}>
+                <BusinessStatRow providerId={provider.id} stats={stats} />
+              </View>
+            ) : null}
+            <PostsPanel
+              posts={posts}
+              providerId={provider?.id}
+              business={
+                provider
+                  ? {
+                      name: provider.name,
+                      slug: provider.slug,
+                      logo_url: provider.logo_url,
+                    }
+                  : null
+              }
+            />
+          </>
+        );
       case "reviews":
         return (
           <ReviewsPanel
@@ -453,18 +481,65 @@ export default function ProviderScreen() {
               fromPriceLabel={fromPriceLabel}
               t={t}
             />
-            {/* Follow / Following a business (ticket 2.92) — signed-in owners follow; guests are
-                prompted to sign in; follower count shown alongside. */}
+            {/* Follow + Message on ONE row (ticket 2.93) — the follow toggle (ticket 2.92) beside
+                the Message action (relocated up from the removed bottom trust strip). The follower
+                COUNT is no longer here; it lives in the Posts-tab stat row. */}
             {provider?.id != null ? (
-              <View style={{ marginTop: -SPACING.sm, marginBottom: SPACING.md }}>
+              <View
+                style={{
+                  marginTop: -SPACING.sm,
+                  marginBottom: SPACING.lg,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm,
+                }}
+              >
                 <ProviderFollowButton providerId={provider.id} />
-              </View>
-            ) : null}
-            {/* Social stat row (ticket 2.93) — Posts · Paws · Barks · Followers, styled like the
-                pet social profile so a business profile reads the same. */}
-            {provider?.id != null ? (
-              <View style={{ marginBottom: SPACING.lg }}>
-                <BusinessStatRow providerId={provider.id} stats={stats} />
+                <PressableScale
+                  onPress={() => {
+                    if (startingThread) return;
+                    startThread(
+                      { providerId: provider.id },
+                      {
+                        onSuccess: (res) => {
+                          const thread = res?.thread;
+                          if (!thread) return;
+                          router.push({
+                            pathname: "/provider-chat",
+                            params: {
+                              threadId: String(thread.id),
+                              providerName: provider.name || "Provider",
+                              ownerUserId: String(thread.owner_user_id),
+                            },
+                          });
+                        },
+                      },
+                    );
+                  }}
+                  testID="storefront-message-cta"
+                  accessibilityRole="button"
+                  accessibilityLabel={t("providers.messageA11y")}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingHorizontal: SPACING.lg,
+                    paddingVertical: SPACING.sm + 2,
+                    borderRadius: RADIUS.chip,
+                    borderWidth: 1.5,
+                    borderColor: COLORS.peach,
+                    backgroundColor: COLORS.card,
+                  }}
+                >
+                  {startingThread ? (
+                    <ActivityIndicator size="small" color={COLORS.coral} />
+                  ) : (
+                    <MessageSquare size={16} color={COLORS.coral} />
+                  )}
+                  <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.coral }]}>
+                    {t("providers.message")}
+                  </Text>
+                </PressableScale>
               </View>
             ) : null}
           </View>
@@ -491,9 +566,11 @@ export default function ProviderScreen() {
         </RefreshableScrollView>
       )}
 
-      {/* Primary CTAs: Message (secondary) + Book (primary). A trust strip pins the
-          rating + "from" price so social proof and cost stay visible without
-          scrolling back up (conversion quick wins). */}
+      {/* Pinned primary CTA bar — Shop and/or Book only. The old rating/from-price trust strip
+          was removed (ticket 2.93): the rating already lives in the sticky StoreHeader and the
+          follower count moved to the Posts stat row. The bar renders ONLY when there is a CTA to
+          show (a shop, or a bookable provider that lists zero services), so a bookable provider
+          WITH services — whose booking lives on each service card — gets no empty bar. */}
       {provider && (
         <>
           {/* Inline cart bar — sits just above the pinned action bar; only when non-empty. */}
@@ -507,6 +584,7 @@ export default function ProviderScreen() {
               t={t}
             />
           ) : null}
+          {hasBottomCta ? (
           <View
             style={{
               paddingTop: SPACING.md,
@@ -517,82 +595,7 @@ export default function ProviderScreen() {
               backgroundColor: COLORS.card,
             }}
           >
-          {(avgRating != null || fromPrice != null) && (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: SPACING.md,
-              }}
-            >
-              {avgRating != null ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Star size={15} color={COLORS.coral} fill={COLORS.coral} />
-                  <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.warmBrown }]}>
-                    {Number(avgRating).toFixed(1)}
-                  </Text>
-                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                    {reviewCount === 1
-                      ? t("providers.reviewsOne")
-                      : t("providers.reviewsOther", { count: reviewCount })}
-                  </Text>
-                </View>
-              ) : (
-                <View />
-              )}
-              {fromPrice != null ? (
-                <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "600" }]}>
-                  {t("providers.fromPrice", { price: formatPrice(fromPrice) })}
-                </Text>
-              ) : null}
-            </View>
-          )}
-
           <View style={{ flexDirection: "row", gap: SPACING.md }}>
-            {/* Message (secondary, icon) */}
-            <PressableScale
-              onPress={() => {
-                if (startingThread) return;
-                startThread(
-                  { providerId: provider.id },
-                  {
-                    onSuccess: (res) => {
-                      const thread = res?.thread;
-                      if (!thread) return;
-                      router.push({
-                        pathname: "/provider-chat",
-                        params: {
-                          threadId: String(thread.id),
-                          providerName: provider.name || "Provider",
-                          ownerUserId: String(thread.owner_user_id),
-                        },
-                      });
-                    },
-                  },
-                );
-              }}
-              testID="storefront-message-cta"
-              accessibilityRole="button"
-              accessibilityLabel={t("providers.messageA11y")}
-              style={{
-                width: 56,
-                backgroundColor: COLORS.sand,
-                borderRadius: RADIUS.control,
-                padding: SPACING.lg,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: COLORS.peach,
-              }}
-            >
-              {startingThread ? (
-                <ActivityIndicator size="small" color={COLORS.coral} />
-              ) : (
-                <MessageSquare size={20} color={COLORS.coral} />
-              )}
-            </PressableScale>
-
             {/* Shop — primary when the store is the main action, secondary alongside Book. */}
             {showShop ? (
               <PressableScale
@@ -659,6 +662,7 @@ export default function ProviderScreen() {
             ) : null}
           </View>
           </View>
+          ) : null}
         </>
       )}
 

@@ -18,13 +18,20 @@ import { stashProviderPost } from "@/utils/providerPostHandoff";
 // hands the rich post off in memory + opens the detail route with clean, URL-safe params
 // (ticket 2.88's fix — never a JSON blob in the URL). `providerId` is required to route +
 // build the comment API URL; when absent the tiles stay inert.
-export default function PostsPanel({ posts = [], providerId }) {
+export default function PostsPanel({ posts = [], providerId, business = null }) {
   const router = useRouter();
   const { t } = useTranslation();
 
   const openPost = (post) => {
     if (providerId == null) return;
-    stashProviderPost(String(providerId), String(post.id), post);
+    // Attach the business identity (name/slug/logo) so the detail can render a business author row
+    // (like the pet post detail). Only spread it when provided so a bare `posts` render (tests /
+    // cold path) stashes the post unchanged.
+    stashProviderPost(
+      String(providerId),
+      String(post.id),
+      business ? { ...post, business } : post,
+    );
     router.push({
       pathname: "/service/provider-post",
       params: { providerId: String(providerId), postId: String(post.id) },

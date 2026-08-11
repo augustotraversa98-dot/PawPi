@@ -503,6 +503,8 @@
       "barks": "Barks",
       "followers": "Followers",
       "postsTitle": "Posts",
+      "postDetailTitle": "Post",
+      "closeImage": "Close image",
       "emptyTitle": "No posts yet",
       "emptyBody": "This business's posts will appear here."
     }
