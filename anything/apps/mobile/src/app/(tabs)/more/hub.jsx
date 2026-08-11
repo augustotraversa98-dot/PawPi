@@ -2,10 +2,11 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, ShieldCheck, Heart, ChevronRight } from "lucide-react-native";
+import { ArrowLeft, ShieldCheck, Heart, ChevronRight, Store } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
-import { useAdoptionFavorites } from "@/hooks/useProviders";
+import { useAdoptionFavorites, useFollowedProviders } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 
 // MY HUB (Phase 2 ticket 2.14) — the owner's account-style hub. Bookings, orders, auto-reorder
@@ -133,11 +134,14 @@ export default function MyHubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const { t } = useTranslation();
   const grants = useAllCareAccessGrants();
   const favorites = useAdoptionFavorites();
+  const followed = useFollowedProviders();
 
   const activeGrants = (grants.data ?? []).filter(isGrantActive);
   const favList = favorites.data ?? [];
+  const followedList = followed.data ?? [];
 
   const loading = grants.isLoading && favorites.isLoading;
 
@@ -217,6 +221,22 @@ export default function MyHubScreen() {
                   }`}
                   badge={f.listing_status}
                 />
+              ))
+            )}
+          </SectionCard>
+
+          {/* Businesses you follow (ticket 2.92) */}
+          <SectionCard
+            title={t("storefront.follow.listTitle")}
+            Icon={Store}
+            count={followedList.length}
+            onPress={() => router.push("/service/following")}
+          >
+            {followedList.length === 0 ? (
+              <Empty text={t("storefront.follow.listEmpty")} />
+            ) : (
+              followedList.slice(0, 4).map((p) => (
+                <Row key={p.id} primary={p.name} secondary={p.provider_type || ""} />
               ))
             )}
           </SectionCard>

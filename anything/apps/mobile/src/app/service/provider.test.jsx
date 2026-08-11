@@ -1,4 +1,5 @@
 // Ticket 2.23 — service images on the public provider profile. A service that
+jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
 // carries image_urls renders one <Image testID="service-image"> per URL; a service
 // with no images renders none (the storefront shows just the text — no fakes).
 // The data hook + router + heavy child components are mocked, so this exercises the

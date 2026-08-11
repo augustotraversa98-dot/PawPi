@@ -1,4 +1,5 @@
 // Storefront "Leave a review" CTA: shown ONLY when the signed-in owner has a COMPLETED
+jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
 // booking with THIS provider (from useMyBookings().past). Tapping it opens the shared
 // WriteReviewModal with this provider + the pet from that booking. Hidden when there is no
 // eligible booking. The data hooks, router, i18n and heavy child components are mocked;

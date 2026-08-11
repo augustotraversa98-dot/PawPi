@@ -941,7 +941,16 @@ hardening, and the redesign). Read that for detail.
     `useUpdateAdoptableListing` PATCH (backend already COALESCEd all fields); the browse now **includes
     coordless shelters** (distance unknown → sorted last) while still radius-filtering located ones. Mobile
     browse/detail already rendered real data (unchanged). Integration test proves the pin-less shelter surfaces;
-    the PATCH is unchanged (no RLS change). web vitest unchanged (replaced 1 test) · integration +1.
+    the PATCH is unchanged (no RLS change). web vitest unchanged (replaced 1 test) · integration +1. **Merged #342.**
+  - **2.92 follow a business** (web + mobile, **migration 0083** — pending hand-apply, flagged in test-backlog
+    ACTION 1) — pet owners can now FOLLOW a provider (mirrors pet_follows). New `provider_follows` (ENABLE+FORCE
+    RLS: any-authed read, own-row write) + API `GET/POST/DELETE /api/providers/[id]/follow` (is-following +
+    count) and `GET /api/providers/following` ("businesses I follow"). Mobile: a `ProviderFollowButton`
+    (optimistic toggle, guest→sign-in, follower count) on the provider screen + a "Businesses you follow" list
+    off the More hub; EN+ES strings. **Degrades cleanly pre-migration** — every follow query catches
+    undefined_table (42P01) → not following / 0 followers / empty list, so the provider screen never crashes.
+    All routes tested through the REAL router by URL (no static-vs-[param] shadowing on `/providers/following`).
+    web vitest 1773→1777 · integration +8 (RLS own-row write, guest denied, degrade path) · mobile jest 1565→1570.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

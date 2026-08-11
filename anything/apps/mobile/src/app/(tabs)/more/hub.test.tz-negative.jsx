@@ -28,6 +28,10 @@ jest.mock("@/components/RefreshableScrollView", () => {
 });
 jest.mock("@/hooks/useProviders", () => ({
   useAdoptionFavorites: () => mockFavorites,
+  useFollowedProviders: () => ({ data: [], isLoading: false }),
+}));
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (k) => k }),
 }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useAllCareAccessGrants: () => mockGrants,

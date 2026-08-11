@@ -484,6 +484,18 @@
       "cancel": "Cancelar",
       "countOne": "{{count}} comentario",
       "countOther": "{{count}} comentarios"
+    },
+    "follow": {
+      "follow": "Seguir",
+      "following": "Siguiendo",
+      "followersOne": "{{count}} seguidor",
+      "followersOther": "{{count}} seguidores",
+      "signInPrompt": "Iniciá sesión para seguir este negocio",
+      "signInCta": "Iniciar sesión",
+      "toggleError": "No se pudo actualizar. Intentá de nuevo.",
+      "listTitle": "Negocios que seguís",
+      "listEmpty": "Todavía no seguís ningún negocio.",
+      "listSubtitle": "Los negocios que seguís aparecen acá."
     }
   },
   "telehealth": {

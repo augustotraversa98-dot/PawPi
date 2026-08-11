@@ -1,4 +1,5 @@
 // Storefront shell (Services Hub P4a): per-type primary action + capability-aware booking.
+jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
 //   - a grooming-only provider books as `groomer`, telehealth as `telehealth`, vet as `vet`
 //     (NOT the book/route 'vet' default);
 //   - a multi-capability provider asks which service, then books under THAT capability;

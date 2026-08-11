@@ -484,6 +484,18 @@
       "cancel": "Cancel",
       "countOne": "{{count}} comment",
       "countOther": "{{count}} comments"
+    },
+    "follow": {
+      "follow": "Follow",
+      "following": "Following",
+      "followersOne": "{{count}} follower",
+      "followersOther": "{{count}} followers",
+      "signInPrompt": "Sign in to follow this business",
+      "signInCta": "Sign in",
+      "toggleError": "Couldn't update. Please try again.",
+      "listTitle": "Businesses you follow",
+      "listEmpty": "You're not following any businesses yet.",
+      "listSubtitle": "Businesses you follow appear here."
     }
   },
   "telehealth": {

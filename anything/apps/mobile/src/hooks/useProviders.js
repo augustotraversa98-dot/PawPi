@@ -1349,3 +1349,76 @@ export function useAdoptionCheckout() {
     },
   });
 }
+
+// ── Follow a business (ticket 2.92) ──────────────────────────────────────────
+// A signed-in pet owner follows a provider; the provider carries a follower count. All degrade
+// cleanly server-side while provider_follows (0083) is unapplied (→ not following / 0 followers).
+
+const providerFollowKey = (providerId) => ["providerFollow", String(providerId ?? "")];
+
+// GET the current user's follow state + the provider's follower count. Disabled until id known.
+export function useProviderFollow(providerId) {
+  return useQuery({
+    queryKey: providerFollowKey(providerId),
+    enabled: providerId != null,
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/${encodeURIComponent(providerId)}/follow`);
+      if (!res.ok) throw new Error("Failed to load follow state");
+      const data = await res.json();
+      return {
+        following: !!data.following,
+        followersCount: Number(data.followersCount ?? 0),
+      };
+    },
+  });
+}
+
+// Optimistic follow/unfollow toggle. Pass the CURRENT `following` value; the cache flips + bumps
+// the count immediately, rolls back on error, and re-syncs from the server on settle. Mirrors
+// useToggleFollow (pets). Guests are gated in the UI (they never reach this).
+export function useToggleProviderFollow(providerId) {
+  const queryClient = useQueryClient();
+  const key = providerFollowKey(providerId);
+  return useMutation({
+    mutationFn: async ({ following }) => {
+      const res = await fetch(`/api/providers/${encodeURIComponent(providerId)}/follow`, {
+        method: following ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error("Failed to update follow");
+      return res.json();
+    },
+    onMutate: async ({ following }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old) => {
+        const base = old ?? { following: false, followersCount: 0 };
+        const delta = following ? -1 : 1;
+        return {
+          following: !following,
+          followersCount: Math.max(0, (base.followersCount ?? 0) + delta),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) queryClient.setQueryData(key, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+      queryClient.invalidateQueries({ queryKey: ["followedProviders"] });
+    },
+  });
+}
+
+// The businesses the current user follows (GET /api/providers/following). Empty → [].
+export function useFollowedProviders() {
+  return useQuery({
+    queryKey: ["followedProviders"],
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/following`);
+      if (!res.ok) throw new Error("Failed to load followed businesses");
+      const data = await res.json();
+      return data.providers ?? [];
+    },
+  });
+}
