@@ -10,6 +10,8 @@ vi.mock("../hooks/useProviders", () => ({
   useDeleteShopProduct: vi.fn(),
   useShopOrders: vi.fn(),
   useSetOrderFulfillment: vi.fn(),
+  useProviderCapabilities: vi.fn(),
+  useAddCapability: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("./ImageUploader", () => ({ default: () => null }));
@@ -21,14 +23,21 @@ import {
   useDeleteShopProduct,
   useShopOrders,
   useSetOrderFulfillment,
+  useProviderCapabilities,
+  useAddCapability,
 } from "../hooks/useProviders";
 import ProviderShop from "./ProviderShop";
 
 let createAsync;
+let addCapMutate;
 
 beforeEach(() => {
   vi.clearAllMocks();
   createAsync = vi.fn().mockResolvedValue({});
+  addCapMutate = vi.fn();
+  // Default: the business already sells products (has the `shop` offering) → catalog renders.
+  useProviderCapabilities.mockReturnValue({ data: ["shop"], isLoading: false });
+  useAddCapability.mockReturnValue({ mutate: addCapMutate, isPending: false });
   useShopProducts.mockReturnValue({ data: [], isLoading: false });
   useShopOrders.mockReturnValue({ data: [], isLoading: false });
   useCreateShopProduct.mockReturnValue({ mutateAsync: createAsync, isPending: false });
@@ -69,5 +78,49 @@ describe("ProviderShop — product create form", () => {
       price_cents: 4990,
       category: "food",
     });
+  });
+});
+
+describe("ProviderShop — Products not enabled (2.90)", () => {
+  beforeEach(() => {
+    // A business that does NOT sell products yet.
+    useProviderCapabilities.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  it("shows a friendly enable prompt (no jargon, no product form) instead of a 403 message", () => {
+    render(<ProviderShop providerId={3} />);
+
+    // Friendly explainer + the single enable CTA.
+    expect(screen.getByText("Sell products to pet owners")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /enable products/i }),
+    ).toBeInTheDocument();
+
+    // No internal jargon and no old 403 message.
+    expect(screen.queryByText(/capability/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/does not have/i)).not.toBeInTheDocument();
+    // The add-product form is NOT shown until Products is enabled.
+    expect(screen.queryByPlaceholderText("Product name")).not.toBeInTheDocument();
+  });
+
+  it("clicking Enable Products turns on the `shop` offering (same profile toggle)", () => {
+    render(<ProviderShop providerId={3} />);
+    fireEvent.click(screen.getByRole("button", { name: /enable products/i }));
+    expect(addCapMutate).toHaveBeenCalledWith("shop", expect.any(Object));
+  });
+});
+
+describe("ProviderShop — enabled but empty (2.90)", () => {
+  it("shows the add-first-product form + an inviting empty state (not an error)", () => {
+    // Sells products, but none added yet.
+    useProviderCapabilities.mockReturnValue({ data: ["shop"], isLoading: false });
+    useShopProducts.mockReturnValue({ data: [], isLoading: false });
+    render(<ProviderShop providerId={3} />);
+
+    // The add-product form is front and centre.
+    expect(screen.getByPlaceholderText("Product name")).toBeInTheDocument();
+    // Inviting empty state, not an error.
+    expect(screen.getByText("No products yet")).toBeInTheDocument();
+    expect(screen.queryByText(/couldn't load/i)).not.toBeInTheDocument();
   });
 });

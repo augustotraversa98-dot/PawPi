@@ -8,6 +8,8 @@ import {
   useDeleteShopProduct,
   useShopOrders,
   useSetOrderFulfillment,
+  useProviderCapabilities,
+  useAddCapability,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
@@ -27,6 +29,27 @@ function money(cents, currency = "ARS") {
 }
 
 export default function ProviderShop({ providerId }) {
+  // Does this business sell products yet? Products is the `shop` offering (the same one the
+  // Business Profile turns on). Until it's enabled, we show a friendly explainer + a single
+  // "Enable Products" button instead of a jargon 403 — enabling flips the SAME offering the
+  // profile controls (useAddCapability) and drops the business straight into adding its first
+  // product (this component re-renders into the catalog once `shop` is on).
+  const { data: caps, isLoading: capsLoading } = useProviderCapabilities(providerId);
+  const sellsProducts = (caps ?? []).includes("shop");
+
+  if (capsLoading) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-6 py-16 text-[#7A6254]">
+        <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
+        Loading…
+      </div>
+    );
+  }
+
+  if (!sellsProducts) {
+    return <ProductsIntro providerId={providerId} />;
+  }
+
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
       <div className="mb-6 flex items-center gap-3">
@@ -37,7 +60,7 @@ export default function ProviderShop({ providerId }) {
           <ShoppingBag className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#3B241B]">Shop</h1>
+          <h1 className="text-xl font-bold text-[#3B241B]">Products</h1>
           <p className="text-sm text-[#7A6254]">
             Catalog, inventory, and order fulfillment.
           </p>
@@ -55,6 +78,55 @@ export default function ProviderShop({ providerId }) {
         Orders
       </h2>
       <OrderList providerId={providerId} />
+    </div>
+  );
+}
+
+// Not-enabled state (ticket 2.90) — replaces the old "This business doesn't have the shop
+// capability" message. Plain language a shop owner understands + one button that turns Products
+// on (the same `shop` offering the Business Profile controls) and lands them on add-a-product.
+function ProductsIntro({ providerId }) {
+  const add = useAddCapability(providerId);
+  const enable = () =>
+    add.mutate("shop", {
+      onError: (err) =>
+        toast.error(err?.message || "Couldn't turn on Products — please try again"),
+    });
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-6 py-16">
+      <div
+        className="rounded-3xl border p-8 text-center"
+        style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
+      >
+        <div
+          className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: COLORS.peach }}
+        >
+          <ShoppingBag className="h-7 w-7" style={{ color: COLORS.terracotta }} />
+        </div>
+        <h1 className="mt-4 text-xl font-bold text-[#3B241B]">
+          Sell products to pet owners
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[#7A6254]">
+          Turn on Products to list what you sell — food, toys, accessories, and more — each with
+          photos and a price. Pet owners can browse and buy them right from your business page.
+        </p>
+        <button
+          type="button"
+          onClick={enable}
+          disabled={add.isPending}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
+          style={{ backgroundColor: COLORS.coral }}
+        >
+          {add.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          {add.isPending ? "Turning on…" : "Enable Products"}
+        </button>
+      </div>
     </div>
   );
 }
