@@ -201,3 +201,25 @@ describe('DELETE /api/providers/[id]/services/[serviceId] — soft delete', () =
     expect(res.status).toBe(404);
   });
 });
+
+// Defense-in-depth: a non-integer serviceId (a static path like "reorder" that reached this
+// dynamic handler) must 404 BEFORE any SQL — never bound as an integer in Postgres.
+describe('non-integer serviceId guard', () => {
+  it('PATCH with a non-numeric serviceId → 404, no SQL', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await PATCH(patchReq({ name: 'x' }), {
+      params: { id: '100', serviceId: 'reorder' },
+    });
+    expect(res.status).toBe(404);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('DELETE with a non-numeric serviceId → 404, no SQL', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await DELETE(deleteReq(), {
+      params: { id: '100', serviceId: 'reorder' },
+    });
+    expect(res.status).toBe(404);
+    expect(sql).not.toHaveBeenCalled();
+  });
+});

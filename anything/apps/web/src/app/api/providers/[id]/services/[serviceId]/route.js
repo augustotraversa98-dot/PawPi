@@ -31,6 +31,11 @@ async function PATCH(request, { params }) {
 
     const providerId = params.id;
     const serviceId = params.serviceId;
+    // Defense-in-depth: a non-integer serviceId (e.g. a static path like "reorder" that reached
+    // this dynamic handler) must never be bound as an integer in SQL — 404 before any DB call.
+    if (!/^\d+$/.test(String(serviceId))) {
+      return Response.json({ error: "Service not found" }, { status: 404 });
+    }
     const userId = await resolveUserId(session.user.id);
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
@@ -113,6 +118,11 @@ async function DELETE(request, { params }) {
 
     const providerId = params.id;
     const serviceId = params.serviceId;
+    // Defense-in-depth: a non-integer serviceId (e.g. a static path like "reorder" that reached
+    // this dynamic handler) must never be bound as an integer in SQL — 404 before any DB call.
+    if (!/^\d+$/.test(String(serviceId))) {
+      return Response.json({ error: "Service not found" }, { status: 404 });
+    }
     const userId = await resolveUserId(session.user.id);
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
