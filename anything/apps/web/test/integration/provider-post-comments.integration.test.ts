@@ -225,3 +225,67 @@ describe('social stats on the public storefront read (ticket 2.93)', () => {
     expect(stats).toEqual({ postsCount: 1, pawsCount: 0, barksCount: 0 });
   });
 });
+
+describe('pet attribution on comments (migration 0084)', () => {
+  const PET = 700;
+
+  beforeEach(async () => {
+    // USER (the signed-in commenter) owns a pet; the comment is posted AS that pet.
+    await raw`
+      insert into pets (id, owner_user_id, name, handle)
+      values (${PET}, ${USER.profileId}, 'Mango', 'mango')
+    `;
+  });
+
+  it('a comment posted with the caller\'s petId carries the pet name/@handle/avatar (POST + authed GET)', async () => {
+    authState.session = sessionFor(USER.authUserId);
+    const res = await apiReq(commentsUrl, 'POST', { body: 'from mango', petId: PET });
+    expect(res.status).toBe(201);
+    const { comment } = await res.json();
+    expect(comment).toMatchObject({ pet_id: PET, pet_name: 'Mango', pet_handle: 'mango' });
+
+    // An AUTHED viewer (the normal reader — the storefront is browsed signed in) sees the pet
+    // identity: pets are readable by any signed-in user (pets_authed_read, 0021).
+    authState.session = sessionFor(OTHER.authUserId);
+    const list = await apiReq(commentsUrl, 'GET');
+    const c = (await list.json()).comments.find((x: any) => x.body === 'from mango');
+    expect(c).toMatchObject({ pet_name: 'Mango', pet_handle: 'mango' });
+  });
+
+  it('a GUEST reading the same comment degrades to the account handle (pets are authed-only under RLS)', async () => {
+    authState.session = sessionFor(USER.authUserId);
+    await apiReq(commentsUrl, 'POST', { body: 'from mango', petId: PET });
+
+    // No identity → the pets LEFT JOIN yields no row, so pet_* come back NULL and the client falls
+    // back to the account handle. The comment still reads fine (never a crash).
+    authState.session = null;
+    const list = await apiReq(commentsUrl, 'GET');
+    const c = (await list.json()).comments.find((x: any) => x.body === 'from mango');
+    expect(c.pet_name).toBeNull();
+    expect(c.author_username).toBe('commenter');
+  });
+
+  it('owner-only: a caller cannot comment AS a pet they do not own → 400', async () => {
+    // OTHER is signed in but does NOT own pet 700 (USER does).
+    authState.session = sessionFor(OTHER.authUserId);
+    const res = await apiReq(commentsUrl, 'POST', { body: 'spoof', petId: PET });
+    expect(res.status).toBe(400);
+    // Nothing was stored.
+    authState.session = null;
+    const list = await apiReq(commentsUrl, 'GET');
+    expect((await list.json()).comments).toEqual([]);
+  });
+
+  it('no petId → stored without a pet; GET falls back to the account handle', async () => {
+    authState.session = sessionFor(USER.authUserId);
+    const res = await apiReq(commentsUrl, 'POST', { body: 'no pet' });
+    expect(res.status).toBe(201);
+    expect((await res.json()).comment.pet_id).toBeNull();
+
+    authState.session = null;
+    const list = await apiReq(commentsUrl, 'GET');
+    const c = (await list.json()).comments.find((x: any) => x.body === 'no pet');
+    expect(c.pet_name).toBeNull();
+    expect(c.author_username).toBe('commenter'); // USER's account
+  });
+});

@@ -7,6 +7,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 let mockParams;
 let mockAuth;
 let moderationProps;
+let mockComments;
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -25,8 +26,11 @@ jest.mock("@/utils/auth/useAuth", () => ({
 jest.mock("@/hooks/useUserProfile", () => ({
   useMyProfileId: () => ({ data: 7 }),
 }));
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: { id: 3, name: "Mango" } }),
+}));
 jest.mock("@/hooks/useProviderPostComments", () => ({
-  useProviderPostComments: () => ({ data: [], isLoading: false }),
+  useProviderPostComments: () => ({ data: mockComments, isLoading: false }),
   useAddProviderPostComment: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useDeleteProviderPostComment: () => ({ mutateAsync: jest.fn() }),
 }));
@@ -51,6 +55,7 @@ const IMAGES = ["https://x/1.jpg", "https://x/2.jpg"];
 beforeEach(() => {
   __clearProviderPostHandoff();
   moderationProps = undefined;
+  mockComments = [];
   mockAuth = { isAuthenticated: true, signIn: jest.fn() };
   mockParams = { providerId: "42", postId: "9" };
 });
@@ -111,6 +116,37 @@ test("mirrors the pet post detail: business author row (@handle) + full-width im
   expect(queryByTestId("provider-post-image-viewer")).toBeNull();
   fireEvent.press(getByTestId("provider-post-image"));
   expect(getByTestId("provider-post-image-viewer")).toBeTruthy();
+});
+
+test("attributes comments to the commenting PET (@handle), falling back to the account for legacy rows", () => {
+  mockComments = [
+    // Pet-attributed comment (post-migration) → shows the pet @handle, not the account.
+    {
+      id: 1,
+      author_user_id: 50,
+      body: "So cute!",
+      created_at: "2026-08-11T00:00:00Z",
+      author_username: "demo",
+      author_name: "Demo Account",
+      pet_name: "Mango",
+      pet_handle: "mango",
+      pet_avatar_url: "https://x/mango.jpg",
+    },
+    // Legacy / pet-less comment (pet_* null) → falls back to the account handle.
+    {
+      id: 2,
+      author_user_id: 51,
+      body: "Nice",
+      created_at: "2026-08-11T00:00:00Z",
+      author_username: "olduser",
+      author_name: "Old User",
+    },
+  ];
+  stashProviderPost("42", "9", { id: 9, body: "Post", image_urls: [] });
+  const { getByText, queryByText } = render(<ProviderPostScreen />);
+  expect(getByText("@mango")).toBeTruthy(); // pet, not @demo
+  expect(queryByText("@demo")).toBeNull();
+  expect(getByText("@olduser")).toBeTruthy(); // legacy row → account fallback
 });
 
 test("a guest can read but is prompted to sign in to comment", () => {
