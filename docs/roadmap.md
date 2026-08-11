@@ -683,7 +683,9 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
 - **Wave 10 night-run (2.88–2.92)** — Shop/Store + business-social finish. **2.88** provider-post open route
   fix (mobile): tapping a storefront post opened the `/service` dead-end because the full post (signed image
   URLs) was passed as a route param and corrupted the deep-link URL; now passes only `providerId`+`postId` and
-  hands the post off in memory. Regression test added. (2026-08-11.)
+  hands the post off in memory. Regression test added (#339). **2.89** grouped the flat Business-Profile
+  offering picker (+ onboarding) into a clear parent taxonomy via a shared presentation-only module — no
+  capability key changed; nav was already capability-driven. (2026-08-11.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

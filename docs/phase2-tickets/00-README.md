@@ -415,3 +415,14 @@ is ticketed as 2.77 — DO LAST. All slot onto the same spine/capability/discove
 - 2.78-app-store-readiness.md                   (FINAL STEP of the Wave 7 autonomous run — debugging + App Store compliance hardening; auto-fix + flag; aims at submission)
 - 2.79-calendar-foundation-ics.md               (Wave 8 — unify calendarIntegration.js + web ICS export; no migration; build FIRST)
 - 2.80-calendar-everywhere.md                   (Wave 8 — calendar on bookings/transport/telehealth/events; migration 0063; ⛔ after 2.79)
+
+## 🌙 WAVE 10 — Shop/Store + business-social finish (night-run 2026-08-11, tickets 2.88–2.92)
+Continues the 2026-08-10 extranet/storefront work. Built unattended per the ⚡ Wave 5 autonomy preamble
+(run doc: `docs/night-run-2026-08-11.md`; log: `docs/night-run-log.md`). Only 2.92 adds a migration (0083;
+hand-apply after merge; degrades cleanly pre-apply). Build order: 2.88 → 2.89 → 2.90 → 2.91 → 2.92.
+
+- 2.88-provider-post-open-route-fix.md          (Wave 10 — mobile: tap post → real detail route, not /service; no migration; do FIRST)
+- 2.89-extranet-nav-capabilities-grouped.md      (Wave 10 — web: offering picker grouped into a clear taxonomy; nav already capability-driven; no migration)
+- 2.90-products-empty-state-clarity.md           (Wave 10 — web: kill "shop capability" jargon, friendly enable + add-first-product; ⛔ after 2.89)
+- 2.91-adoption-end-to-end-fix.md                (Wave 10 — web+mobile: business edit/see media + pet-owner display; investigate first, no migration)
+- 2.92-follow-a-business.md                       (Wave 10 — web+mobile: pet owners follow providers; migration 0083; do LAST)

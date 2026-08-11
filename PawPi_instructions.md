@@ -920,7 +920,13 @@ hardening, and the redesign). Read that for detail.
     dead `/service` fallback because the whole post (with signed image URLs full of `?`/`&`/`%`) was shoved
     into a route param, corrupting the deep-link URL. Fixed: navigation now carries only `providerId`+`postId`;
     the rich post is handed off in memory (`utils/providerPostHandoff.js`) so the detail renders instantly and
-    guests still read. Regression test guards the route + params.
+    guests still read. Regression test guards the route + params. **Merged #339.**
+  - **2.89 grouped offering picker** (web, no migration) — the dashboard nav was already capability-driven +
+    grouped (#327/#328), but the Business-Profile offering picker (and onboarding form) was a flat 12-chip
+    list. Added a shared presentation-only taxonomy (`provider/lib/capabilityGroups.js`) grouping the EXISTING
+    keys into Veterinary & Health / Walking & Sitting / Training / Store / Adoption / Other — no key created,
+    renamed, or removed (`capabilities.js` untouched). Both pickers now render grouped sections. web vitest
+    1764→1770.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

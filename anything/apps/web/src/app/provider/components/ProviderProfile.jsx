@@ -22,7 +22,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
-import { CAPABILITY_OPTIONS } from "../lib/capabilities";
+import { groupedCapabilityOptions } from "../lib/capabilityGroups";
 import AdvancedSection from "./AdvancedSection";
 import ProviderAvailability from "./ProviderAvailability";
 
@@ -469,43 +469,54 @@ function CapabilitiesCard({ providerId }) {
           Loading…
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {CAPABILITY_OPTIONS.map(({ value, label }) => {
-            const on = selected.has(value);
-            const pendingThis =
-              (add.isPending && add.variables === value) ||
-              (remove.isPending && remove.variables === value);
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={on}
-                onClick={() => toggle(value)}
-                disabled={busy}
-                className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-opacity disabled:opacity-60"
-                style={
-                  on
-                    ? {
-                        borderColor: "transparent",
-                        color: "#fff",
-                        backgroundColor: COLORS.coral,
+        // Grouped under clear parent sections (ticket 2.89) so the list is easy to scan —
+        // labels + grouping only, every underlying capability key unchanged.
+        <div className="space-y-4">
+          {groupedCapabilityOptions().map(({ section, options }) => (
+            <div key={section}>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
+                {section}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {options.map(({ value, label }) => {
+                  const on = selected.has(value);
+                  const pendingThis =
+                    (add.isPending && add.variables === value) ||
+                    (remove.isPending && remove.variables === value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggle(value)}
+                      disabled={busy}
+                      className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-opacity disabled:opacity-60"
+                      style={
+                        on
+                          ? {
+                              borderColor: "transparent",
+                              color: "#fff",
+                              backgroundColor: COLORS.coral,
+                            }
+                          : {
+                              borderColor: "#FFD9B3",
+                              color: "#7A6254",
+                              backgroundColor: "#FFF7EF",
+                            }
                       }
-                    : {
-                        borderColor: "#FFD9B3",
-                        color: "#7A6254",
-                        backgroundColor: "#FFF7EF",
-                      }
-                }
-              >
-                {pendingThis ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : on ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : null}
-                {label}
-              </button>
-            );
-          })}
+                    >
+                      {pendingThis ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : on ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : null}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

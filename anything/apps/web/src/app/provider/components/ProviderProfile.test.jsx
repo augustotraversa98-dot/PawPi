@@ -193,4 +193,28 @@ describe("ProviderProfile", () => {
     fireEvent.click(screen.getByRole("button", { name: "Vet clinic" }));
     expect(removeCapMutate).toHaveBeenCalledWith("vet", expect.any(Object));
   });
+
+  it("groups the offering picker under the recommended parent sections (2.89)", () => {
+    render(<ProviderProfile providerId={3} />);
+
+    // The parent section headers render (labels + grouping only). A couple of headers
+    // ("Training", "Adoption") share their text with a chip, so match the <p> header itself.
+    for (const header of [
+      "Veterinary & Health",
+      "Walking & Sitting",
+      "Training",
+      "Store",
+      "Adoption",
+      "Other",
+    ]) {
+      const matches = screen.getAllByText(header);
+      expect(matches.some((el) => el.tagName === "P")).toBe(true);
+    }
+
+    // Every capability chip is still present and toggleable (a role query ignores the
+    // section-header <p> with the same text, so grouping doesn't hide any offering).
+    for (const chip of ["Vet clinic", "Telehealth", "Grooming", "Products", "Adoption"]) {
+      expect(screen.getByRole("button", { name: chip })).toBeInTheDocument();
+    }
+  });
 });
