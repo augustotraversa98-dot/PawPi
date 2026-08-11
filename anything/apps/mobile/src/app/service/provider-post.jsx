@@ -21,6 +21,7 @@ import { PressableScale } from "@/components/ui";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { formatRelativeTime } from "@/utils/relativeTime";
+import { getProviderPost } from "@/utils/providerPostHandoff";
 import {
   useProviderPostComments,
   useAddProviderPostComment,
@@ -68,13 +69,18 @@ export default function ProviderPostScreen() {
   const postId = Array.isArray(params.postId) ? params.postId[0] : params.postId;
 
   const post = useMemo(() => {
+    // Rich post handed off in memory (the primary path — keeps the nav URL clean; ticket 2.88).
+    const fromStore = getProviderPost(providerId, postId);
+    if (fromStore) return fromStore;
+    // Fallback for any entry that still carries a legacy `post` JSON param (back-compat / cold
+    // deep-link). Missing → null → comments-only, never a crash.
     const raw = Array.isArray(params.post) ? params.post[0] : params.post;
     try {
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
-  }, [params.post]);
+  }, [providerId, postId, params.post]);
 
   const { isAuthenticated, signIn } = useAuth();
   const { data: myProfileId } = useMyProfileId();

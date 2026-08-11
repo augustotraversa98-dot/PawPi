@@ -912,6 +912,16 @@ hardening, and the redesign). Read that for detail.
   - **0063 + 0064 ✅ APPLIED + VERIFIED 2026-06-20 (Tats ran both; 0064 all 12 checks PASS via
     verify_0064.sql; live DB now at 0064 — none pending).** New env key this wave: `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`.
 
+- **Wave 10 — 🌙 night-run in progress (Shop/Store + business-social finish, tickets 2.88–2.92).**
+  Continues the 2026-08-10 extranet/storefront work. Built unattended per the ⚡ autonomy preamble
+  (`docs/night-run-2026-08-11.md`); CI-green → auto squash-merge; one line per merge in
+  `docs/night-run-log.md`. Only 2.92 adds a migration (0083, hand-apply after merge; degrades cleanly).
+  - **2.88 provider-post open route fix** (mobile, no migration) — tapping a storefront post opened the
+    dead `/service` fallback because the whole post (with signed image URLs full of `?`/`&`/`%`) was shoved
+    into a route param, corrupting the deep-link URL. Fixed: navigation now carries only `providerId`+`postId`;
+    the rich post is handed off in memory (`utils/providerPostHandoff.js`) so the detail renders instantly and
+    guests still read. Regression test guards the route + params.
+
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
 - **Go-live env keys** (each feature degrades cleanly until its keys are set): Apple + Google OAuth

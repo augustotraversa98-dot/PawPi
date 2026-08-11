@@ -7,6 +7,7 @@ import { Card, PressableScale } from "@/components/ui";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
+import { stashProviderPost } from "@/utils/providerPostHandoff";
 import { Section } from "./primitives";
 
 // Posts section. Presentational: takes the already-fetched storefront feed (newest first). Each
@@ -24,9 +25,13 @@ export default function PostsPanel({ posts = [], providerId }) {
 
   const openPost = (post) => {
     if (providerId == null) return;
+    // Pass ONLY URL-safe primitives through navigation; hand the rich post (body + signed image
+    // URLs) off in memory so the deep-link URL stays clean and resolves to the detail screen
+    // instead of falling back to the /service root (ticket 2.88).
+    stashProviderPost(String(providerId), String(post.id), post);
     router.push({
       pathname: "/service/provider-post",
-      params: { providerId: String(providerId), postId: String(post.id), post: JSON.stringify(post) },
+      params: { providerId: String(providerId), postId: String(post.id) },
     });
   };
 
