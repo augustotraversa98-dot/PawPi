@@ -926,7 +926,12 @@ hardening, and the redesign). Read that for detail.
     list. Added a shared presentation-only taxonomy (`provider/lib/capabilityGroups.js`) grouping the EXISTING
     keys into Veterinary & Health / Walking & Sitting / Training / Store / Adoption / Other — no key created,
     renamed, or removed (`capabilities.js` untouched). Both pickers now render grouped sections. web vitest
-    1764→1770.
+    1764→1770. **Merged #340.**
+  - **2.90 Products enable clarity** (web, no migration) — a business without the store enabled saw the API's
+    jargon 403 ("Provider does not have the 'shop' capability") on the Products page. Replaced with a friendly
+    explainer + one "Enable Products" button that flips the SAME `shop` offering the profile controls
+    (`useAddCapability`, reused — no forked write path) and drops straight into add-a-product once on. Renamed
+    the header Shop→Products (matches the nav). No user-facing jargon (grep-checked). web vitest 1770→1773.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
