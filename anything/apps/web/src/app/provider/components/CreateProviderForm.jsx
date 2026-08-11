@@ -6,6 +6,7 @@ import { useCreateProvider } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
 import { CAPABILITY_OPTIONS } from "../lib/capabilities";
+import { groupedCapabilityOptions } from "../lib/capabilityGroups";
 import AdvancedSection from "./AdvancedSection";
 
 // Client-side validity mirror (lib/capabilities mirrors the server's ALLOWED_CAPABILITIES).
@@ -148,35 +149,46 @@ export default function CreateProviderForm() {
             label="What this business offers"
             hint="You can change this later"
           >
-            <div className="flex flex-wrap gap-2">
-              {CAPABILITY_OPTIONS.map(({ value, label }) => {
-                const on = selectedCaps.has(value);
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggleCap(value)}
-                    className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold"
-                    style={
-                      on
-                        ? {
-                            borderColor: "transparent",
-                            color: "#fff",
-                            backgroundColor: COLORS.coral,
+            {/* Grouped under clear parent sections (ticket 2.89) — labels + grouping only,
+                every underlying capability key unchanged. */}
+            <div className="space-y-4">
+              {groupedCapabilityOptions().map(({ section, options }) => (
+                <div key={section}>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
+                    {section}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {options.map(({ value, label }) => {
+                      const on = selectedCaps.has(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleCap(value)}
+                          className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-semibold"
+                          style={
+                            on
+                              ? {
+                                  borderColor: "transparent",
+                                  color: "#fff",
+                                  backgroundColor: COLORS.coral,
+                                }
+                              : {
+                                  borderColor: "#FFD9B3",
+                                  color: "#7A6254",
+                                  backgroundColor: "#FFF7EF",
+                                }
                           }
-                        : {
-                            borderColor: "#FFD9B3",
-                            color: "#7A6254",
-                            backgroundColor: "#FFF7EF",
-                          }
-                    }
-                  >
-                    {on && <Check className="h-3.5 w-3.5" />}
-                    {label}
-                  </button>
-                );
-              })}
+                        >
+                          {on && <Check className="h-3.5 w-3.5" />}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </Field>
 
