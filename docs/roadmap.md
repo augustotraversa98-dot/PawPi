@@ -689,7 +689,9 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   jargon 403 with a friendly "Enable Products" prompt that flips the same `shop` offering and drops into
   add-a-product (#341). **2.91** adoption end-to-end fix: shelters can now edit a listing's info (not just
   media) via a prefilled Edit modal, and the public browse no longer hides pin-less shelters from
-  location-sharing owners. (2026-08-11.)
+  location-sharing owners (#342). **2.92** follow-a-business: pet owners follow providers
+  (`provider_follows`, migration 0083 pending hand-apply) — follow/unfollow/count/list API + a mobile
+  Follow toggle + "Businesses you follow" list; degrades cleanly until the migration lands. (2026-08-11.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

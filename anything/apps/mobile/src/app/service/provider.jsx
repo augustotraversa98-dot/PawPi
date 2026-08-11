@@ -38,6 +38,7 @@ import {
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
+import ProviderFollowButton from "@/components/Providers/ProviderFollowButton";
 import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
 import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
 import ProductDetail from "@/components/Providers/StorefrontPanels/ProductDetail";
@@ -435,15 +436,26 @@ export default function ProviderScreen() {
             </View>
           ) : null}
 
-          {/* Sticky store header (name + tappable rating summary → Reviews). */}
-          <StoreHeader
-            provider={provider}
-            capabilities={capabilities}
-            onJumpToReviews={() => setActiveTab("reviews")}
-            openNow={openNow}
-            fromPriceLabel={fromPriceLabel}
-            t={t}
-          />
+          {/* Store header + Follow toggle, wrapped as ONE scroll child so the tab bar's sticky
+              index (computed as coverOffset + 1) stays correct. */}
+          <View>
+            {/* Sticky store header (name + tappable rating summary → Reviews). */}
+            <StoreHeader
+              provider={provider}
+              capabilities={capabilities}
+              onJumpToReviews={() => setActiveTab("reviews")}
+              openNow={openNow}
+              fromPriceLabel={fromPriceLabel}
+              t={t}
+            />
+            {/* Follow / Following a business (ticket 2.92) — signed-in owners follow; guests are
+                prompted to sign in; follower count shown alongside. */}
+            {provider?.id != null ? (
+              <View style={{ marginTop: -SPACING.sm, marginBottom: SPACING.lg }}>
+                <ProviderFollowButton providerId={provider.id} />
+              </View>
+            ) : null}
+          </View>
 
           {/* Horizontal tab bar (mirrors the shop.jsx pill pattern). */}
           <StorefrontTabBar
