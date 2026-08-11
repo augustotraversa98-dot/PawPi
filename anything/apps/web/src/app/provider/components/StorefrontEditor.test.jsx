@@ -87,6 +87,8 @@ describe("StorefrontEditor", () => {
     expect(screen.getByTestId("product-sale-1")).toBeTruthy();
     // Save is disabled with no pending changes.
     expect(screen.getByTestId("storefront-save").disabled).toBe(true);
+    // Shop-capable → the shop-products query IS enabled.
+    expect(useShopProducts).toHaveBeenCalledWith(100, { enabled: true });
   });
 
   it("bookable provider: shows service rows with promote toggles (no product controls)", () => {
@@ -97,6 +99,8 @@ describe("StorefrontEditor", () => {
     });
     expect(screen.getByTestId("service-feature-7")).toBeTruthy();
     expect(screen.queryByTestId("product-feature-7")).toBeNull();
+    // Non-shop provider → the shop-products query is DISABLED (no 403 poll).
+    expect(useShopProducts).toHaveBeenCalledWith(100, { enabled: false });
   });
 
   it("promoting a product enables Save and fires ONLY the product PATCH with the right payload", async () => {

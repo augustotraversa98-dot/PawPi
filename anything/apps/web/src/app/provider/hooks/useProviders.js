@@ -1531,10 +1531,14 @@ export const shopProductsKey = (providerId) => ["provider", providerId, "shop-pr
 export const shopOrdersKey = (providerId) => ["provider", providerId, "shop-orders"];
 
 // The shop's catalog (GET .../shop-products). RLS: provider admins see all (incl. inactive).
-export function useShopProducts(providerId) {
+// The endpoint is gated by requireProviderCapability('shop') → 403 for a non-shop provider, so
+// callers that render for EVERY provider (the storefront editor/preview) pass enabled:false when
+// the provider lacks the 'shop' capability to avoid a 403 refetch loop. Defaults enabled so the
+// dedicated Shop page (already capability-gated by nav) is unaffected.
+export function useShopProducts(providerId, { enabled = true } = {}) {
   return useQuery({
     queryKey: shopProductsKey(providerId),
-    enabled: providerId != null && providerId !== "",
+    enabled: enabled && providerId != null && providerId !== "",
     queryFn: async () => {
       const data = await getJson(`/api/providers/${providerId}/shop-products`);
       return data.products ?? [];

@@ -46,7 +46,7 @@ import { COLORS } from "../lib/colors";
 const MUTED = "#7A6254";
 const TAB_LABELS = {
   services: "Services",
-  items: "Services/Products",
+  items: "Products",
   posts: "Posts",
   reviews: "Reviews",
   locations: "Locations",
@@ -77,7 +77,11 @@ export default function StorefrontEditor({ providerId, onDone }) {
   const queryClient = useQueryClient();
   const { data: providerData, isLoading } = useProvider(providerId);
   const { data: services = [] } = useProviderServices(providerId);
-  const { data: products = [] } = useShopProducts(providerId);
+  // Only a shop-capable provider can read shop-products (the endpoint 403s otherwise), so skip
+  // the fetch entirely for non-shop providers — no 403 refetch loop.
+  const { data: products = [] } = useShopProducts(providerId, {
+    enabled: (providerData?.capabilities ?? []).includes("shop"),
+  });
   const { data: posts = [] } = useProviderPosts(providerId);
   const { data: locations = [] } = useProviderLocations(providerId);
 
