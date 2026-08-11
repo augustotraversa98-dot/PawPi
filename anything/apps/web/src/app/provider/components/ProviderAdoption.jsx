@@ -224,7 +224,7 @@ function ListingList({ providerId }) {
                 className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
                 style={{ color: "#3B241B" }}
               >
-                <ImageIcon className="h-3.5 w-3.5" /> Media
+                <ImageIcon className="h-3.5 w-3.5" /> Edit
               </button>
               <button
                 onClick={() => del.mutate(l.id)}
@@ -239,19 +239,19 @@ function ListingList({ providerId }) {
       ))}
 
       {editingMedia && (
-        <ListingMediaModal
+        <ListingEditModal
           listing={editingMedia}
           saving={update.isPending}
           onClose={() => setEditingMedia(null)}
-          onSave={(photo_urls, video_url) =>
+          onSave={(patch) =>
             update.mutate(
-              { listingId: editingMedia.id, photo_urls, video_url },
+              { listingId: editingMedia.id, ...patch },
               {
                 onSuccess: () => {
-                  toast.success("Media updated");
+                  toast.success("Listing updated");
                   setEditingMedia(null);
                 },
-                onError: (err) => toast.error(err?.message || "Couldn't save media"),
+                onError: (err) => toast.error(err?.message || "Couldn't save changes"),
               },
             )
           }
@@ -261,31 +261,127 @@ function ListingList({ providerId }) {
   );
 }
 
-// Edit the photos (reorder/remove, first = cover) + intro video of an existing listing (ticket 2.85).
-function ListingMediaModal({ listing, onClose, onSave, saving }) {
+// Edit an EXISTING listing (ticket 2.91) — the info the business wrote (name, breed, fee, story,
+// status) AND its media (photos: reorder/remove, first = cover; intro video), all PREFILLED from
+// the saved listing so the business can review what it posted and change it. Saves the whole set
+// via the existing useUpdateAdoptableListing PATCH (which COALESCEs unspecified fields). Previously
+// only media was editable, so a business couldn't fix a name/story/fee or see the info it wrote.
+function ListingEditModal({ listing, onClose, onSave, saving }) {
+  const [name, setName] = useState(listing.name || "");
+  const [breed, setBreed] = useState(listing.breed || "");
+  const [fee, setFee] = useState(
+    listing.adoption_fee_cents != null
+      ? (listing.adoption_fee_cents / 100).toString()
+      : "",
+  );
+  const [story, setStory] = useState(listing.story || "");
+  const [status, setStatus] = useState(listing.status || "available");
   const [photos, setPhotos] = useState(
     Array.isArray(listing.photo_urls) ? listing.photo_urls : [],
   );
   const [videoUrl, setVideoUrl] = useState(listing.video_url || null);
+
+  const save = () => {
+    if (!name.trim()) {
+      toast.error("Enter the dog's name.");
+      return;
+    }
+    const feeCents = fee === "" ? 0 : Math.round(parseFloat(fee) * 100);
+    onSave({
+      name: name.trim(),
+      breed: breed.trim() || null,
+      adoption_fee_cents: Number.isFinite(feeCents) && feeCents >= 0 ? feeCents : 0,
+      // Empty string clears the story (PATCH COALESCE keeps a field only when null is sent).
+      story: story,
+      status,
+      photo_urls: photos,
+      video_url: videoUrl || null,
+    });
+  };
+
+  const inputCls =
+    "w-full rounded-lg border px-3 py-2 text-sm text-[#3B241B] outline-none";
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`Edit media for ${listing.name}`}
+      aria-label={`Edit ${listing.name}`}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#3B241B]">Photos & video — {listing.name}</h2>
+          <h2 className="text-xl font-bold text-[#3B241B]">Edit {listing.name}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 text-[#7A6254]">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-[#3B241B]">
+            Name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={`mt-1 ${inputCls}`}
+              style={{ borderColor: COLORS.peach }}
+            />
+          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-[#3B241B]">
+              Breed
+              <input
+                value={breed}
+                onChange={(e) => setBreed(e.target.value)}
+                className={`mt-1 ${inputCls}`}
+                style={{ borderColor: COLORS.peach }}
+              />
+            </label>
+            <label className="block text-sm font-semibold text-[#3B241B]">
+              Adoption fee (blank = free)
+              <input
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                inputMode="decimal"
+                placeholder="e.g. 50.00"
+                className={`mt-1 ${inputCls}`}
+                style={{ borderColor: COLORS.peach }}
+              />
+            </label>
+          </div>
+          <label className="block text-sm font-semibold text-[#3B241B]">
+            Story / about this dog
+            <textarea
+              value={story}
+              onChange={(e) => setStory(e.target.value)}
+              rows={3}
+              className={`mt-1 resize-y ${inputCls}`}
+              style={{ borderColor: COLORS.peach }}
+            />
+          </label>
+          <label className="block text-sm font-semibold text-[#3B241B]">
+            Status
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              aria-label="Listing status"
+              className={`mt-1 ${inputCls}`}
+              style={{ borderColor: COLORS.peach }}
+            >
+              <option value="available">Available</option>
+              <option value="pending">Pending</option>
+              <option value="adopted">Adopted</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-4">
+          <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+        </div>
         <div className="mt-4">
           <VideoUploader value={videoUrl} onChange={setVideoUrl} />
         </div>
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
@@ -297,13 +393,13 @@ function ListingMediaModal({ listing, onClose, onSave, saving }) {
           </button>
           <button
             type="button"
-            onClick={() => onSave(photos, videoUrl || null)}
+            onClick={save}
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
             style={{ backgroundColor: COLORS.coral }}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save media
+            Save changes
           </button>
         </div>
       </div>

@@ -932,6 +932,16 @@ hardening, and the redesign). Read that for detail.
     explainer + one "Enable Products" button that flips the SAME `shop` offering the profile controls
     (`useAddCapability`, reused — no forked write path) and drops straight into add-a-product once on. Renamed
     the header Shop→Products (matches the nav). No user-facing jargon (grep-checked). web vitest 1770→1773.
+    **Merged #341.**
+  - **2.91 adoption end-to-end fix** (web + API, no migration) — root causes: (a/b/c) the provider editor only
+    let a shelter edit MEDIA — there was no way to edit or even see the name/breed/fee/story it wrote; (d) the
+    public browse (`/api/adoption/listings`) silently dropped any shelter without a map pin whenever the owner
+    shared location (the geo bounding box required coords), so pin-less shelters were invisible. Fixes: the
+    per-listing action is now a full **Edit** modal prefilling every field + media, saving via the existing
+    `useUpdateAdoptableListing` PATCH (backend already COALESCEd all fields); the browse now **includes
+    coordless shelters** (distance unknown → sorted last) while still radius-filtering located ones. Mobile
+    browse/detail already rendered real data (unchanged). Integration test proves the pin-less shelter surfaces;
+    the PATCH is unchanged (no RLS change). web vitest unchanged (replaced 1 test) · integration +1.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

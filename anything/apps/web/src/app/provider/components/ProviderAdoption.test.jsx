@@ -102,20 +102,48 @@ describe("ProviderAdoption", () => {
     expect(screen.getByText(/2 photos · video/)).toBeTruthy();
   });
 
-  it("editing media opens the modal and saves photo_urls + video_url via update", () => {
+  it("editing a listing prefills its info + media and saves the whole set via update (2.91)", () => {
     const update = mutationStub();
     useUpdateAdoptableListing.mockReturnValue(update);
     useAdoptableListings.mockReturnValue(
       queryStub([
-        { id: 5, name: "Rex", status: "available", photo_urls: ["https://cdn/a.jpg"], video_url: null },
+        {
+          id: 5,
+          name: "Rex",
+          breed: "Beagle",
+          adoption_fee_cents: 5000,
+          story: "A gentle boy",
+          status: "available",
+          photo_urls: ["https://cdn/a.jpg"],
+          video_url: null,
+        },
       ]),
     );
     render(<ProviderAdoption providerId={10} />);
-    fireEvent.click(screen.getByText("Media"));
-    expect(screen.getByText("Photos & video — Rex")).toBeTruthy();
-    fireEvent.click(screen.getByText("Save media"));
+    fireEvent.click(screen.getByText("Edit"));
+
+    // The modal opens PREFILLED with the info the business wrote (previously unreachable).
+    expect(screen.getByText("Edit Rex")).toBeTruthy();
+    expect(screen.getByDisplayValue("Beagle")).toBeTruthy();
+    expect(screen.getByDisplayValue("50")).toBeTruthy(); // 5000 cents -> "50"
+    expect(screen.getByDisplayValue("A gentle boy")).toBeTruthy();
+
+    // Change the story and re-save — the whole set (info + media) persists via PATCH.
+    fireEvent.change(screen.getByDisplayValue("A gentle boy"), {
+      target: { value: "A gentle, house-trained boy" },
+    });
+    fireEvent.click(screen.getByText("Save changes"));
     expect(update.mutate).toHaveBeenCalledWith(
-      { listingId: 5, photo_urls: ["https://cdn/a.jpg"], video_url: null },
+      {
+        listingId: 5,
+        name: "Rex",
+        breed: "Beagle",
+        adoption_fee_cents: 5000,
+        story: "A gentle, house-trained boy",
+        status: "available",
+        photo_urls: ["https://cdn/a.jpg"],
+        video_url: null,
+      },
       expect.anything(),
     );
   });

@@ -109,9 +109,14 @@ async function GET(request) {
         AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
         AND (
           ${hasGeo ? false : true}
+          -- A shelter that hasn't set a map pin has no coords: still surface its dogs
+          -- (distance unknown → sorted last below) instead of hiding them entirely. The
+          -- radius box only filters shelters we CAN place. (ticket 2.91 — "not shown to
+          -- pet owners"). Without this, any owner who shares location never sees a
+          -- pin-less shelter's available dogs.
+          OR loc.lat IS NULL OR loc.lng IS NULL
           OR (
-            loc.lat IS NOT NULL AND loc.lng IS NOT NULL
-            AND loc.lat BETWEEN ${latMin} AND ${latMax}
+            loc.lat BETWEEN ${latMin} AND ${latMax}
             AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
           )
         )
