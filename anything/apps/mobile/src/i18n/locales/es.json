@@ -469,7 +469,22 @@
     "orderPlacedPayBody": "Completa tu pago en la ventana de checkout.",
     "orderPlacedBody": "Tu pedido está en camino.",
     "checkoutFailedTitle": "No se pudo completar el pago",
-    "checkoutFailedBody": "Inténtalo de nuevo."
+    "checkoutFailedBody": "Inténtalo de nuevo.",
+    "comments": {
+      "title": "Comentarios",
+      "empty": "Todavía no hay comentarios.",
+      "placeholder": "Agregá un comentario…",
+      "signInPrompt": "Iniciá sesión para comentar",
+      "signInCta": "Iniciar sesión",
+      "postError": "No se pudo agregar tu comentario.",
+      "deleteError": "No se pudo eliminar el comentario.",
+      "deleteConfirmTitle": "¿Eliminar comentario?",
+      "deleteConfirmBody": "Este comentario se eliminará.",
+      "remove": "Eliminar",
+      "cancel": "Cancelar",
+      "countOne": "{{count}} comentario",
+      "countOther": "{{count}} comentarios"
+    }
   },
   "telehealth": {
     "availableAt": "Tu videoconsulta estará disponible el {{date}} a las {{time}}.",

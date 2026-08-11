@@ -100,13 +100,37 @@ async function GET(request, { params }) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
+    // comment_count (Phase C): VISIBLE comments per post, so mobile cards can show it. Computed in
+    // a SEPARATE, GUARDED query — provider_post_comments (migration 0082) is hand-applied to
+    // Supabase, so until then this endpoint must NOT reference the table (it would 500 the whole
+    // storefront). We probe to_regclass first and fall back to 0. Every post gets a comment_count.
+    let commentCounts = {};
+    if (posts.length > 0) {
+      const probe = await sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`;
+      const hasComments = Array.isArray(probe) && probe[0]?.ok === true;
+      if (hasComments) {
+        const ids = posts.map((p) => p.id);
+        const counts = await sql`
+          SELECT post_id, count(*)::int AS n
+          FROM provider_post_comments
+          WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
+          GROUP BY post_id
+        `;
+        commentCounts = Object.fromEntries(counts.map((r) => [r.post_id, r.n]));
+      }
+    }
+    const postsWithCounts = posts.map((p) => ({
+      ...p,
+      comment_count: commentCounts[p.id] ?? 0,
+    }));
+
     return Response.json({
       provider,
       locations,
       services,
       capabilities,
       products,
-      posts,
+      posts: postsWithCounts,
     });
   } catch (error) {
     console.error("[GET /api/providers/public/[slug]] Error:", error.message);

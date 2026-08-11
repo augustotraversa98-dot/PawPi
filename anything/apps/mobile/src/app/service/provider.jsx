@@ -310,7 +310,7 @@ export default function ProviderScreen() {
           />
         );
       case "posts":
-        return <PostsPanel posts={posts} />;
+        return <PostsPanel posts={posts} providerId={provider?.id} />;
       case "reviews":
         return (
           <ReviewsPanel
