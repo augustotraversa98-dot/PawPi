@@ -17,3 +17,11 @@ Fast, timestamped, one-line-per-merge scan for Augusto. Full detail lives in eac
 - **2026-07-29 04:44** — N4 (medical profile sex/gender selector fix) merged — [#267](https://github.com/augustotraversa98-dot/PawPi/pull/267). Note: this PR's conflicts were resolved and pushed earlier but the actual merge call was missed until caught during N8 — see that entry below. Also found (not fixed, flagged): the Save button on this same screen is a pre-existing no-op from the 2.77 restyle (prop-name mismatch) — spawned as a separate follow-up task.
 - **2026-07-29 05:11** — N8 (iOS Simulator self-verify pass) merged — [#272](https://github.com/augustotraversa98-dot/PawPi/pull/272). Confirmed the app boots + round-trips real backend data; fixed a stale dev-env LAN IP along the way. Caught and fixed the missed N4 merge above. Simulator tap-injection was unreliable for a stretch, so most of the historical `2.x` device-test backlog was left untouched rather than false-positived — documented honestly in `docs/test-backlog.md`.
 - **2026-07-29 ~05:15** — N10 (widget PR #187 rebase) — **not merged, by design.** Rebased the ~40-day-stale branch cleanly onto `main` (2 conflicts resolved, zero reverted work, mobile jest 156/156 green). Confirmed `expo prebuild` generates both the app and widget Xcode targets. Left **open as an updated draft** — this PR is explicitly gated on Tats' Apple Developer account setup + on-device acceptance pass (see `docs/native-widgets.md`); tonight's job was just to un-stick it from staleness, not to merge it.
+
+---
+
+# Night-run log — 2026-08-11 (Wave 10, tickets 2.88–2.92)
+
+Preamble: `docs/night-run-2026-08-11.md`. Continues the Shop/Store + business-social work. One line per merge.
+
+- **2026-08-11 (2.88)** — provider-post open route fix merged — [#339](https://github.com/augustotraversa98-dot/PawPi/pull/339). Root cause: the storefront post card passed the whole post (signed image URLs with `?`/`&`/`%`) as a `router.push` param, corrupting the deep-link URL so expo-router fell back to the `/service` root ("screen doesn't exist"). Fix: navigate with only `providerId`+`postId`; hand the rich post off in memory (`utils/providerPostHandoff.js`). Mobile jest 1562→1565 (+3 regression tests). No migration.
