@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router";
 import {
@@ -209,12 +209,13 @@ const NAV_REQUIRES = {
   insurance: "insurance",
 };
 
-// Is a nav item visible for a provider holding `capabilities`? `showAll` overrides
-// everything (the "Show all sections" escape hatch), so nothing is ever unreachable.
-function navItemVisible(item, capabilities, showAll) {
-  if (showAll) return true;
+// Is a nav item visible for a provider holding `capabilities`? A capability-gated
+// section shows ONLY when the provider holds its capability (driven by the offerings
+// selected on the Business Profile); a structural section (no NAV_REQUIRES entry)
+// always shows. There is no override — an unselected offering is never listed.
+function navItemVisible(item, capabilities) {
   const req = NAV_REQUIRES[item.key];
-  if (!req) return true; // always-on section
+  if (!req) return true; // always-on structural section
   if (req === "bookable") {
     return capabilities.some((c) => BOOKABLE_CAPS.includes(c));
   }
@@ -325,19 +326,16 @@ function NavItem({ item, active }) {
 }
 
 function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }) {
-  // "Show all sections" reveals every item/group regardless of capability, so a
-  // hidden section is always reachable (client state; resets per shell mount).
-  const [showAll, setShowAll] = useState(false);
-
-  // Filter first, then render — group headers key off the FILTERED list, so a group
-  // with no visible items drops its header automatically. The currently-active
-  // section is never hidden (e.g. a deep link into a not-yet-enabled module still
-  // highlights its nav row instead of vanishing).
+  // The left nav lists ONLY the sections this business offers: a capability-gated
+  // section shows when its offering is selected on the Business Profile, structural
+  // sections always show, and there is no "reveal everything" override. Filter first,
+  // then render — group headers key off the FILTERED list, so a group with no visible
+  // items drops its header automatically. The currently-active section is never hidden
+  // (e.g. a deep link into a not-yet-enabled module still highlights its nav row
+  // instead of vanishing).
   const items = NAV_ITEMS.filter(
-    (item) =>
-      navItemVisible(item, capabilities, showAll) || item.key === active,
+    (item) => navItemVisible(item, capabilities) || item.key === active,
   );
-  const hiddenCount = NAV_ITEMS.length - items.length;
 
   return (
     <aside className="flex w-64 flex-shrink-0 flex-col border-r border-[#FFD9B3] bg-white">
@@ -377,22 +375,6 @@ function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }
           );
         })}
       </nav>
-
-      {/* Escape hatch: reveal every section regardless of capability. Only offered
-          when something is actually hidden (or already revealed), so a full-capability
-          provider never sees a no-op toggle. */}
-      {(showAll || hiddenCount > 0) && (
-        <div className="border-t border-[#FFF1E2] px-3 py-3">
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            aria-pressed={showAll}
-            className="w-full rounded-xl px-3 py-2 text-xs font-semibold text-[#7A6254] hover:bg-[#FFF7EF]"
-          >
-            {showAll ? "Show fewer sections" : "Show all sections"}
-          </button>
-        </div>
-      )}
     </aside>
   );
 }

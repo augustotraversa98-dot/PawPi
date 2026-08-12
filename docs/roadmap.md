@@ -719,6 +719,9 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   presence-aware, after Services; i18n `storefront.tabs.adoption`), reusing the SAME browse card + detail/apply
   modal — extracted into shared `components/adoption/AdoptionListingViews.jsx` imported by both the browse and
   the storefront. Data via the existing `GET /api/adoption/listings?provider_id=`; no migration. (2026-08-12.)
+  **2.96** removed the "Show all sections" nav escape hatch on the provider dashboard: the left nav now lists
+  ONLY the offerings the business selected (capability-gated sections show when held; structural sections always
+  show; no override), with the active-section-never-hidden safety kept. No migration. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

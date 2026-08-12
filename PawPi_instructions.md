@@ -991,6 +991,13 @@ hardening, and the redesign). Read that for detail.
     `service/provider.jsx` (one implementation, no parallel design; the "Application sent ✓" confirmation from
     2.95 comes for free). Data via the existing `GET /api/adoption/listings?provider_id=` (`useAdoptableBrowse`
     gained an `enabled` gate so only shelters make the call). No web/API/RLS change. mobile jest 1583→1592.
+  - **2.96 Remove the "Show all sections" nav escape hatch** (web, **no migration**) — the provider dashboard
+    left nav (`ProviderShell.jsx`) now shows ONLY the sections the business selected under "what this business
+    offers": deleted the `showAll` state + toggle button + the `showAll` branch in `navItemVisible`, so an
+    unselected offering (e.g. Rx Fulfillment on a store-only business) can no longer be revealed. Structural
+    sections (Dashboard/Chats/Storefront/Profile/Staff/Sales) always show; the active-section-never-hidden
+    deep-link safety is unchanged; the per-module server capability guards are untouched. `ProviderShell.test.jsx`
+    updated accordingly. web vitest 1786 green.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
