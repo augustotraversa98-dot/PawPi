@@ -526,6 +526,17 @@
     "declined": "Declined",
     "cancelled": "Cancelled"
   },
+  "adoption": {
+    "apply": {
+      "adopt": "Apply to adopt",
+      "foster": "Apply to foster",
+      "sending": "Sending…",
+      "sent": "Application sent",
+      "reviewing": "The center is reviewing your application",
+      "approved": "Application approved",
+      "declined": "Application declined"
+    }
+  },
   "gettingStarted": {
     "title": "Getting started",
     "progress": "{{completed}} of {{total}} done",

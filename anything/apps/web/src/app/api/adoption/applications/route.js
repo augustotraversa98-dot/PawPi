@@ -83,8 +83,31 @@ async function POST(request) {
       );
     }
 
+    // ONE application per (applicant, listing) — ANY status, including declined (ticket 2.95).
+    // The 0038 partial unique index only blocks a NON-declined duplicate, so after a shelter
+    // DECLINES an application the DB would let the same owner re-apply for the same dog (a
+    // confirmed prod bug: a 2nd 201 for the same declined listing). Guard it at the route: if
+    // the owner already has ANY application for this listing, reject with a clean 409 the client
+    // can show — no re-apply after a decline. (No DB/index change; the browse button already
+    // reflects this via my_application_status.)
+    const existing = await sql`
+      SELECT status FROM adoption_applications
+      WHERE applicant_owner_user_id = ${userId} AND listing_id = ${listing.id}
+      LIMIT 1
+    `;
+    if (existing.length > 0) {
+      return Response.json(
+        {
+          error: "You already have an application for this dog",
+          already_applied: true,
+          status: existing[0].status,
+        },
+        { status: 409 },
+      );
+    }
+
     // Insert the application AS the owner (RLS WITH CHECK: applicant_owner_user_id = me). The
-    // partial unique index (0038) rejects a duplicate active application → clean 409.
+    // partial unique index (0038) is the race-safety net behind the guard above → clean 409.
     let created;
     try {
       created = await sql`

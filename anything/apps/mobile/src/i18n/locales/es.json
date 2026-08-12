@@ -526,6 +526,17 @@
     "declined": "Rechazada",
     "cancelled": "Cancelada"
   },
+  "adoption": {
+    "apply": {
+      "adopt": "Postularte para adoptar",
+      "foster": "Postularte para acoger",
+      "sending": "Enviando…",
+      "sent": "Solicitud enviada",
+      "reviewing": "El centro está revisando tu solicitud",
+      "approved": "Solicitud aprobada",
+      "declined": "Solicitud rechazada"
+    }
+  },
   "gettingStarted": {
     "title": "Primeros pasos",
     "progress": "{{completed}} de {{total}} listo",

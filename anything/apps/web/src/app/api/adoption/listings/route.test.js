@@ -28,6 +28,7 @@ describe("GET /api/adoption/listings", () => {
   });
 
   it("no geo → returns rows in the query's featured/recent order", async () => {
+    sql.mockResolvedValueOnce([{ id: 7 }]); // resolveUserId → the viewer's profile id
     sql.mockResolvedValueOnce([
       { id: 1, name: "Rex", is_featured: true, provider_lat: null, provider_lng: null },
       { id: 2, name: "Bella", is_featured: false, provider_lat: null, provider_lng: null },
@@ -40,6 +41,7 @@ describe("GET /api/adoption/listings", () => {
 
   it("with lat/lng → sorts nearest-first by provider location", async () => {
     // NYC viewer. Bella (near, ~1km) should come before Rex (far, ~110km) regardless of input order.
+    sql.mockResolvedValueOnce([{ id: 7 }]); // resolveUserId → the viewer's profile id
     sql.mockResolvedValueOnce([
       { id: 1, name: "Rex", is_featured: true, provider_lat: 41.7128, provider_lng: -74.006 },
       { id: 2, name: "Bella", is_featured: false, provider_lat: 40.72, provider_lng: -74.006 },

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -161,7 +162,18 @@ export function DogProfileCard({ listing, onPress, grid = false }) {
   );
 }
 
+// The four apply-button states driven by the viewer's OWN application (ticket 2.95). A pre-existing
+// application (from the browse read's my_application_status) DISABLES the CTA with a status-aware
+// label instead of re-arming "Apply to adopt" — declined included (no re-apply). i18n EN+ES.
+const APPLIED_STATUSES = ["submitted", "under_review", "approved", "declined"];
+function applicationStatusLabel(t, status) {
+  if (status === "approved") return t("adoption.apply.approved");
+  if (status === "declined") return t("adoption.apply.declined");
+  return t("adoption.apply.reviewing"); // submitted | under_review
+}
+
 export function ListingDetailModal({ data, onClose, router }) {
+  const { t } = useTranslation();
   const listing = data?.listing;
   const place = data?.place;
   const apply = useApplyForAdoption();
@@ -180,6 +192,15 @@ export function ListingDetailModal({ data, onClose, router }) {
     ? listing.application_questions.filter((q) => typeof q === "string" && q.trim())
     : [];
   const [responses, setResponses] = useState({});
+
+  // The viewer's own application on THIS listing, read straight off the browse row
+  // (my_application_status). A fresh apply this session (`submitted`) keeps its own "Application
+  // sent" confirmation; otherwise an existing server status disables the CTA (declined = no
+  // re-apply — the server also 409s it).
+  const serverStatus = APPLIED_STATUSES.includes(listing?.my_application_status)
+    ? listing.my_application_status
+    : null;
+  const canApply = !submitted && !serverStatus;
 
   // Reset the per-listing state whenever a different dog opens in the modal.
   useEffect(() => {
@@ -333,8 +354,9 @@ export function ListingDetailModal({ data, onClose, router }) {
                 </Text>
               ) : null}
 
-              {/* Shelter's application questions (adoption applications v2) — one input each. */}
-              {questions.length > 0 && !submitted ? (
+              {/* Shelter's application questions (adoption applications v2) — one input each. Only
+                  while the owner can still apply (hidden once an application exists). */}
+              {questions.length > 0 && canApply ? (
                 <View testID="application-questions" style={{ gap: SPACING.sm }}>
                   <Text style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
                     A few questions from the shelter
@@ -384,17 +406,26 @@ export function ListingDetailModal({ data, onClose, router }) {
                   }}
                 >
                   <Check size={18} color="#3FA34D" />
-                  <Text style={[TYPE.headline, { color: "#3FA34D" }]}>Application sent</Text>
+                  <Text style={[TYPE.headline, { color: "#3FA34D" }]}>{t("adoption.apply.sent")}</Text>
                 </View>
+              ) : serverStatus ? (
+                // The owner already applied (loaded from the browse read): a DISABLED, status-aware
+                // CTA — never a re-arm-to-duplicate "Apply to adopt". Declined stays disabled too.
+                <PrimaryButton
+                  testID={`application-status-${serverStatus}`}
+                  label={applicationStatusLabel(t, serverStatus)}
+                  onPress={() => {}}
+                  disabled
+                />
               ) : (
                 <PrimaryButton
                   label={
                     apply.isPending
-                      ? "Sending…"
+                      ? t("adoption.apply.sending")
                       : listing.placement_type === "foster" ||
                           (listing.placement_type === "both" && placement === "foster")
-                        ? "Apply to foster"
-                        : "Apply to adopt"
+                        ? t("adoption.apply.foster")
+                        : t("adoption.apply.adopt")
                   }
                   onPress={doApply}
                   disabled={apply.isPending}
@@ -606,9 +637,10 @@ function DogProfileDetail({ listing, place }) {
   );
 }
 
-function PrimaryButton({ label, onPress, disabled }) {
+function PrimaryButton({ label, onPress, disabled, testID }) {
   return (
     <PressableScale
+      testID={testID}
       onPress={onPress}
       disabled={disabled}
       style={{

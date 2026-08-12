@@ -176,6 +176,56 @@ describe('adoption v2 — answers roundtrip + applicant contact (real router)', 
   });
 });
 
+describe('adoption v2 — one application per (applicant, listing), including after a decline (2.95)', () => {
+  it('a first apply 201s, a duplicate 409s, and re-apply after a DECLINE still 409s', async () => {
+    // First application → 201.
+    authState.session = sessionFor(A.authUserId);
+    let res = await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING });
+    expect(res.status).toBe(201);
+    const appId = (await res.json()).application.id;
+
+    // Immediate duplicate (still 'submitted') → 409.
+    res = await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING });
+    expect(res.status).toBe(409);
+    let body = await res.json();
+    expect(body.already_applied).toBe(true);
+    expect(body.status).toBe('submitted');
+
+    // The shelter DECLINES the application.
+    authState.session = sessionFor(SOWN.authUserId);
+    res = await apiReq(`/providers/${SHELTER}/adoption-applications/${appId}`, 'PATCH', {
+      status: 'declined',
+    });
+    expect(res.status).toBe(200);
+
+    // The partial unique index (0038) would ALLOW a second row now (status <> 'declined'); the
+    // route guard must still reject it — no re-apply for the same dog after a decline (the prod bug).
+    authState.session = sessionFor(A.authUserId);
+    res = await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING });
+    expect(res.status).toBe(409);
+    body = await res.json();
+    expect(body.already_applied).toBe(true);
+    expect(body.status).toBe('declined');
+
+    // Exactly one application row exists for (A, LISTING) — the duplicate never inserted.
+    const rows = await raw`
+      select count(*)::int as n from adoption_applications
+      where applicant_owner_user_id = ${A.profileId} and listing_id = ${LISTING}
+    `;
+    expect(rows[0].n).toBe(1);
+  });
+
+  it("a DIFFERENT owner's first application for the same listing still 201s", async () => {
+    authState.session = sessionFor(A.authUserId);
+    let res = await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING });
+    expect(res.status).toBe(201);
+
+    authState.session = sessionFor(B.authUserId);
+    res = await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING });
+    expect(res.status).toBe(201); // B has no prior application → allowed
+  });
+});
+
 describe('adoption v2 — applicant notification on status change (real router)', () => {
   const APP = 500;
   beforeEach(async () => {

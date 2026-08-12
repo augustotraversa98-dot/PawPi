@@ -29,10 +29,11 @@ it("persists requested_placement='foster' on the application", async () => {
   sql
     .mockResolvedValueOnce(PROFILE) // resolveUserId
     .mockResolvedValueOnce([{ id: 5, provider_id: 10, status: "available" }]) // listing
+    .mockResolvedValueOnce([]) // existing-application guard (none)
     .mockResolvedValueOnce([{ id: 1, requested_placement: "foster" }]); // insert
   const res = await POST(post({ listing_id: 5, requested_placement: "foster" }));
   expect(res.status).toBe(201);
-  const insert = sql.mock.calls[2][0].join(" ");
+  const insert = sql.mock.calls[3][0].join(" ");
   expect(insert).toContain("requested_placement");
 });
 
@@ -41,9 +42,25 @@ it("ignores an invalid placement (stored as null)", async () => {
   sql
     .mockResolvedValueOnce(PROFILE)
     .mockResolvedValueOnce([{ id: 5, provider_id: 10, status: "available" }])
+    .mockResolvedValueOnce([]) // existing-application guard (none)
     .mockResolvedValueOnce([{ id: 1, requested_placement: null }]);
   const res = await POST(post({ listing_id: 5, requested_placement: "lease" }));
   expect(res.status).toBe(201);
   // The bound value for requested_placement is null (4th-from-last binding); spot-check the call ran.
-  expect(sql.mock.calls[2][0].join(" ")).toContain("requested_placement");
+  expect(sql.mock.calls[3][0].join(" ")).toContain("requested_placement");
+});
+
+it("rejects a re-application when one already exists — INCLUDING after a decline (2.95)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql
+    .mockResolvedValueOnce(PROFILE) // resolveUserId
+    .mockResolvedValueOnce([{ id: 5, provider_id: 10, status: "available" }]) // listing
+    .mockResolvedValueOnce([{ status: "declined" }]); // existing-application guard → found
+  const res = await POST(post({ listing_id: 5 }));
+  expect(res.status).toBe(409);
+  const body = await res.json();
+  expect(body.already_applied).toBe(true);
+  expect(body.status).toBe("declined");
+  // The insert never ran — only 3 sql calls (profile, listing, guard).
+  expect(sql.mock.calls).toHaveLength(3);
 });

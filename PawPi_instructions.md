@@ -979,6 +979,22 @@ hardening, and the redesign). Read that for detail.
     removed, not who-can-read. Browse read exercised through the REAL router by URL + the adoption-browse
     integration suite (extended to prove a located shelter ~111km out now appears, ranked after nearer ones).
     web vitest unchanged · integration +1 (far-located-still-appears) · mobile jest +1 (apply confirmation).
+    - **2.95 follow-up — apply-button reflects the owner's application + server blocks re-apply after a decline**
+      (web + mobile, **no migration**, attended → PR only). Two device-reported gaps on the same apply flow:
+      (1) the CTA always read "Apply to adopt" even after the owner had applied — `GET /api/adoption/listings`
+      now projects **`my_application_status`** per row, a correlated read of `adoption_applications` scoped
+      STRICTLY to the current user (`applicant_owner_user_id = me` → null | submitted | under_review | approved |
+      declined; another user's row never leaks). The shared `AdoptionListingViews` apply CTA renders off it:
+      null → active "Apply to adopt"; submitted/under_review → DISABLED "The center is reviewing your
+      application"; approved → DISABLED "Application approved"; declined → DISABLED "Application declined" (no
+      re-apply), EN+ES via a new `adoption.apply.*` catalog. (2) **prod bug**: after a shelter DECLINED an
+      application a second `POST /api/adoption/applications` returned 201 (the 0038 partial unique index allows
+      a duplicate once `status='declined'`). The POST route now guards: if the applicant has ANY application for
+      that listing in ANY status, it returns a clean **409** `{ already_applied, status }` — the DB index stays
+      the race-safety net (no migration, no index/RLS change). Proven through the REAL router by URL: browse
+      integration +1 (`my_application_status`, no cross-user leak); applications-v2 integration +2 (dup 409 incl.
+      after decline; a different owner's first apply still 201s). web vitest baseline (listings/applications unit
+      mocks updated for the added query) · mobile jest +6 (four CTA states + hidden-questions + active-apply).
 
 - **Wave 11 — 🌙 night-run in progress (adoption-on-profile + nav cleanup + business-post paws + activation
   checklists, tickets 2.97 / 2.96 / 2.94 / 2.98 / 2.99).** Run doc `docs/night-run-2026-08-12.md`; log
