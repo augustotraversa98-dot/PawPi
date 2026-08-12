@@ -55,111 +55,120 @@ async function GET(request, { params }) {
 
     const provider = providers[0];
 
-    // All locations surface; only active services do.
-    const locations = await sql`
-      SELECT id, name, address, lat, lng, hours_json, phone
-      FROM provider_locations
-      WHERE provider_id = ${provider.id}
-      ORDER BY created_at ASC
-    `;
-
-    const services = await sql`
-      SELECT id, name, description, duration_min, price_cents, deposit_cents, payment_policy, image_urls, active, is_featured, sort_order
-      FROM provider_services
-      WHERE provider_id = ${provider.id} AND active = true
-      ORDER BY is_featured DESC, sort_order ASC, created_at ASC
-    `;
-
-    // Capabilities (ticket 2.1) — the services this published provider offers, public.
-    const capabilityRows = await sql`
-      SELECT capability FROM provider_capabilities
-      WHERE provider_id = ${provider.id}
-      ORDER BY capability ASC
-    `;
-    const capabilities = capabilityRows.map((r) => r.capability);
-
-    // Storefront ITEMS (ticket 2.22) — this provider's ACTIVE shop products (public catalog
-    // summary). Empty when the provider has no shop / no active products.
-    const products = await sql`
-      SELECT id, name, description, image_urls, price_cents, currency, category, is_rx, is_featured, sort_order, compare_at_cents
-      FROM shop_products
-      WHERE provider_id = ${provider.id} AND active = true
-      ORDER BY is_featured DESC, sort_order ASC, created_at DESC, id DESC
-    `;
-
-    // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated.
-    // Moderation (Guideline 1.2): hidden_at IS NULL drops posts "removed by us".
-    // author_user_id is surfaced so the mobile ModerationMenu can Block the author; is_own
-    // (author = the caller) lets that menu hide Report on the staff member's own post.
-    const posts = await sql`
-      SELECT id, body, image_urls, created_at, author_user_id,
-             (author_user_id = current_app_user_id()) AS is_own
-      FROM provider_posts
-      WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
-      ORDER BY created_at DESC, id DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
-
-    // comment_count (Phase C) + total Barks (ticket 2.93): VISIBLE comments. provider_post_comments
-    // (migration 0082) is hand-applied to Supabase, so until then this endpoint must NOT reference
-    // the table (it would 500 the whole storefront). We probe to_regclass ONCE and reuse it for the
-    // per-post counts (mobile cards) AND the profile's total Barks stat; a missing table → 0.
-    let commentCounts = {};
-    let barksCount = 0;
-    const commentsProbe = await sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`;
-    const hasComments = Array.isArray(commentsProbe) && commentsProbe[0]?.ok === true;
-    if (hasComments) {
-      if (posts.length > 0) {
-        const ids = posts.map((p) => p.id);
-        const counts = await sql`
-          SELECT post_id, count(*)::int AS n
-          FROM provider_post_comments
-          WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
-          GROUP BY post_id
-        `;
-        commentCounts = Object.fromEntries((counts ?? []).map((r) => [r.post_id, r.n]));
-      }
-      // Total visible comments across ALL this provider's visible posts (not just the page).
-      const barks = await sql`
+    // All locations surface; only active services do. These reads (plus the two to_regclass
+    // probes and the posts-scoped postsCount) are all independent of one another — none depends
+    // on another's result — so they're fired together instead of one-by-one, which was adding a
+    // full network round trip per query on this hot storefront read path (perf fix, no behavior
+    // change; same pattern already used in vet-record/summary and vet-record/full-summary).
+    const [
+      locations,
+      services,
+      capabilityRows,
+      products,
+      posts,
+      commentsProbe,
+      postsCountRows,
+      pawsProbe,
+    ] = await Promise.all([
+      sql`
+        SELECT id, name, address, lat, lng, hours_json, phone
+        FROM provider_locations
+        WHERE provider_id = ${provider.id}
+        ORDER BY created_at ASC
+      `,
+      sql`
+        SELECT id, name, description, duration_min, price_cents, deposit_cents, payment_policy, image_urls, active, is_featured, sort_order
+        FROM provider_services
+        WHERE provider_id = ${provider.id} AND active = true
+        ORDER BY is_featured DESC, sort_order ASC, created_at ASC
+      `,
+      // Capabilities (ticket 2.1) — the services this published provider offers, public.
+      sql`
+        SELECT capability FROM provider_capabilities
+        WHERE provider_id = ${provider.id}
+        ORDER BY capability ASC
+      `,
+      // Storefront ITEMS (ticket 2.22) — this provider's ACTIVE shop products (public catalog
+      // summary). Empty when the provider has no shop / no active products.
+      sql`
+        SELECT id, name, description, image_urls, price_cents, currency, category, is_rx, is_featured, sort_order, compare_at_cents
+        FROM shop_products
+        WHERE provider_id = ${provider.id} AND active = true
+        ORDER BY is_featured DESC, sort_order ASC, created_at DESC, id DESC
+      `,
+      // Storefront POSTS (ticket 2.22) — non-deleted, newest first, paginated.
+      // Moderation (Guideline 1.2): hidden_at IS NULL drops posts "removed by us".
+      // author_user_id is surfaced so the mobile ModerationMenu can Block the author; is_own
+      // (author = the caller) lets that menu hide Report on the staff member's own post.
+      sql`
+        SELECT id, body, image_urls, created_at, author_user_id,
+               (author_user_id = current_app_user_id()) AS is_own
+        FROM provider_posts
+        WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
+        ORDER BY created_at DESC, id DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `,
+      // comment_count (Phase C) + total Barks (ticket 2.93) need to know whether
+      // provider_post_comments (migration 0082, hand-applied to Supabase) exists yet.
+      sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`,
+      // postsCount (ticket 2.93) — this provider's visible (non-deleted, non-hidden) posts.
+      sql`
         SELECT count(*)::int AS n
-        FROM provider_post_comments c
-        JOIN provider_posts p ON p.id = c.post_id
-        WHERE p.provider_id = ${provider.id}
-          AND p.deleted_at IS NULL AND p.hidden_at IS NULL
-          AND c.deleted_at IS NULL AND c.hidden_at IS NULL
-      `;
-      barksCount = barks?.[0]?.n ?? 0;
-    }
+        FROM provider_posts
+        WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
+      `,
+      // pawsCount (ticket 2.93) needs to know whether provider_post_paws (ticket 2.94) exists yet.
+      sql`SELECT to_regclass('public.provider_post_paws') IS NOT NULL AS ok`,
+    ]);
+
+    const capabilities = capabilityRows.map((r) => r.capability);
+    const hasComments = Array.isArray(commentsProbe) && commentsProbe[0]?.ok === true;
+    const postsCount = postsCountRows?.[0]?.n ?? 0;
+    const hasPaws = Array.isArray(pawsProbe) && pawsProbe[0]?.ok === true;
+
+    // These three depend on the probes/posts above (hasComments, hasPaws, post ids) but not on
+    // each other, so they too run together rather than one-by-one.
+    const [counts, barks, paws] = await Promise.all([
+      hasComments && posts.length > 0
+        ? sql`
+            SELECT post_id, count(*)::int AS n
+            FROM provider_post_comments
+            WHERE post_id = ANY(${posts.map((p) => p.id)}) AND deleted_at IS NULL AND hidden_at IS NULL
+            GROUP BY post_id
+          `
+        : null,
+      // Total visible comments across ALL this provider's visible posts (not just the page).
+      hasComments
+        ? sql`
+            SELECT count(*)::int AS n
+            FROM provider_post_comments c
+            JOIN provider_posts p ON p.id = c.post_id
+            WHERE p.provider_id = ${provider.id}
+              AND p.deleted_at IS NULL AND p.hidden_at IS NULL
+              AND c.deleted_at IS NULL AND c.hidden_at IS NULL
+          `
+        : null,
+      // pawsCount — total likes across those posts. DEGRADEs to 0 until provider_post_paws lands.
+      hasPaws
+        ? sql`
+            SELECT count(*)::int AS n
+            FROM provider_post_paws pp
+            JOIN provider_posts p ON p.id = pp.post_id
+            WHERE p.provider_id = ${provider.id}
+              AND p.deleted_at IS NULL AND p.hidden_at IS NULL
+          `
+        : null,
+    ]);
+
+    const commentCounts = counts
+      ? Object.fromEntries((counts ?? []).map((r) => [r.post_id, r.n]))
+      : {};
+    const barksCount = barks?.[0]?.n ?? 0;
+    const pawsCount = paws?.[0]?.n ?? 0;
     const postsWithCounts = posts.map((p) => ({
       ...p,
       comment_count: commentCounts[p.id] ?? 0,
     }));
-
-    // Social stats for the business profile header (ticket 2.93): Posts · Paws · Barks. Followers
-    // is served by the follow endpoint (mobile reads it there). Real counts only.
-    //   • postsCount — this provider's visible (non-deleted, non-hidden) posts.
-    //   • pawsCount  — total likes across those posts. The provider_post_paws table lands in ticket
-    //     2.94; until then we probe to_regclass and DEGRADE to 0 (never reference a missing table).
-    const postsCountRows = await sql`
-      SELECT count(*)::int AS n
-      FROM provider_posts
-      WHERE provider_id = ${provider.id} AND deleted_at IS NULL AND hidden_at IS NULL
-    `;
-    const postsCount = postsCountRows?.[0]?.n ?? 0;
-
-    let pawsCount = 0;
-    const pawsProbe = await sql`SELECT to_regclass('public.provider_post_paws') IS NOT NULL AS ok`;
-    const hasPaws = Array.isArray(pawsProbe) && pawsProbe[0]?.ok === true;
-    if (hasPaws) {
-      const paws = await sql`
-        SELECT count(*)::int AS n
-        FROM provider_post_paws pp
-        JOIN provider_posts p ON p.id = pp.post_id
-        WHERE p.provider_id = ${provider.id}
-          AND p.deleted_at IS NULL AND p.hidden_at IS NULL
-      `;
-      pawsCount = paws?.[0]?.n ?? 0;
-    }
 
     return Response.json({
       provider,
