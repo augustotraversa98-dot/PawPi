@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 // Every capability — a provider holding all of these sees every nav section.
@@ -249,7 +249,9 @@ describe("ProviderShell foundation", () => {
     expect(screen.queryByRole("link", { name: "Products" })).not.toBeInTheDocument();
   });
 
-  it("'Show all sections' reveals every section regardless of capability", async () => {
+  it("lists ONLY selected offerings — no 'Show all sections' escape hatch (2.96)", async () => {
+    // Northside offers a store but NOT pharmacy — its Rx Fulfillment section must be
+    // absent, and there must be no control that reveals unselected offerings.
     mockProviders([
       { id: 1, name: "Corner Pet Shop", provider_type: "shop", capabilities: ["shop"] },
     ]);
@@ -260,18 +262,44 @@ describe("ProviderShell foundation", () => {
     );
     await screen.findByText("Corner Pet Shop");
 
-    // Hidden before the toggle.
+    // Unselected capability sections are not listed...
+    expect(screen.queryByRole("link", { name: "Rx Fulfillment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Clinical" })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Show all sections" }));
-
-    // Now every one of the 18 items is reachable.
-    expect(screen.getAllByRole("link")).toHaveLength(18);
-    expect(screen.getByRole("link", { name: "Clinical" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Bookings" })).toBeInTheDocument();
-    // The toggle flips its label.
+    // ...and there is NO escape hatch to reveal them.
     expect(
-      screen.getByRole("button", { name: "Show fewer sections" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Show all sections" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show fewer sections" }),
+    ).not.toBeInTheDocument();
+
+    // Structural (non-offering) sections always show.
+    for (const label of ["Dashboard", "Chats", "Storefront", "Profile", "Staff", "Sales"]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it("selecting an offering makes its section appear (capability-driven, 2.96)", async () => {
+    // The SAME provider, now with the pharmacy offering selected → Rx Fulfillment lists.
+    mockProviders([
+      {
+        id: 1,
+        name: "MediPet",
+        provider_type: "pharmacy",
+        capabilities: ["shop", "pharmacy"],
+      },
+    ]);
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("MediPet");
+
+    expect(screen.getByRole("link", { name: "Rx Fulfillment" })).toBeInTheDocument();
+    // Still no escape hatch — the section appears because the offering is selected.
+    expect(
+      screen.queryByRole("button", { name: "Show all sections" }),
+    ).not.toBeInTheDocument();
   });
 });
