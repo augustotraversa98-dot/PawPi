@@ -79,6 +79,37 @@ describe("getStorefrontTabs", () => {
     ]);
   });
 
+  describe("adoption tab (ticket 2.97)", () => {
+    test("adoption-capable provider WITH ≥1 listing shows an Adoption tab right after Services", () => {
+      const k = keys({
+        capabilities: ["vet", "adoption"],
+        services: [{ id: 1 }],
+        adoptionListings: [{ id: 9 }],
+      });
+      expect(k).toContain("adoption");
+      // Placed right after Services.
+      expect(k.indexOf("adoption")).toBe(k.indexOf("services") + 1);
+    });
+
+    test("adoption capability but NO available listings → no Adoption tab", () => {
+      expect(
+        keys({ capabilities: ["vet", "adoption"], services: [{ id: 1 }], adoptionListings: [] }),
+      ).not.toContain("adoption");
+    });
+
+    test("listings present but no adoption capability → no Adoption tab (capability-gated)", () => {
+      expect(
+        keys({ capabilities: ["vet"], services: [{ id: 1 }], adoptionListings: [{ id: 9 }] }),
+      ).not.toContain("adoption");
+    });
+
+    test("a pure shelter (adoption only, no services) shows Adoption in the fallback archetype", () => {
+      expect(
+        keys({ capabilities: ["adoption"], adoptionListings: [{ id: 9 }] }),
+      ).toEqual(["adoption", "reviews", "about"]);
+    });
+  });
+
   test("each tab carries a storefront.tabs.* label key", () => {
     for (const tab of getStorefrontTabs({ capabilities: ["vet"], services: [{ id: 1 }] })) {
       expect(tab.labelKey).toBe(`storefront.tabs.${tab.key}`);

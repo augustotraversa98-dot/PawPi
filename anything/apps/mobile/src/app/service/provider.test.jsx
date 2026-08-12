@@ -11,6 +11,7 @@ import { render } from "@testing-library/react-native";
 
 let mockProfile;
 let mockShopProducts = []; // the inline Items grid's stock-aware products (useShopProducts)
+let mockAdoptionListings = []; // this provider's adoptable dogs (useAdoptableBrowse, ticket 2.97)
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -25,6 +26,15 @@ jest.mock("lucide-react-native", () =>
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+// The shared adoption listing views (ticket 2.97) pull in expo-av + the map view.
+jest.mock("expo-av", () => {
+  const { View } = require("react-native");
+  return { Video: (props) => <View testID={props.testID} />, ResizeMode: { CONTAIN: "contain" } };
+});
+jest.mock("@/components/Map/MapLocationView", () => {
+  const { View } = require("react-native");
+  return { __esModule: true, default: (props) => <View testID={props.testID} /> };
+});
 jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
@@ -44,6 +54,10 @@ jest.mock("@/hooks/useProviders", () => ({
   useShopProducts: () => ({ data: mockShopProducts, isLoading: false }),
   useShopCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useShopOrders: () => ({ data: [] }),
+  // Ticket 2.97 — the storefront Adoption tab + shared apply modal.
+  useAdoptableBrowse: () => ({ data: { listings: mockAdoptionListings } }),
+  useApplyForAdoption: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useAdoptionCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 import ProviderScreen from "./provider";
@@ -57,6 +71,7 @@ const baseProvider = {
 
 beforeEach(() => {
   mockShopProducts = [];
+  mockAdoptionListings = [];
 });
 
 test("renders one image per service image_url", () => {
@@ -158,4 +173,73 @@ test("storefront degrades cleanly: no cover/items/posts → those sections are a
   // No products → no Items tab (and no inline grid).
   expect(queryByTestId("storefront-panel-items")).toBeNull();
   expect(queryAllByTestId("storefront-post")).toHaveLength(0);
+});
+
+// Ticket 2.97 — an Adoption tab on the storefront for an adoption-capable business WITH listings,
+// rendering the SAME shared browse card. Absent without the capability or without any listing.
+test("adoption-capable provider WITH a listing shows an Adoption tab and the dog card", () => {
+  mockAdoptionListings = [
+    { id: 5, name: "Rex", photo_urls: [], adoption_fee_cents: 0, currency: "ARS" },
+  ];
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      capabilities: ["adoption"],
+      locations: [],
+      services: [],
+      products: [],
+      posts: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { getByTestId, getByText } = render(<ProviderScreen />);
+  expect(getByTestId("storefront-tab-adoption")).toBeTruthy();
+  expect(getByTestId("storefront-panel-adoption")).toBeTruthy();
+  expect(getByText("Rex")).toBeTruthy();
+});
+
+test("adoption-capable provider with NO listings shows no Adoption tab", () => {
+  mockAdoptionListings = [];
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      capabilities: ["adoption"],
+      locations: [],
+      services: [],
+      products: [],
+      posts: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { queryByTestId } = render(<ProviderScreen />);
+  expect(queryByTestId("storefront-tab-adoption")).toBeNull();
+  expect(queryByTestId("storefront-panel-adoption")).toBeNull();
+});
+
+test("a non-adoption provider never shows an Adoption tab, even if listings exist", () => {
+  // The capability gate wins: without the `adoption` capability the tab is hidden regardless.
+  mockAdoptionListings = [{ id: 6, name: "Stray", photo_urls: [], adoption_fee_cents: 0 }];
+  mockProfile = {
+    data: {
+      provider: baseProvider,
+      capabilities: ["vet"],
+      locations: [],
+      services: [{ id: 1, name: "Checkup", price_cents: 3000, image_urls: [] }],
+      products: [],
+      posts: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+
+  const { queryByTestId } = render(<ProviderScreen />);
+  expect(queryByTestId("storefront-tab-adoption")).toBeNull();
+  expect(queryByTestId("storefront-panel-adoption")).toBeNull();
 });

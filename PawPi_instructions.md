@@ -980,6 +980,18 @@ hardening, and the redesign). Read that for detail.
     integration suite (extended to prove a located shelter ~111km out now appears, ranked after nearer ones).
     web vitest unchanged · integration +1 (far-located-still-appears) · mobile jest +1 (apply confirmation).
 
+- **Wave 11 — 🌙 night-run in progress (adoption-on-profile + nav cleanup + business-post paws + activation
+  checklists, tickets 2.97 / 2.96 / 2.94 / 2.98 / 2.99).** Run doc `docs/night-run-2026-08-12.md`; log
+  `docs/night-run-log.md`. Only 2.94 adds a migration (0085, hand-apply after merge; degrades cleanly).
+  - **2.97 Adoption tab on the business storefront** (mobile, **no migration**) — an adoption-capable business
+    with ≥1 available listing now shows an **Adoption** tab on its storefront (`getStorefrontTabs`,
+    presence-aware, placed right after Services; i18n `storefront.tabs.adoption` EN "Adoption" / ES "Adopción").
+    The tab reuses the SAME adoptable-dog card + detail/apply modal as the standalone browse — extracted verbatim
+    into shared `components/adoption/AdoptionListingViews.jsx`, now imported by BOTH `service/adoption.jsx` and
+    `service/provider.jsx` (one implementation, no parallel design; the "Application sent ✓" confirmation from
+    2.95 comes for free). Data via the existing `GET /api/adoption/listings?provider_id=` (`useAdoptableBrowse`
+    gained an `enabled` gate so only shelters make the call). No web/API/RLS change. mobile jest 1583→1592.
+
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
 - **Go-live env keys** (each feature degrades cleanly until its keys are set): Apple + Google OAuth

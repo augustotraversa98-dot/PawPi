@@ -33,7 +33,14 @@ import {
   useStartThread,
   useMyBookings,
   useShopOrders,
+  useAdoptableBrowse,
 } from "@/hooks/useProviders";
+// Shared adoption listing views (ticket 2.97) — the SAME card + detail/apply modal the standalone
+// Adoption browse uses, so the storefront's Adoption tab reuses one implementation.
+import {
+  DogProfileCard,
+  ListingDetailModal,
+} from "@/components/adoption/AdoptionListingViews";
 import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
@@ -111,6 +118,7 @@ export default function ProviderScreen() {
   // on modal close and whenever the no-preselection bottom "Book" button is used.
   const [preselectedService, setPreselectedService] = useState(null);
   const [activeTab, setActiveTab] = useState(null); // storefront shell active tab key
+  const [openAdoptionListing, setOpenAdoptionListing] = useState(null); // { listing, place }
   const { mutate: startThread, isPending: startingThread } = useStartThread();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
@@ -128,6 +136,17 @@ export default function ProviderScreen() {
   // Capabilities drive the per-type primary action (P4a). The public profile already
   // returns them; before P4a this screen ignored them.
   const capabilities = data?.capabilities ?? [];
+
+  // Adoption tab (ticket 2.97): a business with the `adoption` capability shows its adoptable dogs
+  // right on its storefront, reusing the browse card + detail/apply design. Fetched via the SAME
+  // public browse endpoint (GET /api/adoption/listings?provider_id=), gated to adoption-capable
+  // providers so a non-shelter never makes the extra call. Empty → the tab isn't shown (below).
+  const hasAdoptionCap = capabilities.includes("adoption");
+  const { data: adoptionData } = useAdoptableBrowse(
+    { provider_id: provider?.id ?? null },
+    { enabled: hasAdoptionCap && provider?.id != null },
+  );
+  const adoptionListings = adoptionData?.listings ?? [];
 
   // Per-type primary action. A SHOP if it holds a shop/pharmacy capability OR lists any
   // products; BOOKable capabilities show Book. A pure shop hides Book; a provider with no
@@ -271,6 +290,7 @@ export default function ProviderScreen() {
     services,
     products,
     posts,
+    adoptionListings,
     sectionOrder: provider?.storefront_section_order,
   });
   const activeKey = tabs.some((tab) => tab.key === activeTab)
@@ -343,6 +363,39 @@ export default function ProviderScreen() {
               }
             />
           </>
+        );
+      case "adoption":
+        // Adoptable dogs for THIS business (ticket 2.97) — the SAME grid card + detail/apply modal
+        // as the standalone Adoption browse. The tab only renders when there is ≥1 listing (per
+        // getStorefrontTabs), so no empty state is needed here.
+        return (
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+            }}
+          >
+            {adoptionListings.map((listing) => (
+              <View key={listing.id} style={{ width: "48.5%" }}>
+                <DogProfileCard
+                  listing={listing}
+                  grid
+                  onPress={() =>
+                    setOpenAdoptionListing({
+                      listing,
+                      place: {
+                        id: provider.id,
+                        name: provider.name,
+                        slug: provider.slug,
+                        logo_url: provider.logo_url,
+                      },
+                    })
+                  }
+                />
+              </View>
+            ))}
+          </View>
         );
       case "reviews":
         return (
@@ -752,6 +805,13 @@ export default function ProviderScreen() {
         providerId={provider?.id}
         providerName={provider?.name}
         petId={eligibleReviewBooking?.pet_id}
+      />
+
+      {/* Adoption listing detail + apply (ticket 2.97) — the SAME shared modal the browse uses. */}
+      <ListingDetailModal
+        data={openAdoptionListing}
+        onClose={() => setOpenAdoptionListing(null)}
+        router={router}
       />
 
       {/* Capability chooser — only when a provider offers several bookable services and

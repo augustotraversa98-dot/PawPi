@@ -713,6 +713,12 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   the Apply-to-adopt CTA now shows a persistent **"Application sent"** confirmation (no duplicate re-apply).
   Integration test extended to prove a located shelter ~111km out (beyond the old radius) now appears, ranked
   after nearer ones, alongside the coordless case. No migration, no RLS change. (2026-08-11.)
+- **Wave 11 night-run (2.97 / 2.96 / 2.94 / 2.98 / 2.99)** — adoption-on-profile + nav cleanup + business-post
+  paws + owner/business activation checklists. **2.97** Adoption tab on the mobile business storefront: an
+  adoption-capable business with ≥1 available listing shows an **Adoption** tab (`getStorefrontTabs`,
+  presence-aware, after Services; i18n `storefront.tabs.adoption`), reusing the SAME browse card + detail/apply
+  modal — extracted into shared `components/adoption/AdoptionListingViews.jsx` imported by both the browse and
+  the storefront. Data via the existing `GET /api/adoption/listings?provider_id=`; no migration. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.
