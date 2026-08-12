@@ -702,6 +702,17 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   both edge tables `to_regclass`-guarded so a missing table degrades to 0); Followers comes from the follow
   endpoint. **Paws stays 0 until 2.94** adds `provider_post_paws` — the read never 500s. Moderation moved
   from the (now grid) post cards onto the post detail header. No migration. (2026-08-11.)
+- **2.95 (attended)** — adoption: surface located-but-far + newly-created listings, and confirm apply-to-adopt.
+  Root cause of "nothing to adopt": the owner browse (`GET /api/adoption/listings`) HARD-filtered located
+  shelters to a `radius_km` (default 100km) bounding box, so with sparse early data almost every shelter WITH a
+  map pin was hidden (2.91 had already rescued only *coordless* shelters). Fix: **distance now RANKS, it does not
+  exclude** — the box is removed from the default browse and gated behind an explicit opt-in `enforce_radius=true`
+  (off by default); every AVAILABLE dog of every PUBLISHED provider is returned, sorted nearest-first when the
+  owner shares location (coordless shelters last), featured/recent otherwise. New listings were already visible:
+  the create-listing INSERT relies on `adoptable_listings.status` default `'available'` (0038), verified. Mobile:
+  the Apply-to-adopt CTA now shows a persistent **"Application sent"** confirmation (no duplicate re-apply).
+  Integration test extended to prove a located shelter ~111km out (beyond the old radius) now appears, ranked
+  after nearer ones, alongside the coordless case. No migration, no RLS change. (2026-08-11.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

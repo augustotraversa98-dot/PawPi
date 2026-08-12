@@ -588,6 +588,15 @@ function ListingDetailModal({ data, onClose, router }) {
   const checkout = useAdoptionCheckout();
   // Foster-vs-adopt intent (ticket 2.57) — only shown when the listing allows BOTH.
   const [placement, setPlacement] = useState("adopt");
+  // Clear submitted/confirmation state (ticket 2.95): once the application posts, the CTA turns
+  // into a persistent "Application sent" confirmation instead of re-arming for a duplicate apply.
+  const [submitted, setSubmitted] = useState(false);
+
+  // Reset the per-listing state whenever a different dog opens in the modal.
+  useEffect(() => {
+    setSubmitted(false);
+    setPlacement("adopt");
+  }, [listing?.id]);
 
   const doApply = async () => {
     try {
@@ -602,9 +611,10 @@ function ListingDetailModal({ data, onClose, router }) {
         answers: {},
         requested_placement: requestedPlacement,
       });
+      setSubmitted(true);
       Alert.alert(
         "Application sent",
-        `The shelter will review your application for ${listing.name}. You can chat with them anytime.`,
+        `The shelter will review your application for ${listing.name}. Track it under Applications, and you can chat with them anytime.`,
       );
     } catch (e) {
       Alert.alert("Couldn't apply", e.message || "Please try again.");
@@ -726,18 +736,38 @@ function ListingDetailModal({ data, onClose, router }) {
                 </Text>
               ) : null}
 
-              <PrimaryButton
-                label={
-                  apply.isPending
-                    ? "Sending…"
-                    : listing.placement_type === "foster" ||
-                        (listing.placement_type === "both" && placement === "foster")
-                      ? "Apply to foster"
-                      : "Apply to adopt"
-                }
-                onPress={doApply}
-                disabled={apply.isPending}
-              />
+              {submitted ? (
+                <View
+                  testID="application-sent"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: SPACING.sm,
+                    backgroundColor: "#3FA34D" + "18",
+                    borderWidth: 1,
+                    borderColor: "#3FA34D",
+                    borderRadius: RADIUS.control,
+                    paddingVertical: 15,
+                  }}
+                >
+                  <Check size={18} color="#3FA34D" />
+                  <Text style={[TYPE.headline, { color: "#3FA34D" }]}>Application sent</Text>
+                </View>
+              ) : (
+                <PrimaryButton
+                  label={
+                    apply.isPending
+                      ? "Sending…"
+                      : listing.placement_type === "foster" ||
+                          (listing.placement_type === "both" && placement === "foster")
+                        ? "Apply to foster"
+                        : "Apply to adopt"
+                  }
+                  onPress={doApply}
+                  disabled={apply.isPending}
+                />
+              )}
               <SecondaryButton
                 label={startingThread ? "Opening…" : "Chat with shelter"}
                 icon={MessageSquare}

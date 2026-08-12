@@ -149,6 +149,18 @@ test("an adopt-only listing posts requested_placement adopt (no picker)", async 
   );
 });
 
+// ── Ticket 2.95 — apply CTA shows a clear submitted/confirmation state ──
+test("after a successful apply the CTA becomes a persistent 'Application sent' confirmation", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, placement_type: "adopt" };
+  const { findByText, queryByText, findByTestId } = render(<AdoptionScreen />);
+  const applyBtn = await findByText("Apply to adopt");
+  fireEvent.press(applyBtn);
+  // Confirmation replaces the apply button; it does not re-arm for a duplicate application.
+  expect(await findByTestId("application-sent")).toBeTruthy();
+  await waitFor(() => expect(queryByText("Apply to adopt")).toBeNull());
+});
+
 // ── Ticket 2.86 — unified browse grid, nearest-first, filters ──
 test("browse renders a grid of dogs and shows 'recently added' without location", async () => {
   mockBrowse = {

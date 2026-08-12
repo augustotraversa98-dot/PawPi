@@ -118,10 +118,44 @@ describe('GET /api/adoption/listings (handler as pawpi_app)', () => {
     expect(ids(data)).toEqual([101]); // only the female listing
   });
 
-  it('a tight radius excludes the far shelter', async () => {
-    const res = await GET(browseRequest(`?lat=${VIEW_LAT}&lng=${VIEW_LNG}&radius_km=10`));
+  it('an OPTED-IN tight radius (enforce_radius=true) excludes the far shelter (2.95)', async () => {
+    // Radius filtering is opt-in now: only with enforce_radius=true does the box hard-filter.
+    const res = await GET(
+      browseRequest(`?lat=${VIEW_LAT}&lng=${VIEW_LNG}&radius_km=10&enforce_radius=true`),
+    );
     const data = await res.json();
     expect(ids(data)).toEqual([101]); // P2 (~110km) is outside the 10km box
+  });
+
+  it('a LOCATED shelter beyond the default radius still appears — distance ranks, not excludes (2.95)', async () => {
+    // A published shelter that never set a map pin — no provider_locations row → coordless.
+    const O4 = { authUserId: 40, profileId: 40, username: 'shelter4_nopin' };
+    await seedUser(raw, O4);
+    await seedProvider(raw, {
+      providerId: 4,
+      ownerUserProfileId: O4.profileId,
+      slug: 'p4',
+      status: 'published',
+    });
+    await seedCapability(raw, { providerId: 4, capability: 'adoption' });
+    await seedAdoptableListing(raw, { listingId: 401, providerId: 4, name: 'NoPin', status: 'available' });
+
+    // Geo active, NO enforce_radius: P2 (~111km, well beyond the old 100km default box) must
+    // STILL be returned, merely ranked after the near P1; the coordless shelter surfaces last.
+    const res = await GET(browseRequest(`?lat=${VIEW_LAT}&lng=${VIEW_LNG}`));
+    const data = await res.json();
+    expect(data.sort).toBe('nearest');
+    const got = ids(data);
+    expect(got).toContain(101); // near
+    expect(got).toContain(201); // far LOCATED — NOT excluded anymore (was dropped by the old box)
+    expect(got).toContain(401); // coordless — surfaced last
+    // Order: near located → far located → coordless (no distance).
+    expect(got.indexOf(101)).toBeLessThan(got.indexOf(201));
+    expect(got.indexOf(201)).toBeLessThan(got.indexOf(401));
+    const far = data.listings.find((l: any) => l.id === 201);
+    expect(far.distance_km).toBeGreaterThan(100); // proves it was beyond the old radius
+    const nopin = data.listings.find((l: any) => l.id === 401);
+    expect(nopin.distance_km).toBeNull();
   });
 
   it('still surfaces a pin-less shelter (no location) when the viewer shares location (2.91)', async () => {
@@ -137,9 +171,11 @@ describe('GET /api/adoption/listings (handler as pawpi_app)', () => {
     await seedCapability(raw, { providerId: 4, capability: 'adoption' });
     await seedAdoptableListing(raw, { listingId: 401, providerId: 4, name: 'NoPin', status: 'available' });
 
-    // Geo active + a TIGHT radius: the far LOCATED shelter (P2) is still excluded, but the
-    // coordless shelter's dog must NOT vanish (previously the bounding box dropped it entirely).
-    const res = await GET(browseRequest(`?lat=${VIEW_LAT}&lng=${VIEW_LNG}&radius_km=10`));
+    // Geo active + an OPTED-IN tight radius (2.95): the far LOCATED shelter (P2) is excluded, but
+    // the coordless shelter's dog must NOT vanish (the bounding box never drops pin-less shelters).
+    const res = await GET(
+      browseRequest(`?lat=${VIEW_LAT}&lng=${VIEW_LNG}&radius_km=10&enforce_radius=true`),
+    );
     const data = await res.json();
     const got = ids(data);
     expect(got).toContain(101); // near, in-radius
