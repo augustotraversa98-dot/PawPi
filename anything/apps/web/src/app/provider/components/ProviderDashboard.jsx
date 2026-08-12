@@ -21,6 +21,7 @@ import {
 } from "../../../client-integrations/recharts";
 import { useProviderAnalytics } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import GettingStartedChecklist from "./GettingStartedChecklist";
 
 // Provider DASHBOARD HOME — the at-a-glance business overview (Phase 2 ticket 2.14). Reads the
 // /analytics summary, which aggregates ONLY this provider's own rows (revenue, bookings,
@@ -123,6 +124,9 @@ export default function ProviderDashboard({ providerId }) {
 
   return (
     <div className="p-6">
+      {/* Getting-started activation checklist (ticket 2.99) — retires itself at 100%. */}
+      <GettingStartedChecklist providerId={providerId} />
+
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-[#3B241B]">Dashboard</h1>
         <p className="text-sm text-[#7A6254]">

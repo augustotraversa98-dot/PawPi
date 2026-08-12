@@ -1019,6 +1019,15 @@ hardening, and the redesign). Read that for detail.
     New `utils/gettingStarted.js` (pure), `hooks/useGettingStarted.js`, `components/Home/GettingStartedCard.jsx`,
     + `ensureDailyReturnReminder`/`getNotificationPermissionGranted` in `utils/notifications.js`. EN+ES. mobile
     jest 1599→1620.
+  - **2.99 Business activation checklist** (web, **no migration**) — the web mirror of 2.98: a persistent
+    **"Getting started"** card at the top of the provider dashboard (`ProviderDashboard.jsx`) with a % badge +
+    progress bar. Five items, each **derived** from existing provider reads (no new table/endpoint): complete
+    profile (logo + bio), add what you offer (≥1 service OR product), set hours (≥1 availability window), add a
+    location, share first post. Reuses the existing `useProvider`/`useProviderServices`/`useShopProducts` (gated
+    on the `shop` capability)/`useAvailabilityWindows`/`useProviderLocations`/`useProviderPosts` hooks; each row
+    navigates to the screen that completes it. `%` = completed ÷ 5; retires at 100% (localStorage-remembered per
+    provider). New `provider/lib/activation.js` (pure) + `provider/components/GettingStartedChecklist.jsx`.
+    English-only (web). web vitest 1794→1805.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
