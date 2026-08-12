@@ -8,6 +8,7 @@ import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
+import { GettingStartedCard } from "@/components/Home/GettingStartedCard";
 import { LockedFeedOverlay, LockedFloatingCard } from "@/components/Feed/LockedFeedOverlay";
 import { UnlockedFeed } from "@/components/Feed/UnlockedFeed";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
@@ -236,8 +237,12 @@ export default function FeedScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 60 }}
           >
-            {/* ── Daily Prompt Card ── */}
+            {/* ── Getting-started activation card (ticket 2.98) + Daily Prompt Card ──
+                Both live in the same onLayout block so the locked floating card's `top`
+                offset stays correct (it pins below this header area). The activation card
+                retires itself at 100%, so most of the time this is just the prompt. */}
             <View onLayout={(e) => setPromptHeight(e.nativeEvent.layout.height)}>
+              <GettingStartedCard onSharePost={() => setComposerVisible(true)} />
               <DailyPromptCard
                 petName={petName}
                 hasPostedToday={hasPostedToday}

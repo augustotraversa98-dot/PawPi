@@ -5,6 +5,7 @@
 
 import * as Notifications from "expo-notifications";
 import { Platform, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { formatScheduledTime } from "./scheduledTimeFormat";
 
@@ -340,6 +341,83 @@ export async function getScheduledNotifications() {
   } catch (error) {
     console.error("Error getting scheduled notifications:", error);
     return [];
+  }
+}
+
+// =========================================================================
+// Daily-return reminder (ticket 2.98)
+//
+// A gentle once-a-day local "come back" nudge, part of the activation checklist. Scheduled EXACTLY
+// ONCE (idempotent via a persisted id) and only while OS permission is granted, so a re-render never
+// double-schedules. Cancel + forget cleanly when permission is revoked.
+// =========================================================================
+const DAILY_RETURN_KEY = "pawpi.dailyReturnReminderId";
+const DAILY_RETURN_HOUR = 10; // mid-morning, local device time
+const DAILY_RETURN_MINUTE = 0;
+
+/**
+ * Async: is the OS notification permission currently granted? (Reads getPermissionsAsync.)
+ * @returns {Promise<boolean>}
+ */
+export async function getNotificationPermissionGranted() {
+  try {
+    const permissions = await Notifications.getPermissionsAsync();
+    return isNotificationPermissionGranted(permissions);
+  } catch (error) {
+    console.error("Error reading notification permission:", error);
+    return false;
+  }
+}
+
+/**
+ * Schedule the daily-return reminder EXACTLY ONCE. No-ops if permission isn't granted or if it's
+ * already scheduled (persisted id), so calling it on every render / re-enable is safe.
+ * @param {string} [body] pre-localized notification body (the caller passes t(...) for EN/ES)
+ * @returns {Promise<string|null>} the scheduled id (existing or new), or null when not scheduled
+ */
+export async function ensureDailyReturnReminder(body) {
+  try {
+    const permissions = await Notifications.getPermissionsAsync();
+    if (!isNotificationPermissionGranted(permissions)) return null;
+
+    const existing = await AsyncStorage.getItem(DAILY_RETURN_KEY);
+    if (existing) return existing; // already scheduled — never duplicate
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "PawPi",
+        body: body || "Time to check on your pet 🐾",
+        sound: true,
+      },
+      // Repeats every day at the given local time. Typed trigger (SDK 54); channelId routes
+      // Android to the "default" channel initNotifications() creates, iOS ignores it.
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: DAILY_RETURN_HOUR,
+        minute: DAILY_RETURN_MINUTE,
+        channelId: "default",
+      },
+    });
+    await AsyncStorage.setItem(DAILY_RETURN_KEY, id);
+    return id;
+  } catch (error) {
+    console.error("Error scheduling daily return reminder:", error);
+    return null;
+  }
+}
+
+/**
+ * Cancel + forget the daily-return reminder (e.g. permission revoked). Safe to call anytime.
+ */
+export async function cancelDailyReturnReminder() {
+  try {
+    const existing = await AsyncStorage.getItem(DAILY_RETURN_KEY);
+    if (existing) {
+      await Notifications.cancelScheduledNotificationAsync(existing);
+      await AsyncStorage.removeItem(DAILY_RETURN_KEY);
+    }
+  } catch (error) {
+    console.error("Error canceling daily return reminder:", error);
   }
 }
 

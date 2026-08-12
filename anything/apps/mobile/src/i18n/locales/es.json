@@ -49,8 +49,8 @@
     "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento."
   },
   "services": {
-    "title": "Servicios",
-    "empty": "Aún no hay servicios disponibles"
+    "segDiscover": "Descubrir",
+    "segActivity": "Mi actividad"
   },
   "search": {
     "title": "Buscar y descubrir",
@@ -392,10 +392,6 @@
     "pastTitle": "Reservas pasadas",
     "emptyPast": "No tienes reservas pasadas"
   },
-  "services": {
-    "segDiscover": "Descubrir",
-    "segActivity": "Mi actividad"
-  },
   "bookingSummary": {
     "title": "Resumen de la reserva",
     "service": "Servicio",
@@ -524,5 +520,21 @@
     "completed": "Completada",
     "declined": "Rechazada",
     "cancelled": "Cancelada"
+  },
+  "gettingStarted": {
+    "title": "Primeros pasos",
+    "progress": "{{completed}} de {{total}} listo",
+    "yourPet": "tu mascota",
+    "dailyReminderBody": "Es hora de ver cómo está {{petName}} 🐾",
+    "celebrateTitle": "¡Todo listo! 🎉",
+    "celebrateBody": "El perfil de {{petName}} ya está completo.",
+    "items": {
+      "basics": "Agrega los datos de tu perro",
+      "history": "Completa el historial de tu perro",
+      "reminder": "Crea tu primer recordatorio",
+      "meal": "Registra su primera comida",
+      "post": "Comparte tu primera publicación",
+      "notifications": "Activa las notificaciones"
+    }
   }
 }

@@ -727,6 +727,11 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   (ENABLE+FORCE RLS, own-row write / any-authed read; PENDING hand-apply) + `POST/DELETE .../posts/[postId]/paw`
   + `paw_count`/`is_pawed` on the single-post GET; the 2.93 `pawsCount` stat lights up once the table lands.
   Degrades cleanly pre-migration (42P01 → 0 / no-op, never a 500). (2026-08-12.)
+  **2.98** added a pet-owner **"Getting started" activation checklist** — a persistent Home-tab card with a
+  derived % (add basics / complete history / first reminder / first meal / first post / turn on notifications),
+  each row tapping through to the screen that completes it; retires at 100% with a brief celebration. Enabling
+  notifications schedules a recurring **daily** local "come back" reminder exactly once. All derived from
+  existing data — no migration, no web change. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

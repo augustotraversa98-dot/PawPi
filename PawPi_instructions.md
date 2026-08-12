@@ -1009,6 +1009,16 @@ hardening, and the redesign). Read that for detail.
     undefined_table (42P01) → 0 paws / not-pawed / no-op, never a 500 (mocked unit test proves it). New mobile
     `useProviderPostPaw` (query + optimistic toggle + rollback). All API tested through the REAL router by URL.
     web vitest 1786→1794 · integration +9 · mobile jest 1592→1599. ⚠️ Tats applies the 0085 SQL, then merges.
+  - **2.98 Pet-owner activation checklist** (mobile, **no migration**) — a persistent **"Getting started"** card
+    at the top of the Home tab with a % badge + progress bar. Every item's completion is **derived** from
+    existing data (never a stored flag): add basics (name+breed), complete history (breed + age + real gender +
+    weight), first reminder (`/api/routines` non-empty), first meal (food-logs non-empty), first post
+    (pet-profile `stats.totalPosts`), turn on notifications (OS permission). `%` = completed ÷ 6; the card
+    retires at 100% after a one-time paw celebration. Each row jumps to the screen that completes it. Enabling
+    notifications schedules a recurring **daily** local reminder exactly once (idempotent, permission-guarded).
+    New `utils/gettingStarted.js` (pure), `hooks/useGettingStarted.js`, `components/Home/GettingStartedCard.jsx`,
+    + `ensureDailyReturnReminder`/`getNotificationPermissionGranted` in `utils/notifications.js`. EN+ES. mobile
+    jest 1599→1620.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

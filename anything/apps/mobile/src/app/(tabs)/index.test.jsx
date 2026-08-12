@@ -28,6 +28,9 @@ jest.mock("@/hooks/useFeedPosts", () => ({
 }));
 
 // Stub the feed children so the test focuses purely on the scroll view wiring.
+jest.mock("@/components/Home/GettingStartedCard", () => ({
+  GettingStartedCard: () => null,
+}));
 jest.mock("@/components/Feed/FeedHeader", () => ({ FeedHeader: () => null }));
 jest.mock("@/components/Feed/DailyPromptCard", () => ({
   DailyPromptCard: () => null,
