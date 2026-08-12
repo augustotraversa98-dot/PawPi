@@ -138,12 +138,81 @@ describe("ProviderAdoption", () => {
         listingId: 5,
         name: "Rex",
         breed: "Beagle",
+        // No age was stored on this fixture → the (empty) age inputs save as null.
+        age_years: null,
+        age_months: null,
         adoption_fee_cents: 5000,
         story: "A gentle, house-trained boy",
         status: "available",
         photo_urls: ["https://cdn/a.jpg"],
         video_url: null,
       },
+      expect.anything(),
+    );
+  });
+
+  it("creating a listing sends the entered age (years + months)", () => {
+    const create = mutationStub();
+    useCreateAdoptableListing.mockReturnValue(create);
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.change(screen.getByPlaceholderText("Dog's name"), { target: { value: "Buddy" } });
+    fireEvent.change(screen.getByLabelText("Age in years"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Extra months"), { target: { value: "6" } });
+    fireEvent.click(screen.getByText("List a dog"));
+    expect(create.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Buddy", age_years: 3, age_months: 6 }),
+    );
+  });
+
+  it("an empty age creates the listing with null age (genuinely unknown)", () => {
+    const create = mutationStub();
+    useCreateAdoptableListing.mockReturnValue(create);
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.change(screen.getByPlaceholderText("Dog's name"), { target: { value: "Buddy" } });
+    fireEvent.click(screen.getByText("List a dog"));
+    expect(create.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ age_years: null, age_months: null }),
+    );
+  });
+
+  it("rejects an invalid months value client-side (no mutation fired)", () => {
+    const create = mutationStub();
+    useCreateAdoptableListing.mockReturnValue(create);
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.change(screen.getByPlaceholderText("Dog's name"), { target: { value: "Buddy" } });
+    fireEvent.change(screen.getByLabelText("Extra months"), { target: { value: "13" } });
+    fireEvent.click(screen.getByText("List a dog"));
+    expect(create.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("the edit modal PREFILLS the stored age and saves the edited value", () => {
+    const update = mutationStub();
+    useUpdateAdoptableListing.mockReturnValue(update);
+    useAdoptableListings.mockReturnValue(
+      queryStub([
+        {
+          id: 9,
+          name: "Rex",
+          breed: "Beagle",
+          age_years: 2,
+          age_months: 3,
+          adoption_fee_cents: 0,
+          status: "available",
+          photo_urls: [],
+          video_url: null,
+        },
+      ]),
+    );
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByText("Edit"));
+    // Prefilled from the stored age.
+    expect(screen.getByDisplayValue("2")).toBeTruthy();
+    expect(screen.getByDisplayValue("3")).toBeTruthy();
+    // Change the years and save.
+    fireEvent.change(screen.getByDisplayValue("2"), { target: { value: "4" } });
+    fireEvent.click(screen.getByText("Save changes"));
+    expect(update.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ listingId: 9, age_years: 4, age_months: 3 }),
       expect.anything(),
     );
   });

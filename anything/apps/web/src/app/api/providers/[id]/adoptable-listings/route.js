@@ -109,6 +109,26 @@ async function POST(request, { params }) {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
 
+    // Age validation (defense-in-depth; the editor validates too). null = unknown.
+    if (
+      age_years != null &&
+      (!Number.isInteger(age_years) || age_years < 0)
+    ) {
+      return Response.json(
+        { error: "age_years must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
+    if (
+      age_months != null &&
+      (!Number.isInteger(age_months) || age_months < 0 || age_months > 11)
+    ) {
+      return Response.json(
+        { error: "age_months must be an integer between 0 and 11" },
+        { status: 400 },
+      );
+    }
+
     // Content filter (T7): reject objectionable listing name / breed / story text before insert.
     const blockedListing = moderationResponse(name, breed, story);
     if (blockedListing) return blockedListing;

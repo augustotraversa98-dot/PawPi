@@ -1710,7 +1710,7 @@ export function useAdoptableListings(providerId) {
 }
 
 // Create a listing (POST .../adoptable-listings). mutateAsync({ name*, breed?, age_years?,
-// gender?, size?, story?, adoption_fee_cents?, good_with_*?, energy_level?,
+// age_months?, gender?, size?, story?, adoption_fee_cents?, good_with_*?, energy_level?,
 // vaccination_status? }). Shelter-admin only (gated server-side).
 export function useCreateAdoptableListing(providerId) {
   const queryClient = useQueryClient();

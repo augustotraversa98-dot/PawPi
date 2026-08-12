@@ -25,6 +25,29 @@ function money(cents, currency = "ARS") {
   return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
+// Parse the editor's age inputs (years + optional months) into DB values so a listing
+// no longer always saves NULL → "Age unknown". Empty → null (age genuinely unknown).
+// Validates: years a non-negative integer; months a whole number 0–11. Returns either
+// { ok: true, age_years, age_months } or { ok: false, error }. Both create + edit use it.
+function parseAge(yearsStr, monthsStr) {
+  const field = (s) => {
+    const t = String(s ?? "").trim();
+    if (t === "") return { value: null };
+    // Digits only — rejects decimals, signs, and stray text (so no negative ages).
+    if (!/^\d+$/.test(t)) return { error: true };
+    return { value: parseInt(t, 10) };
+  };
+  const y = field(yearsStr);
+  const m = field(monthsStr);
+  if (y.error) {
+    return { ok: false, error: "Age (years) must be a whole number, 0 or more." };
+  }
+  if (m.error || (m.value != null && m.value > 11)) {
+    return { ok: false, error: "Months must be a whole number from 0 to 11." };
+  }
+  return { ok: true, age_years: y.value, age_months: m.value };
+}
+
 export default function ProviderAdoption({ providerId }) {
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -62,6 +85,8 @@ function CreateListingForm({ providerId }) {
   const create = useCreateAdoptableListing(providerId);
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
+  const [ageYears, setAgeYears] = useState("");
+  const [ageMonths, setAgeMonths] = useState("");
   const [fee, setFee] = useState("");
   const [story, setStory] = useState("");
   // Media (ticket 2.85): photos → photo_urls[] (first = cover, reorder/remove); video → video_url.
@@ -74,11 +99,18 @@ function CreateListingForm({ providerId }) {
       toast.error("Enter the dog's name.");
       return;
     }
+    const age = parseAge(ageYears, ageMonths);
+    if (!age.ok) {
+      toast.error(age.error);
+      return;
+    }
     const feeCents = fee ? Math.round(parseFloat(fee) * 100) : 0;
     try {
       await create.mutateAsync({
         name,
         breed: breed || null,
+        age_years: age.age_years,
+        age_months: age.age_months,
         adoption_fee_cents: Number.isFinite(feeCents) ? feeCents : 0,
         story: story || null,
         photo_urls: photos,
@@ -87,6 +119,8 @@ function CreateListingForm({ providerId }) {
       toast.success("Dog listed");
       setName("");
       setBreed("");
+      setAgeYears("");
+      setAgeMonths("");
       setFee("");
       setStory("");
       setPhotos([]);
@@ -114,6 +148,24 @@ function CreateListingForm({ providerId }) {
           value={breed}
           onChange={(e) => setBreed(e.target.value)}
           placeholder="Breed"
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: COLORS.peach }}
+        />
+        <input
+          value={ageYears}
+          onChange={(e) => setAgeYears(e.target.value)}
+          placeholder="Age in years (blank = unknown)"
+          inputMode="numeric"
+          aria-label="Age in years"
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: COLORS.peach }}
+        />
+        <input
+          value={ageMonths}
+          onChange={(e) => setAgeMonths(e.target.value)}
+          placeholder="Extra months 0–11 (optional)"
+          inputMode="numeric"
+          aria-label="Extra months"
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
@@ -269,6 +321,12 @@ function ListingList({ providerId }) {
 function ListingEditModal({ listing, onClose, onSave, saving }) {
   const [name, setName] = useState(listing.name || "");
   const [breed, setBreed] = useState(listing.breed || "");
+  const [ageYears, setAgeYears] = useState(
+    listing.age_years != null ? String(listing.age_years) : "",
+  );
+  const [ageMonths, setAgeMonths] = useState(
+    listing.age_months != null ? String(listing.age_months) : "",
+  );
   const [fee, setFee] = useState(
     listing.adoption_fee_cents != null
       ? (listing.adoption_fee_cents / 100).toString()
@@ -286,10 +344,18 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
       toast.error("Enter the dog's name.");
       return;
     }
+    const age = parseAge(ageYears, ageMonths);
+    if (!age.ok) {
+      toast.error(age.error);
+      return;
+    }
     const feeCents = fee === "" ? 0 : Math.round(parseFloat(fee) * 100);
     onSave({
       name: name.trim(),
       breed: breed.trim() || null,
+      // Always sent (value or null) so clearing the field clears the stored age.
+      age_years: age.age_years,
+      age_months: age.age_months,
       adoption_fee_cents: Number.isFinite(feeCents) && feeCents >= 0 ? feeCents : 0,
       // Empty string clears the story (PATCH COALESCE keeps a field only when null is sent).
       story: story,
@@ -344,6 +410,30 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
                 onChange={(e) => setFee(e.target.value)}
                 inputMode="decimal"
                 placeholder="e.g. 50.00"
+                className={`mt-1 ${inputCls}`}
+                style={{ borderColor: COLORS.peach }}
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-[#3B241B]">
+              Age in years (blank = unknown)
+              <input
+                value={ageYears}
+                onChange={(e) => setAgeYears(e.target.value)}
+                inputMode="numeric"
+                placeholder="e.g. 3"
+                className={`mt-1 ${inputCls}`}
+                style={{ borderColor: COLORS.peach }}
+              />
+            </label>
+            <label className="block text-sm font-semibold text-[#3B241B]">
+              Extra months 0–11 (optional)
+              <input
+                value={ageMonths}
+                onChange={(e) => setAgeMonths(e.target.value)}
+                inputMode="numeric"
+                placeholder="e.g. 6"
                 className={`mt-1 ${inputCls}`}
                 style={{ borderColor: COLORS.peach }}
               />

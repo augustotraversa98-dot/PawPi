@@ -1029,6 +1029,20 @@ hardening, and the redesign). Read that for detail.
     provider). New `provider/lib/activation.js` (pure) + `provider/components/GettingStartedChecklist.jsx`.
     English-only (web). web vitest 1794→1805.
 
+- **Adoption editor — set the dog's age (fix; web, no migration, attended → PR only).** Pet owners always
+  saw **"Age unknown"** because the provider adoption editor (`ProviderAdoption.jsx`) had **no age input** —
+  every listing saved `age_years`/`age_months` as NULL even though `adoptable_listings` (0038) and the
+  browse/detail render (`ageLabel`) already support age. Added a **years + optional months** input to BOTH
+  the create form and the edit modal; the edit modal **prefills** the stored age. Validation (shared
+  `parseAge`): years a non-negative integer, months 0–11, empty → null. The create POST + update PATCH
+  already accepted the fields; the PATCH now also lets an explicit null **clear** the age (age columns are
+  set directly, not `COALESCE`'d — an omitted key still keeps the stored value via a `sql`col`` fragment),
+  with matching server-side validation on both routes. Real age now shows end-to-end in adoption
+  browse/detail. web vitest 1805→1817 (+12). *(Note: the ticket asked for `api.request` route tests, but
+  this repo has no working real-router harness — `__create/route-builder.ts` eagerly imports every route at
+  load and one unrelated route throws under vitest, which is why every route test in the codebase drives the
+  handler directly with a mocked `sql`; these tests follow that established convention.)*
+
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
 - **Go-live env keys** (each feature degrades cleanly until its keys are set): Apple + Google OAuth

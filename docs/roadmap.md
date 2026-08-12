@@ -20,6 +20,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-12):** **Adoption editor now sets the dog's age** (web, no migration, PR-only).
+> The provider adoption editor (`ProviderAdoption.jsx`) had no age input, so every listing saved
+> `age_years`/`age_months` as NULL and pet owners always saw **"Age unknown"** even though the schema
+> (0038) and the browse/detail render already support age. Added a years + optional-months input to the
+> create form **and** the edit modal (which now prefills the stored age); shared `parseAge` validation
+> (years ≥ 0 integer, months 0–11, empty → null). The create POST + update PATCH already accepted the
+> fields; the PATCH now also lets an explicit null clear the age, with server-side validation on both.
+> web vitest 1805→1817.
+
 > **Update (2026-08-01):** full audit of the blocker list below against Railway's real variables
 > + live production tests (not just this doc's claims) — the same standard as blocker #3's
 > device test. Found **two items marked "blocking" that were already done**: telehealth's Daily.co

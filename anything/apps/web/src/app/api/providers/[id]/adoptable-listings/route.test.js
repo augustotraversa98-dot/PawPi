@@ -42,6 +42,51 @@ it("POST persists placement_type + urgent/featured flags", async () => {
   expect(insert).toContain("is_featured");
 });
 
+it("POST persists age_years + age_months (fixes the 'age unknown' default)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE).mockResolvedValueOnce([{ id: 1, age_years: 3, age_months: 6 }]);
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Pongo", age_years: 3, age_months: 6 }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(201);
+  const insert = sql.mock.calls[1][0].join(" ");
+  expect(insert).toContain("age_years");
+  expect(insert).toContain("age_months");
+  const values = sql.mock.calls[1].slice(1);
+  expect(values).toContain(3);
+  expect(values).toContain(6);
+});
+
+it("POST rejects an out-of-range months (must be 0–11) before any insert", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE); // resolveUserId only — validation stops before INSERT
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Pongo", age_years: 2, age_months: 12 }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toMatch(/months/i);
+  expect(sql.mock.calls.length).toBe(1); // no INSERT issued
+});
+
+it("POST rejects a negative age_years before any insert", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE);
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Pongo", age_years: -1 }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(400);
+  expect(sql.mock.calls.length).toBe(1);
+});
+
 it("GET orders featured listings first + returns the new columns", async () => {
   auth.mockResolvedValue(SESSION);
   sql.mockResolvedValueOnce(PROFILE).mockResolvedValueOnce([{ id: 1, is_featured: true }]);
