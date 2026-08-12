@@ -114,6 +114,25 @@ async function PATCH(request, { params }) {
     ) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
+    // Age: a present null CLEARS it (empty → unknown); a present value must be valid.
+    if (
+      body.age_years != null &&
+      (!Number.isInteger(body.age_years) || body.age_years < 0)
+    ) {
+      return Response.json(
+        { error: "age_years must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
+    if (
+      body.age_months != null &&
+      (!Number.isInteger(body.age_months) || body.age_months < 0 || body.age_months > 11)
+    ) {
+      return Response.json(
+        { error: "age_months must be an integer between 0 and 11" },
+        { status: 400 },
+      );
+    }
     if (
       body.placement_type !== undefined &&
       !["adopt", "foster", "both"].includes(body.placement_type)
@@ -128,8 +147,8 @@ async function PATCH(request, { params }) {
       SET
         name = COALESCE(${body.name ?? null}, name),
         breed = COALESCE(${body.breed ?? null}, breed),
-        age_years = COALESCE(${body.age_years ?? null}, age_years),
-        age_months = COALESCE(${body.age_months ?? null}, age_months),
+        age_years = ${"age_years" in body ? body.age_years : sql`age_years`},
+        age_months = ${"age_months" in body ? body.age_months : sql`age_months`},
         gender = COALESCE(${body.gender ?? null}, gender),
         size = COALESCE(${body.size ?? null}, size),
         photo_urls = COALESCE(${
