@@ -74,7 +74,8 @@ describe("ProviderAdoption", () => {
     );
     render(<ProviderAdoption providerId={10} />);
     expect(screen.getByText("Rex")).toBeTruthy();
-    expect(screen.getByText("Available")).toBeTruthy();
+    // The status TAG (a span) — distinct from the new "Available" filter chip (a button).
+    expect(screen.getByText("Available", { selector: "span" })).toBeTruthy();
   });
 
   it("creating a listing calls the create mutation with the name", async () => {
@@ -253,5 +254,121 @@ describe("ProviderAdoption", () => {
     render(<ProviderAdoption providerId={10} />);
     fireEvent.click(screen.getByText("Decline"));
     expect(review.mutateAsync).toHaveBeenCalledWith({ applicationId: 8, status: "declined" });
+  });
+});
+
+// Management view (collapse Past + type-search + status chips) over the already-loaded lists.
+describe("ProviderAdoption — manage (collapse / search / filter)", () => {
+  const DOGS = [
+    { id: 1, name: "Rex", breed: "Beagle", status: "available" },
+    { id: 2, name: "Milo", breed: "Poodle", status: "pending" },
+    { id: 3, name: "Old Bud", breed: "Boxer", status: "adopted" },
+  ];
+  const APPS = [
+    { id: 1, applicant_name: "Augusto", applicant_email: "aug@x.com", listing_name: "Rex", status: "submitted", answers: {} },
+    { id: 2, applicant_name: "Bianca", applicant_email: "bia@y.com", listing_name: "Milo", status: "under_review", answers: {} },
+    { id: 3, applicant_name: "Carlos", applicant_email: "car@z.com", listing_name: "Old Bud", status: "approved", answers: {} },
+    { id: 4, applicant_name: "Dora", applicant_email: "dora@w.com", listing_name: "Fido", status: "declined", answers: {} },
+  ];
+
+  // ----- Dogs -----
+
+  it("splits dogs into an active list and a collapsed Past (adopted) section", () => {
+    useAdoptableListings.mockReturnValue(queryStub(DOGS));
+    render(<ProviderAdoption providerId={10} />);
+    // Active (available + pending) are visible.
+    expect(screen.getByText("Rex")).toBeTruthy();
+    expect(screen.getByText("Milo")).toBeTruthy();
+    // The adopted dog is tucked into a collapsed Past section — hidden until expanded.
+    expect(screen.getByRole("button", { name: /Past \(1\)/ })).toBeTruthy();
+    expect(screen.queryByText("Old Bud")).toBeNull();
+  });
+
+  it("expanding the Past section reveals the adopted dog", () => {
+    useAdoptableListings.mockReturnValue(queryStub(DOGS));
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByRole("button", { name: /Past \(1\)/ }));
+    expect(screen.getByText("Old Bud")).toBeTruthy();
+  });
+
+  it("search filters dogs by name/breed across BOTH groups (surfaces a past match)", () => {
+    useAdoptableListings.mockReturnValue(queryStub(DOGS));
+    render(<ProviderAdoption providerId={10} />);
+    // A search hitting only the adopted dog surfaces it even though Past is collapsed by default.
+    fireEvent.change(screen.getByLabelText("Search dogs"), { target: { value: "bud" } });
+    expect(screen.getByText("Old Bud")).toBeTruthy();
+    expect(screen.queryByText("Rex")).toBeNull();
+    // Breed search hits an active dog.
+    fireEvent.change(screen.getByLabelText("Search dogs"), { target: { value: "poodle" } });
+    expect(screen.getByText("Milo")).toBeTruthy();
+    expect(screen.queryByText("Old Bud")).toBeNull();
+  });
+
+  it("the dog status chips filter (and can pull an adopted dog into view)", () => {
+    useAdoptableListings.mockReturnValue(queryStub(DOGS));
+    render(<ProviderAdoption providerId={10} />);
+    // "Available" → just Rex.
+    fireEvent.click(screen.getByRole("button", { name: "Available" }));
+    expect(screen.getByText("Rex")).toBeTruthy();
+    expect(screen.queryByText("Milo")).toBeNull();
+    expect(screen.queryByText("Old Bud")).toBeNull();
+    // "Adopted" → the finished dog, fully in view (no collapsed section).
+    fireEvent.click(screen.getByRole("button", { name: "Adopted" }));
+    expect(screen.getByText("Old Bud")).toBeTruthy();
+    expect(screen.queryByText("Rex")).toBeNull();
+  });
+
+  it("chips compose with search, and an empty result shows 'No dogs match'", () => {
+    useAdoptableListings.mockReturnValue(queryStub(DOGS));
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adopted" }));
+    fireEvent.change(screen.getByLabelText("Search dogs"), { target: { value: "rex" } });
+    // Adopted ∩ "rex" = nothing.
+    expect(screen.getByText("No dogs match")).toBeTruthy();
+    expect(screen.queryByText("Old Bud")).toBeNull();
+  });
+
+  // ----- Applications -----
+
+  it("splits applications into active and a collapsed Past (approved/declined) section", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(APPS));
+    render(<ProviderAdoption providerId={10} />);
+    expect(screen.getByText(/Augusto/)).toBeTruthy(); // submitted → active
+    expect(screen.getByText(/Bianca/)).toBeTruthy(); // under_review → active
+    expect(screen.getByRole("button", { name: /Past \(2\)/ })).toBeTruthy();
+    expect(screen.queryByText(/Carlos/)).toBeNull(); // approved → collapsed
+    expect(screen.queryByText(/Dora/)).toBeNull(); // declined → collapsed
+    fireEvent.click(screen.getByRole("button", { name: /Past \(2\)/ }));
+    expect(screen.getByText(/Carlos/)).toBeTruthy();
+    expect(screen.getByText(/Dora/)).toBeTruthy();
+  });
+
+  it("search filters applications by applicant, email and dog name across both groups", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(APPS));
+    render(<ProviderAdoption providerId={10} />);
+    // By dog name (active).
+    fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "milo" } });
+    expect(screen.getByText(/Bianca/)).toBeTruthy();
+    expect(screen.queryByText(/Augusto/)).toBeNull();
+    // By email, surfacing a past (approved) application.
+    fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "car@z" } });
+    expect(screen.getByText(/Carlos/)).toBeTruthy();
+    expect(screen.queryByText(/Bianca/)).toBeNull();
+  });
+
+  it("the application status chips filter (and can pull a decided one into view)", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(APPS));
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByRole("button", { name: "Approved" }));
+    expect(screen.getByText(/Carlos/)).toBeTruthy();
+    expect(screen.queryByText(/Augusto/)).toBeNull();
+    expect(screen.queryByText(/Dora/)).toBeNull();
+  });
+
+  it("shows 'No applications match' when a search yields nothing", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(APPS));
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "zzz-nobody" } });
+    expect(screen.getByText("No applications match")).toBeTruthy();
   });
 });
