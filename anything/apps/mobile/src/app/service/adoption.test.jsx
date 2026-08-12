@@ -15,6 +15,12 @@ let mockSingleListing; // the 2.56 single-listing fetch result (or null for 404)
 let mockApply; // captures the apply mutation (ticket 2.57 requested_placement)
 let mockLocationStatus; // 'granted' | 'denied'
 
+// The shared apply views (AdoptionListingViews) now render their CTA off the real English
+// catalog (ticket 2.95, EN+ES). Resolve t() against en.json so the literal-copy assertions below
+// ("Apply to adopt", "Application sent", the reviewing/approved/declined states) stay exact.
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
   useLocalSearchParams: () => mockParams,
@@ -159,6 +165,50 @@ test("after a successful apply the CTA becomes a persistent 'Application sent' c
   // Confirmation replaces the apply button; it does not re-arm for a duplicate application.
   expect(await findByTestId("application-sent")).toBeTruthy();
   await waitFor(() => expect(queryByText("Apply to adopt")).toBeNull());
+});
+
+// ── Ticket 2.95 — the apply CTA reflects the viewer's EXISTING application (my_application_status) ──
+test("null my_application_status → the active 'Apply to adopt' CTA", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, placement_type: "adopt", my_application_status: null };
+  const { findByText, queryByTestId } = render(<AdoptionScreen />);
+  const applyBtn = await findByText("Apply to adopt");
+  fireEvent.press(applyBtn); // active → applies
+  await waitFor(() => expect(mockApply).toHaveBeenCalled());
+  expect(queryByTestId("application-status-submitted")).toBeNull();
+});
+
+test.each([
+  ["submitted", "The center is reviewing your application"],
+  ["under_review", "The center is reviewing your application"],
+  ["approved", "Application approved"],
+  ["declined", "Application declined"],
+])(
+  "my_application_status=%s → a DISABLED status CTA (no re-apply), not 'Apply to adopt'",
+  async (status, label) => {
+    mockParams = { listingId: "5", providerId: "3" };
+    mockSingleListing = { ...REX, placement_type: "adopt", my_application_status: status };
+    const { findByTestId, getByText, queryByText } = render(<AdoptionScreen />);
+    expect(await findByTestId(`application-status-${status}`)).toBeTruthy();
+    expect(getByText(label)).toBeTruthy();
+    expect(queryByText("Apply to adopt")).toBeNull();
+    // The disabled CTA does not submit a duplicate application.
+    fireEvent.press(getByText(label));
+    expect(mockApply).not.toHaveBeenCalled();
+  },
+);
+
+test("an existing application hides the shelter's question inputs (2.95)", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = {
+    ...REX,
+    placement_type: "adopt",
+    my_application_status: "declined",
+    application_questions: ["Best contact number"],
+  };
+  const { findByTestId, queryByTestId } = render(<AdoptionScreen />);
+  expect(await findByTestId("application-status-declined")).toBeTruthy();
+  expect(queryByTestId("answer-0")).toBeNull();
 });
 
 // ── Adoption applications v2 — the shelter's application questions ──

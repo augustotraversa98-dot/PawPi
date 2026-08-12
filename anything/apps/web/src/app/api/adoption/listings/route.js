@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isMissingColumn } from "@/app/api/utils/adoptionQuestions";
 
@@ -22,6 +23,12 @@ import { isMissingColumn } from "@/app/api/utils/adoptionQuestions";
 // last). The old bounding-box that HID located-but-far shelters is now opt-in only: pass
 // enforce_radius=true (with lat+lng+radius_km) to re-apply it. Off by default so sparse early
 // data never leaves an owner staring at an empty browse.
+//
+// EACH ROW REFLECTS THE VIEWER'S OWN APPLICATION (ticket 2.95): my_application_status is a
+// correlated read of adoption_applications scoped STRICTLY to the current user
+// (applicant_owner_user_id = me) → null | submitted | under_review | approved | declined. The
+// mobile apply button renders off this so an owner who already applied sees a disabled,
+// status-aware CTA instead of a re-arm-to-duplicate "Apply to adopt".
 
 function num(v) {
   if (v == null || v === "") return null;
@@ -52,6 +59,10 @@ async function GET(request) {
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // The browsing owner's own user_profiles.id — used ONLY to reflect their existing
+    // application per listing (my_application_status). Null (no profile yet) → the correlated
+    // subquery matches nothing and every dog reads my_application_status = null.
+    const viewerId = await resolveUserId(session.user.id);
 
     const { searchParams } = new URL(request.url);
     const gender = searchParams.get("gender") || null;
@@ -102,6 +113,13 @@ async function GET(request) {
           al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
           al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
           al.application_questions,
+          (
+            SELECT aa.status FROM adoption_applications aa
+            WHERE aa.applicant_owner_user_id = ${viewerId}::int
+              AND aa.listing_id = al.id
+            ORDER BY aa.created_at DESC, aa.id DESC
+            LIMIT 1
+          ) AS my_application_status,
           p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
           loc.lat AS provider_lat, loc.lng AS provider_lng,
           loc.address AS provider_address, loc.name AS provider_location_name
@@ -146,6 +164,13 @@ async function GET(request) {
           al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
           al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
           '[]'::jsonb AS application_questions,
+          (
+            SELECT aa.status FROM adoption_applications aa
+            WHERE aa.applicant_owner_user_id = ${viewerId}::int
+              AND aa.listing_id = al.id
+            ORDER BY aa.created_at DESC, aa.id DESC
+            LIMIT 1
+          ) AS my_application_status,
           p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
           loc.lat AS provider_lat, loc.lng AS provider_lng,
           loc.address AS provider_address, loc.name AS provider_location_name

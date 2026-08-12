@@ -738,6 +738,17 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   the Apply-to-adopt CTA now shows a persistent **"Application sent"** confirmation (no duplicate re-apply).
   Integration test extended to prove a located shelter ~111km out (beyond the old radius) now appears, ranked
   after nearer ones, alongside the coordless case. No migration, no RLS change. (2026-08-11.)
+- **2.95 follow-up (attended)** — the apply CTA reflects the owner's existing application + the server blocks
+  re-apply after a decline. `GET /api/adoption/listings` now projects **`my_application_status`** (a correlated
+  read of `adoption_applications` scoped strictly to the current user → null | submitted | under_review |
+  approved | declined; no cross-user leak). The shared `AdoptionListingViews` CTA renders off it: null → active
+  "Apply to adopt"; submitted/under_review → DISABLED "The center is reviewing your application"; approved →
+  DISABLED "Application approved"; declined → DISABLED "Application declined" (no re-apply). EN+ES via a new
+  `adoption.apply.*` catalog. Server: `POST /api/adoption/applications` now 409s (`{ already_applied, status }`)
+  when the applicant already has ANY application for that listing in ANY status — fixing a prod bug where a
+  DECLINED application let the same owner re-apply (the 0038 partial unique index allows a non-declined
+  duplicate; the route guard closes it, index stays the race net). No migration, no index/RLS change. Proven
+  through the REAL router: browse integration +1, applications-v2 integration +2, mobile jest +6. (2026-08-12.)
 - **Wave 11 night-run (2.97 / 2.96 / 2.94 / 2.98 / 2.99)** — adoption-on-profile + nav cleanup + business-post
   paws + owner/business activation checklists. **2.97** Adoption tab on the mobile business storefront: an
   adoption-capable business with ≥1 available listing shows an **Adoption** tab (`getStorefrontTabs`,

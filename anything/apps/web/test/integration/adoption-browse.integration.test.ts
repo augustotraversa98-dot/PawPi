@@ -15,6 +15,7 @@ import {
   seedProvider,
   seedCapability,
   seedAdoptableListing,
+  seedAdoptionApplication,
 } from './db';
 
 const authState = vi.hoisted(() => ({ session: null as any }));
@@ -156,6 +157,33 @@ describe('GET /api/adoption/listings (handler as pawpi_app)', () => {
     expect(far.distance_km).toBeGreaterThan(100); // proves it was beyond the old radius
     const nopin = data.listings.find((l: any) => l.id === 401);
     expect(nopin.distance_km).toBeNull();
+  });
+
+  it("reflects the viewer's OWN application per listing as my_application_status (2.95)", async () => {
+    // The viewer has a DECLINED application on the near listing (101) and NONE on the far one (201).
+    // A DIFFERENT owner's application on 201 must NOT leak into the viewer's status.
+    await seedAdoptionApplication(raw, {
+      applicationId: 900,
+      listingId: 101,
+      providerId: 1,
+      applicantUserId: VIEWER.profileId,
+      status: 'declined',
+    });
+    await seedAdoptionApplication(raw, {
+      applicationId: 901,
+      listingId: 201,
+      providerId: 2,
+      applicantUserId: O1.profileId, // a DIFFERENT user
+      status: 'submitted',
+    });
+
+    const res = await GET(browseRequest());
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const near = data.listings.find((l: any) => l.id === 101);
+    const far = data.listings.find((l: any) => l.id === 201);
+    expect(near.my_application_status).toBe('declined'); // the viewer's own row
+    expect(far.my_application_status).toBeNull(); // someone else's row does not leak
   });
 
   it('still surfaces a pin-less shelter (no location) when the viewer shares location (2.91)', async () => {
