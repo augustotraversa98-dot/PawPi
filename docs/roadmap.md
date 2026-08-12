@@ -20,6 +20,20 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-12):** **Shelter adoption management view** (web, **no migration / no API change**,
+> open PR — do NOT merge). Pure UI over the two lists already fetched by the adoptable-listings + adoption-
+> applications GETs, in `ProviderAdoption.jsx`. Both the dogs list and the applications list now: (1)
+> **collapse "Past" items** — an expanded **Active** group on top and a default-collapsed **Past (n)** section
+> below (dogs: Active = available/pending, Past = adopted; applications: Active = submitted/under_review,
+> Past = approved/declined); (2) a **fast client-side type-search** (case-insensitive, no debounce) — dogs by
+> name + breed, applications by applicant name + email + dog name — filtering **both** groups so a search
+> surfaces a past item (a search auto-expands Past); (3) **status filter chips** (dogs: All/Available/Pending/
+> Adopted; applications: All/Submitted/Under review/Approved/Declined; default All) that compose with the
+> search and, when a specific status is picked, show a flat fully-visible list (pulling a past status into
+> view). Empty states: "No dogs match" / "No applications match" when a search/filter yields nothing; the Past
+> section is omitted when there are no past items. Everything already there still works (re-list, edit, the
+> questions editor, applicant info + answers, live status updates). web vitest 1824→1833 (+9).
+
 > **Update (2026-08-12):** **Adoption applications v2** (web + mobile, **migration 0086**, degrades cleanly,
 > PENDING hand-apply — **open PR, do NOT merge** until the SQL is applied). Six changes on the existing 0038
 > module: (1) per-listing **application questions** (new `adoptable_listings.application_questions jsonb` +

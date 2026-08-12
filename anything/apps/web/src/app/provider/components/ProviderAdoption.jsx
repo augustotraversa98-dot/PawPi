@@ -11,6 +11,9 @@ import {
   ArrowDown,
   Trash2,
   RotateCcw,
+  Search,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -357,12 +360,98 @@ function CreateListingForm({ providerId }) {
   );
 }
 
+// Shared management toolbar for both lists (dogs + applications): a fast case-insensitive
+// type-search over the already-loaded rows plus status filter chips. Purely client-side —
+// no new fetch — so it's instant at these list sizes. `chips` is [{ value, label }]; the
+// selected chip and the search text both compose in each list's filter below.
+function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips, chip, onChip }) {
+  return (
+    <div className="mb-3 space-y-2">
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+          style={{ color: COLORS.mutedBrown }}
+        />
+        <input
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label={searchLabel}
+          className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm"
+          style={{ borderColor: COLORS.peach }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {chips.map((c) => {
+          const active = chip === c.value;
+          return (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => onChip(c.value)}
+              aria-pressed={active}
+              className="rounded-full border px-3 py-1 text-xs font-semibold"
+              style={
+                active
+                  ? { backgroundColor: COLORS.coral, borderColor: COLORS.coral, color: "#fff" }
+                  : { backgroundColor: "#fff", borderColor: COLORS.peach, color: "#7A6254" }
+              }
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// A default-collapsed "Past (n)" section so finished/resolved rows tuck away below the active
+// ones. `open` is controlled by the parent (a search forces it open so a past match still
+// surfaces). Not rendered at all when there are no past rows.
+function PastSection({ label = "Past", count, open, onToggle, children }) {
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 rounded-lg px-1 py-2 text-sm font-semibold text-[#7A6254]"
+      >
+        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <span>
+          {label} ({count})
+        </span>
+      </button>
+      {open ? <div className="mt-2 space-y-3">{children}</div> : null}
+    </div>
+  );
+}
+
+const DOG_CHIPS = [
+  { value: "all", label: "All" },
+  { value: "available", label: "Available" },
+  { value: "pending", label: "Pending" },
+  { value: "adopted", label: "Adopted" },
+];
+
+const APPLICATION_CHIPS = [
+  { value: "all", label: "All" },
+  { value: "submitted", label: "Submitted" },
+  { value: "under_review", label: "Under review" },
+  { value: "approved", label: "Approved" },
+  { value: "declined", label: "Declined" },
+];
+
 function ListingList({ providerId }) {
   const { data: listings, isLoading, isError, error } = useAdoptableListings(providerId);
   const update = useUpdateAdoptableListing(providerId);
   const del = useDeleteAdoptableListing(providerId);
   const relist = useRelistAdoptableListing(providerId);
   const [editingMedia, setEditingMedia] = useState(null); // the listing whose media is open
+  const [query, setQuery] = useState(""); // fast type-search over name + breed
+  const [chip, setChip] = useState("all"); // status filter chip
+  const [pastOpen, setPastOpen] = useState(false); // Past (adopted) section collapsed by default
 
   const putBackUp = (listing) =>
     relist.mutate(listing.id, {
@@ -387,102 +476,177 @@ function ListingList({ providerId }) {
   if (isError) {
     return <p className="py-8 text-sm text-[#B4452F]">{error?.message || "Couldn't load dogs."}</p>;
   }
+  // No dogs at all → the original onboarding empty state (distinct from "nothing matched a
+  // search/filter", which shows below only once some dogs exist).
   if (!listings || listings.length === 0) {
     return <EmptyCard title="No dogs listed yet" body="Add your first dog above to start." />;
   }
 
-  return (
-    <div className="space-y-3">
-      {listings.map((l) => (
-        <div
-          key={l.id}
-          className="flex items-center gap-4 rounded-2xl border p-4"
-          style={{
-            borderColor: COLORS.peach,
-            backgroundColor: "#fff",
-            opacity: l.status === "adopted" ? 0.6 : 1,
-          }}
-        >
-          <div
-            className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl"
-            style={{ backgroundColor: COLORS.sand }}
-          >
-            {Array.isArray(l.photo_urls) && l.photo_urls[0] ? (
-              <img src={l.photo_urls[0]} alt={l.name} className="h-full w-full object-cover" />
-            ) : (
-              <Dog className="h-5 w-5" style={{ color: COLORS.coral }} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate font-semibold text-[#3B241B]">{l.name}</span>
-              <StatusTag status={l.status} />
-            </div>
-            <p className="text-sm text-[#7A6254]">
-              {[
-                l.breed,
-                money(l.adoption_fee_cents, l.currency),
-                (l.photo_urls?.length || 0) > 0
-                  ? `${l.photo_urls.length} photo${l.photo_urls.length === 1 ? "" : "s"}`
-                  : null,
-                l.video_url ? "video" : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
-            {l.status !== "adopted" ? (
-              <>
-                <button
-                  onClick={() => setEditingMedia(l)}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                  style={{ color: "#3B241B" }}
-                >
-                  <ImageIcon className="h-3.5 w-3.5" /> Edit
-                </button>
-                <button
-                  onClick={() => del.mutate(l.id)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                  style={{ color: COLORS.terracotta }}
-                >
-                  Remove
-                </button>
-              </>
-            ) : null}
-            {l.status !== "available" ? (
-              <button
-                onClick={() => putBackUp(l)}
-                disabled={relist.isPending}
-                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
-                style={{ color: "#3FA34D" }}
-              >
-                <RotateCcw className="h-3.5 w-3.5" /> Put back up
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ))}
+  const q = query.trim().toLowerCase();
+  const matchesSearch = (l) =>
+    !q || [l.name, l.breed].some((f) => (f || "").toLowerCase().includes(q));
+  const matchesChip = (l) => chip === "all" || l.status === chip;
+  const filtered = listings.filter((l) => matchesSearch(l) && matchesChip(l));
 
-      {editingMedia && (
-        <ListingEditModal
-          listing={editingMedia}
-          saving={update.isPending}
-          onClose={() => setEditingMedia(null)}
-          onSave={(patch) =>
-            update.mutate(
-              { listingId: editingMedia.id, ...patch },
-              {
-                onSuccess: () => {
-                  toast.success("Listing updated");
-                  setEditingMedia(null);
-                },
-                onError: (err) => toast.error(err?.message || "Couldn't save changes"),
-              },
-            )
-          }
-        />
+  // Active = still adoptable (available / pending); Past = adopted (finished).
+  const isPast = (l) => l.status === "adopted";
+  const active = filtered.filter((l) => !isPast(l));
+  const past = filtered.filter(isPast);
+
+  const row = (l) => (
+    <ListingRow
+      key={l.id}
+      listing={l}
+      onEdit={() => setEditingMedia(l)}
+      onRemove={() => del.mutate(l.id)}
+      onRelist={() => putBackUp(l)}
+      relistPending={relist.isPending}
+    />
+  );
+
+  const modal = editingMedia ? (
+    <ListingEditModal
+      listing={editingMedia}
+      saving={update.isPending}
+      onClose={() => setEditingMedia(null)}
+      onSave={(patch) =>
+        update.mutate(
+          { listingId: editingMedia.id, ...patch },
+          {
+            onSuccess: () => {
+              toast.success("Listing updated");
+              setEditingMedia(null);
+            },
+            onError: (err) => toast.error(err?.message || "Couldn't save changes"),
+          },
+        )
+      }
+    />
+  ) : null;
+
+  const toolbar = (
+    <FilterBar
+      query={query}
+      onQuery={setQuery}
+      searchPlaceholder="Search dogs by name or breed"
+      searchLabel="Search dogs"
+      chips={DOG_CHIPS}
+      chip={chip}
+      onChip={setChip}
+    />
+  );
+
+  // A specific status chip → a single flat, fully-visible list of just those (so picking
+  // "Adopted" pulls the finished ones straight into view instead of hiding them). "All" →
+  // the active/past split with the collapsed Past section.
+  if (chip !== "all") {
+    return (
+      <div>
+        {toolbar}
+        {filtered.length === 0 ? (
+          <EmptyCard title="No dogs match" body="Try a different search or filter." />
+        ) : (
+          <div className="space-y-3">{filtered.map(row)}</div>
+        )}
+        {modal}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {toolbar}
+      {filtered.length === 0 ? (
+        <EmptyCard title="No dogs match" body="Try a different search or filter." />
+      ) : (
+        <>
+          {active.length > 0 ? <div className="space-y-3">{active.map(row)}</div> : null}
+          {past.length > 0 ? (
+            <PastSection
+              count={past.length}
+              open={pastOpen || q !== ""}
+              onToggle={() => setPastOpen((o) => !o)}
+            >
+              {past.map(row)}
+            </PastSection>
+          ) : null}
+        </>
       )}
+      {modal}
+    </div>
+  );
+}
+
+// One adoptable-dog row. Extracted so the Active and Past groups map the same markup. Adopted
+// rows dim and lose Edit/Remove (they're finished) but keep "Put back up" to re-list them.
+function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
+  return (
+    <div
+      className="flex items-center gap-4 rounded-2xl border p-4"
+      style={{
+        borderColor: COLORS.peach,
+        backgroundColor: "#fff",
+        opacity: l.status === "adopted" ? 0.6 : 1,
+      }}
+    >
+      <div
+        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl"
+        style={{ backgroundColor: COLORS.sand }}
+      >
+        {Array.isArray(l.photo_urls) && l.photo_urls[0] ? (
+          <img src={l.photo_urls[0]} alt={l.name} className="h-full w-full object-cover" />
+        ) : (
+          <Dog className="h-5 w-5" style={{ color: COLORS.coral }} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate font-semibold text-[#3B241B]">{l.name}</span>
+          <StatusTag status={l.status} />
+        </div>
+        <p className="text-sm text-[#7A6254]">
+          {[
+            l.breed,
+            money(l.adoption_fee_cents, l.currency),
+            (l.photo_urls?.length || 0) > 0
+              ? `${l.photo_urls.length} photo${l.photo_urls.length === 1 ? "" : "s"}`
+              : null,
+            l.video_url ? "video" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+      <div className="flex items-center gap-1">
+        {l.status !== "adopted" ? (
+          <>
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ color: "#3B241B" }}
+            >
+              <ImageIcon className="h-3.5 w-3.5" /> Edit
+            </button>
+            <button
+              onClick={onRemove}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ color: COLORS.terracotta }}
+            >
+              Remove
+            </button>
+          </>
+        ) : null}
+        {l.status !== "available" ? (
+          <button
+            onClick={onRelist}
+            disabled={relistPending}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+            style={{ color: "#3FA34D" }}
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Put back up
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -684,6 +848,9 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
 function ApplicationList({ providerId }) {
   const { data: apps, isLoading, isError, error } = useAdoptionApplications(providerId);
   const review = useReviewAdoptionApplication(providerId);
+  const [query, setQuery] = useState(""); // fast type-search over applicant + email + dog name
+  const [chip, setChip] = useState("all"); // status filter chip
+  const [pastOpen, setPastOpen] = useState(false); // Past (approved/declined) collapsed by default
 
   if (isLoading) {
     return (
@@ -696,6 +863,7 @@ function ApplicationList({ providerId }) {
   if (isError) {
     return <p className="py-8 text-sm text-[#B4452F]">{error?.message || "Couldn't load applications."}</p>;
   }
+  // No applications at all → the original empty state (distinct from "nothing matched").
   if (!apps || apps.length === 0) {
     return <EmptyCard title="No applications yet" body="Applications to adopt your dogs appear here." />;
   }
@@ -713,58 +881,120 @@ function ApplicationList({ providerId }) {
     }
   };
 
+  const q = query.trim().toLowerCase();
+  const matchesSearch = (a) =>
+    !q ||
+    [a.applicant_name, a.applicant_email, a.listing_name].some((f) =>
+      (f || "").toLowerCase().includes(q),
+    );
+  const matchesChip = (a) => chip === "all" || a.status === chip;
+  const filtered = apps.filter((a) => matchesSearch(a) && matchesChip(a));
+
+  // Active = still open (submitted / under_review); Past = decided (approved / declined).
+  const isPast = (a) => a.status === "approved" || a.status === "declined";
+  const active = filtered.filter((a) => !isPast(a));
+  const past = filtered.filter(isPast);
+
+  const card = (a) => <ApplicationCard key={a.id} app={a} onAct={act} />;
+
+  const toolbar = (
+    <FilterBar
+      query={query}
+      onQuery={setQuery}
+      searchPlaceholder="Search by applicant, email or dog"
+      searchLabel="Search applications"
+      chips={APPLICATION_CHIPS}
+      chip={chip}
+      onChip={setChip}
+    />
+  );
+
+  // A specific status chip → a single flat, fully-visible list (so picking "Approved" pulls
+  // the decided ones straight into view). "All" → the active/past split with collapsed Past.
+  if (chip !== "all") {
+    return (
+      <div>
+        {toolbar}
+        {filtered.length === 0 ? (
+          <EmptyCard title="No applications match" body="Try a different search or filter." />
+        ) : (
+          <div className="space-y-3">{filtered.map(card)}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      {apps.map((a) => {
-        const decided = a.status === "approved" || a.status === "declined";
-        return (
-          <div
-            key={a.id}
-            className="rounded-2xl border p-4"
-            style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
+    <div>
+      {toolbar}
+      {filtered.length === 0 ? (
+        <EmptyCard title="No applications match" body="Try a different search or filter." />
+      ) : (
+        <>
+          {active.length > 0 ? <div className="space-y-3">{active.map(card)}</div> : null}
+          {past.length > 0 ? (
+            <PastSection
+              count={past.length}
+              open={pastOpen || q !== ""}
+              onToggle={() => setPastOpen((o) => !o)}
+            >
+              {past.map(card)}
+            </PastSection>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+// One application card. Extracted so the Active and Past groups render the same markup.
+// Decided (approved/declined) cards drop the action buttons; open ones keep them.
+function ApplicationCard({ app: a, onAct }) {
+  const decided = a.status === "approved" || a.status === "declined";
+  return (
+    <div
+      className="rounded-2xl border p-4"
+      style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-[#3B241B]">
+          {a.applicant_name || `Applicant #${a.applicant_owner_user_id}`} → {a.listing_name || "dog"}
+        </span>
+        <StatusTag status={a.status} />
+      </div>
+      {a.applicant_email ? (
+        <p className="mt-0.5 text-xs text-[#7A6254]">
+          <a href={`mailto:${a.applicant_email}`} className="underline">
+            {a.applicant_email}
+          </a>
+        </p>
+      ) : null}
+      <AnswerLines answers={a.answers} />
+      {!decided ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            onClick={() => onAct(a.id, "under_review")}
+            className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+            style={{ borderColor: COLORS.peach, color: "#3B241B" }}
           >
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#3B241B]">
-                {a.applicant_name || `Applicant #${a.applicant_owner_user_id}`} → {a.listing_name || "dog"}
-              </span>
-              <StatusTag status={a.status} />
-            </div>
-            {a.applicant_email ? (
-              <p className="mt-0.5 text-xs text-[#7A6254]">
-                <a href={`mailto:${a.applicant_email}`} className="underline">
-                  {a.applicant_email}
-                </a>
-              </p>
-            ) : null}
-            <AnswerLines answers={a.answers} />
-            {!decided ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  onClick={() => act(a.id, "under_review")}
-                  className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                  style={{ borderColor: COLORS.peach, color: "#3B241B" }}
-                >
-                  Mark under review
-                </button>
-                <button
-                  onClick={() => act(a.id, "approved")}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-                  style={{ backgroundColor: "#3FA34D" }}
-                >
-                  <Check className="h-3.5 w-3.5" /> Approve
-                </button>
-                <button
-                  onClick={() => act(a.id, "declined")}
-                  className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                  style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
-                >
-                  <X className="h-3.5 w-3.5" /> Decline
-                </button>
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
+            Mark under review
+          </button>
+          <button
+            onClick={() => onAct(a.id, "approved")}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+            style={{ backgroundColor: "#3FA34D" }}
+          >
+            <Check className="h-3.5 w-3.5" /> Approve
+          </button>
+          <button
+            onClick={() => onAct(a.id, "declined")}
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"
+            style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
+          >
+            <X className="h-3.5 w-3.5" /> Decline
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
