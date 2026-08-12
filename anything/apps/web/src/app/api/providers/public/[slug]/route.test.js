@@ -201,10 +201,11 @@ describe('GET /api/providers/public/[slug]', () => {
       .mockResolvedValueOnce([]) // products
       .mockResolvedValueOnce([]) // posts (empty page)
       .mockResolvedValueOnce([{ ok: true }]) // comments table probe → present
-      // no per-post counts (posts page empty), then total barks:
-      .mockResolvedValueOnce([{ n: 7 }]) // total barks
       .mockResolvedValueOnce([{ n: 4 }]) // postsCount
-      .mockResolvedValueOnce([{ ok: false }]); // paws table probe → missing (pre-2.94)
+      .mockResolvedValueOnce([{ ok: false }]) // paws table probe → missing (pre-2.94)
+      // no per-post counts (posts page empty); the batch above and total barks below are
+      // dispatched as two parallel Promise.all groups (perf), so barks resolves last here:
+      .mockResolvedValueOnce([{ n: 7 }]); // total barks
 
     const res = await GET(req(), PARAMS);
     expect(res.status).toBe(200);
