@@ -722,6 +722,11 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   **2.96** removed the "Show all sections" nav escape hatch on the provider dashboard: the left nav now lists
   ONLY the offerings the business selected (capability-gated sections show when held; structural sections always
   show; no override), with the active-section-never-hidden safety kept. No migration. (2026-08-12.)
+  **2.94** put real **Paws** (likes) on business posts: tap the paw control OR double-tap the image (reuses the
+  pet-feed `PawablePhoto` + brand pop, 2.64); optimistic, guest → sign-in. **Migration 0085** `provider_post_paws`
+  (ENABLE+FORCE RLS, own-row write / any-authed read; PENDING hand-apply) + `POST/DELETE .../posts/[postId]/paw`
+  + `paw_count`/`is_pawed` on the single-post GET; the 2.93 `pawsCount` stat lights up once the table lands.
+  Degrades cleanly pre-migration (42P01 → 0 / no-op, never a 500). (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

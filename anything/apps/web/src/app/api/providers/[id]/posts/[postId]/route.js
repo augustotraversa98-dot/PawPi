@@ -56,7 +56,26 @@ async function GET(request, { params }) {
       return Response.json({ error: "Post not found" }, { status: 404 });
     }
 
-    return Response.json({ post: rows[0] });
+    // Paw count + whether the viewer has pawed (ticket 2.94). DEGRADE-CLEAN: the provider_post_paws
+    // table (0085) is hand-applied after this deploys, so a missing table (42P01) → 0 / not-pawed,
+    // never a 500. current_app_user_id() is the request-scoped viewer.
+    let paw_count = 0;
+    let is_pawed = false;
+    try {
+      const pawRows = await sql`
+        SELECT
+          COUNT(*)::int AS paw_count,
+          COUNT(*) FILTER (WHERE user_id = current_app_user_id()) > 0 AS is_pawed
+        FROM provider_post_paws
+        WHERE post_id = ${postId}
+      `;
+      paw_count = pawRows?.[0]?.paw_count ?? 0;
+      is_pawed = pawRows?.[0]?.is_pawed === true;
+    } catch (e) {
+      if (e?.code !== "42P01") throw e; // undefined_table → degrade to the zero state
+    }
+
+    return Response.json({ post: { ...rows[0], paw_count, is_pawed } });
   } catch (error) {
     console.error(
       "[GET /api/providers/[id]/posts/[postId]] Error:",

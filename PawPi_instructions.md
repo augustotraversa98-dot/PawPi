@@ -998,6 +998,17 @@ hardening, and the redesign). Read that for detail.
     sections (Dashboard/Chats/Storefront/Profile/Staff/Sales) always show; the active-section-never-hidden
     deep-link safety is unchanged; the per-module server capability guards are untouched. `ProviderShell.test.jsx`
     updated accordingly. web vitest 1786 green.
+  - **2.94 Paws (likes) on business posts** (web + mobile, **migration 0085**, degrades cleanly, PENDING
+    hand-apply) — a signed-in owner paws a storefront post via a tap on the paw control OR a double-tap on the
+    image (reuses the pet-feed `PawablePhoto` + brand-color pop from 2.64); optimistic toggle, guest → sign-in.
+    New `provider_post_paws` (post_id → provider_posts, user_id → user_profiles, unique(post_id,user_id);
+    ENABLE+FORCE RLS — any-authed read, own-row write; passes the R2g completeness guard). API
+    `POST/DELETE /api/providers/[id]/posts/[postId]/paw` (static segment, no static-vs-[param] shadowing) + the
+    single-post GET now returns `paw_count` + `is_pawed`; the 2.93 `pawsCount` stat on the public profile lights
+    up automatically once the table exists. **Degrades cleanly pre-migration** — every paw query catches
+    undefined_table (42P01) → 0 paws / not-pawed / no-op, never a 500 (mocked unit test proves it). New mobile
+    `useProviderPostPaw` (query + optimistic toggle + rollback). All API tested through the REAL router by URL.
+    web vitest 1786→1794 · integration +9 · mobile jest 1592→1599. ⚠️ Tats applies the 0085 SQL, then merges.
 
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 

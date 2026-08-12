@@ -205,15 +205,15 @@ describe('comment_count on the public storefront read', () => {
 });
 
 describe('social stats on the public storefront read (ticket 2.93)', () => {
-  it('returns { postsCount, pawsCount, barksCount } — Barks tracks visible comments; Paws is 0 pre-2.94', async () => {
+  it('returns { postsCount, pawsCount, barksCount } — Barks tracks visible comments; Paws is 0 with no paws', async () => {
     const id = await seedComment('barked');
 
     authState.session = sessionFor(OTHER.authUserId);
     let res = await apiReq(`/providers/public/${SLUG}`, 'GET');
     expect(res.status).toBe(200);
     let stats = (await res.json()).stats;
-    // One provider_post seeded; one visible comment; no provider_post_paws table yet → Paws 0
-    // (the read degrades cleanly on the missing table rather than 500ing).
+    // One provider_post seeded; one visible comment; no paws seeded → Paws 0 (real paws are
+    // covered in provider-post-paws.integration.test.ts).
     expect(stats).toEqual({ postsCount: 1, pawsCount: 0, barksCount: 1 });
 
     // Deleting the comment drops Barks back to 0; Posts is unchanged.
