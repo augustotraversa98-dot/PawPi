@@ -142,9 +142,10 @@ export default function ProviderScreen() {
   // public browse endpoint (GET /api/adoption/listings?provider_id=), gated to adoption-capable
   // providers so a non-shelter never makes the extra call. Empty → the tab isn't shown (below).
   const hasAdoptionCap = capabilities.includes("adoption");
-  const { data: adoptionData } = useAdoptableBrowse(
+  const adoptionEnabled = hasAdoptionCap && provider?.id != null;
+  const { data: adoptionData, refetch: refetchAdoption } = useAdoptableBrowse(
     { provider_id: provider?.id ?? null },
-    { enabled: hasAdoptionCap && provider?.id != null },
+    { enabled: adoptionEnabled },
   );
   const adoptionListings = adoptionData?.listings ?? [];
 
@@ -484,7 +485,7 @@ export default function ProviderScreen() {
         </View>
       ) : (
         <RefreshableScrollView
-          refetch={refetch}
+          refetch={adoptionEnabled ? [refetch, refetchAdoption] : refetch}
           stickyHeaderIndices={stickyHeaderIndices}
           contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 120 }}
         >

@@ -1180,6 +1180,13 @@ export function useAdoptableBrowse(filters = {}, { enabled = true } = {}) {
       const data = await response.json();
       return { listings: data.listings ?? [], sort: data.sort };
     },
+    // Availability changes fast (a shelter adds a dog / marks one adopted), so re-entering the
+    // Adoption screen — standalone AND the business-profile Adoption tab (2.97), same hook — must
+    // always reflect the current list, never the 5-min global cache. Mirrors usePetSocialProfile /
+    // useTodayDailyUpdate ("always reflect new posts/follows").
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 }
 
