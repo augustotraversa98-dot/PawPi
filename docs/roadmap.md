@@ -809,6 +809,23 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   EN + ES. Degrades cleanly pre-migration (feed read catches 42703 → image; create/PATCH withSavepoint →
   base insert or a clean 409 for video; never a blank post, never a 500). Proven through the real router
   (`business-daily-moments.integration.test.ts`). (2026-08-12.)
+- **Mobile business mode** — a provider/business account is no longer forced through pet onboarding, and can
+  post daily moments from the phone. **Role-aware entry (the critical fix):** the post-login gate now also reads
+  the account's providers (`GET /api/providers` = the businesses the user is active staff of; same read as web
+  `useProviders()`), and `determinePetsRoute` routes on it — a staff-only account (no pet) lands on a new
+  **Business home** instead of "let's meet your dog"; an account that is BOTH staff AND a pet owner keeps the pet
+  app and gets a **Business** entry in the More menu; a non-staff account is unchanged. A failed/absent providers
+  read degrades to "not a business" so it never blocks the pet flow. **Business home** (new `app/business` stack,
+  MVP): business name + logo, a **provider switcher** when staff of several (persisted via `activeProviderStore`),
+  a **"Post a moment"** primary action that REUSES the pet daily-moment composer (`PostComposerModal`, now
+  parametrized: `allowVideo`/`showLuckyBanner`/`copy`) + the shared `useUpload` + `expo-video-thumbnails` path to
+  POST an image OR a short video to `/api/providers/[id]/posts` (`media_type='video'` + `video_url` + poster), the
+  business's **recent moments** with paw/comment counts tapping through to the existing `service/provider-post`
+  detail (paws + comments already work there), a **Notifications** shortcut, and a **"Manage on web"** note (the
+  extranet still owns services/products/hours/applications/adoption). No migration, no new endpoint — the one
+  touched read, `GET /api/providers/[id]/posts`, gains degrade-clean per-post `paw_count`/`comment_count` and is
+  proven through the real router (`provider-posts-list.integration.test.ts`). EN + ES. mobile jest 1640→1650;
+  web vitest 1854→1855 (+integration). Business CREATION/management stays web-only. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

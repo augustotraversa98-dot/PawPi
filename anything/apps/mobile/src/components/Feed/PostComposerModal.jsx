@@ -65,20 +65,48 @@ export const PostComposerModal = memo(function PostComposerModal({
   petName,
   onClose,
   onPost,
+  // ── Reuse controls (default = the pet daily-moment behavior, unchanged) ──
+  // allowVideo: undefined → ask the pet daily "lucky" gate (/api/posts/video-eligibility);
+  //   true → always offer video (e.g. business moments, no daily lottery);
+  //   false → never offer video (photo only).
+  allowVideo,
+  // showLuckyBanner: the celebratory "you're one of today's lucky users" treatment + the
+  //   "Today only" chip. Pet moments show it; business moments don't (video is always available).
+  showLuckyBanner = true,
+  // copy: optional string overrides so the SAME composer serves the business "Post a moment" flow
+  //   with its own (localized) copy. Any omitted key falls back to the pet daily-moment string.
+  copy,
 }) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState("picker"); // "picker" | "compose"
   const [mediaUri, setMediaUri] = useState(null);
   const [mediaType, setMediaType] = useState("image"); // "image" | "video"
   const [caption, setCaption] = useState("");
-  // Whether to OFFER the video option. Only the daily "lucky" user gets it; the
-  // server is the real gate (POST re-checks), this flag only decides the UI.
+  // Whether to OFFER the video option. For the pet flow only the daily "lucky" user gets it (the
+  // server is the real gate, POST re-checks); a caller can force it on/off via allowVideo.
   const [videoEligible, setVideoEligible] = useState(false);
   const captionRef = useRef(null);
 
-  // Reset every time modal opens, then ask the server whether this user may
-  // record a video today. While loading / on error / when not eligible we leave
-  // videoEligible=false, so the composer stays photo-only (today's behavior).
+  // Effective copy — pet daily-moment defaults, overridable per key by the `copy` prop.
+  const c = copy ?? {};
+  const t = {
+    pickerHeader: c.pickerHeader ?? "Add a photo",
+    composeHeader: c.composeHeader ?? "Daily update",
+    heading: c.heading ?? "Today's pet moment",
+    subheading:
+      c.subheading ??
+      `What is ${petName} up to right now?\nShare today's daily update with your pet friends!`,
+    takePhoto: c.takePhoto ?? "Take a photo",
+    recordVideo: c.recordVideo ?? "Record a video",
+    todayOnly: c.todayOnly ?? "Today only",
+    captionLabel: c.captionLabel ?? `Add a caption for ${petName} ✍️`,
+    captionPlaceholder: c.captionPlaceholder ?? `What's ${petName} doing today? 🐶`,
+    submit: c.submit ?? "Post daily update 🐾",
+  };
+
+  // Reset every time modal opens, then decide whether to offer video. When the caller fixes
+  // allowVideo we honor it directly; otherwise (pet flow) we ask the server's daily "lucky" gate.
+  // While loading / on error / when not eligible we leave videoEligible=false → photo-only.
   useEffect(() => {
     if (!visible) return;
     setStep("picker");
@@ -86,6 +114,11 @@ export const PostComposerModal = memo(function PostComposerModal({
     setMediaType("image");
     setCaption("");
     setVideoEligible(false);
+
+    if (allowVideo !== undefined) {
+      setVideoEligible(allowVideo === true);
+      return;
+    }
 
     let cancelled = false;
     (async () => {
@@ -101,7 +134,7 @@ export const PostComposerModal = memo(function PostComposerModal({
     return () => {
       cancelled = true;
     };
-  }, [visible]);
+  }, [visible, allowVideo]);
 
   const takePhoto = useCallback(async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -192,7 +225,7 @@ export const PostComposerModal = memo(function PostComposerModal({
             </PressableScale>
           )}
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            {step === "picker" ? "Add a photo" : "Daily update"}
+            {step === "picker" ? t.pickerHeader : t.composeHeader}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -208,7 +241,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                   { color: COLORS.warmBrown, marginTop: SPACING.md, textAlign: "center" },
                 ]}
               >
-                Today's pet moment
+                {t.heading}
               </Text>
               <Text
                 style={[
@@ -216,14 +249,14 @@ export const PostComposerModal = memo(function PostComposerModal({
                   { color: COLORS.mutedBrown, marginTop: SPACING.sm, textAlign: "center" },
                 ]}
               >
-                What is {petName} up to right now?{"\n"}Share today's daily
-                update with your pet friends!
+                {t.subheading}
               </Text>
             </View>
 
             {/* Celebratory treatment for the daily "lucky" user — only when the
-                server says they're eligible today. Nothing renders otherwise. */}
-            {videoEligible ? <LuckyDayBanner /> : null}
+                server says they're eligible today. Suppressed for callers where
+                video isn't a daily bonus (e.g. business moments). */}
+            {videoEligible && showLuckyBanner ? <LuckyDayBanner /> : null}
 
             <PressableScale
               onPress={takePhoto}
@@ -242,7 +275,7 @@ export const PostComposerModal = memo(function PostComposerModal({
               }}
             >
               <Camera size={22} color="#FFF" />
-              <Text style={[TYPE.headline, { color: "#FFF" }]}>Take a photo</Text>
+              <Text style={[TYPE.headline, { color: "#FFF" }]}>{t.takePhoto}</Text>
             </PressableScale>
 
             {/* The daily "lucky" user also gets to record a short video. Only
@@ -268,22 +301,24 @@ export const PostComposerModal = memo(function PostComposerModal({
               >
                 <VideoIcon size={22} color={COLORS.coral} />
                 <Text style={[TYPE.headline, { color: COLORS.coral }]}>
-                  Record a video
+                  {t.recordVideo}
                 </Text>
-                {/* "Today only" tag marks this as the special, time-limited
-                    option without overpowering the primary "Take a photo". */}
-                <View
-                  style={{
-                    backgroundColor: COLORS.coral,
-                    borderRadius: RADIUS.chip,
-                    paddingHorizontal: SPACING.sm,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <Text style={[TYPE.caption, { color: "#FFF" }]}>
-                    Today only
-                  </Text>
-                </View>
+                {/* "Today only" tag marks the pet flow's special, time-limited option. Hidden for
+                    callers where video isn't a daily bonus (e.g. business moments). */}
+                {showLuckyBanner ? (
+                  <View
+                    style={{
+                      backgroundColor: COLORS.coral,
+                      borderRadius: RADIUS.chip,
+                      paddingHorizontal: SPACING.sm,
+                      paddingVertical: 2,
+                    }}
+                  >
+                    <Text style={[TYPE.caption, { color: "#FFF" }]}>
+                      {t.todayOnly}
+                    </Text>
+                  </View>
+                ) : null}
               </PressableScale>
             ) : null}
           </View>
@@ -349,7 +384,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                 { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm },
               ]}
             >
-              Add a caption for {petName} ✍️
+              {t.captionLabel}
             </Text>
             <TextInput
               ref={captionRef}
@@ -368,7 +403,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                 },
               ]}
               testID="composer-caption"
-              placeholder={`What's ${petName} doing today? 🐶`}
+              placeholder={t.captionPlaceholder}
               placeholderTextColor={COLORS.mutedBrown}
               multiline
               value={caption}
@@ -388,7 +423,7 @@ export const PostComposerModal = memo(function PostComposerModal({
               }}
             >
               <Text style={[TYPE.headline, { color: "#FFF" }]}>
-                Post daily update 🐾
+                {t.submit}
               </Text>
             </PressableScale>
           </ScrollView>

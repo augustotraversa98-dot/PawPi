@@ -554,5 +554,38 @@
       "post": "Share your first post",
       "notifications": "Turn on notifications"
     }
+  },
+  "business": {
+    "home": {
+      "fallbackName": "Your business",
+      "postMoment": "Post a moment",
+      "recentTitle": "Recent moments",
+      "emptyTitle": "No moments yet",
+      "emptyBody": "Share your first moment — it shows up in your followers' feed.",
+      "loadError": "Couldn't load your moments.",
+      "retry": "Try again",
+      "postError": "Couldn't post your moment",
+      "notifications": "Notifications",
+      "switchTitle": "Choose a business",
+      "manageTitle": "Manage on the web",
+      "manageBody": "Services, products, hours, bookings, applications and adoption are managed on the PawPi web dashboard.",
+      "video": "Video",
+      "posting": "Posting…"
+    },
+    "composer": {
+      "pickerHeader": "New moment",
+      "composeHeader": "New moment",
+      "heading": "Share a moment",
+      "subheading": "Post a photo or a short video for your followers.",
+      "takePhoto": "Take a photo",
+      "recordVideo": "Record a video",
+      "captionLabel": "Add a caption ✍️",
+      "captionPlaceholder": "Say something about this moment…",
+      "submit": "Post moment 🐾"
+    },
+    "menu": {
+      "item": "Business",
+      "subtitle": "Post moments & glance"
+    }
   }
 }

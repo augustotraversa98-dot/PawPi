@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, LogOut, Menu, X } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
+import { useMyProviders } from "@/hooks/useProviders";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 
 const C = {
@@ -27,8 +29,13 @@ const C = {
 export function OwnerMenu() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { setAuth } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
+  // Business mode: an account that is ALSO active staff of ≥1 provider keeps the pet app but gets a
+  // clear way to switch into Business home. Empty for a pure pet owner → the item never renders.
+  const { data: myProviders = [] } = useMyProviders();
+  const isBusiness = (myProviders?.length ?? 0) > 0;
 
   const goMenu = (path) => {
     setMenuVisible(false);
@@ -152,6 +159,32 @@ export function OwnerMenu() {
             <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
               {/* My Dogs — switch/add the active pet (kept reachable here). */}
               <PetSwitcher variant="row" />
+
+              {/* Business — only for accounts that are ALSO provider staff. Switches to Business
+                  home (post moments + glance); a pure pet owner never sees this. */}
+              {isBusiness ? (
+                <>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "800",
+                      color: C.mutedBrown,
+                      marginBottom: 10,
+                      marginTop: 18,
+                      marginLeft: 2,
+                      letterSpacing: 0.8,
+                    }}
+                  >
+                    {t("business.menu.item").toUpperCase()}
+                  </Text>
+                  <MenuItem
+                    title={t("business.menu.item")}
+                    emoji="🏪"
+                    color={C.coral}
+                    onPress={() => goMenu("/business")}
+                  />
+                </>
+              ) : null}
 
               <Text
                 style={{

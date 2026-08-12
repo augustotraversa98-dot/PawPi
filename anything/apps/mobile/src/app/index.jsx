@@ -43,11 +43,24 @@ export default function EntryPoint() {
     // timeout-guarded; this startup fetch was not.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
+    // Role-aware entry: also ask which providers this account is active STAFF of.
+    // Best-effort — a business account must never be forced into pet onboarding,
+    // but a failed/slow providers read must never block the pet flow either, so
+    // it degrades to [] (not a business) and is only consulted on the empty-pets
+    // branch inside determinePetsRoute.
+    let providers = [];
     try {
-      const petsResponse = await fetch("/api/pets", { signal: controller.signal });
+      const [petsResponse, providersResult] = await Promise.all([
+        fetch("/api/pets", { signal: controller.signal }),
+        fetch("/api/providers", { signal: controller.signal })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => (Array.isArray(d?.providers) ? d.providers : []))
+          .catch(() => []),
+      ]);
+      providers = providersResult;
       if (petsResponse.ok) {
         const { pets } = await petsResponse.json();
-        outcome = { ok: true, status: petsResponse.status, pets };
+        outcome = { ok: true, status: petsResponse.status, pets, providers };
       } else {
         outcome = { ok: false, status: petsResponse.status };
       }

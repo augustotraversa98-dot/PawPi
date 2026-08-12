@@ -554,5 +554,38 @@
       "post": "Comparte tu primera publicación",
       "notifications": "Activa las notificaciones"
     }
+  },
+  "business": {
+    "home": {
+      "fallbackName": "Tu negocio",
+      "postMoment": "Publicar un momento",
+      "recentTitle": "Momentos recientes",
+      "emptyTitle": "Aún no hay momentos",
+      "emptyBody": "Comparte tu primer momento — aparece en el feed de tus seguidores.",
+      "loadError": "No pudimos cargar tus momentos.",
+      "retry": "Reintentar",
+      "postError": "No pudimos publicar tu momento",
+      "notifications": "Notificaciones",
+      "switchTitle": "Elige un negocio",
+      "manageTitle": "Administrar en la web",
+      "manageBody": "Los servicios, productos, horarios, reservas, postulaciones y adopción se administran en el panel web de PawPi.",
+      "video": "Video",
+      "posting": "Publicando…"
+    },
+    "composer": {
+      "pickerHeader": "Nuevo momento",
+      "composeHeader": "Nuevo momento",
+      "heading": "Comparte un momento",
+      "subheading": "Publica una foto o un video corto para tus seguidores.",
+      "takePhoto": "Tomar una foto",
+      "recordVideo": "Grabar un video",
+      "captionLabel": "Agrega una descripción ✍️",
+      "captionPlaceholder": "Cuéntanos sobre este momento…",
+      "submit": "Publicar momento 🐾"
+    },
+    "menu": {
+      "item": "Negocio",
+      "subtitle": "Publica momentos y observa"
+    }
   }
 }
