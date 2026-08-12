@@ -725,11 +725,17 @@ not a hand-maintained log here:
 
 ### Snapshot (2026-07-29) — CURRENT
 
-> **Latest (2026-08-12):** shelter **adoption management view** — the provider dashboard's dogs list and
-> applications list each now collapse resolved items into a default-collapsed **Past (n)** section, add a
-> fast client-side **type-search** (dogs: name/breed; applications: applicant/email/dog) and **status filter
-> chips** that compose with the search. Web-only, no migration, no API change (UI over the lists already
-> fetched). web vitest 1824→1833. Open PR, awaiting review. Full detail in `docs/roadmap.md`.
+> **Latest (2026-08-12):** mobile **business mode** — a provider/business account is no longer treated as a
+> pet owner. The post-login gate (`determinePetsRoute`) now also reads the account's providers (`GET
+> /api/providers`, active staff): a staff-only account lands on a new **Business home** instead of "let's meet
+> your dog" pet onboarding; an account that is BOTH staff AND a pet owner keeps the pet app and reaches Business
+> home from the More menu. Business home = business name/logo (+ a multi-provider switcher), a **"Post a moment"**
+> action that reuses the pet daily-moment composer + upload path to POST an image OR video to
+> `/api/providers/[id]/posts`, and the business's recent moments (paw/comment counts) tapping through to the
+> existing provider-post detail. Management (services/products/hours/applications/adoption) stays on web. No
+> migration; the touched read (`GET /api/providers/[id]/posts`, now with paw/comment counts) is proven through
+> the real router. EN + ES. mobile jest 1640→1650; web vitest +net-new. Open PR, awaiting review. Full detail
+> in `docs/roadmap.md`.
 
 **The app is feature-complete for v1 and is in the App Store submission phase.** Every build wave and
 both cross-cutting phases (UGC moderation, the 2.77 redesign) are merged. What remains is submission

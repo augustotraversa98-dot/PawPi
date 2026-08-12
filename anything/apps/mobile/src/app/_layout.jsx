@@ -79,6 +79,9 @@ export default function RootLayout() {
           {/* Emergency Card (ticket 2.51) — owner-facing; the public tag/vet pages are web. */}
           <Stack.Screen name="emergency-card" />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Business mode (business daily moments) — a provider/business account posts moments
+              and glances here; management stays on the web extranet. */}
+          <Stack.Screen name="business" options={{ headerShown: false }} />
           {/* Shared service screens — a root-level stack OVER the tabs, so opening a
               service from any tab never buries the More tab root (ticket 2.19). */}
           <Stack.Screen name="service" options={{ headerShown: false }} />

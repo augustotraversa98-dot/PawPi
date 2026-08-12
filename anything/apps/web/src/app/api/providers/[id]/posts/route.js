@@ -21,6 +21,48 @@ import { normalizeProviderPostMedia } from "@/app/api/utils/providerPostMedia";
 // the team's, not admin-only). The public storefront read lives in providers/public/[slug].
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager").
 
+// Attach paw_count + comment_count to a list of provider posts. Degrade-clean: the paw/comment
+// tables are hand-applied migrations, so a missing table (to_regclass IS NULL) yields 0 for that
+// count rather than failing the request. Runs the two probes + two aggregates concurrently.
+async function attachEngagementCounts(providerId, posts) {
+  if (!Array.isArray(posts) || posts.length === 0) return posts ?? [];
+  const ids = posts.map((p) => p.id);
+
+  const [pawsProbe, commentsProbe] = await Promise.all([
+    sql`SELECT to_regclass('public.provider_post_paws') IS NOT NULL AS ok`,
+    sql`SELECT to_regclass('public.provider_post_comments') IS NOT NULL AS ok`,
+  ]);
+  const hasPaws = pawsProbe?.[0]?.ok === true;
+  const hasComments = commentsProbe?.[0]?.ok === true;
+
+  const [pawRows, commentRows] = await Promise.all([
+    hasPaws
+      ? sql`
+          SELECT post_id, count(*)::int AS n
+          FROM provider_post_paws
+          WHERE post_id = ANY(${ids})
+          GROUP BY post_id
+        `
+      : null,
+    hasComments
+      ? sql`
+          SELECT post_id, count(*)::int AS n
+          FROM provider_post_comments
+          WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
+          GROUP BY post_id
+        `
+      : null,
+  ]);
+
+  const pawCounts = Object.fromEntries((pawRows ?? []).map((r) => [r.post_id, r.n]));
+  const commentCounts = Object.fromEntries((commentRows ?? []).map((r) => [r.post_id, r.n]));
+  return posts.map((p) => ({
+    ...p,
+    paw_count: pawCounts[p.id] ?? 0,
+    comment_count: commentCounts[p.id] ?? 0,
+  }));
+}
+
 async function GET(request, { params }) {
   try {
     const session = await auth();
@@ -61,7 +103,13 @@ async function GET(request, { params }) {
       `;
     }
 
-    return Response.json({ posts });
+    // Per-post engagement counts for the mobile Business home glance (paws + comments).
+    // DEGRADE-CLEAN: provider_post_paws (0085) and provider_post_comments (0082) are hand-applied
+    // to Supabase, so probe each with to_regclass and skip the aggregate when the table is absent
+    // → 0, never a 500. Same window as the public storefront read (visible comments only).
+    const postsWithCounts = await attachEngagementCounts(providerId, posts);
+
+    return Response.json({ posts: postsWithCounts });
   } catch (error) {
     if (error.status === 403) {
       return Response.json({ error: error.message }, { status: 403 });

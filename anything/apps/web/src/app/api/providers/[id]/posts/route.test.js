@@ -59,10 +59,19 @@ describe('GET /api/providers/[id]/posts', () => {
     ]);
   });
 
-  it('active staff → returns this provider’s non-deleted posts (newest first)', async () => {
+  it('active staff → posts (newest first) each with paw_count + comment_count', async () => {
     auth.mockResolvedValue(SESSION);
     const POSTS = [{ id: 2, body: 'New' }, { id: 1, body: 'Old' }];
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce(POSTS);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // 0: profile lookup
+      .mockResolvedValueOnce(POSTS) // 1: posts select
+      .mockResolvedValueOnce([{ ok: true }]) // 2: provider_post_paws probe
+      .mockResolvedValueOnce([{ ok: true }]) // 3: provider_post_comments probe
+      .mockResolvedValueOnce([{ post_id: 2, n: 3 }]) // 4: paw counts
+      .mockResolvedValueOnce([
+        { post_id: 2, n: 1 },
+        { post_id: 1, n: 5 },
+      ]); // 5: comment counts
     requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
 
     const res = await GET(
@@ -71,9 +80,35 @@ describe('GET /api/providers/[id]/posts', () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ posts: POSTS });
+    expect(await res.json()).toEqual({
+      posts: [
+        { id: 2, body: 'New', paw_count: 3, comment_count: 1 },
+        { id: 1, body: 'Old', paw_count: 0, comment_count: 5 }, // no paw row → 0
+      ],
+    });
     expect(queryTextOf(1)).toContain('deleted_at IS NULL');
     expect(valuesOf(1)).toContain('100');
+  });
+
+  it('degrades to 0 counts when the paw/comment tables are absent (pre-migration)', async () => {
+    auth.mockResolvedValue(SESSION);
+    const POSTS = [{ id: 2, body: 'New' }];
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce(POSTS) // posts
+      .mockResolvedValueOnce([{ ok: false }]) // paws probe → absent
+      .mockResolvedValueOnce([{ ok: false }]); // comments probe → absent
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await GET(
+      new Request('http://localhost/api/providers/100/posts'),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      posts: [{ id: 2, body: 'New', paw_count: 0, comment_count: 0 }],
+    });
   });
 });
 
