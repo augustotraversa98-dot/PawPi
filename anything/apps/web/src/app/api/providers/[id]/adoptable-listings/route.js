@@ -8,6 +8,10 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import {
+  sanitizeQuestions,
+  isMissingColumn,
+} from "@/app/api/utils/adoptionQuestions";
 
 // /api/providers/[id]/adoptable-listings — an adoption place's adoptable dogs, in the
 // existing DOG-PROFILE format. Phase 2 ticket 2.12 (docs/phase2-tickets/2.12-adoption.md).
@@ -45,17 +49,38 @@ async function GET(request, { params }) {
     await requireProviderCapability(providerId, "adoption");
 
     // RLS scopes which rows are visible (available-of-published for owners; all for staff).
-    const listings = await sql`
-      SELECT
-        id, provider_id, name, breed, age_years, age_months, gender, size,
-        photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
-        energy_level, vaccination_status, adoption_fee_cents, currency, status,
-        placement_type, is_urgent, is_featured, urgent_reason, featured_until,
-        created_at, updated_at
-      FROM adoptable_listings
-      WHERE provider_id = ${providerId}
-      ORDER BY (status = 'available') DESC, is_featured DESC, created_at DESC, id DESC
-    `;
+    // application_questions (0086) is included behind a pre-migration degrade: on 42703 (column
+    // not applied yet) the read retries with a '[]' literal so the editor still loads. Two
+    // explicit statements (one sql call on the happy path), mirroring the 0084 comments degrade.
+    let listings;
+    try {
+      listings = await sql`
+        SELECT
+          id, provider_id, name, breed, age_years, age_months, gender, size,
+          photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
+          energy_level, vaccination_status, adoption_fee_cents, currency, status,
+          placement_type, is_urgent, is_featured, urgent_reason, featured_until,
+          application_questions,
+          created_at, updated_at
+        FROM adoptable_listings
+        WHERE provider_id = ${providerId}
+        ORDER BY (status = 'available') DESC, is_featured DESC, created_at DESC, id DESC
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      listings = await sql`
+        SELECT
+          id, provider_id, name, breed, age_years, age_months, gender, size,
+          photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
+          energy_level, vaccination_status, adoption_fee_cents, currency, status,
+          placement_type, is_urgent, is_featured, urgent_reason, featured_until,
+          '[]'::jsonb AS application_questions,
+          created_at, updated_at
+        FROM adoptable_listings
+        WHERE provider_id = ${providerId}
+        ORDER BY (status = 'available') DESC, is_featured DESC, created_at DESC, id DESC
+      `;
+    }
 
     return Response.json({ listings });
   } catch (e) {
@@ -141,25 +166,54 @@ async function POST(request, { params }) {
         ? adoption_fee_cents
         : 0;
     const photos = Array.isArray(photo_urls) ? photo_urls : [];
+    // Per-listing application questions (0086) — an ordered array of clean strings. Absent → [].
+    const questions = sanitizeQuestions(body.application_questions) ?? [];
 
-    // Create the listing. RLS scopes to admins of THIS place (no admin → zero rows).
-    const created = await sql`
-      INSERT INTO adoptable_listings (
-        provider_id, name, breed, age_years, age_months, gender, size,
-        photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
-        energy_level, vaccination_status, adoption_fee_cents, currency,
-        placement_type, is_urgent, is_featured, urgent_reason, featured_until
-      ) VALUES (
-        ${providerId}, ${name}, ${breed ?? null}, ${age_years ?? null},
-        ${age_months ?? null}, ${gender ?? null}, ${size ?? null}, ${photos},
-        ${video_url ?? null}, ${story ?? null}, ${good_with_kids ?? null},
-        ${good_with_cats ?? null}, ${good_with_dogs ?? null}, ${energy_level ?? null},
-        ${vaccination_status ?? null}, ${fee}, ${currency ?? "ARS"},
-        ${placementType}, ${body.is_urgent === true}, ${body.is_featured === true},
-        ${body.urgent_reason ?? null}, ${body.featured_until ?? null}
-      )
-      RETURNING *
-    `;
+    // Create the listing. RLS scopes to admins of THIS place (no admin → zero rows). The
+    // application_questions column (0086) is written behind a pre-migration degrade: on 42703
+    // (column not applied yet) the insert retries WITHOUT it (two explicit statements, mirroring
+    // the 0084 comments degrade) so listing creation never 500s.
+    let created;
+    try {
+      created = await sql`
+        INSERT INTO adoptable_listings (
+          provider_id, name, breed, age_years, age_months, gender, size,
+          photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
+          energy_level, vaccination_status, adoption_fee_cents, currency,
+          placement_type, is_urgent, is_featured, urgent_reason, featured_until,
+          application_questions
+        ) VALUES (
+          ${providerId}, ${name}, ${breed ?? null}, ${age_years ?? null},
+          ${age_months ?? null}, ${gender ?? null}, ${size ?? null}, ${photos},
+          ${video_url ?? null}, ${story ?? null}, ${good_with_kids ?? null},
+          ${good_with_cats ?? null}, ${good_with_dogs ?? null}, ${energy_level ?? null},
+          ${vaccination_status ?? null}, ${fee}, ${currency ?? "ARS"},
+          ${placementType}, ${body.is_urgent === true}, ${body.is_featured === true},
+          ${body.urgent_reason ?? null}, ${body.featured_until ?? null},
+          ${sql.json(questions)}
+        )
+        RETURNING *
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      created = await sql`
+        INSERT INTO adoptable_listings (
+          provider_id, name, breed, age_years, age_months, gender, size,
+          photo_urls, video_url, story, good_with_kids, good_with_cats, good_with_dogs,
+          energy_level, vaccination_status, adoption_fee_cents, currency,
+          placement_type, is_urgent, is_featured, urgent_reason, featured_until
+        ) VALUES (
+          ${providerId}, ${name}, ${breed ?? null}, ${age_years ?? null},
+          ${age_months ?? null}, ${gender ?? null}, ${size ?? null}, ${photos},
+          ${video_url ?? null}, ${story ?? null}, ${good_with_kids ?? null},
+          ${good_with_cats ?? null}, ${good_with_dogs ?? null}, ${energy_level ?? null},
+          ${vaccination_status ?? null}, ${fee}, ${currency ?? "ARS"},
+          ${placementType}, ${body.is_urgent === true}, ${body.is_featured === true},
+          ${body.urgent_reason ?? null}, ${body.featured_until ?? null}
+        )
+        RETURNING *
+      `;
+    }
     if (created.length === 0) {
       return Response.json(
         { error: "Not authorized to create a listing for this place" },

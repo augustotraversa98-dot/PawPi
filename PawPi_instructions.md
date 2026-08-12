@@ -1043,6 +1043,33 @@ hardening, and the redesign). Read that for detail.
   load and one unrelated route throws under vitest, which is why every route test in the codebase drives the
   handler directly with a mocked `sql`; these tests follow that established convention.)*
 
+- **Adoption applications v2** (web + mobile, **migration 0086**, degrades cleanly, PENDING hand-apply,
+  flagged in `docs/test-backlog.md` ACTION 1 → **open PR, do NOT merge** until Tats applies the SQL). Six
+  changes on the existing 0038 adoption module (no rebuild): (1) **Per-listing questions** — new
+  `adoptable_listings.application_questions jsonb DEFAULT '[]'`; an add/edit/remove/reorder editor in the
+  `ProviderAdoption.jsx` create + edit forms, seeded with a recommended **"Best contact number"** question;
+  persisted via the existing create/PATCH (both accept the field). (2) **Answers** — the shared mobile apply
+  modal (`AdoptionListingViews.jsx`) renders one input per question and submits the responses as a
+  self-describing `[{question, answer}]` into the existing `adoption_applications.answers`; the provider
+  review renders each Q with its A (handles the legacy object shape too). (3) **Applicant info** — the
+  provider applications LIST now joins `auth_users` and returns the applicant's **name + email** (there is no
+  phone column on the profile, so the recommended contact question is the phone channel); the review card
+  shows a `mailto:` link. (4) **Live status** — the review mutation already invalidated both the applications
+  AND the listings query (approve flips a listing to `adopted`), so the refresh is live; kept + verified. (5)
+  **Re-list** — a new `POST …/adoptable-listings/[listingId]/relist` (shelter-admin gated) flips a listing
+  back to `available` and, for a mistaken approve (`adopted` + `approved`), re-opens that application to
+  `under_review` — a plain gated UPDATE on both rows (no new DEFINER helper needed); the transferred pet is
+  left as history. A "Put back up" button surfaces on non-available listings. (6) **Notify applicant** —
+  every status transition inserts an applicant notification (`adoption_under_review` / `_approved` /
+  `_declined`) via the reused 2.26 `safeNotify`/`app_notify`, deep-linking (subject_ref = application id) to
+  the owner's Applications tab; the migration WIDENS the `notifications` type CHECK to allow them; the mobile
+  notifications screen renders the new types (EN+ES i18n). **Degrades cleanly pre-apply**: every
+  `application_questions` read catches undefined_column (42703) → `[]` (apply form works as today); writes
+  drop the column on 42703; the notify is fire-and-forget and swallows the CHECK failure → a status change
+  never 500s. Tested through the **REAL Hono router** in the integration suite
+  (`adoption-applications-v2.integration.test.ts`, 9 tests) + unit degrade tests. web vitest 1817→1823,
+  mobile jest +6, integration +9 (all green).
+
 ### Open (non-code) — full checklist in `docs/test-backlog.md`
 
 - **Go-live env keys** (each feature degrades cleanly until its keys are set): Apple + Google OAuth

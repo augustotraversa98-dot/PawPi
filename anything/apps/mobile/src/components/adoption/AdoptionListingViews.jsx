@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   Image,
   Modal,
   Alert,
@@ -171,11 +172,20 @@ export function ListingDetailModal({ data, onClose, router }) {
   // Clear submitted/confirmation state (ticket 2.95): once the application posts, the CTA turns
   // into a persistent "Application sent" confirmation instead of re-arming for a duplicate apply.
   const [submitted, setSubmitted] = useState(false);
+  // Per-listing application questions (adoption applications v2). The shelter configures an
+  // ordered list of questions on the listing; render one input per question and store the
+  // responses (keyed by index) so they submit into adoption_applications.answers. A listing with
+  // no questions (or a pre-migration listing where the field is absent) → apply works as before.
+  const questions = Array.isArray(listing?.application_questions)
+    ? listing.application_questions.filter((q) => typeof q === "string" && q.trim())
+    : [];
+  const [responses, setResponses] = useState({});
 
   // Reset the per-listing state whenever a different dog opens in the modal.
   useEffect(() => {
     setSubmitted(false);
     setPlacement("adopt");
+    setResponses({});
   }, [listing?.id]);
 
   const doApply = async () => {
@@ -186,9 +196,16 @@ export function ListingDetailModal({ data, onClose, router }) {
           : listing.placement_type === "both"
             ? placement
             : null;
+      // Self-describing answers: [{ question, answer }] captures the question text at submit time
+      // (robust if the shelter later edits the questions). The provider review renders these
+      // directly. No questions → an empty array (unchanged behavior).
+      const answers = questions.map((q, i) => ({
+        question: q,
+        answer: (responses[i] ?? "").trim(),
+      }));
       await apply.mutateAsync({
         listing_id: listing.id,
-        answers: {},
+        answers,
         requested_placement: requestedPlacement,
       });
       setSubmitted(true);
@@ -314,6 +331,41 @@ export function ListingDetailModal({ data, onClose, router }) {
                 <Text testID="placement-foster-only" style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
                   This dog is available to foster.
                 </Text>
+              ) : null}
+
+              {/* Shelter's application questions (adoption applications v2) — one input each. */}
+              {questions.length > 0 && !submitted ? (
+                <View testID="application-questions" style={{ gap: SPACING.sm }}>
+                  <Text style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
+                    A few questions from the shelter
+                  </Text>
+                  {questions.map((q, i) => (
+                    <View key={i} style={{ gap: 4 }}>
+                      <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "600" }]}>
+                        {q}
+                      </Text>
+                      <TextInput
+                        testID={`answer-${i}`}
+                        value={responses[i] ?? ""}
+                        onChangeText={(v) => setResponses((r) => ({ ...r, [i]: v }))}
+                        placeholder="Your answer"
+                        placeholderTextColor={COLORS.mutedBrown}
+                        multiline
+                        style={{
+                          borderWidth: 1,
+                          borderColor: COLORS.peach,
+                          borderRadius: RADIUS.control,
+                          paddingHorizontal: SPACING.md,
+                          paddingVertical: SPACING.sm + 2,
+                          minHeight: 44,
+                          color: COLORS.warmBrown,
+                          backgroundColor: COLORS.card,
+                          ...TYPE.body,
+                        }}
+                      />
+                    </View>
+                  ))}
+                </View>
               ) : null}
 
               {submitted ? (

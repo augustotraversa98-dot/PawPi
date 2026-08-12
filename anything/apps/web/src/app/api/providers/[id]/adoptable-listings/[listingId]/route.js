@@ -7,6 +7,10 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  sanitizeQuestions,
+  isMissingColumn,
+} from "@/app/api/utils/adoptionQuestions";
 
 // /api/providers/[id]/adoptable-listings/[listingId] — update / withdraw one adoptable dog.
 // Phase 2 ticket 2.12. Shelter-ADMIN only (listing management).
@@ -41,31 +45,67 @@ async function GET(request, { params }) {
 
     const { id: providerId, listingId } = params;
 
-    const rows = await sql`
-      SELECT
-        al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
-        al.gender, al.size, al.photo_urls, al.video_url, al.story,
-        al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
-        al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
-        al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.featured_until,
-        al.created_at, al.updated_at,
-        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
-        loc.lat AS provider_lat, loc.lng AS provider_lng,
-        loc.address AS provider_address, loc.name AS provider_location_name
-      FROM adoptable_listings al
-      JOIN providers p ON p.id = al.provider_id
-      LEFT JOIN LATERAL (
-        SELECT lat, lng, address, name
-        FROM provider_locations pl
-        WHERE pl.provider_id = p.id
-        ORDER BY pl.created_at ASC
-        LIMIT 1
-      ) loc ON true
-      WHERE al.id = ${listingId}
-        AND al.provider_id = ${providerId}
-        AND al.status = 'available'
-        AND p.status = 'published'
-    `;
+    // application_questions (0086) rides a pre-migration degrade: on 42703 (column not applied
+    // yet) the read retries with a '[]' literal, so the public deep-link still opens the dog
+    // (apply form shows no questions) pre-apply. Two explicit statements, mirroring the 0084
+    // comments degrade (keeps exactly one sql call on the happy path).
+    let rows;
+    try {
+      rows = await sql`
+        SELECT
+          al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+          al.gender, al.size, al.photo_urls, al.video_url, al.story,
+          al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+          al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+          al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.featured_until,
+          al.application_questions,
+          al.created_at, al.updated_at,
+          p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+          loc.lat AS provider_lat, loc.lng AS provider_lng,
+          loc.address AS provider_address, loc.name AS provider_location_name
+        FROM adoptable_listings al
+        JOIN providers p ON p.id = al.provider_id
+        LEFT JOIN LATERAL (
+          SELECT lat, lng, address, name
+          FROM provider_locations pl
+          WHERE pl.provider_id = p.id
+          ORDER BY pl.created_at ASC
+          LIMIT 1
+        ) loc ON true
+        WHERE al.id = ${listingId}
+          AND al.provider_id = ${providerId}
+          AND al.status = 'available'
+          AND p.status = 'published'
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      rows = await sql`
+        SELECT
+          al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+          al.gender, al.size, al.photo_urls, al.video_url, al.story,
+          al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+          al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+          al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.featured_until,
+          '[]'::jsonb AS application_questions,
+          al.created_at, al.updated_at,
+          p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+          loc.lat AS provider_lat, loc.lng AS provider_lng,
+          loc.address AS provider_address, loc.name AS provider_location_name
+        FROM adoptable_listings al
+        JOIN providers p ON p.id = al.provider_id
+        LEFT JOIN LATERAL (
+          SELECT lat, lng, address, name
+          FROM provider_locations pl
+          WHERE pl.provider_id = p.id
+          ORDER BY pl.created_at ASC
+          LIMIT 1
+        ) loc ON true
+        WHERE al.id = ${listingId}
+          AND al.provider_id = ${providerId}
+          AND al.status = 'available'
+          AND p.status = 'published'
+      `;
+    }
 
     if (rows.length === 0) {
       return Response.json({ error: "Listing not available" }, { status: 404 });
@@ -140,6 +180,11 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Invalid placement_type" }, { status: 400 });
     }
 
+    // Per-listing application questions (0086): a present array REPLACES; absent keeps. null =
+    // not provided (leave unchanged); an array (incl. []) replaces the stored questions. Written
+    // in a SEPARATE guarded statement below so the column can degrade cleanly pre-migration.
+    const questions = sanitizeQuestions(body.application_questions);
+
     // COALESCE keeps unspecified fields. RLS (admin_all) + the provider_id filter scope the
     // row to THIS place's admin — a non-admin updates ZERO rows (handled as 404 below).
     const updated = await sql`
@@ -183,7 +228,24 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    return Response.json({ listing: updated[0] });
+    // Questions written separately + guarded (0086 degrade): only when the client sent the field.
+    // On 42703 (column not applied yet) skip silently — the rest of the edit already succeeded.
+    let listing = updated[0];
+    if (questions != null) {
+      try {
+        const q = await sql`
+          UPDATE adoptable_listings
+          SET application_questions = ${sql.json(questions)}, updated_at = now()
+          WHERE id = ${listingId} AND provider_id = ${providerId}
+          RETURNING application_questions
+        `;
+        if (q.length > 0) listing = { ...listing, application_questions: q[0].application_questions };
+      } catch (e) {
+        if (!isMissingColumn(e)) throw e; // pre-migration: leave questions unset
+      }
+    }
+
+    return Response.json({ listing });
   } catch (e) {
     if (e instanceof ProviderAuthError) {
       return Response.json({ error: e.message }, { status: e.status ?? 403 });

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   FileText,
   CalendarCheck,
+  Dog,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -55,6 +56,15 @@ const BOOKING_TYPES = new Set([
   "booking_confirmed",
   "booking_declined",
   "booking_cancelled",
+]);
+
+// Adoption-application lifecycle types (0086). The shelter moved the owner's application to
+// under_review / approved / declined. They share one deep-link (the owner's Applications list),
+// one icon, and a per-type localized title interpolating the dog's name from the JSON body.
+const ADOPTION_TYPES = new Set([
+  "adoption_under_review",
+  "adoption_approved",
+  "adoption_declined",
 ]);
 
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
@@ -120,6 +130,23 @@ function bookingDisplay(n, t) {
   return { title, message: t("notifications.bookingHint") };
 }
 
+// Build the localized title/message for an adoption-application notification (0086). The server
+// stores a compact JSON body ({ dog }); parse it and interpolate a per-type template in the
+// RECIPIENT's language. TITLE = the lifecycle line; MESSAGE = a "tap to view" hint.
+function adoptionDisplay(n, t) {
+  let payload = null;
+  try {
+    payload = n.body ? JSON.parse(n.body) : null;
+  } catch (e) {
+    payload = null;
+  }
+  const dog = payload?.dog || t("notifications.adoptionDogFallback");
+  return {
+    title: t(`notifications.${n.type}`, { dog }),
+    message: t("notifications.adoptionHint"),
+  };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
@@ -143,6 +170,25 @@ function mapDbNotification(n, t) {
       relatedPostId: null,
     };
   }
+  if (ADOPTION_TYPES.has(n.type)) {
+    const { title, message } = adoptionDisplay(n, t);
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title,
+      message,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: null,
+      // subject_ref = the application id → deep-link to the owner's Applications list.
+      relatedApplicationId: n.subject_ref,
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   return {
     id: `db-${n.id}`,
     _source: "db",
@@ -162,6 +208,9 @@ function mapDbNotification(n, t) {
 const NotificationIcon = ({ type }) => {
   if (BOOKING_TYPES.has(type)) {
     return <CalendarCheck size={18} color={COLORS.sageDark} />;
+  }
+  if (ADOPTION_TYPES.has(type)) {
+    return <Dog size={18} color={COLORS.coral} />;
   }
   switch (type) {
     case "walk":
@@ -300,6 +349,12 @@ export default function NotificationsScreen() {
         router.push({
           pathname: "/service/booking-summary",
           params: { id: String(notif.relatedBookingId) },
+        });
+      } else if (notif.relatedApplicationId) {
+        // Adoption lifecycle → open the owner's Applications list.
+        router.push({
+          pathname: "/service/adoption",
+          params: { tab: "applications" },
         });
       } else if (notif.relatedPetId) {
         router.push({

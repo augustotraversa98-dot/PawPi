@@ -161,6 +161,49 @@ test("after a successful apply the CTA becomes a persistent 'Application sent' c
   await waitFor(() => expect(queryByText("Apply to adopt")).toBeNull());
 });
 
+// ── Adoption applications v2 — the shelter's application questions ──
+test("renders one input per application question and submits them as structured answers", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = {
+    ...REX,
+    placement_type: "adopt",
+    application_questions: ["Best contact number", "Do you have a yard?"],
+  };
+  const { findByTestId, getByTestId, getByText } = render(<AdoptionScreen />);
+  const q0 = await findByTestId("answer-0");
+  fireEvent.changeText(q0, "+54 11 5555 1234");
+  fireEvent.changeText(getByTestId("answer-1"), "Yes, fenced");
+  fireEvent.press(getByText("Apply to adopt"));
+  await waitFor(() =>
+    expect(mockApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        listing_id: 5,
+        answers: [
+          { question: "Best contact number", answer: "+54 11 5555 1234" },
+          { question: "Do you have a yard?", answer: "Yes, fenced" },
+        ],
+      }),
+    ),
+  );
+});
+
+test("a listing with no questions applies as before (empty answers, no question inputs)", async () => {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockSingleListing = { ...REX, placement_type: "adopt" }; // no application_questions
+  const { findByText, queryByTestId } = render(<AdoptionScreen />);
+  fireEvent.press(await findByText("Apply to adopt"));
+  expect(queryByTestId("answer-0")).toBeNull();
+  await waitFor(() =>
+    expect(mockApply).toHaveBeenCalledWith(expect.objectContaining({ answers: [] })),
+  );
+});
+
+test("the tab param opens the Applications tab directly", () => {
+  mockParams = { tab: "applications" };
+  const { getByText } = render(<AdoptionScreen />);
+  expect(getByText("YOUR APPLICATIONS")).toBeTruthy();
+});
+
 // ── Ticket 2.86 — unified browse grid, nearest-first, filters ──
 test("browse renders a grid of dogs and shows 'recently added' without location", async () => {
   mockBrowse = {

@@ -1767,6 +1767,27 @@ export function useDeleteAdoptableListing(providerId) {
   });
 }
 
+// Re-list a listing (POST .../adoptable-listings/[listingId]/relist) — put it back up for
+// adoption (adoption applications v2). Flips the listing to 'available' and, for a mistaken
+// approve, re-opens the approved application to 'under_review'. Refreshes BOTH the listings
+// (status changed) and the applications (an application may have re-opened).
+export function useRelistAdoptableListing(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (listingId) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/adoptable-listings/${listingId}/relist`,
+        { method: "POST" },
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adoptableListingsKey(providerId) });
+      queryClient.invalidateQueries({ queryKey: adoptionApplicationsKey(providerId) });
+    },
+  });
+}
+
 // The place's incoming adoption applications (GET .../adoption-applications).
 export function useAdoptionApplications(providerId) {
   return useQuery({

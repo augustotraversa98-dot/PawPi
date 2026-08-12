@@ -80,7 +80,12 @@
     "booking_requestedFallback": "Booking request sent",
     "booking_confirmedFallback": "Booking confirmed",
     "booking_declinedFallback": "Booking declined",
-    "booking_cancelledFallback": "Booking cancelled"
+    "booking_cancelledFallback": "Booking cancelled",
+    "adoptionHint": "Tap to view your application",
+    "adoptionDogFallback": "a dog",
+    "adoption_under_review": "Your application for {{dog}} is under review",
+    "adoption_approved": "Great news — your application for {{dog}} was approved!",
+    "adoption_declined": "Update on your application for {{dog}}"
   },
   "map": {
     "setOnMap": "Set location on map",

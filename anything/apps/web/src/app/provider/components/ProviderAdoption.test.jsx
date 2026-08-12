@@ -17,6 +17,7 @@ vi.mock("../hooks/useProviders", () => ({
   useCreateAdoptableListing: vi.fn(),
   useUpdateAdoptableListing: vi.fn(),
   useDeleteAdoptableListing: vi.fn(),
+  useRelistAdoptableListing: vi.fn(),
   useAdoptionApplications: vi.fn(),
   useReviewAdoptionApplication: vi.fn(),
 }));
@@ -26,6 +27,7 @@ import {
   useCreateAdoptableListing,
   useUpdateAdoptableListing,
   useDeleteAdoptableListing,
+  useRelistAdoptableListing,
   useAdoptionApplications,
   useReviewAdoptionApplication,
 } from "../hooks/useProviders";
@@ -51,6 +53,7 @@ beforeEach(() => {
   useCreateAdoptableListing.mockReturnValue(mutationStub());
   useUpdateAdoptableListing.mockReturnValue(mutationStub());
   useDeleteAdoptableListing.mockReturnValue(mutationStub());
+  useRelistAdoptableListing.mockReturnValue(mutationStub());
   useReviewAdoptionApplication.mockReturnValue(mutationStub());
   useAdoptableListings.mockReturnValue(queryStub([]));
   useAdoptionApplications.mockReturnValue(queryStub([]));
@@ -146,6 +149,8 @@ describe("ProviderAdoption", () => {
         status: "available",
         photo_urls: ["https://cdn/a.jpg"],
         video_url: null,
+        // No questions on this fixture → the editor saves an empty list (0086).
+        application_questions: [],
       },
       expect.anything(),
     );

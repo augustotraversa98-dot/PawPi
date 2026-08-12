@@ -80,7 +80,12 @@
     "booking_requestedFallback": "Solicitud de reserva enviada",
     "booking_confirmedFallback": "Reserva confirmada",
     "booking_declinedFallback": "Reserva rechazada",
-    "booking_cancelledFallback": "Reserva cancelada"
+    "booking_cancelledFallback": "Reserva cancelada",
+    "adoptionHint": "Toca para ver tu solicitud",
+    "adoptionDogFallback": "un perro",
+    "adoption_under_review": "Tu solicitud para {{dog}} está en revisión",
+    "adoption_approved": "¡Buenas noticias! Tu solicitud para {{dog}} fue aprobada",
+    "adoption_declined": "Novedad sobre tu solicitud para {{dog}}"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",
