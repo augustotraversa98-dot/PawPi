@@ -34,16 +34,24 @@ async function GET(request, { params }) {
     await requireProviderCapability(providerId, "adoption");
     await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
-    // RLS scopes to this place's staff. Join the listing (the dog) + applicant display name.
+    // RLS scopes to this place's staff. Join the listing (the dog) + the applicant's PUBLIC
+    // contact fields (name + email) so the shelter can reach out to schedule a visit. Email
+    // lives on auth_users (RLS-disabled identity table, 0026), joined via the profile's
+    // auth_user_id — the same path the payments receipt join uses. There is NO phone column on
+    // the profile, so the recommended "Best contact number" question (application_questions,
+    // 0086) is the phone channel — its answer rides in `answers`. Only these public-contact
+    // columns are widened; no RLS change (the row-level scope is unchanged).
     const applications = await sql`
       SELECT
         a.id, a.listing_id, a.provider_id, a.applicant_owner_user_id, a.answers,
         a.status, a.transferred_pet_id, a.created_at, a.updated_at,
         l.name AS listing_name, l.breed AS listing_breed, l.status AS listing_status,
-        COALESCE(up.full_name, up.username) AS applicant_name
+        COALESCE(up.full_name, up.username) AS applicant_name,
+        au.email AS applicant_email
       FROM adoption_applications a
       LEFT JOIN adoptable_listings l ON l.id = a.listing_id
       LEFT JOIN user_profiles up ON up.id = a.applicant_owner_user_id
+      LEFT JOIN auth_users au ON au.id = up.auth_user_id
       WHERE a.provider_id = ${providerId}
       ORDER BY a.created_at DESC, a.id DESC
     `;

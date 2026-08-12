@@ -20,6 +20,22 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-12):** **Adoption applications v2** (web + mobile, **migration 0086**, degrades cleanly,
+> PENDING hand-apply — **open PR, do NOT merge** until the SQL is applied). Six changes on the existing 0038
+> module: (1) per-listing **application questions** (new `adoptable_listings.application_questions jsonb` +
+> an add/edit/remove/reorder editor in `ProviderAdoption.jsx`, seeded with a recommended "Best contact
+> number"); (2) the shared mobile apply modal renders one input per question and stores the responses as
+> `[{question, answer}]` in the existing `adoption_applications.answers`, shown back on the provider review;
+> (3) the provider applications list joins `auth_users` to return the applicant's **name + email**; (4) the
+> review mutation invalidates both the applications AND listings query so the status updates live (kept +
+> verified); (5) a new shelter-admin **re-list** endpoint puts a listing back to `available` and re-opens a
+> mistakenly-approved application to `under_review` (a plain gated UPDATE; the transferred pet stays as
+> history); (6) every status transition **notifies the applicant** (`adoption_under_review`/`_approved`/
+> `_declined` via the reused 2.26 `app_notify`; the migration widens the notifications type CHECK; the mobile
+> notifications screen renders them, EN+ES). Degrades cleanly pre-apply (42703 → no questions; the notify
+> swallows the CHECK failure → never a 500). Proven through the **real Hono router** in the integration suite.
+> web vitest 1817→1823, mobile jest +6, integration +9.
+
 > **Update (2026-08-12):** **Adoption editor now sets the dog's age** (web, no migration, PR-only).
 > The provider adoption editor (`ProviderAdoption.jsx`) had no age input, so every listing saved
 > `age_years`/`age_months` as NULL and pet owners always saw **"Age unknown"** even though the schema

@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isMissingColumn } from "@/app/api/utils/adoptionQuestions";
 
 // GET /api/adoption/listings — the OWNER-facing adoption browse (ticket 2.86). A single flat,
 // filterable, NEAREST-FIRST read across every PUBLISHED provider's AVAILABLE adoptable dogs, joined
@@ -87,52 +88,99 @@ async function GET(request) {
 
     // One joined read with COALESCE-style optional filters (all in a single tagged template — no
     // sql(string,array) gotcha). The primary location is the provider's earliest location row.
-    const rows = await sql`
-      SELECT
-        al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
-        al.gender, al.size, al.photo_urls, al.video_url, al.story,
-        al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
-        al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
-        al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
-        p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
-        loc.lat AS provider_lat, loc.lng AS provider_lng,
-        loc.address AS provider_address, loc.name AS provider_location_name
-      FROM adoptable_listings al
-      JOIN providers p ON p.id = al.provider_id AND p.status = 'published'
-      LEFT JOIN LATERAL (
-        SELECT lat, lng, address, name
-        FROM provider_locations pl
-        WHERE pl.provider_id = p.id
-        ORDER BY pl.created_at ASC
-        LIMIT 1
-      ) loc ON true
-      WHERE al.status = 'available'
-        AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
-        AND (${gender}::text IS NULL OR al.gender = ${gender})
-        AND (${size}::text IS NULL OR al.size = ${size})
-        AND (${energy}::text IS NULL OR al.energy_level = ${energy})
-        AND (${vaccination}::text IS NULL OR al.vaccination_status = ${vaccination})
-        AND (${ageMin}::int IS NULL OR al.age_years >= ${ageMin})
-        AND (${ageMax}::int IS NULL OR al.age_years <= ${ageMax})
-        AND (${goodKids}::bool IS NULL OR al.good_with_kids = ${goodKids})
-        AND (${goodCats}::bool IS NULL OR al.good_with_cats = ${goodCats})
-        AND (${goodDogs}::bool IS NULL OR al.good_with_dogs = ${goodDogs})
-        AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
-        AND (
-          -- Default (ticket 2.95): NO distance exclusion — this whole clause is TRUE, so every
-          -- located-but-far shelter is returned and merely RANKED lower by the sort below. The
-          -- bounding box only kicks in when the caller opts in with enforce_radius=true.
-          ${boxFilter ? false : true}
-          -- A shelter that hasn't set a map pin has no coords: it always surfaces (distance
-          -- unknown → sorted last below), even under an opted-in radius. (ticket 2.91).
-          OR loc.lat IS NULL OR loc.lng IS NULL
-          OR (
-            loc.lat BETWEEN ${latMin} AND ${latMax}
-            AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+    // application_questions (0086) is projected behind a pre-migration degrade: on 42703 (column
+    // not applied yet) the read retries with a '[]' literal so the whole browse still works (the
+    // apply form simply shows no questions), never a 500. Two explicit statements (one sql call on
+    // the happy path), mirroring the 0084 comments degrade.
+    let rows;
+    try {
+      rows = await sql`
+        SELECT
+          al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+          al.gender, al.size, al.photo_urls, al.video_url, al.story,
+          al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+          al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+          al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
+          al.application_questions,
+          p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+          loc.lat AS provider_lat, loc.lng AS provider_lng,
+          loc.address AS provider_address, loc.name AS provider_location_name
+        FROM adoptable_listings al
+        JOIN providers p ON p.id = al.provider_id AND p.status = 'published'
+        LEFT JOIN LATERAL (
+          SELECT lat, lng, address, name
+          FROM provider_locations pl
+          WHERE pl.provider_id = p.id
+          ORDER BY pl.created_at ASC
+          LIMIT 1
+        ) loc ON true
+        WHERE al.status = 'available'
+          AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
+          AND (${gender}::text IS NULL OR al.gender = ${gender})
+          AND (${size}::text IS NULL OR al.size = ${size})
+          AND (${energy}::text IS NULL OR al.energy_level = ${energy})
+          AND (${vaccination}::text IS NULL OR al.vaccination_status = ${vaccination})
+          AND (${ageMin}::int IS NULL OR al.age_years >= ${ageMin})
+          AND (${ageMax}::int IS NULL OR al.age_years <= ${ageMax})
+          AND (${goodKids}::bool IS NULL OR al.good_with_kids = ${goodKids})
+          AND (${goodCats}::bool IS NULL OR al.good_with_cats = ${goodCats})
+          AND (${goodDogs}::bool IS NULL OR al.good_with_dogs = ${goodDogs})
+          AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
+          AND (
+            ${boxFilter ? false : true}
+            OR loc.lat IS NULL OR loc.lng IS NULL
+            OR (
+              loc.lat BETWEEN ${latMin} AND ${latMax}
+              AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+            )
           )
-        )
-      ORDER BY al.is_featured DESC, al.created_at DESC
-    `;
+        ORDER BY al.is_featured DESC, al.created_at DESC
+      `;
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      rows = await sql`
+        SELECT
+          al.id, al.provider_id, al.name, al.breed, al.age_years, al.age_months,
+          al.gender, al.size, al.photo_urls, al.video_url, al.story,
+          al.good_with_kids, al.good_with_cats, al.good_with_dogs, al.energy_level,
+          al.vaccination_status, al.adoption_fee_cents, al.currency, al.status,
+          al.placement_type, al.is_urgent, al.is_featured, al.urgent_reason, al.created_at,
+          '[]'::jsonb AS application_questions,
+          p.name AS provider_name, p.slug AS provider_slug, p.logo_url AS provider_logo_url,
+          loc.lat AS provider_lat, loc.lng AS provider_lng,
+          loc.address AS provider_address, loc.name AS provider_location_name
+        FROM adoptable_listings al
+        JOIN providers p ON p.id = al.provider_id AND p.status = 'published'
+        LEFT JOIN LATERAL (
+          SELECT lat, lng, address, name
+          FROM provider_locations pl
+          WHERE pl.provider_id = p.id
+          ORDER BY pl.created_at ASC
+          LIMIT 1
+        ) loc ON true
+        WHERE al.status = 'available'
+          AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
+          AND (${gender}::text IS NULL OR al.gender = ${gender})
+          AND (${size}::text IS NULL OR al.size = ${size})
+          AND (${energy}::text IS NULL OR al.energy_level = ${energy})
+          AND (${vaccination}::text IS NULL OR al.vaccination_status = ${vaccination})
+          AND (${ageMin}::int IS NULL OR al.age_years >= ${ageMin})
+          AND (${ageMax}::int IS NULL OR al.age_years <= ${ageMax})
+          AND (${goodKids}::bool IS NULL OR al.good_with_kids = ${goodKids})
+          AND (${goodCats}::bool IS NULL OR al.good_with_cats = ${goodCats})
+          AND (${goodDogs}::bool IS NULL OR al.good_with_dogs = ${goodDogs})
+          AND (${city}::text IS NULL OR loc.address ILIKE ${"%" + (city ?? "") + "%"})
+          AND (
+            ${boxFilter ? false : true}
+            OR loc.lat IS NULL OR loc.lng IS NULL
+            OR (
+              loc.lat BETWEEN ${latMin} AND ${latMax}
+              AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+            )
+          )
+        ORDER BY al.is_featured DESC, al.created_at DESC
+      `;
+    }
 
     let listings = rows;
     let sort = "featured_recent";

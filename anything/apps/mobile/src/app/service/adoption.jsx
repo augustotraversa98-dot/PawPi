@@ -62,7 +62,13 @@ export default function AdoptionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [tab, setTab] = useState("browse");
+  // Deep-link into a specific tab (e.g. an adoption notification → "applications"). Defaults to
+  // "browse" for any unknown/absent value.
+  const [tab, setTab] = useState(
+    ["browse", "favorites", "applications"].includes(params.tab)
+      ? params.tab
+      : "browse",
+  );
   const [openListing, setOpenListing] = useState(null); // { listing, place }
 
   // Deep-link (ticket 2.30): an "Adopt me" feed/discovery card passes { listingId,

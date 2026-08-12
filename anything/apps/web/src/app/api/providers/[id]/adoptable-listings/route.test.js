@@ -22,6 +22,8 @@ const PROFILE = [{ id: 7 }];
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
+  // application_questions (0086) binds via sql.json(); the create INSERT calls it.
+  sql.json = (v) => v;
   requireProviderCapability.mockResolvedValue(undefined);
   requireProviderRole.mockResolvedValue(undefined);
 });
@@ -95,4 +97,50 @@ it("GET orders featured listings first + returns the new columns", async () => {
   const select = sql.mock.calls[1][0].join(" ");
   expect(select).toContain("is_featured DESC");
   expect(select).toContain("placement_type");
+  expect(select).toContain("application_questions"); // 0086: questions in the projection
+});
+
+// ── application questions (adoption applications v2, migration 0086) ──────────────
+it("POST persists application_questions (sanitized) on create", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE).mockResolvedValueOnce([{ id: 1, application_questions: ["Best contact number"] }]);
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Rex", application_questions: ["  Best contact number  ", "", 7] }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(201);
+  const insert = sql.mock.calls[1][0].join(" ");
+  expect(insert).toContain("application_questions");
+  // Sanitized to non-empty trimmed strings.
+  expect(sql.mock.calls[1].slice(1)).toContainEqual(["Best contact number"]);
+});
+
+it("PRE-MIGRATION: POST retries WITHOUT application_questions on a 42703 (still 201)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql
+    .mockResolvedValueOnce(PROFILE) // resolveUserId
+    .mockRejectedValueOnce(Object.assign(new Error('column "application_questions" does not exist'), { code: "42703" }))
+    .mockResolvedValueOnce([{ id: 1 }]); // fallback insert
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Rex", application_questions: ["Q"] }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(201);
+  // The fallback insert (call 2) omits the column.
+  expect(sql.mock.calls[2][0].join(" ")).not.toContain("application_questions");
+});
+
+it("PRE-MIGRATION: GET retries with a [] fallback on a 42703 (still 200)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql
+    .mockResolvedValueOnce(PROFILE) // resolveUserId
+    .mockRejectedValueOnce(Object.assign(new Error('column "application_questions" does not exist'), { code: "42703" }))
+    .mockResolvedValueOnce([{ id: 1, application_questions: [] }]); // fallback select
+  const res = await GET(new Request("http://localhost/api/providers/10/adoptable-listings"), PARAMS);
+  expect(res.status).toBe(200);
+  expect(sql.mock.calls[2][0].join(" ")).toContain("'[]'::jsonb");
 });

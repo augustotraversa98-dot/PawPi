@@ -297,6 +297,41 @@ test("the Bookings filter shows only booking notifications", () => {
   expect(queryByText("Walk time")).toBeNull();
 });
 
+// ── Adoption-application notifications (0086) ────────────────────────────────
+const dbAdoption = {
+  id: 77,
+  type: "adoption_approved",
+  subject_ref: "500", // = application id
+  body: JSON.stringify({ dog: "Rex" }),
+  read_at: null,
+  created_at: "2026-08-12T12:00:00.000Z",
+  actor_username: null,
+  actor_avatar: null,
+};
+
+test("an adoption notification renders the localized title with the dog name", () => {
+  mockDbNotifications = [dbAdoption];
+  const { getByText } = render(<NotificationsScreen />);
+  expect(getByText(/your application for Rex was approved/)).toBeTruthy();
+});
+
+test("an adoption notification falls back to a generic dog name when the payload is absent", () => {
+  mockDbNotifications = [{ ...dbAdoption, type: "adoption_under_review", body: null }];
+  const { getByText } = render(<NotificationsScreen />);
+  expect(getByText(/application for a dog is under review/)).toBeTruthy();
+});
+
+test("tapping an adoption notification opens the Applications tab and marks it read", () => {
+  mockDbNotifications = [dbAdoption];
+  const { getByText } = render(<NotificationsScreen />);
+  fireEvent.press(getByText(/your application for Rex was approved/));
+  expect(mockMarkRead).toHaveBeenCalledWith({ ids: [77] });
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/adoption",
+    params: { tab: "applications" },
+  });
+});
+
 test("empty state when there are no notifications", () => {
   mockStoreState = {
     notifications: [],

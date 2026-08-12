@@ -8,6 +8,17 @@ import {
   ALL_PROVIDER_ROLES,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { safeNotify } from "@/app/api/utils/notify";
+
+// The applicant-facing notification type for each shelter-driven transition (0086 widened the
+// notifications type CHECK to allow these). subject_ref = the application id → tap-through to the
+// owner's Applications list. Pre-migration the type isn't allowed yet; safeNotify swallows the
+// CHECK failure (fire-and-forget), so a status change never 500s.
+const ADOPTION_NOTIFY_TYPE = {
+  under_review: "adoption_under_review",
+  approved: "adoption_approved",
+  declined: "adoption_declined",
+};
 
 // PATCH /api/providers/[id]/adoption-applications/[applicationId] — the SHELTER reviews one
 // application. Phase 2 ticket 2.12.
@@ -47,14 +58,30 @@ async function PATCH(request, { params }) {
     }
 
     // Confirm the application belongs to THIS place (RLS already scopes it to staff; the
-    // provider_id filter pins it to the dashboard's place — a clean 404 otherwise).
+    // provider_id filter pins it to the dashboard's place — a clean 404 otherwise). Also pull
+    // the applicant id + dog name so we can notify the applicant of the decision (below).
     const appRows = await sql`
-      SELECT id, status FROM adoption_applications
-      WHERE id = ${applicationId} AND provider_id = ${providerId}
+      SELECT a.id, a.status, a.applicant_owner_user_id, l.name AS listing_name
+      FROM adoption_applications a
+      LEFT JOIN adoptable_listings l ON l.id = a.listing_id
+      WHERE a.id = ${applicationId} AND a.provider_id = ${providerId}
     `;
     if (appRows.length === 0) {
       return Response.json({ error: "Application not found" }, { status: 404 });
     }
+    const applicantUserId = appRows[0].applicant_owner_user_id;
+    const dogName = appRows[0].listing_name ?? null;
+
+    // Notify the applicant of a shelter-driven transition (fire-and-forget; never blocks or
+    // fails the review). subject_ref = the application id → the owner taps to their Applications.
+    const notifyApplicant = () =>
+      safeNotify({
+        recipient: applicantUserId,
+        actor: userId,
+        type: ADOPTION_NOTIFY_TYPE[status],
+        subjectRef: String(applicationId),
+        body: JSON.stringify({ dog: dogName }),
+      });
 
     // APPROVAL → the transfer. The DEFINER helper creates the adopter's pet, links it, marks
     // the application approved + the listing adopted, atomically. Returns the new pet id, or
@@ -75,6 +102,7 @@ async function PATCH(request, { params }) {
                transferred_pet_id, created_at, updated_at
         FROM adoption_applications WHERE id = ${applicationId}
       `;
+      await notifyApplicant();
       return Response.json({ application: refreshed[0], transferred_pet_id: petId });
     }
 
@@ -91,6 +119,7 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Application not found" }, { status: 404 });
     }
 
+    await notifyApplicant();
     return Response.json({ application: updated[0] });
   } catch (e) {
     if (e instanceof ProviderAuthError) {

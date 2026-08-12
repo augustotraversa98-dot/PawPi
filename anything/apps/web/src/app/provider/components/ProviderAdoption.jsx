@@ -1,11 +1,24 @@
 import { useState } from "react";
-import { PawPrint, Loader2, Plus, Dog, Check, X, Image as ImageIcon } from "lucide-react";
+import {
+  PawPrint,
+  Loader2,
+  Plus,
+  Dog,
+  Check,
+  X,
+  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useAdoptableListings,
   useCreateAdoptableListing,
   useUpdateAdoptableListing,
   useDeleteAdoptableListing,
+  useRelistAdoptableListing,
   useAdoptionApplications,
   useReviewAdoptionApplication,
 } from "../hooks/useProviders";
@@ -46,6 +59,133 @@ function parseAge(yearsStr, monthsStr) {
     return { ok: false, error: "Months must be a whole number from 0 to 11." };
   }
   return { ok: true, age_years: y.value, age_months: m.value };
+}
+
+// A recommended starter question so every new listing captures a phone the shelter can call
+// (there is no phone field on the applicant's profile). The shelter can edit or remove it.
+const DEFAULT_QUESTIONS = ["Best contact number"];
+
+// Application questions editor (adoption applications v2) — an ordered list the applicant answers
+// on apply. Add / edit / remove / reorder; the parent owns the array. Used by both the create and
+// the edit form so a listing's questions are managed the same way in both.
+function QuestionsEditor({ questions, onChange }) {
+  const [draft, setDraft] = useState("");
+
+  const add = () => {
+    const t = draft.trim();
+    if (!t) return;
+    onChange([...questions, t]);
+    setDraft("");
+  };
+  const remove = (i) => onChange(questions.filter((_, idx) => idx !== i));
+  const editAt = (i, val) => onChange(questions.map((q, idx) => (idx === i ? val : q)));
+  const move = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= questions.length) return;
+    const next = questions.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-[#3B241B]">Application questions</p>
+      <p className="mb-2 text-xs text-[#7A6254]">
+        Ask adopters a few questions (home, other pets, a phone to reach them). They answer these
+        when they apply.
+      </p>
+      <div className="space-y-2">
+        {questions.map((q, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              value={q}
+              onChange={(e) => editAt(i, e.target.value)}
+              aria-label={`Question ${i + 1}`}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: COLORS.peach }}
+            />
+            <button
+              type="button"
+              onClick={() => move(i, -1)}
+              disabled={i === 0}
+              aria-label={`Move question ${i + 1} up`}
+              className="rounded-lg border p-2 disabled:opacity-40"
+              style={{ borderColor: COLORS.peach, color: "#3B241B" }}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => move(i, 1)}
+              disabled={i === questions.length - 1}
+              aria-label={`Move question ${i + 1} down`}
+              className="rounded-lg border p-2 disabled:opacity-40"
+              style={{ borderColor: COLORS.peach, color: "#3B241B" }}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              aria-label={`Remove question ${i + 1}`}
+              className="rounded-lg border p-2"
+              style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          placeholder="Add a question"
+          aria-label="Add a question"
+          className="flex-1 rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: COLORS.peach }}
+        />
+        <button
+          type="button"
+          onClick={add}
+          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+          style={{ backgroundColor: COLORS.coral }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Render an application's answers for the shelter's review. v2 stores an ordered array of
+// { question, answer } (self-describing). Legacy rows stored a flat object → render its entries.
+function AnswerLines({ answers }) {
+  let rows = [];
+  if (Array.isArray(answers)) {
+    rows = answers
+      .filter((a) => a && (a.question || a.answer))
+      .map((a) => [a.question || "Question", a.answer]);
+  } else if (answers && typeof answers === "object") {
+    rows = Object.entries(answers);
+  }
+  const filled = rows.filter(([, v]) => v != null && String(v).trim() !== "");
+  if (filled.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-1">
+      {filled.map(([q, v], i) => (
+        <p key={i} className="text-sm text-[#7A6254]">
+          <span className="font-semibold text-[#3B241B]">{q}:</span> {String(v)}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export default function ProviderAdoption({ providerId }) {
@@ -92,6 +232,9 @@ function CreateListingForm({ providerId }) {
   // Media (ticket 2.85): photos → photo_urls[] (first = cover, reorder/remove); video → video_url.
   const [photos, setPhotos] = useState([]);
   const [videoUrl, setVideoUrl] = useState(null);
+  // Per-listing application questions (adoption applications v2). Seeded with a recommended
+  // "Best contact number" question; the shelter can edit/remove/reorder or add more.
+  const [questions, setQuestions] = useState(DEFAULT_QUESTIONS);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -115,6 +258,7 @@ function CreateListingForm({ providerId }) {
         story: story || null,
         photo_urls: photos,
         video_url: videoUrl || null,
+        application_questions: questions,
       });
       toast.success("Dog listed");
       setName("");
@@ -125,6 +269,7 @@ function CreateListingForm({ providerId }) {
       setStory("");
       setPhotos([]);
       setVideoUrl(null);
+      setQuestions(DEFAULT_QUESTIONS);
     } catch (err) {
       toast.error(err.message || "Couldn't list the dog");
     }
@@ -195,6 +340,10 @@ function CreateListingForm({ providerId }) {
         <VideoUploader value={videoUrl} onChange={setVideoUrl} />
       </div>
 
+      <div className="mt-4">
+        <QuestionsEditor questions={questions} onChange={setQuestions} />
+      </div>
+
       <button
         type="submit"
         disabled={create.isPending}
@@ -212,7 +361,20 @@ function ListingList({ providerId }) {
   const { data: listings, isLoading, isError, error } = useAdoptableListings(providerId);
   const update = useUpdateAdoptableListing(providerId);
   const del = useDeleteAdoptableListing(providerId);
+  const relist = useRelistAdoptableListing(providerId);
   const [editingMedia, setEditingMedia] = useState(null); // the listing whose media is open
+
+  const putBackUp = (listing) =>
+    relist.mutate(listing.id, {
+      onSuccess: (data) => {
+        toast.success(
+          data?.reopened_application_ids?.length
+            ? "Back up for adoption — the approved application was re-opened"
+            : "Back up for adoption",
+        );
+      },
+      onError: (err) => toast.error(err?.message || "Couldn't re-list the dog"),
+    });
 
   if (isLoading) {
     return (
@@ -269,24 +431,36 @@ function ListingList({ providerId }) {
                 .join(" · ")}
             </p>
           </div>
-          {l.status !== "adopted" ? (
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
+            {l.status !== "adopted" ? (
+              <>
+                <button
+                  onClick={() => setEditingMedia(l)}
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  style={{ color: "#3B241B" }}
+                >
+                  <ImageIcon className="h-3.5 w-3.5" /> Edit
+                </button>
+                <button
+                  onClick={() => del.mutate(l.id)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  style={{ color: COLORS.terracotta }}
+                >
+                  Remove
+                </button>
+              </>
+            ) : null}
+            {l.status !== "available" ? (
               <button
-                onClick={() => setEditingMedia(l)}
-                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                style={{ color: "#3B241B" }}
+                onClick={() => putBackUp(l)}
+                disabled={relist.isPending}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                style={{ color: "#3FA34D" }}
               >
-                <ImageIcon className="h-3.5 w-3.5" /> Edit
+                <RotateCcw className="h-3.5 w-3.5" /> Put back up
               </button>
-              <button
-                onClick={() => del.mutate(l.id)}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                style={{ color: COLORS.terracotta }}
-              >
-                Remove
-              </button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       ))}
 
@@ -338,6 +512,11 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
     Array.isArray(listing.photo_urls) ? listing.photo_urls : [],
   );
   const [videoUrl, setVideoUrl] = useState(listing.video_url || null);
+  const [questions, setQuestions] = useState(
+    Array.isArray(listing.application_questions)
+      ? listing.application_questions.filter((q) => typeof q === "string")
+      : [],
+  );
 
   const save = () => {
     if (!name.trim()) {
@@ -362,6 +541,7 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
       status,
       photo_urls: photos,
       video_url: videoUrl || null,
+      application_questions: questions,
     });
   };
 
@@ -472,6 +652,10 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
           <VideoUploader value={videoUrl} onChange={setVideoUrl} />
         </div>
 
+        <div className="mt-4">
+          <QuestionsEditor questions={questions} onChange={setQuestions} />
+        </div>
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
@@ -545,13 +729,14 @@ function ApplicationList({ providerId }) {
               </span>
               <StatusTag status={a.status} />
             </div>
-            {a.answers && Object.keys(a.answers).length > 0 ? (
-              <p className="mt-1 text-sm text-[#7A6254]">
-                {Object.entries(a.answers)
-                  .map(([k, v]) => `${k}: ${String(v)}`)
-                  .join(" · ")}
+            {a.applicant_email ? (
+              <p className="mt-0.5 text-xs text-[#7A6254]">
+                <a href={`mailto:${a.applicant_email}`} className="underline">
+                  {a.applicant_email}
+                </a>
               </p>
             ) : null}
+            <AnswerLines answers={a.answers} />
             {!decided ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
