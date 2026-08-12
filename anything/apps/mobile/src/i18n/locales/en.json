@@ -49,8 +49,8 @@
     "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document."
   },
   "services": {
-    "title": "Services",
-    "empty": "No services available yet"
+    "segDiscover": "Discover",
+    "segActivity": "My Activity"
   },
   "search": {
     "title": "Search & Discover",
@@ -392,10 +392,6 @@
     "pastTitle": "Past bookings",
     "emptyPast": "No past bookings"
   },
-  "services": {
-    "segDiscover": "Discover",
-    "segActivity": "My Activity"
-  },
   "bookingSummary": {
     "title": "Booking summary",
     "service": "Service",
@@ -524,5 +520,21 @@
     "completed": "Completed",
     "declined": "Declined",
     "cancelled": "Cancelled"
+  },
+  "gettingStarted": {
+    "title": "Getting started",
+    "progress": "{{completed}} of {{total}} done",
+    "yourPet": "your pet",
+    "dailyReminderBody": "Time to check on {{petName}} 🐾",
+    "celebrateTitle": "You're all set! 🎉",
+    "celebrateBody": "{{petName}}'s profile is ready to go.",
+    "items": {
+      "basics": "Add your dog's basics",
+      "history": "Complete your dog's history",
+      "reminder": "Set your first reminder",
+      "meal": "Log your first meal",
+      "post": "Share your first post",
+      "notifications": "Turn on notifications"
+    }
   }
 }
