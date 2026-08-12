@@ -995,6 +995,17 @@ hardening, and the redesign). Read that for detail.
       integration +1 (`my_application_status`, no cross-user leak); applications-v2 integration +2 (dup 409 incl.
       after decline; a different owner's first apply still 201s). web vitest baseline (listings/applications unit
       mocks updated for the added query) · mobile jest +6 (four CTA states + hidden-questions + active-apply).
+    - **2.95 follow-up — Adoption browse cache staleness** (mobile-only, no migration, attended → PR). Refreshing/
+      re-opening the pet-owner Adoption section didn't show newly-added available dogs or drop adopted ones.
+      Root cause = CLIENT cache, not the endpoint (`GET /api/adoption/listings` already returns only
+      `status='available'` from published providers): the global QueryClient has `staleTime` 5 min and
+      `useAdoptableBrowse` didn't override it, so re-entering served the stale list. Fix: `useAdoptableBrowse`
+      now sets **`staleTime: 0` + `refetchOnMount: true` + `refetchOnReconnect: true`** (mirrors
+      `usePetSocialProfile` / `useTodayDailyUpdate`), so re-entering the standalone screen AND the 2.97
+      storefront Adoption tab (same hook) always refetch. Pull-to-refresh already forces a network fetch
+      (`runRefresh` awaits React Query's `refetch()`, which bypasses staleTime) — verified, no change needed; the
+      storefront's pull now also refetches the adoption list (gated so non-shelter providers make no extra call).
+      No native cache-bust needed. mobile jest +3 (hook-config test asserting staleTime:0 + refetchOnMount).
 
 - **Wave 11 — 🌙 night-run in progress (adoption-on-profile + nav cleanup + business-post paws + activation
   checklists, tickets 2.97 / 2.96 / 2.94 / 2.98 / 2.99).** Run doc `docs/night-run-2026-08-12.md`; log

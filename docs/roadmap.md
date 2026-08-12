@@ -749,6 +749,17 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   DECLINED application let the same owner re-apply (the 0038 partial unique index allows a non-declined
   duplicate; the route guard closes it, index stays the race net). No migration, no index/RLS change. Proven
   through the REAL router: browse integration +1, applications-v2 integration +2, mobile jest +6. (2026-08-12.)
+- **2.95 follow-up (attended)** — the pet-owner Adoption section now always reflects the live list. Bug:
+  refreshing/re-opening Adoption didn't show newly-added available dogs and didn't drop adopted ones — a
+  CLIENT cache staleness issue, not the endpoint (`GET /api/adoption/listings` already returns only
+  `status='available'` from published providers). The global QueryClient sets `staleTime` 5 min and
+  `useAdoptableBrowse` didn't override it, so re-entering served the stale cached list. Fix: `useAdoptableBrowse`
+  now sets **`staleTime: 0` + `refetchOnMount: true` + `refetchOnReconnect: true`** (mirrors
+  `usePetSocialProfile` / `useTodayDailyUpdate`), so re-entering the standalone screen AND the storefront
+  Adoption tab (2.97, same hook) always refetch. Pull-to-refresh already forces a network fetch
+  (`runRefresh` awaits React Query's `refetch()`, which bypasses staleTime) — verified; the storefront's pull
+  now also refetches the adoption list (gated so non-shelter providers make no extra call). Mobile-only, no
+  web/API/migration. mobile jest +3 (hook config test). (2026-08-12.)
 - **Wave 11 night-run (2.97 / 2.96 / 2.94 / 2.98 / 2.99)** — adoption-on-profile + nav cleanup + business-post
   paws + owner/business activation checklists. **2.97** Adoption tab on the mobile business storefront: an
   adoption-capable business with ≥1 available listing shows an **Adoption** tab (`getStorefrontTabs`,
