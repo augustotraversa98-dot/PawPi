@@ -426,3 +426,14 @@ hand-apply after merge; degrades cleanly pre-apply). Build order: 2.88 → 2.89 
 - 2.90-products-empty-state-clarity.md           (Wave 10 — web: kill "shop capability" jargon, friendly enable + add-first-product; ⛔ after 2.89)
 - 2.91-adoption-end-to-end-fix.md                (Wave 10 — web+mobile: business edit/see media + pet-owner display; investigate first, no migration)
 - 2.92-follow-a-business.md                       (Wave 10 — web+mobile: pet owners follow providers; migration 0083; do LAST)
+
+## 🌙 WAVE 11 — adoption-on-profile + nav cleanup + business-post paws + activation checklists (night-run 2026-08-12, tickets 2.94–2.99)
+Continues the storefront/business-social work. Built unattended per the ⚡ Wave 5 autonomy preamble
+(run doc: `docs/night-run-2026-08-12.md`; log: `docs/night-run-log.md`). Only 2.94 adds a migration (0085;
+hand-apply after merge; degrades cleanly pre-apply). Build order: 2.97 → 2.96 → 2.94 → 2.98 → 2.99.
+
+- 2.97-adoption-tab-on-business-profile.md         (Wave 11 — mobile: Adoption tab on the storefront reusing the browse card/detail/apply; no migration; do FIRST)
+- 2.96-remove-show-all-sections-nav.md             (Wave 11 — web: remove the "Show all sections" nav escape hatch; no migration)
+- 2.94-paws-on-business-posts.md                   (Wave 11 — web+mobile: Paws/likes on business posts; migration 0085; degrade-clean)
+- 2.98-owner-activation-checklist.md               (Wave 11 — mobile: "Getting started" derived checklist + daily-return reminder; no migration)
+- 2.99-business-activation-checklist.md            (Wave 11 — web: provider-dashboard "Getting started" derived checklist; ⛔ after 2.98; no migration)

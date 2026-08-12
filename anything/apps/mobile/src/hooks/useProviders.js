@@ -1163,7 +1163,7 @@ export function useUpdateShopSubscription() {
 // gender, size, age_min, age_max, energy_level, good_with_kids, good_with_cats, good_with_dogs,
 // vaccination_status, provider_id }. Empty/undefined values are omitted. When lat/lng are present the
 // server sorts nearest-first and attaches distance_km; otherwise featured-then-recent. Empty → [].
-export function useAdoptableBrowse(filters = {}) {
+export function useAdoptableBrowse(filters = {}, { enabled = true } = {}) {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(filters)) {
     if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
@@ -1171,6 +1171,7 @@ export function useAdoptableBrowse(filters = {}) {
   const qs = params.toString();
   return useQuery({
     queryKey: ["adoption-browse", qs],
+    enabled,
     queryFn: async () => {
       const response = await fetch(`/api/adoption/listings${qs ? `?${qs}` : ""}`);
       if (!response.ok) {

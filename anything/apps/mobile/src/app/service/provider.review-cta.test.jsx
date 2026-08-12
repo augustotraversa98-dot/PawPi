@@ -44,6 +44,15 @@ jest.mock("@/components/Providers/WriteReviewModal", () => {
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 99, name: "Active" } }),
 }));
+// Shared adoption listing views (ticket 2.97) pull in expo-av + the map view.
+jest.mock("expo-av", () => {
+  const { View } = require("react-native");
+  return { Video: (props) => <View testID={props.testID} />, ResizeMode: { CONTAIN: "contain" } };
+});
+jest.mock("@/components/Map/MapLocationView", () => {
+  const { View } = require("react-native");
+  return { __esModule: true, default: (props) => <View testID={props.testID} /> };
+});
 jest.mock("@/hooks/useProviders", () => ({
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),
@@ -52,6 +61,9 @@ jest.mock("@/hooks/useProviders", () => ({
   useShopProducts: () => ({ data: [], isLoading: false }),
   useShopCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useShopOrders: () => ({ data: [] }),
+  useAdoptableBrowse: () => ({ data: { listings: [] } }),
+  useApplyForAdoption: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useAdoptionCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 import ProviderScreen from "./provider";

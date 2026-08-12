@@ -23,6 +23,7 @@ export const SHOP_CAPS = ["shop", "pharmacy"];
 // they use the storefront.tabs.* namespace (not discover.cap.*, which labels capabilities).
 export const STOREFRONT_TAB_LABELS = {
   services: "storefront.tabs.services",
+  adoption: "storefront.tabs.adoption",
   items: "storefront.tabs.items",
   posts: "storefront.tabs.posts",
   reviews: "storefront.tabs.reviews",
@@ -45,6 +46,7 @@ export function getStorefrontTabs({
   services = [],
   products = [],
   posts = [],
+  adoptionListings = [],
   sectionOrder = null,
 } = {}) {
   // Same axis as the screen's CTA block: a SHOP holds a shop/pharmacy capability OR any
@@ -57,6 +59,10 @@ export function getStorefrontTabs({
   // never shows an empty/fake section). Reviews + About are always available.
   const has = {
     services: services.length > 0,
+    // Adoption tab (ticket 2.97): shown ONLY for an adoption-capable provider that has ≥1
+    // available listing — presence-aware exactly like the other tabs. A pin-less/empty
+    // shelter shows no Adoption tab.
+    adoption: capabilities.includes("adoption") && adoptionListings.length > 0,
     items: products.length > 0,
     posts: posts.length > 0,
     locations: locations.length > 0,
@@ -66,19 +72,20 @@ export function getStorefrontTabs({
 
   // Canonical order per archetype (mirrors showShop/showBook). shop-first and fallback fold
   // locations into About (no separate Locations tab); bookable and mixed give it its own tab.
+  // Adoption sits right after Services (or Items in a shop-first archetype) when present.
   let order;
   if (isShop && hasBookable) {
     // mixed: services + a store
-    order = ["services", "items", "posts", "reviews", "locations", "about"];
+    order = ["services", "adoption", "items", "posts", "reviews", "locations", "about"];
   } else if (isShop) {
     // shop-first (includes the Instagram / "social shop": shop cap or products, no services)
-    order = ["items", "posts", "reviews", "about"];
+    order = ["items", "adoption", "posts", "reviews", "about"];
   } else if (hasBookable) {
     // bookable
-    order = ["services", "posts", "reviews", "locations", "about"];
+    order = ["services", "adoption", "posts", "reviews", "locations", "about"];
   } else {
     // fallback (no known capability) — matches today's showBook fallback
-    order = ["services", "posts", "reviews", "about"];
+    order = ["services", "adoption", "posts", "reviews", "about"];
   }
 
   // Default result: the archetype's allowed sections that have data (today's behavior).
