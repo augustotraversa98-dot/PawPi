@@ -39,6 +39,11 @@ import {
   useAddProviderPostComment,
   useDeleteProviderPostComment,
 } from "@/hooks/useProviderPostComments";
+import {
+  useProviderPostPaw,
+  useToggleProviderPostPaw,
+} from "@/hooks/useProviderPostPaw";
+import { PawablePhoto } from "@/components/Feed/PawablePhoto";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -132,6 +137,13 @@ export default function ProviderPostScreen() {
   const addComment = useAddProviderPostComment(providerId, postId, currentPet?.id);
   const deleteComment = useDeleteProviderPostComment(providerId, postId);
 
+  // Paws (ticket 2.94) — live count + is-pawed for the signed-in viewer; a guest skips the fetch
+  // and sees the handoff's count / 0. The toggle is optimistic (see the hook).
+  const { data: pawData } = useProviderPostPaw(providerId, postId, {
+    enabled: isAuthenticated,
+  });
+  const togglePaw = useToggleProviderPostPaw(providerId, postId);
+
   const [text, setText] = useState("");
 
   const handleSend = async () => {
@@ -173,9 +185,32 @@ export default function ProviderPostScreen() {
   // render. Paws stays 0 until 2.94 lands the paw primitive.
   const [viewerUri, setViewerUri] = useState(null);
   const business = post?.business ?? null;
-  const pawsCount = Number(post?.paw_count ?? 0);
+  // Paw state prefers the live query; falls back to whatever the handoff carried, else 0/false.
+  const liked = pawData?.is_pawed ?? post?.is_pawed === true;
+  const pawsCount = pawData?.paw_count ?? Number(post?.paw_count ?? 0);
   const commentCount = comments.length;
   const timestamp = post?.created_at ? formatRelativeTime(post.created_at) : "";
+
+  // Tap the paw control → toggle (guest → sign-in). Optimistic + revert live in the hook.
+  const handlePawPress = () => {
+    if (!isAuthenticated) {
+      signIn();
+      return;
+    }
+    if (togglePaw.isPending) return;
+    togglePaw.mutate({ isPawed: liked });
+  };
+  // Double-tap the image → ALWAYS paw (never un-paw), mirroring the pet feed (ticket 2.64). The
+  // brand paw "pop" animation plays inside PawablePhoto regardless; we only fire the network paw
+  // when not already pawed, so the count never double-counts.
+  const handleDoubleTapPaw = () => {
+    if (!isAuthenticated) {
+      signIn();
+      return;
+    }
+    if (liked || togglePaw.isPending) return;
+    togglePaw.mutate({ isPawed: false });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -272,19 +307,18 @@ export default function ProviderPostScreen() {
                   }}
                 >
                   {images.map((uri, i) => (
-                    <TouchableOpacity
-                      key={`img-${i}`}
-                      testID="provider-post-image"
-                      activeOpacity={0.95}
-                      onPress={() => setViewerUri(uri)}
-                      style={{ marginTop: i === 0 ? 0 : 2 }}
-                    >
-                      <Image
-                        source={{ uri }}
+                    <View key={`img-${i}`} style={{ marginTop: i === 0 ? 0 : 2 }}>
+                      {/* Single tap enlarges; double tap gives a Paw (brand-color pop), reusing the
+                          pet-feed PawablePhoto (ticket 2.64). */}
+                      <PawablePhoto
+                        testID="provider-post-image"
+                        photoUri={uri}
+                        onSingleTap={() => setViewerUri(uri)}
+                        onDoubleTap={handleDoubleTapPaw}
                         style={{ width: SCREEN_W, height: SCREEN_W, backgroundColor: COLORS.sand }}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
-                    </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
               ) : null}
@@ -311,12 +345,29 @@ export default function ProviderPostScreen() {
                   borderTopColor: MATERIALS.hairline,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <PawPrint size={22} color={COLORS.mutedBrown} />
-                  <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
+                <TouchableOpacity
+                  testID="provider-post-paw"
+                  onPress={handlePawPress}
+                  disabled={togglePaw.isPending}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: liked }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                >
+                  <PawPrint
+                    size={22}
+                    color={liked ? COLORS.coral : COLORS.mutedBrown}
+                    fill={liked ? COLORS.coral : "transparent"}
+                  />
+                  <Text
+                    style={[
+                      TYPE.callout,
+                      { fontWeight: "700", color: liked ? COLORS.coral : COLORS.mutedBrown },
+                    ]}
+                  >
                     {pawsCount} {t("storefront.social.paws")}
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <MessageCircle size={20} color={COLORS.mutedBrown} />
                   <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
