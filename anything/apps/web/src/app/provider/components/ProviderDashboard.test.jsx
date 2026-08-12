@@ -26,6 +26,9 @@ vi.mock("../../../client-integrations/recharts", () => {
 });
 
 vi.mock("../hooks/useProviders", () => ({ useProviderAnalytics: vi.fn() }));
+// The activation checklist (ticket 2.99) has its own test; stub it here so this suite stays
+// focused on the analytics dashboard and doesn't need its six data hooks.
+vi.mock("./GettingStartedChecklist", () => ({ default: () => null }));
 
 import { useProviderAnalytics } from "../hooks/useProviders";
 import ProviderDashboard from "./ProviderDashboard";

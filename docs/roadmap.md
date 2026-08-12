@@ -732,6 +732,9 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   each row tapping through to the screen that completes it; retires at 100% with a brief celebration. Enabling
   notifications schedules a recurring **daily** local "come back" reminder exactly once. All derived from
   existing data — no migration, no web change. (2026-08-12.)
+  **2.99** added the web mirror — a **"Getting started" checklist on the provider dashboard** (complete
+  profile / add an offering / set hours / add a location / share first post), each derived from existing
+  provider reads, each linking to its screen; retires at 100%. No migration, no new endpoint. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.
