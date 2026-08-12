@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { PawPrint } from "lucide-react-native";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
+import { BusinessPostCard } from "./BusinessPostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
 import { interleaveSuggestions } from "@/utils/feed/interleaveSuggestions";
@@ -17,6 +18,7 @@ export function UnlockedFeed({
   suggestions,
   onOpenProvider,
   onOpenAdoption,
+  onOpenBusinessPost,
   streakByPetId = {},
 }) {
   // Phase 2 ticket 2.13 — interleave provider/adoption "suggestion" cards between pet posts at a
@@ -104,6 +106,17 @@ export function UnlockedFeed({
               key={`adoption-${item.id}`}
               listing={item}
               onPress={() => onOpenAdoption?.(item)}
+            />
+          );
+        }
+        // Business "daily moment" from a followed provider — its own card + detail route.
+        // Keyed distinctly so its id space never collides with a pet post's.
+        if (item.item_type === "provider_post") {
+          return (
+            <BusinessPostCard
+              key={`business-${item.id}`}
+              post={item}
+              onPress={() => onOpenBusinessPost?.(item)}
             />
           );
         }

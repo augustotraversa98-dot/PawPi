@@ -1,6 +1,9 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  withRequestContext,
+  withSavepoint,
+} from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { isVideoEligible } from "@/app/api/utils/videoEligibility";
 
@@ -13,22 +16,170 @@ import { isVideoEligible } from "@/app/api/utils/videoEligibility";
 // fetched prefixes yields the correct global window for any offset/limit: if
 // Following has >= offset+limit rows the page is pure Following; otherwise
 // Following is exhausted and Suggested backfills the remainder.
+// A feed item's dedupe identity. Pet posts and business (provider) posts each have
+// their own integer id space, so key by (type, id) — a pet post id 5 and a business
+// post id 5 must never collide and drop one another. Pet posts carry no item_type.
+const feedItemKey = (post) => `${post.item_type ?? "pet_post"}:${post.id}`;
+
 export function mergeFeed(following, suggested, { limit, offset }) {
   const seen = new Set();
   const ordered = [];
   // Tag each post's feed_group so the client can render a "Suggested for you"
   // divider at the boundary (ticket 2.58) — additive labeling, ordering unchanged.
   for (const post of following) {
-    if (seen.has(post.id)) continue;
-    seen.add(post.id);
+    const key = feedItemKey(post);
+    if (seen.has(key)) continue;
+    seen.add(key);
     ordered.push({ ...post, feed_group: "following" });
   }
   for (const post of suggested) {
-    if (seen.has(post.id)) continue;
-    seen.add(post.id);
+    const key = feedItemKey(post);
+    if (seen.has(key)) continue;
+    seen.add(key);
     ordered.push({ ...post, feed_group: "suggested" });
   }
   return ordered.slice(offset, offset + limit);
+}
+
+// Interleave the pet "Following+own" posts with the business posts from providers the
+// viewer FOLLOWS, ordered newest-first, then truncate to `cap` (= offset+limit). Both
+// inputs are already newest-first, so a standard merge of the two yields the true global
+// top-`cap` of their union — which keeps mergeFeed's pagination invariant intact (a full
+// Following window is still pure Following; Suggested only backfills the remainder).
+// Business posts keep their item_type discriminator so the client renders them distinctly.
+export function mergeFollowingByRecency(petPosts, providerPosts, cap) {
+  const a = Array.isArray(petPosts) ? petPosts : [];
+  const b = Array.isArray(providerPosts) ? providerPosts : [];
+  if (b.length === 0) return a.slice(0, cap);
+  const ts = (p) => new Date(p?.created_at ?? 0).getTime();
+  const merged = [...a, ...b].sort((x, y) => ts(y) - ts(x));
+  return merged.slice(0, cap);
+}
+
+// Posts from businesses the CURRENT USER follows (provider_follows, 0083) — the business
+// "daily moments" that surface in a follower's feed. Public provider fields + the post's
+// media + paw/comment counts only; never provider-private data. Scoped to published
+// providers' visible (non-deleted, non-hidden) posts. current_app_user_id() is the
+// request-scoped viewer, so a non-follower selects nothing (the follows subquery is empty).
+//
+// DEGRADE-CLEAN, and crucially SAVEPOINT-WRAPPED: this route runs inside withRequestContext's
+// per-request transaction, where ANY query error aborts the whole tx and the wrapper turns a
+// would-be-handled error into a 500 (see requestContext.withSavepoint). So every fallible read
+// runs in its own savepoint:
+//   • video columns absent (pre-0087) → undefined_column (42703) → retry WITHOUT them, as image;
+//   • provider_follows/provider_posts absent → undefined_table (42P01) → [];
+//   • provider_post_paws/comments absent → counts degrade to 0.
+// The feed's pet content is never disturbed and the endpoint never 500s on any of these.
+async function fetchFollowedProviderPosts(cap) {
+  // Two full queries (NOT a shared template with an interpolated column fragment): the media-aware
+  // read and, for pre-0087 degrade, the image-only read that synthesizes the media columns.
+  const selectWithMedia = () =>
+    withSavepoint(
+      () => sql`
+        SELECT
+          pp.id, pp.provider_id, pp.body, pp.image_urls,
+          pp.media_type, pp.video_url, pp.video_thumbnail_url,
+          pp.created_at,
+          pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
+        FROM provider_posts pp
+        JOIN providers pr ON pr.id = pp.provider_id
+        WHERE pp.provider_id IN (
+                SELECT provider_id FROM provider_follows
+                WHERE follower_user_id = current_app_user_id()
+              )
+          AND pp.deleted_at IS NULL
+          AND pp.hidden_at IS NULL
+          AND pr.status = 'published'
+        ORDER BY pp.created_at DESC, pp.id DESC
+        LIMIT ${cap}
+      `,
+    );
+
+  const selectImageOnly = () =>
+    withSavepoint(
+      () => sql`
+        SELECT
+          pp.id, pp.provider_id, pp.body, pp.image_urls,
+          'image'::text AS media_type, NULL::text AS video_url, NULL::text AS video_thumbnail_url,
+          pp.created_at,
+          pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
+        FROM provider_posts pp
+        JOIN providers pr ON pr.id = pp.provider_id
+        WHERE pp.provider_id IN (
+                SELECT provider_id FROM provider_follows
+                WHERE follower_user_id = current_app_user_id()
+              )
+          AND pp.deleted_at IS NULL
+          AND pp.hidden_at IS NULL
+          AND pr.status = 'published'
+        ORDER BY pp.created_at DESC, pp.id DESC
+        LIMIT ${cap}
+      `,
+    );
+
+  let rows;
+  try {
+    rows = await selectWithMedia();
+  } catch (e) {
+    if (e?.code === "42703") {
+      // Pre-0087: no media columns yet → image-only read (video option is hidden in compose too).
+      rows = await selectImageOnly();
+    } else if (e?.code === "42P01") {
+      // provider_follows or provider_posts absent → no business posts in the feed.
+      return [];
+    } else {
+      throw e;
+    }
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+
+  // Paw + comment counts, each best-effort (the tables are hand-applied separately; a missing
+  // table degrades that count to 0 without touching the rest of the feed).
+  const pawMap = {};
+  await withSavepoint(async () => {
+    const counts = await sql`
+      SELECT post_id, COUNT(*)::int AS n
+      FROM provider_post_paws
+      WHERE post_id = ANY(${ids})
+      GROUP BY post_id
+    `;
+    for (const c of counts) pawMap[c.post_id] = c.n;
+  }).catch(() => {});
+
+  const commentMap = {};
+  await withSavepoint(async () => {
+    const counts = await sql`
+      SELECT post_id, COUNT(*)::int AS n
+      FROM provider_post_comments
+      WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
+      GROUP BY post_id
+    `;
+    for (const c of counts) commentMap[c.post_id] = c.n;
+  }).catch(() => {});
+
+  return rows.map((r) => ({
+    id: r.id,
+    provider_id: r.provider_id,
+    body: r.body,
+    image_urls: Array.isArray(r.image_urls) ? r.image_urls : [],
+    media_type: r.media_type ?? "image",
+    video_url: r.video_url ?? null,
+    video_thumbnail_url: r.video_thumbnail_url ?? null,
+    created_at: r.created_at,
+    // Public business identity for the feed card + the provider-post detail handoff.
+    provider: {
+      id: r.provider_id,
+      name: r.provider_name,
+      slug: r.provider_slug,
+      logo_url: r.provider_logo_url,
+    },
+    paw_count: pawMap[r.id] ?? 0,
+    comment_count: commentMap[r.id] ?? 0,
+    // Discriminator: the mobile feed renders these with the business card, never as a pet post.
+    item_type: "provider_post",
+  }));
 }
 
 // Get feed posts
@@ -141,15 +292,40 @@ async function GET(request) {
       LIMIT ${groupLimit}
     `;
 
-    const posts = mergeFeed(following, suggested, { limit, offset });
-
-
-    // Check if current user has pawed each post
+    // 3) Business "daily moments": posts from PROVIDERS the current user FOLLOWS
+    //    (provider_follows) surface in the feed, interleaved by recency with the pet
+    //    Following+own posts. Only followed providers — a non-follower sees none. This is
+    //    best-effort and savepoint-isolated (fetchFollowedProviderPosts): a missing
+    //    table/column degrades to fewer/no business posts, never a 500, and never disturbs
+    //    the pet feed. Gated on a session so anonymous reads skip the query entirely.
     const session = await auth();
+    let providerFollowing = [];
+    if (session?.user?.id) {
+      try {
+        providerFollowing = await fetchFollowedProviderPosts(groupLimit);
+      } catch (e) {
+        console.error(
+          "[GET /api/posts] followed-business posts skipped:",
+          e?.message,
+        );
+        providerFollowing = [];
+      }
+    }
+    const mergedFollowing = mergeFollowingByRecency(
+      following,
+      providerFollowing,
+      groupLimit,
+    );
+
+    const posts = mergeFeed(mergedFollowing, suggested, { limit, offset });
+
+    // Check if current user has pawed each PET post. Business posts carry their own
+    // paw_count/paw state from fetchFollowedProviderPosts and are EXCLUDED here — their id
+    // space is separate from pet posts, so mixing them into a post_paws lookup would be wrong.
     if (session?.user?.id) {
 
       const userProfile = await sql`
-        SELECT id FROM user_profiles 
+        SELECT id FROM user_profiles
         WHERE auth_user_id = ${session.user.id}
         LIMIT 1
       `;
@@ -157,27 +333,27 @@ async function GET(request) {
       if (userProfile.length > 0) {
         const userId = userProfile[0].id;
 
-        const postIds = posts.map((p) => p.id);
+        const postIds = posts
+          .filter((p) => p.item_type !== "provider_post")
+          .map((p) => p.id);
 
         if (postIds.length > 0) {
           const userPaws = await sql`
-            SELECT post_id 
-            FROM post_paws 
-            WHERE user_id = ${userId} 
+            SELECT post_id
+            FROM post_paws
+            WHERE user_id = ${userId}
               AND post_id = ANY(${postIds})
           `;
 
           const pawedPostIds = new Set(userPaws.map((p) => p.post_id));
 
           posts.forEach((post) => {
+            if (post.item_type === "provider_post") return;
             post.user_has_pawed = pawedPostIds.has(post.id);
           });
         }
       }
     }
-
-    posts.forEach((post, index) => {
-    });
 
     return Response.json({ posts });
   } catch (error) {

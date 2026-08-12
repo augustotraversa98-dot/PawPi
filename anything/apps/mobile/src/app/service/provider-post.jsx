@@ -44,6 +44,7 @@ import {
   useToggleProviderPostPaw,
 } from "@/hooks/useProviderPostPaw";
 import { PawablePhoto } from "@/components/Feed/PawablePhoto";
+import { FeedVideo } from "@/components/Feed/FeedVideo";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -179,6 +180,8 @@ export default function ProviderPostScreen() {
   };
 
   const images = Array.isArray(post?.image_urls) ? post.image_urls : [];
+  // A video moment renders the inline player instead of the image(s).
+  const isVideoPost = post?.media_type === "video" && !!post?.video_url;
 
   // Rich-detail derivations (ticket 2.93). The business identity rides along in the handoff; a cold
   // deep-link (no stash) has none → the author row hides its name/handle but the post/comments still
@@ -298,8 +301,24 @@ export default function ProviderPostScreen() {
                 </View>
               </View>
 
-              {/* Media — FULL-WIDTH (bleeds past the scroll padding), tap to enlarge. */}
-              {images.length > 0 ? (
+              {/* Media — FULL-WIDTH (bleeds past the scroll padding). A video moment plays inline
+                  (single tap play/pause, double tap Paw); images tap to enlarge. */}
+              {isVideoPost ? (
+                <View
+                  style={{
+                    marginHorizontal: -SPACING.xl,
+                    marginBottom: post.body ? SPACING.md : 0,
+                  }}
+                >
+                  <FeedVideo
+                    testID="provider-post-video"
+                    videoUri={post.video_url}
+                    posterUri={post.video_thumbnail_url}
+                    onDoubleTap={handleDoubleTapPaw}
+                    style={{ width: SCREEN_W, height: SCREEN_W, backgroundColor: COLORS.sand }}
+                  />
+                </View>
+              ) : images.length > 0 ? (
                 <View
                   style={{
                     marginHorizontal: -SPACING.xl,

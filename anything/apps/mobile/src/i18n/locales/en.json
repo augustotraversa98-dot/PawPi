@@ -34,7 +34,9 @@
   "feed": {
     "title": "Feed",
     "dailyPrompt": "Share today's daily",
-    "empty": "Nothing here yet"
+    "empty": "Nothing here yet",
+    "businessEyebrow": "BUSINESS YOU FOLLOW",
+    "justNow": "just now"
   },
   "health": {
     "title": "Health",

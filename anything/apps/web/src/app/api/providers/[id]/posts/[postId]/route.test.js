@@ -11,7 +11,7 @@ import sql from '@/app/api/utils/sql';
 import { requireProviderRole } from '@/app/api/utils/providerAuth';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn(), getActiveTx: () => null }));
 vi.mock('@/app/api/utils/providerAuth', () => ({
   requireProviderRole: vi.fn(),
   ALL_PROVIDER_ROLES: ['owner', 'admin', 'staff', 'vet'],
@@ -132,6 +132,67 @@ describe('PATCH /api/providers/[id]/posts/[postId]', () => {
     const res = await PATCH(patchReq({ body: 'Updated' }), PARAMS);
 
     expect(res.status).toBe(404);
+  });
+
+  // Business daily moments + video (migration 0087).
+  it('staff → edits into a VIDEO post; media columns flow into the UPDATE', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([
+        { id: 9, provider_id: 100, media_type: 'video', video_url: 'https://cdn/x.mp4' },
+      ]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(
+      patchReq({ media_type: 'video', video_url: 'https://cdn/x.mp4' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(200);
+    const text = queryTextOf(1).toLowerCase();
+    expect(text).toContain('media_type =');
+    expect(text).toContain('video_url =');
+    expect(valuesOf(1)).toContain('https://cdn/x.mp4');
+  });
+
+  it('video edit without a video_url → 400', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(patchReq({ media_type: 'video' }), PARAMS);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('pre-migration (media columns absent) → a video edit gets a clean 409, never a 500', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockRejectedValueOnce(Object.assign(new Error('column'), { code: '42703' }));
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(
+      patchReq({ media_type: 'video', video_url: 'https://cdn/x.mp4' }),
+      PARAMS,
+    );
+
+    expect(res.status).toBe(409);
+  });
+
+  it('pre-migration → an image edit falls back to the base UPDATE (still 200)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockRejectedValueOnce(Object.assign(new Error('column'), { code: '42703' })) // media-aware update
+      .mockResolvedValueOnce([{ id: 9, provider_id: 100, body: 'Updated' }]); // base update
+    requireProviderRole.mockResolvedValue({ id: 1, role: 'staff' });
+
+    const res = await PATCH(patchReq({ body: 'Updated' }), PARAMS);
+
+    expect(res.status).toBe(200);
+    expect(queryTextOf(2).toLowerCase()).not.toContain('media_type =');
   });
 });
 

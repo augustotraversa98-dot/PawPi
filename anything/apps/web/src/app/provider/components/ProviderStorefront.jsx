@@ -11,6 +11,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
+import VideoUploader from "./VideoUploader";
 import StorefrontPreview from "./StorefrontPreview";
 
 // /provider/storefront — the provider's STOREFRONT composer (ticket 2.22). Set the
@@ -132,6 +133,11 @@ function ComposePost({ providerId, editing, onDone }) {
   const update = useUpdateProviderPost(providerId);
   const [body, setBody] = useState("");
   const [images, setImages] = useState([]);
+  // A post is EITHER a photo post or a video moment (mirrors the pet daily-moment rule). `video`
+  // holds the uploaded video URL; when set, the photo uploader hides and vice-versa. `videoThumb`
+  // carries an existing poster frame when editing (web can't generate one on upload).
+  const [video, setVideo] = useState(null);
+  const [videoThumb, setVideoThumb] = useState(null);
   const formRef = useRef(null);
   const isEditing = editing != null;
 
@@ -140,30 +146,60 @@ function ComposePost({ providerId, editing, onDone }) {
   useEffect(() => {
     if (editing) {
       setBody(editing.body ?? "");
-      setImages(Array.isArray(editing.image_urls) ? editing.image_urls : []);
+      const isVideo = editing.media_type === "video" && editing.video_url;
+      setVideo(isVideo ? editing.video_url : null);
+      setVideoThumb(isVideo ? (editing.video_thumbnail_url ?? null) : null);
+      setImages(
+        isVideo
+          ? []
+          : Array.isArray(editing.image_urls)
+            ? editing.image_urls
+            : [],
+      );
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       setBody("");
       setImages([]);
+      setVideo(null);
+      setVideoThumb(null);
     }
   }, [editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Replacing the video drops any stale poster (it belonged to the old file); removing it clears both.
+  const onVideoChange = (url) => {
+    setVideo(url || null);
+    if (!url || url !== editing?.video_url) setVideoThumb(null);
+    else setVideoThumb(editing?.video_thumbnail_url ?? null);
+  };
+
   const submit = async (e) => {
     e.preventDefault();
-    if (body.trim().length === 0 && images.length === 0) {
-      toast.error("Add some text or at least one image.");
+    if (body.trim().length === 0 && images.length === 0 && !video) {
+      toast.error("Add some text, a photo, or a video.");
       return;
     }
+    // Video moment vs. photo post — exactly one media kind per post.
+    const payload = video
+      ? {
+          body: body.trim(),
+          image_urls: [],
+          media_type: "video",
+          video_url: video,
+          video_thumbnail_url: videoThumb,
+        }
+      : { body: body.trim(), image_urls: images, media_type: "image" };
     try {
       if (isEditing) {
-        await update.mutateAsync({ postId: editing.id, body: body.trim(), image_urls: images });
+        await update.mutateAsync({ postId: editing.id, ...payload });
         toast.success("Post updated");
         onDone?.();
       } else {
-        await create.mutateAsync({ body: body.trim(), image_urls: images });
+        await create.mutateAsync(payload);
         toast.success("Posted");
         setBody("");
         setImages([]);
+        setVideo(null);
+        setVideoThumb(null);
       }
     } catch (err) {
       toast.error(err.message || (isEditing ? "Couldn't update" : "Couldn't post"));
@@ -192,9 +228,17 @@ function ComposePost({ providerId, editing, onDone }) {
         className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
         style={{ borderColor: COLORS.peach }}
       />
-      <div className="mt-3">
-        <ImageUploader label="Photos" value={images} onChange={setImages} />
-      </div>
+      {/* A post is either photos OR one video moment — show one path at a time so it's unambiguous. */}
+      {!video && (
+        <div className="mt-3">
+          <ImageUploader label="Photos" value={images} onChange={setImages} />
+        </div>
+      )}
+      {images.length === 0 && (
+        <div className="mt-3">
+          <VideoUploader label="Video (optional)" value={video} onChange={onVideoChange} />
+        </div>
+      )}
       <div className="mt-4 flex items-center gap-2">
         <button
           type="submit"

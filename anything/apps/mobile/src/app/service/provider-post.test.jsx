@@ -19,6 +19,22 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
 }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+// FeedVideo (imported for video moments) pulls in expo-av's native module — mock it.
+jest.mock("expo-av", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    ResizeMode: { COVER: "cover", CONTAIN: "contain" },
+    Video: React.forwardRef((props, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        playAsync: jest.fn(() => Promise.resolve()),
+        pauseAsync: jest.fn(() => Promise.resolve()),
+      }));
+      return React.createElement(View, { testID: props.testID });
+    }),
+  };
+});
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -127,6 +143,24 @@ test("mirrors the pet post detail: business author row (@handle) + full-width im
   await waitFor(() =>
     expect(getByTestId("provider-post-image-viewer")).toBeTruthy(),
   );
+});
+
+test("a video business post plays inline (FeedVideo) instead of an image", () => {
+  stashProviderPost("42", "9", {
+    id: 9,
+    body: "New groomer joined us",
+    image_urls: [],
+    media_type: "video",
+    video_url: "https://cdn/moment.mp4",
+    video_thumbnail_url: "https://cdn/moment.jpg",
+    created_at: "2026-08-12T00:00:00Z",
+    business: { name: "Happy Paws", slug: "happy-paws", logo_url: null },
+  });
+  const { getByTestId, queryByTestId } = render(<ProviderPostScreen />);
+
+  expect(getByTestId("provider-post-video")).toBeTruthy();
+  expect(getByTestId("provider-post-video-player")).toBeTruthy(); // the mocked expo-av Video
+  expect(queryByTestId("provider-post-image")).toBeNull();
 });
 
 // Ticket 2.94 — Paws on business posts: tap toggles, double-tap always paws, guest → sign-in.
