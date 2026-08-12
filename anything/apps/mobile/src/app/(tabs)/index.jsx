@@ -17,6 +17,7 @@ import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption } from "@/hooks/useFeedPosts";
+import { stashProviderPost } from "@/utils/providerPostHandoff";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -120,6 +121,31 @@ export default function FeedScreen() {
       } else {
         router.push("/service/adoption");
       }
+    },
+    [router],
+  );
+
+  // ── Open a followed BUSINESS's post (business daily moment) ──
+  //    Stash the rich post (incl. the business identity) in memory + open the existing
+  //    provider-post detail with clean, URL-safe params (ticket 2.88's handoff pattern), so
+  //    the detail renders instantly and paws + comments work there.
+  const openBusinessPost = useCallback(
+    (post) => {
+      const providerId = post?.provider_id;
+      if (providerId == null || post?.id == null) return;
+      const provider = post.provider ?? {};
+      stashProviderPost(String(providerId), String(post.id), {
+        ...post,
+        business: {
+          name: provider.name ?? post.provider_name ?? "",
+          slug: provider.slug ?? post.provider_slug ?? "",
+          logo_url: provider.logo_url ?? post.provider_logo_url ?? null,
+        },
+      });
+      router.push({
+        pathname: "/service/provider-post",
+        params: { providerId: String(providerId), postId: String(post.id) },
+      });
     },
     [router],
   );
@@ -274,6 +300,7 @@ export default function FeedScreen() {
                 suggestions={suggestions}
                 onOpenProvider={openProvider}
                 onOpenAdoption={openAdoption}
+                onOpenBusinessPost={openBusinessPost}
                 streakByPetId={streakByPetId}
               />
             )}

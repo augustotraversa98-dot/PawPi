@@ -8,12 +8,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // "Public" here means all pets minus followed + own — there is no visibility
 // column on pets yet.
 
-import { GET, POST, mergeFeed } from './route';
+import { GET, POST, mergeFeed, mergeFollowingByRecency } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn(), getActiveTx: () => null }));
 
 // Minimal enriched post rows — only the fields these tests assert on. The route
 // passes whole rows through untouched, so a partial shape is enough.
@@ -74,6 +74,38 @@ describe('mergeFeed — Following-first, de-duped, paginated', () => {
     const out = mergeFeed(following, suggested, { limit: 2, offset: 2 });
 
     expect(out.map((p) => p.id)).toEqual([3, 4]);
+  });
+});
+
+describe('mergeFollowingByRecency — interleave business posts into Following by recency', () => {
+  const petPost = (id, created_at) => ({ id, pet_name: `p${id}`, created_at });
+  const bizPost = (id, created_at) => ({
+    id,
+    item_type: 'provider_post',
+    created_at,
+  });
+
+  it('returns the pet posts unchanged when there are no business posts', () => {
+    const pet = [petPost(1, '2026-08-12T10:00:00Z'), petPost(2, '2026-08-11T10:00:00Z')];
+    const out = mergeFollowingByRecency(pet, [], 20);
+    expect(out.map((p) => p.id)).toEqual([1, 2]);
+  });
+
+  it('interleaves pet + business posts newest-first', () => {
+    const pet = [petPost(1, '2026-08-12T09:00:00Z'), petPost(2, '2026-08-10T09:00:00Z')];
+    const biz = [bizPost(5, '2026-08-12T12:00:00Z'), bizPost(6, '2026-08-11T09:00:00Z')];
+    const out = mergeFollowingByRecency(pet, biz, 20);
+    // 5 (Aug12 12:00) > 1 (Aug12 09:00) > 6 (Aug11) > 2 (Aug10)
+    expect(out.map((p) => p.id)).toEqual([5, 1, 6, 2]);
+    // Business posts keep their discriminator.
+    expect(out.find((p) => p.id === 5).item_type).toBe('provider_post');
+  });
+
+  it('truncates the merged following to the page cap', () => {
+    const pet = [petPost(1, '2026-08-12T09:00:00Z')];
+    const biz = [bizPost(5, '2026-08-12T12:00:00Z'), bizPost(6, '2026-08-11T09:00:00Z')];
+    const out = mergeFollowingByRecency(pet, biz, 2);
+    expect(out.map((p) => p.id)).toEqual([5, 1]);
   });
 });
 
@@ -147,6 +179,92 @@ describe('GET /api/posts — Following + Suggested', () => {
     expect(sql).toHaveBeenCalledTimes(1);
     const { posts } = await res.json();
     expect(posts.map((p) => p.id)).toEqual([3, 4]);
+  });
+});
+
+// Business "daily moments" in the feed: posts from providers the viewer FOLLOWS are merged into
+// the Following stream. Only runs for a signed-in user; the whole business fetch is best-effort so
+// a failure never disturbs the pet feed. sql is mocked; each `await sql\`…\`` consumes one
+// mockResolvedValueOnce in order: following, suggested, [provider select, paw counts, comment
+// counts], profile lookup, pet-paw lookup.
+describe('GET /api/posts — followed-business posts merged into the feed', () => {
+  const bizRow = {
+    id: 5,
+    provider_id: 100,
+    body: 'Fresh grooming slots today',
+    image_urls: [],
+    media_type: 'video',
+    video_url: 'https://cdn/moment.mp4',
+    video_thumbnail_url: 'https://cdn/moment.jpg',
+    created_at: '2026-08-12T12:00:00Z',
+    provider_name: 'Happy Paws',
+    provider_slug: 'happy-paws',
+    provider_logo_url: 'https://cdn/logo.png',
+  };
+
+  it("a follower sees the followed business's VIDEO post as a distinct feed item", async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([post(1, 10)]) // 1: pet following+own
+      .mockResolvedValueOnce([post(3, 20)]) // 2: suggested
+      .mockResolvedValueOnce([bizRow]) //       3: followed-provider posts (media-aware)
+      .mockResolvedValueOnce([{ post_id: 5, n: 2 }]) // 4: paw counts
+      .mockResolvedValueOnce([{ post_id: 5, n: 1 }]) // 5: comment counts
+      .mockResolvedValueOnce([{ id: 9 }]) //  6: profile lookup (paw enrichment)
+      .mockResolvedValueOnce([]); //          7: pet-paw lookup
+
+    const res = await GET(feedReq('?viewerPetId=1'));
+    expect(res.status).toBe(200);
+    const { posts } = await res.json();
+
+    const biz = posts.find((p) => p.item_type === 'provider_post');
+    expect(biz).toBeTruthy();
+    expect(biz).toMatchObject({
+      id: 5,
+      provider_id: 100,
+      media_type: 'video',
+      video_url: 'https://cdn/moment.mp4',
+      paw_count: 2,
+      comment_count: 1,
+      feed_group: 'following',
+    });
+    expect(biz.provider).toMatchObject({ name: 'Happy Paws', slug: 'happy-paws' });
+    // It's interleaved by recency ahead of the older pet post.
+    expect(posts.map((p) => `${p.item_type ?? 'pet'}:${p.id}`)).toEqual([
+      'provider_post:5',
+      'pet:1',
+      'pet:3',
+    ]);
+  });
+
+  it('an anonymous viewer never runs the business query (no session)', async () => {
+    auth.mockResolvedValue(undefined); // not signed in
+    sql
+      .mockResolvedValueOnce([post(1, 10)]) // following
+      .mockResolvedValueOnce([post(3, 20)]); // suggested
+
+    const res = await GET(feedReq('?viewerPetId=1'));
+    expect(res.status).toBe(200);
+    const { posts } = await res.json();
+    // Only the two pet queries ran — no provider fetch, no paw enrichment.
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(posts.every((p) => p.item_type !== 'provider_post')).toBe(true);
+  });
+
+  it('a business-fetch failure degrades to the pet feed (never a 500)', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([post(1, 10)]) // following
+      .mockResolvedValueOnce([post(3, 20)]) // suggested
+      .mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'XX000' })) // provider select blows up
+      .mockResolvedValueOnce([{ id: 9 }]) // profile lookup
+      .mockResolvedValueOnce([]); // pet-paw lookup
+
+    const res = await GET(feedReq('?viewerPetId=1'));
+    expect(res.status).toBe(200);
+    const { posts } = await res.json();
+    expect(posts.map((p) => p.id)).toEqual([1, 3]); // pet feed intact
+    expect(posts.every((p) => p.item_type !== 'provider_post')).toBe(true);
   });
 });
 

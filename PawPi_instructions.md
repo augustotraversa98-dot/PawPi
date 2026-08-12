@@ -1062,6 +1062,29 @@ hardening, and the redesign). Read that for detail.
     provider). New `provider/lib/activation.js` (pure) + `provider/components/GettingStartedChecklist.jsx`.
     English-only (web). web vitest 1794→1805.
 
+- **Business "daily moments" + video (web + mobile, migration 0087, degrades cleanly, PENDING hand-apply).**
+  Completes the original business-social ask: a business posts an image OR a **video** moment, and people who
+  **follow** the business (`provider_follows`, 2.92) see those moments in their **main feed**. **Migration 0087**
+  mirrors 0068 on `provider_posts` — additive `media_type` (NOT NULL DEFAULT `'image'`) + `video_url` +
+  `video_thumbnail_url` + a `('image','video')` CHECK; **no RLS policy change** (rides the 0042 staff-write /
+  published-read + 0066 hidden_at). **① Compose (web):** the storefront composer (`ProviderStorefront`
+  `ComposePost`) attaches a video via the existing `VideoUploader` alongside the image path (a post is either a
+  photo post OR one video moment); the posts create/PATCH accept the media fields (`normalizeProviderPostMedia`
+  validates). **② Feed integration (the core new piece):** `GET /api/posts` fetches posts from providers the
+  current user follows and merges them into the Following stream, interleaved by recency
+  (`mergeFollowingByRecency`) — `item_type: 'provider_post'`, exposing only public business fields + media +
+  paw/comment counts, **only followed providers** (a non-follower sees none). **③ Mobile render:** a distinct
+  **`BusinessPostCard`** (business logo + name + @handle, the image OR the `FeedVideo` player, paw/comment
+  counts) wired into `UnlockedFeed`; tapping opens the existing provider-post detail (which now plays video
+  too) via the 2.88 in-memory handoff. **EN + ES.** **Degrades cleanly pre-migration** — the feed read catches
+  undefined_column (42703) and serves the same posts as image; the storefront create/PATCH attempt the media
+  write inside a `withSavepoint` and on 42703 fall back to the base image insert or, for a video, return a clean
+  **409** (never a blank post, never a 500). All API tested through the REAL Hono router by URL
+  (`business-daily-moments.integration.test.ts`: a follower sees the followed business's image + video posts, a
+  non-follower + anonymous do not; the video post carries `media_type='video'` + `video_url` through create →
+  feed read). web vitest 1833→1854 · integration 795→798 · mobile jest 1626→1640. ⚠️ Tats applies the 0087 SQL
+  (`supabase/verify_0087.sql` → all PASS), then merges.
+
 - **Adoption editor — set the dog's age (fix; web, no migration, attended → PR only).** Pet owners always
   saw **"Age unknown"** because the provider adoption editor (`ProviderAdoption.jsx`) had **no age input** —
   every listing saved `age_years`/`age_months` as NULL even though `adoptable_listings` (0038) and the

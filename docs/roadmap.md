@@ -796,6 +796,19 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   **2.99** added the web mirror — a **"Getting started" checklist on the provider dashboard** (complete
   profile / add an offering / set hours / add a location / share first post), each derived from existing
   provider reads, each linking to its screen; retires at 100%. No migration, no new endpoint. (2026-08-12.)
+- **Business "daily moments" + video** — completes the original business-social ask: a business posts an image
+  OR a **video** moment, and people who **follow** the business (`provider_follows`, 2.92) see those moments in
+  their **main feed**. **Migration 0087** mirrors 0068 on `provider_posts` (`media_type` default `'image'` +
+  `video_url` + `video_thumbnail_url` + a CHECK; additive, no RLS change; PENDING hand-apply). Web: the
+  storefront composer attaches a video (reuses `VideoUploader`) alongside the image path; the posts
+  create/PATCH accept the media fields. **Feed integration (the core piece):** `GET /api/posts` now merges
+  followed-providers' posts into the Following stream, interleaved by recency (`mergeFollowingByRecency`),
+  item_type `provider_post`, public business fields + media + paw/comment counts only — a non-follower sees
+  none. Mobile: a distinct **business-post feed card** (logo + name + @handle, image OR the `FeedVideo` player,
+  paw/comment counts) that taps through to the existing provider-post detail (which now plays video too);
+  EN + ES. Degrades cleanly pre-migration (feed read catches 42703 → image; create/PATCH withSavepoint →
+  base insert or a clean 409 for video; never a blank post, never a 500). Proven through the real router
+  (`business-daily-moments.integration.test.ts`). (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

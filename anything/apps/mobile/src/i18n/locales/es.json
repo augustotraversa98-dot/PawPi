@@ -34,7 +34,9 @@
   "feed": {
     "title": "Inicio",
     "dailyPrompt": "Compartí el momento de hoy",
-    "empty": "Todavía no hay nada por aquí"
+    "empty": "Todavía no hay nada por aquí",
+    "businessEyebrow": "NEGOCIO QUE SEGUÍS",
+    "justNow": "ahora mismo"
   },
   "health": {
     "title": "Salud",
