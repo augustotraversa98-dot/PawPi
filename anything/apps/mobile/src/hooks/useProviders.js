@@ -751,6 +751,43 @@ export function useProviderAdoptionApplications(providerId, { enabled = true } =
   });
 }
 
+// Review an adoption application (PATCH /api/providers/[id]/adoption-applications/[applicationId]).
+// mutateAsync({ applicationId, status }) with status ∈ under_review | approved | declined. APPROVAL
+// is atomic + irreversible: the server (app_approve_adoption) creates the adopter's pet and marks
+// the listing adopted; a non-approvable application → 409 (surfaced as a friendly message by the
+// caller). Mirrors the web useReviewAdoptionApplication. On success invalidates this provider's
+// applications list so the reviewed row reflects its new status. Same conventions as the mutations
+// above: relative fetch, throw on !res.ok.
+export function useReviewProviderAdoptionApplication(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ applicationId, status }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/adoption-applications/${encodeURIComponent(applicationId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        // Preserve the HTTP status so the screen can tell "already decided" (409) apart from
+        // a generic failure.
+        const err = new Error(error.error || "Couldn't update the application");
+        err.status = response.status;
+        throw err;
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["provider-adoption-applications", providerId],
+      });
+    },
+  });
+}
+
 // --- dog walking — live GPS sessions (Phase 2 ticket 2.7) -------------------
 // These wrap the walk-session routes (0033 participant RLS is the real guard). LIVE
 // TRACKING = short-interval POLLING (refetchInterval) — the SAME lightweight choice chat

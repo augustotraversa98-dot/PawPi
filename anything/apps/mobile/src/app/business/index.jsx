@@ -500,14 +500,15 @@ export default function BusinessHome() {
             onPress={() => router.push("/business/messages")}
           />
 
-          {/* Pending adoption applications (adoption capability only) — informational; the review
-              queue is managed on the web dashboard, so this summary has no mobile tab to open. */}
+          {/* Pending adoption applications (adoption capability only) — taps through to the
+              adoption review inbox (A2), where staff approve/decline/mark-under-review. */}
           {hasAdoption ? (
             <GlanceRow
               testID="glance-applications"
               icon={<PawPrint size={20} color={COLORS.coral} />}
               label={t("business.today.applicationsLabel")}
               value={pendingAppCount}
+              onPress={() => router.push("/business-adoption")}
               last
             />
           ) : null}
@@ -641,7 +642,8 @@ export default function BusinessHome() {
           </View>
         )}
 
-        {/* Manage on web note — services/products/hours/applications/adoption stay on the extranet */}
+        {/* Manage on web note — services/products/hours/adoption-listings stay on the extranet
+            (applications are now reviewed on mobile via the Today glance → /business-adoption) */}
         <View
           style={{
             marginTop: SPACING.xxl,

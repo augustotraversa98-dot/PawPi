@@ -568,7 +568,7 @@
       "notifications": "Notifications",
       "switchTitle": "Choose a business",
       "manageTitle": "Manage on the web",
-      "manageBody": "Services, products, hours, bookings, applications and adoption are managed on the PawPi web dashboard.",
+      "manageBody": "Services, products, hours, bookings and adoption listings are managed on the PawPi web dashboard.",
       "video": "Video",
       "posting": "Posting…"
     },
@@ -650,6 +650,36 @@
       "retry": "Try again",
       "manageTitle": "Manage on the web",
       "manageBody": "Edit your services, products, hours and storefront on the PawPi web dashboard."
+    },
+    "adoption": {
+      "title": "Applications",
+      "back": "Back",
+      "emptyTitle": "No applications yet",
+      "emptyBody": "When someone applies to adopt one of your dogs, it shows up here to review.",
+      "loadError": "Couldn't load your applications.",
+      "retry": "Try again",
+      "someone": "Someone",
+      "forDog": "For",
+      "aDog": "a dog",
+      "submitted": "Submitted",
+      "approve": "Approve",
+      "decline": "Decline",
+      "underReview": "Mark under review",
+      "cancel": "Cancel",
+      "approveConfirmTitle": "Approve this application?",
+      "approveConfirmBody": "This creates the adopter's pet and marks the dog adopted. It can't be undone.",
+      "declineConfirmTitle": "Decline this application?",
+      "declineConfirmBody": "The applicant will be notified.",
+      "actionError": "Couldn't update the application",
+      "alreadyDecidedTitle": "Already decided",
+      "alreadyDecidedBody": "This application was already decided — pull to refresh.",
+      "status": {
+        "submitted": "Submitted",
+        "pending": "Pending",
+        "under_review": "Under review",
+        "approved": "Approved",
+        "declined": "Declined"
+      }
     }
   }
 }
