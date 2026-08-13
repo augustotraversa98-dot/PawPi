@@ -10,12 +10,15 @@
 // The data hooks + router are mocked, so this exercises the screen wiring.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 let mockDiscover;
 let mockSessions;
+let mockMyRequests;
 let lastType;
 const mockPush = jest.fn();
+const mockCreateAsync = jest.fn().mockResolvedValue({ request: { id: 1 } });
+const mockCancelAsync = jest.fn().mockResolvedValue({ request: { id: 1 } });
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -36,20 +39,33 @@ jest.mock("@/components/RefreshableScrollView", () => {
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 5, name: "Rex" } }),
 }));
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  getCurrentPositionAsync: jest.fn().mockResolvedValue({
+    coords: { latitude: -34.6, longitude: -58.4 },
+  }),
+  Accuracy: { Balanced: 3 },
+}));
 jest.mock("@/hooks/useProviders", () => ({
   useDiscoverProviders: (type) => {
     lastType = type;
     return mockDiscover;
   },
   useWalkSessions: () => mockSessions,
+  useCreateWalkRequest: () => ({ mutateAsync: mockCreateAsync, isPending: false }),
+  useCancelWalkRequest: () => ({ mutateAsync: mockCancelAsync, isPending: false }),
+  useMyWalkRequests: () => mockMyRequests,
 }));
 
 import WalkingScreen from "./walking";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockCreateAsync.mockClear();
+  mockCancelAsync.mockClear();
   lastType = undefined;
   mockSessions = { data: [] };
+  mockMyRequests = { data: [] };
 });
 
 test("discovers providers by the walker capability", () => {
@@ -128,4 +144,46 @@ test("finished sessions surface as recent walk reports", () => {
   const { getByText } = render(<WalkingScreen />);
   expect(getByText("RECENT WALKS")).toBeTruthy();
   expect(getByText("Paw Walks")).toBeTruthy();
+});
+
+test("each walker card shows a 'Request a walk' CTA (ticket C1)", () => {
+  mockDiscover = {
+    data: [{ id: 1, slug: "paw-walks", name: "Paw Walks" }],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+  const { getByText } = render(<WalkingScreen />);
+  expect(getByText("Request a walk")).toBeTruthy();
+});
+
+test("requesting a walk submits target_provider_id for the active pet", async () => {
+  mockDiscover = {
+    data: [{ id: 1, slug: "paw-walks", name: "Paw Walks" }],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  };
+  const { getByText, getByTestId } = render(<WalkingScreen />);
+
+  // Open the request modal, then send it.
+  fireEvent.press(getByTestId("request-walk-1"));
+  fireEvent.press(getByTestId("request-submit"));
+
+  await waitFor(() => expect(mockCreateAsync).toHaveBeenCalled());
+  expect(mockCreateAsync).toHaveBeenCalledWith(
+    expect.objectContaining({ pet_id: 5, target_provider_id: 1, when_type: "now" }),
+  );
+});
+
+test("a live request shows a waiting-for-a-walker status card", () => {
+  mockDiscover = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
+  mockMyRequests = {
+    data: [{ id: 42, is_live: true, status: "open", target_provider_name: "Paw Walks" }],
+  };
+  const { getByText, getByTestId } = render(<WalkingScreen />);
+  expect(getByText("Waiting for a walker")).toBeTruthy();
+  // Cancel wires to the cancel mutation.
+  fireEvent.press(getByTestId("cancel-request-42"));
+  expect(mockCancelAsync).toHaveBeenCalledWith({ requestId: 42 });
 });

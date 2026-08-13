@@ -87,7 +87,16 @@
     "adoptionDogFallback": "a dog",
     "adoption_under_review": "Your application for {{dog}} is under review",
     "adoption_approved": "Great news — your application for {{dog}} was approved!",
-    "adoption_declined": "Update on your application for {{dog}}"
+    "adoption_declined": "Update on your application for {{dog}}",
+    "walkRequestHint": "Tap to view the walk request",
+    "walk_request_targeted": "New walk request from {{provider}}",
+    "walk_request_broadcast": "A walk is needed nearby",
+    "walk_request_accepted": "Accepted — {{provider}} will walk your dog",
+    "walk_request_taken": "This walk was taken by another walker",
+    "walk_request_targetedFallback": "New walk request",
+    "walk_request_broadcastFallback": "A walk is needed nearby",
+    "walk_request_acceptedFallback": "Your walk request was accepted",
+    "walk_request_takenFallback": "This walk was taken by another walker"
   },
   "map": {
     "setOnMap": "Set location on map",
@@ -747,5 +756,32 @@
     "noWorkspaceBody": "You're not active staff of a walking provider yet.",
     "errorTitle": "Couldn't load history",
     "errorBody": "Pull down to try again."
+  },
+  "walkRequests": {
+    "cta": "Request a walk",
+    "modalSubtitle": "Ask {{walker}} to walk {{pet}}. They'll be notified and can accept.",
+    "notePlaceholder": "Anything the walker should know? (optional)",
+    "shareLocation": "Share my pickup location",
+    "shareLocationHint": "Helps the walker find you.",
+    "send": "Send request",
+    "sending": "Sending…",
+    "sentTitle": "Request sent",
+    "sentBody": "We let the walker know. You'll be notified when they accept.",
+    "errorTitle": "Couldn't send request",
+    "needPetTitle": "Add a pet first",
+    "needPetBody": "You need a pet on your profile to request a walk.",
+    "waitingTitle": "Waiting for a walker",
+    "waitingFor": "Waiting for {{walker}} to accept…",
+    "waitingBody": "Your request was sent.",
+    "cancel": "Cancel",
+    "now": "Now",
+    "aDog": "A dog",
+    "incomingTitle": "Incoming requests",
+    "accept": "Accept",
+    "acceptedTitle": "Walk accepted",
+    "acceptedBody": "A confirmed walk was added to your agenda and a chat opened with the owner.",
+    "takenTitle": "No longer available",
+    "takenBody": "This request was cancelled or accepted by someone else.",
+    "acceptErrorTitle": "Couldn't accept"
   }
 }

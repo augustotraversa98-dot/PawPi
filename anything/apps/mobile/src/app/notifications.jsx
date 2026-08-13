@@ -14,6 +14,7 @@ import {
   FileText,
   CalendarCheck,
   Dog,
+  Footprints,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -65,6 +66,16 @@ const ADOPTION_TYPES = new Set([
   "adoption_under_review",
   "adoption_approved",
   "adoption_declined",
+]);
+
+// Walk-request lifecycle types (C1/0092). walk_request_accepted → the OWNER (deep-links to the
+// created booking via subject_ref = booking id); walk_request_targeted / _broadcast / _taken → the
+// WALKER (deep-links to the walker workspace via subject_ref = request id).
+const WALK_REQUEST_TYPES = new Set([
+  "walk_request_targeted",
+  "walk_request_broadcast",
+  "walk_request_accepted",
+  "walk_request_taken",
 ]);
 
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
@@ -147,11 +158,56 @@ function adoptionDisplay(n, t) {
   };
 }
 
+// Build the localized title/message for a walk-request notification (C1). walk_request_accepted
+// carries the booking JSON body ({ service, provider, date, time }); the others carry { when_type,
+// note } and use their per-type fallback line.
+function walkRequestDisplay(n, t) {
+  let payload = null;
+  try {
+    payload = n.body ? JSON.parse(n.body) : null;
+  } catch (e) {
+    payload = null;
+  }
+  if (n.type === "walk_request_accepted") {
+    return {
+      title: t("notifications.walk_request_accepted", {
+        provider: payload?.provider || t("notifications.bookingProviderFallback"),
+      }),
+      message: t("notifications.bookingHint"),
+    };
+  }
+  return {
+    title: t(`notifications.${n.type}Fallback`),
+    message: t("notifications.walkRequestHint"),
+  };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
 const TYPE_LABEL = { paw: "New paw", bark: "New bark", follow: "New follower" };
 function mapDbNotification(n, t) {
+  if (WALK_REQUEST_TYPES.has(n.type)) {
+    const { title, message } = walkRequestDisplay(n, t);
+    const accepted = n.type === "walk_request_accepted";
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title,
+      message,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: null,
+      // accepted → subject_ref is the booking id (owner opens the booking); the walker-facing
+      // types → subject_ref is the request id (walker opens their workspace).
+      relatedBookingId: accepted ? n.subject_ref : null,
+      relatedWalkRequestId: accepted ? null : n.subject_ref,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   if (BOOKING_TYPES.has(n.type)) {
     const { title, message } = bookingDisplay(n, t);
     return {
@@ -211,6 +267,9 @@ const NotificationIcon = ({ type }) => {
   }
   if (ADOPTION_TYPES.has(type)) {
     return <Dog size={18} color={COLORS.coral} />;
+  }
+  if (WALK_REQUEST_TYPES.has(type)) {
+    return <Footprints size={18} color={COLORS.coral} />;
   }
   switch (type) {
     case "walk":
@@ -356,6 +415,9 @@ export default function NotificationsScreen() {
           pathname: "/service/adoption",
           params: { tab: "applications" },
         });
+      } else if (notif.relatedWalkRequestId) {
+        // Walk request (walker-facing) → open the walker workspace's incoming list.
+        router.push("/walker-walks");
       } else if (notif.relatedPetId) {
         router.push({
           pathname: "/pet-profile",

@@ -87,7 +87,16 @@
     "adoptionDogFallback": "un perro",
     "adoption_under_review": "Tu solicitud para {{dog}} está en revisión",
     "adoption_approved": "¡Buenas noticias! Tu solicitud para {{dog}} fue aprobada",
-    "adoption_declined": "Novedad sobre tu solicitud para {{dog}}"
+    "adoption_declined": "Novedad sobre tu solicitud para {{dog}}",
+    "walkRequestHint": "Toca para ver la solicitud de paseo",
+    "walk_request_targeted": "Nueva solicitud de paseo de {{provider}}",
+    "walk_request_broadcast": "Se necesita un paseo cerca",
+    "walk_request_accepted": "Aceptada — {{provider}} paseará a tu perro",
+    "walk_request_taken": "Otro paseador tomó este paseo",
+    "walk_request_targetedFallback": "Nueva solicitud de paseo",
+    "walk_request_broadcastFallback": "Se necesita un paseo cerca",
+    "walk_request_acceptedFallback": "Tu solicitud de paseo fue aceptada",
+    "walk_request_takenFallback": "Otro paseador tomó este paseo"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",
@@ -747,5 +756,32 @@
     "noWorkspaceBody": "Todavía no sos personal activo de un proveedor de paseos.",
     "errorTitle": "No se pudo cargar el historial",
     "errorBody": "Deslizá para reintentar."
+  },
+  "walkRequests": {
+    "cta": "Pedir un paseo",
+    "modalSubtitle": "Pide a {{walker}} que pasee a {{pet}}. Le llegará el aviso y podrá aceptar.",
+    "notePlaceholder": "¿Algo que el paseador deba saber? (opcional)",
+    "shareLocation": "Compartir mi punto de retiro",
+    "shareLocationHint": "Ayuda al paseador a encontrarte.",
+    "send": "Enviar solicitud",
+    "sending": "Enviando…",
+    "sentTitle": "Solicitud enviada",
+    "sentBody": "Le avisamos al paseador. Te notificaremos cuando acepte.",
+    "errorTitle": "No se pudo enviar la solicitud",
+    "needPetTitle": "Agrega una mascota primero",
+    "needPetBody": "Necesitas una mascota en tu perfil para pedir un paseo.",
+    "waitingTitle": "Esperando a un paseador",
+    "waitingFor": "Esperando que {{walker}} acepte…",
+    "waitingBody": "Tu solicitud fue enviada.",
+    "cancel": "Cancelar",
+    "now": "Ahora",
+    "aDog": "Un perro",
+    "incomingTitle": "Solicitudes entrantes",
+    "accept": "Aceptar",
+    "acceptedTitle": "Paseo aceptado",
+    "acceptedBody": "Se agregó un paseo confirmado a tu agenda y se abrió un chat con el dueño.",
+    "takenTitle": "Ya no está disponible",
+    "takenBody": "Esta solicitud fue cancelada o aceptada por otra persona.",
+    "acceptErrorTitle": "No se pudo aceptar"
   }
 }

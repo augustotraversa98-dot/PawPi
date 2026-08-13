@@ -14,8 +14,10 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 let mockProviders;
 let mockBookings;
+let mockWalkRequests;
 const mockCheckInAsync = jest.fn();
 const mockRedeemAsync = jest.fn();
+const mockAcceptAsync = jest.fn();
 const mockRequestPerm = jest.fn();
 const mockWatch = jest.fn();
 
@@ -72,6 +74,8 @@ jest.mock("@/hooks/useProviders", () => ({
   useTrackWalk: () => ({ mutate: jest.fn() }),
   useFinishWalk: () => ({ mutateAsync: jest.fn() }),
   useRedeemWalkPickup: () => ({ mutateAsync: mockRedeemAsync, isPending: false }),
+  useProviderWalkRequests: () => mockWalkRequests,
+  useAcceptWalkRequest: () => ({ mutateAsync: mockAcceptAsync, isPending: false }),
 }));
 
 import WalkerWalksScreen from "./walker-walks";
@@ -88,7 +92,9 @@ const walkerBooking = {
 beforeEach(() => {
   mockProviders = { data: [], isLoading: false };
   mockBookings = { data: [], refetch: jest.fn() };
+  mockWalkRequests = { data: [] };
   mockCheckInAsync.mockReset().mockResolvedValue({ session: { id: 1 } });
+  mockAcceptAsync.mockReset().mockResolvedValue({ booking_id: 1, thread_id: 1 });
   mockRequestPerm.mockReset();
   mockWatch.mockReset();
 });
@@ -160,6 +166,20 @@ test("starting a walk (permission granted) shows the live route map from real po
   await waitFor(() => expect(getByTestId("walker-live-map")).toBeTruthy());
   // The recorded point feeds the polyline on the real map.
   expect(getByTestId("map-view").props.children).toBe("p:1");
+});
+
+test("an incoming request renders and Accept calls the accept mutation (ticket C1)", async () => {
+  mockProviders = { data: [{ id: 10, name: "Paw Walks" }], isLoading: false };
+  mockBookings = { data: [], refetch: jest.fn() };
+  mockWalkRequests = {
+    data: [{ id: 7, status: "open", pet_name: "Rex", owner_name: "Ana", when_type: "now" }],
+  };
+  const { getByText, getByTestId } = render(<WalkerWalksScreen />);
+  expect(getByText("Incoming requests")).toBeTruthy();
+  expect(getByTestId("request-card-7")).toBeTruthy();
+
+  fireEvent.press(getByTestId("accept-request-7"));
+  await waitFor(() => expect(mockAcceptAsync).toHaveBeenCalledWith({ requestId: 7 }));
 });
 
 test("starting a walk with location DENIED shows the graceful no-map note (time still tracks)", async () => {

@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Footprints, Play, QrCode, History, ChevronRight } from "lucide-react-native";
+import { ArrowLeft, Footprints, Play, QrCode, History, ChevronRight, Check, Clock } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
@@ -20,6 +20,8 @@ import {
   useTrackWalk,
   useFinishWalk,
   useRedeemWalkPickup,
+  useProviderWalkRequests,
+  useAcceptWalkRequest,
 } from "@/hooks/useProviders";
 import StartWalkModal from "@/components/Health/WalkActivity/StartWalkModal";
 import WalkerLiveMap from "@/components/Health/WalkActivity/WalkerLiveMap";
@@ -52,6 +54,11 @@ export default function WalkerWalksScreen() {
   const finish = useFinishWalk();
   const redeemPickup = useRedeemWalkPickup(provider?.id);
   const [scanOpen, setScanOpen] = useState(false);
+
+  // Incoming "request a walk" requests targeted at this walker (ticket C1).
+  const { data: walkRequests } = useProviderWalkRequests(provider?.id);
+  const accept = useAcceptWalkRequest(provider?.id);
+  const [acceptingId, setAcceptingId] = useState(null);
 
   // The active session being walked + its booking context.
   const [active, setActive] = useState(null); // { sessionId, booking }
@@ -194,6 +201,36 @@ export default function WalkerWalksScreen() {
     setActive(null);
   };
 
+  // Accept an incoming request (ticket C1): atomically creates a confirmed booking + opens a chat.
+  // A 409 means it was cancelled or claimed by another walker → a distinct "no longer available".
+  const handleAccept = async (request) => {
+    if (accept.isPending) return;
+    setAcceptingId(request.id);
+    try {
+      await accept.mutateAsync({ requestId: request.id });
+      Alert.alert(
+        t("walkRequests.acceptedTitle", "Walk accepted"),
+        t(
+          "walkRequests.acceptedBody",
+          "A confirmed walk was added to your agenda and a chat opened with the owner.",
+        ),
+      );
+    } catch (e) {
+      if (e?.status === 409) {
+        Alert.alert(
+          t("walkRequests.takenTitle", "No longer available"),
+          t("walkRequests.takenBody", "This request was cancelled or accepted by someone else."),
+        );
+      } else {
+        Alert.alert(t("walkRequests.acceptErrorTitle", "Couldn't accept"), e?.message);
+      }
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  const openRequests = (walkRequests ?? []).filter((r) => r.status === "open");
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
       <View
@@ -253,6 +290,33 @@ export default function WalkerWalksScreen() {
         refetch={refetch}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       >
+        {/* Incoming requests (ticket C1) — owners asking THIS walker for a walk. Accept creates a
+            confirmed booking + opens a chat. Shown first (time-sensitive). */}
+        {provider && openRequests.length > 0 ? (
+          <View style={{ marginBottom: 12 }} testID="incoming-requests">
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "800",
+                color: COLORS.mutedBrown,
+                letterSpacing: 0.6,
+                marginBottom: 8,
+              }}
+            >
+              {t("walkRequests.incomingTitle", "Incoming requests")}
+            </Text>
+            {openRequests.map((r) => (
+              <RequestCard
+                key={r.id}
+                request={r}
+                busy={accept.isPending && acceptingId === r.id}
+                onAccept={() => handleAccept(r)}
+                t={t}
+              />
+            ))}
+          </View>
+        ) : null}
+
         {/* Walk history (ticket B5) — past finished walks with route + pickup on the map. */}
         {provider ? (
           <TouchableOpacity
@@ -408,6 +472,74 @@ function BookingCard({ booking, onStart, busy, t }) {
           <Play size={16} color="#FFF" />
           <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFF" }}>
             Start
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function RequestCard({ request, onAccept, busy, t }) {
+  const scheduled = request.when_type === "scheduled" && request.scheduled_at;
+  const whenLabel = scheduled
+    ? String(request.scheduled_at).slice(0, 16).replace("T", " ")
+    : t("walkRequests.now", "Now");
+  return (
+    <View
+      testID={`request-card-${request.id}`}
+      style={{
+        backgroundColor: COLORS.card,
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: COLORS.coral,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View style={{ flex: 1, paddingRight: 10 }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>
+            {request.pet_name || t("walkRequests.aDog", "A dog")}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+            <Clock size={12} color={COLORS.mutedBrown} />
+            <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
+              {request.owner_name ? `${request.owner_name} · ` : ""}
+              {whenLabel}
+            </Text>
+          </View>
+          {request.note ? (
+            <Text style={{ fontSize: 13, color: COLORS.warmBrown, marginTop: 6 }}>
+              {request.note}
+            </Text>
+          ) : null}
+        </View>
+        <TouchableOpacity
+          onPress={onAccept}
+          disabled={busy}
+          testID={`accept-request-${request.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={t("walkRequests.accept", "Accept")}
+          style={{
+            backgroundColor: COLORS.coral,
+            borderRadius: 14,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <Check size={16} color="#FFF" />
+          <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFF" }}>
+            {t("walkRequests.accept", "Accept")}
           </Text>
         </TouchableOpacity>
       </View>
