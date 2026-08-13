@@ -12,6 +12,12 @@ vi.mock("../hooks/useProviders", () => ({
   useMarkThreadRead: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// react-router's useSearchParams — drives the ?thread=<id> deep-link (ticket A4). `h.search` is set
+// per-test; default "" reproduces the no-param first-load behavior.
+const h = vi.hoisted(() => ({ search: "" }));
+vi.mock("react-router", () => ({
+  useSearchParams: () => [new URLSearchParams(h.search)],
+}));
 
 import {
   useProviderThreads,
@@ -37,6 +43,7 @@ const markReadMock = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.search = ""; // reset the deep-link param between tests
   useSendMessage.mockReturnValue({ mutate: sendMock, isPending: false });
   useMarkThreadRead.mockReturnValue({ mutate: markReadMock });
   useThreadMessages.mockReturnValue({ data: [], isLoading: false });
@@ -86,5 +93,20 @@ describe("ProviderChats", () => {
       { body: "On my way" },
       expect.any(Object),
     );
+  });
+
+  it("pre-selects the conversation named by ?thread=<id> (deep-link, ticket A4)", () => {
+    h.search = "?thread=100";
+    useProviderThreads.mockReturnValue({ data: [THREAD], isLoading: false, isError: false });
+    useThreadMessages.mockReturnValue({
+      data: [{ id: 1, sender_user_id: 7, body: "Opened via deep link", created_at: "2026-06-16T10:00:00Z" }],
+      isLoading: false,
+    });
+    render(<ProviderChats providerId={10} />);
+    // The conversation opens without a click — the "select a conversation" prompt is gone and this
+    // thread's message is shown, and it's marked read.
+    expect(screen.queryByText("Select a conversation to start chatting")).toBeNull();
+    expect(screen.getByText("Opened via deep link")).toBeInTheDocument();
+    expect(markReadMock).toHaveBeenCalledWith(100);
   });
 });
