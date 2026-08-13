@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // POST /api/providers/[id]/walk-pickup/redeem — the walker scans the owner's QR (Ticket B3). Gates
 // (capability + active staff) → token verify (bound to THIS provider) → app_redeem_walk_credit
 // (atomic decrement + session insert). 409 no-credits; 401 bad token; 403 wrong provider; 404
-// non-integer id; 503 degrade-clean. auth/sql/providerAuth/token-util mocked.
+// non-integer id; 404 degrade-clean (unmigrated — never a 5xx). auth/sql/providerAuth/token-util
+// mocked.
 
 import { POST } from "./route";
 import { auth } from "@/auth";
@@ -109,7 +110,7 @@ describe("POST redeem", () => {
     expect((await res.json()).code).toBe("no_credits");
   });
 
-  it("503 degrade-clean when the helper is absent (unmigrated)", async () => {
+  it("404 degrade-clean when the helper is absent (unmigrated, never a 5xx)", async () => {
     auth.mockResolvedValue(SESSION);
     verifyPickupToken.mockReturnValue(okPayload);
     sql
@@ -118,6 +119,6 @@ describe("POST redeem", () => {
         Object.assign(new Error("function app_redeem_walk_credit does not exist"), { code: "42883" }),
       );
     const res = await POST(postReq({ token: "t" }), PARAMS);
-    expect(res.status).toBe(503);
+    expect(res.status).toBe(404);
   });
 });

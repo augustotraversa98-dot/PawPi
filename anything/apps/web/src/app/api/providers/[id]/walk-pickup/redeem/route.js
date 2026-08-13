@@ -18,7 +18,7 @@ import { verifyPickupToken } from "@/app/api/utils/walkPickupToken";
 // expired, and bound to THIS provider (a token for provider A is rejected at provider B). The
 // atomic decrement + session insert is app_redeem_walk_credit (DEFINER, 0090) — the ONLY credit
 // spend path. 409 when the owner has no credits (friendly → buy a pack). 404 non-integer id before
-// SQL. Degrade clean: an unmigrated prod (no helper) → a clear 503 "not available yet", never 500.
+// SQL. Degrade clean: an unmigrated prod (no helper) → a clear 404 "not available yet", never a 5xx.
 //
 // NON-credit walks keep using the existing pets/[petId]/walk-sessions check-in unchanged.
 const isMissingObject = (e) =>
@@ -70,10 +70,15 @@ async function POST(request, { params }) {
       `;
     } catch (e) {
       // Degrade clean: unmigrated prod (no helper / pickup columns) → a clear "not set up yet".
+      // A 404 (not 503) so an unmigrated prod doesn't register as a SERVER error — every sibling
+      // Wave-B route degrades to a non-5xx status for this exact case (e.g. walk-package-checkout's
+      // "Walk package not available" 404); this route was the one outlier still returning 5xx.
+      // Mobile (useRedeemWalkPickup/walker-walks.jsx) only special-cases 409/401/403 and otherwise
+      // shows `e.message` verbatim, so this is response-shape-identical for the walker.
       if (isMissingObject(e)) {
         return Response.json(
           { error: "Walk pickup isn't available yet" },
-          { status: 503 },
+          { status: 404 },
         );
       }
       throw e;
