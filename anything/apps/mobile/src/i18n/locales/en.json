@@ -3,10 +3,17 @@
     "feed": "Feed",
     "health": "Health",
     "training": "Training",
+    "care": "Care",
     "services": "Services",
     "storesVets": "Stores & Vets",
     "more": "More",
     "profile": "Profile"
+  },
+  "care": {
+    "segLearn": "Learn",
+    "segHire": "Hire",
+    "walkerEntryTitle": "Walkers",
+    "walkerEntryBody": "Request a walk or find one now"
   },
   "common": {
     "save": "Save",

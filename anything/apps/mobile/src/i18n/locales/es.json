@@ -3,10 +3,17 @@
     "feed": "Inicio",
     "health": "Salud",
     "training": "Entrenamiento",
+    "care": "Cuidado",
     "services": "Servicios",
     "storesVets": "Tiendas y Veterinarias",
     "more": "Más",
     "profile": "Perfil"
+  },
+  "care": {
+    "segLearn": "Aprender",
+    "segHire": "Contratar",
+    "walkerEntryTitle": "Paseadores",
+    "walkerEntryBody": "Pide un paseo o encuentra uno ahora"
   },
   "common": {
     "save": "Guardar",

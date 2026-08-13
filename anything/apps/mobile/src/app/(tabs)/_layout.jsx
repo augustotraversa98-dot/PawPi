@@ -4,7 +4,7 @@ import { View, StyleSheet } from "react-native";
 import {
   Home,
   HeartPulse,
-  GraduationCap,
+  PawPrint,
   Stethoscope,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -153,8 +153,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="training"
         options={{
-          title: t("tabs.training"),
-          tabBarIcon: ({ color }) => <GraduationCap color={color} size={23} />,
+          title: t("tabs.care"),
+          tabBarIcon: ({ color }) => <PawPrint color={color} size={23} />,
         }}
       />
       <Tabs.Screen

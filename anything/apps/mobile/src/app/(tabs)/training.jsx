@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ChevronRight,
   Clock,
@@ -11,7 +12,13 @@ import {
   X,
   ArrowLeft,
   Lightbulb,
+  Footprints,
 } from "lucide-react-native";
+import { COLORS } from "@/constants/colors";
+import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
+import { PressableScale, GlassSurface } from "@/components/ui";
+import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
+import { CARE_CATEGORIES } from "@/constants/servicesCategories";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
   useSelfTrainingProgress,
@@ -23,10 +30,20 @@ import {
   programDoneCount,
 } from "@/data/trainingCurriculum";
 
-// The SELF / DIY training tab (ticket 2.45) — a real, multi-program curriculum the owner
-// works through per pet. DISTINCT from the PROVIDER training SERVICE (hiring a trainer, 2.10),
-// which the "Want a pro?" banner links to. Curriculum content is curated (trainingCurriculum
-// module); only completion is persisted (training_progress_self).
+// The CARE hub (ticket D2) — a segmented [Learn | Hire] shell (mirrors the Services tab).
+//   • LEARN = the SELF / DIY training curriculum (ticket 2.45), a real multi-program curriculum the
+//     owner works through per pet — unchanged, just re-homed under the Learn segment.
+//   • HIRE  = care-provider discovery (ServicesDiscovery scoped to CARE_CATEGORIES: walkers /
+//     daycare / sitters / trainers) + the walker owner surfaces (packages/QR via the storefront,
+//     request-a-walk + find-a-walker-now via /service/walking). "Split by intent": Stores & Vets
+//     (shop/vet) vs Care (hire someone to care for the dog).
+// Curriculum content is curated (trainingCurriculum module); only completion is persisted.
+
+// Care keys that a legacy ?category deep-link may carry (friendly + capability aliases) → open Hire.
+const CARE_DEEPLINK_KEYS = new Set([
+  "walking", "daycare", "sitting", "training",
+  "walker", "sitter", "trainer",
+]);
 
 const C = {
   coral: "#FF6F61",
@@ -54,8 +71,24 @@ export default function TrainingScreen() {
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
 
+  const { t } = useTranslation();
   const { completedSet } = useSelfTrainingProgress(petId);
   const toggle = useToggleSession(petId);
+
+  // Segmented [Learn | Hire]. A deep link opens Hire when ?pane=hire or ?category is a care category
+  // (D1 routes care deep-links here instead of Stores & Vets).
+  const params = useLocalSearchParams();
+  const careParam =
+    typeof params?.category === "string" && CARE_DEEPLINK_KEYS.has(params.category)
+      ? params.category
+      : null;
+  const [pane, setPane] = useState(
+    params?.pane === "hire" || careParam ? "hire" : "learn",
+  );
+  const segments = [
+    { key: "learn", label: t("care.segLearn") },
+    { key: "hire", label: t("care.segHire") },
+  ];
 
   const [openProgram, setOpenProgram] = useState(null); // program object
   const [openSession, setOpenSession] = useState(null); // session object
@@ -157,28 +190,98 @@ export default function TrainingScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.cream }}>
-      {/* Header */}
-      <View
-        style={{
+    <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
+      {/* Segmented [Learn | Hire] shell (ticket D2) — mirrors the Services tab. */}
+      <GlassSurface
+        intensity={BLUR.thick}
+        style={{ borderBottomWidth: 1, borderColor: MATERIALS.glassBorder }}
+        contentStyle={{
           paddingTop: insets.top,
-          paddingHorizontal: 20,
-          paddingBottom: 14,
-          backgroundColor: C.card,
-          borderBottomWidth: 1,
-          borderBottomColor: C.peach,
+          paddingHorizontal: SPACING.lg,
+          paddingBottom: SPACING.md,
         }}
       >
-        <Text style={{ fontSize: 26, fontWeight: "800", color: C.warmBrown }}>
-          Dog Training 🎓
-        </Text>
-        <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>
-          {currentPet?.name
-            ? `${currentPet.name}'s curriculum · build habits, strengthen your bond.`
-            : "Build habits. Strengthen your bond."}
-        </Text>
-      </View>
+        <View
+          testID="care-segments"
+          style={{
+            flexDirection: "row",
+            backgroundColor: COLORS.sand,
+            borderRadius: RADIUS.chip,
+            padding: 3,
+          }}
+        >
+          {segments.map((s) => {
+            const active = pane === s.key;
+            return (
+              <PressableScale
+                key={s.key}
+                testID={`care-seg-${s.key}`}
+                onPress={() => setPane(s.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={{
+                  flex: 1,
+                  paddingVertical: SPACING.sm + 1,
+                  borderRadius: RADIUS.chip - 2,
+                  backgroundColor: active ? COLORS.card : "transparent",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={[
+                    TYPE.subhead,
+                    { fontWeight: "800", color: active ? COLORS.warmBrown : COLORS.mutedBrown },
+                  ]}
+                >
+                  {s.label}
+                </Text>
+              </PressableScale>
+            );
+          })}
+        </View>
+      </GlassSurface>
 
+      {pane === "hire" ? (
+        <View style={{ flex: 1 }}>
+          {/* Walkers entry — relocates request-a-walk (C1) + find-a-walker-now (C2), which live on
+              /service/walking (otherwise unreachable). Packages/QR come via the walker storefront. */}
+          <PressableScale
+            testID="care-walker-entry"
+            onPress={() => router.push("/service/walking")}
+            accessibilityRole="button"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.md,
+              backgroundColor: COLORS.coral,
+              borderRadius: RADIUS.card,
+              padding: SPACING.lg,
+              marginHorizontal: SPACING.lg,
+              marginTop: SPACING.md,
+            }}
+          >
+            <Footprints size={20} color="#FFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+                {t("care.walkerEntryTitle")}
+              </Text>
+              <Text style={[TYPE.footnote, { color: "#FFFFFFCC", marginTop: 1 }]}>
+                {t("care.walkerEntryBody")}
+              </Text>
+            </View>
+            <ChevronRight size={20} color="#FFF" />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <ServicesDiscovery
+              variant="landing"
+              showHeader={false}
+              allowedCategories={CARE_CATEGORIES}
+              initialCategory={careParam ?? undefined}
+            />
+          </View>
+        </View>
+      ) : (
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
@@ -261,6 +364,7 @@ export default function TrainingScreen() {
           <ProgramCard key={program.key} program={program} />
         ))}
       </ScrollView>
+      )}
 
       {/* Program → session list */}
       <Modal
