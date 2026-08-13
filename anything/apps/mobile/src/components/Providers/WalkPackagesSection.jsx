@@ -17,6 +17,7 @@ export default function WalkPackagesSection({
   onBuy,
   buying = false,
   onShowQR,
+  onSchedule,
   t,
 }) {
   if (!packages.length) return null;
@@ -65,6 +66,27 @@ export default function WalkPackagesSection({
             </PressableScale>
           ) : null}
         </View>
+      ) : null}
+
+      {/* Schedule a walk against the pack (ticket B4) — only when the owner has a balance. */}
+      {remaining > 0 && onSchedule ? (
+        <PressableScale
+          testID="walk-schedule-with-pack"
+          onPress={onSchedule}
+          accessibilityRole="button"
+          style={{
+            borderWidth: 1.5,
+            borderColor: COLORS.coral,
+            borderRadius: RADIUS.md,
+            paddingVertical: SPACING.sm + 2,
+            alignItems: "center",
+            marginBottom: SPACING.sm + 2,
+          }}
+        >
+          <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
+            {tr("walkSchedule.cta", "Schedule with my pack")}
+          </Text>
+        </PressableScale>
       ) : null}
 
       {packages.map((p) => {

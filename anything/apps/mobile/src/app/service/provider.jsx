@@ -164,7 +164,17 @@ export default function ProviderScreen() {
     isWalkerProvider && provider?.id != null ? provider.id : null,
   );
   const [pickupQROpen, setPickupQROpen] = useState(false);
+  const [bookingWithCredit, setBookingWithCredit] = useState(false);
   const buyWalkPackage = useBuyWalkPackage();
+
+  // Schedule a walk against the prepaid pack (ticket B4): open the shared booking modal for the
+  // walker capability, flagged pay-with-credit (no checkout — the credit is spent at pickup).
+  const handleScheduleWithPack = useCallback(() => {
+    setBookingCapability("walker");
+    setPreselectedService(null);
+    setBookingWithCredit(true);
+    setShowBooking(true);
+  }, []);
   const handleBuyWalkPackage = useCallback(
     async (pkg) => {
       if (!provider?.id || !petId) {
@@ -362,6 +372,7 @@ export default function ProviderScreen() {
                 onBuy={handleBuyWalkPackage}
                 buying={buyWalkPackage.isPending}
                 onShowQR={petId ? () => setPickupQROpen(true) : undefined}
+                onSchedule={petId ? handleScheduleWithPack : undefined}
                 t={t}
               />
             ) : null}
@@ -776,6 +787,7 @@ export default function ProviderScreen() {
         onClose={() => {
           setShowBooking(false);
           setPreselectedService(null);
+          setBookingWithCredit(false);
         }}
         provider={provider}
         locations={locations}
@@ -783,6 +795,7 @@ export default function ProviderScreen() {
         capabilities={capabilities}
         capability={resolvedBookingCapability}
         service={preselectedService}
+        payWithCredit={bookingWithCredit}
       />
 
       {/* Inline checkout sheet — only mounted when the cart has lines (reuses the shared

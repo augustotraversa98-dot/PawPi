@@ -75,9 +75,14 @@ describe('GET /api/providers/[id]/bookings', () => {
     const res = await GET(inboxReq(), PARAMS);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ bookings: ROWS });
+    // Ticket B4: each row carries pay_with_credit (false here — the flag query returns none).
+    expect(await res.json()).toEqual({
+      bookings: ROWS.map((r) => ({ ...r, pay_with_credit: false })),
+    });
 
-    const text = lastQueryText();
+    // The inbox SELECT is call index 2 (0=profile, 1=membership); the B4 flag query follows it.
+    const text = (sql.mock.calls[2]?.[0] ?? []).join(' ');
+    const selectValues = sql.mock.calls[2]?.slice(1) ?? [];
     expect(text).toContain('FROM vet_appointments');
     // Booking-context joins present.
     expect(text).toContain('pets');
@@ -90,7 +95,7 @@ describe('GET /api/providers/[id]/bookings', () => {
     expect(text).toContain('va.provider_id =');
     expect(text).toContain('deleted_at IS NULL');
     expect(text).toContain('ORDER BY va.appointment_date DESC');
-    expect(lastValues()).toContain('100'); // provider id from path
+    expect(selectValues).toContain('100'); // provider id from path
   });
 
   it('the SELECT touches NO medical tables', async () => {
@@ -191,9 +196,13 @@ describe('GET /api/providers/[id]/bookings?view=calendar (ticket 2.24)', () => {
     const res = await GET(calReq(), PARAMS);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ bookings: ROWS });
+    // Ticket B4: pay_with_credit rides each grid row too.
+    expect(await res.json()).toEqual({
+      bookings: ROWS.map((r) => ({ ...r, pay_with_credit: false })),
+    });
 
-    const text = lastQueryText();
+    // The calendar SELECT is call index 2; the B4 flag query follows it.
+    const text = (sql.mock.calls[2]?.[0] ?? []).join(' ');
     // Grid extras present: location join + order value/paid + pet basic info.
     expect(text).toContain('provider_locations');
     expect(text).toContain('location_name');
@@ -204,7 +213,7 @@ describe('GET /api/providers/[id]/bookings?view=calendar (ticket 2.24)', () => {
     expect(text).toContain('va.start_at >=');
     expect(text).toContain('va.start_at <');
     expect(text).toContain('va.provider_id =');
-    const values = lastValues();
+    const values = sql.mock.calls[2]?.slice(1) ?? [];
     expect(values).toContain('100');
     expect(values).toContain(from);
     expect(values).toContain(to);

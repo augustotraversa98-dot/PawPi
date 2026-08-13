@@ -48,9 +48,15 @@ describe('GET /api/me/bookings', () => {
 
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ upcoming: UPCOMING, past: PAST });
+    // Ticket B4: each booking carries pay_with_credit (false here — the flag query returns none).
+    expect(await res.json()).toEqual({
+      upcoming: UPCOMING.map((b) => ({ ...b, pay_with_credit: false })),
+      past: PAST.map((b) => ({ ...b, pay_with_credit: false })),
+    });
 
-    for (const text of allQueryTexts()) {
+    // The two main SELECTs are calls 0 (upcoming) + 1 (past); the B4 flag queries follow them.
+    for (const call of sql.mock.calls.slice(0, 2)) {
+      const text = (call?.[0] ?? []).join(' ');
       expect(text).toContain('FROM vet_appointments');
       expect(text).toContain('va.owner_user_id =');
       expect(text).toContain('deleted_at IS NULL');

@@ -45,4 +45,21 @@ describe("WalkPackagesSection", () => {
     fireEvent.press(getByTestId("walk-package-buy-1"));
     expect(onBuy).not.toHaveBeenCalled(); // disabled
   });
+
+  it("shows Show-QR + Schedule-with-pack only when the owner has a balance", () => {
+    const onSchedule = jest.fn();
+    const zero = render(
+      <WalkPackagesSection packages={PACKS} remaining={0} onBuy={jest.fn()} onShowQR={jest.fn()} onSchedule={onSchedule} />,
+    );
+    expect(zero.queryByTestId("walk-schedule-with-pack")).toBeNull();
+    expect(zero.queryByTestId("walk-show-pickup-qr")).toBeNull();
+    zero.unmount();
+
+    const withBal = render(
+      <WalkPackagesSection packages={PACKS} remaining={3} onBuy={jest.fn()} onShowQR={jest.fn()} onSchedule={onSchedule} />,
+    );
+    fireEvent.press(withBal.getByTestId("walk-schedule-with-pack"));
+    expect(onSchedule).toHaveBeenCalled();
+    expect(withBal.getByTestId("walk-show-pickup-qr")).toBeTruthy();
+  });
 });

@@ -106,6 +106,21 @@ test("a provider with no walker bookings → no-walks empty state", () => {
   expect(getByText("No walks booked")).toBeTruthy();
 });
 
+test("a pay_with_credit walker booking shows the 'Uses a walk' badge; a Scan button is present", () => {
+  mockProviders = { data: [{ id: 10, name: "Paw Walks" }], isLoading: false };
+  mockBookings = {
+    data: [
+      { id: 1, capability: "walker", booking_status: "confirmed", pet_name: "Rex", pay_with_credit: true },
+      { id: 2, capability: "walker", booking_status: "confirmed", pet_name: "Fido", pay_with_credit: false },
+    ],
+    refetch: jest.fn(),
+  };
+  const { getByTestId, queryByTestId } = render(<WalkerWalksScreen />);
+  expect(getByTestId("booking-credit-badge-1")).toBeTruthy(); // credit walk
+  expect(queryByTestId("booking-credit-badge-2")).toBeNull(); // normal walk
+  expect(getByTestId("walker-scan-pickup")).toBeTruthy();
+});
+
 test("renders a Start card per walker booking and filters out non-walker bookings", () => {
   mockProviders = { data: [{ id: 10, name: "Paw Walks" }], isLoading: false };
   mockBookings = {

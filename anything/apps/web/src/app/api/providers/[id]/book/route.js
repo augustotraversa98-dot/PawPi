@@ -52,6 +52,10 @@ async function POST(request, { params }) {
     }
 
     const providerId = params.id;
+    // A non-integer provider id can never reach a real provider — 404 before any SQL.
+    if (!/^\d+$/.test(String(providerId))) {
+      return Response.json({ error: "Provider not found" }, { status: 404 });
+    }
     const userId = await resolveUserId(session.user.id);
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
@@ -75,7 +79,13 @@ async function POST(request, { params }) {
       order_id,
       meet_and_greet,
       calendar_event_id,
+      pay_with_credit,
     } = body;
+
+    // PAY-WITH-CREDIT (ticket B4): the owner schedules a walk against their prepaid balance. A
+    // credit walk NEVER links a money order — the credit is spent at PICKUP (B3), not at booking.
+    const wantsCredit = pay_with_credit === true;
+    const effectiveOrderId = wantsCredit ? null : order_id;
 
     if (!petId || !appointment_date || !appointment_time) {
       return Response.json(
@@ -135,6 +145,39 @@ async function POST(request, { params }) {
         return Response.json(
           { error: "Provider does not offer this capability" },
           { status: 400 },
+        );
+      }
+    }
+
+    // PAY-WITH-CREDIT BALANCE GATE (ticket B4). A credit walk requires a positive prepaid balance
+    // with this provider (sum of remaining walks across the owner's active packs). Zero → 409
+    // "no walks left — buy a pack". Degrade clean: if walk_credit_packs is absent (unmigrated) the
+    // owner has no credits → 409 (the feature isn't available yet), never a 500.
+    if (wantsCredit) {
+      let remaining = 0;
+      try {
+        const balRows = await sql`
+          SELECT COALESCE(SUM(walks_total - walks_used), 0)::int AS remaining
+          FROM walk_credit_packs
+          WHERE owner_user_id = ${userId}
+            AND provider_id = ${providerId}
+            AND active = true
+        `;
+        remaining = balRows?.[0]?.remaining ?? 0;
+      } catch (e) {
+        if (
+          e?.code !== "42P01" &&
+          e?.code !== "42703" &&
+          !/does not exist/i.test(e?.message ?? "")
+        ) {
+          throw e;
+        }
+        remaining = 0;
+      }
+      if (remaining < 1) {
+        return Response.json(
+          { error: "No walks left — buy a pack", code: "no_credits" },
+          { status: 409 },
         );
       }
     }
@@ -372,11 +415,12 @@ async function POST(request, { params }) {
     }
 
     // If a deposit order is linked it must be the owner's OWN order for THIS provider
-    // (a booking deposit from 2.3). Only checked when given.
-    if (order_id !== undefined && order_id !== null) {
+    // (a booking deposit from 2.3). Only checked when given. A pay-with-credit booking forces
+    // effectiveOrderId to null (no money order), so this is skipped for credit walks.
+    if (effectiveOrderId !== undefined && effectiveOrderId !== null) {
       const orderRows = await sql`
         SELECT id FROM orders
-        WHERE id = ${order_id}
+        WHERE id = ${effectiveOrderId}
           AND owner_user_id = ${userId}
           AND provider_id = ${providerId}
       `;
@@ -399,7 +443,7 @@ async function POST(request, { params }) {
     // the pay-before-accept gate the provider confirm route enforces. Provider not opted in
     // (the default), or any paid booking → 'requested', exactly as before.
     const resolvedBookingStatus =
-      provider.auto_confirm_bookings && !order_id ? "confirmed" : "requested";
+      provider.auto_confirm_bookings && !effectiveOrderId ? "confirmed" : "requested";
 
     // Insert the booking. reminder_enabled is intentionally omitted so it keeps the
     // table default (do NOT change reminder behavior). booking_status=resolvedBookingStatus
@@ -446,7 +490,7 @@ async function POST(request, { params }) {
         ${resolvedStartAt},
         ${resolvedEndAt},
         ${recurrence_rule ?? null},
-        ${order_id ?? null},
+        ${effectiveOrderId ?? null},
         ${meet_and_greet === true},
         ${calendar_event_id ?? null},
         ${"owner"},
@@ -455,6 +499,25 @@ async function POST(request, { params }) {
       )
       RETURNING *
     `;
+
+    // PAY-WITH-CREDIT FLAG (ticket B4). Stamp the additive marker via a SAVEPOINT'd UPDATE so an
+    // unmigrated prod (no pay_with_credit column → 42703) rolls back ONLY the savepoint and leaves
+    // a NORMAL booking, never failing the request. The credit is consumed at PICKUP (B3), not here.
+    if (wantsCredit) {
+      try {
+        await withSavepoint(async () => {
+          await sql`
+            UPDATE vet_appointments SET pay_with_credit = true WHERE id = ${created[0].id}
+          `;
+        });
+        created[0].pay_with_credit = true;
+      } catch (flagErr) {
+        console.error(
+          "[POST /api/providers/[id]/book] pay_with_credit flag (non-fatal):",
+          flagErr.message,
+        );
+      }
+    }
 
     // Calendar-sync hook (stub behind an interface — 2.4). A real Google/Apple adapter
     // would mirror the new booking onto the provider's external calendar; the no-op
@@ -535,7 +598,7 @@ async function POST(request, { params }) {
     // SKIP a paid booking that stays 'requested' pending payment: the owner instead gets
     // the provider-confirm notification once the payment clears (avoids a premature ping).
     const isPaidPending =
-      order_id != null && resolvedBookingStatus !== "confirmed";
+      effectiveOrderId != null && resolvedBookingStatus !== "confirmed";
     if (!isPaidPending) {
       await safeNotify({
         recipient: userId,

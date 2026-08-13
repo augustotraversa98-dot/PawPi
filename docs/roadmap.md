@@ -20,6 +20,18 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-13, Wave B) — ticket B4 (schedule a walk against a pack):** migration **0091**
+> (additive `vet_appointments.pay_with_credit`; no RLS/table/function change; ⏳ PENDING hand-apply).
+> An owner with a balance schedules a walker booking marked **pay_with_credit** — it creates **no
+> money order**; the credit is consumed at **pickup (B3)**, not at booking (so a no-show never burns
+> a credit). The `book` route 409s a zero-balance owner, forces `order_id=null` for a credit walk,
+> and stamps the flag via a savepoint'd UPDATE (degrade-clean); the owner still can't self-confirm
+> (staff-only). The `pay_with_credit` flag is surfaced on the walker agenda + owner list via a
+> guarded column probe. Mobile: "Schedule with my pack" on the walker storefront (reuses
+> `BookingFormModal` with `payWithCredit`, no checkout) + a "Uses a walk" badge in `walker-walks`.
+> EN+ES. Gates: web vitest 1918→1920, integration 846→852 (schedule-credit-walk), mobile jest
+> 1702→1704.
+
 > **Update (2026-08-13, Wave B) — ticket B3 (QR pickup: scan → deduct a credit + check in):**
 > migration **0090** (`walk_sessions` += `pickup_lat/pickup_lng/credit_pack_id` + the DEFINER
 > `app_redeem_walk_credit`; NO RLS policy change; ⏳ PENDING hand-apply). At pickup the **owner shows

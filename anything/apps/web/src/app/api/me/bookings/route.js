@@ -3,6 +3,26 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
+// Merge the pay_with_credit flag (ticket B4) onto a list of bookings via a SEPARATE guarded query,
+// so the main SELECTs stay untouched and an unmigrated prod (no pay_with_credit column → 42703)
+// degrades to all-false rather than 500ing.
+async function withPayWithCredit(bookings) {
+  if (!Array.isArray(bookings) || bookings.length === 0) return bookings;
+  const ids = bookings.map((b) => b.id);
+  let flags = {};
+  try {
+    const rows = await sql`
+      SELECT id, pay_with_credit FROM vet_appointments WHERE id = ANY(${ids})
+    `;
+    flags = Object.fromEntries(
+      (Array.isArray(rows) ? rows : []).map((r) => [r.id, r.pay_with_credit === true]),
+    );
+  } catch (e) {
+    if (e?.code !== "42703" && !/does not exist/i.test(e?.message ?? "")) throw e;
+  }
+  return bookings.map((b) => ({ ...b, pay_with_credit: flags[b.id] ?? false }));
+}
+
 // GET /api/me/bookings — the OWNER's bookings ACROSS ALL SERVICES, for the owner hub. Phase 2
 // ticket 2.14 (docs/phase2-tickets/2.14-dashboards-analytics.md). The owner-side counterpart to
 // the per-provider booking inbox: one unified list of every appointment the signed-in owner made
@@ -126,7 +146,10 @@ async function GET(request) {
       LIMIT 50
     `;
 
-    return Response.json({ upcoming, past });
+    return Response.json({
+      upcoming: await withPayWithCredit(upcoming),
+      past: await withPayWithCredit(past),
+    });
   } catch (error) {
     console.error("[GET /api/me/bookings] Error:", error?.message);
     return Response.json(
