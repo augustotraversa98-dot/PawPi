@@ -69,6 +69,7 @@ async function GET(request, { params }) {
       commentsProbe,
       postsCountRows,
       pawsProbe,
+      walkPackagesProbe,
     ] = await Promise.all([
       sql`
         SELECT id, name, address, lat, lng, hours_json, phone
@@ -119,12 +120,27 @@ async function GET(request, { params }) {
       `,
       // pawsCount (ticket 2.93) needs to know whether provider_post_paws (ticket 2.94) exists yet.
       sql`SELECT to_regclass('public.provider_post_paws') IS NOT NULL AS ok`,
+      // Walk packages (ticket B2) — this walker's ACTIVE prepaid packs (public offerings). Guarded
+      // by a to_regclass probe so an unmigrated prod (no walk_packages table) degrades to [].
+      sql`SELECT to_regclass('public.walk_packages') IS NOT NULL AS ok`,
     ]);
 
     const capabilities = capabilityRows.map((r) => r.capability);
     const hasComments = Array.isArray(commentsProbe) && commentsProbe[0]?.ok === true;
     const postsCount = postsCountRows?.[0]?.n ?? 0;
     const hasPaws = Array.isArray(pawsProbe) && pawsProbe[0]?.ok === true;
+    const hasWalkPackages =
+      Array.isArray(walkPackagesProbe) && walkPackagesProbe[0]?.ok === true;
+
+    // Active walk packages for the public storefront (empty when none / unmigrated).
+    const walkPackages = hasWalkPackages
+      ? await sql`
+          SELECT id, walks_count, price_cents, currency
+          FROM walk_packages
+          WHERE provider_id = ${provider.id} AND active = true
+          ORDER BY walks_count ASC, created_at ASC
+        `
+      : [];
 
     // These three depend on the probes/posts above (hasComments, hasPaws, post ids) but not on
     // each other, so they too run together rather than one-by-one.
@@ -176,6 +192,7 @@ async function GET(request, { params }) {
       services,
       capabilities,
       products,
+      walk_packages: walkPackages,
       posts: postsWithCounts,
       stats: { postsCount, pawsCount, barksCount },
     });

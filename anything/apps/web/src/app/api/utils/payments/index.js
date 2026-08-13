@@ -357,6 +357,27 @@ export async function applyPaymentStatus(payment, status, rawStatus) {
         await sql`SELECT app_adjust_order_stock(${payment.order_id}, 1)`;
       }
     }
+    // WALK PACKAGES (ticket B2): on the FIRST transition into paid, grant the prepaid credit
+    // balance. app_grant_walk_credits is idempotent (guards on order_id) so a re-delivered webhook
+    // never double-grants, and it is a SECURITY DEFINER helper because the payment actor (owner or
+    // webhook) has no walk_credit_packs write policy — same posture as app_adjust_order_stock.
+    // Degrade clean: if the helper/table is absent (unmigrated prod) the grant is a no-op, never a
+    // 500 — the payment still reconciles.
+    if (prev?.kind === 'walk_package' && orderStatus === 'paid' && prev.status !== 'paid') {
+      try {
+        await sql`SELECT app_grant_walk_credits(${payment.order_id})`;
+      } catch (grantErr) {
+        const missing =
+          grantErr?.code === '42883' || // undefined_function
+          grantErr?.code === '42P01' || // undefined_table
+          /does not exist/i.test(grantErr?.message ?? '');
+        if (!missing) throw grantErr;
+        console.error(
+          '[applyPaymentStatus] walk-credit grant skipped (unmigrated):',
+          grantErr?.message,
+        );
+      }
+    }
   }
 }
 

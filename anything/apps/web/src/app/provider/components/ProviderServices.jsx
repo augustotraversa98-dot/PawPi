@@ -7,11 +7,13 @@ import {
   useCreateService,
   useUpdateService,
   useDeactivateService,
+  useProviderCapabilities,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
 import AdvancedSection from "./AdvancedSection";
 import DocumentCatalogImport from "./DocumentCatalogImport";
+import ProviderWalkPackages from "./ProviderWalkPackages";
 import {
   centsToCurrency,
   centsToInput,
@@ -27,6 +29,9 @@ import {
 export default function ProviderServices({ providerId }) {
   const { data: services, isLoading, isError, error } =
     useProviderServices(providerId);
+  // Walk packages (ticket B2) show as a sibling section for walker-capable providers only.
+  const { data: capabilities } = useProviderCapabilities(providerId);
+  const isWalker = Array.isArray(capabilities) && capabilities.includes("walker");
 
   const create = useCreateService(providerId);
   const update = useUpdateService(providerId);
@@ -265,6 +270,13 @@ export default function ProviderServices({ providerId }) {
           onSubmit={onSubmit}
           saving={saving}
         />
+      )}
+
+      {/* Walk packages (ticket B2) — a sibling section, walker providers only. */}
+      {isWalker && (
+        <div className="-mx-8 mt-8 border-t border-[#FFE7CE]">
+          <ProviderWalkPackages providerId={providerId} />
+        </div>
       )}
     </div>
   );

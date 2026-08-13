@@ -1009,6 +1009,58 @@ export function useSetProviderLiveAvailability(providerId) {
   });
 }
 
+// --- walk packages + prepaid credit balance (Phase 2 ticket B2) --------------
+// A walker sells prepaid walk packs; an owner buys one → a credit balance scoped per
+// owner↔provider, usable across the owner's pets. Packages themselves ride on the provider
+// public profile (useProviderProfile → data.walk_packages). These hooks cover the OWNER's
+// balance read + the purchase (which hands off to the same payment surface as the shop).
+
+// The owner's remaining prepaid walk balance with a provider (GET /api/providers/[id]/walk-credits).
+// Degrades to { remaining: 0 } server-side when unmigrated. Disabled until a provider id is known.
+export function useWalkCredits(providerId) {
+  return useQuery({
+    queryKey: ["walk-credits", providerId],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-credits`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk credits");
+      }
+      return response.json(); // { remaining }
+    },
+  });
+}
+
+// Buy a walk package (POST /api/pets/[id]/walk-package-checkout). Returns { order, checkoutUrl, … }
+// — the caller opens the checkoutUrl (same handoff as the shop). Credits are granted on PAID, so we
+// don't optimistically bump the balance; the balance refetches when the paid webhook lands.
+// mutateAsync({ petId, provider_id, walk_package_id, rail }).
+export function useBuyWalkPackage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ petId, ...body }) => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/walk-package-checkout`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to start checkout");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["walk-credits", variables?.provider_id] });
+    },
+  });
+}
+
 // --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
 // These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
 // real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,

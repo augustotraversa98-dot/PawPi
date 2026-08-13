@@ -247,6 +247,45 @@ describe('handleWebhook', () => {
     expect(allQueryText()).not.toContain('app_adjust_order_stock');
   });
 
+  it('a PAID walk_package order grants walk credits (ticket B2) on the first transition', async () => {
+    configureMp();
+    mp.verifyWebhook.mockReturnValue(true);
+    mp.mapStatus.mockReturnValue('approved');
+    sql.mockResolvedValueOnce([{ id: 99, order_id: 42, rail: 'mercadopago' }]); // findPayment
+    sql.mockResolvedValueOnce([]); // UPDATE payments
+    sql.mockResolvedValueOnce([{ kind: 'walk_package', status: 'pending' }]); // prior order (transition)
+    sql.mockResolvedValueOnce([]); // UPDATE orders → paid
+    sql.mockResolvedValueOnce([{ app_grant_walk_credits: 7 }]); // grant helper
+
+    const res = await handleWebhook('mercadopago', {
+      headers: { 'x-signature': 'ts=1,v1=ok' },
+      body: { external_reference: '99', status: 'approved' },
+    });
+
+    expect(res).toMatchObject({ ok: true, status: 'approved' });
+    // The grant runs exactly once, on the first transition into paid.
+    expect(allQueryText()).toContain('app_grant_walk_credits');
+    const grantCall = sql.mock.calls.find((c) => (c?.[0] ?? []).join(' ').includes('app_grant_walk_credits'));
+    expect(grantCall).toEqual(expect.arrayContaining([42])); // bound the order id
+  });
+
+  it('a walk_package order ALREADY paid does NOT re-grant (idempotent transition guard)', async () => {
+    configureMp();
+    mp.verifyWebhook.mockReturnValue(true);
+    mp.mapStatus.mockReturnValue('approved');
+    sql.mockResolvedValueOnce([{ id: 99, order_id: 42, rail: 'mercadopago' }]); // findPayment
+    sql.mockResolvedValueOnce([]); // UPDATE payments
+    sql.mockResolvedValueOnce([{ kind: 'walk_package', status: 'paid' }]); // already paid → no transition
+    sql.mockResolvedValueOnce([]); // UPDATE orders (no-op status write)
+
+    await handleWebhook('mercadopago', {
+      headers: { 'x-signature': 'ts=1,v1=ok' },
+      body: { external_reference: '99', status: 'approved' },
+    });
+
+    expect(allQueryText()).not.toContain('app_grant_walk_credits');
+  });
+
   it('verified but UNKNOWN reference → acknowledged (200) with nothing changed', async () => {
     configureBinance();
     binance.verifyWebhook.mockReturnValue(true);

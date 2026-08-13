@@ -20,6 +20,19 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-13, Wave B) — ticket B2 (walk packages + prepaid credit balance):** migration
+> **0089** (`walk_packages` + `walk_credit_packs` + `orders.kind` 'walk_package' + the DEFINER
+> `app_grant_walk_credits`; ENABLE+FORCE RLS: public-active read / admin write for packages,
+> owner+provider-staff read / NO-direct-write for balances; ⏳ PENDING hand-apply). A walker sets
+> prepaid packs (single/10/20, each priced) on the **web extranet** (a walker-only section inside
+> `ProviderServices`, with 1/10/20 quick-add suggestions); an owner **buys** one on the walker
+> storefront (`service/provider.jsx` → same MercadoPago checkout as the shop) → a credit balance
+> scoped per owner↔provider, usable across their pets. Credits are **granted on PAID** (in
+> `applyPaymentStatus`, idempotent) and **spent at pickup (B3)** — not here. New API: walk-packages
+> CRUD, `POST /pets/[id]/walk-package-checkout`, `GET /providers/[id]/walk-credits`, + `walk_packages`
+> on the public profile. Degrade-clean throughout (missing tables → []/0/no-op). EN+ES. Gates: web
+> vitest 1869→1901, integration 819→836 (walk-packages-credits), mobile jest 1691→1695.
+
 > **Update (2026-08-13, Wave B) — ticket B1 (walker "Available now" live toggle):** migration **0088**
 > (`provider_live_availability` — one row/provider, ENABLE+FORCE RLS: published-or-own-staff read,
 > active-staff-only write; ⏳ PENDING hand-apply). A walker business flips a live "Accepting walks now"

@@ -698,5 +698,16 @@
         "adopted": "Adopted"
       }
     }
+  },
+  "walkPackages": {
+    "title": "Walk packages",
+    "balance": "You have {{count}} walks with {{business}}",
+    "single": "Single walk",
+    "pack": "{{count}} walks",
+    "perWalk": "{{price}} per walk",
+    "buy": "Buy",
+    "needPetTitle": "Add a pet first",
+    "needPetBody": "You need a pet on your profile to buy a walk package.",
+    "buyErrorTitle": "Couldn't start checkout"
   }
 }
