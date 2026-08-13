@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Switch,
 } from "react-native";
+import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -36,6 +38,8 @@ import {
   useProviderUnreadCount,
   useProviderAdoptionApplications,
   useProviderProfile,
+  useProviderLiveAvailability,
+  useSetProviderLiveAvailability,
 } from "@/hooks/useProviders";
 import {
   useProviderPosts,
@@ -46,7 +50,11 @@ import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessSta
 import useActiveProviderStore from "@/store/activeProviderStore";
 import { useUpload } from "@/utils/useUpload";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
-import { toCanonicalDate, formatDisplayTime } from "@/utils/canonicalDateTime";
+import {
+  toCanonicalDate,
+  formatDisplayTime,
+  toCanonicalTime,
+} from "@/utils/canonicalDateTime";
 
 // Pending adoption-application statuses (the shelter's open queue) — counted for the Today glance.
 const PENDING_APP_STATUSES = ["submitted", "under_review", "pending"];
@@ -198,6 +206,96 @@ function GlanceRow({ testID, icon, label, value, detail, onPress, last }) {
   }
   return (
     <View testID={testID}>{body}</View>
+  );
+}
+
+// "Accepting walks now" — a live presence switch for walker businesses (ticket B1). Separate from
+// the recurring availability windows: this says the shop is online RIGHT NOW. Enabling captures the
+// device's current GPS point (best-effort; still allowed if denied) and stamps an 8h auto-expiry
+// server-side, so a forgotten toggle self-clears. Reflects the real GET (no fake state).
+function AcceptingWalksCard({ providerId, t }) {
+  const { data: live } = useProviderLiveAvailability(providerId);
+  const setLive = useSetProviderLiveAvailability(providerId);
+  const accepting = live?.accepting === true;
+
+  const onToggle = useCallback(
+    async (next) => {
+      let lat = null;
+      let lng = null;
+      if (next) {
+        // Best-effort current point — presence is still allowed if location is denied (null coords).
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            lat = loc.coords.latitude;
+            lng = loc.coords.longitude;
+          }
+        } catch {
+          // location unavailable — proceed without coords
+        }
+      }
+      try {
+        await setLive.mutateAsync({ accepting: next, lat, lng });
+      } catch (e) {
+        Alert.alert(t("business.available.error"), e?.message);
+      }
+    },
+    [setLive, t],
+  );
+
+  const untilLabel =
+    accepting && live?.expires_at
+      ? t("business.available.until", {
+          time: formatDisplayTime(toCanonicalTime(new Date(live.expires_at))),
+        })
+      : t("business.available.hint");
+
+  return (
+    <View
+      style={{
+        backgroundColor: COLORS.card,
+        borderRadius: RADIUS.card,
+        borderWidth: 1.5,
+        borderColor: accepting ? COLORS.sageDark : COLORS.peach,
+        padding: SPACING.lg,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SPACING.md,
+        marginBottom: SPACING.md,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: (accepting ? COLORS.sageDark : COLORS.mutedBrown) + "1A",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Footprints size={22} color={accepting ? COLORS.sageDark : COLORS.mutedBrown} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+          {t("business.available.title")}
+        </Text>
+        <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]} numberOfLines={1}>
+          {untilLabel}
+        </Text>
+      </View>
+      <Switch
+        value={accepting}
+        onValueChange={onToggle}
+        disabled={setLive.isPending}
+        trackColor={{ true: COLORS.sageDark, false: COLORS.peach }}
+        accessibilityLabel={t("business.available.title")}
+        testID="business-accepting-walks-switch"
+      />
+    </View>
   );
 }
 
@@ -513,6 +611,10 @@ export default function BusinessHome() {
             />
           ) : null}
         </View>
+
+        {/* Accepting-walks-now live switch (walker businesses only) — a live presence flag,
+            separate from the recurring availability windows. */}
+        {hasWalker ? <AcceptingWalksCard providerId={providerId} t={t} /> : null}
 
         {/* Walks quick action (walker businesses only) — opens the walker workspace to check in
             a booked walk and record the live GPS route. */}

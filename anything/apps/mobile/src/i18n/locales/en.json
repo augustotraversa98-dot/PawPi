@@ -604,6 +604,12 @@
       "walksLabel": "Walks",
       "walksHint": "Check in a walk and record the route"
     },
+    "available": {
+      "title": "Accepting walks now",
+      "hint": "Let nearby owners know you're available right now",
+      "until": "You're available until {{time}}",
+      "error": "Couldn't update your status"
+    },
     "bookings": {
       "title": "Bookings",
       "subtitle": "Upcoming reservations",

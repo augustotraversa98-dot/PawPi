@@ -942,6 +942,73 @@ export function useFinishWalk() {
   });
 }
 
+// --- walker "Available now" live presence (Phase 2 ticket B1) -----------------
+// A walker business flips a live "Accepting walks now" flag (separate from the recurring
+// availability windows). GET returns { accepting, expires_at } with the expiry already
+// evaluated server-side; PUT (active walker staff) upserts, stamping an 8h auto-expiry on
+// enable and clearing it on disable. Degrades clean when unmigrated (GET → accepting:false).
+
+// Read a provider's live "accepting walks now" status. Disabled until a provider id is known.
+// Refetches every 60s so a self-expired toggle flips to off without a manual refresh.
+export function useProviderLiveAvailability(providerId) {
+  return useQuery({
+    queryKey: ["provider-live-availability", providerId],
+    enabled: providerId != null,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/live-availability`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch live availability");
+      }
+      return response.json(); // { accepting, expires_at }
+    },
+  });
+}
+
+// Toggle a provider's live "accepting walks now" status (PUT). Optimistic: flips the cached
+// value immediately, then invalidates the GET so the server's authoritative expires_at lands.
+// mutateAsync({ providerId, accepting, lat?, lng? }).
+export function useSetProviderLiveAvailability(providerId) {
+  const queryClient = useQueryClient();
+  const key = ["provider-live-availability", providerId];
+  return useMutation({
+    mutationFn: async ({ accepting, lat, lng }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/live-availability`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accepting, lat, lng }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update live availability");
+      }
+      return response.json();
+    },
+    onMutate: async ({ accepting }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old) => ({
+        ...(old ?? {}),
+        accepting: accepting === true,
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
 // --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
 // These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
 // real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,
