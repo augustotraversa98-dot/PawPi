@@ -842,5 +842,49 @@
     "countdownGotcha": "🎉 Se acerca el día de adopción de {{name}}",
     "inDays_one": "en {{count}} día",
     "inDays_other": "en {{count}} días"
+  },
+  "share": {
+    "tagline": "{{name}} es parte de PawPi 🐾",
+    "streakSub_one": "Racha de cuidado de {{count}} día",
+    "streakSub_other": "Racha de cuidado de {{count}} días",
+    "walksSub_one": "{{count}} paseo esta semana",
+    "walksSub_other": "{{count}} paseos esta semana",
+    "milestoneBirthday": "Cumpleaños de {{name}}",
+    "milestoneGotcha": "Día de adopción de {{name}}",
+    "milestoneBirthdayYears_one": "Cumpleaños de {{name}} — {{count}} año",
+    "milestoneBirthdayYears_other": "Cumpleaños de {{name}} — {{count}} años",
+    "milestoneGotchaYears_one": "Día de adopción de {{name}} — {{count}} año",
+    "milestoneGotchaYears_other": "Día de adopción de {{name}} — {{count}} años",
+    "potdSub": "{{name}} · un perro de PawPi",
+    "recapStub": "El resumen mensual llega pronto",
+    "emptyGeneric": "{{name}} es parte de PawPi 🐾",
+    "empty": {
+      "week_in_walks": "{{name}} es parte de PawPi 🐾",
+      "streak": "{{name}} es parte de PawPi 🐾",
+      "milestone": "{{name}} es parte de PawPi 🐾",
+      "pet_of_the_day": "{{name}} es parte de PawPi 🐾",
+      "care_recap": "{{name}} es parte de PawPi 🐾"
+    },
+    "deckTitle": "Compartir una tarjeta",
+    "openDeck": "Compartir una tarjeta",
+    "shareCta": "Compartir",
+    "locked": "Bloqueada",
+    "deckMilestoneReady": "¡Es un día especial! 🎉",
+    "deckPotdReady": "Lista para compartir",
+    "deckEmptyGeneric": "Todavía no está lista",
+    "deck": {
+      "milestone": "Hito",
+      "week_in_walks": "Semana de paseos",
+      "streak": "Racha",
+      "pet_of_the_day": "Perro de PawPi",
+      "care_recap": "Resumen mensual de cuidado"
+    },
+    "deckEmpty": {
+      "milestone": "Aparece en cumpleaños y días de adopción",
+      "week_in_walks": "Registra un paseo esta semana para desbloquear",
+      "streak": "Cierra el anillo de hoy para empezar una racha",
+      "pet_of_the_day": "Agrega una foto para desbloquear",
+      "care_recap": "Pronto: resumen mensual de cuidado"
+    }
   }
 }

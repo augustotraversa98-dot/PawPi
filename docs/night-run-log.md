@@ -88,3 +88,15 @@ day one; no fake data. One line per merge.
   pet-profile shows only in the 3-day window (feeds E5). Profile route now also returns `adoption_date`.
   EN+ES. Real dates only — nothing renders without a matching date. Gates: integration 901→906 (+5),
   web vitest 1920 (unchanged), mobile jest 1738→1746 (+8).
+- **2026-08-13 (E4)** — Share cards deck merged — [#PENDING]. **NO migration** (reads existing
+  walk/moment logs + E0/E2 `pet_streaks`). New owner-scoped `GET /api/pets/[id]/share-stats?day=`
+  returns REAL stats — streak (from `pet_streaks`, degrade-clean), walks in the last 7 owner-tz days,
+  total daily moments; a non-owned pet 404s and another owner's logs never leak. Mobile:
+  `ShareableStatCard` (story-sized 9:16 captured at **1080×1920**, PawPi-branded, carries **@handle + a
+  handle-only deep link — never location**) + `ShareCardButton` reusing the 2.62 `react-native-view-shot`
+  + `expo-sharing` capture path (load-gated, timeout, graceful no-op); `ShareCardDeck` modal lists the
+  templates built from real stats (milestone / week-in-walks / streak / pet-of-the-day) with a clean
+  empty state when a stat is 0 (no fake number), plus an **empty-safe monthly care-recap STUB** (depends
+  on E10). Opened from a "Share a card" button on the owner's own pet-profile. EN+ES. Gates: integration
+  906→910 (+4), web vitest 1920 (unchanged), mobile jest 1746→1752 (+6). **Pet Owner engagement wave
+  E0–E4 COMPLETE.**

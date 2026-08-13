@@ -53,7 +53,13 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   owner-scoped) → `FollowedMilestones`/`MilestoneEventCard` on the home feed (paw the pet's moment). A
   3-day `MilestoneCountdownBanner` on the pet-profile (feeds E5). EN+ES. Proven: feed-milestones
   integration (+5), feedDelight jest (+8).
-- ☐ **E4** — Share cards (story-sized 1080×1920 branded deck; real stats only; @handle + deep link).
+- ✅ **E4** — Share cards. **No migration** (reads existing logs + E0/E2 `pet_streaks`). New owner-scoped
+  `GET /api/pets/[id]/share-stats` (real: streak, walks-this-week, moments-total; empty-safe). Mobile:
+  `ShareableStatCard` (1080×1920 PawPi-branded, @handle + handle-only deep link — never location) + a
+  `ShareCardButton` reusing the 2.62 view-shot/expo-sharing path; `ShareCardDeck` (milestone /
+  week-in-walks / streak / pet-of-the-day cards + an empty-safe monthly-recap **stub** for E10), opened
+  from a "Share a card" button on the owner's pet-profile. Real stats only — 0/absent → clean empty
+  state. EN+ES. Proven: share-stats integration (+4), shareLinks jest (+6).
 - ☐ **E5** — Notification rewrite · ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
   ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
   ☐ **E10** — Health-update reinforcement. _(E5–E10 are later units, tracked here for the full wave.)_

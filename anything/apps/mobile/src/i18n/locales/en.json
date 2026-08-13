@@ -842,5 +842,49 @@
     "countdownGotcha": "🎉 {{name}}'s gotcha day is coming",
     "inDays_one": "in {{count}} day",
     "inDays_other": "in {{count}} days"
+  },
+  "share": {
+    "tagline": "{{name}} is part of PawPi 🐾",
+    "streakSub_one": "{{count}}-day care streak",
+    "streakSub_other": "{{count}}-day care streak",
+    "walksSub_one": "{{count}} walk this week",
+    "walksSub_other": "{{count}} walks this week",
+    "milestoneBirthday": "{{name}}'s Birthday",
+    "milestoneGotcha": "{{name}}'s Gotcha Day",
+    "milestoneBirthdayYears_one": "{{name}}'s Birthday — {{count}} year",
+    "milestoneBirthdayYears_other": "{{name}}'s Birthday — {{count}} years",
+    "milestoneGotchaYears_one": "{{name}}'s Gotcha Day — {{count}} year",
+    "milestoneGotchaYears_other": "{{name}}'s Gotcha Day — {{count}} years",
+    "potdSub": "{{name}} · a PawPi pup",
+    "recapStub": "Monthly recap coming soon",
+    "emptyGeneric": "{{name}} is part of PawPi 🐾",
+    "empty": {
+      "week_in_walks": "{{name}} is part of PawPi 🐾",
+      "streak": "{{name}} is part of PawPi 🐾",
+      "milestone": "{{name}} is part of PawPi 🐾",
+      "pet_of_the_day": "{{name}} is part of PawPi 🐾",
+      "care_recap": "{{name}} is part of PawPi 🐾"
+    },
+    "deckTitle": "Share a card",
+    "openDeck": "Share a card",
+    "shareCta": "Share",
+    "locked": "Locked",
+    "deckMilestoneReady": "It's a milestone day! 🎉",
+    "deckPotdReady": "Ready to share",
+    "deckEmptyGeneric": "Not ready yet",
+    "deck": {
+      "milestone": "Milestone",
+      "week_in_walks": "Week in walks",
+      "streak": "Streak",
+      "pet_of_the_day": "PawPi pup",
+      "care_recap": "Monthly care recap"
+    },
+    "deckEmpty": {
+      "milestone": "Shows up on birthdays & gotcha days",
+      "week_in_walks": "Log a walk this week to unlock",
+      "streak": "Close today's ring to start a streak",
+      "pet_of_the_day": "Add a photo to unlock",
+      "care_recap": "Coming soon — monthly care recap"
+    }
   }
 }
