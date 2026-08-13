@@ -732,5 +732,20 @@
     "usesWalk": "Uses a walk",
     "bookedTitle": "Walk scheduled",
     "bookedBody": "The walker will confirm your walk. One credit is used at pickup."
+  },
+  "walkHistory": {
+    "title": "Walk history",
+    "link": "Walk history",
+    "subtitle": "Your past walks",
+    "dog": "Dog",
+    "pickup": "Pickup",
+    "start": "Start",
+    "noRoute": "No route recorded",
+    "emptyTitle": "No past walks yet",
+    "emptyBody": "Finished walks will show here with their route and pickup point.",
+    "noWorkspaceTitle": "No walker workspace",
+    "noWorkspaceBody": "You're not active staff of a walking provider yet.",
+    "errorTitle": "Couldn't load history",
+    "errorBody": "Pull down to try again."
   }
 }

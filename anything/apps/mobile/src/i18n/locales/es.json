@@ -732,5 +732,20 @@
     "usesWalk": "Usa un paseo",
     "bookedTitle": "Paseo agendado",
     "bookedBody": "El paseador confirmará tu paseo. Se usa un crédito al retirar."
+  },
+  "walkHistory": {
+    "title": "Historial de paseos",
+    "link": "Historial de paseos",
+    "subtitle": "Tus paseos anteriores",
+    "dog": "Perro",
+    "pickup": "Retiro",
+    "start": "Inicio",
+    "noRoute": "Sin recorrido registrado",
+    "emptyTitle": "Aún no hay paseos",
+    "emptyBody": "Los paseos terminados aparecerán acá con su recorrido y punto de retiro.",
+    "noWorkspaceTitle": "Sin espacio de paseador",
+    "noWorkspaceBody": "Todavía no sos personal activo de un proveedor de paseos.",
+    "errorTitle": "No se pudo cargar el historial",
+    "errorBody": "Deslizá para reintentar."
   }
 }

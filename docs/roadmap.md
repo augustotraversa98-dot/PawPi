@@ -20,6 +20,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
+> migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
+> newest-first: dog + date + duration + distance, expandable to the real route drawn on a map
+> (`MapLocationView`), the **pickup marker** (from B3), and any photos. New screen
+> `walker-history.jsx` → `/walker-history`, reached from a "Walk history" link in `walker-walks`.
+> The walk-sessions GET additively surfaces `pickup_lat/lng` via a **guarded column probe** (so the
+> live walker list/history never 500s on an unmigrated prod). Sessions with no route render "No
+> route recorded" gracefully; null pickup shows no marker. EN+ES. Gates: integration 852→855
+> (walker-history), mobile jest 1704→1708, web vitest 1920 (unchanged). **Wave B (B1–B5) is done —
+> 5 PRs merged; migrations 0088–0091 await Tats' hand-apply.**
+
 > **Update (2026-08-13, Wave B) — ticket B4 (schedule a walk against a pack):** migration **0091**
 > (additive `vet_appointments.pay_with_credit`; no RLS/table/function change; ⏳ PENDING hand-apply).
 > An owner with a balance schedules a walker booking marked **pay_with_credit** — it creates **no
