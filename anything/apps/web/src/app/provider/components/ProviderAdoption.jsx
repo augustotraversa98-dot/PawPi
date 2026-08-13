@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   PawPrint,
   Loader2,
@@ -14,6 +15,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,6 +26,7 @@ import {
   useRelistAdoptableListing,
   useAdoptionApplications,
   useReviewAdoptionApplication,
+  useOpenAdoptionApplicantThread,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
@@ -364,7 +367,7 @@ function CreateListingForm({ providerId }) {
 // type-search over the already-loaded rows plus status filter chips. Purely client-side —
 // no new fetch — so it's instant at these list sizes. `chips` is [{ value, label }]; the
 // selected chip and the search text both compose in each list's filter below.
-function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips, chip, onChip }) {
+function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips = [], chip, onChip }) {
   return (
     <div className="mb-3 space-y-2">
       <div className="relative">
@@ -381,6 +384,7 @@ function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips, chip
           style={{ borderColor: COLORS.peach }}
         />
       </div>
+      {chips.length > 0 ? (
       <div className="flex flex-wrap gap-1.5">
         {chips.map((c) => {
           const active = chip === c.value;
@@ -402,6 +406,7 @@ function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips, chip
           );
         })}
       </div>
+      ) : null}
     </div>
   );
 }
@@ -435,13 +440,54 @@ const DOG_CHIPS = [
   { value: "adopted", label: "Adopted" },
 ];
 
-const APPLICATION_CHIPS = [
-  { value: "all", label: "All" },
-  { value: "submitted", label: "Submitted" },
-  { value: "under_review", label: "Under review" },
-  { value: "approved", label: "Approved" },
-  { value: "declined", label: "Declined" },
-];
+// Order applications within a dog: open (submitted/under_review) first, then approved, then
+// declined; newest first within each rank. So a shelter sees who still needs a decision on top and
+// declined applicants sink to the bottom (ticket A4).
+function applicationRank(status) {
+  if (status === "approved") return 1;
+  if (status === "declined") return 2;
+  return 0; // submitted / under_review / anything still open
+}
+
+// Reorganize the flat application list into per-dog sections (ticket A4). Each section carries the
+// dog's name/breed/listing status + its applications (ranked). Sections are ordered by the count of
+// still-open applications (most needing attention first), then by most-recent activity.
+function groupApplicationsByDog(apps) {
+  const map = new Map();
+  for (const a of apps) {
+    const key = a.listing_id == null ? `app-${a.id}` : `listing-${a.listing_id}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        listingId: a.listing_id ?? null,
+        listingName: a.listing_name || "Dog",
+        listingBreed: a.listing_breed || null,
+        listingStatus: a.listing_status || null,
+        apps: [],
+      });
+    }
+    map.get(key).apps.push(a);
+  }
+  const groups = Array.from(map.values());
+  for (const g of groups) {
+    g.apps.sort((a, b) => {
+      const r = applicationRank(a.status) - applicationRank(b.status);
+      if (r !== 0) return r;
+      return (
+        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      );
+    });
+    g.openCount = g.apps.filter((a) => applicationRank(a.status) === 0).length;
+    g.lastActivity = g.apps.reduce(
+      (max, a) => Math.max(max, new Date(a.created_at || 0).getTime()),
+      0,
+    );
+  }
+  groups.sort(
+    (a, b) => b.openCount - a.openCount || b.lastActivity - a.lastActivity,
+  );
+  return groups;
+}
 
 function ListingList({ providerId }) {
   const { data: listings, isLoading, isError, error } = useAdoptableListings(providerId);
@@ -848,9 +894,9 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
 function ApplicationList({ providerId }) {
   const { data: apps, isLoading, isError, error } = useAdoptionApplications(providerId);
   const review = useReviewAdoptionApplication(providerId);
+  const openThread = useOpenAdoptionApplicantThread(providerId);
+  const navigate = useNavigate();
   const [query, setQuery] = useState(""); // fast type-search over applicant + email + dog name
-  const [chip, setChip] = useState("all"); // status filter chip
-  const [pastOpen, setPastOpen] = useState(false); // Past (approved/declined) collapsed by default
 
   if (isLoading) {
     return (
@@ -881,75 +927,89 @@ function ApplicationList({ providerId }) {
     }
   };
 
+  // Open (or reuse) the applicant's chat thread and jump to it (ticket A4). Idempotent server-side,
+  // so a double-click just reuses the same thread. A failed open surfaces a toast, never a crash.
+  const message = async (applicationId) => {
+    try {
+      const { thread } = await openThread.mutateAsync({ applicationId });
+      if (thread?.id != null) navigate(`/provider/chats?thread=${thread.id}`);
+    } catch (err) {
+      toast.error(err?.message || "Couldn't open the chat");
+    }
+  };
+
   const q = query.trim().toLowerCase();
   const matchesSearch = (a) =>
     !q ||
     [a.applicant_name, a.applicant_email, a.listing_name].some((f) =>
       (f || "").toLowerCase().includes(q),
     );
-  const matchesChip = (a) => chip === "all" || a.status === chip;
-  const filtered = apps.filter((a) => matchesSearch(a) && matchesChip(a));
-
-  // Active = still open (submitted / under_review); Past = decided (approved / declined).
-  const isPast = (a) => a.status === "approved" || a.status === "declined";
-  const active = filtered.filter((a) => !isPast(a));
-  const past = filtered.filter(isPast);
-
-  const card = (a) => <ApplicationCard key={a.id} app={a} onAct={act} />;
-
-  const toolbar = (
-    <FilterBar
-      query={query}
-      onQuery={setQuery}
-      searchPlaceholder="Search by applicant, email or dog"
-      searchLabel="Search applications"
-      chips={APPLICATION_CHIPS}
-      chip={chip}
-      onChip={setChip}
-    />
-  );
-
-  // A specific status chip → a single flat, fully-visible list (so picking "Approved" pulls
-  // the decided ones straight into view). "All" → the active/past split with collapsed Past.
-  if (chip !== "all") {
-    return (
-      <div>
-        {toolbar}
-        {filtered.length === 0 ? (
-          <EmptyCard title="No applications match" body="Try a different search or filter." />
-        ) : (
-          <div className="space-y-3">{filtered.map(card)}</div>
-        )}
-      </div>
-    );
-  }
+  const filtered = apps.filter(matchesSearch);
+  const groups = groupApplicationsByDog(filtered);
 
   return (
     <div>
-      {toolbar}
+      <FilterBar
+        query={query}
+        onQuery={setQuery}
+        searchPlaceholder="Search by applicant, email or dog"
+        searchLabel="Search applications"
+      />
       {filtered.length === 0 ? (
-        <EmptyCard title="No applications match" body="Try a different search or filter." />
+        <EmptyCard title="No applications match" body="Try a different search." />
       ) : (
-        <>
-          {active.length > 0 ? <div className="space-y-3">{active.map(card)}</div> : null}
-          {past.length > 0 ? (
-            <PastSection
-              count={past.length}
-              open={pastOpen || q !== ""}
-              onToggle={() => setPastOpen((o) => !o)}
-            >
-              {past.map(card)}
-            </PastSection>
-          ) : null}
-        </>
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <DogApplicationGroup
+              key={g.key}
+              group={g}
+              onAct={act}
+              onMessage={message}
+              messaging={openThread.isPending}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-// One application card. Extracted so the Active and Past groups render the same markup.
-// Decided (approved/declined) cards drop the action buttons; open ones keep them.
-function ApplicationCard({ app: a, onAct }) {
+// One per-dog section of applications (ticket A4): a header naming the dog (name + breed + its
+// listing status + how many applications) over that dog's ranked application cards.
+function DogApplicationGroup({ group, onAct, onMessage, messaging }) {
+  const n = group.apps.length;
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Dog className="h-4 w-4" style={{ color: COLORS.coral }} />
+        <span className="font-semibold text-[#3B241B]">{group.listingName}</span>
+        {group.listingBreed ? (
+          <span className="text-sm text-[#7A6254]">{group.listingBreed}</span>
+        ) : null}
+        {group.listingStatus ? <StatusTag status={group.listingStatus} /> : null}
+        <span className="text-xs text-[#7A6254]">
+          {n} application{n === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {group.apps.map((a) => (
+          <ApplicationCard
+            key={a.id}
+            app={a}
+            onAct={onAct}
+            onMessage={onMessage}
+            messaging={messaging}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// One application card. Open (submitted/under_review) cards keep the review actions; decided
+// (approved/declined) cards drop them. Every card — decided or not — keeps a Message button so the
+// shelter can always reach the applicant (ticket A4).
+function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
   const decided = a.status === "approved" || a.status === "declined";
   return (
     <div
@@ -970,31 +1030,41 @@ function ApplicationCard({ app: a, onAct }) {
         </p>
       ) : null}
       <AnswerLines answers={a.answers} />
-      {!decided ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => onAct(a.id, "under_review")}
-            className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
-            style={{ borderColor: COLORS.peach, color: "#3B241B" }}
-          >
-            Mark under review
-          </button>
-          <button
-            onClick={() => onAct(a.id, "approved")}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-            style={{ backgroundColor: "#3FA34D" }}
-          >
-            <Check className="h-3.5 w-3.5" /> Approve
-          </button>
-          <button
-            onClick={() => onAct(a.id, "declined")}
-            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"
-            style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
-          >
-            <X className="h-3.5 w-3.5" /> Decline
-          </button>
-        </div>
-      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!decided ? (
+          <>
+            <button
+              onClick={() => onAct(a.id, "under_review")}
+              className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+              style={{ borderColor: COLORS.peach, color: "#3B241B" }}
+            >
+              Mark under review
+            </button>
+            <button
+              onClick={() => onAct(a.id, "approved")}
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+              style={{ backgroundColor: "#3FA34D" }}
+            >
+              <Check className="h-3.5 w-3.5" /> Approve
+            </button>
+            <button
+              onClick={() => onAct(a.id, "declined")}
+              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"
+              style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
+            >
+              <X className="h-3.5 w-3.5" /> Decline
+            </button>
+          </>
+        ) : null}
+        <button
+          onClick={() => onMessage(a.id)}
+          disabled={messaging}
+          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+          style={{ borderColor: COLORS.peach, color: "#3B241B" }}
+        >
+          <MessageSquare className="h-3.5 w-3.5" /> Message
+        </button>
+      </div>
     </div>
   );
 }

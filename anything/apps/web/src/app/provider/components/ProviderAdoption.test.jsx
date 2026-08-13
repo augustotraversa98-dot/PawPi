@@ -7,6 +7,9 @@ import { render, screen, fireEvent } from "@testing-library/react";
 // calls the review mutation with the right status (approval = the pet-transfer trigger).
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// react-router's useNavigate — the adoption "Message" button deep-links to /provider/chats (A4).
+const navigateMock = vi.fn();
+vi.mock("react-router", () => ({ useNavigate: () => navigateMock }));
 // The media uploaders (ticket 2.85) use the shared upload hook; stub it so render is fetch-free.
 vi.mock("@/utils/useUpload", () => ({
   __esModule: true,
@@ -20,6 +23,7 @@ vi.mock("../hooks/useProviders", () => ({
   useRelistAdoptableListing: vi.fn(),
   useAdoptionApplications: vi.fn(),
   useReviewAdoptionApplication: vi.fn(),
+  useOpenAdoptionApplicantThread: vi.fn(),
 }));
 
 import {
@@ -30,6 +34,7 @@ import {
   useRelistAdoptableListing,
   useAdoptionApplications,
   useReviewAdoptionApplication,
+  useOpenAdoptionApplicantThread,
 } from "../hooks/useProviders";
 import ProviderAdoption from "./ProviderAdoption";
 
@@ -55,6 +60,9 @@ beforeEach(() => {
   useDeleteAdoptableListing.mockReturnValue(mutationStub());
   useRelistAdoptableListing.mockReturnValue(mutationStub());
   useReviewAdoptionApplication.mockReturnValue(mutationStub());
+  useOpenAdoptionApplicantThread.mockReturnValue(
+    mutationStub({ mutateAsync: vi.fn().mockResolvedValue({ thread: { id: 100 } }) }),
+  );
   useAdoptableListings.mockReturnValue(queryStub([]));
   useAdoptionApplications.mockReturnValue(queryStub([]));
 });
@@ -330,39 +338,17 @@ describe("ProviderAdoption — manage (collapse / search / filter)", () => {
 
   // ----- Applications -----
 
-  it("splits applications into active and a collapsed Past (approved/declined) section", () => {
+  it("search filters applications by applicant, email and dog name", () => {
     useAdoptionApplications.mockReturnValue(queryStub(APPS));
     render(<ProviderAdoption providerId={10} />);
-    expect(screen.getByText(/Augusto/)).toBeTruthy(); // submitted → active
-    expect(screen.getByText(/Bianca/)).toBeTruthy(); // under_review → active
-    expect(screen.getByRole("button", { name: /Past \(2\)/ })).toBeTruthy();
-    expect(screen.queryByText(/Carlos/)).toBeNull(); // approved → collapsed
-    expect(screen.queryByText(/Dora/)).toBeNull(); // declined → collapsed
-    fireEvent.click(screen.getByRole("button", { name: /Past \(2\)/ }));
-    expect(screen.getByText(/Carlos/)).toBeTruthy();
-    expect(screen.getByText(/Dora/)).toBeTruthy();
-  });
-
-  it("search filters applications by applicant, email and dog name across both groups", () => {
-    useAdoptionApplications.mockReturnValue(queryStub(APPS));
-    render(<ProviderAdoption providerId={10} />);
-    // By dog name (active).
+    // By dog name.
     fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "milo" } });
     expect(screen.getByText(/Bianca/)).toBeTruthy();
     expect(screen.queryByText(/Augusto/)).toBeNull();
-    // By email, surfacing a past (approved) application.
+    // By email, surfacing an approved application.
     fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "car@z" } });
     expect(screen.getByText(/Carlos/)).toBeTruthy();
     expect(screen.queryByText(/Bianca/)).toBeNull();
-  });
-
-  it("the application status chips filter (and can pull a decided one into view)", () => {
-    useAdoptionApplications.mockReturnValue(queryStub(APPS));
-    render(<ProviderAdoption providerId={10} />);
-    fireEvent.click(screen.getByRole("button", { name: "Approved" }));
-    expect(screen.getByText(/Carlos/)).toBeTruthy();
-    expect(screen.queryByText(/Augusto/)).toBeNull();
-    expect(screen.queryByText(/Dora/)).toBeNull();
   });
 
   it("shows 'No applications match' when a search yields nothing", () => {
@@ -370,5 +356,128 @@ describe("ProviderAdoption — manage (collapse / search / filter)", () => {
     render(<ProviderAdoption providerId={10} />);
     fireEvent.change(screen.getByLabelText("Search applications"), { target: { value: "zzz-nobody" } });
     expect(screen.getByText("No applications match")).toBeTruthy();
+  });
+});
+
+// Group-by-dog + message the applicant (ticket A4).
+describe("ProviderAdoption — applications grouped by dog + message", () => {
+  // Two dogs. Rex has three applications (one still open, one approved, one declined) so we can
+  // assert declined sinks to the bottom; Milo has one open application.
+  const GROUPED = [
+    {
+      id: 1,
+      listing_id: 50,
+      listing_name: "Rex",
+      listing_breed: "Beagle",
+      listing_status: "available",
+      applicant_name: "Ana",
+      applicant_owner_user_id: 11,
+      status: "submitted",
+      created_at: "2026-08-10T10:00:00Z",
+      answers: {},
+    },
+    {
+      id: 2,
+      listing_id: 50,
+      listing_name: "Rex",
+      listing_breed: "Beagle",
+      listing_status: "available",
+      applicant_name: "Beto",
+      applicant_owner_user_id: 12,
+      status: "declined",
+      created_at: "2026-08-11T10:00:00Z",
+      answers: {},
+    },
+    {
+      id: 3,
+      listing_id: 50,
+      listing_name: "Rex",
+      listing_breed: "Beagle",
+      listing_status: "available",
+      applicant_name: "Caro",
+      applicant_owner_user_id: 13,
+      status: "approved",
+      created_at: "2026-08-09T10:00:00Z",
+      answers: {},
+    },
+    {
+      id: 4,
+      listing_id: 60,
+      listing_name: "Milo",
+      listing_breed: "Poodle",
+      listing_status: "pending",
+      applicant_name: "Dani",
+      applicant_owner_user_id: 14,
+      status: "under_review",
+      created_at: "2026-08-12T10:00:00Z",
+      answers: {},
+    },
+  ];
+
+  it("renders per-dog sections with a breed, listing status and an application count", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(GROUPED));
+    render(<ProviderAdoption providerId={10} />);
+    // A dog section header naming Rex + its 3 applications, and Milo + its 1.
+    expect(screen.getByText("Rex")).toBeTruthy();
+    expect(screen.getByText("Beagle")).toBeTruthy();
+    expect(screen.getByText("3 applications")).toBeTruthy();
+    expect(screen.getByText("Milo")).toBeTruthy();
+    expect(screen.getByText("1 application")).toBeTruthy();
+  });
+
+  it("orders a dog's applications open-first with declined at the bottom", () => {
+    useAdoptionApplications.mockReturnValue(queryStub(GROUPED));
+    const { container } = render(<ProviderAdoption providerId={10} />);
+    // Within Rex: open (Ana) and approved (Caro) both rank above the declined (Beto).
+    const text = container.textContent;
+    expect(text.indexOf("Ana")).toBeLessThan(text.indexOf("Beto"));
+    expect(text.indexOf("Caro")).toBeLessThan(text.indexOf("Beto"));
+  });
+
+  it("Message opens/reuses the applicant thread then deep-links to /provider/chats", async () => {
+    const open = mutationStub({
+      mutateAsync: vi.fn().mockResolvedValue({ thread: { id: 777 } }),
+    });
+    useOpenAdoptionApplicantThread.mockReturnValue(open);
+    useAdoptionApplications.mockReturnValue(
+      queryStub([
+        {
+          id: 9,
+          listing_id: 50,
+          listing_name: "Rex",
+          applicant_name: "Ana",
+          applicant_owner_user_id: 11,
+          status: "submitted",
+          answers: {},
+        },
+      ]),
+    );
+    render(<ProviderAdoption providerId={10} />);
+    fireEvent.click(screen.getByText("Message"));
+    expect(open.mutateAsync).toHaveBeenCalledWith({ applicationId: 9 });
+    // Await the mutation's promise so the navigate fires.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(navigateMock).toHaveBeenCalledWith("/provider/chats?thread=777");
+  });
+
+  it("keeps a Message button on decided (approved/declined) applications", () => {
+    useAdoptionApplications.mockReturnValue(
+      queryStub([
+        {
+          id: 3,
+          listing_id: 50,
+          listing_name: "Rex",
+          applicant_name: "Caro",
+          applicant_owner_user_id: 13,
+          status: "approved",
+          answers: {},
+        },
+      ]),
+    );
+    render(<ProviderAdoption providerId={10} />);
+    // Decided → no review buttons, but Message stays.
+    expect(screen.queryByText("Approve")).toBeNull();
+    expect(screen.getByText("Message")).toBeTruthy();
   });
 });

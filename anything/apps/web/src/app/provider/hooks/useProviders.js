@@ -1824,3 +1824,24 @@ export function useReviewAdoptionApplication(providerId) {
     },
   });
 }
+
+// Open (or reuse) a chat thread WITH an applicant, provider-initiated (ticket A4 — web parity for
+// A3). POST .../adoption-applications/[applicationId]/thread returns { thread } (idempotent: the
+// same general owner↔provider thread is reused on repeat, so double-clicks are safe). On success we
+// invalidate the provider thread inbox so the (possibly new) thread appears on /provider/chats. The
+// Message button reads the returned thread id to deep-link straight into that conversation.
+export function useOpenAdoptionApplicantThread(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ applicationId }) => {
+      const data = await getJson(
+        `/api/providers/${providerId}/adoption-applications/${applicationId}/thread`,
+        { method: "POST" },
+      );
+      return data; // { thread, reused }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadsKey(providerId) });
+    },
+  });
+}

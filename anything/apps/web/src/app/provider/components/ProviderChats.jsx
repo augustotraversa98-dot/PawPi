@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { MessageSquare, Send, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -198,7 +199,17 @@ function Conversation({ providerId, thread }) {
 
 export default function ProviderChats({ providerId }) {
   const { data: threads, isLoading, isError, error } = useProviderThreads(providerId);
-  const [activeId, setActiveId] = useState(null);
+  // Deep-link (ticket A4): /provider/chats?thread=<id> pre-selects that conversation — the hand-off
+  // target for the adoption "Message" button. We seed activeId from the param and re-apply it when it
+  // changes; if the thread isn't in the inbox yet, activeId still holds so the conversation opens as
+  // soon as the polling list includes it. With no param, first-load behavior is unchanged.
+  const [searchParams] = useSearchParams();
+  const threadParam = searchParams.get("thread");
+  const [activeId, setActiveId] = useState(threadParam ?? null);
+
+  useEffect(() => {
+    if (threadParam != null && threadParam !== "") setActiveId(threadParam);
+  }, [threadParam]);
 
   const list = threads ?? [];
   const active = list.find((t) => String(t.id) === String(activeId)) || null;
