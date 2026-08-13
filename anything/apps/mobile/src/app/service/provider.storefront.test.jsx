@@ -56,6 +56,7 @@ jest.mock("@/components/Map/MapLocationView", () => {
 jest.mock("@/hooks/useProviders", () => ({
   useWalkCredits: () => ({ data: { remaining: 0 } }),
   useBuyWalkPackage: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useWalkPickupToken: () => ({ data: null, isLoading: false, isError: false, refetch: jest.fn() }),
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),

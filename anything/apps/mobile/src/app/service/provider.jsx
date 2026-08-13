@@ -41,6 +41,7 @@ import {
   useBuyWalkPackage,
 } from "@/hooks/useProviders";
 import WalkPackagesSection from "@/components/Providers/WalkPackagesSection";
+import WalkPickupQRModal from "@/components/Providers/WalkPickupQRModal";
 // Shared adoption listing views (ticket 2.97) — the SAME card + detail/apply modal the standalone
 // Adoption browse uses, so the storefront's Adoption tab reuses one implementation.
 import {
@@ -162,6 +163,7 @@ export default function ProviderScreen() {
   const { data: walkCredits } = useWalkCredits(
     isWalkerProvider && provider?.id != null ? provider.id : null,
   );
+  const [pickupQROpen, setPickupQROpen] = useState(false);
   const buyWalkPackage = useBuyWalkPackage();
   const handleBuyWalkPackage = useCallback(
     async (pkg) => {
@@ -359,6 +361,7 @@ export default function ProviderScreen() {
                 businessName={provider?.name}
                 onBuy={handleBuyWalkPackage}
                 buying={buyWalkPackage.isPending}
+                onShowQR={petId ? () => setPickupQROpen(true) : undefined}
                 t={t}
               />
             ) : null}
@@ -862,6 +865,18 @@ export default function ProviderScreen() {
         data={openAdoptionListing}
         onClose={() => setOpenAdoptionListing(null)}
         router={router}
+      />
+
+      {/* Pickup QR (ticket B3) — the owner shows this at handover; the walker scans it to start the
+          walk and spend one credit. */}
+      <WalkPickupQRModal
+        visible={pickupQROpen}
+        petId={petId}
+        providerId={provider?.id}
+        remaining={walkCredits?.remaining ?? 0}
+        businessName={provider?.name}
+        onClose={() => setPickupQROpen(false)}
+        t={t}
       />
 
       {/* Capability chooser — only when a provider offers several bookable services and

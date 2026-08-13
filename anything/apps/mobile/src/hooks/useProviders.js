@@ -1061,6 +1061,57 @@ export function useBuyWalkPackage() {
   });
 }
 
+// --- QR pickup: redeem a credit at handover (Phase 2 ticket B3) ---------------
+// The owner shows a short-lived signed QR; the walker scans it → one atomic action deducts a
+// credit, checks in the walk, and captures the pickup GPS.
+
+// The owner's pickup token for (pet, provider) (GET /api/pets/[id]/walk-pickup-token?provider_id=).
+// Refetches every 4 min so the rendered QR refreshes before its ~5-min TTL. Disabled until both ids
+// are known (e.g. the QR sheet is closed).
+export function useWalkPickupToken(petId, providerId, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["walk-pickup-token", petId, providerId],
+    enabled: enabled && petId != null && providerId != null,
+    refetchInterval: 4 * 60 * 1000,
+    staleTime: 0,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/pets/${encodeURIComponent(petId)}/walk-pickup-token?provider_id=${encodeURIComponent(providerId)}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch pickup token");
+      }
+      return response.json(); // { token, expires_at, ttl_seconds }
+    },
+  });
+}
+
+// The walker redeems a scanned pickup token (POST /api/providers/[id]/walk-pickup/redeem).
+// Returns { session_id }. On 409 the thrown error carries status=409 so the UI can show the
+// "no walks left" message distinctly. mutateAsync({ token, lat, lng }).
+export function useRedeemWalkPickup(providerId) {
+  return useMutation({
+    mutationFn: async ({ token, lat, lng }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-pickup/redeem`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, lat, lng }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const err = new Error(data.error || "Failed to redeem pickup");
+        err.status = response.status;
+        err.code = data.code;
+        throw err;
+      }
+      return response.json(); // { session_id }
+    },
+  });
+}
+
 // --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
 // These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
 // real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,

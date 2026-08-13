@@ -16,6 +16,7 @@ export default function WalkPackagesSection({
   businessName,
   onBuy,
   buying = false,
+  onShowQR,
   t,
 }) {
   if (!packages.length) return null;
@@ -23,7 +24,8 @@ export default function WalkPackagesSection({
 
   return (
     <Section title={tr("walkPackages.title", "Walk packages")}>
-      {/* Balance line — only when the owner already has walks with this business. */}
+      {/* Balance line — only when the owner already has walks with this business. Doubles as the
+          entry point to the pickup QR (ticket B3): tap "Show pickup QR" at handover. */}
       {remaining > 0 ? (
         <View
           testID="walk-credits-balance"
@@ -45,6 +47,23 @@ export default function WalkPackagesSection({
               business: businessName ?? "",
             })}
           </Text>
+          {onShowQR ? (
+            <PressableScale
+              testID="walk-show-pickup-qr"
+              onPress={onShowQR}
+              accessibilityRole="button"
+              style={{
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.control,
+                paddingHorizontal: SPACING.md,
+                paddingVertical: SPACING.xs + 2,
+              }}
+            >
+              <Text style={[TYPE.footnote, { color: "#FFF", fontWeight: "800" }]}>
+                {tr("walkPickup.show", "Show QR")}
+              </Text>
+            </PressableScale>
+          ) : null}
         </View>
       ) : null}
 

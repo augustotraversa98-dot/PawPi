@@ -15,6 +15,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 let mockProviders;
 let mockBookings;
 const mockCheckInAsync = jest.fn();
+const mockRedeemAsync = jest.fn();
 const mockRequestPerm = jest.fn();
 const mockWatch = jest.fn();
 
@@ -27,11 +28,25 @@ jest.mock("lucide-react-native", () =>
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (_k, fb) => fb }),
+}));
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: (...a) => mockRequestPerm(...a),
   watchPositionAsync: (...a) => mockWatch(...a),
+  getCurrentPositionAsync: jest
+    .fn()
+    .mockResolvedValue({ coords: { latitude: -34.6, longitude: -58.4 } }),
   Accuracy: { Balanced: 3 },
 }));
+// Camera scanner (ticket B3) — the PickupScannerModal uses expo-camera; stub it out.
+jest.mock("expo-camera", () => {
+  const { View } = require("react-native");
+  return {
+    CameraView: (props) => <View testID="camera-view" {...props} />,
+    useCameraPermissions: () => [{ granted: true, canAskAgain: true }, jest.fn()],
+  };
+});
 jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
@@ -56,6 +71,7 @@ jest.mock("@/hooks/useProviders", () => ({
   useCheckInWalk: () => ({ mutateAsync: mockCheckInAsync, isPending: false }),
   useTrackWalk: () => ({ mutate: jest.fn() }),
   useFinishWalk: () => ({ mutateAsync: jest.fn() }),
+  useRedeemWalkPickup: () => ({ mutateAsync: mockRedeemAsync, isPending: false }),
 }));
 
 import WalkerWalksScreen from "./walker-walks";

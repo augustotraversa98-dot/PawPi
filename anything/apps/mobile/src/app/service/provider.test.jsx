@@ -61,6 +61,7 @@ jest.mock("@/hooks/useProviders", () => ({
   // Ticket B2 — walk packages + prepaid balance.
   useWalkCredits: () => ({ data: { remaining: 0 } }),
   useBuyWalkPackage: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useWalkPickupToken: () => ({ data: null, isLoading: false, isError: false, refetch: jest.fn() }),
 }));
 
 import ProviderScreen from "./provider";

@@ -20,6 +20,19 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-13, Wave B) — ticket B3 (QR pickup: scan → deduct a credit + check in):**
+> migration **0090** (`walk_sessions` += `pickup_lat/pickup_lng/credit_pack_id` + the DEFINER
+> `app_redeem_walk_credit`; NO RLS policy change; ⏳ PENDING hand-apply). At pickup the **owner shows
+> a QR**, the **walker scans it** — one atomic action verifies a stateless HMAC-signed token
+> (`utils/walkPickupToken.js`, ~5-min TTL, bound to the provider), **deducts 1 credit**, **checks in
+> the walk** (creates the `in_progress` `walk_session`), and **captures the walker's GPS as the
+> pickup point**. The redeem is the ONLY credit-spend path (owner can't self-decrement). New API:
+> `GET /pets/[id]/walk-pickup-token`, `POST /providers/[id]/walk-pickup/redeem` (409 no-credits;
+> degrade-clean 503 when unmigrated). Mobile: owner "Show pickup QR" on the walker storefront
+> (`react-native-qrcode-svg`); walker "Scan pickup" in `walker-walks.jsx` (`expo-camera` `CameraView`)
+> → success drops into the existing live tracking. EN+ES. Gates: web vitest 1901→1918, integration
+> 836→846 (walk-pickup-redeem), mobile jest 1695→1702.
+
 > **Update (2026-08-13, Wave B) — ticket B2 (walk packages + prepaid credit balance):** migration
 > **0089** (`walk_packages` + `walk_credit_packs` + `orders.kind` 'walk_package' + the DEFINER
 > `app_grant_walk_credits`; ENABLE+FORCE RLS: public-active read / admin write for packages,

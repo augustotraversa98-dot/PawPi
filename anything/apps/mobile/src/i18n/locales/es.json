@@ -709,5 +709,22 @@
     "needPetTitle": "Agregá una mascota primero",
     "needPetBody": "Necesitás una mascota en tu perfil para comprar un paquete de paseos.",
     "buyErrorTitle": "No se pudo iniciar el pago"
+  },
+  "walkPickup": {
+    "title": "Código de retiro",
+    "instructions": "Mostrá esto a tu paseador al retirar — al escanearlo comienza el paseo y usa un crédito.",
+    "show": "Mostrar QR",
+    "remaining": "Te quedan {{count}} paseos con {{business}}",
+    "scan": "Escanear retiro",
+    "scanTitle": "Escanear código de retiro",
+    "scanHint": "Apuntá al código QR del dueño",
+    "cameraDenied": "Se necesita acceso a la cámara para escanear el código del dueño.",
+    "enableCamera": "Habilitar cámara",
+    "noCreditsTitle": "No quedan paseos",
+    "noCreditsBody": "Pedile al dueño que compre un paquete antes de este paseo.",
+    "badCodeTitle": "Código inválido",
+    "badCodeBody": "Ese QR no es un código de retiro válido para tu negocio.",
+    "redeemError": "No se pudo comenzar el paseo",
+    "redeemErrorTitle": "No se pudo escanear"
   }
 }
