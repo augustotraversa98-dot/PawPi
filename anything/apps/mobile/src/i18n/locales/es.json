@@ -568,7 +568,7 @@
       "notifications": "Notificaciones",
       "switchTitle": "Elige un negocio",
       "manageTitle": "Administrar en la web",
-      "manageBody": "Los servicios, productos, horarios, reservas, postulaciones y adopción se administran en el panel web de PawPi.",
+      "manageBody": "Los servicios, productos, horarios, reservas y avisos de adopción se administran en el panel web de PawPi.",
       "video": "Video",
       "posting": "Publicando…"
     },
@@ -650,6 +650,36 @@
       "retry": "Reintentar",
       "manageTitle": "Gestionar en la web",
       "manageBody": "Edita tus servicios, productos, horarios y tienda en el panel web de PawPi."
+    },
+    "adoption": {
+      "title": "Solicitudes",
+      "back": "Atrás",
+      "emptyTitle": "Aún no hay solicitudes",
+      "emptyBody": "Cuando alguien se postule para adoptar uno de tus perros, aparece aquí para revisar.",
+      "loadError": "No pudimos cargar tus solicitudes.",
+      "retry": "Reintentar",
+      "someone": "Alguien",
+      "forDog": "Para",
+      "aDog": "un perro",
+      "submitted": "Enviada",
+      "approve": "Aprobar",
+      "decline": "Rechazar",
+      "underReview": "Marcar en revisión",
+      "cancel": "Cancelar",
+      "approveConfirmTitle": "¿Aprobar esta solicitud?",
+      "approveConfirmBody": "Esto crea la mascota del adoptante y marca al perro como adoptado. No se puede deshacer.",
+      "declineConfirmTitle": "¿Rechazar esta solicitud?",
+      "declineConfirmBody": "Se notificará a quien se postuló.",
+      "actionError": "No pudimos actualizar la solicitud",
+      "alreadyDecidedTitle": "Ya resuelta",
+      "alreadyDecidedBody": "Esta solicitud ya fue resuelta — desliza para actualizar.",
+      "status": {
+        "submitted": "Enviada",
+        "pending": "Pendiente",
+        "under_review": "En revisión",
+        "approved": "Aprobada",
+        "declined": "Rechazada"
+      }
     }
   }
 }

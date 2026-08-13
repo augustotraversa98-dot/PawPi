@@ -321,3 +321,11 @@ test("pending adoption applications summary shows ONLY for an adoption-capable p
   expect(row).toBeTruthy();
   expect(within(row).getByText("2")).toBeTruthy();
 });
+
+test("the applications glance row taps through to the adoption review inbox", () => {
+  mockProvidersState.data = [{ id: 8, name: "Shelter", capabilities: ["adoption"] }];
+  mockAdoptionAppsState.data = [{ id: 1, status: "submitted" }];
+  const { getByTestId } = render(<BusinessHome />);
+  fireEvent.press(getByTestId("glance-applications"));
+  expect(mockPush).toHaveBeenCalledWith("/business-adoption");
+});
