@@ -709,5 +709,22 @@
     "needPetTitle": "Add a pet first",
     "needPetBody": "You need a pet on your profile to buy a walk package.",
     "buyErrorTitle": "Couldn't start checkout"
+  },
+  "walkPickup": {
+    "title": "Pickup code",
+    "instructions": "Show this to your walker at pickup — scanning it starts the walk and uses one credit.",
+    "show": "Show QR",
+    "remaining": "{{count}} walks left with {{business}}",
+    "scan": "Scan pickup",
+    "scanTitle": "Scan pickup code",
+    "scanHint": "Point at the owner's QR code",
+    "cameraDenied": "Camera access is needed to scan the owner's pickup code.",
+    "enableCamera": "Enable camera",
+    "noCreditsTitle": "No walks left",
+    "noCreditsBody": "Ask the owner to buy a pack before this walk.",
+    "badCodeTitle": "Invalid code",
+    "badCodeBody": "That QR isn't a valid pickup code for your business.",
+    "redeemError": "Couldn't start the walk",
+    "redeemErrorTitle": "Couldn't scan"
   }
 }

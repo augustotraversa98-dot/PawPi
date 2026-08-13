@@ -9,7 +9,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ArrowLeft, Footprints, Play } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, Footprints, Play, QrCode } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
@@ -18,9 +19,11 @@ import {
   useCheckInWalk,
   useTrackWalk,
   useFinishWalk,
+  useRedeemWalkPickup,
 } from "@/hooks/useProviders";
 import StartWalkModal from "@/components/Health/WalkActivity/StartWalkModal";
 import WalkerLiveMap from "@/components/Health/WalkActivity/WalkerLiveMap";
+import PickupScannerModal from "@/components/Providers/PickupScannerModal";
 
 // WALKER workspace (ticket 2.7) — a provider's active walker-staff start, GPS-track, and
 // finish a booked walk. REUSES the existing walk-activity UI (StartWalkModal — the same
@@ -43,9 +46,12 @@ export default function WalkerWalksScreen() {
     (b) => b.capability === "walker" && b.booking_status !== "cancelled",
   );
 
+  const { t } = useTranslation();
   const checkIn = useCheckInWalk();
   const track = useTrackWalk();
   const finish = useFinishWalk();
+  const redeemPickup = useRedeemWalkPickup(provider?.id);
+  const [scanOpen, setScanOpen] = useState(false);
 
   // The active session being walked + its booking context.
   const [active, setActive] = useState(null); // { sessionId, booking }
@@ -118,6 +124,49 @@ export default function WalkerWalksScreen() {
     }
   };
 
+  // QR pickup (ticket B3): the walker scans the owner's QR → capture current GPS → redeem (deduct a
+  // credit + create the in_progress session) → drop straight into the existing live-walk tracking.
+  const handleScanned = async (token) => {
+    if (redeemPickup.isPending) return;
+    // Best-effort current point — the redeem still works without coords (server captures null).
+    let lat = null;
+    let lng = null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      }
+    } catch {
+      // proceed without coords
+    }
+    try {
+      const res = await redeemPickup.mutateAsync({ token, lat, lng });
+      const sessionId = res?.session_id;
+      if (!sessionId) throw new Error(t("walkPickup.redeemError", "Couldn't start the walk"));
+      setScanOpen(false);
+      setRoutePoints(lat != null ? [{ lat, lng, t: Date.now() }] : []);
+      setPermissionDenied(lat == null);
+      setActive({ sessionId, booking: null });
+      startTracking(sessionId);
+    } catch (e) {
+      if (e?.status === 409) {
+        Alert.alert(
+          t("walkPickup.noCreditsTitle", "No walks left"),
+          t("walkPickup.noCreditsBody", "Ask the owner to buy a pack before this walk."),
+        );
+      } else if (e?.status === 401 || e?.status === 403) {
+        Alert.alert(
+          t("walkPickup.badCodeTitle", "Invalid code"),
+          t("walkPickup.badCodeBody", "That QR isn't a valid pickup code for your business."),
+        );
+      } else {
+        Alert.alert(t("walkPickup.redeemErrorTitle", "Couldn't scan"), e?.message);
+      }
+    }
+  };
+
   const handleComplete = async (walkData) => {
     stopTracking();
     const a = active;
@@ -175,6 +224,29 @@ export default function WalkerWalksScreen() {
             {provider ? provider.name : "Your assigned walks"}
           </Text>
         </View>
+        {/* Scan a credit-walk pickup QR (ticket B3) — starts the walk + spends a credit. */}
+        {provider ? (
+          <TouchableOpacity
+            onPress={() => setScanOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("walkPickup.scan", "Scan pickup")}
+            testID="walker-scan-pickup"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor: COLORS.coral,
+              borderRadius: 14,
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+            }}
+          >
+            <QrCode size={18} color="#FFF" />
+            <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>
+              {t("walkPickup.scan", "Scan")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <RefreshableScrollView
@@ -225,6 +297,15 @@ export default function WalkerWalksScreen() {
             permissionDenied={permissionDenied}
           />
         }
+      />
+
+      {/* QR pickup scanner (ticket B3) — scan the owner's code to start a credit walk. */}
+      <PickupScannerModal
+        visible={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScanned={handleScanned}
+        busy={redeemPickup.isPending}
+        t={t}
       />
     </View>
   );
