@@ -55,3 +55,15 @@ day one; no fake data. One line per merge.
   day reuses the existing `pets.adoption_date` (already synced Dog Profile ↔ Medical Profile — no new
   column). `verify_0094.sql`; RLS proven in `engagement-foundations-rls.integration.test.ts` (+9
   integration). No mobile/web-app code change. **0094 PENDING hand-apply.**
+- **2026-08-13 (E1)** — Care Ring merged — [#PENDING]. **NO migration** (visualization over existing
+  walk/moment/care logs; reuses E0's `pet_care_days`/`pet_streaks`). New owner-scoped route
+  `GET/POST /api/pets/[id]/care-ring`: derives the three segments for the **owner-tz day**
+  (`(ts AT TIME ZONE tz)::date`, tz = `COALESCE(user_profiles.timezone,'America/Buenos_Aires')`),
+  upserts the derived state into `pet_care_days`, and writes rest-day (`pet_care_days.rest_day`) +
+  pause (`pet_streaks.paused_until`). Degrades cleanly pre-0094 (savepoint + 42P01 → derived-only).
+  Mobile: `CareRing` (react-native-svg 3-arc ring, RN-Animated closing pop + guarded expo-haptics),
+  `CareRingCard` on Health→Today (status copy that celebrates the dog / never shames, tappable segment
+  deep-links, rest-day toggle + pause-until date), and a live ring around the owner's own pet-profile
+  avatar; `useCareRing`/`useSetRestDay`/`useSetPause`; walk/moment/care log mutations invalidate
+  `["care-ring", petId]` so a segment fills without reload. EN+ES. Gates: integration 872→893 (+21
+  incl. E0), web vitest 1920 (unchanged), mobile jest 1721→1735 (+14 careRing util).

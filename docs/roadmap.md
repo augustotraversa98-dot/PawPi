@@ -33,8 +33,12 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   ENABLE+FORCE own-row RLS). Reuses the existing `pets.adoption_date` as the gotcha/adoption day (already
   synced Dog Profile ↔ Medical Profile — no new column, no duplicate storage). `verify_0094.sql`;
   RLS proven as `pawpi_app` in `engagement-foundations-rls.integration.test.ts`. **0094 PENDING hand-apply.**
-- ☐ **E1** — The Care Ring (Walk · Moment · Care segments derived over existing logs; closing animation;
-  rest/vacation mode). The spine.
+- ✅ **E1** — The Care Ring. **No migration** (derives over existing logs + reuses E0's `pet_care_days`/
+  `pet_streaks`). New route `GET/POST /api/pets/[id]/care-ring` (owner-tz day derivation of Walk/Moment/
+  Care, upserts `pet_care_days`, rest-day + pause writes; degrades cleanly pre-0094 via savepoint).
+  Mobile: `CareRing` (SVG, closing pop + haptic), `CareRingCard` on Health→Today, live ring around the
+  owner's pet-profile avatar; `useCareRing`/`useSetRestDay`/`useSetPause`; log mutations invalidate the
+  ring live. EN+ES. Proven: care-ring integration (+12), careRing util jest (+14).
 - ☐ **E2** — Streak + forgiveness (consecutive ring-close days; auto paw-freeze; one-tap repair).
 - ☐ **E3** — Milestone moments (birthday / gotcha / adoption → animated frame + ribbon + feed event + share CTA).
 - ☐ **E4** — Share cards (story-sized 1080×1920 branded deck; real stats only; @handle + deep link).

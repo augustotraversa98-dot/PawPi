@@ -56,7 +56,31 @@
     "trackerSoonTitle": "{{label}} — próximamente",
     "trackerSoonBody": "El registro de {{label}} para {{pet}} está en camino. Mientras tanto, puedes anotarlo en Comida y premios o en la Historia clínica.",
     "recordSoonTitle": "{{type}} — próximamente",
-    "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento."
+    "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento.",
+    "careRing": {
+      "title": "El día de {{name}}",
+      "titleGeneric": "El anillo de hoy",
+      "segmentWalk": "Paseo",
+      "segmentMoment": "Momento",
+      "segmentCare": "Cuidado",
+      "complete": "¡El día de {{name}} está completo! 🎉",
+      "empty": "Empieza el día de {{name}}: un paseo, una foto, un poco de cuidado.",
+      "partial": "Una cosa más para completar el día de {{name}}.",
+      "rest": "Día de descanso: la racha de {{name}} está a salvo.",
+      "paused": "En pausa: la racha de {{name}} está a salvo hasta el {{date}}.",
+      "restToday": "¿Tomas un día de descanso?",
+      "restOn": "Día de descanso activado",
+      "endRest": "No es un día de descanso",
+      "pause": "Pausar por un tiempo",
+      "pauseTitle": "Pausar el anillo de {{name}}",
+      "pauseHint": "¿Te vas unos días? Elige cuándo retomar: la racha queda a salvo.",
+      "resume": "Retomar ahora",
+      "hintWalk": "Registra un paseo para completar este segmento.",
+      "hintMoment": "Publica el momento de hoy para completar este segmento.",
+      "hintCare": "Registra cualquier acción de cuidado para completar este segmento.",
+      "progress": "{{done}} de 3",
+      "a11y": "Anillo de cuidado de {{name}}, {{done}} de 3 completados"
+    }
   },
   "services": {
     "segDiscover": "Descubrir",

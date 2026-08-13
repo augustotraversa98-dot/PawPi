@@ -12,6 +12,8 @@ import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { SocialStatRow } from "@/components/social/SocialStatRow";
 import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { CareRing } from "@/components/Health/CareRing";
+import { useCareRing } from "@/hooks/useCareRing";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
   usePetSocialProfile,
@@ -70,6 +72,9 @@ export default function PetProfileScreen({ embedded = false }) {
   // You can't follow your own pet (the server rejects it too), and there's
   // nothing to follow with when you have no active pet.
   const canFollow = !!viewerPetId && String(viewerPetId) !== String(petId);
+  // The Care Ring on the header is the OWNER's own private ring — only for their own pet.
+  const isOwnPet = !!petId && String(viewerPetId) === String(petId);
+  const { data: careRing } = useCareRing(isOwnPet ? Number(petId) : null);
 
   // Message the OWNER (ticket 2.27) — same gate; needs the owner's user id. Starts
   // (or reuses) a 1:1 DM thread, then opens the conversation.
@@ -226,22 +231,47 @@ export default function PetProfileScreen({ embedded = false }) {
             borderBottomColor: MATERIALS.hairline,
           }}
         >
-          {/* Avatar with coral ring */}
-          <View
-            style={{
-              borderWidth: 3.5,
-              borderColor: COLORS.coral,
-              borderRadius: 62,
-              padding: 3,
-              marginBottom: SPACING.md + 2,
-              shadowColor: COLORS.coral,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 12,
-            }}
-          >
-            <PetAvatar uri={avatarUrl || undefined} size={110} />
-          </View>
+          {/* Avatar — the owner's own pet gets the live Care Ring (E1); others keep the coral ring */}
+          {isOwnPet ? (
+            <View
+              style={{
+                width: 128,
+                height: 128,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: SPACING.md + 2,
+              }}
+            >
+              <View style={{ position: "absolute" }}>
+                <CareRing
+                  state={careRing}
+                  size={128}
+                  strokeWidth={7}
+                  showCenter={false}
+                  onPressSegment={(seg) =>
+                    router.push(seg === "moment" ? "/(tabs)" : "/(tabs)/health")
+                  }
+                />
+              </View>
+              <PetAvatar uri={avatarUrl || undefined} size={104} />
+            </View>
+          ) : (
+            <View
+              style={{
+                borderWidth: 3.5,
+                borderColor: COLORS.coral,
+                borderRadius: 62,
+                padding: 3,
+                marginBottom: SPACING.md + 2,
+                shadowColor: COLORS.coral,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 12,
+              }}
+            >
+              <PetAvatar uri={avatarUrl || undefined} size={110} />
+            </View>
+          )}
 
           {/* Name */}
           {!!name && (
