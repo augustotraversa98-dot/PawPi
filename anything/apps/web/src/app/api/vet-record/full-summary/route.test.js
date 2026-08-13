@@ -64,7 +64,10 @@ it("aggregates real data into the structured summary shape (owner-scoped)", asyn
       { name: "Apoquel", dose: "16mg", status: "missed" },
     ]);
     if (q.includes("FROM health_photo_checks")) return Promise.resolve([{ body_area: "paws", image_url: "p" }, { body_area: "paws" }]);
-    if (q.includes("FROM health_walk_logs")) return Promise.resolve([{ duration_minutes: 30, distance: 1.5 }]);
+    if (q.includes("FROM health_walk_logs")) return Promise.resolve([
+      { start_time: "2026-06-15T08:00:00Z", duration_minutes: 30, distance: 1.5 },
+      { start_time: "2026-06-10T08:00:00Z", duration_minutes: null, distance: 0.5 }, // counts, but omitted from items
+    ]);
     if (q.includes("FROM health_wellness_logs")) return Promise.resolve([{ check_type: "general" }]);
     if (q.includes("FROM pet_allergies")) return Promise.resolve([{ allergen: "Chicken" }]);
     if (q.includes("FROM pet_conditions")) return Promise.resolve([{ condition: "Arthritis", status: "active" }]);
@@ -85,6 +88,13 @@ it("aggregates real data into the structured summary shape (owner-scoped)", asyn
   // meds grouped with adherence
   expect(summary.meds[0]).toMatchObject({ name: "Apoquel", given: 1, missed: 1, total: 2 });
   expect(summary.photoChecks.byArea.paws).toBe(2);
+  // Walks enrichment (2.102): count/totalMinutes unchanged; items expose per-walk durations
+  // (null-duration walk omitted) and perWeek is the window average (guarded > 0 here).
+  expect(summary.walks.count).toBe(2);
+  expect(summary.walks.totalMinutes).toBe(30);
+  expect(summary.walks.items).toHaveLength(1);
+  expect(summary.walks.items[0]).toMatchObject({ duration_minutes: 30, distance: 1.5 });
+  expect(summary.walks.perWeek).toBeGreaterThan(0);
   expect(summary.disclaimer).toMatch(/does not diagnose/);
   // owner scoping present on every query
   const text = sql.mock.calls.map((c) => (c?.[0] ?? []).join(" ")).join(" | ");

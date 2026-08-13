@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import Svg, { Polyline, Circle } from "react-native-svg";
 import { ArrowLeft, MapPin } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import MapLocationView from "@/components/Map/MapLocationView";
+import { isValidCoord } from "@/utils/walkBuddies";
 import { useWalkSessions } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 
@@ -18,8 +19,9 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 // shared useWalkSessions hook, live mode = 5s) so the route grows in real time while the
 // walk is in_progress; when the walker finishes, the same screen shows the WALK REPORT
 // (distance/duration/route/potty/notes). The route is drawn from the REAL {lat,lng,t}
-// points the walker posted — no map API key is configured, so we render a lightweight,
-// self-contained SVG polyline of the normalized track (no fake routes, no external map).
+// points the walker posted onto a real Apple map (MapLocationView, PROVIDER_DEFAULT — no
+// API key needed): the owner literally sees the streets the dog is walking. As the 5s live
+// poll grows the route, the map re-fits to the newest points (no fake routes, no fake path).
 export default function WalkLiveScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -113,18 +115,20 @@ function metresToMiles(m) {
   return Math.round((Number(m) / 1609.34) * 100) / 100;
 }
 
-// Normalize the lat/lng points into a 0..1 box and draw an SVG polyline. Real data only:
-// an empty/short track renders an empty state, never a fake path.
+// Draw the REAL {lat,lng} track on a real Apple map (MapLocationView). Real data only: a
+// track with fewer than 2 valid points renders the waiting/no-route empty state, never a
+// fake path. The map is keyed on the point count so each 5s poll remounts it and re-fits the
+// region to the newest points — the route visibly extends as the dog walks.
 function RoutePreview({ route, live }) {
-  const points = Array.isArray(route) ? route : [];
-  const W = 320;
-  const H = 200;
+  const points = (Array.isArray(route) ? route : []).filter((p) =>
+    p && isValidCoord(p.lat, p.lng),
+  );
 
   if (points.length < 2) {
     return (
       <View
         style={{
-          height: H,
+          height: 220,
           borderRadius: 18,
           backgroundColor: COLORS.sand,
           borderWidth: 1,
@@ -152,50 +156,21 @@ function RoutePreview({ route, live }) {
     );
   }
 
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const spanLat = maxLat - minLat || 1e-6;
-  const spanLng = maxLng - minLng || 1e-6;
-  const pad = 16;
-
-  const xy = points.map((p) => {
-    const x = pad + ((p.lng - minLng) / spanLng) * (W - 2 * pad);
-    // Invert lat so north is up.
-    const y = pad + ((maxLat - p.lat) / spanLat) * (H - 2 * pad);
-    return [x, y];
-  });
-  const polyPoints = xy.map(([x, y]) => `${x},${y}`).join(" ");
-  const [sx, sy] = xy[0];
-  const [ex, ey] = xy[xy.length - 1];
+  const start = points[0];
+  const latest = points[points.length - 1];
 
   return (
-    <View
-      style={{
-        height: H,
-        borderRadius: 18,
-        backgroundColor: COLORS.card,
-        borderWidth: 1,
-        borderColor: COLORS.peach,
-        overflow: "hidden",
-        marginBottom: 16,
-      }}
-    >
-      <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
-        <Polyline
-          points={polyPoints}
-          fill="none"
-          stroke={COLORS.coral}
-          strokeWidth={4}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        <Circle cx={sx} cy={sy} r={6} fill={COLORS.sage} />
-        <Circle cx={ex} cy={ey} r={6} fill={COLORS.coral} />
-      </Svg>
+    <View style={{ marginBottom: 16 }}>
+      <MapLocationView
+        key={`walk-route-${points.length}`}
+        polyline={points}
+        points={[
+          { ...start, title: "Start" },
+          { ...latest, title: live ? "Now" : "End" },
+        ]}
+        height={220}
+        interactive={false}
+      />
     </View>
   );
 }

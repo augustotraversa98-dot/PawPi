@@ -437,3 +437,4 @@ hand-apply after merge; degrades cleanly pre-apply). Build order: 2.97 → 2.96 
 - 2.94-paws-on-business-posts.md                   (Wave 11 — web+mobile: Paws/likes on business posts; migration 0085; degrade-clean)
 - 2.98-owner-activation-checklist.md               (Wave 11 — mobile: "Getting started" derived checklist + daily-return reminder; no migration)
 - 2.99-business-activation-checklist.md            (Wave 11 — web: provider-dashboard "Getting started" derived checklist; ⛔ after 2.98; no migration)
+- 2.102-live-walk-map-and-vet-history.md           (Wave 11 follow-up — mobile+web: real Apple map for the live walk (owner + walker) + walk-frequency/per-walk durations in the vet record `full-summary`; reuses walker-GPS 2.7 + shared map 2.68; no migration)

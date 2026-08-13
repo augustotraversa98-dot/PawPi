@@ -67,7 +67,8 @@ async function GET(request) {
           WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND created_at BETWEEN ${f} AND ${t}
           ORDER BY created_at DESC`,
       sql`SELECT start_time, duration_minutes, distance FROM health_walk_logs
-          WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND start_time BETWEEN ${f} AND ${t}`,
+          WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND start_time BETWEEN ${f} AND ${t}
+          ORDER BY start_time DESC`,
       sql`SELECT logged_at, check_type FROM health_wellness_logs
           WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND logged_at BETWEEN ${f} AND ${t}`,
       sql`SELECT allergen, severity FROM pet_allergies WHERE pet_id = ${petId} AND owner_user_id = ${userId}`,
@@ -91,6 +92,14 @@ async function GET(request) {
 
     const byArea = {};
     for (const p of photos) byArea[p.body_area] = (byArea[p.body_area] || 0) + 1;
+
+    // Walk PATTERN a vet cares about (frequency + per-walk durations), additive to the
+    // aggregate below. perWeek = walks averaged over the summary window (guard divide-by-zero);
+    // items = the most-recent per-walk rows, capped like photoChecks, skipping null-duration ones.
+    const windowMs = new Date(t).getTime() - new Date(f).getTime();
+    const windowWeeks = windowMs > 0 ? windowMs / (7 * 24 * 60 * 60 * 1000) : 0;
+    const walkPerWeek =
+      windowWeeks > 0 ? Math.round((walks.length / windowWeeks) * 10) / 10 : 0;
 
     const summary = {
       range: { from, to },
@@ -127,6 +136,15 @@ async function GET(request) {
         count: walks.length,
         totalMinutes: walks.reduce((s, r) => s + (r.duration_minutes || 0), 0),
         totalDistance: walks.reduce((s, r) => s + (Number(r.distance) || 0), 0),
+        perWeek: walkPerWeek,
+        items: walks
+          .filter((r) => r.duration_minutes != null)
+          .slice(0, 24)
+          .map((r) => ({
+            start_time: r.start_time,
+            duration_minutes: r.duration_minutes,
+            distance: r.distance,
+          })),
       },
       wellness: { count: wellness.length },
       allergies,
