@@ -17,9 +17,11 @@ import {
   Camera,
   Bell,
   ChevronDown,
+  ChevronRight,
   Check,
   PawPrint,
   MessageCircle,
+  CalendarClock,
   Play,
   Globe,
 } from "lucide-react-native";
@@ -27,14 +29,25 @@ import * as VideoThumbnails from "expo-video-thumbnails";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
-import { useMyProviders } from "@/hooks/useProviders";
+import {
+  useProviderBookings,
+  useProviderUnreadCount,
+  useProviderAdoptionApplications,
+  useProviderProfile,
+} from "@/hooks/useProviders";
 import {
   useProviderPosts,
   useCreateProviderPost,
 } from "@/hooks/useProviderPosts";
+import { useActiveProvider } from "@/hooks/useActiveProvider";
+import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessStatRow";
 import useActiveProviderStore from "@/store/activeProviderStore";
 import { useUpload } from "@/utils/useUpload";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
+import { toCanonicalDate, formatDisplayTime } from "@/utils/canonicalDateTime";
+
+// Pending adoption-application statuses (the shelter's open queue) — counted for the Today glance.
+const PENDING_APP_STATUSES = ["submitted", "under_review", "pending"];
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const TILE = (SCREEN_W - SPACING.xl * 2 - SPACING.md) / 2;
@@ -134,22 +147,67 @@ function MomentTile({ post, onPress, t }) {
   );
 }
 
+// One "Today at a glance" summary line: an icon, a label (+ optional detail), a big count, and a
+// chevron when it taps through to its tab. A non-tappable row (adoption) omits the chevron.
+function GlanceRow({ testID, icon, label, value, detail, onPress, last }) {
+  const body = (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SPACING.md,
+        paddingVertical: SPACING.md,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: COLORS.peach,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: COLORS.sand,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        {icon}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[TYPE.callout, { color: COLORS.warmBrown, fontWeight: "700" }]}>
+          {label}
+        </Text>
+        {detail ? (
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]} numberOfLines={1}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+      <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>{value}</Text>
+      {onPress ? <ChevronRight size={18} color={COLORS.mutedBrown} /> : null}
+    </View>
+  );
+  if (onPress) {
+    return (
+      <PressableScale onPress={onPress} accessibilityRole="button" testID={testID}>
+        {body}
+      </PressableScale>
+    );
+  }
+  return (
+    <View testID={testID}>{body}</View>
+  );
+}
+
 export default function BusinessHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { data: providers = [], isLoading: loadingProviders } = useMyProviders();
-  const activeProviderId = useActiveProviderStore((s) => s.activeProviderId);
+  // The active business is resolved by the shared hook so all four tabs follow the switcher in
+  // lockstep. The switcher itself (below) writes activeProviderId through the store setter.
+  const { activeProvider, providers, isLoading: loadingProviders } = useActiveProvider();
   const setActiveProviderId = useActiveProviderStore((s) => s.setActiveProviderId);
-
-  // Resolve the active business: a valid stored choice, else the first provider (mirrors the web
-  // ProviderShell resolver). A stale/absent id falls back to the first.
-  const activeProvider = useMemo(() => {
-    if (providers.length === 0) return null;
-    const found = providers.find((p) => String(p.id) === String(activeProviderId));
-    return found ?? providers[0];
-  }, [providers, activeProviderId]);
 
   const providerId = activeProvider?.id;
   const {
@@ -160,6 +218,45 @@ export default function BusinessHome() {
   } = useProviderPosts(providerId);
   const createPost = useCreateProviderPost(providerId);
   const [upload] = useUpload();
+
+  // ── Today-at-a-glance sources (all reuse existing provider reads; nothing new server-side) ──
+  const hasAdoption = (activeProvider?.capabilities ?? []).includes("adoption");
+  const { data: bookings = [] } = useProviderBookings(providerId);
+  const { data: unreadCount = 0 } = useProviderUnreadCount(providerId);
+  const { data: adoptionApps = [] } = useProviderAdoptionApplications(providerId, {
+    enabled: hasAdoption,
+  });
+  // The public storefront read supplies the stat strip's post/paw/bark counts (followers is read
+  // live inside BusinessStatRow). Same query the Profile tab uses, so it's cached across tabs.
+  const { data: profile } = useProviderProfile(activeProvider?.slug);
+  const stats = profile?.stats;
+
+  // Today's active bookings (requested/confirmed) + the next one up, from the same read the
+  // Bookings agenda uses. Declined/cancelled/completed and past dates are excluded.
+  const { todayBookingCount, nextBooking } = useMemo(() => {
+    const today = toCanonicalDate(new Date());
+    const upcoming = bookings
+      .filter(
+        (b) =>
+          (b.booking_status === "requested" || b.booking_status === "confirmed") &&
+          typeof b.appointment_date === "string" &&
+          b.appointment_date >= today,
+      )
+      .sort((a, b) => {
+        const ka = `${a.appointment_date}T${a.appointment_time || "00:00"}`;
+        const kb = `${b.appointment_date}T${b.appointment_time || "00:00"}`;
+        return ka < kb ? -1 : ka > kb ? 1 : 0;
+      });
+    return {
+      todayBookingCount: upcoming.filter((b) => b.appointment_date === today).length,
+      nextBooking: upcoming[0] ?? null,
+    };
+  }, [bookings]);
+
+  const pendingAppCount = useMemo(
+    () => adoptionApps.filter((a) => PENDING_APP_STATUSES.includes(a.status)).length,
+    [adoptionApps],
+  );
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -335,7 +432,77 @@ export default function BusinessHome() {
         </PressableScale>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}>
+        {/* Business stat strip (Followers · Posts · Paws · Barks) — reused from the storefront
+            (2.93). Tapping through opens the Profile tab (the full public view). */}
+        <PressableScale
+          onPress={() => router.push("/business/profile")}
+          accessibilityRole="button"
+          testID="business-stat-row"
+          style={{ borderRadius: RADIUS.card, overflow: "hidden", marginBottom: SPACING.xl }}
+        >
+          <BusinessStatRow providerId={providerId} stats={stats} />
+        </PressableScale>
+
+        {/* Today at a glance — today's bookings + next up, unread messages, and (adoption only)
+            pending applications. Each summary derives from an existing provider read. */}
+        <View
+          style={{
+            backgroundColor: COLORS.card,
+            borderRadius: RADIUS.card,
+            borderWidth: 1,
+            borderColor: COLORS.peach,
+            padding: SPACING.lg,
+            marginBottom: SPACING.xl,
+          }}
+        >
+          <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.md }]}>
+            {t("business.today.glanceTitle")}
+          </Text>
+
+          {/* Bookings today → Bookings tab */}
+          <GlanceRow
+            testID="glance-bookings"
+            icon={<CalendarClock size={20} color={COLORS.coral} />}
+            label={t("business.today.bookingsLabel")}
+            value={todayBookingCount}
+            detail={
+              nextBooking
+                ? `${t("business.today.nextUp")}: ${[
+                    nextBooking.appointment_time
+                      ? formatDisplayTime(nextBooking.appointment_time)
+                      : null,
+                    nextBooking.service_name || nextBooking.pet_name,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}`
+                : t("business.today.noBookingsToday")
+            }
+            onPress={() => router.push("/business/bookings")}
+          />
+
+          {/* Unread messages → Messages tab */}
+          <GlanceRow
+            testID="glance-messages"
+            icon={<MessageCircle size={20} color={COLORS.coral} />}
+            label={t("business.today.unreadLabel")}
+            value={Number(unreadCount) || 0}
+            onPress={() => router.push("/business/messages")}
+          />
+
+          {/* Pending adoption applications (adoption capability only) — informational; the review
+              queue is managed on the web dashboard, so this summary has no mobile tab to open. */}
+          {hasAdoption ? (
+            <GlanceRow
+              testID="glance-applications"
+              icon={<PawPrint size={20} color={COLORS.coral} />}
+              label={t("business.today.applicationsLabel")}
+              value={pendingAppCount}
+              last
+            />
+          ) : null}
+        </View>
+
         {/* Primary action: post a moment */}
         <PressableScale
           onPress={() => setComposerOpen(true)}

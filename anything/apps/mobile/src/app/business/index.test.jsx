@@ -8,7 +8,7 @@
 // (jest.mock factories may only reference `mock`-prefixed module vars, hence the naming.)
 
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
@@ -22,10 +22,27 @@ jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
 );
 
-// Providers the account is staff of.
+// Providers the account is staff of + the Today-glance reads (bookings/unread/adoption/profile)
+// and the follow query BusinessStatRow reads live. useActiveProvider is REAL — it composes the
+// mocked useMyProviders + the mocked activeProviderStore below.
 const mockProvidersState = { data: [], isLoading: false };
+const mockBookingsState = { data: [] };
+const mockUnreadState = { data: 0 };
+const mockAdoptionAppsState = { data: [] };
+const mockProfileState = { data: undefined };
 jest.mock("@/hooks/useProviders", () => ({
   useMyProviders: () => mockProvidersState,
+  useProviderBookings: () => mockBookingsState,
+  useProviderUnreadCount: () => mockUnreadState,
+  useProviderAdoptionApplications: () => mockAdoptionAppsState,
+  useProviderProfile: () => mockProfileState,
+  useProviderFollow: () => ({ data: { following: false, followersCount: 0 } }),
+}));
+
+// Freeze "today" for the glance's upcoming filter.
+jest.mock("@/utils/canonicalDateTime", () => ({
+  toCanonicalDate: () => "2026-08-12",
+  formatDisplayTime: (tm) => `T:${tm}`,
 }));
 
 // Provider posts list + create.
@@ -104,6 +121,10 @@ beforeEach(() => {
   mockPostsState.data = [];
   mockPostsState.isError = false;
   mockComposer.props = null;
+  mockBookingsState.data = [];
+  mockUnreadState.data = 0;
+  mockAdoptionAppsState.data = [];
+  mockProfileState.data = undefined;
 });
 
 test("renders the active business name and its recent moments; a tile taps to the detail", () => {
@@ -176,4 +197,63 @@ test("the multi-provider switcher switches the active provider", () => {
   fireEvent.press(getByTestId("business-switcher"));
   fireEvent.press(getByTestId("business-provider-9"));
   expect(setSpy).toHaveBeenCalledWith(9);
+});
+
+test("Today at a glance summarizes today's bookings + next up and unread messages", () => {
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", slug: "happy" }];
+  mockUnreadState.data = 4;
+  mockBookingsState.data = [
+    // today (2026-08-12) — counted; the earliest is "next up"
+    { id: 1, appointment_date: "2026-08-12", appointment_time: "15:00", booking_status: "confirmed", service_name: "Grooming", pet_name: "Rex" },
+    { id: 2, appointment_date: "2026-08-12", appointment_time: "09:30", booking_status: "requested", service_name: "Checkup", pet_name: "Milo" },
+    // future — not today, not next-up-first
+    { id: 3, appointment_date: "2026-08-20", appointment_time: "10:00", booking_status: "confirmed", service_name: "Nails", pet_name: "Zoe" },
+    // hidden: declined + past
+    { id: 4, appointment_date: "2026-08-12", appointment_time: "08:00", booking_status: "declined", service_name: "X", pet_name: "Q" },
+  ];
+
+  const { getByTestId, getByText } = render(<BusinessHome />);
+  // 2 active bookings today (Rex 15:00 + Milo 09:30); declined excluded.
+  expect(getByText("2")).toBeTruthy();
+  expect(getByText("4")).toBeTruthy(); // unread messages
+  // Next up is the earliest active booking (Milo 09:30), formatted via the mocked time helper.
+  expect(getByText("Next up: T:09:30 · Checkup")).toBeTruthy();
+  expect(getByTestId("glance-bookings")).toBeTruthy();
+});
+
+test("glance rows + stat row tap through to their tabs", () => {
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", slug: "happy" }];
+  const { getByTestId } = render(<BusinessHome />);
+
+  fireEvent.press(getByTestId("business-stat-row"));
+  expect(mockPush).toHaveBeenCalledWith("/business/profile");
+
+  fireEvent.press(getByTestId("glance-bookings"));
+  expect(mockPush).toHaveBeenCalledWith("/business/bookings");
+
+  fireEvent.press(getByTestId("glance-messages"));
+  expect(mockPush).toHaveBeenCalledWith("/business/messages");
+});
+
+test("pending adoption applications summary shows ONLY for an adoption-capable provider", () => {
+  // Non-adoption provider: no applications glance row.
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", capabilities: ["vet"] }];
+  mockAdoptionAppsState.data = [{ id: 1, status: "submitted" }];
+  const first = render(<BusinessHome />);
+  expect(first.queryByTestId("glance-applications")).toBeNull();
+  first.unmount();
+
+  // Adoption-capable provider: the row shows the pending count (submitted/under_review/pending),
+  // excluding decided ones.
+  mockProvidersState.data = [{ id: 8, name: "Shelter", capabilities: ["adoption"] }];
+  mockAdoptionAppsState.data = [
+    { id: 1, status: "submitted" },
+    { id: 2, status: "under_review" },
+    { id: 3, status: "approved" },
+    { id: 4, status: "declined" },
+  ];
+  const { getByTestId } = render(<BusinessHome />);
+  const row = getByTestId("glance-applications");
+  expect(row).toBeTruthy();
+  expect(within(row).getByText("2")).toBeTruthy();
 });

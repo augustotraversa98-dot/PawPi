@@ -725,7 +725,21 @@ not a hand-maintained log here:
 
 ### Snapshot (2026-07-29) — CURRENT
 
-> **Latest (2026-08-12):** mobile **business mode** — a provider/business account is no longer treated as a
+> **Latest (2026-08-12):** **business mode v2 — the daily hub** (mobile). The bare Business home becomes a **tab
+> shell** shown in business mode — **Today · Bookings · Messages · Profile** — all following the currently-active
+> provider (shared `useActiveProvider` over `activeProviderStore`; the switcher swaps the business and every tab
+> follows). **Today** adds the reused **BusinessStatRow** (taps → Profile) and a **"Today at a glance"** card
+> (today's bookings + next-up, unread messages, and — adoption-capable only — pending applications, each tapping to
+> its tab) on top of the existing post-a-moment + recent moments. **Bookings** is an agenda of upcoming reservations
+> (same `GET /api/providers/[id]/bookings` the web BookingsInbox uses) with **Confirm/Decline** on requested rows
+> (the existing action-based status `PATCH`). **Messages** is the provider-side thread inbox (`?side=provider`) with
+> unread state, opening the shared `provider-chat` (generalized so staff replies right-align). **Profile** is the
+> storefront-as-followers-see-it (reused `useProviderProfile` by slug + BusinessStatRow + MomentsGrid) with a
+> deep-link to the full storefront + "Manage on web". **No migration, no new/changed web endpoint** — every read
+> reuses existing provider endpoints; the glance derives client-side; `apps/web` untouched. EN + ES. mobile jest
+> 1650→1663 (+3 suites). Open PR, awaiting review. Full detail in `docs/roadmap.md`.
+>
+> **Prev (2026-08-12):** mobile **business mode** — a provider/business account is no longer treated as a
 > pet owner. The post-login gate (`determinePetsRoute`) now also reads the account's providers (`GET
 > /api/providers`, active staff): a staff-only account lands on a new **Business home** instead of "let's meet
 > your dog" pet onboarding; an account that is BOTH staff AND a pet owner keeps the pet app and reaches Business

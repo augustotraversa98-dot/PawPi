@@ -586,6 +586,67 @@
     "menu": {
       "item": "Business",
       "subtitle": "Post moments & glance"
+    },
+    "tabs": {
+      "today": "Today",
+      "bookings": "Bookings",
+      "messages": "Messages",
+      "profile": "Profile"
+    },
+    "today": {
+      "glanceTitle": "Today at a glance",
+      "bookingsLabel": "Bookings today",
+      "nextUp": "Next up",
+      "noBookingsToday": "No bookings today",
+      "unreadLabel": "Unread messages",
+      "applicationsLabel": "Pending applications",
+      "viewAll": "View all"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Upcoming reservations",
+      "emptyTitle": "No upcoming bookings",
+      "emptyBody": "New reservations from customers show up here.",
+      "loadError": "Couldn't load your bookings.",
+      "retry": "Try again",
+      "confirm": "Confirm",
+      "decline": "Decline",
+      "declineTitle": "Decline this booking?",
+      "declineBody": "The customer will be notified and any payment refunded.",
+      "cancel": "Keep it",
+      "actionError": "Couldn't update the booking",
+      "manageOnWeb": "Manage bookings on web",
+      "noService": "Appointment",
+      "noPet": "—",
+      "status": {
+        "requested": "Requested",
+        "confirmed": "Confirmed",
+        "completed": "Completed",
+        "declined": "Declined",
+        "cancelled": "Cancelled"
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "emptyTitle": "No conversations yet",
+      "emptyBody": "When a customer messages your business, it shows up here.",
+      "loadError": "Couldn't load your conversations.",
+      "retry": "Try again",
+      "noMessages": "No messages yet",
+      "photo": "Photo",
+      "customer": "Customer"
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "How followers see you",
+      "viewPublic": "View public profile",
+      "recentTitle": "Recent moments",
+      "emptyTitle": "No moments yet",
+      "emptyBody": "Post a moment from Today — it shows up on your public profile.",
+      "loadError": "Couldn't load your profile.",
+      "retry": "Try again",
+      "manageTitle": "Manage on the web",
+      "manageBody": "Edit your services, products, hours and storefront on the PawPi web dashboard."
     }
   }
 }

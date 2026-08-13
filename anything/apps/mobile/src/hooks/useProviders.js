@@ -603,6 +603,55 @@ export function useJoinTelehealth() {
   });
 }
 
+// --- business mode v2: provider-side messaging (mobile Business → Messages tab) -----
+// The SAME thread/message infra as owner side, read from the PROVIDER perspective. Both
+// hooks REQUIRE a providerId (the active business) — the endpoints 400 without it — and
+// key by it so switching the active provider re-queries. The per-thread message read/send/
+// mark-read layer is side-agnostic (thread-id scoped, RLS-gated), so those hooks are reused
+// as-is; only the INBOX + UNREAD COUNT take a side.
+
+// The active provider's thread inbox (GET /api/threads?side=provider&providerId=). Each row
+// carries the OWNER (customer) as the other party (owner_name/owner_avatar_url/owner_user_id)
+// + unread_count (caller-relative). Polls every 15s. Disabled until a providerId is known.
+export function useProviderThreads(providerId) {
+  return useQuery({
+    queryKey: ["threads", "provider", providerId],
+    enabled: providerId != null,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/threads?side=provider&providerId=${encodeURIComponent(providerId)}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch conversations");
+      }
+      const data = await response.json();
+      return data.threads ?? [];
+    },
+  });
+}
+
+// The active provider's total unread message count (GET /api/threads/unread-count?side=
+// provider&providerId=). Drives the Messages badge + the Today "unread" glance. Polls every
+// 30s. Disabled until a providerId is known.
+export function useProviderUnreadCount(providerId) {
+  return useQuery({
+    queryKey: ["threads", "unread", "provider", providerId],
+    enabled: providerId != null,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/threads/unread-count?side=provider&providerId=${encodeURIComponent(providerId)}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch unread count");
+      }
+      const data = await response.json();
+      return data.unread_count ?? 0;
+    },
+  });
+}
+
 // The providers the current user is ACTIVE STAFF of (GET /api/providers). Used by the
 // walker workspace to find the walker-capable businesses they work for. Empty → [].
 export function useMyProviders() {
@@ -639,6 +688,65 @@ export function useProviderBookings(providerId, { bookingStatus } = {}) {
       }
       const data = await response.json();
       return data.bookings ?? [];
+    },
+  });
+}
+
+// Act on ONE booking (PATCH /api/providers/[id]/bookings/[appointmentId]) — the operational
+// confirm/decline/cancel/assign/complete the front desk uses (business mode v2 Bookings tab).
+// Body is ACTION-based: { action, staffUserId? }. The backend enforces the legal transitions
+// (e.g. confirm only from 'requested', and 409 'unpaid' when an order isn't paid) and surfaces
+// its message verbatim. On success we invalidate this provider's booking inbox so the row's new
+// status shows immediately. Mirrors the web dashboard's useBookingAction.
+export function useBookingAction(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // mutateAsync({ appointmentId, action, staffUserId? }) → { booking, refund? }
+    mutationFn: async ({ appointmentId, action, staffUserId }) => {
+      const hasStaff =
+        staffUserId !== undefined && staffUserId !== null && staffUserId !== "";
+      const body = hasStaff ? { action, staffUserId } : { action };
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/bookings/${encodeURIComponent(appointmentId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Couldn't update the booking");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["provider-bookings", providerId],
+      });
+    },
+  });
+}
+
+// The active provider's RECEIVED adoption applications (GET /api/providers/[id]/adoption-
+// applications). The backend gates the 'adoption' capability, so this must only run for an
+// adoption-capable provider — callers pass { enabled: capabilities.includes('adoption') }. Each
+// row carries listing/applicant context + status; the Today glance counts the PENDING ones
+// client-side. Polls every 30s. Empty → [].
+export function useProviderAdoptionApplications(providerId, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["provider-adoption-applications", providerId],
+    enabled: providerId != null && enabled,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/adoption-applications`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch applications");
+      }
+      const data = await response.json();
+      return data.applications ?? [];
     },
   });
 }
