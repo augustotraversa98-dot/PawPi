@@ -39,7 +39,13 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   Mobile: `CareRing` (SVG, closing pop + haptic), `CareRingCard` on Health→Today, live ring around the
   owner's pet-profile avatar; `useCareRing`/`useSetRestDay`/`useSetPause`; log mutations invalidate the
   ring live. EN+ES. Proven: care-ring integration (+12), careRing util jest (+14).
-- ☐ **E2** — Streak + forgiveness (consecutive ring-close days; auto paw-freeze; one-tap repair).
+- ✅ **E2** — Streak + forgiveness. Migration **0095** (`pet_streaks` repair/milestone columns +
+  `app_advance_care_streak` / `app_repair_care_streak` SECURITY DEFINER helpers). The ring route
+  advances the streak on close (idempotent; banked freezes bridge missed days; rest/pause never a
+  miss; milestones 7/30/100 bank a freeze, capped 2) and exposes a one-tap repair (~48h). Mobile:
+  🔥 `StreakChip` on the pet-profile + feed header, "streak is safe" line + "Restore your streak" CTA
+  on the ring card. EN+ES. Proven: care-streak integration (+8: forgiveness matrix), careRing util
+  jest (+3). **0095 PENDING hand-apply.**
 - ☐ **E3** — Milestone moments (birthday / gotcha / adoption → animated frame + ribbon + feed event + share CTA).
 - ☐ **E4** — Share cards (story-sized 1080×1920 branded deck; real stats only; @handle + deep link).
 - ☐ **E5** — Notification rewrite · ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·

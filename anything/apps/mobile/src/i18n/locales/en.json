@@ -79,7 +79,11 @@
       "hintMoment": "Post today's moment to fill this segment.",
       "hintCare": "Log any care action to fill this segment.",
       "progress": "{{done}} of 3",
-      "a11y": "{{name}}'s care ring, {{done}} of 3 done"
+      "a11y": "{{name}}'s care ring, {{done}} of 3 done",
+      "streakChip": "🔥 {{count}}",
+      "streakSafe": "{{name}}'s streak is safe — 🔥 {{count}}",
+      "streakRepairCta": "Restore your streak",
+      "streakRepairHint": "Missed a day? Bring your 🔥 {{count}} streak back — no harm done."
     }
   },
   "services": {

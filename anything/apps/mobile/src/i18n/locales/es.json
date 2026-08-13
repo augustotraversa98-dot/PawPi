@@ -79,7 +79,11 @@
       "hintMoment": "Publica el momento de hoy para completar este segmento.",
       "hintCare": "Registra cualquier acción de cuidado para completar este segmento.",
       "progress": "{{done}} de 3",
-      "a11y": "Anillo de cuidado de {{name}}, {{done}} de 3 completados"
+      "a11y": "Anillo de cuidado de {{name}}, {{done}} de 3 completados",
+      "streakChip": "🔥 {{count}}",
+      "streakSafe": "La racha de {{name}} está a salvo — 🔥 {{count}}",
+      "streakRepairCta": "Recupera tu racha",
+      "streakRepairHint": "¿Se te pasó un día? Recupera tu racha de 🔥 {{count}}: no pasa nada."
     }
   },
   "services": {
