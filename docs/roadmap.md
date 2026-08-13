@@ -20,6 +20,28 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+### 🐾 WAVE — Pet Owner engagement (E0–E10) — IN PROGRESS
+
+Design of record: [`docs/pet-owner-engagement.md`](pet-owner-engagement.md) (retention system — the Care
+Ring is the spine; everything hangs off it). North star = daily/weekly active owners. Every mechanic
+**celebrates the dog, never shames the owner**; forgiveness (freezes/repair/rest mode) ships on day one;
+health framing is positive, never diagnostic; **no fake/mock data** (empty states only). Built one unit
+at a time, in order — E0 is the schema foundation, E1 the Care Ring spine, E2–E4 build on it. Status
+mirror (☐ queued · 🔨 building · ✅ merged):
+
+- ✅ **E0** — Data foundations. Migration **0094** (`pet_care_days`, `pet_streaks`, `user_profiles.timezone`;
+  ENABLE+FORCE own-row RLS). Reuses the existing `pets.adoption_date` as the gotcha/adoption day (already
+  synced Dog Profile ↔ Medical Profile — no new column, no duplicate storage). `verify_0094.sql`;
+  RLS proven as `pawpi_app` in `engagement-foundations-rls.integration.test.ts`. **0094 PENDING hand-apply.**
+- ☐ **E1** — The Care Ring (Walk · Moment · Care segments derived over existing logs; closing animation;
+  rest/vacation mode). The spine.
+- ☐ **E2** — Streak + forgiveness (consecutive ring-close days; auto paw-freeze; one-tap repair).
+- ☐ **E3** — Milestone moments (birthday / gotcha / adoption → animated frame + ribbon + feed event + share CTA).
+- ☐ **E4** — Share cards (story-sized 1080×1920 branded deck; real stats only; @handle + deep link).
+- ☐ **E5** — Notification rewrite · ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
+  ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
+  ☐ **E10** — Health-update reinforcement. _(E5–E10 are later units, tracked here for the full wave.)_
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map
