@@ -726,5 +726,11 @@
     "badCodeBody": "Ese QR no es un código de retiro válido para tu negocio.",
     "redeemError": "No se pudo comenzar el paseo",
     "redeemErrorTitle": "No se pudo escanear"
+  },
+  "walkSchedule": {
+    "cta": "Agendar con mi paquete",
+    "usesWalk": "Usa un paseo",
+    "bookedTitle": "Paseo agendado",
+    "bookedBody": "El paseador confirmará tu paseo. Se usa un crédito al retirar."
   }
 }

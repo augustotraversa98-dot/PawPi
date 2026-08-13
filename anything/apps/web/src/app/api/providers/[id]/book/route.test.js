@@ -717,4 +717,32 @@ describe('POST /api/providers/[id]/book — telehealth session at booking', () =
     expect(res.status).toBe(201);
     expect(sessionInsertCall()).toBeUndefined();
   });
+
+  // ── pay-with-credit (ticket B4) ──────────────────────────────────────────
+  it('404 (before SQL) for a non-integer provider id', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await POST(bookReq({ ...VALID, capability: 'walker', pay_with_credit: true }), {
+      params: { id: 'abc' },
+    });
+    expect(res.status).toBe(404);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('pay_with_credit with ZERO balance → 409, no booking inserted', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // profile
+      .mockResolvedValueOnce([{ id: 5 }]) // pet owned
+      .mockResolvedValueOnce([{ id: 100, name: 'Paw Walks', status: 'published' }]) // provider
+      .mockResolvedValueOnce([{ x: 1 }]) // capability 'walker' held
+      .mockResolvedValueOnce([{ remaining: 0 }]); // balance = 0
+
+    const res = await POST(
+      bookReq({ ...VALID, capability: 'walker', pay_with_credit: true }),
+      PARAMS,
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('no_credits');
+    expect(insertCall()).toBeUndefined(); // no booking created
+  });
 });

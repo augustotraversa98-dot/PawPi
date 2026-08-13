@@ -103,6 +103,10 @@ export default function BookingFormModal({
   // preselected and the in-modal service selector is collapsed to a static line. Absent (the
   // bottom "Book" button) → the full selector renders exactly as before.
   service,
+  // Ticket B4: schedule a walk against a prepaid pack. When true the booking is marked
+  // pay_with_credit — NO checkout is taken (the credit is spent at pickup, B3) — and the copy
+  // reflects "Uses 1 walk". Default false keeps every existing booking flow unchanged.
+  payWithCredit = false,
 }) {
   const { data: currentPet } = useCurrentPet();
   const book = useBookProvider();
@@ -276,10 +280,12 @@ export default function BookingFormModal({
       if (result.success) calendarEventId = result.eventId;
     }
 
+    // A pay-with-credit walk (B4) never takes a checkout — the credit is spent at pickup (B3).
+    const takePayment = requiresPayment && !payWithCredit;
     try {
       let orderId;
       let checkoutUrl;
-      if (requiresPayment) {
+      if (takePayment) {
         const checkoutRes = await checkout.mutateAsync({
           provider_id: provider.id,
           amount_cents: chargeCents,
@@ -312,15 +318,25 @@ export default function BookingFormModal({
         calendar_event_id: calendarEventId,
         // Pay-at-request: links the pending payment order to the booking (0070).
         order_id: orderId,
+        // Pay-with-credit walk (B4): the credit is charged at pickup, not now.
+        pay_with_credit: payWithCredit ? true : undefined,
       });
       resetAndClose();
-      if (requiresPayment && checkoutUrl) {
+      if (payWithCredit) {
+        Alert.alert(
+          t("walkSchedule.bookedTitle", "Walk scheduled"),
+          t(
+            "walkSchedule.bookedBody",
+            `${provider.name} will confirm your walk. One credit is used at pickup.`,
+          ),
+        );
+      } else if (takePayment && checkoutUrl) {
         Alert.alert(
           "Almost done — complete payment",
           `Opening MercadoPago to pay for your ${copy.noun}. ${provider.name} will confirm once your payment goes through.`,
         );
         Linking.openURL(checkoutUrl).catch(() => {});
-      } else if (requiresPayment) {
+      } else if (takePayment) {
         // Payment was required but no checkout URL came back — the charge could NOT be
         // started. The booking exists but is unpaid; never imply it's a normal free
         // request. Be honest so the owner knows nothing was charged.

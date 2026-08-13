@@ -7,6 +7,27 @@ import {
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
+// Merge the pay_with_credit flag (ticket B4) onto a list of bookings via a SEPARATE guarded query,
+// so the big SELECTs above stay untouched and an unmigrated prod (no pay_with_credit column → 42703)
+// degrades to all-false rather than 500ing. Returns the same array with pay_with_credit on each row.
+async function withPayWithCredit(bookings) {
+  if (!Array.isArray(bookings) || bookings.length === 0) return bookings;
+  const ids = bookings.map((b) => b.id);
+  let flags = {};
+  try {
+    const rows = await sql`
+      SELECT id, pay_with_credit FROM vet_appointments WHERE id = ANY(${ids})
+    `;
+    flags = Object.fromEntries(
+      (Array.isArray(rows) ? rows : []).map((r) => [r.id, r.pay_with_credit === true]),
+    );
+  } catch (e) {
+    if (e?.code !== "42703" && !/does not exist/i.test(e?.message ?? "")) throw e;
+    // column absent (unmigrated) → leave all flags false
+  }
+  return bookings.map((b) => ({ ...b, pay_with_credit: flags[b.id] ?? false }));
+}
+
 // GET /api/providers/[id]/bookings — this provider's booking INBOX.
 // Ticket 6b (docs/provider-design.md §4 item 6, provider half; 6a is the owner
 // half that POSTs the booking). Lists the vet_appointments rows owners booked
@@ -110,7 +131,7 @@ async function GET(request, { params }) {
         ORDER BY va.start_at ASC, va.id ASC
       `;
 
-      return Response.json({ bookings: calendar });
+      return Response.json({ bookings: await withPayWithCredit(calendar) });
     }
 
     // BOOKING FIELDS + CONTEXT ONLY. The joins surface human-readable context
@@ -214,7 +235,7 @@ async function GET(request, { params }) {
           ORDER BY va.appointment_date DESC, va.appointment_time DESC
         `;
 
-    return Response.json({ bookings });
+    return Response.json({ bookings: await withPayWithCredit(bookings) });
   } catch (error) {
     if (error.status === 403) {
       return Response.json({ error: error.message }, { status: 403 });

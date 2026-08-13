@@ -274,6 +274,7 @@ export default function WalkerWalksScreen() {
               booking={b}
               busy={checkIn.isPending}
               onStart={() => handleStart(b)}
+              t={t}
             />
           ))
         )}
@@ -311,7 +312,7 @@ export default function WalkerWalksScreen() {
   );
 }
 
-function BookingCard({ booking, onStart, busy }) {
+function BookingCard({ booking, onStart, busy, t }) {
   return (
     <View
       style={{
@@ -331,11 +332,33 @@ function BookingCard({ booking, onStart, busy }) {
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text
-            style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}
-          >
-            {booking.pet_name || "Dog"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text
+              style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}
+            >
+              {booking.pet_name || "Dog"}
+            </Text>
+            {/* "Uses a walk" badge (ticket B4) — a scheduled pay-with-credit walk. */}
+            {booking.pay_with_credit ? (
+              <View
+                testID={`booking-credit-badge-${booking.id}`}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 3,
+                  backgroundColor: COLORS.sand,
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                }}
+              >
+                <Footprints size={12} color={COLORS.coral} />
+                <Text style={{ fontSize: 11, fontWeight: "800", color: COLORS.coral }}>
+                  {t("walkSchedule.usesWalk", "Uses a walk")}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
             {booking.owner_name ? `${booking.owner_name} · ` : ""}
             {booking.appointment_date}
