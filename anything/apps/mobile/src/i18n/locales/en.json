@@ -782,6 +782,13 @@
     "acceptedBody": "A confirmed walk was added to your agenda and a chat opened with the owner.",
     "takenTitle": "No longer available",
     "takenBody": "This request was cancelled or accepted by someone else.",
-    "acceptErrorTitle": "Couldn't accept"
+    "acceptErrorTitle": "Couldn't accept",
+    "findNow": "Find a walker now",
+    "findNowHint": "Alert available walkers near you",
+    "findingTitle": "Looking for a walker",
+    "findingBody": "We're notifying nearby available walkers. You'll be notified when one accepts.",
+    "locationNeededTitle": "Location needed",
+    "locationNeededBody": "Turn on location so nearby walkers can find you.",
+    "nearbyTitle": "Nearby now"
   }
 }

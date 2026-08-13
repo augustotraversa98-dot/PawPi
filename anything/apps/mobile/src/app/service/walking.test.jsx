@@ -176,6 +176,21 @@ test("requesting a walk submits target_provider_id for the active pet", async ()
   );
 });
 
+test("'Find a walker now' broadcasts (target_provider_id null) with a pickup location (ticket C2)", async () => {
+  mockDiscover = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
+  const { getByTestId } = render(<WalkingScreen />);
+  fireEvent.press(getByTestId("find-walker-now"));
+  await waitFor(() => expect(mockCreateAsync).toHaveBeenCalled());
+  expect(mockCreateAsync).toHaveBeenCalledWith(
+    expect.objectContaining({
+      pet_id: 5,
+      target_provider_id: null,
+      pickup_lat: -34.6,
+      pickup_lng: -58.4,
+    }),
+  );
+});
+
 test("a live request shows a waiting-for-a-walker status card", () => {
   mockDiscover = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
   mockMyRequests = {

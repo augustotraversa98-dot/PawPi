@@ -83,6 +83,7 @@ export default function WalkingScreen() {
   const { data: myRequests } = useMyWalkRequests();
   const openRequests = (myRequests ?? []).filter((r) => r.is_live);
   const [requestFor, setRequestFor] = useState(null); // the provider being requested
+  const [findingNow, setFindingNow] = useState(false);
 
   const openProvider = (slug) => {
     router.push({
@@ -139,6 +140,59 @@ export default function WalkingScreen() {
       await cancelRequest.mutateAsync({ requestId: id });
     } catch (e) {
       Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), e?.message);
+    }
+  };
+
+  // "Find a walker now" (ticket C2) — broadcast to nearby available walkers. Needs a real pickup
+  // point (the whole feature is location-based), so a denied/unavailable location aborts with a note.
+  const findWalkerNow = async () => {
+    if (!petId) {
+      Alert.alert(
+        t("walkRequests.needPetTitle", "Add a pet first"),
+        t("walkRequests.needPetBody", "You need a pet on your profile to request a walk."),
+      );
+      return;
+    }
+    setFindingNow(true);
+    let lat = null;
+    let lng = null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      }
+    } catch {
+      // handled below
+    }
+    if (lat == null || lng == null) {
+      setFindingNow(false);
+      Alert.alert(
+        t("walkRequests.locationNeededTitle", "Location needed"),
+        t("walkRequests.locationNeededBody", "Turn on location so nearby walkers can find you."),
+      );
+      return;
+    }
+    try {
+      await createRequest.mutateAsync({
+        pet_id: petId,
+        target_provider_id: null,
+        pickup_lat: lat,
+        pickup_lng: lng,
+        radius_km: 5,
+        when_type: "now",
+      });
+      Alert.alert(
+        t("walkRequests.findingTitle", "Looking for a walker"),
+        t("walkRequests.findingBody", "We're notifying nearby available walkers. You'll be notified when one accepts."),
+      );
+    } catch (e) {
+      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), e?.message);
+    } finally {
+      setFindingNow(false);
     }
   };
 
@@ -247,6 +301,46 @@ export default function WalkingScreen() {
             t={t}
           />
         ))}
+
+        {/* Find a walker now (ticket C2) — broadcast to nearby available walkers. */}
+        <PressableScale
+          onPress={findWalkerNow}
+          disabled={findingNow}
+          testID="find-walker-now"
+          accessibilityRole="button"
+          style={{
+            backgroundColor: COLORS.warmBrown,
+            borderRadius: RADIUS.card,
+            padding: SPACING.lg,
+            marginBottom: SPACING.lg + 2,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: SPACING.md,
+            opacity: findingNow ? 0.6 : 1,
+          }}
+        >
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: "#FFFFFF25",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <MapPin size={20} color="#FFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
+              {t("walkRequests.findNow", "Find a walker now")}
+            </Text>
+            <Text style={[TYPE.footnote, { color: "#FFFFFFCC", marginTop: 1 }]}>
+              {t("walkRequests.findNowHint", "Alert available walkers near you")}
+            </Text>
+          </View>
+          <ChevronRight size={20} color="#FFF" />
+        </PressableScale>
 
         <Text
           style={[

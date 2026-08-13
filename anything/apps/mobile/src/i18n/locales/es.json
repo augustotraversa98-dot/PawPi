@@ -782,6 +782,13 @@
     "acceptedBody": "Se agregó un paseo confirmado a tu agenda y se abrió un chat con el dueño.",
     "takenTitle": "Ya no está disponible",
     "takenBody": "Esta solicitud fue cancelada o aceptada por otra persona.",
-    "acceptErrorTitle": "No se pudo aceptar"
+    "acceptErrorTitle": "No se pudo aceptar",
+    "findNow": "Buscar un paseador ahora",
+    "findNowHint": "Avisa a los paseadores disponibles cerca de ti",
+    "findingTitle": "Buscando un paseador",
+    "findingBody": "Estamos avisando a los paseadores disponibles cerca. Te notificaremos cuando alguno acepte.",
+    "locationNeededTitle": "Se necesita la ubicación",
+    "locationNeededBody": "Activa la ubicación para que los paseadores cercanos te encuentren.",
+    "nearbyTitle": "Cerca ahora"
   }
 }
