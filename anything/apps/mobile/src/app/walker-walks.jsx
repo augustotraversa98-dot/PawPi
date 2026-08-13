@@ -22,6 +22,7 @@ import {
   useRedeemWalkPickup,
   useProviderWalkRequests,
   useAcceptWalkRequest,
+  useNearbyWalkRequests,
 } from "@/hooks/useProviders";
 import StartWalkModal from "@/components/Health/WalkActivity/StartWalkModal";
 import WalkerLiveMap from "@/components/Health/WalkActivity/WalkerLiveMap";
@@ -57,6 +58,8 @@ export default function WalkerWalksScreen() {
 
   // Incoming "request a walk" requests targeted at this walker (ticket C1).
   const { data: walkRequests } = useProviderWalkRequests(provider?.id);
+  // Nearby "find a walker now" broadcasts (ticket C2).
+  const { data: nearbyRequests } = useNearbyWalkRequests(provider?.id);
   const accept = useAcceptWalkRequest(provider?.id);
   const [acceptingId, setAcceptingId] = useState(null);
 
@@ -230,6 +233,7 @@ export default function WalkerWalksScreen() {
   };
 
   const openRequests = (walkRequests ?? []).filter((r) => r.status === "open");
+  const nearbyOpen = (nearbyRequests ?? []).filter((r) => r.status === "open");
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -308,6 +312,32 @@ export default function WalkerWalksScreen() {
             {openRequests.map((r) => (
               <RequestCard
                 key={r.id}
+                request={r}
+                busy={accept.isPending && acceptingId === r.id}
+                onAccept={() => handleAccept(r)}
+                t={t}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {/* Nearby now (ticket C2) — "find a walker now" broadcasts near this walker, while accepting. */}
+        {provider && nearbyOpen.length > 0 ? (
+          <View style={{ marginBottom: 12 }} testID="nearby-requests">
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "800",
+                color: COLORS.mutedBrown,
+                letterSpacing: 0.6,
+                marginBottom: 8,
+              }}
+            >
+              {t("walkRequests.nearbyTitle", "Nearby now")}
+            </Text>
+            {nearbyOpen.map((r) => (
+              <RequestCard
+                key={`nearby-${r.id}`}
                 request={r}
                 busy={accept.isPending && acceptingId === r.id}
                 onAccept={() => handleAccept(r)}
@@ -512,6 +542,9 @@ function RequestCard({ request, onAccept, busy, t }) {
             <Text style={{ fontSize: 13, color: COLORS.mutedBrown }}>
               {request.owner_name ? `${request.owner_name} · ` : ""}
               {whenLabel}
+              {request.distance_km != null
+                ? ` · ${Math.round(request.distance_km * 10) / 10} km`
+                : ""}
             </Text>
           </View>
           {request.note ? (

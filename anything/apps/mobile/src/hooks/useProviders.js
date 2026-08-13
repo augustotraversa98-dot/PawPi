@@ -1250,6 +1250,28 @@ export function useAcceptWalkRequest(providerId) {
   });
 }
 
+// The WALKER's NEARBY broadcast requests (ticket C2 — GET /api/providers/[id]/walk-requests?scope=
+// broadcast): open "find a walker now" requests within radius of this walker's live point, only while
+// the walker is accepting-now (B1). Each row carries pet_name, owner_name, distance_km, note. Disabled
+// until a provider id is known. Polls so a new nearby request appears without a manual refresh.
+export function useNearbyWalkRequests(providerId) {
+  return useQuery({
+    queryKey: ["walk-requests", "provider", providerId, "broadcast"],
+    enabled: providerId != null,
+    refetchInterval: 20000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-requests?scope=broadcast`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch nearby walk requests");
+      }
+      const data = await response.json();
+      return data.requests ?? [];
+    },
+  });
+}
+
 // --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
 // These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
 // real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,

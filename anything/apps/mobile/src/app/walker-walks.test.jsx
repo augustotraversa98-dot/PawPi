@@ -15,6 +15,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 let mockProviders;
 let mockBookings;
 let mockWalkRequests;
+let mockNearbyRequests;
 const mockCheckInAsync = jest.fn();
 const mockRedeemAsync = jest.fn();
 const mockAcceptAsync = jest.fn();
@@ -75,6 +76,7 @@ jest.mock("@/hooks/useProviders", () => ({
   useFinishWalk: () => ({ mutateAsync: jest.fn() }),
   useRedeemWalkPickup: () => ({ mutateAsync: mockRedeemAsync, isPending: false }),
   useProviderWalkRequests: () => mockWalkRequests,
+  useNearbyWalkRequests: () => mockNearbyRequests,
   useAcceptWalkRequest: () => ({ mutateAsync: mockAcceptAsync, isPending: false }),
 }));
 
@@ -93,6 +95,7 @@ beforeEach(() => {
   mockProviders = { data: [], isLoading: false };
   mockBookings = { data: [], refetch: jest.fn() };
   mockWalkRequests = { data: [] };
+  mockNearbyRequests = { data: [] };
   mockCheckInAsync.mockReset().mockResolvedValue({ session: { id: 1 } });
   mockAcceptAsync.mockReset().mockResolvedValue({ booking_id: 1, thread_id: 1 });
   mockRequestPerm.mockReset();
@@ -180,6 +183,22 @@ test("an incoming request renders and Accept calls the accept mutation (ticket C
 
   fireEvent.press(getByTestId("accept-request-7"));
   await waitFor(() => expect(mockAcceptAsync).toHaveBeenCalledWith({ requestId: 7 }));
+});
+
+test("a nearby broadcast request renders in the 'Nearby now' section with distance (ticket C2)", async () => {
+  mockProviders = { data: [{ id: 10, name: "Paw Walks" }], isLoading: false };
+  mockBookings = { data: [], refetch: jest.fn() };
+  mockNearbyRequests = {
+    data: [
+      { id: 9, status: "open", pet_name: "Milo", owner_name: "Leo", when_type: "now", distance_km: 1.2 },
+    ],
+  };
+  const { getByText, getByTestId } = render(<WalkerWalksScreen />);
+  expect(getByText("Nearby now")).toBeTruthy();
+  expect(getByTestId("nearby-requests")).toBeTruthy();
+
+  fireEvent.press(getByTestId("accept-request-9"));
+  await waitFor(() => expect(mockAcceptAsync).toHaveBeenCalledWith({ requestId: 9 }));
 });
 
 test("starting a walk with location DENIED shows the graceful no-map note (time still tracks)", async () => {
