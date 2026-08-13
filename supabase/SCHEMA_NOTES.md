@@ -121,6 +121,24 @@ ACTION 1).
 >   `engagement-foundations-rls.integration.test.ts`. HARNESS-ONLY this ticket — hand-applied to Supabase
 >   after merge.
 
+> **0095** adds the engagement STREAK + FORGIVENESS layer (unit E2) on top of the Care Ring — no
+> existing table's RLS touched. TWO additive changes:
+> - `pet_streaks` gains `pre_reset_count` / `reset_at` (the ~48h one-tap **repair** window — what a
+>   restore brings back) and `last_award_count` (so a milestone freeze is banked **once**, never
+>   re-granted). Additive columns; pet_streaks' own-row RLS (0094) is unchanged.
+> - Two **SECURITY DEFINER** helpers own the streak math (single source of truth), pinned search_path,
+>   granted to pawpi_app: `app_advance_care_streak(pet, owner, day)` — called when the ring CLOSES;
+>   idempotent (same day = no-op); a gap of missed **non-excused** days auto-consumes banked freezes,
+>   and only a gap wider than the bank resets to 1 (remembering the run for repair). A `rest_day`
+>   (`pet_care_days.rest_day`) or a paused day (`<= pet_streaks.paused_until`) is **excused** — never a
+>   miss. Milestones 7/30/100 bank a freeze, capped at 2. `app_repair_care_streak(pet, owner)` — within
+>   ~48h of a reset, reconnects the pre-reset run (`current := pre_reset_count + current`) and clears
+>   the window. DEFINER so the math runs uniformly regardless of per-row RLS (mirrors
+>   `app_grant_walk_credits`). The `/api/pets/[id]/care-ring` route calls advance on close and exposes a
+>   `repair_streak` POST action; both DEGRADE CLEANLY pre-migration (undefined_table 42P01 /
+>   undefined_function 42883 → ring without a streak, never a 500). Idempotent. Verify:
+> `supabase/verify_0095.sql`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
+
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---

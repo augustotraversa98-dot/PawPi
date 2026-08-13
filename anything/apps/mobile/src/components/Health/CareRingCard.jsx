@@ -10,8 +10,16 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
 import { CareRing } from "@/components/Health/CareRing";
-import { useCareRing, useSetRestDay, useSetPause } from "@/hooks/useCareRing";
-import { normalizeRing, ringStatusKey, segmentDone, RING_SEGMENTS } from "@/utils/careRing";
+import { useCareRing, useSetRestDay, useSetPause, useRepairStreak } from "@/hooks/useCareRing";
+import {
+  normalizeRing,
+  ringStatusKey,
+  segmentDone,
+  RING_SEGMENTS,
+  streakCount,
+  streakIsSafe,
+  canRepairStreak,
+} from "@/utils/careRing";
 import { COLORS } from "@/constants/colors";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 
@@ -25,7 +33,9 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const s = normalizeRing(data);
   const setRest = useSetRestDay(petId);
   const setPause = useSetPause(petId);
+  const repairStreak = useRepairStreak(petId);
   const [showPause, setShowPause] = useState(false);
+  const count = streakCount(data);
 
   const statusKey = ringStatusKey(s);
   // Prefer the pause-specific line (with a resume date) when paused; otherwise the status copy.
@@ -42,8 +52,22 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         <View style={styles.side}>
           <Text style={styles.status}>{statusText}</Text>
           <Text style={styles.progress}>{t("health.careRing.progress", { done: [s.walk_done, s.moment_done, s.care_done].filter(Boolean).length })}</Text>
+          {streakIsSafe(data) ? (
+            <Text style={styles.safe}>{t("health.careRing.streakSafe", { name, count })}</Text>
+          ) : null}
         </View>
       </View>
+
+      {canRepairStreak(data) ? (
+        <Pressable
+          style={styles.repair}
+          onPress={() => repairStreak.mutate()}
+          accessibilityRole="button"
+        >
+          <Text style={styles.repairText}>🔥 {t("health.careRing.streakRepairCta")}</Text>
+          <Text style={styles.repairHint}>{t("health.careRing.streakRepairHint", { count })}</Text>
+        </Pressable>
+      ) : null}
 
       <View style={styles.pills}>
         {RING_SEGMENTS.map((seg) => {
@@ -117,6 +141,10 @@ const styles = StyleSheet.create({
   side: { flex: 1, marginLeft: 16 },
   status: { fontSize: 15, fontWeight: "600", color: COLORS.warmBrown, lineHeight: 20 },
   progress: { marginTop: 6, fontSize: 13, color: COLORS.mutedBrown },
+  safe: { marginTop: 6, fontSize: 13, fontWeight: "700", color: COLORS.terracotta },
+  repair: { marginTop: 14, backgroundColor: "#FFE7D6", borderRadius: 12, padding: 12 },
+  repairText: { fontSize: 14, fontWeight: "800", color: COLORS.terracotta },
+  repairHint: { marginTop: 2, fontSize: 12, color: COLORS.mutedBrown },
   pills: { flexDirection: "row", marginTop: 14, gap: 8 },
   pill: {
     flex: 1, paddingVertical: 8, borderRadius: 999, backgroundColor: COLORS.sand,

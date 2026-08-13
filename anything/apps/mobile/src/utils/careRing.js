@@ -60,6 +60,25 @@ export function ringStatusKey(state) {
   return completedCount(state) === 0 ? "empty" : "partial";
 }
 
+// ── Streak (E2) ────────────────────────────────────────────────────────────────
+// The streak rides on the ring-state response as `streak: { current_count, longest_count,
+// freezes_available, repair_available }`. These read it defensively (absent pre-0095 → 0 / false).
+
+export function streakCount(data) {
+  return data?.streak?.current_count ?? 0;
+}
+
+/** Today's ring is closed (or it's a rest/pause day) AND the streak is live → "your streak is safe". */
+export function streakIsSafe(data) {
+  const s = normalizeRing(data);
+  return (s.ring_closed || isRestOrPaused(s)) && streakCount(data) > 0;
+}
+
+/** A fresh reset is within the repair window → offer the one-tap restore. */
+export function canRepairStreak(data) {
+  return !!data?.streak?.repair_available;
+}
+
 /** The next unfinished segment (for a single "finish the ring" nudge). Null when closed/rest. */
 export function nextOpenSegment(state) {
   if (isRestOrPaused(state) || ringClosed(state)) return null;

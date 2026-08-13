@@ -24,7 +24,12 @@ import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContex
 // table (42P01) as "not persisted / no rest / not paused" — never a 500.
 
 const UNDEFINED_TABLE = "42P01";
+const UNDEFINED_FUNCTION = "42883";
+// Pre-migration a missing E0 table (0094) OR the E2 streak helpers (0095) both mean "degrade to
+// derived-only" rather than 500.
+const isMissingSchema = (e) => e?.code === UNDEFINED_TABLE || e?.code === UNDEFINED_FUNCTION;
 const isMissingTable = (e) => e?.code === UNDEFINED_TABLE;
+const REPAIR_WINDOW_MS = 48 * 60 * 60 * 1000;
 const isIntId = (v) => /^\d+$/.test(String(v));
 const isDayStr = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v ?? ""));
 const toDayStr = (v) =>
@@ -104,6 +109,7 @@ async function GET(request, { params }) {
     let restDay = false;
     let pausedUntil = null;
     let persisted = false;
+    let streak = null;
     try {
       await withSavepoint(async () => {
         await sql`
@@ -123,12 +129,34 @@ async function GET(request, { params }) {
           SELECT rest_day FROM pet_care_days WHERE pet_id = ${petId} AND day = ${day}::date
         `;
         restDay = !!row?.rest_day;
-        const [st] = await sql`SELECT paused_until FROM pet_streaks WHERE pet_id = ${petId}`;
+
+        // On close, advance the streak (E2) — idempotent; freezes bridge missed days; rest/pause
+        // never counts as a miss. The helper is the single source of truth for streak math.
+        if (seg.ringClosed) {
+          await sql`SELECT app_advance_care_streak(${petId}, ${ownerUserId}, ${day}::date)`;
+        }
+
+        const [st] = await sql`
+          SELECT current_count, longest_count, freezes_available, paused_until,
+                 pre_reset_count, reset_at
+          FROM pet_streaks WHERE pet_id = ${petId}
+        `;
         pausedUntil = toDayStr(st?.paused_until ?? null);
+        if (st) {
+          streak = {
+            current_count: st.current_count,
+            longest_count: st.longest_count,
+            freezes_available: st.freezes_available,
+            repair_available:
+              st.reset_at != null &&
+              st.pre_reset_count != null &&
+              Date.now() - new Date(st.reset_at).getTime() < REPAIR_WINDOW_MS,
+          };
+        }
         persisted = true;
       });
     } catch (e) {
-      if (!isMissingTable(e)) throw e; // real error still 500s; a missing table just degrades
+      if (!isMissingSchema(e)) throw e; // real error still 500s; a missing table/fn just degrades
     }
 
     const paused = pausedUntil != null && pausedUntil >= day;
@@ -142,6 +170,7 @@ async function GET(request, { params }) {
       rest_day: restDay,
       paused,
       paused_until: pausedUntil,
+      streak,
       persisted,
     });
   } catch (error) {
@@ -200,6 +229,34 @@ async function POST(request, { params }) {
         );
       }
       return Response.json({ paused_until: pausedUntil });
+    }
+
+    if (action === "repair_streak") {
+      // One-tap restore of a fresh reset (~48h window). Gentle, no paywall (E2).
+      let streak = null;
+      try {
+        await withSavepoint(async () => {
+          const [row] = await sql`
+            SELECT current_count, longest_count, freezes_available, pre_reset_count, reset_at
+            FROM app_repair_care_streak(${petId}, ${ownerUserId})
+          `;
+          if (row) {
+            streak = {
+              current_count: row.current_count,
+              longest_count: row.longest_count,
+              freezes_available: row.freezes_available,
+              repair_available:
+                row.reset_at != null &&
+                row.pre_reset_count != null &&
+                Date.now() - new Date(row.reset_at).getTime() < REPAIR_WINDOW_MS,
+            };
+          }
+        });
+      } catch (e) {
+        if (!isMissingSchema(e)) throw e;
+        return Response.json({ error: "Streak repair isn't available yet", degraded: true }, { status: 503 });
+      }
+      return Response.json({ streak });
     }
 
     return Response.json({ error: "Unknown action" }, { status: 400 });

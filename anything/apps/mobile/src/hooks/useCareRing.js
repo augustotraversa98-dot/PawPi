@@ -46,6 +46,22 @@ export function useSetRestDay(petId) {
   });
 }
 
+export function useRepairStreak(petId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/pets/${petId}/care-ring`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "repair_streak" }),
+      });
+      if (!res.ok) throw new Error("Failed to repair streak");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: careRingKey(petId) }),
+  });
+}
+
 export function useSetPause(petId) {
   const queryClient = useQueryClient();
   return useMutation({

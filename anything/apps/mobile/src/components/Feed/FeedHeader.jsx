@@ -8,6 +8,8 @@ import { GlassSurface, PressableScale } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import { StreakChip } from "@/components/Health/StreakChip";
 
 // A small glassy icon button used for the header actions (search/messages/bell).
 function HeaderIconButton({ onPress, children }) {
@@ -37,6 +39,7 @@ export function FeedHeader() {
   );
   // Pending care-access requests also live in the bell (see notifications.jsx),
   // so they count toward the badge — an access request should never go unseen.
+  const { data: currentPet } = useCurrentPet();
   const { data: careGrants } = useAllCareAccessGrants();
   const pendingAccessCount = (careGrants || []).filter(
     (g) => g.status === "pending",
@@ -68,6 +71,8 @@ export function FeedHeader() {
             Social Pet
           </Text>
           <Text style={{ fontSize: 22 }}>🐾</Text>
+          {/* Ring-close streak (E2) — renders nothing at 0 */}
+          <StreakChip petId={currentPet?.id} />
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>

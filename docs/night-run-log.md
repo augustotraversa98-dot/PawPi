@@ -67,3 +67,13 @@ day one; no fake data. One line per merge.
   avatar; `useCareRing`/`useSetRestDay`/`useSetPause`; walk/moment/care log mutations invalidate
   `["care-ring", petId]` so a segment fills without reload. EN+ES. Gates: integration 872→893 (+21
   incl. E0), web vitest 1920 (unchanged), mobile jest 1721→1735 (+14 careRing util).
+- **2026-08-13 (E2)** — Streak + forgiveness merged — [#PENDING]. **Migration 0095** (`pet_streaks`
+  += `pre_reset_count`/`reset_at`/`last_award_count`; `app_advance_care_streak` /
+  `app_repair_care_streak` SECURITY DEFINER helpers — the single source of truth for the streak math,
+  granted to pawpi_app). The ring route advances the streak when the ring closes (idempotent; a gap of
+  missed **non-excused** days auto-consumes banked freezes; only a wider gap resets to 1, remembering
+  the run; **rest/pause is never a miss**; milestones 7/30/100 bank a freeze, capped 2) and exposes a
+  one-tap `repair_streak` (~48h window). Degrades cleanly pre-0095 (42P01/42883 → ring without a
+  streak). Mobile: 🔥 `StreakChip` on the pet-profile + feed header (renders nothing at 0), a "streak
+  is safe" line + "Restore your streak" CTA on the ring card; `useRepairStreak`. EN+ES. Gates:
+  integration 893→901 (+8 forgiveness matrix), web vitest 1920 (unchanged), mobile jest 1735→1738 (+3).

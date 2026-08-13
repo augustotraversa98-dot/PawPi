@@ -13,6 +13,7 @@ import { SocialStatRow } from "@/components/social/SocialStatRow";
 import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { CareRing } from "@/components/Health/CareRing";
+import { StreakChip } from "@/components/Health/StreakChip";
 import { useCareRing } from "@/hooks/useCareRing";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
@@ -287,6 +288,11 @@ export default function PetProfileScreen({ embedded = false }) {
             >
               @{handle}
             </Text>
+          )}
+
+          {/* Ring-close streak (E2) — own pet only; renders nothing at 0 */}
+          {isOwnPet && (
+            <StreakChip petId={Number(petId)} style={{ marginTop: SPACING.sm }} />
           )}
 
           {/* Breed + age */}

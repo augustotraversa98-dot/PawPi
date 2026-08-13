@@ -10,6 +10,9 @@ import {
   ringStatusKey,
   nextOpenSegment,
   segmentDone,
+  streakCount,
+  streakIsSafe,
+  canRepairStreak,
   RING_SEGMENTS,
   SEGMENT_SWEEP_DEG,
 } from "./careRing";
@@ -73,6 +76,30 @@ describe("careRing — rest / pause is never a miss", () => {
 
   it("rest wins over complete (a completed rest day still reads as restful, no pressure)", () => {
     expect(ringStatusKey({ walk_done: true, moment_done: true, care_done: true, rest_day: true })).toBe("rest");
+  });
+});
+
+describe("careRing — streak display (E2)", () => {
+  it("streakCount reads the ring response's streak, 0 when absent (no fake number)", () => {
+    expect(streakCount(undefined)).toBe(0);
+    expect(streakCount({})).toBe(0);
+    expect(streakCount({ streak: { current_count: 12 } })).toBe(12);
+  });
+
+  it("streakIsSafe when the ring closed (or it's a rest/pause day) AND the streak is live", () => {
+    expect(streakIsSafe({ walk_done: true, moment_done: true, care_done: true, streak: { current_count: 3 } })).toBe(true);
+    // rest day with a live streak is still 'safe'
+    expect(streakIsSafe({ rest_day: true, streak: { current_count: 3 } })).toBe(true);
+    // closed but no streak yet → not shown
+    expect(streakIsSafe({ walk_done: true, moment_done: true, care_done: true, streak: { current_count: 0 } })).toBe(false);
+    // not closed → not safe
+    expect(streakIsSafe({ walk_done: true, streak: { current_count: 3 } })).toBe(false);
+  });
+
+  it("canRepairStreak only when the backend flags a repairable reset", () => {
+    expect(canRepairStreak({ streak: { repair_available: true } })).toBe(true);
+    expect(canRepairStreak({ streak: { repair_available: false } })).toBe(false);
+    expect(canRepairStreak({})).toBe(false);
   });
 });
 
