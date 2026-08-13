@@ -826,6 +826,22 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   touched read, `GET /api/providers/[id]/posts`, gains degrade-clean per-post `paw_count`/`comment_count` and is
   proven through the real router (`provider-posts-list.integration.test.ts`). EN + ES. mobile jest 1640→1650;
   web vitest 1854→1855 (+integration). Business CREATION/management stays web-only. (2026-08-12.)
+- **Business mode v2 — the daily hub** — turns the bare Business home into a real **tab shell** (mobile only, shown
+  in business mode): **Today · Bookings · Messages · Profile**, all reflecting the currently-active provider (a
+  shared `useActiveProvider` resolver over `activeProviderStore`, so the switcher swaps the business and every tab
+  follows in lockstep). **Today:** the business header + switcher, the reused **BusinessStatRow** (Followers · Posts ·
+  Paws · Barks, tapping through to Profile), a **"Today at a glance"** card — today's bookings count + next-up, unread
+  messages, and (adoption-capable providers only) pending applications, each derived from an existing provider read
+  and tapping to its tab — plus the existing "Post a moment" + recent moments + "Manage on web". **Bookings:** an
+  agenda of upcoming reservations (client/pet/service/date-time/status) via the SAME `GET /api/providers/[id]/bookings`
+  the web BookingsInbox uses, with **Confirm/Decline** on requested bookings (the existing action-based status
+  `PATCH`, ported `bookingActions` rules); full calendar grid intentionally deferred (agenda IS the MVP calendar).
+  **Messages:** the provider-side thread inbox (`/api/threads?side=provider`) with unread state, opening the shared
+  `provider-chat` (generalized with an optional `meUserId`/`title` so staff replies right-align — owner surface
+  unchanged). **Profile:** the storefront-as-followers-see-it (reused `useProviderProfile` by slug + BusinessStatRow +
+  MomentsGrid) with a **"View public profile"** deep-link to the full `service/provider` storefront and "Manage on
+  web". **No migration, no new/changed web endpoint** — every read reuses existing provider endpoints; the glance is
+  derived client-side. EN + ES. mobile jest 1650→1663 (+3 suites). `apps/web` untouched. (2026-08-12.)
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.

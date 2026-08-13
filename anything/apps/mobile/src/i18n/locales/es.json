@@ -586,6 +586,67 @@
     "menu": {
       "item": "Negocio",
       "subtitle": "Publica momentos y observa"
+    },
+    "tabs": {
+      "today": "Hoy",
+      "bookings": "Reservas",
+      "messages": "Mensajes",
+      "profile": "Perfil"
+    },
+    "today": {
+      "glanceTitle": "Hoy de un vistazo",
+      "bookingsLabel": "Reservas de hoy",
+      "nextUp": "Próxima",
+      "noBookingsToday": "No hay reservas hoy",
+      "unreadLabel": "Mensajes sin leer",
+      "applicationsLabel": "Solicitudes pendientes",
+      "viewAll": "Ver todo"
+    },
+    "bookings": {
+      "title": "Reservas",
+      "subtitle": "Próximas reservas",
+      "emptyTitle": "No hay reservas próximas",
+      "emptyBody": "Las nuevas reservas de tus clientes aparecen aquí.",
+      "loadError": "No pudimos cargar tus reservas.",
+      "retry": "Reintentar",
+      "confirm": "Confirmar",
+      "decline": "Rechazar",
+      "declineTitle": "¿Rechazar esta reserva?",
+      "declineBody": "Se notificará al cliente y se reembolsará cualquier pago.",
+      "cancel": "Mantener",
+      "actionError": "No pudimos actualizar la reserva",
+      "manageOnWeb": "Gestionar reservas en la web",
+      "noService": "Turno",
+      "noPet": "—",
+      "status": {
+        "requested": "Solicitada",
+        "confirmed": "Confirmada",
+        "completed": "Completada",
+        "declined": "Rechazada",
+        "cancelled": "Cancelada"
+      }
+    },
+    "messages": {
+      "title": "Mensajes",
+      "emptyTitle": "Aún no hay conversaciones",
+      "emptyBody": "Cuando un cliente le escribe a tu negocio, aparece aquí.",
+      "loadError": "No pudimos cargar tus conversaciones.",
+      "retry": "Reintentar",
+      "noMessages": "Aún no hay mensajes",
+      "photo": "Foto",
+      "customer": "Cliente"
+    },
+    "profile": {
+      "title": "Perfil",
+      "subtitle": "Cómo te ven tus seguidores",
+      "viewPublic": "Ver perfil público",
+      "recentTitle": "Momentos recientes",
+      "emptyTitle": "Aún no hay momentos",
+      "emptyBody": "Publica un momento desde Hoy — aparecerá en tu perfil público.",
+      "loadError": "No pudimos cargar tu perfil.",
+      "retry": "Reintentar",
+      "manageTitle": "Gestionar en la web",
+      "manageBody": "Edita tus servicios, productos, horarios y tienda en el panel web de PawPi."
     }
   }
 }

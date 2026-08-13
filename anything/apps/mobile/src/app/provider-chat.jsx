@@ -23,10 +23,16 @@ import {
 } from "@/hooks/useProviders";
 import useUpload from "@/utils/useUpload";
 
-// Owner-side conversation view (Phase 2 ticket 2.5). Reads one thread's messages
-// (polled), sends text, and attaches an image via the SHARED Supabase Storage upload
-// path (useUpload). The owner is the current user, so messages from ownerUserId are
-// "mine" (right-aligned); the rest are the provider's.
+// Shared owner↔provider conversation view (Phase 2 ticket 2.5; generalized for business mode
+// v2). Reads one thread's messages (polled), sends text, and attaches an image via the SHARED
+// Supabase Storage upload path (useUpload). The message read/send/mark-read layer is side-
+// agnostic, so BOTH perspectives use this one screen — only "who is me" differs:
+//   • OWNER side (provider-messages) passes `ownerUserId` — the owner IS the current user, so
+//     their messages are "mine" (right-aligned) and the header shows the provider's name.
+//   • PROVIDER/staff side (business → messages) passes `meUserId` (the staff member's own
+//     user_profiles id) + `title` (the customer's name) — their messages are "mine"; the
+//     owner's are the other party.
+// `mineId` prefers meUserId; falls back to ownerUserId so the owner surface is unchanged.
 function formatTime(ts) {
   if (!ts) return "";
   const d = new Date(ts);
@@ -49,6 +55,12 @@ export default function ProviderChatScreen() {
   const ownerUserId = Array.isArray(params.ownerUserId)
     ? params.ownerUserId[0]
     : params.ownerUserId;
+  // Business-mode extras (optional; absent on the owner surface): the current staff member's
+  // own profile id, and the counterparty (customer) name for the header.
+  const meUserId = Array.isArray(params.meUserId) ? params.meUserId[0] : params.meUserId;
+  const title = Array.isArray(params.title) ? params.title[0] : params.title;
+  // "Me" is the staff member when meUserId is supplied, else the owner (owner surface).
+  const mineId = meUserId ?? ownerUserId;
 
   const { data: messages, isLoading } = useThreadMessages(threadId);
   const { mutate: send, isPending } = useSendMessage(threadId);
@@ -119,7 +131,7 @@ export default function ProviderChatScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-          {providerName || "Provider"}
+          {title || providerName || "Provider"}
         </Text>
       </GlassSurface>
 
@@ -146,7 +158,7 @@ export default function ProviderChatScreen() {
             </View>
           ) : (
             ordered.map((msg) => {
-              const mine = String(msg.sender_user_id) === String(ownerUserId);
+              const mine = String(msg.sender_user_id) === String(mineId);
               return (
                 <View
                   key={msg.id}
