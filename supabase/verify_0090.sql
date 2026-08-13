@@ -41,7 +41,7 @@ with checks as (
 
   union all
   select 6, 'app_redeem_walk_credit is SECURITY DEFINER',
-         case when prosecdef then 'definer' else 'invoker' end,
+         case when bool_and(prosecdef) then 'definer' else 'invoker' end,
          case when bool_and(prosecdef) then 'PASS' else 'FAIL' end
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname='app_redeem_walk_credit'
