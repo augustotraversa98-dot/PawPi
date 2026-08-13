@@ -15,6 +15,28 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
+// RefreshableScrollView double — records the refetch prop and exposes a "pull" affordance that
+// re-runs it (single fn OR array), so the test can prove the content scroller is refresh-wired.
+const mockRefreshable = { props: null };
+jest.mock("@/components/RefreshableScrollView", () => {
+  const { ScrollView, Text, TouchableOpacity } = require("react-native");
+  return {
+    RefreshableScrollView: (props) => {
+      mockRefreshable.props = props;
+      const { refetch, children, ...rest } = props;
+      const pull = () => (Array.isArray(refetch) ? refetch : [refetch]).forEach((fn) => fn && fn());
+      return (
+        <ScrollView {...rest} testID="refreshable-scroll">
+          <TouchableOpacity testID="pull-to-refresh" onPress={pull}>
+            <Text>PULL</Text>
+          </TouchableOpacity>
+          {children}
+        </ScrollView>
+      );
+    },
+  };
+});
+
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
@@ -52,6 +74,8 @@ beforeEach(() => {
   mockPush.mockReset();
   mockBookings.data = [];
   mockBookings.isError = false;
+  mockBookings.refetch = jest.fn();
+  mockRefreshable.props = null;
   mockActive.activeProvider = { id: 7, name: "City Vets", logo_url: null };
 });
 
@@ -115,6 +139,20 @@ test("a walker booking shows 'Start walk' → opens the walker workspace", () =>
   expect(getByText("Start walk")).toBeTruthy();
   fireEvent.press(getByTestId("business-booking-start-walk-5"));
   expect(mockPush).toHaveBeenCalledWith("/walker-walks");
+});
+
+test("the agenda scroller is refresh-wired; a pull re-runs the bookings refetch", () => {
+  mockBookings.data = [
+    { id: 2, appointment_date: "2026-08-14", appointment_time: "09:00", booking_status: "requested", service_name: "Checkup", pet_name: "Milo", owner_name: "Bob" },
+  ];
+
+  const { getByTestId } = render(<BusinessBookings />);
+  // The content scroller is the RefreshableScrollView, wired to the screen's single refetch.
+  expect(getByTestId("refreshable-scroll")).toBeTruthy();
+  expect(mockRefreshable.props.refetch).toBe(mockBookings.refetch);
+
+  fireEvent.press(getByTestId("pull-to-refresh"));
+  expect(mockBookings.refetch).toHaveBeenCalledTimes(1);
 });
 
 test("a non-walker booking has no 'Start walk' affordance", () => {
