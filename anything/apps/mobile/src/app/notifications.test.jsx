@@ -332,6 +332,48 @@ test("tapping an adoption notification opens the Applications tab and marks it r
   });
 });
 
+// ── Walk-request notifications (C1/0092) ─────────────────────────────────────
+test("an accepted walk-request notification opens the created booking", () => {
+  mockDbNotifications = [
+    {
+      id: 88,
+      type: "walk_request_accepted",
+      subject_ref: "900", // = booking id
+      body: JSON.stringify({ service: "Walk", provider: "Paw Walks", date: null, time: null }),
+      read_at: null,
+      created_at: "2026-08-13T12:00:00.000Z",
+      actor_username: null,
+      actor_avatar: null,
+    },
+  ];
+  const { getByText } = render(<NotificationsScreen />);
+  fireEvent.press(getByText(/Paw Walks will walk your dog/));
+  expect(mockMarkRead).toHaveBeenCalledWith({ ids: [88] });
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/service/booking-summary",
+    params: { id: "900" },
+  });
+});
+
+test("a targeted walk-request notification opens the walker workspace", () => {
+  mockDbNotifications = [
+    {
+      id: 89,
+      type: "walk_request_targeted",
+      subject_ref: "42", // = request id
+      body: JSON.stringify({ when_type: "now", note: null }),
+      read_at: null,
+      created_at: "2026-08-13T12:05:00.000Z",
+      actor_username: null,
+      actor_avatar: null,
+    },
+  ];
+  const { getByText } = render(<NotificationsScreen />);
+  fireEvent.press(getByText("New walk request"));
+  expect(mockMarkRead).toHaveBeenCalledWith({ ids: [89] });
+  expect(mockPush).toHaveBeenCalledWith("/walker-walks");
+});
+
 test("empty state when there are no notifications", () => {
   mockStoreState = {
     notifications: [],

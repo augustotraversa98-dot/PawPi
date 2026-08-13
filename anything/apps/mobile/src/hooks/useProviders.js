@@ -1133,6 +1133,123 @@ export function useRedeemWalkPickup(providerId) {
   });
 }
 
+// --- walk requests — "request a walk" from a specific walker (ticket C1) ------
+// Pattern matches the hooks above: relative fetch("/api/..."), a query key, throw on !res.ok.
+
+// The OWNER's own walk requests + live status (GET /api/walk-requests). Each row carries
+// is_live, target_provider_name, accepted_provider_name, pet_name, status. Polls so an
+// acceptance shows without a manual refresh.
+export function useMyWalkRequests() {
+  return useQuery({
+    queryKey: ["walk-requests", "owner"],
+    refetchInterval: 20000,
+    queryFn: async () => {
+      const response = await fetch("/api/walk-requests");
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk requests");
+      }
+      const data = await response.json();
+      return data.requests ?? [];
+    },
+  });
+}
+
+// The OWNER creates a request for a SPECIFIC walker (POST /api/walk-requests). mutateAsync({
+// pet_id, target_provider_id, note?, when_type, scheduled_at?, pickup_lat?, pickup_lng? }) →
+// { request }. Surfaces the backend message. Invalidates the owner's request list.
+export function useCreateWalkRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const response = await fetch("/api/walk-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to request a walk");
+      }
+      return response.json(); // { request }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["walk-requests", "owner"] });
+    },
+  });
+}
+
+// The OWNER cancels their own still-open request (PATCH /api/walk-requests/[id]).
+// mutateAsync({ requestId }) → { request }. Invalidates the owner's request list.
+export function useCancelWalkRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }) => {
+      const response = await fetch(
+        `/api/walk-requests/${encodeURIComponent(requestId)}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to cancel request");
+      }
+      return response.json(); // { request }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["walk-requests", "owner"] });
+    },
+  });
+}
+
+// The WALKER's incoming open targeted requests (GET /api/providers/[id]/walk-requests?status=open).
+// Each row carries pet_name, owner_name, when_type, scheduled_at, note. Disabled until a provider
+// id is known. Polls so a new request appears without a manual refresh.
+export function useProviderWalkRequests(providerId) {
+  return useQuery({
+    queryKey: ["walk-requests", "provider", providerId, "open"],
+    enabled: providerId != null,
+    refetchInterval: 20000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-requests?status=open`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk requests");
+      }
+      const data = await response.json();
+      return data.requests ?? [];
+    },
+  });
+}
+
+// The WALKER accepts an incoming request (POST /api/providers/[id]/walk-requests/[requestId]/accept).
+// Returns { request, thread_id, booking_id }; the accept atomically creates a confirmed walker
+// booking. On 409 the thrown error carries status=409 + code='already_taken' so the UI can show a
+// distinct "no longer available" message. mutateAsync({ requestId }). Invalidates the walker's
+// incoming list AND the walker agenda (the accept created a booking that must show there).
+export function useAcceptWalkRequest(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-requests/${encodeURIComponent(requestId)}/accept`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const err = new Error(data.error || "Failed to accept request");
+        err.status = response.status;
+        err.code = data.code;
+        throw err;
+      }
+      return response.json(); // { request, thread_id, booking_id }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["walk-requests", "provider", providerId] });
+      queryClient.invalidateQueries({ queryKey: ["provider-bookings", providerId] });
+    },
+  });
+}
+
 // --- daycare & boarding — capacity-managed stays (Phase 2 ticket 2.8) --------
 // These wrap the daycare-stay routes (0034 owner-FOR-ALL + provider-via-grant RLS is the
 // real guard). Pattern matches the hooks above: relative fetch("/api/..."), a query key,
