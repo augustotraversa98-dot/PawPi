@@ -673,12 +673,23 @@
       "actionError": "No pudimos actualizar la solicitud",
       "alreadyDecidedTitle": "Ya resuelta",
       "alreadyDecidedBody": "Esta solicitud ya fue resuelta — desliza para actualizar.",
+      "searchPlaceholder": "Busca postulantes, perros o respuestas",
+      "noMatchesTitle": "Sin resultados",
+      "noMatchesBody": "Prueba con otro nombre o perro.",
+      "applicationsCount": "{{count}} solicitudes",
+      "message": "Mensaje",
+      "messageError": "No pudimos abrir la conversación",
       "status": {
         "submitted": "Enviada",
         "pending": "Pendiente",
         "under_review": "En revisión",
         "approved": "Aprobada",
         "declined": "Rechazada"
+      },
+      "listingStatus": {
+        "available": "Disponible",
+        "pending": "Pendiente",
+        "adopted": "Adoptado"
       }
     }
   }

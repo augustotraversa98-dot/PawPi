@@ -673,12 +673,23 @@
       "actionError": "Couldn't update the application",
       "alreadyDecidedTitle": "Already decided",
       "alreadyDecidedBody": "This application was already decided — pull to refresh.",
+      "searchPlaceholder": "Search applicants, dogs or answers",
+      "noMatchesTitle": "No matches",
+      "noMatchesBody": "Try a different name or dog.",
+      "applicationsCount": "{{count}} applications",
+      "message": "Message",
+      "messageError": "Couldn't open the conversation",
       "status": {
         "submitted": "Submitted",
         "pending": "Pending",
         "under_review": "Under review",
         "approved": "Approved",
         "declined": "Declined"
+      },
+      "listingStatus": {
+        "available": "Available",
+        "pending": "Pending",
+        "adopted": "Adopted"
       }
     }
   }
