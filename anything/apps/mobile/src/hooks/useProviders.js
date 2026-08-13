@@ -788,6 +788,28 @@ export function useReviewProviderAdoptionApplication(providerId) {
   });
 }
 
+// Open (or reuse) a chat thread WITH an adoption applicant, from the business review screen
+// (ticket A3). POST /api/providers/[id]/adoption-applications/[applicationId]/thread — the only
+// PROVIDER-initiated thread start; the server puts the applicant as owner and gates on active
+// staff. Idempotent (double-tap safe): the general thread is reused if it exists. Returns
+// { thread }. Same conventions as the mutations above: relative fetch, throw on !res.ok.
+export function useOpenAdoptionApplicantThread(providerId) {
+  return useMutation({
+    // mutateAsync({ applicationId }) → { thread, reused }
+    mutationFn: async ({ applicationId }) => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/adoption-applications/${encodeURIComponent(applicationId)}/thread`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Couldn't open the conversation");
+      }
+      return response.json();
+    },
+  });
+}
+
 // --- dog walking — live GPS sessions (Phase 2 ticket 2.7) -------------------
 // These wrap the walk-session routes (0033 participant RLS is the real guard). LIVE
 // TRACKING = short-interval POLLING (refetchInterval) — the SAME lightweight choice chat
