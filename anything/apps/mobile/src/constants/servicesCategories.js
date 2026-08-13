@@ -12,19 +12,32 @@
 // differs from the capability only where the label does (grooming→groomer, etc.). `capability` lets
 // the pane filter providers CLIENT-side for multi-select (a provider matches a selected category when
 // its capabilities include that category's capability).
-export const SERVICE_CATEGORIES = [
+//
+// SPLIT BY INTENT (ticket D1/D2): the owner IA divides discovery into two hubs.
+//   • STORES_VETS_CATEGORIES — "Stores & Vets" (shop/vet): things you visit or buy from.
+//   • CARE_CATEGORIES        — the "Care" hub (D2): hiring someone to care for the dog.
+// SERVICE_CATEGORIES stays the full union (for the label/capability maps, the key set, and the web
+// mirror's lockstep). Each hub renders only its allowed slice; the endpoint contract is unchanged.
+export const STORES_VETS_CATEGORIES = [
   { key: "vet", labelKey: "discover.cap.vet", capability: "vet" },
   { key: "telehealth", labelKey: "discover.cap.telehealth", capability: "telehealth" },
   { key: "grooming", labelKey: "discover.cap.groomer", capability: "groomer" },
-  { key: "walking", labelKey: "discover.cap.walker", capability: "walker" },
-  { key: "daycare", labelKey: "discover.cap.daycare", capability: "daycare" },
-  { key: "sitting", labelKey: "discover.cap.sitter", capability: "sitter" },
-  { key: "training", labelKey: "discover.cap.trainer", capability: "trainer" },
   { key: "shop", labelKey: "discover.cap.shop", capability: "shop" },
   { key: "adoption", labelKey: "discover.cap.adoption", capability: "adoption" },
   { key: "transport", labelKey: "discover.cap.transport", capability: "transport" },
   { key: "insurance", labelKey: "discover.cap.insurance", capability: "insurance" },
 ];
+
+export const CARE_CATEGORIES = [
+  { key: "walking", labelKey: "discover.cap.walker", capability: "walker" },
+  { key: "daycare", labelKey: "discover.cap.daycare", capability: "daycare" },
+  { key: "sitting", labelKey: "discover.cap.sitter", capability: "sitter" },
+  { key: "training", labelKey: "discover.cap.trainer", capability: "trainer" },
+];
+
+export const SERVICE_CATEGORIES = [...STORES_VETS_CATEGORIES, ...CARE_CATEGORIES];
+
+export const CARE_CATEGORY_KEYS = new Set(CARE_CATEGORIES.map((c) => c.key));
 
 // Place categories, in chip display order. New i18n keys (discover.placeCat.*).
 export const PLACE_CATEGORIES = [
@@ -53,12 +66,17 @@ const CATEGORY_ALIASES = {
   pharmacy: "shop",
 };
 
-// Resolve a raw ?category deep-link value into a valid chip key; unknown → "all".
-export function resolveInitialCategory(raw) {
+// Resolve a raw ?category deep-link value into a valid chip key; unknown → "all". When `allowedKeys`
+// (a Set of the hub's rendered chip keys) is given, a resolved key that isn't shown on this hub —
+// e.g. a legacy care deep-link (?category=walker) landing on Stores & Vets — falls back to "all"
+// gracefully rather than seeding a chip the hub can't display. (D2 routes care deep-links to Care.)
+export function resolveInitialCategory(raw, allowedKeys = null) {
+  let resolved = "all";
   if (typeof raw === "string") {
-    if (raw === "all") return "all";
-    if (PROVIDER_CATEGORY_KEYS.has(raw) || PLACE_CATEGORY_KEYS.has(raw)) return raw;
-    if (CATEGORY_ALIASES[raw]) return CATEGORY_ALIASES[raw];
+    if (raw === "all") resolved = "all";
+    else if (PROVIDER_CATEGORY_KEYS.has(raw) || PLACE_CATEGORY_KEYS.has(raw)) resolved = raw;
+    else if (CATEGORY_ALIASES[raw]) resolved = CATEGORY_ALIASES[raw];
   }
-  return "all";
+  if (resolved !== "all" && allowedKeys && !allowedKeys.has(resolved)) return "all";
+  return resolved;
 }

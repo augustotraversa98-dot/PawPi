@@ -63,8 +63,9 @@ test("Services is a primary bottom tab; Community is not", () => {
   const names = screens.map((s) => s.name);
   const titles = screens.map((s) => s.title);
 
+  // The route name stays `services` (deep-link/test stability); the label is now "Stores & Vets" (D1).
   expect(names).toContain("services");
-  expect(titles).toContain("Services");
+  expect(titles).toContain("Stores & Vets");
 
   expect(names).not.toContain("community");
   expect(titles).not.toContain("Community");

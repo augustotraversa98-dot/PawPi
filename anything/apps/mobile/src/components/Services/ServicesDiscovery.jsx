@@ -44,6 +44,7 @@ import { deriveOpenNow } from "@/utils/providerHours";
 import { geocodeLocation } from "@/utils/geocoding";
 import {
   SERVICE_CATEGORIES,
+  STORES_VETS_CATEGORIES,
   PLACE_CATEGORIES,
   PROVIDER_CATEGORY_KEYS,
   PLACE_CATEGORY_KEYS,
@@ -82,6 +83,12 @@ for (const c of PLACE_CATEGORIES) CATEGORY_LABEL_KEY[c.key] = c.labelKey;
 // provider category key → backing capability, for CLIENT-side multi-select union filtering.
 const CATEGORY_CAPABILITY = {};
 for (const c of SERVICE_CATEGORIES) CATEGORY_CAPABILITY[c.key] = c.capability;
+
+// Default hub scope (ticket D1): "Stores & Vets" shows the non-care service categories + all places.
+// The Care hub (D2) reuses this component with `allowedCategories={CARE_CATEGORIES}` (no places). The
+// label/capability maps above stay built from the FULL taxonomy — only the RENDERED chips + counts
+// are scoped, so a stray selected key still filters correctly.
+const STORES_VETS_ALLOWED = [...STORES_VETS_CATEGORIES, ...PLACE_CATEGORIES];
 
 // When the user searches a free-text LOCATION, bound results to this radius (km) around it so the
 // list shows what's near that place (device/near-me geo stays unbounded).
@@ -152,6 +159,7 @@ export default function ServicesDiscovery({
   variant = "screen",
   initialCategory,
   showHeader = true,
+  allowedCategories = STORES_VETS_ALLOWED,
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -160,10 +168,17 @@ export default function ServicesDiscovery({
   const isWide = useIsWideScreen();
   const isLanding = variant === "landing";
 
+  // The category chips this hub renders (ticket D1/D2): Stores & Vets by default, Care in D2. Split
+  // into the service group + the place group, with a Set of allowed keys for deep-link scoping.
+  const allowedServiceCats = allowedCategories.filter((c) => PROVIDER_CATEGORY_KEYS.has(c.key));
+  const allowedPlaceCats = allowedCategories.filter((c) => PLACE_CATEGORY_KEYS.has(c.key));
+  const allowedKeys = new Set(allowedCategories.map((c) => c.key));
+
   // Multi-select categories: an array of taxonomy keys ([] = "All" = everything). Seeded from a
-  // ?category deep link (a single resolved key) when present.
+  // ?category deep link (a single resolved key) when present — a deep-link to a category NOT on this
+  // hub (e.g. a care key on Stores & Vets) falls back to "All" gracefully.
   const [selectedCats, setSelectedCats] = useState(() => {
-    const init = resolveInitialCategory(initialCategory);
+    const init = resolveInitialCategory(initialCategory, allowedKeys);
     return init === "all" ? [] : [init];
   });
   const [nearMe, setNearMe] = useState(false);
@@ -401,10 +416,10 @@ export default function ServicesDiscovery({
       : selectedCats.length === 1
         ? t(CATEGORY_LABEL_KEY[selectedCats[0]])
         : t("discover.nSelected", { count: selectedCats.length });
-  const servicesSelectedCount = SERVICE_CATEGORIES.filter((c) =>
+  const servicesSelectedCount = allowedServiceCats.filter((c) =>
     selectedCats.includes(c.key),
   ).length;
-  const placesSelectedCount = PLACE_CATEGORIES.filter((c) =>
+  const placesSelectedCount = allowedPlaceCats.filter((c) =>
     selectedCats.includes(c.key),
   ).length;
 
@@ -813,45 +828,53 @@ export default function ServicesDiscovery({
             onPress={clearCategories}
           />
         </View>
-        <GroupHeader
-          testID="discover-catgroup-services"
-          label={t("discover.groupServices")}
-          count={servicesSelectedCount}
-          expanded={servicesExpanded}
-          onPress={() => setServicesExpanded((v) => !v)}
-        />
-        {servicesExpanded ? (
-          <View style={PILL_WRAP}>
-            {SERVICE_CATEGORIES.map((c) => (
-              <CategoryPill
-                key={c.key}
-                testID={`discover-catopt-${c.key}`}
-                label={t(c.labelKey)}
-                selected={selectedCats.includes(c.key)}
-                onPress={() => toggleCategory(c.key)}
-              />
-            ))}
-          </View>
+        {allowedServiceCats.length > 0 ? (
+          <>
+            <GroupHeader
+              testID="discover-catgroup-services"
+              label={t("discover.groupServices")}
+              count={servicesSelectedCount}
+              expanded={servicesExpanded}
+              onPress={() => setServicesExpanded((v) => !v)}
+            />
+            {servicesExpanded ? (
+              <View style={PILL_WRAP}>
+                {allowedServiceCats.map((c) => (
+                  <CategoryPill
+                    key={c.key}
+                    testID={`discover-catopt-${c.key}`}
+                    label={t(c.labelKey)}
+                    selected={selectedCats.includes(c.key)}
+                    onPress={() => toggleCategory(c.key)}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </>
         ) : null}
-        <GroupHeader
-          testID="discover-catgroup-places"
-          label={t("discover.groupPlaces")}
-          count={placesSelectedCount}
-          expanded={placesExpanded}
-          onPress={() => setPlacesExpanded((v) => !v)}
-        />
-        {placesExpanded ? (
-          <View style={PILL_WRAP}>
-            {PLACE_CATEGORIES.map((c) => (
-              <CategoryPill
-                key={c.key}
-                testID={`discover-catopt-${c.key}`}
-                label={t(c.labelKey)}
-                selected={selectedCats.includes(c.key)}
-                onPress={() => toggleCategory(c.key)}
-              />
-            ))}
-          </View>
+        {allowedPlaceCats.length > 0 ? (
+          <>
+            <GroupHeader
+              testID="discover-catgroup-places"
+              label={t("discover.groupPlaces")}
+              count={placesSelectedCount}
+              expanded={placesExpanded}
+              onPress={() => setPlacesExpanded((v) => !v)}
+            />
+            {placesExpanded ? (
+              <View style={PILL_WRAP}>
+                {allowedPlaceCats.map((c) => (
+                  <CategoryPill
+                    key={c.key}
+                    testID={`discover-catopt-${c.key}`}
+                    label={t(c.labelKey)}
+                    selected={selectedCats.includes(c.key)}
+                    onPress={() => toggleCategory(c.key)}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </>
         ) : null}
       </PickerModal>
 
