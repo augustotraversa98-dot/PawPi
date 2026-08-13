@@ -10,7 +10,7 @@
 
 import React from "react";
 import { Alert } from "react-native";
-import { render, fireEvent, waitFor, within } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, within, act } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
@@ -176,22 +176,30 @@ test("declined applications sort LAST within their dog group; open sort first", 
   expect(order).toEqual(["adoption-app-3", "adoption-app-2", "adoption-app-1"]);
 });
 
-test("search filters the list; a no-match shows the empty-search state", async () => {
-  mockAppsState.data = [
-    { ...APP_OPEN, id: 1, listing_id: 100, listing_name: "Rex", applicant_name: "Ana" },
-    { ...APP_OPEN, id: 2, listing_id: 200, listing_name: "Milo", applicant_name: "Bob" },
-  ];
-  const { getByTestId, queryByTestId } = render(<BusinessAdoptionScreen />);
+test("search filters the list; a no-match shows the empty-search state", () => {
+  // Fake timers make the 200ms search debounce deterministic (no real-timer race — that flaked on
+  // slower CI). Advance past the debounce and assert synchronously.
+  jest.useFakeTimers();
+  try {
+    mockAppsState.data = [
+      { ...APP_OPEN, id: 1, listing_id: 100, listing_name: "Rex", applicant_name: "Ana" },
+      { ...APP_OPEN, id: 2, listing_id: 200, listing_name: "Milo", applicant_name: "Bob" },
+    ];
+    const { getByTestId, queryByTestId } = render(<BusinessAdoptionScreen />);
 
-  // Type a query matching only Milo's group. (200ms debounce → generous timeout so the assertion
-  // never races the debounce under load.)
-  fireEvent.changeText(getByTestId("adoption-search"), "Milo");
-  await waitFor(() => expect(queryByTestId("adoption-group-100")).toBeNull(), { timeout: 3000 });
-  expect(getByTestId("adoption-group-200")).toBeTruthy();
+    // Type a query matching only Milo's group.
+    fireEvent.changeText(getByTestId("adoption-search"), "Milo");
+    act(() => jest.advanceTimersByTime(250));
+    expect(queryByTestId("adoption-group-100")).toBeNull();
+    expect(getByTestId("adoption-group-200")).toBeTruthy();
 
-  // A query matching nothing → the no-matches state.
-  fireEvent.changeText(getByTestId("adoption-search"), "zzz nobody");
-  await waitFor(() => expect(getByTestId("adoption-no-matches")).toBeTruthy(), { timeout: 3000 });
+    // A query matching nothing → the no-matches state.
+    fireEvent.changeText(getByTestId("adoption-search"), "zzz nobody");
+    act(() => jest.advanceTimersByTime(250));
+    expect(getByTestId("adoption-no-matches")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("Approve fires the mutation with 'approved' ONLY AFTER the confirm dialog", () => {
