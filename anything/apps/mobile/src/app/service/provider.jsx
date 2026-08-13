@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Linking,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -16,6 +18,7 @@ import {
   Calendar,
   MessageSquare,
   ShoppingBag,
+  Footprints,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import {
@@ -34,7 +37,10 @@ import {
   useMyBookings,
   useShopOrders,
   useAdoptableBrowse,
+  useWalkCredits,
+  useBuyWalkPackage,
 } from "@/hooks/useProviders";
+import WalkPackagesSection from "@/components/Providers/WalkPackagesSection";
 // Shared adoption listing views (ticket 2.97) — the SAME card + detail/apply modal the standalone
 // Adoption browse uses, so the storefront's Adoption tab reuses one implementation.
 import {
@@ -148,6 +154,36 @@ export default function ProviderScreen() {
     { enabled: adoptionEnabled },
   );
   const adoptionListings = adoptionData?.listings ?? [];
+
+  // Walk packages (ticket B2) — a walker's prepaid packs on its storefront. The owner buys one
+  // (hands off to the same MercadoPago checkout the shop uses) and sees their remaining balance.
+  const walkPackages = data?.walk_packages ?? [];
+  const isWalkerProvider = capabilities.includes("walker");
+  const { data: walkCredits } = useWalkCredits(
+    isWalkerProvider && provider?.id != null ? provider.id : null,
+  );
+  const buyWalkPackage = useBuyWalkPackage();
+  const handleBuyWalkPackage = useCallback(
+    async (pkg) => {
+      if (!provider?.id || !petId) {
+        Alert.alert(t("walkPackages.needPetTitle"), t("walkPackages.needPetBody"));
+        return;
+      }
+      try {
+        const res = await buyWalkPackage.mutateAsync({
+          petId,
+          provider_id: provider.id,
+          walk_package_id: pkg.id,
+          rail: "mercadopago",
+        });
+        const url = res?.checkoutUrl || res?.deeplink;
+        if (url) Linking.openURL(url).catch(() => {});
+      } catch (e) {
+        Alert.alert(t("walkPackages.buyErrorTitle"), e?.message);
+      }
+    },
+    [provider?.id, petId, buyWalkPackage, t],
+  );
 
   // Per-type primary action. A SHOP if it holds a shop/pharmacy capability OR lists any
   // products; BOOKable capabilities show Book. A pure shop hides Book; a provider with no
@@ -314,11 +350,24 @@ export default function ProviderScreen() {
     switch (key) {
       case "services":
         return (
-          <ServicesPanel
-            services={services}
-            t={t}
-            onPressService={openBookingForService}
-          />
+          <>
+            {/* Walk packages (ticket B2) — walker storefronts only, above the bookable services. */}
+            {isWalkerProvider && walkPackages.length > 0 ? (
+              <WalkPackagesSection
+                packages={walkPackages}
+                remaining={walkCredits?.remaining ?? 0}
+                businessName={provider?.name}
+                onBuy={handleBuyWalkPackage}
+                buying={buyWalkPackage.isPending}
+                t={t}
+              />
+            ) : null}
+            <ServicesPanel
+              services={services}
+              t={t}
+              onPressService={openBookingForService}
+            />
+          </>
         );
       case "items":
         // The Items tab IS the store: the inline browse grid backed by the shared cart.

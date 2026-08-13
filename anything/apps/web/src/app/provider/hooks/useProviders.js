@@ -78,6 +78,16 @@ export const servicesUrl = (providerId) => `/api/providers/${providerId}/service
 export const serviceUrl = (providerId, serviceId) =>
   `/api/providers/${providerId}/services/${serviceId}`;
 
+// Walk packages (ticket B2) — the walker's prepaid pack offerings.
+export const walkPackagesKey = (providerId) => [
+  "provider-walk-packages",
+  String(providerId ?? ""),
+];
+export const walkPackagesUrl = (providerId) =>
+  `/api/providers/${providerId}/walk-packages`;
+export const walkPackageUrl = (providerId, packageId) =>
+  `/api/providers/${providerId}/walk-packages/${packageId}`;
+
 // Storefront posts (ticket 2.22). One cache entry per provider; compose/delete
 // invalidate it so the storefront composer refetches.
 export const postsKey = (providerId) => [
@@ -676,6 +686,74 @@ export function useDeactivateService(providerId) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
+  });
+}
+
+// --- walk packages (ticket B2) ----------------------------------------------
+// The walker's prepaid pack offerings (single / 10 / 20, each priced). CRUD mirrors services:
+// list ALL (active+inactive) for staff; create/update/soft-delete for owner|admin. The GET
+// degrades to [] server-side when unmigrated, so the editor shows the empty state, not an error.
+export function useWalkPackages(providerId) {
+  return useQuery({
+    queryKey: walkPackagesKey(providerId),
+    queryFn: async () => {
+      const data = await getJson(walkPackagesUrl(providerId));
+      return data.packages ?? [];
+    },
+    enabled: providerId != null && providerId !== "",
+  });
+}
+
+// Create a package (owner|admin). body { walks_count*, price_cents*, currency?, active? } —
+// integers. 400 surfaces verbatim.
+export function useCreateWalkPackage(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body) => {
+      const data = await getJson(walkPackagesUrl(providerId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return data.package;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: walkPackagesKey(providerId) });
+    },
+  });
+}
+
+// Update a package (owner|admin). { packageId, ...changes } — partial PATCH. Also the
+// reactivation path: pass { active: true }.
+export function useUpdateWalkPackage(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ packageId, ...changes }) => {
+      const data = await getJson(walkPackageUrl(providerId, packageId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      return data.package;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: walkPackagesKey(providerId) });
+    },
+  });
+}
+
+// Deactivate a package (owner|admin) — SOFT delete (active=false). Reactivate via
+// useUpdateWalkPackage({ active: true }).
+export function useDeactivateWalkPackage(providerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (packageId) => {
+      const data = await getJson(walkPackageUrl(providerId, packageId), { method: "DELETE" });
+      return data.package;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: walkPackagesKey(providerId) });
     },
   });
 }

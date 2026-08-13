@@ -81,6 +81,9 @@ describe('GET /api/providers/public/[slug]', () => {
       services: SERVICES,
       capabilities: ['shop', 'vet'],
       products: PRODUCTS,
+      // Ticket B2: walk_packages. The to_regclass probe is unmocked here, so it degrades to []
+      // (the real active-packages path is covered by the integration test).
+      walk_packages: [],
       // Phase C: every post carries comment_count. The to_regclass probe is unmocked here, so the
       // guard falls back to 0 (the real count path is covered by the integration test).
       posts: POSTS.map((p) => ({ ...p, comment_count: 0 })),
@@ -203,6 +206,7 @@ describe('GET /api/providers/public/[slug]', () => {
       .mockResolvedValueOnce([{ ok: true }]) // comments table probe → present
       .mockResolvedValueOnce([{ n: 4 }]) // postsCount
       .mockResolvedValueOnce([{ ok: false }]) // paws table probe → missing (pre-2.94)
+      .mockResolvedValueOnce([{ ok: false }]) // walk_packages table probe (B2) → missing here
       // no per-post counts (posts page empty); the batch above and total barks below are
       // dispatched as two parallel Promise.all groups (perf), so barks resolves last here:
       .mockResolvedValueOnce([{ n: 7 }]); // total barks

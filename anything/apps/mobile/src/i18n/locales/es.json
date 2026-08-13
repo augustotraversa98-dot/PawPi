@@ -698,5 +698,16 @@
         "adopted": "Adoptado"
       }
     }
+  },
+  "walkPackages": {
+    "title": "Paquetes de paseos",
+    "balance": "Tenés {{count}} paseos con {{business}}",
+    "single": "Paseo único",
+    "pack": "{{count}} paseos",
+    "perWalk": "{{price}} por paseo",
+    "buy": "Comprar",
+    "needPetTitle": "Agregá una mascota primero",
+    "needPetBody": "Necesitás una mascota en tu perfil para comprar un paquete de paseos.",
+    "buyErrorTitle": "No se pudo iniciar el pago"
   }
 }

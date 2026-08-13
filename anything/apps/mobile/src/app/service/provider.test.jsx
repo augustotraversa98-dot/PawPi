@@ -58,6 +58,9 @@ jest.mock("@/hooks/useProviders", () => ({
   useAdoptableBrowse: () => ({ data: { listings: mockAdoptionListings } }),
   useApplyForAdoption: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useAdoptionCheckout: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  // Ticket B2 — walk packages + prepaid balance.
+  useWalkCredits: () => ({ data: { remaining: 0 } }),
+  useBuyWalkPackage: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 import ProviderScreen from "./provider";

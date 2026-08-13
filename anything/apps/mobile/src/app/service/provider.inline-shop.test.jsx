@@ -56,6 +56,8 @@ jest.mock("@/components/Map/MapLocationView", () => {
   return { __esModule: true, default: (props) => <View testID={props.testID} /> };
 });
 jest.mock("@/hooks/useProviders", () => ({
+  useWalkCredits: () => ({ data: { remaining: 0 } }),
+  useBuyWalkPackage: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useProviderProfile: () => mockProfile,
   useProviderReviews: () => ({ data: [] }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),

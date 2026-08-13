@@ -9,7 +9,12 @@ vi.mock("../hooks/useProviders", () => ({
   useCreateService: vi.fn(),
   useUpdateService: vi.fn(),
   useDeactivateService: vi.fn(),
+  // Walk packages section (ticket B2) is walker-only; default to a non-walker so this suite stays
+  // focused on services. ProviderWalkPackages (its own test) never renders here.
+  useProviderCapabilities: vi.fn(() => ({ data: [] })),
 }));
+// The walk-packages sibling section has its own component + test; stub it so this suite is isolated.
+vi.mock("./ProviderWalkPackages", () => ({ default: () => null }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
