@@ -20,6 +20,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-13, Wave B) — ticket B1 (walker "Available now" live toggle):** migration **0088**
+> (`provider_live_availability` — one row/provider, ENABLE+FORCE RLS: published-or-own-staff read,
+> active-staff-only write; ⏳ PENDING hand-apply). A walker business flips a live "Accepting walks now"
+> flag from the business **Today** hub (`hasWalker` only), separate from the recurring availability
+> windows: enabling captures the device's current GPS point (best-effort; still allowed if denied) and
+> stamps an 8h auto-expiry; a row reads AVAILABLE iff `accepting AND expires_at>now()`, evaluated at
+> READ time. New API `GET/PUT /api/providers/[id]/live-availability` (degrade-clean: missing table →
+> `{accepting:false}`, never 500) + hooks `useProviderLiveAvailability`/`useSetProviderLiveAvailability`.
+> EN+ES. Gates: web vitest +11, integration +10 (live-availability-rls: staff upsert / outsider reject /
+> removed-staff / published-vs-draft read / expiry-at-read / completeness), mobile jest business Today +2.
+
 > **Update (2026-08-12b) — ticket 2.102 (live walk map + vet-record walk history):** mobile + web,
 > **no migration / no RLS change**, open PR — do NOT merge. Finishes the ~90%-built walker live-GPS
 > feature (2.7). **Four gaps:** (1) **business entry point** — a **"Walks"** quick action on the business

@@ -8,7 +8,7 @@
 // (jest.mock factories may only reference `mock`-prefixed module vars, hence the naming.)
 
 import React from "react";
-import { render, fireEvent, waitFor, within } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, within, act } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
@@ -53,6 +53,8 @@ const mockBookingsState = { data: [], refetch: jest.fn() };
 const mockUnreadState = { data: 0, refetch: jest.fn() };
 const mockAdoptionAppsState = { data: [], refetch: jest.fn() };
 const mockProfileState = { data: undefined };
+const mockSetLiveMutation = { mutateAsync: jest.fn().mockResolvedValue({}), isPending: false };
+const mockLiveState = { data: { accepting: false, expires_at: null } };
 jest.mock("@/hooks/useProviders", () => ({
   useMyProviders: () => mockProvidersState,
   useProviderBookings: () => mockBookingsState,
@@ -60,12 +62,24 @@ jest.mock("@/hooks/useProviders", () => ({
   useProviderAdoptionApplications: () => mockAdoptionAppsState,
   useProviderProfile: () => mockProfileState,
   useProviderFollow: () => ({ data: { following: false, followersCount: 0 } }),
+  useProviderLiveAvailability: () => mockLiveState,
+  useSetProviderLiveAvailability: () => mockSetLiveMutation,
+}));
+
+// Live "accepting walks now" toggle captures the device GPS point — mock expo-location.
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  getCurrentPositionAsync: jest
+    .fn()
+    .mockResolvedValue({ coords: { latitude: -34.6, longitude: -58.4 } }),
+  Accuracy: { Balanced: 3 },
 }));
 
 // Freeze "today" for the glance's upcoming filter.
 jest.mock("@/utils/canonicalDateTime", () => ({
   toCanonicalDate: () => "2026-08-12",
   formatDisplayTime: (tm) => `T:${tm}`,
+  toCanonicalTime: () => "18:00",
 }));
 
 // Provider posts list + create.
@@ -276,6 +290,30 @@ test("Walks quick action is hidden for a non-walker provider", () => {
   mockProvidersState.data = [{ id: 5, name: "City Vets", capabilities: ["vet"] }];
   const { queryByTestId } = render(<BusinessHome />);
   expect(queryByTestId("business-walks-action")).toBeNull();
+});
+
+test("Accepting-walks-now switch shows for a walker provider and toggling on sends the GPS point", async () => {
+  mockProvidersState.data = [
+    { id: 5, name: "Paw Walks", slug: "paw", capabilities: ["walker"] },
+  ];
+  mockLiveState.data = { accepting: false, expires_at: null };
+  mockSetLiveMutation.mutateAsync.mockClear();
+  const { getByTestId } = render(<BusinessHome />);
+  const sw = getByTestId("business-accepting-walks-switch");
+  await act(async () => {
+    fireEvent(sw, "valueChange", true);
+  });
+  expect(mockSetLiveMutation.mutateAsync).toHaveBeenCalledWith({
+    accepting: true,
+    lat: -34.6,
+    lng: -58.4,
+  });
+});
+
+test("Accepting-walks-now switch is hidden for a non-walker provider", () => {
+  mockProvidersState.data = [{ id: 5, name: "City Vets", capabilities: ["vet"] }];
+  const { queryByTestId } = render(<BusinessHome />);
+  expect(queryByTestId("business-accepting-walks-switch")).toBeNull();
 });
 
 test("the Today scroller is refresh-wired; a pull reloads all of the screen's queries", () => {

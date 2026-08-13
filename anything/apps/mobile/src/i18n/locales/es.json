@@ -604,6 +604,12 @@
       "walksLabel": "Paseos",
       "walksHint": "Registra un paseo y guarda el recorrido"
     },
+    "available": {
+      "title": "Aceptando paseos ahora",
+      "hint": "Mostrá a los dueños cercanos que estás disponible ahora",
+      "until": "Estás disponible hasta las {{time}}",
+      "error": "No se pudo actualizar tu estado"
+    },
     "bookings": {
       "title": "Reservas",
       "subtitle": "Próximas reservas",
