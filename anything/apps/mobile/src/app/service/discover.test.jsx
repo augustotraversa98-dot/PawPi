@@ -199,16 +199,21 @@ test("Category button opens the picker; selecting filters the list + highlights 
   expect(catBtn.props.accessibilityLabel).toBe("Category: Vet");
 });
 
-test("category picker lists All + every Services + Places option", async () => {
+test("category picker lists All + the Stores & Vets services + Places (care categories moved to Care)", async () => {
   const scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
   fireEvent.press(scr.getByTestId("discover-filter-category"));
+  // Stores & Vets scope (ticket D1): non-care services + all places.
   for (const key of [
     "all",
-    "vet", "telehealth", "grooming", "walking", "daycare", "sitting", "training", "shop", "adoption", "transport", "insurance",
+    "vet", "telehealth", "grooming", "shop", "adoption", "transport", "insurance",
     "restaurant", "cafe", "bakery", "brewery", "bar", "park", "hotel", "market",
   ]) {
     expect(scr.getByTestId(`discover-catopt-${key}`)).toBeTruthy();
+  }
+  // Care categories (walker/daycare/sitter/trainer) no longer appear here — they live in the Care hub.
+  for (const key of ["walking", "daycare", "sitting", "training"]) {
+    expect(scr.queryByTestId(`discover-catopt-${key}`)).toBeNull();
   }
 });
 
@@ -707,6 +712,16 @@ test("initialCategory seeds the selection (alias veterinary→vet); place catego
   scr = render(<DiscoverScreen />);
   await waitFor(() => expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy());
   expect(scr.queryByTestId("discover-card-1")).toBeNull();
+});
+
+test("a legacy care deep-link (?category=walker) falls back to All on Stores & Vets (ticket D1)", async () => {
+  mockParams = { category: "walker" };
+  const scr = render(<DiscoverScreen />);
+  await waitFor(() => expect(scr.getByTestId("discover-card-1")).toBeTruthy());
+  // Not seeded to a hidden care chip → the category button stays "All", nothing pre-filtered.
+  expect(scr.getByTestId("discover-filter-category").props.accessibilityLabel).toBe("Category: All");
+  // Both a provider and a place remain visible (no care filter applied).
+  expect(scr.getByTestId("discover-card-cafe-x")).toBeTruthy();
 });
 
 // ─────────────────────────── showHeader (tab shell) ───────────────────────────

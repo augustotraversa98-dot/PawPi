@@ -160,7 +160,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: t("tabs.services"),
+          title: t("tabs.storesVets"),
           tabBarIcon: ({ color }) => <Stethoscope color={color} size={23} />,
           // Safety net (ticket 2.19): leaving the Services tab pops its stack to the grid
           // root, so it never reopens on a stale pushed screen.
