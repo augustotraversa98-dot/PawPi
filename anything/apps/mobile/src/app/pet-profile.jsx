@@ -14,6 +14,7 @@ import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { CareRing } from "@/components/Health/CareRing";
 import { StreakChip } from "@/components/Health/StreakChip";
+import { MilestoneCountdownBanner } from "@/components/Feed/MilestoneCountdownBanner";
 import { useCareRing } from "@/hooks/useCareRing";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
@@ -293,6 +294,16 @@ export default function PetProfileScreen({ embedded = false }) {
           {/* Ring-close streak (E2) — own pet only; renders nothing at 0 */}
           {isOwnPet && (
             <StreakChip petId={Number(petId)} style={{ marginTop: SPACING.sm }} />
+          )}
+
+          {/* Milestone countdown (E3) — the 3 days before a birthday / gotcha day */}
+          {isOwnPet && (
+            <MilestoneCountdownBanner
+              birthday={pet?.birthday}
+              adoptionDate={pet?.adoption_date}
+              petName={name}
+              style={{ marginTop: SPACING.sm }}
+            />
           )}
 
           {/* Breed + age */}

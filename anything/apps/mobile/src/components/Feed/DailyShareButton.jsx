@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, Text } from "react-native";
 import { Share2 } from "lucide-react-native";
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
@@ -21,7 +21,7 @@ export function shareCaption(petName) {
 // image must never hang the share forever — and we never snapshot a blank card.
 const CAPTURE_TIMEOUT_MS = 5000;
 
-export function DailyShareButton({ petName, photoUri, locked, size = 20, color }) {
+export function DailyShareButton({ petName, photoUri, locked, size = 20, color, label }) {
   const cardRef = useRef(null);
   const [capturing, setCapturing] = useState(false);
   const doneRef = useRef(false); // guards against onReady/onError/timeout double-firing
@@ -77,9 +77,31 @@ export function DailyShareButton({ petName, photoUri, locked, size = 20, color }
 
   return (
     <>
-      <TouchableOpacity testID="daily-share" onPress={onPress} disabled={locked}>
-        <Share2 size={size} color={locked ? COLORS.peach : color || COLORS.mutedBrown} />
-      </TouchableOpacity>
+      {label ? (
+        <TouchableOpacity
+          testID="daily-share"
+          onPress={onPress}
+          disabled={locked}
+          accessibilityRole="button"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 999,
+            backgroundColor: COLORS.coral,
+          }}
+        >
+          <Share2 size={size} color="#FFF" />
+          <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>{label}</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity testID="daily-share" onPress={onPress} disabled={locked}>
+          <Share2 size={size} color={locked ? COLORS.peach : color || COLORS.mutedBrown} />
+        </TouchableOpacity>
+      )}
 
       {capturing && (
         <View

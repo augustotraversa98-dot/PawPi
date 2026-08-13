@@ -40,6 +40,7 @@ jest.mock("@/components/Feed/LockedFeedOverlay", () => ({
   LockedFloatingCard: () => null,
 }));
 jest.mock("@/components/Feed/UnlockedFeed", () => ({ UnlockedFeed: () => null }));
+jest.mock("@/components/Feed/MilestoneEventCard", () => ({ FollowedMilestones: () => null }));
 jest.mock("@/components/Feed/PostComposerModal", () => ({
   PostComposerModal: () => null,
 }));
