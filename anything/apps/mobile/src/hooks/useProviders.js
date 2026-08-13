@@ -858,6 +858,27 @@ export function useMyWalkSessions(providerId, { status } = {}) {
   });
 }
 
+// The walker's FINISHED walk history (ticket B5) — past sessions newest-first, each carrying the
+// route, distance/duration, pet_name, photos, and (from B3) the pickup point. Reuses the walker
+// sessions endpoint with status=finished; unlike the live list it does NOT poll. Disabled until a
+// provider id is known.
+export function useWalkerWalkHistory(providerId) {
+  return useQuery({
+    queryKey: ["walk-sessions", "walker", providerId, "history"],
+    enabled: providerId != null,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/providers/${encodeURIComponent(providerId)}/walk-sessions?status=finished`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch walk history");
+      }
+      const data = await response.json();
+      return data.sessions ?? [];
+    },
+  });
+}
+
 // Walker CHECKS IN — creates an in_progress session for the pet
 // (POST /api/providers/[id]/pets/[petId]/walk-sessions). Invalidates the walker list.
 export function useCheckInWalk() {

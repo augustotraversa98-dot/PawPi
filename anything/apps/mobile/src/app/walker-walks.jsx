@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Footprints, Play, QrCode } from "lucide-react-native";
+import { ArrowLeft, Footprints, Play, QrCode, History, ChevronRight } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
@@ -253,6 +253,32 @@ export default function WalkerWalksScreen() {
         refetch={refetch}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       >
+        {/* Walk history (ticket B5) — past finished walks with route + pickup on the map. */}
+        {provider ? (
+          <TouchableOpacity
+            onPress={() => router.push("/walker-history")}
+            accessibilityRole="button"
+            testID="walker-history-link"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              backgroundColor: COLORS.card,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: COLORS.peach,
+              padding: 14,
+              marginBottom: 12,
+            }}
+          >
+            <History size={20} color={COLORS.coral} />
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: "700", color: COLORS.warmBrown }}>
+              {t("walkHistory.link", "Walk history")}
+            </Text>
+            <ChevronRight size={18} color={COLORS.mutedBrown} />
+          </TouchableOpacity>
+        ) : null}
+
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
             <ActivityIndicator color={COLORS.coral} />

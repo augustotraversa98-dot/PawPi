@@ -7,6 +7,37 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
+// Merge the pickup point (ticket B3/B5) onto a list of sessions via a SEPARATE guarded query, so
+// the main SELECT stays untouched and an unmigrated prod (no pickup_lat/lng columns → 42703)
+// degrades to null-pickup rather than 500ing the live walker history/list.
+async function withPickup(sessions) {
+  if (!Array.isArray(sessions) || sessions.length === 0) return sessions;
+  const ids = sessions.map((s) => s.id);
+  let map = {};
+  try {
+    const rows = await sql`
+      SELECT id, pickup_lat, pickup_lng, credit_pack_id
+      FROM walk_sessions
+      WHERE id = ANY(${ids})
+    `;
+    map = Object.fromEntries(
+      (Array.isArray(rows) ? rows : []).map((r) => [
+        r.id,
+        { pickup_lat: r.pickup_lat, pickup_lng: r.pickup_lng, credit_pack_id: r.credit_pack_id },
+      ]),
+    );
+  } catch (e) {
+    if (e?.code !== "42703" && !/does not exist/i.test(e?.message ?? "")) throw e;
+    // columns absent (unmigrated) → leave pickup null
+  }
+  return sessions.map((s) => ({
+    ...s,
+    pickup_lat: map[s.id]?.pickup_lat ?? null,
+    pickup_lng: map[s.id]?.pickup_lng ?? null,
+    credit_pack_id: map[s.id]?.credit_pack_id ?? null,
+  }));
+}
+
 // GET /api/providers/[id]/walk-sessions — the WALKER's OWN assigned walk sessions for this
 // provider (the walker app's active/finished list). Phase 2 ticket 2.7
 // (docs/phase2-tickets/2.7-walking-gps.md).
@@ -75,7 +106,7 @@ async function GET(request, { params }) {
           ORDER BY ws.created_at DESC
         `;
 
-    return Response.json({ sessions });
+    return Response.json({ sessions: await withPickup(sessions) });
   } catch (e) {
     if (e instanceof ProviderAuthError) {
       return Response.json({ error: e.message }, { status: e.status ?? 403 });
