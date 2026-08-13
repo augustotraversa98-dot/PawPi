@@ -16,6 +16,7 @@ import { render } from "@testing-library/react-native";
 // Mutable so the Today's-Progress tests can vary it (ticket 2.66); defaults empty.
 let mockProgress = { chips: [], isEmpty: true };
 
+jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),

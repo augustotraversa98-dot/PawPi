@@ -56,7 +56,31 @@
     "trackerSoonTitle": "{{label}} — coming soon",
     "trackerSoonBody": "{{label}} tracking for {{pet}} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.",
     "recordSoonTitle": "{{type}} — coming soon",
-    "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document."
+    "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document.",
+    "careRing": {
+      "title": "{{name}}'s day",
+      "titleGeneric": "Today's ring",
+      "segmentWalk": "Walk",
+      "segmentMoment": "Moment",
+      "segmentCare": "Care",
+      "complete": "{{name}}'s day is complete 🎉",
+      "empty": "Start {{name}}'s day — a walk, a photo, a little care.",
+      "partial": "One more thing to finish {{name}}'s day.",
+      "rest": "Rest day — {{name}}'s streak is safe.",
+      "paused": "Paused — {{name}}'s streak is safe until {{date}}.",
+      "restToday": "Taking a rest day?",
+      "restOn": "Rest day is on",
+      "endRest": "It's not a rest day",
+      "pause": "Pause for a while",
+      "pauseTitle": "Pause {{name}}'s ring",
+      "pauseHint": "Away for a bit? Pick a day to resume — the streak stays safe.",
+      "resume": "Resume now",
+      "hintWalk": "Log a walk to fill this segment.",
+      "hintMoment": "Post today's moment to fill this segment.",
+      "hintCare": "Log any care action to fill this segment.",
+      "progress": "{{done}} of 3",
+      "a11y": "{{name}}'s care ring, {{done}} of 3 done"
+    }
   },
   "services": {
     "segDiscover": "Discover",

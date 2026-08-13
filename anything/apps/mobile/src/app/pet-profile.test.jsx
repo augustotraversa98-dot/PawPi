@@ -26,6 +26,8 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
+jest.mock("@/components/Health/CareRing", () => ({ CareRing: () => null }));
+jest.mock("@/hooks/useCareRing", () => ({ useCareRing: () => ({ data: undefined }) }));
 jest.mock("@/components/More/OwnerMenu", () => {
   const { Text } = require("react-native");
   return { OwnerMenu: () => <Text>OWNER_MENU</Text> };

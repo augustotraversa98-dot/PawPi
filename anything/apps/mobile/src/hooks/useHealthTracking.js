@@ -132,6 +132,8 @@ export function useLogWalk() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "walk-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // Fill the Care Ring's Walk segment live (E1).
+      if (currentPet?.id) queryClient.invalidateQueries({ queryKey: ["care-ring", currentPet.id] });
       console.log("[useLogWalk] Walk logged successfully");
     },
     onError: (error) => {

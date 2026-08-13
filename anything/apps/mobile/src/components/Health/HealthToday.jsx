@@ -10,6 +10,7 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
+import { CareRingCard } from "@/components/Health/CareRingCard";
 import {
   Calendar,
   TrendingUp,
@@ -96,6 +97,8 @@ export default function HealthToday() {
     keys.forEach((key) =>
       queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
     );
+    // Any care action also fills a Care Ring segment — refresh it live (E1).
+    queryClient.invalidateQueries({ queryKey: ["care-ring", currentPet.id] });
   };
 
   // Pull-to-refresh: advance the section clock (so a passed item reclassifies to
@@ -122,6 +125,7 @@ export default function HealthToday() {
         queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
       ),
     );
+    queryClient.invalidateQueries({ queryKey: ["care-ring", currentPet.id] });
   }, [currentPet?.id, loadRoutines, queryClient, refreshNow]);
 
   // Load the active pet's routines so the reminders store is populated/refreshed
@@ -527,6 +531,19 @@ export default function HealthToday() {
           })}
         </Text>
       </View>
+
+      {/* Care Ring — the daily "Rex's Day" habit (E1), derived over existing logs */}
+      {currentPet?.id != null && (
+        <View style={{ marginBottom: SPACING.xxl }}>
+          <CareRingCard
+            petId={currentPet.id}
+            petName={currentPet.name}
+            onPressSegment={(seg) =>
+              router.push(seg === "moment" ? "/(tabs)" : "/(tabs)/health")
+            }
+          />
+        </View>
+      )}
 
       {/* Overdue — past-due persistent items, distinct + above everything else */}
       {overdueReminders.length > 0 && (

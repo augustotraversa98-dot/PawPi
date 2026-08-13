@@ -96,6 +96,11 @@ export function useCreatePost() {
       // BeReal-style feed lock reflects the new post immediately.
       queryClient.invalidateQueries({ queryKey: ["owner-posted-today"] });
 
+      // A daily moment fills the Care Ring's Moment segment — refresh it live (E1).
+      if (data?.post?.pet_id != null) {
+        queryClient.invalidateQueries({ queryKey: ["care-ring", data.post.pet_id] });
+      }
+
       console.log("[useCreatePost] ✅ All queries invalidated");
     },
   });
