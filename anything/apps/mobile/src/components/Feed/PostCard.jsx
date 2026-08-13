@@ -17,7 +17,10 @@ import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
 import { FeedVideo } from "./FeedVideo";
-import { isBirthdayToday } from "@/utils/feedDelight";
+import { getMilestone } from "@/utils/feedDelight";
+import { MilestoneRibbon } from "./MilestoneRibbon";
+import { Confetti } from "./Confetti";
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/utils/relativeTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 
@@ -96,13 +99,16 @@ export const PostCard = memo(function PostCard({
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
 
-  // Birthday / adoption-day highlight (ticket 2.37): a 🎂 by the name + a thicker
-  // signature-orange frame on the card. Computed from the pet's own date fields
-  // against the viewer's local day — never fabricated when no date is set.
-  const isBirthday = isBirthdayToday(
+  const { t } = useTranslation();
+  // Birthday / adoption-day highlight (2.37) → milestone moment (E3): a 🎂 by the name + a thicker
+  // signature-orange frame, and on a milestone day an animated ribbon + confetti + a "Share this"
+  // CTA. Computed from the pet's own date fields against the viewer's local day — never fabricated.
+  const milestone = getMilestone(
     { birthday: post.pet_birthday, adoption_date: post.pet_adoption_date },
     getLocalPostDateString(),
   );
+  const isBirthday = !!milestone;
+  const showMilestone = isBirthday && !locked;
 
   return (
     <Card
@@ -190,6 +196,7 @@ export const PostCard = memo(function PostCard({
       {/* Photo. Unlocked: single tap opens the pet's profile, double tap gives a
           Paw (2.64). Locked: the photo is blurred (you can tell WHO posted from
           the header, but not WHAT) and tapping it opens the composer. */}
+      <View style={{ position: "relative" }}>
       {locked ? (
         <Pressable
           testID="feed-post-photo"
@@ -269,6 +276,26 @@ export const PostCard = memo(function PostCard({
           style={{ width: "100%", height: 340 }}
         />
       )}
+        {/* Milestone moment (E3): celebratory ribbon + one-shot confetti over the photo */}
+        {showMilestone ? (
+          <>
+            <Confetti />
+            <MilestoneRibbon type={milestone.type} years={milestone.years} petName={dogName} />
+          </>
+        ) : null}
+      </View>
+
+      {/* Milestone "Share this" CTA (E3) — stubs to the existing share frame until E4 */}
+      {showMilestone ? (
+        <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md }}>
+          <DailyShareButton
+            petName={dogName}
+            photoUri={photo}
+            locked={locked}
+            label={t("milestones.shareCta")}
+          />
+        </View>
+      ) : null}
 
       {/* Caption + Actions. The caption is CONTENT, so it's obscured while locked
           (replaced by a muted placeholder bar — you can tell there's a caption,

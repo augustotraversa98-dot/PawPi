@@ -1,6 +1,49 @@
 // Ticket 2.37 — streak + birthday helpers.
 
-import { computePostingStreak, isBirthdayToday } from "./feedDelight";
+import {
+  computePostingStreak,
+  isBirthdayToday,
+  getMilestone,
+  getUpcomingMilestone,
+} from "./feedDelight";
+
+describe("getMilestone (E3)", () => {
+  it("identifies a birthday and its age (years)", () => {
+    expect(getMilestone({ birthday: "2020-06-18" }, "2026-06-18")).toEqual({ type: "birthday", years: 6 });
+  });
+  it("identifies a gotcha/adoption anniversary and its years", () => {
+    expect(getMilestone({ adoption_date: "2023-06-18" }, "2026-06-18")).toEqual({ type: "gotcha", years: 3 });
+  });
+  it("birthday wins when both fall on the same day", () => {
+    expect(getMilestone({ birthday: "2020-06-18", adoption_date: "2022-06-18" }, "2026-06-18"))
+      .toEqual({ type: "birthday", years: 6 });
+  });
+  it("returns null off the day, and for missing/invalid dates (no fabricated milestone)", () => {
+    expect(getMilestone({ birthday: "2020-01-01" }, "2026-06-18")).toBeNull();
+    expect(getMilestone({}, "2026-06-18")).toBeNull();
+    expect(getMilestone({ birthday: "2020-06-18" }, "bad")).toBeNull();
+    expect(getMilestone(null, "2026-06-18")).toBeNull();
+  });
+});
+
+describe("getUpcomingMilestone (E3 — 3-day countdown)", () => {
+  it("returns the milestone only within the window, strictly in the future", () => {
+    expect(getUpcomingMilestone({ birthday: "2020-06-18" }, "2026-06-15")).toEqual({ type: "birthday", years: 6, daysUntil: 3 });
+    expect(getUpcomingMilestone({ birthday: "2020-06-18" }, "2026-06-17")).toEqual({ type: "birthday", years: 6, daysUntil: 1 });
+  });
+  it("does NOT fire on the day itself (that's getMilestone's job) or outside the window", () => {
+    expect(getUpcomingMilestone({ birthday: "2020-06-18" }, "2026-06-18")).toBeNull(); // day-of
+    expect(getUpcomingMilestone({ birthday: "2020-06-18" }, "2026-06-14")).toBeNull(); // 4 days out
+  });
+  it("wraps a year end and picks the nearest of two dates", () => {
+    expect(getUpcomingMilestone({ birthday: "2020-01-01" }, "2025-12-30")).toEqual({ type: "birthday", years: 6, daysUntil: 2 });
+    expect(getUpcomingMilestone({ birthday: "2020-06-20", adoption_date: "2021-06-18" }, "2026-06-17"))
+      .toEqual({ type: "gotcha", years: 5, daysUntil: 1 });
+  });
+  it("null for no dates", () => {
+    expect(getUpcomingMilestone({}, "2026-06-17")).toBeNull();
+  });
+});
 
 describe("computePostingStreak", () => {
   it("counts a continuous run ending today", () => {

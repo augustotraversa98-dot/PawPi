@@ -46,7 +46,13 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   🔥 `StreakChip` on the pet-profile + feed header, "streak is safe" line + "Restore your streak" CTA
   on the ring card. EN+ES. Proven: care-streak integration (+8: forgiveness matrix), careRing util
   jest (+3). **0095 PENDING hand-apply.**
-- ☐ **E3** — Milestone moments (birthday / gotcha / adoption → animated frame + ribbon + feed event + share CTA).
+- ✅ **E3** — Milestone moments. **No migration** (reuses `pets.birthday` + `pets.adoption_date`). Extends
+  `feedDelight.js` (`getMilestone` type+years, `getUpcomingMilestone` 3-day countdown). On a milestone
+  day a moment gets an animated `MilestoneRibbon` + `Confetti` + a "Share this" CTA (stubbed to the
+  existing 2.62 share frame). New `GET /api/feed/milestones` (followed pets with a real milestone today,
+  owner-scoped) → `FollowedMilestones`/`MilestoneEventCard` on the home feed (paw the pet's moment). A
+  3-day `MilestoneCountdownBanner` on the pet-profile (feeds E5). EN+ES. Proven: feed-milestones
+  integration (+5), feedDelight jest (+8).
 - ☐ **E4** — Share cards (story-sized 1080×1920 branded deck; real stats only; @handle + deep link).
 - ☐ **E5** — Notification rewrite · ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
   ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·

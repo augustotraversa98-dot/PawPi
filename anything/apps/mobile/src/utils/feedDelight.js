@@ -61,3 +61,59 @@ export function isBirthdayToday(pet, today) {
   }
   return false;
 }
+
+// ── Milestone moments (E3) ───────────────────────────────────────────────────
+// A milestone is a birthday (pets.birthday) or a gotcha/adoption anniversary
+// (pets.adoption_date) whose month+day matches the reference day. REAL dates only —
+// null in, null out, no fabricated milestones. Birthday wins if both fall the same day.
+
+/**
+ * The milestone on `refDay` (YYYY-MM-DD) for a pet, or null.
+ * @returns {{type: 'birthday'|'gotcha', years: number}|null} years = anniversary count (may be 0).
+ */
+export function getMilestone(pet, refDay) {
+  const t = parseYMD(refDay);
+  if (!t || !pet) return null;
+  const b = parseYMD(pet.birthday);
+  if (b && b.m === t.m && b.d === t.d) return { type: "birthday", years: t.y - b.y };
+  const a = parseYMD(pet.adoption_date);
+  if (a && a.m === t.m && a.d === t.d) return { type: "gotcha", years: t.y - a.y };
+  return null;
+}
+
+// Days from `today` to the next occurrence of the (month, day) in `d`, on or after today.
+function daysToAnniversary(d, t) {
+  const todayUTC = Date.UTC(t.y, t.m - 1, t.d);
+  let occYear = t.y;
+  let occ = Date.UTC(t.y, d.m - 1, d.d);
+  if (occ < todayUTC) {
+    occYear = t.y + 1;
+    occ = Date.UTC(occYear, d.m - 1, d.d);
+  }
+  return { days: Math.round((occ - todayUTC) / 86400000), occYear };
+}
+
+/**
+ * The nearest UPCOMING milestone within `withinDays` (default 3), STRICTLY in the future
+ * (day-of is handled by getMilestone, not the countdown). Null when nothing is close.
+ * @returns {{type:'birthday'|'gotcha', years:number, daysUntil:number}|null}
+ */
+export function getUpcomingMilestone(pet, today, withinDays = 3) {
+  const t = parseYMD(today);
+  if (!t || !pet) return null;
+  let best = null;
+  for (const [type, field] of [
+    ["birthday", pet.birthday],
+    ["gotcha", pet.adoption_date],
+  ]) {
+    const d = parseYMD(field);
+    if (!d) continue;
+    const { days, occYear } = daysToAnniversary(d, t);
+    if (days >= 1 && days <= withinDays) {
+      if (!best || days < best.daysUntil) {
+        best = { type, years: occYear - d.y, daysUntil: days };
+      }
+    }
+  }
+  return best;
+}

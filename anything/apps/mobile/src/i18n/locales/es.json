@@ -826,5 +826,21 @@
     "locationNeededTitle": "Se necesita la ubicación",
     "locationNeededBody": "Activa la ubicación para que los paseadores cercanos te encuentren.",
     "nearbyTitle": "Cerca ahora"
+  },
+  "milestones": {
+    "ribbonBirthday": "🎂 Cumpleaños de {{name}}",
+    "ribbonGotcha": "🎉 Día de adopción de {{name}}",
+    "years_one": "{{count}} año",
+    "years_other": "{{count}} años",
+    "eventBirthday": "🎂 ¡Es el cumpleaños de {{name}}!",
+    "eventGotcha": "🎉 ¡Es el día de adopción de {{name}}!",
+    "eventYears_one": "{{count}} año hoy",
+    "eventYears_other": "{{count}} años hoy",
+    "sendPaw": "Envía una patita 🐾",
+    "shareCta": "Compartir esto 🎉",
+    "countdownBirthday": "🎂 Se acerca el cumpleaños de {{name}}",
+    "countdownGotcha": "🎉 Se acerca el día de adopción de {{name}}",
+    "inDays_one": "en {{count}} día",
+    "inDays_other": "en {{count}} días"
   }
 }

@@ -11,6 +11,7 @@ import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
 import { GettingStartedCard } from "@/components/Home/GettingStartedCard";
 import { LockedFeedOverlay, LockedFloatingCard } from "@/components/Feed/LockedFeedOverlay";
 import { UnlockedFeed } from "@/components/Feed/UnlockedFeed";
+import { FollowedMilestones } from "@/components/Feed/MilestoneEventCard";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
@@ -277,6 +278,9 @@ export default function FeedScreen() {
                 onViewTodayPost={handleViewTodayPost}
               />
             </View>
+
+            {/* ── Milestone events (E3): a followed pet's birthday / gotcha day ── */}
+            {feedUnlocked && <FollowedMilestones viewerPetId={petProfile?.id} />}
 
             {/* ── Feed: locked or unlocked ──
                 Lock is per-OWNER: unlocked once any of the user's dogs posted

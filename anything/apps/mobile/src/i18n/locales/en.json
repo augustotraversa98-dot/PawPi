@@ -826,5 +826,21 @@
     "locationNeededTitle": "Location needed",
     "locationNeededBody": "Turn on location so nearby walkers can find you.",
     "nearbyTitle": "Nearby now"
+  },
+  "milestones": {
+    "ribbonBirthday": "🎂 {{name}}'s Birthday",
+    "ribbonGotcha": "🎉 {{name}}'s Gotcha Day",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "eventBirthday": "🎂 It's {{name}}'s Birthday!",
+    "eventGotcha": "🎉 It's {{name}}'s Gotcha Day!",
+    "eventYears_one": "{{count}} year today",
+    "eventYears_other": "{{count}} years today",
+    "sendPaw": "Send a paw 🐾",
+    "shareCta": "Share this 🎉",
+    "countdownBirthday": "🎂 {{name}}'s birthday is coming",
+    "countdownGotcha": "🎉 {{name}}'s gotcha day is coming",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days"
   }
 }

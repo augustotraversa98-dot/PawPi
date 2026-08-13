@@ -37,14 +37,14 @@ async function GET(request, { params }) {
     const petRows = isNumericId
       ? await sql`
           SELECT id, name, handle, avatar_url, species, breed,
-                 age_years, age_months, birthday, gender, owner_user_id
+                 age_years, age_months, birthday, adoption_date, gender, owner_user_id
           FROM pets
           WHERE id = ${idParam}
           LIMIT 1
         `
       : await sql`
           SELECT id, name, handle, avatar_url, species, breed,
-                 age_years, age_months, birthday, gender, owner_user_id
+                 age_years, age_months, birthday, adoption_date, gender, owner_user_id
           FROM pets
           WHERE handle = ${handle}
           LIMIT 1

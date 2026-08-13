@@ -77,3 +77,14 @@ day one; no fake data. One line per merge.
   streak). Mobile: 🔥 `StreakChip` on the pet-profile + feed header (renders nothing at 0), a "streak
   is safe" line + "Restore your streak" CTA on the ring card; `useRepairStreak`. EN+ES. Gates:
   integration 893→901 (+8 forgiveness matrix), web vitest 1920 (unchanged), mobile jest 1735→1738 (+3).
+- **2026-08-13 (E3)** — Milestone moments merged — [#PENDING]. **NO migration** (reuses `pets.birthday`
+  + `pets.adoption_date`). `feedDelight.js` gains `getMilestone` (type: birthday|gotcha + years) and
+  `getUpcomingMilestone` (3-day countdown, strictly future). On a milestone day a daily moment gets an
+  animated `MilestoneRibbon` + one-shot `Confetti` (RN Animated, jest-safe) + a "Share this 🎉" CTA
+  (labeled `DailyShareButton`, stubs to the 2.62 share frame until E4). New owner-scoped
+  `GET /api/feed/milestones?viewerPetId=&day=` returns followed pets whose birthday/gotcha falls today
+  (+ `today_post_id` to wire paw/bark) → `FollowedMilestones`/`MilestoneEventCard` injected atop the
+  home feed (tap → profile, "Send a paw" on the pet's moment). A `MilestoneCountdownBanner` on the
+  pet-profile shows only in the 3-day window (feeds E5). Profile route now also returns `adoption_date`.
+  EN+ES. Real dates only — nothing renders without a matching date. Gates: integration 901→906 (+5),
+  web vitest 1920 (unchanged), mobile jest 1738→1746 (+8).
