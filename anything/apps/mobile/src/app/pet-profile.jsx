@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, PawPrint, Grid3X3, MessageCircle } from "lucide-react-native";
+import { ChevronLeft, PawPrint, Grid3X3, MessageCircle, Share2 } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -15,6 +16,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { CareRing } from "@/components/Health/CareRing";
 import { StreakChip } from "@/components/Health/StreakChip";
 import { MilestoneCountdownBanner } from "@/components/Feed/MilestoneCountdownBanner";
+import { ShareCardDeck } from "@/components/Feed/ShareCardDeck";
 import { useCareRing } from "@/hooks/useCareRing";
 import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
 import {
@@ -104,6 +106,8 @@ export default function PetProfileScreen({ embedded = false }) {
   const [detailPost, setDetailPost] = useState(null);
   const [barkPost, setBarkPost] = useState(null);
   const [likedPosts, setLikedPosts] = useState({});
+  const [shareDeckVisible, setShareDeckVisible] = useState(false);
+  const { t } = useTranslation();
   const togglePaw = useTogglePaw(detailPost?.id);
 
   // Compose the post object the modal expects from a grid item + this pet's
@@ -304,6 +308,29 @@ export default function PetProfileScreen({ embedded = false }) {
               petName={name}
               style={{ marginTop: SPACING.sm }}
             />
+          )}
+
+          {/* Share-card deck entry (E4) — own pet only */}
+          {isOwnPet && (
+            <TouchableOpacity
+              onPress={() => setShareDeckVisible(true)}
+              accessibilityRole="button"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginTop: SPACING.md,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 999,
+                backgroundColor: COLORS.coral,
+              }}
+            >
+              <Share2 size={16} color="#FFF" />
+              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>
+                {t("share.openDeck")}
+              </Text>
+            </TouchableOpacity>
           )}
 
           {/* Breed + age */}
@@ -570,6 +597,16 @@ export default function PetProfileScreen({ embedded = false }) {
         onClose={() => setBarkPost(null)}
         onBarkAdded={() => refetch()}
       />
+
+      {/* ── SHARE-CARD DECK (E4) — own pet only ── */}
+      {isOwnPet && (
+        <ShareCardDeck
+          visible={shareDeckVisible}
+          onClose={() => setShareDeckVisible(false)}
+          petId={Number(petId)}
+          petDates={{ birthday: pet?.birthday, adoption_date: pet?.adoption_date }}
+        />
+      )}
     </View>
   );
 }
