@@ -101,6 +101,26 @@ ACTION 1).
 > pattern as transport). Idempotent. Verify: `supabase/verify_0071.sql`. HARNESS-ONLY this ticket —
 > hand-applied to Supabase after merge.
 
+> **0094** adds the "Pet Owner engagement" wave foundations (unit E0, `docs/pet-owner-engagement.md`) —
+> the shared schema the Care Ring (E1), Streak+forgiveness (E2), Milestone moments (E3) and Share cards
+> (E4) hang off. THREE additive changes, **no existing table's RLS touched**:
+> - The **gotcha / adoption day already exists** as `pets.adoption_date` (0003) and is already synced
+>   Dog Profile ↔ Pet Medical Profile (both `/api/pets/[id]` PATCH and `/api/pet-medical-profiles`
+>   read+write the SAME column — one storage). E3 reads it as the spec's "adopted_on". So 0094 adds **no**
+>   new adoption column — it reuses `adoption_date`.
+> - `user_profiles.timezone text` — the per-owner IANA tz the ring uses for its day boundary. **NULLABLE,
+>   no default** (honest: empty until the owner sets it; consumers resolve `COALESCE(timezone,
+>   'America/Buenos_Aires')`). Purely additive; user_profiles' owner-private RLS is unchanged.
+> - `pet_care_days` — one row per (pet, owner-tz `day`) with the ring's derived segment state
+>   (`walk_done`/`moment_done`/`care_done`), `ring_closed`, and a `rest_day` flag (E1 rest/vacation mode);
+>   `UNIQUE(pet_id, day)`. `pet_streaks` — one row per pet (PK `pet_id`): `current_count`/`longest_count`/
+>   `last_closed_day`/`freezes_available` (default 1)/`paused_until` — the ring-close streak + forgiveness
+>   state. Both **ENABLE+FORCE RLS** with a single own-row `FOR ALL` policy
+>   (`owner_user_id = current_app_user_id()`), the 0048/0050 pattern; app connects as `pawpi_app`.
+> - Idempotent. Verify: `supabase/verify_0094.sql` (all PASS). RLS proven as `pawpi_app` in
+>   `engagement-foundations-rls.integration.test.ts`. HARNESS-ONLY this ticket — hand-applied to Supabase
+>   after merge.
+
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---
