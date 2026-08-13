@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import BusinessHeader from "@/components/Business/BusinessHeader";
 import { useActiveProvider } from "@/hooks/useActiveProvider";
 import { useProviderBookings, useBookingAction } from "@/hooks/useProviders";
@@ -302,7 +303,10 @@ export default function BusinessBookings() {
           </PressableScale>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}>
+        <RefreshableScrollView
+          refetch={refetch}
+          contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}
+        >
           {upcoming.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
               <CalendarClock size={40} color={COLORS.mutedBrown} />
@@ -347,7 +351,7 @@ export default function BusinessBookings() {
               {t("business.bookings.manageOnWeb")}
             </Text>
           </View>
-        </ScrollView>
+        </RefreshableScrollView>
       )}
     </View>
   );

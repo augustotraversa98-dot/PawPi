@@ -29,6 +29,7 @@ import {
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import {
   useProviderBookings,
@@ -226,11 +227,12 @@ export default function BusinessHome() {
   // capability the providers list already carries — no extra fetch. (The workspace itself
   // empty-states cleanly if the account isn't active walker staff.)
   const hasWalker = (activeProvider?.capabilities ?? []).includes("walker");
-  const { data: bookings = [] } = useProviderBookings(providerId);
-  const { data: unreadCount = 0 } = useProviderUnreadCount(providerId);
-  const { data: adoptionApps = [] } = useProviderAdoptionApplications(providerId, {
-    enabled: hasAdoption,
-  });
+  const { data: bookings = [], refetch: refetchBookings } = useProviderBookings(providerId);
+  const { data: unreadCount = 0, refetch: refetchUnread } = useProviderUnreadCount(providerId);
+  const { data: adoptionApps = [], refetch: refetchAdoptionApps } =
+    useProviderAdoptionApplications(providerId, {
+      enabled: hasAdoption,
+    });
   // The public storefront read supplies the stat strip's post/paw/bark counts (followers is read
   // live inside BusinessStatRow). Same query the Profile tab uses, so it's cached across tabs.
   const { data: profile } = useProviderProfile(activeProvider?.slug);
@@ -437,7 +439,10 @@ export default function BusinessHome() {
         </PressableScale>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}>
+      <RefreshableScrollView
+        refetch={[refetchPosts, refetchBookings, refetchUnread, refetchAdoptionApps]}
+        contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}
+      >
         {/* Business stat strip (Followers · Posts · Paws · Barks) — reused from the storefront
             (2.93). Tapping through opens the Profile tab (the full public view). */}
         <PressableScale
@@ -659,7 +664,7 @@ export default function BusinessHome() {
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </RefreshableScrollView>
 
       {/* Provider switcher (only when staff of several) */}
       <Modal

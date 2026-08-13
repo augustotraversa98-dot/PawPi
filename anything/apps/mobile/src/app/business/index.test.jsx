@@ -22,13 +22,36 @@ jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
 );
 
+// RefreshableScrollView double — records the refetch prop (an array of the screen's refetch fns)
+// and exposes a "pull" affordance that re-runs them all, so the test can prove pull-to-refresh
+// reloads the whole Today screen.
+const mockRefreshable = { props: null };
+jest.mock("@/components/RefreshableScrollView", () => {
+  const { ScrollView, Text, TouchableOpacity } = require("react-native");
+  return {
+    RefreshableScrollView: (props) => {
+      mockRefreshable.props = props;
+      const { refetch, children, ...rest } = props;
+      const pull = () => (Array.isArray(refetch) ? refetch : [refetch]).forEach((fn) => fn && fn());
+      return (
+        <ScrollView {...rest} testID="refreshable-scroll">
+          <TouchableOpacity testID="pull-to-refresh" onPress={pull}>
+            <Text>PULL</Text>
+          </TouchableOpacity>
+          {children}
+        </ScrollView>
+      );
+    },
+  };
+});
+
 // Providers the account is staff of + the Today-glance reads (bookings/unread/adoption/profile)
 // and the follow query BusinessStatRow reads live. useActiveProvider is REAL — it composes the
 // mocked useMyProviders + the mocked activeProviderStore below.
 const mockProvidersState = { data: [], isLoading: false };
-const mockBookingsState = { data: [] };
-const mockUnreadState = { data: 0 };
-const mockAdoptionAppsState = { data: [] };
+const mockBookingsState = { data: [], refetch: jest.fn() };
+const mockUnreadState = { data: 0, refetch: jest.fn() };
+const mockAdoptionAppsState = { data: [], refetch: jest.fn() };
 const mockProfileState = { data: undefined };
 jest.mock("@/hooks/useProviders", () => ({
   useMyProviders: () => mockProvidersState,
@@ -122,8 +145,13 @@ beforeEach(() => {
   mockPostsState.isError = false;
   mockComposer.props = null;
   mockBookingsState.data = [];
+  mockBookingsState.refetch = jest.fn();
   mockUnreadState.data = 0;
+  mockUnreadState.refetch = jest.fn();
   mockAdoptionAppsState.data = [];
+  mockAdoptionAppsState.refetch = jest.fn();
+  mockPostsState.refetch = jest.fn();
+  mockRefreshable.props = null;
   mockProfileState.data = undefined;
 });
 
@@ -248,6 +276,27 @@ test("Walks quick action is hidden for a non-walker provider", () => {
   mockProvidersState.data = [{ id: 5, name: "City Vets", capabilities: ["vet"] }];
   const { queryByTestId } = render(<BusinessHome />);
   expect(queryByTestId("business-walks-action")).toBeNull();
+});
+
+test("the Today scroller is refresh-wired; a pull reloads all of the screen's queries", () => {
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", slug: "happy" }];
+
+  const { getByTestId } = render(<BusinessHome />);
+  // The main content scroller is the RefreshableScrollView.
+  expect(getByTestId("refreshable-scroll")).toBeTruthy();
+  // Pull reloads the whole screen: posts + bookings + unread + adoption applications.
+  expect(mockRefreshable.props.refetch).toEqual([
+    mockPostsState.refetch,
+    mockBookingsState.refetch,
+    mockUnreadState.refetch,
+    mockAdoptionAppsState.refetch,
+  ]);
+
+  fireEvent.press(getByTestId("pull-to-refresh"));
+  expect(mockPostsState.refetch).toHaveBeenCalledTimes(1);
+  expect(mockBookingsState.refetch).toHaveBeenCalledTimes(1);
+  expect(mockUnreadState.refetch).toHaveBeenCalledTimes(1);
+  expect(mockAdoptionAppsState.refetch).toHaveBeenCalledTimes(1);
 });
 
 test("pending adoption applications summary shows ONLY for an adoption-capable provider", () => {
