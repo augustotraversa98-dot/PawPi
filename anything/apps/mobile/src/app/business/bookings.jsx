@@ -1,8 +1,17 @@
 import React, { useCallback, useMemo } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { CalendarClock, Check, X, Globe, PawPrint, User } from "lucide-react-native";
+import {
+  CalendarClock,
+  Check,
+  X,
+  Globe,
+  PawPrint,
+  User,
+  Footprints,
+} from "lucide-react-native";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import BusinessHeader from "@/components/Business/BusinessHeader";
@@ -55,8 +64,9 @@ function StatusChip({ status, t }) {
   );
 }
 
-function BookingCard({ booking, t, onConfirm, onDecline, acting }) {
+function BookingCard({ booking, t, onConfirm, onDecline, onStartWalk, acting }) {
   const acts = bookingActions(booking);
+  const isWalk = booking.capability === "walker";
   const when = [
     formatDisplayDate(booking.appointment_date),
     booking.appointment_time ? formatDisplayTime(booking.appointment_time) : null,
@@ -155,12 +165,39 @@ function BookingCard({ booking, t, onConfirm, onDecline, acting }) {
           ) : null}
         </View>
       ) : null}
+
+      {/* Walker bookings get a "Start walk" door to the walker workspace (check-in + live GPS
+          record happen there). Minimal affordance — no new booking logic on this screen. */}
+      {isWalk ? (
+        <PressableScale
+          onPress={onStartWalk}
+          accessibilityRole="button"
+          testID={`business-booking-start-walk-${booking.id}`}
+          style={{
+            marginTop: SPACING.md,
+            borderRadius: RADIUS.chip,
+            borderWidth: 1.5,
+            borderColor: COLORS.coral,
+            paddingVertical: SPACING.sm,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+          }}
+        >
+          <Footprints size={16} color={COLORS.coral} />
+          <Text style={[TYPE.callout, { color: COLORS.coral, fontWeight: "700" }]}>
+            {t("business.bookings.startWalk")}
+          </Text>
+        </PressableScale>
+      ) : null}
     </View>
   );
 }
 
 export default function BusinessBookings() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { t } = useTranslation();
   const { activeProvider } = useActiveProvider();
   const providerId = activeProvider?.id;
@@ -290,6 +327,7 @@ export default function BusinessBookings() {
                 acting={acting}
                 onConfirm={onConfirm}
                 onDecline={onDecline}
+                onStartWalk={() => router.push("/walker-walks")}
               />
             ))
           )}

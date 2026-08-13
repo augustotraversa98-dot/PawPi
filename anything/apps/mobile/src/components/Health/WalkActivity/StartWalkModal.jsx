@@ -31,6 +31,10 @@ export default function StartWalkModal({
   walk,
   petName = "your dog",
   onWalkComplete,
+  // ADDITIVE (ticket 2.102): optional node rendered at the top of the scroll, above the
+  // countdown — the walker workspace passes its live route map here so the walker sees the
+  // track being recorded alongside the timer. Owner self-tracking call-sites omit it → unchanged.
+  topContent = null,
 }) {
   const insets = useSafeAreaInsets();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -198,6 +202,8 @@ export default function StartWalkModal({
             paddingBottom: insets.bottom + 20,
           }}
         >
+          {topContent}
+
           {/* Countdown Display */}
           {!showExtendOptions && (
             <View style={{ alignItems: "center", marginBottom: 30 }}>

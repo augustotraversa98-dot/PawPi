@@ -15,6 +15,9 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+
 // Active provider (resolved) — the screen reads useActiveProvider.
 const mockActive = { activeProvider: { id: 7, name: "City Vets", logo_url: null }, providers: [], isLoading: false };
 jest.mock("@/hooks/useActiveProvider", () => ({
@@ -46,6 +49,7 @@ import BusinessBookings from "./bookings";
 
 beforeEach(() => {
   mockActionMutate.mockReset();
+  mockPush.mockReset();
   mockBookings.data = [];
   mockBookings.isError = false;
   mockActive.activeProvider = { id: 7, name: "City Vets", logo_url: null };
@@ -101,4 +105,22 @@ test("empty state when there are no upcoming reservations", () => {
   mockBookings.data = [];
   const { getByText } = render(<BusinessBookings />);
   expect(getByText("No upcoming bookings")).toBeTruthy();
+});
+
+test("a walker booking shows 'Start walk' → opens the walker workspace", () => {
+  mockBookings.data = [
+    { id: 5, capability: "walker", appointment_date: "2026-08-14", appointment_time: "09:00", booking_status: "confirmed", service_name: "Walk", pet_name: "Rex", owner_name: "Ana" },
+  ];
+  const { getByTestId, getByText } = render(<BusinessBookings />);
+  expect(getByText("Start walk")).toBeTruthy();
+  fireEvent.press(getByTestId("business-booking-start-walk-5"));
+  expect(mockPush).toHaveBeenCalledWith("/walker-walks");
+});
+
+test("a non-walker booking has no 'Start walk' affordance", () => {
+  mockBookings.data = [
+    { id: 6, capability: "vet", appointment_date: "2026-08-14", appointment_time: "09:00", booking_status: "confirmed", service_name: "Checkup", pet_name: "Milo", owner_name: "Bob" },
+  ];
+  const { queryByTestId } = render(<BusinessBookings />);
+  expect(queryByTestId("business-booking-start-walk-6")).toBeNull();
 });

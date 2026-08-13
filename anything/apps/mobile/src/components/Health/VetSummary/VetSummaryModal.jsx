@@ -166,6 +166,23 @@ export default function VetSummaryModal({ visible, onClose }) {
                 <Stat label="photo checks" value={summary.photoChecks?.count || 0} />
               </View>
 
+              {/* Walk pattern — frequency (per week) + recent per-walk durations, so a vet sees
+                  the cadence, not just a total (ticket 2.102). Degrades if items/perWeek absent. */}
+              {summary.walks?.count > 0 && (
+                <View style={styles.recapCard} testID="walk-pattern">
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>Walk pattern</Text>
+                  <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
+                    {`≈${summary.walks.perWeek ?? 0} walks/week`}
+                    {summary.walks.items?.length
+                      ? ` · recent: ${summary.walks.items
+                          .slice(0, 4)
+                          .map((w) => w.duration_minutes)
+                          .join(", ")} min`
+                      : ""}
+                  </Text>
+                </View>
+              )}
+
               {/* Weight */}
               {summary.weight?.series?.length > 0 && (
                 <View style={styles.recapCard}>

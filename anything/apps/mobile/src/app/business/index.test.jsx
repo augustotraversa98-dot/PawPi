@@ -235,6 +235,21 @@ test("glance rows + stat row tap through to their tabs", () => {
   expect(mockPush).toHaveBeenCalledWith("/business/messages");
 });
 
+test("Walks quick action shows for a walker provider and opens the workspace", () => {
+  mockProvidersState.data = [
+    { id: 5, name: "Paw Walks", slug: "paw", capabilities: ["walker"] },
+  ];
+  const { getByTestId } = render(<BusinessHome />);
+  fireEvent.press(getByTestId("business-walks-action"));
+  expect(mockPush).toHaveBeenCalledWith("/walker-walks");
+});
+
+test("Walks quick action is hidden for a non-walker provider", () => {
+  mockProvidersState.data = [{ id: 5, name: "City Vets", capabilities: ["vet"] }];
+  const { queryByTestId } = render(<BusinessHome />);
+  expect(queryByTestId("business-walks-action")).toBeNull();
+});
+
 test("pending adoption applications summary shows ONLY for an adoption-capable provider", () => {
   // Non-adoption provider: no applications glance row.
   mockProvidersState.data = [{ id: 5, name: "Happy Paws", capabilities: ["vet"] }];

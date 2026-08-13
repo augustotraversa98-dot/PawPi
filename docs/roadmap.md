@@ -20,6 +20,25 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ## 📍 CURRENT STATE (2026-08-01)
 
+> **Update (2026-08-12b) — ticket 2.102 (live walk map + vet-record walk history):** mobile + web,
+> **no migration / no RLS change**, open PR — do NOT merge. Finishes the ~90%-built walker live-GPS
+> feature (2.7). **Four gaps:** (1) **business entry point** — a **"Walks"** quick action on the business
+> **Today** hub (surfaced when the active provider holds the `walker` capability, no extra fetch) plus a
+> **"Start walk"** affordance on `walker` booking rows in the Bookings tab, both `router.push('/walker-walks')`;
+> (2) **owner live watch → real map** — `walk-live.jsx`'s SVG polyline is replaced by the shared
+> `MapLocationView` (Apple `PROVIDER_DEFAULT`, no key): the full `walk_sessions.route` feeds the polyline, a
+> start + latest marker anchor it, and the map is keyed on the point count so each 5s poll re-fits to the
+> newest points (empty/waiting states unchanged — `< 2` points → "Waiting for the first GPS points…" /
+> "No route was recorded"); (3) **walker sees their own live map** — a new `WalkerLiveMap` renders the same
+> map inside the active `StartWalkModal` (new additive `topContent` prop), driven by the points being POSTed;
+> location-denied degrades to a graceful "time still tracks, no map" note (no nag, no fake route); (4)
+> **vet record walk PATTERN** — `GET /api/vet-record/full-summary` `walks` block gains **`items`** (most-recent
+> per-walk `{start_time, duration_minutes, distance}`, capped at 24, null-duration omitted) + **`perWeek`**
+> (walks averaged over the `from..to` window, divide-by-zero → 0), additively (count/totalMinutes/totalDistance
+> unchanged); surfaced in the Vet Summary as a "≈2 walks/week · recent: 30, 25, 27 min" line. Touched endpoint
+> re-proven through the REAL Hono router by URL (`test/integration/vet-record-walks.integration.test.ts`).
+> EN + ES. Gates: mobile jest 1663→1674, web vitest 1855, integration 803 (+2), all green.
+
 > **Update (2026-08-12):** **Shelter adoption management view** (web, **no migration / no API change**,
 > open PR — do NOT merge). Pure UI over the two lists already fetched by the adoptable-listings + adoption-
 > applications GETs, in `ProviderAdoption.jsx`. Both the dogs list and the applications list now: (1)

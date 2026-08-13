@@ -725,7 +725,18 @@ not a hand-maintained log here:
 
 ### Snapshot (2026-07-29) — CURRENT
 
-> **Latest (2026-08-12):** **business mode v2 — the daily hub** (mobile). The bare Business home becomes a **tab
+> **Latest (2026-08-12c):** **live walk map + walk history in the vet record** (mobile + web, **no migration**).
+> Finishes the ~90%-built walker GPS feature (2.7) by closing four gaps: (1) a business **entry point** — a
+> **"Walks"** quick action on the business **Today** hub (walker-capable businesses) + a **"Start walk"** affordance
+> on walker booking rows, both opening the walker workspace; (2) the owner's **live watch** now draws the route on a
+> **real Apple map** (the shared `MapLocationView`, no API key) instead of the SVG squiggle, re-fitting to the newest
+> GPS points every 5s poll; (3) the **walker** sees the SAME live map while walking (graceful "no map, time still
+> tracks" when location is denied); (4) the **Vet Record** `full-summary` walks block gains `items` (recent per-walk
+> durations, capped) + `perWeek` (window average, divide-by-zero guarded), surfaced as a "≈2 walks/week · recent:
+> 30, 25, 27 min" line in the Vet Summary. Additive only — existing aggregate fields unchanged. EN + ES. mobile jest
+> 1663→1674, web vitest 1855, integration +2. Open PR, awaiting review. Full detail in `docs/roadmap.md`.
+>
+> **Prev (2026-08-12):** **business mode v2 — the daily hub** (mobile). The bare Business home becomes a **tab
 > shell** shown in business mode — **Today · Bookings · Messages · Profile** — all following the currently-active
 > provider (shared `useActiveProvider` over `activeProviderStore`; the switcher swaps the business and every tab
 > follows). **Today** adds the reused **BusinessStatRow** (taps → Profile) and a **"Today at a glance"** card

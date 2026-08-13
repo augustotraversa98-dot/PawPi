@@ -20,6 +20,7 @@ import {
   useFinishWalk,
 } from "@/hooks/useProviders";
 import StartWalkModal from "@/components/Health/WalkActivity/StartWalkModal";
+import WalkerLiveMap from "@/components/Health/WalkActivity/WalkerLiveMap";
 
 // WALKER workspace (ticket 2.7) — a provider's active walker-staff start, GPS-track, and
 // finish a booked walk. REUSES the existing walk-activity UI (StartWalkModal — the same
@@ -48,6 +49,11 @@ export default function WalkerWalksScreen() {
 
   // The active session being walked + its booking context.
   const [active, setActive] = useState(null); // { sessionId, booking }
+  // The route being recorded, mirrored locally so the walker sees their OWN live map (same
+  // points we POST to the session). Plus whether foreground location was denied (→ graceful
+  // "no map" state; the timer still tracks). Both reset on each new check-in.
+  const [routePoints, setRoutePoints] = useState([]);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const watchRef = useRef(null);
 
   // Start watching device GPS and post points throttled (every ~5s) to the session.
@@ -55,7 +61,8 @@ export default function WalkerWalksScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        // Time still tracks; the route map just stays empty (real data only).
+        // Time still tracks; the route map shows a graceful "no map" note (real data only).
+        setPermissionDenied(true);
         return;
       }
       watchRef.current = await Location.watchPositionAsync(
@@ -70,6 +77,8 @@ export default function WalkerWalksScreen() {
             lng: loc.coords.longitude,
             t: loc.timestamp,
           };
+          // Feed the walker's own live map + POST the point to the session (owner watch).
+          setRoutePoints((prev) => [...prev, point]);
           track.mutate({
             providerId: provider.id,
             sessionId,
@@ -100,6 +109,8 @@ export default function WalkerWalksScreen() {
       });
       const sessionId = res?.session?.id;
       if (!sessionId) throw new Error("No session created");
+      setRoutePoints([]);
+      setPermissionDenied(false);
       setActive({ sessionId, booking });
       startTracking(sessionId);
     } catch (e) {
@@ -196,7 +207,8 @@ export default function WalkerWalksScreen() {
         )}
       </RefreshableScrollView>
 
-      {/* Reuse the existing walk-activity timer UI for the live walk. */}
+      {/* Reuse the existing walk-activity timer UI for the live walk, with the walker's own
+          live route map above the countdown so they can confirm tracking is live. */}
       <StartWalkModal
         visible={!!active}
         onClose={handleCancel}
@@ -207,6 +219,12 @@ export default function WalkerWalksScreen() {
         }}
         petName={active?.booking?.pet_name || "the dog"}
         onWalkComplete={handleComplete}
+        topContent={
+          <WalkerLiveMap
+            points={routePoints}
+            permissionDenied={permissionDenied}
+          />
+        }
       />
     </View>
   );

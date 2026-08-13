@@ -24,6 +24,7 @@ import {
   CalendarClock,
   Play,
   Globe,
+  Footprints,
 } from "lucide-react-native";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
@@ -221,6 +222,10 @@ export default function BusinessHome() {
 
   // ── Today-at-a-glance sources (all reuse existing provider reads; nothing new server-side) ──
   const hasAdoption = (activeProvider?.capabilities ?? []).includes("adoption");
+  // Walker businesses get a door to the walker workspace (check-in + live GPS). Gated on the
+  // capability the providers list already carries — no extra fetch. (The workspace itself
+  // empty-states cleanly if the account isn't active walker staff.)
+  const hasWalker = (activeProvider?.capabilities ?? []).includes("walker");
   const { data: bookings = [] } = useProviderBookings(providerId);
   const { data: unreadCount = 0 } = useProviderUnreadCount(providerId);
   const { data: adoptionApps = [] } = useProviderAdoptionApplications(providerId, {
@@ -502,6 +507,49 @@ export default function BusinessHome() {
             />
           ) : null}
         </View>
+
+        {/* Walks quick action (walker businesses only) — opens the walker workspace to check in
+            a booked walk and record the live GPS route. */}
+        {hasWalker ? (
+          <PressableScale
+            onPress={() => router.push("/walker-walks")}
+            accessibilityRole="button"
+            testID="business-walks-action"
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: RADIUS.card,
+              borderWidth: 1.5,
+              borderColor: COLORS.coral,
+              padding: SPACING.lg,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.md,
+              marginBottom: SPACING.md,
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: COLORS.coral + "1A",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Footprints size={22} color={COLORS.coral} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+                {t("business.today.walksLabel")}
+              </Text>
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+                {t("business.today.walksHint")}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.mutedBrown} />
+          </PressableScale>
+        ) : null}
 
         {/* Primary action: post a moment */}
         <PressableScale

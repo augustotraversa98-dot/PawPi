@@ -600,7 +600,9 @@
       "noBookingsToday": "No hay reservas hoy",
       "unreadLabel": "Mensajes sin leer",
       "applicationsLabel": "Solicitudes pendientes",
-      "viewAll": "Ver todo"
+      "viewAll": "Ver todo",
+      "walksLabel": "Paseos",
+      "walksHint": "Registra un paseo y guarda el recorrido"
     },
     "bookings": {
       "title": "Reservas",
@@ -611,6 +613,7 @@
       "retry": "Reintentar",
       "confirm": "Confirmar",
       "decline": "Rechazar",
+      "startWalk": "Iniciar paseo",
       "declineTitle": "¿Rechazar esta reserva?",
       "declineBody": "Se notificará al cliente y se reembolsará cualquier pago.",
       "cancel": "Mantener",

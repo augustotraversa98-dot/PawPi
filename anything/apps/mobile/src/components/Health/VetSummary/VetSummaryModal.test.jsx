@@ -31,7 +31,16 @@ beforeEach(() => {
     weight: { series: [{ weight: 50, unit: "lbs" }, { weight: 46, unit: "lbs" }] },
     meds: [{ name: "Apoquel", dose: "16mg", given: 6, missed: 1, total: 7 }],
     photoChecks: { count: 4, byArea: {} },
-    walks: { count: 3, totalMinutes: 90 },
+    walks: {
+      count: 3,
+      totalMinutes: 82,
+      perWeek: 2,
+      items: [
+        { start_time: "2026-06-17T08:00:00Z", duration_minutes: 30, distance: 1.4 },
+        { start_time: "2026-06-14T08:00:00Z", duration_minutes: 25, distance: 1.2 },
+        { start_time: "2026-06-11T08:00:00Z", duration_minutes: 27, distance: 1.3 },
+      ],
+    },
     wellness: { count: 1 },
     conditions: [{ condition: "Arthritis", status: "active" }],
     allergies: [],
@@ -46,6 +55,12 @@ test("renders real data with insight flags + disclaimer (no mock)", () => {
   expect(getByTestId("flag-weight-loss")).toBeTruthy();
   expect(getByTestId("flag-vomiting")).toBeTruthy();
   expect(getByText(/does not diagnose/)).toBeTruthy();
+});
+
+test("shows the walk pattern (frequency + recent per-walk durations)", () => {
+  const { getByTestId, getByText } = render(<VetSummaryModal visible onClose={jest.fn()} />);
+  expect(getByTestId("walk-pattern")).toBeTruthy();
+  expect(getByText("≈2 walks/week · recent: 30, 25, 27 min")).toBeTruthy();
 });
 
 test("switching the range re-invokes the summary query with new dates", () => {

@@ -600,7 +600,9 @@
       "noBookingsToday": "No bookings today",
       "unreadLabel": "Unread messages",
       "applicationsLabel": "Pending applications",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "walksLabel": "Walks",
+      "walksHint": "Check in a walk and record the route"
     },
     "bookings": {
       "title": "Bookings",
@@ -611,6 +613,7 @@
       "retry": "Try again",
       "confirm": "Confirm",
       "decline": "Decline",
+      "startWalk": "Start walk",
       "declineTitle": "Decline this booking?",
       "declineBody": "The customer will be notified and any payment refunded.",
       "cancel": "Keep it",
