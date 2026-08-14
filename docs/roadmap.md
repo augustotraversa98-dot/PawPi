@@ -158,6 +158,19 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
   1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
+### 🔧 WAVE 2 FIX-PACK (BX1·BX2·FF1–FF3) — IN PROGRESS 2026-08-14
+
+Design of record: [`docs/wave2-finish-fixpack.md`](wave2-finish-fixpack.md). Closes the 3 deferred Wave 2
+niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued · 🔨 building · ✅ merged):
+- ✅ **BX2 — Walker QR "Scan pickup" close (X) not tappable** — [#398](https://github.com/augustotraversa98-dot/PawPi/pull/398)
+  MERGED 2026-08-14. `PickupScannerModal` header pinned above the native camera (opaque bg + zIndex/elevation),
+  row `pointerEvents="box-none"`, close button hitSlop. NO migration. **⚠️ needs on-device tap confirmation.**
+  Gates: jest 1847→1848.
+- ☐ **BX1 — Business account: no profile / log out on mobile**
+- ☐ **FF1 — Per-user language for digest / win-back emails** (migration 0107)
+- ☐ **FF2 — Caregiver in-app logging buttons (walks / health)**
+- ☐ **FF3 — Day-card into the main feed**
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map

@@ -2,6 +2,32 @@
 
 ---
 
+## 🔧 WAVE 2 FIX-PACK (BX2·BX1·FF1·FF2·FF3) — autonomous run 2026-08-14
+
+Design of record: `docs/wave2-finish-fixpack.md`. Closes the three deferred Wave 2 niceties
+(FF1–FF3) + two on-device bugs (BX1 business logout, BX2 walker QR close). Each ticket its own
+PR, CI-green → merge → deploy → log, recommended defaults taken. **Baselines at start:** mobile
+jest **1847**, web vitest **1970**, web integration **989**. Next migration number: **0107**.
+
+- **2026-08-14 — BX2 walker QR "Scan pickup" close (X) not tappable** — [#398](https://github.com/augustotraversa98-dot/PawPi/pull/398)
+  MERGED (merge commit `55ba63bb`, branch deleted), **CI-green** (mobile jest / web vitest / integration all pass).
+  - **What shipped (mobile-only, no migration):** `PickupScannerModal.jsx` (B3 walker QR pickup)
+    header is now pinned **above** the native `CameraView` layer — opaque `backgroundColor:"#000"`
+    + `zIndex:20` (iOS) + `elevation:20` (Android); the header row is `pointerEvents="box-none"`
+    so only the close button captures taps; the close button gains `hitSlop:16` +
+    `accessibilityRole="button"`. New test asserts `onClose` fires on press of `pickup-scanner-close`.
+  - **Root cause:** touch-layering — the header carried no zIndex/elevation/opaque background, so
+    the native camera preview could composite over the close control on device; button had no hitSlop.
+  - **Decision (default taken):** BX2 default — "real button above the camera layer; overlay wrapper
+    `pointerEvents="box-none"` so only the button captures touches." Applied exactly. No new i18n
+    strings (reuses existing `common.close`, so EN+ES already covered).
+  - **⚠️ NEEDS ON-DEVICE CONFIRMATION:** CC cannot tap the simulator. The `onPress` wiring is proven
+    by the new test; the layering/tap fix itself must be confirmed by a human tap on the simulator/device.
+  - **Gates:** mobile jest 1847→**1848** (+1); web vitest **1970** / integration **989** unchanged.
+  - **Deploy:** mobile-only, no DB/Railway change — nothing to apply; Railway unaffected.
+
+---
+
 ## ✅ WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — COMPLETE 2026-08-14
 
 Autonomous run, all 7 PRs **MERGED CI-green** (merge commit + branch deleted each), Railway deploys
