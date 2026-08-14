@@ -145,8 +145,13 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   (RLS = owner OR accepted caregiver, no leakage). Multi-caregiver daily moment = per-pet-per-day, 1/caregiver,
   one bumping "day card" carousel with per-author slides. Shared per-pet ring/streak. Private household
   leaderboard (celebrate, never shame a co-parent). **Riskiest unit — 3 PRs in one chat.**
-- ☐ **E14 — Multi-pet household.** Household home view + fast pet switcher (strict per-pet scoping) +
-  optional opt-in family streak. Rides on E13's household model.
+- ✅ **E14 — Multi-pet household** — [#396](https://github.com/augustotraversa98-dot/PawPi/pull/396)
+  MERGED 2026-08-14. Household home view (owned + co-cared dogs, per-dog ring/streak, tap-to-switch via
+  the existing persisted selectedPetStore) + opt-in family streak. **Migration 0105** (household_streaks
+  own-row RLS + `app_advance_household_streak` DEFINER — advances only when EVERY owned dog closed;
+  forgiveness-aware) wired into care-ring close — **awaits hand-apply**; degrades clean; single-dog
+  account a strict no-op. Family-streak metric decided: "every dog's ring closed". EN+ES. Gates: vitest
+  1958, integration 983.
 - ☐ **E15 — Life-stage ring goals.** Ring targets/copy adapt to puppy/adult/senior (3 segments unchanged),
   owner override. The deferred E-series item.
 

@@ -86,6 +86,23 @@ Design of record: `docs/pet-owner-engagement.md` "WAVE 2" section. Each unit its
     mobile follow-up (the DayCard component + endpoint are ready). Viewer optional walk/care logging deferred.
   - **Gates:** web vitest 1954→**1958** (+4), integration 958→**976** (+18 across the 3 PRs), mobile jest green.
 
+- **2026-08-14 — E14 multi-pet household + family streak** — [#396](https://github.com/augustotraversa98-dot/PawPi/pull/396)
+  MERGED (merge commit, branch deleted), CI-green.
+  - **What shipped:** `GET/POST /api/household` (lists owned + co-cared dogs each with today's ring status
+    + streak; the family streak; opt-in toggle). care-ring route advances the family streak on close (own
+    savepoint). Mobile Household home screen — dog list + tap-to-switch (reuses the EXISTING persisted
+    `selectedPetStore`; the switcher plumbing already existed, so every `useCurrentPet` consumer follows the
+    tap) + opt-in family-streak card (2+ dogs). EN+ES.
+  - **Migration 0105** (household_streaks own-row RLS; `app_advance_household_streak(owner,day)` DEFINER)
+    + `verify_0105.sql`. **⚠️ awaits hand-apply**; degrades clean (42P01/42883) so Railway stays healthy.
+  - **Decision (recommended default + the tracked open decision):** family-streak metric = **"every active
+    dog's ring closed"** (not the softer "all dogs cared for"); forgiveness-aware (banked freezes bridge a
+    miss, like E2); OPT-IN; keyed per-owner over OWNED pets (co-cared pets belong to their own owner's
+    family streak). The pet SWITCHER was already built (`selectedPetStore` + `useCurrentPet`), so E14 layered
+    the household UI + family streak on top rather than re-plumbing pet selection. Single-dog account unchanged.
+  - **Gates:** web vitest **1958** (no new web unit — integration-tested), integration 976→**983** (+7),
+    mobile jest green (+E14 suites).
+
 - **2026-07-29 00:19** — Prereq: password reset flow (migration 0069) merged — [#261](https://github.com/augustotraversa98-dot/PawPi/pull/261) (predates tonight's queue, landed first to bring `main` current).
 - **2026-07-29 00:19** — Prereq: support-contact domain fix (augusto@pawpi.info) merged — [#262](https://github.com/augustotraversa98-dot/PawPi/pull/262).
 - **2026-07-29 00:20** — Prereq: demo accounts renamed to pawpi.info — [#263](https://github.com/augustotraversa98-dot/PawPi/pull/263).
