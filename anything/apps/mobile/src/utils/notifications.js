@@ -386,7 +386,7 @@ export async function ensureDailyReturnReminder(body) {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "PawPi",
-        body: body || "Time to check on your pet 🐾",
+        body: body || "Your pup would love to see you today 🐾",
         sound: true,
       },
       // Repeats every day at the given local time. Typed trigger (SDK 54); channelId routes

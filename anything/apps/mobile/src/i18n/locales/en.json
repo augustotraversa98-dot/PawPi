@@ -588,7 +588,7 @@
     "title": "Getting started",
     "progress": "{{completed}} of {{total}} done",
     "yourPet": "your pet",
-    "dailyReminderBody": "Time to check on {{petName}} 🐾",
+    "dailyReminderBody": "{{petName}} would love to see you today 🐾",
     "celebrateTitle": "You're all set! 🎉",
     "celebrateBody": "{{petName}}'s profile is ready to go.",
     "items": {
@@ -886,5 +886,33 @@
       "pet_of_the_day": "Add a photo to unlock",
       "care_recap": "Coming soon — monthly care recap"
     }
+  },
+  "engageNotif": {
+    "petFallback": "your pup",
+    "friendFallback": "a friend",
+    "streakSaveTitle": "One more thing to finish {{name}}'s day 🐾",
+    "streakSaveBody": "Close the ring to keep your {{count}}-day streak safe 🔥",
+    "countdownBirthday": "🎂 {{name}}'s birthday is almost here",
+    "countdownGotcha": "🎉 {{name}}'s gotcha day is almost here",
+    "countdownBody": "Just {{count}} days to go — let's make it special",
+    "milestoneBirthday": "🎂 It's {{name}}'s birthday!",
+    "milestoneGotcha": "🎉 It's {{name}}'s gotcha day!",
+    "milestoneBody": "Share the love and celebrate {{name}} today 🎉",
+    "friendPostedTitle": "{{name}} just posted 🐾",
+    "friendPostedBody": "See what {{name}} is up to today",
+    "dormantTitle": "{{name}} would love to see you 🐾",
+    "dormantBody": "Come share a little moment together today",
+    "dormantFriendTitle": "{{friend}} misses {{name}} 🐾",
+    "dormantFriendBody": "{{friend}} has been posting — come say hi"
+  },
+  "notifPrefs": {
+    "social": "Friends & social",
+    "socialHint": "Paws, barks, new friends and when a friend posts",
+    "milestone": "Milestones",
+    "milestoneHint": "Birthdays, gotcha days and gentle countdowns",
+    "streak": "Streak reminder",
+    "streakHint": "One friendly evening nudge when your ring is almost closed",
+    "care": "Care reminders",
+    "careHint": "Your own feeding, walk and health reminders"
   }
 }

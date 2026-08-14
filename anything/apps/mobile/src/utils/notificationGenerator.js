@@ -59,18 +59,21 @@ function getNotificationConfig(reminder) {
   return configFn ? configFn(reminder) : getDefaultNotification(reminder);
 }
 
+// E5 reframe: care reminders are WANTED, so they stay — but the copy is warm and
+// forward-looking, never guilt/shame ("overdue", "you forgot"). "Due soon" keeps the helpful
+// countdown; the past-due case becomes a gentle "whenever you're ready", celebrating the care.
 function getFeedingNotification(reminder) {
   const status = getReminderStatus(reminder);
   const mealName = reminder.title || "Meal";
 
-  let title = "Feeding o'clock 🍽️";
-  let message = `Time to feed your pet ${mealName.toLowerCase()}.`;
+  let title = "Mealtime 🍽️";
+  let message = `Time for ${mealName.toLowerCase()}.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Your pet's ${mealName.toLowerCase()} starts in ${timeToGo}.`;
+    message = `${mealName} starts in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Your pet's ${mealName.toLowerCase()} is overdue.`;
+    message = `Whenever you're ready — ${mealName.toLowerCase()} 🍽️`;
   }
 
   return {
@@ -85,13 +88,13 @@ function getWalkNotification(reminder) {
   const walkName = reminder.title || "Walk";
 
   let title = "Walk time 🚶";
-  let message = `Time for your pet's ${walkName.toLowerCase()}.`;
+  let message = `Time for a ${walkName.toLowerCase()}.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Your pet's ${walkName.toLowerCase()} starts in ${timeToGo}.`;
+    message = `${walkName} starts in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Your pet's ${walkName.toLowerCase()} is overdue.`;
+    message = `Whenever you're ready — time for a ${walkName.toLowerCase()} 🚶`;
   }
 
   return {
@@ -105,14 +108,14 @@ function getMedicationNotification(reminder) {
   const status = getReminderStatus(reminder);
   const medName = reminder.title || "medication";
 
-  let title = "Medication due 💊";
-  let message = `Your pet's ${medName} is due now.`;
+  let title = "Medication time 💊";
+  let message = `Time for ${medName}.`;
 
   if (status === REMINDER_STATUS.DUE_SOON) {
     const timeToGo = getTimeToGo(reminder);
-    message = `Your pet's ${medName} is due in ${timeToGo}.`;
+    message = `${medName} is coming up in ${timeToGo}.`;
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Your pet's ${medName} is overdue.`;
+    message = `Whenever you're ready — ${medName} 💊`;
   }
 
   return {

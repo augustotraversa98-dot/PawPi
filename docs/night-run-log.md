@@ -100,3 +100,15 @@ day one; no fake data. One line per merge.
   on E10). Opened from a "Share a card" button on the owner's own pet-profile. EN+ES. Gates: integration
   906→910 (+4), web vitest 1920 (unchanged), mobile jest 1746→1752 (+6). **Pet Owner engagement wave
   E0–E4 COMPLETE.**
+- **2026-08-14 (E5)** — Notification rewrite merged — PR TBD. **NO migration** (client-side policy;
+  toggles in AsyncStorage, streak-save is a local evening notification, send time from app-open history).
+  Rebuilt around WANTED triggers only: `notificationPolicy.js` (pure — the exact at-risk streak-save
+  condition [ring exactly one segment from close AND streak>0 AND not closed AND not rest/paused AND
+  not-already-sent-today], global daily cap, personalized send hour), `notificationPreferences.js`
+  (per-category toggles + per-day send log + rolling open-hour history), `engagementNotifications.js`
+  (positive EN+ES copy builders + guarded `maybeScheduleStreakSave` wired into `CareRingCard`). Removed
+  guilt/chore copy: reframed `notificationGenerator.js` (no "overdue"/"is due now") + the daily-return
+  fallback. Settings → Notifications replaced 3 dead hardcoded switches with real persisted per-category
+  toggles (Social / Milestones / Streak / Care). Warm friend-based dormant re-engagement copy ("Bella
+  misses Rex", never "you haven't opened"). A no-guilt grep test scans EN+ES copy. Gates: mobile jest
+  1752→1782 (+30); web vitest + integration unchanged (mobile-only).
