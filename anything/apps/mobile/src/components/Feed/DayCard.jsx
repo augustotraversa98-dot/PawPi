@@ -4,7 +4,7 @@
 // endpoint's latest_contribution_at on the feed side.
 
 import React, { useState } from "react";
-import { View, Text, ScrollView, Dimensions } from "react-native";
+import { View, Text, ScrollView, Dimensions, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { PawPrint, MessageCircle } from "lucide-react-native";
@@ -17,7 +17,7 @@ const C = {
   mutedBrown: "#7A6254",
 };
 
-export function DayCard({ dayCard }) {
+export function DayCard({ dayCard, onOpenDetail }) {
   const { t } = useTranslation();
   const [active, setActive] = useState(0);
   const width = Dimensions.get("window").width - 40;
@@ -75,8 +75,14 @@ export function DayCard({ dayCard }) {
         </View>
       ) : null}
 
-      {/* Per-slide author attribution + caption */}
-      <View style={{ padding: 12 }}>
+      {/* Per-slide author attribution + caption. Tapping opens the shown slide's real post
+          (paws/barks/comments live there) when a handler is provided. */}
+      <Pressable
+        style={{ padding: 12 }}
+        disabled={!onOpenDetail}
+        onPress={() => onOpenDetail?.(current._post)}
+        testID="day-card-open"
+      >
         <Text testID="day-card-author" style={styles.author}>
           {t("dayCard.postedBy", { name: current.author?.username || t("dayCard.someone") })}
         </Text>
@@ -93,7 +99,7 @@ export function DayCard({ dayCard }) {
             <Text style={styles.reactionText}>{dayCard?.bark_count ?? 0}</Text>
           </View>
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }

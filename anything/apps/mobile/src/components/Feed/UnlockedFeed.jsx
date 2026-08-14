@@ -6,7 +6,9 @@ import { PostCard } from "./PostCard";
 import { BusinessPostCard } from "./BusinessPostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
+import { DayCard } from "./DayCard";
 import { interleaveSuggestions } from "@/utils/feed/interleaveSuggestions";
+import { groupFeedDayCards } from "@/utils/feed/groupFeedDayCards";
 
 export function UnlockedFeed({
   posts,
@@ -24,21 +26,27 @@ export function UnlockedFeed({
   // Phase 2 ticket 2.13 — interleave provider/adoption "suggestion" cards between pet posts at a
   // controlled cadence + cap (see interleaveSuggestions). Posts keep their order/identity; the
   // BeReal lock upstream is unaffected (this only runs in the UNLOCKED feed).
+  // FF3: collapse a pet's same-day daily moments into one multi-caregiver DayCard BEFORE interleaving
+  // suggestions, so suggestion cadence counts a day card as one item (and never splits a group).
+  const grouped = useMemo(() => groupFeedDayCards(posts), [posts]);
   const items = useMemo(
-    () => interleaveSuggestions(posts, suggestions),
-    [posts, suggestions],
+    () => interleaveSuggestions(grouped, suggestions),
+    [grouped, suggestions],
   );
 
   // "Suggested for you" divider (ticket 2.58): the feed comes Following-first then
   // Suggested (each pet post carries feed_group from the API). Show the divider before
   // the FIRST suggested pet post — but only when there's followed content above it, so
   // it's a real boundary and never a dangling label over an empty Following section.
+  // A day card (FF3) counts as pet content here so the boundary still lands correctly.
   const { dividerBeforeId } = useMemo(() => {
+    const isPetContent = (it) =>
+      (!it.kind || it.kind === "daycard") && it.item_type !== "provider_post";
     const hasFollowing = items.some(
-      (it) => !it.kind && it.feed_group === "following",
+      (it) => isPetContent(it) && it.feed_group === "following",
     );
     const firstSuggested = items.find(
-      (it) => !it.kind && it.feed_group === "suggested",
+      (it) => isPetContent(it) && it.feed_group === "suggested",
     );
     return {
       dividerBeforeId:
@@ -118,6 +126,19 @@ export function UnlockedFeed({
               post={item}
               onPress={() => onOpenBusinessPost?.(item)}
             />
+          );
+        }
+        // FF3 — a pet's same-day daily moments, grouped into one multi-caregiver day card.
+        // Tapping opens the currently-shown slide's real post (paws/barks/comments live there).
+        if (item.kind === "daycard") {
+          return (
+            <React.Fragment key={item.id}>
+              {item.id === dividerBeforeId && <SuggestedDivider />}
+              <DayCard
+                dayCard={item.dayCard}
+                onOpenDetail={(post) => post && onOpenDetail?.(post)}
+              />
+            </React.Fragment>
           );
         }
         return (

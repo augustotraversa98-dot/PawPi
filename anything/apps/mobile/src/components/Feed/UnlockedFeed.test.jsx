@@ -115,6 +115,60 @@ describe("UnlockedFeed — interleaved suggestion cards", () => {
   });
 });
 
+// FF3 — a pet's same-day daily moments collapse into ONE multi-caregiver DayCard in the feed.
+const moment = (over) => ({
+  id: 1,
+  pet_id: 10,
+  user_id: 100,
+  username: "tats",
+  pet_name: "Rex",
+  pet_avatar: "https://example.com/a.jpg",
+  is_daily_update: true,
+  post_date: "2026-08-14",
+  image_url: "https://example.com/m.jpg",
+  caption: "moment",
+  created_at: "2026-08-14T10:00:00Z",
+  paw_count: 1,
+  bark_count: 0,
+  ...over,
+});
+
+describe("UnlockedFeed — FF3 day card grouping", () => {
+  it("groups a pet's same-day moments into one DayCard with per-author slides", () => {
+    const posts = [
+      moment({ id: 2, user_id: 200, username: "bob", created_at: "2026-08-14T18:00:00Z" }),
+      moment({ id: 1, user_id: 100, username: "tats", created_at: "2026-08-14T09:00:00Z" }),
+    ];
+    const { getAllByTestId, getByTestId } = render(
+      <UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />,
+    );
+    // Exactly ONE day card, carrying BOTH authors' slides.
+    expect(getAllByTestId("day-card")).toHaveLength(1);
+    expect(getByTestId("day-card-slide-1")).toBeTruthy();
+    expect(getByTestId("day-card-slide-2")).toBeTruthy();
+  });
+
+  it("does not regress non-moment posts: a regular post still renders as a normal card", () => {
+    const posts = [moment({ id: 1, caption: "daycaption" }), post(99)];
+    const { getByTestId, getByText, getAllByText } = render(
+      <UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />,
+    );
+    expect(getByTestId("day-card")).toBeTruthy();
+    expect(getByText(/daycaption/)).toBeTruthy(); // the day card caption
+    expect(getAllByText("Pet99").length).toBeGreaterThan(0); // the regular PostCard still renders
+  });
+
+  it("tapping the day card opens the shown slide's real post", () => {
+    const onOpenDetail = jest.fn();
+    const posts = [moment({ id: 1 })];
+    const { getByTestId } = render(
+      <UnlockedFeed {...baseProps} posts={posts} onOpenDetail={onOpenDetail} suggestions={undefined} />,
+    );
+    fireEvent.press(getByTestId("day-card-open"));
+    expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+});
+
 // Ticket 2.58 — the "Suggested for you" divider at the Following→Suggested boundary.
 const fpost = (id, group) => ({ ...post(id), feed_group: group });
 
