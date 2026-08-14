@@ -588,7 +588,7 @@
     "title": "Primeros pasos",
     "progress": "{{completed}} de {{total}} listo",
     "yourPet": "tu mascota",
-    "dailyReminderBody": "Es hora de ver cómo está {{petName}} 🐾",
+    "dailyReminderBody": "A {{petName}} le encantaría verte hoy 🐾",
     "celebrateTitle": "¡Todo listo! 🎉",
     "celebrateBody": "El perfil de {{petName}} ya está completo.",
     "items": {
@@ -886,5 +886,33 @@
       "pet_of_the_day": "Agrega una foto para desbloquear",
       "care_recap": "Pronto: resumen mensual de cuidado"
     }
+  },
+  "engageNotif": {
+    "petFallback": "tu perro",
+    "friendFallback": "un amigo",
+    "streakSaveTitle": "Una cosa más para completar el día de {{name}} 🐾",
+    "streakSaveBody": "Cerrá el anillo y mantené tu racha de {{count}} días 🔥",
+    "countdownBirthday": "🎂 Se acerca el cumple de {{name}}",
+    "countdownGotcha": "🎉 Se acerca el día de adopción de {{name}}",
+    "countdownBody": "Faltan solo {{count}} días — hagámoslo especial",
+    "milestoneBirthday": "🎂 ¡Es el cumple de {{name}}!",
+    "milestoneGotcha": "🎉 ¡Es el día de adopción de {{name}}!",
+    "milestoneBody": "Compartí el cariño y celebrá a {{name}} hoy 🎉",
+    "friendPostedTitle": "{{name}} acaba de publicar 🐾",
+    "friendPostedBody": "Mirá qué está haciendo {{name}} hoy",
+    "dormantTitle": "A {{name}} le encantaría verte 🐾",
+    "dormantBody": "Vení a compartir un momentito juntos hoy",
+    "dormantFriendTitle": "{{friend}} extraña a {{name}} 🐾",
+    "dormantFriendBody": "{{friend}} estuvo publicando — vení a saludar"
+  },
+  "notifPrefs": {
+    "social": "Amigos y social",
+    "socialHint": "Patitas, ladridos, nuevos amigos y cuando un amigo publica",
+    "milestone": "Fechas especiales",
+    "milestoneHint": "Cumpleaños, días de adopción y cuentas regresivas suaves",
+    "streak": "Recordatorio de racha",
+    "streakHint": "Un aviso amable a la tarde cuando tu anillo está casi cerrado",
+    "care": "Recordatorios de cuidado",
+    "careHint": "Tus propios recordatorios de comida, paseos y salud"
   }
 }

@@ -8,6 +8,7 @@ import { queryClient } from "@/utils/queryClient";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
+import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
@@ -29,6 +30,8 @@ export default function RootLayout() {
   // independent of the reminder loop (which now schedules silently).
   useEffect(() => {
     initNotifications();
+    // E5: learn the owner's usual open hour so the streak-save nudge sends at their time.
+    recordAppOpenHour(new Date().getHours());
   }, []);
 
   // Apply the saved language override (ticket 2.29) — defaults to the phone's language.

@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Bell,
   Lock,
-  Eye,
   Globe,
   HelpCircle,
   PawPrint,
@@ -21,6 +20,11 @@ import {
   getLocalePreference,
   setLocalePreference,
 } from "@/i18n/localePreference";
+import {
+  getNotificationPrefs,
+  setCategoryEnabled,
+} from "@/utils/notificationPreferences";
+import { NOTIF_CATEGORIES } from "@/utils/notificationPolicy";
 import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
 
 const C = {
@@ -80,15 +84,110 @@ function LanguageSelector() {
   );
 }
 
+// E5 notification rewrite: real, persisted per-category toggles (Friends & social /
+// Milestones / Streak reminder / Care reminders). Each gates the wanted-trigger schedulers
+// + in-app category filters via notificationPreferences (AsyncStorage). No guilt/chore
+// categories exist anymore.
+function NotificationToggles() {
+  const { t } = useTranslation();
+  const [prefs, setPrefs] = useState(null);
+
+  useEffect(() => {
+    getNotificationPrefs().then(setPrefs);
+  }, []);
+
+  const toggle = async (category, value) => {
+    setPrefs((p) => ({ ...(p || {}), [category]: value })); // optimistic
+    const next = await setCategoryEnabled(category, value);
+    setPrefs(next);
+  };
+
+  const ROWS = [
+    {
+      key: NOTIF_CATEGORIES.SOCIAL,
+      icon: PawPrint,
+      label: t("notifPrefs.social"),
+      hint: t("notifPrefs.socialHint"),
+    },
+    {
+      key: NOTIF_CATEGORIES.MILESTONE,
+      icon: Bell,
+      label: t("notifPrefs.milestone"),
+      hint: t("notifPrefs.milestoneHint"),
+    },
+    {
+      key: NOTIF_CATEGORIES.STREAK,
+      icon: Activity,
+      label: t("notifPrefs.streak"),
+      hint: t("notifPrefs.streakHint"),
+    },
+    {
+      key: NOTIF_CATEGORIES.CARE,
+      icon: Check,
+      label: t("notifPrefs.care"),
+      hint: t("notifPrefs.careHint"),
+    },
+  ];
+
+  return (
+    <View>
+      {ROWS.map((row, i) => {
+        const Icon = row.icon;
+        const enabled = prefs ? prefs[row.key] !== false : true;
+        return (
+          <View
+            key={row.key}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 14,
+              borderBottomWidth: i < ROWS.length - 1 ? 1 : 0,
+              borderBottomColor: C.peach,
+            }}
+          >
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 14,
+                borderWidth: 1,
+                borderColor: C.peach,
+              }}
+            >
+              <Icon size={18} color={C.mutedBrown} />
+            </View>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
+                {row.label}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+                {row.hint}
+              </Text>
+            </View>
+            <Switch
+              testID={`notif-toggle-${row.key}`}
+              value={enabled}
+              onValueChange={(v) => toggle(row.key, v)}
+              trackColor={{ false: C.peach, true: C.coral }}
+              thumbColor="#FFF"
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
   const { setAuth } = useAuth();
   const [deleting, setDeleting] = useState(false);
-  const [feedReminder, setFeedReminder] = useState(true);
-  const [healthAlerts, setHealthAlerts] = useState(true);
-  const [communityUpdates, setCommunityUpdates] = useState(false);
 
   // In-app account deletion (App Store 5.1.1(v)). Two-step confirm → DELETE /api/account
   // (irreversibly removes the account + owner-scoped data server-side) → clear local session → welcome.
@@ -266,30 +365,10 @@ export default function SettingsScreen() {
             letterSpacing: 0.8,
           }}
         >
-          NOTIFICATIONS
+          {t("notifications.title").toUpperCase()}
         </Text>
         <SectionCard>
-          <SettingRow
-            label="Feed Reminders"
-            icon={Bell}
-            value={feedReminder}
-            isSwitch
-            onValueChange={setFeedReminder}
-          />
-          <SettingRow
-            label="Health Alerts"
-            icon={Lock}
-            value={healthAlerts}
-            isSwitch
-            onValueChange={setHealthAlerts}
-          />
-          <SettingRow
-            label="Community Updates"
-            icon={Eye}
-            value={communityUpdates}
-            isSwitch
-            onValueChange={setCommunityUpdates}
-          />
+          <NotificationToggles />
         </SectionCard>
 
         <Text

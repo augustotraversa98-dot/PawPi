@@ -4,9 +4,10 @@
 // deep-link to the action that closes each one, and rest/vacation controls (a rest-day toggle + a
 // pause-until date). A rest/paused day keeps the ring and streak intact — the copy stays gentle.
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
+import { maybeScheduleStreakSave } from "@/utils/engagementNotifications";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
 import { CareRing } from "@/components/Health/CareRing";
@@ -36,6 +37,26 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const repairStreak = useRepairStreak(petId);
   const [showPause, setShowPause] = useState(false);
   const count = streakCount(data);
+
+  // E5 streak-save: when today's ring is exactly one segment from closing and the streak is at
+  // risk, book the single positive evening nudge (guarded by policy + prefs + daily cap inside
+  // maybeScheduleStreakSave — it no-ops otherwise). Fire-and-forget; never blocks render.
+  useEffect(() => {
+    if (!data) return;
+    maybeScheduleStreakSave({
+      t,
+      ring: {
+        walkDone: s.walk_done,
+        momentDone: s.moment_done,
+        careDone: s.care_done,
+        ringClosed: s.ring_closed,
+        restDay: s.rest_day,
+        paused: s.paused,
+      },
+      streakCount: count,
+      petName: name,
+    }).catch(() => {});
+  }, [data, s.walk_done, s.moment_done, s.care_done, s.ring_closed, s.rest_day, s.paused, count, name, t]);
 
   const statusKey = ringStatusKey(s);
   // Prefer the pause-specific line (with a resume date) when paused; otherwise the status copy.

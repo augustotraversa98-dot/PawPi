@@ -60,9 +60,16 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   week-in-walks / streak / pet-of-the-day cards + an empty-safe monthly-recap **stub** for E10), opened
   from a "Share a card" button on the owner's pet-profile. Real stats only — 0/absent → clean empty
   state. EN+ES. Proven: share-stats integration (+4), shareLinks jest (+6).
-- ☐ **E5** — Notification rewrite · ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
+- ✅ **E5** — Notification rewrite. **No migration** (client-side policy). Rebuilt around WANTED
+  triggers only: `notificationPolicy` (pure at-risk streak-save decision + daily cap + personalized
+  send hour), `notificationPreferences` (AsyncStorage per-category toggles + send-log + open-hour
+  history), `engagementNotifications` (positive EN+ES copy + guarded `maybeScheduleStreakSave`, wired
+  into `CareRingCard`). Guilt/chore copy removed (reframed `notificationGenerator` + daily-return);
+  Settings → Notifications now real per-category toggles (Social / Milestones / Streak / Care). Proven:
+  policy/prefs/engagement/no-guilt-grep jest (+30).
+- ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
   ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
-  ☐ **E10** — Health-update reinforcement. _(E5–E10 are later units, tracked here for the full wave.)_
+  ☐ **E10** — Health-update reinforcement. _(E6–E10 are later units, tracked here for the full wave.)_
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
