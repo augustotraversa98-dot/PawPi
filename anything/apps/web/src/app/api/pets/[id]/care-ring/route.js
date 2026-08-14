@@ -159,6 +159,18 @@ async function GET(request, { params }) {
       if (!isMissingSchema(e)) throw e; // real error still 500s; a missing table/fn just degrades
     }
 
+    // E7 pack streaks: on close, advance any shared "pack" flames where the partner also closed today.
+    // Its OWN savepoint so a pre-migration (0097 absent) pack helper never degrades the personal ring.
+    if (seg.ringClosed) {
+      try {
+        await withSavepoint(async () => {
+          await sql`SELECT app_advance_pack_streaks(${petId}, ${ownerUserId}, ${day}::date)`;
+        });
+      } catch (e) {
+        if (!isMissingSchema(e)) throw e;
+      }
+    }
+
     const paused = pausedUntil != null && pausedUntil >= day;
     return Response.json({
       day,

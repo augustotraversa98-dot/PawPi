@@ -11,6 +11,7 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 import { CareRingCard } from "@/components/Health/CareRingCard";
+import { PackStreaksCard } from "@/components/Health/PackStreaksCard";
 import {
   Calendar,
   TrendingUp,
@@ -542,6 +543,10 @@ export default function HealthToday() {
               router.push(seg === "moment" ? "/(tabs)" : "/(tabs)/health")
             }
           />
+          {/* Pack streaks — shared flame with a dog friend (E7) */}
+          <View style={{ marginTop: SPACING.lg }}>
+            <PackStreaksCard petId={currentPet.id} />
+          </View>
         </View>
       )}
 

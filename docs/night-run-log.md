@@ -127,3 +127,19 @@ day one; no fake data. One line per merge.
   ring-start nudge ("Take {dog}'s first photo to close today's ring") when no moment was posted. No
   medical/health fields forced at signup. EN+ES (new onboarding.* keys). Gates: mobile jest 1782->1786
   (+4), web integration 910->915 (+5), web vitest 1920 (unchanged).
+- **2026-08-14 (E7)** — Pack / shared streaks merged — PR TBD. **Migration 0097** (PENDING hand-apply +
+  verify_0097.sql). New `pet_pack_streaks` (requester/receiver user+pet, status pending/active/ended,
+  current/longest count, last_active_day; unordered-pair unique index; participant-scoped ENABLE+FORCE
+  RLS) + 5 SECURITY DEFINER helpers — every action crosses the owner boundary (pets + pet_care_days are
+  owner-scoped, so a caller can't read a friend's pet, see their ring, or notify them): app_request_
+  pack_streak (opt-in by partner @handle), app_accept_pack_streak, app_advance_pack_streaks (called on
+  ring close — advances only when BOTH pets closed the same owner-tz day; idempotent; gap restarts at
+  1), app_pack_boop (rate-limited once/pack/actor/day, only if the friend hasn't closed), app_pack_
+  streaks_for_pet (reader w/ partner display + boop_available; needs `#variable_conflict use_column`
+  because the RETURNS TABLE out-cols shadow the joined tables' id/status/etc.). notifications_type_check
+  widened (pack_invite/pack_accepted/boop). `GET/POST /api/pets/[id]/pack-streaks`; the pack advance is
+  wired into the care-ring close in its OWN savepoint so a pre-migration absence never degrades the
+  personal streak. Consumers degrade clean (list->empty, actions->503). Mobile: usePackStreaks hooks +
+  PackStreaksCard on Health->Today (flame+count, boop, accept invite, start by @handle; break copy shows
+  the best run, never blames). Notifications screen localizes the new welcome/pack/boop types (EN+ES).
+  Opt-in only. Gates: mobile jest 1786->1791 (+5), web integration 915->919 (+4), web vitest 1920.

@@ -132,7 +132,12 @@
     "walk_request_targetedFallback": "New walk request",
     "walk_request_broadcastFallback": "A walk is needed nearby",
     "walk_request_acceptedFallback": "Your walk request was accepted",
-    "walk_request_takenFallback": "This walk was taken by another walker"
+    "walk_request_takenFallback": "This walk was taken by another walker",
+    "welcomeTitle": "PawPi Welcome 🐾",
+    "welcome": "Welcome to PawPi! Here's your first paw 🐾",
+    "pack_invite": "invited you to a pack streak 🐾",
+    "pack_accepted": "accepted your pack streak — let's go! 🔥",
+    "boop": "booped you — finish your ring to keep the flame 🔥"
   },
   "map": {
     "setOnMap": "Set location on map",
@@ -919,5 +924,22 @@
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",
     "welcomePaw": "🐾 PawPi Welcome sent {{name}} a first paw",
     "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾"
+  },
+  "packStreaks": {
+    "title": "Pack streaks 🐾",
+    "subtitle": "Keep the flame going with a dog friend",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "bestRun": "Your best run with {{name}}: {{count}} days 🎉",
+    "boop": "Boop",
+    "booped": "Boop sent! 🐾",
+    "boopSkip": "No boop needed right now 🎉",
+    "accept": "Accept",
+    "invite": "{{name}} invited you to a pack streak",
+    "pending": "Waiting for {{name}} to accept…",
+    "empty": "Start a pack streak with a friend — you both close your ring the same day to build a shared flame.",
+    "handlePlaceholder": "friend's @handle",
+    "start": "Start",
+    "requestFailed": "Couldn't start that pack — check the @handle."
   }
 }
