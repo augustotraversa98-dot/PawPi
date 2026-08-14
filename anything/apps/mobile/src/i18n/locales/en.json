@@ -941,5 +941,25 @@
     "handlePlaceholder": "friend's @handle",
     "start": "Start",
     "requestFailed": "Couldn't start that pack — check the @handle."
+  },
+  "leaderboard": {
+    "title": "Care leagues 🏆",
+    "subtitle": "Weekly XP from care effort — not likes",
+    "flavor_friends": "Friends",
+    "flavor_breed": "Breed",
+    "flavor_neighborhood": "Nearby",
+    "gated_breed": "Not enough dogs of this breed yet — showing your friends board.",
+    "gated_neighborhood": "Not enough dogs near you yet — showing your friends board.",
+    "empty": "Log a walk, close your ring, or give a friend a paw to earn XP this week.",
+    "xp": "{{xp}} XP",
+    "you": "you",
+    "tier_gold": "Gold league",
+    "tier_silver": "Silver league",
+    "tier_bronze": "Bronze league",
+    "promoted": "— you moved up! 🎉",
+    "optInHint": "Add a coarse area (like a neighborhood) to see nearby dogs. We never share your home address.",
+    "areaPlaceholder": "e.g. Palermo",
+    "optIn": "Opt in",
+    "effortNote": "XP = walks, ring closes, care actions, and paws you give. Effort, never popularity."
   }
 }

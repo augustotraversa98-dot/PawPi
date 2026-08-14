@@ -85,8 +85,16 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   `usePackStreaks` hooks + `PackStreaksCard` on Health→Today (flame + boop + accept + start-by-handle;
   break copy celebrates the best run, never blames). Opt-in. EN+ES. Proven: pack-streaks integration
   (+4), usePackStreaks jest (+5).
-- ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
-  ☐ **E10** — Health-update reinforcement. _(E8–E10 are later units, tracked here for the full wave.)_
+- ✅ **E8** — Leaderboards (density-gated). **Migration 0098** (PENDING hand-apply). Weekly care-effort
+  leagues: XP from walks / ring closes / care actions / paws GIVEN (never likes received) via
+  `app_pet_week_xp` + `app_leaderboard` DEFINER (ranks across owners). DENSITY-GATED — friends always;
+  breed/neighborhood only at/above a min cohort (config) else fall back to friends (never empty/fake).
+  Coarse **opt-in** geo (`pets.lb_opt_in`/`lb_area`, never lat/lng); `pet_leaderboard_weeks` snapshot
+  drives real promotion/relegation movement. `GET/POST /api/pets/[id]/leaderboard`. Mobile:
+  `useLeaderboard` + `LeaderboardCard` on Health→Today (flavor tabs, tier + movement, gated empty-safe
+  state, neighborhood opt-in). EN+ES. Proven: leaderboard integration (+5), useLeaderboard jest (+2).
+- ☐ **E9** — Comparative insight (density-gated) ·
+  ☐ **E10** — Health-update reinforcement. _(E9–E10 are later units, tracked here for the full wave.)_
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
