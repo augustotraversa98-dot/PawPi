@@ -426,15 +426,29 @@ async function POST(request) {
     if (blocked) return blocked;
 
 
-    // Validate pet ownership
+    // Validate pet access. Owner always. For the DAILY MOMENT (E13 PR2), a 'family' caregiver may also
+    // post — so a whole household can each add their slide to the pet's day card. (Viewers cannot post to
+    // the public profile; a normal non-daily post stays owner-only.) app_user_has_pet_family degrades
+    // cleanly if 0049 isn't applied (missing fn → caregiver simply not authorized).
     const pet = await sql`
-      SELECT id FROM pets 
+      SELECT id FROM pets
       WHERE id = ${pet_id} AND owner_user_id = ${userId}
       LIMIT 1
     `;
+    let isOwner = pet.length > 0;
+    let isFamilyCaregiver = false;
+    if (!isOwner && is_daily_update) {
+      try {
+        await withSavepoint(async () => {
+          const [r] = await sql`SELECT app_user_has_pet_family(${pet_id}) AS ok`;
+          isFamilyCaregiver = !!r?.ok;
+        });
+      } catch (e) {
+        if (e?.code !== "42883" && e?.code !== "42P01") throw e; // pre-0049 → not a caregiver
+      }
+    }
 
-
-    if (pet.length === 0) {
+    if (!isOwner && !isFamilyCaregiver) {
       console.error("[POST /api/posts] ERROR: Pet not found or unauthorized");
       console.error("[POST /api/posts]   - pet_id:", pet_id);
       console.error("[POST /api/posts]   - user_id:", userId);
@@ -445,13 +459,16 @@ async function POST(request) {
     }
 
 
-    // If daily update, check if one already exists today
+    // Daily moment cap: ONE per AUTHOR per pet per day (E13 PR2 — a caregiver adds their OWN slide, but
+    // not a second one). Was one-per-pet-per-day; now scoped to this author so the household can each
+    // contribute. (The DB index idx_posts_one_daily_per_author_per_pet_per_day backstops this.)
     if (is_daily_update) {
       const today = new Date().toISOString().split("T")[0];
 
       const existingDaily = await sql`
         SELECT id FROM posts
         WHERE pet_id = ${pet_id}
+          AND user_id = ${userId}
           AND is_daily_update = true
           AND post_date = ${today}
         LIMIT 1

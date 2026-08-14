@@ -1030,5 +1030,10 @@
     "friendPosted": "{{name}} compartió un momento",
     "friendsEmpty": "Cuando los amigos de {{name}} publiquen, los vas a ver acá 🐾",
     "optOut": "No me mandes estos mensajes"
+  },
+  "dayCard": {
+    "postedBy": "Publicado por {{name}}",
+    "authors": "{{count}} cuidadores compartieron hoy 🐾",
+    "someone": "alguien"
   }
 }
