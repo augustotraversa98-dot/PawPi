@@ -67,9 +67,18 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   into `CareRingCard`). Guilt/chore copy removed (reframed `notificationGenerator` + daily-return);
   Settings → Notifications now real per-category toggles (Social / Milestones / Streak / Care). Proven:
   policy/prefs/engagement/no-guilt-grep jest (+30).
-- ☐ **E6** — Onboarding D1 polish · ☐ **E7** — Pack streaks ·
+- ✅ **E6** — Onboarding D1 polish. **Migration 0096** (welcome paw; PENDING hand-apply). First session
+  ends with the ring STARTED: first moment posted → day-1 streak seeded + the ONE allowed labelled
+  seeded interaction, a first paw from the official "PawPi Welcome" account (lazily created by the
+  `app_welcome_account` / `app_welcome_paw` DEFINER helpers — NO migration-time seed row, so the
+  integration harness is unaffected) + a labelled `welcome` notification. New `POST /api/onboarding/
+  welcome` (idempotent, degrades clean pre-migration). Onboarding now captures BOTH birthday AND
+  gotcha/adoption day inline (optional); success screen shows "🔥 Day 1" + the welcome paw, or a
+  ring-start nudge. No health fields forced. EN+ES. Proven: onboarding-welcome integration (+5),
+  onboardingWelcome jest (+4).
+- ☐ **E7** — Pack streaks ·
   ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
-  ☐ **E10** — Health-update reinforcement. _(E6–E10 are later units, tracked here for the full wave.)_
+  ☐ **E10** — Health-update reinforcement. _(E7–E10 are later units, tracked here for the full wave.)_
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

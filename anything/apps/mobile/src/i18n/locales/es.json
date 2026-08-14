@@ -914,5 +914,10 @@
     "streakHint": "Un aviso amable a la tarde cuando tu anillo está casi cerrado",
     "care": "Recordatorios de cuidado",
     "careHint": "Tus propios recordatorios de comida, paseos y salud"
+  },
+  "onboarding": {
+    "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",
+    "welcomePaw": "🐾 PawPi Welcome le dio a {{name}} su primera patita",
+    "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾"
   }
 }

@@ -11,6 +11,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Check } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -20,6 +21,7 @@ import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import { postOnboardingWelcome } from "@/utils/onboardingWelcome";
 import {
   TAKEN_HANDLES,
   validateHandleFormat,
@@ -56,13 +58,17 @@ export default function OnboardingScreen() {
     gender: "",
     weight: "",
     weightUnit: "lbs",
-    dateType: "",
-    date: "",
+    // E6: capture BOTH the birthday and the gotcha/adoption day inline (both optional) so E3
+    // milestone moments can fire for either later.
+    birthday: "",
+    adoptionDate: "",
     notes: "",
   });
   const [suggestedHandles, setSuggestedHandles] = useState([]);
   const [handleError, setHandleError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // E6: the "ring started" payoff shown on the success screen (streak day 1 + welcome paw).
+  const [welcome, setWelcome] = useState(null);
 
   // Load saved photo from photo onboarding step
   useEffect(() => {
@@ -223,8 +229,8 @@ export default function OnboardingScreen() {
         gender: formData.gender || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         weight_unit: formData.weightUnit || "lbs",
-        birthday: formData.dateType === "birthday" ? formData.date : null,
-        adoption_date: formData.dateType === "adoption" ? formData.date : null,
+        birthday: formData.birthday || null,
+        adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
       };
 
@@ -343,6 +349,14 @@ export default function OnboardingScreen() {
             );
             console.log("[Onboarding] Post ID:", postData.post?.id);
 
+            // E6: the moment closed today's Moment segment — now START THE RING: seed the day-1
+            // streak + the labelled "PawPi Welcome" first paw. Honest, idempotent, never blocks.
+            const welcomeResult = await postOnboardingWelcome({
+              postId: postData.post?.id,
+              petId: pet.id,
+            });
+            if (welcomeResult) setWelcome(welcomeResult);
+
             // Refetch query caches and wait for completion to ensure Feed sees the new post
             console.log("[Onboarding] Refetching feed query caches...");
             await queryClient.refetchQueries({ queryKey: ["posts"] });
@@ -444,6 +458,7 @@ export default function OnboardingScreen() {
         return (
           <StepSuccess
             formData={formData}
+            welcome={welcome}
             goToRoutines={goToRoutines}
             goToFeed={goToFeed}
           />
@@ -1237,15 +1252,19 @@ const StepWeight = ({ formData, setFormData }) => {
   );
 };
 
-// Step 7: Birthday/Adoption (Optional)
+// Step 7: Birthday + Gotcha/Adoption day (both optional).
+// E6: we capture BOTH dates inline (not one-or-the-other) so E3 milestone moments can celebrate a
+// birthday AND a gotcha day later. Both are optional — nothing is required to finish onboarding.
 const StepBirthday = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
-  const dateTypes = [
-    { value: "birthday", label: "Birthday", emoji: "🎂" },
-    { value: "adoption", label: "Adoption Day", emoji: "💝" },
-    { value: "unknown", label: "I'm not sure", emoji: "❓" },
-  ];
+  const dateFieldStyle = (filled) => ({
+    backgroundColor: MATERIALS.surfaceSunken,
+    borderRadius: RADIUS.control,
+    padding: SPACING.lg,
+    borderWidth: 2,
+    borderColor: filled ? COLORS.coral : MATERIALS.hairline,
+  });
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.huge }}>
@@ -1258,7 +1277,7 @@ const StepBirthday = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
         ]}
       >
-        When is {dogName}'s birthday or adoption day?
+        When are {dogName}'s special days?
       </Text>
       <Text
         style={[
@@ -1271,46 +1290,10 @@ const StepBirthday = ({ formData, setFormData }) => {
           },
         ]}
       >
-        We'll remind you to celebrate!
+        We'll help you celebrate — add either or both, or skip for now.
       </Text>
 
-      {/* Date type selection */}
-      <View style={{ gap: SPACING.md, marginBottom: SPACING.xxl }}>
-        {dateTypes.map((type) => (
-          <PressableScale
-            key={type.value}
-            onPress={() =>
-              setFormData((prev) => ({ ...prev, dateType: type.value }))
-            }
-            style={{
-              backgroundColor:
-                formData.dateType === type.value ? COLORS.coral : MATERIALS.surfaceSunken,
-              paddingVertical: SPACING.lg,
-              paddingHorizontal: SPACING.lg,
-              borderRadius: RADIUS.control,
-              borderWidth: 2,
-              borderColor:
-                formData.dateType === type.value ? COLORS.coral : MATERIALS.hairline,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: SPACING.md,
-            }}
-          >
-            <Text style={{ fontSize: 28 }}>{type.emoji}</Text>
-            <Text
-              style={[
-                TYPE.headline,
-                { color: formData.dateType === type.value ? "#FFF" : COLORS.warmBrown },
-              ]}
-            >
-              {type.label}
-            </Text>
-          </PressableScale>
-        ))}
-      </View>
-
-      {/* Date input */}
-      {formData.dateType && formData.dateType !== "unknown" && (
+      <View style={{ gap: SPACING.lg }}>
         <View>
           <Text
             style={[
@@ -1318,23 +1301,37 @@ const StepBirthday = ({ formData, setFormData }) => {
               { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
             ]}
           >
-            Date:
+            🎂 Birthday (optional)
           </Text>
           <DateField
-            value={formData.date}
-            onChange={(date) => setFormData((prev) => ({ ...prev, date }))}
+            value={formData.birthday}
+            placeholder="Add a birthday"
+            onChange={(birthday) => setFormData((prev) => ({ ...prev, birthday }))}
             maximumDate={new Date()}
-            fieldStyle={{
-              backgroundColor: MATERIALS.surfaceSunken,
-              borderRadius: RADIUS.control,
-              padding: SPACING.lg,
-              borderWidth: 2,
-              borderColor: formData.date ? COLORS.coral : MATERIALS.hairline,
-            }}
+            fieldStyle={dateFieldStyle(!!formData.birthday)}
             textStyle={[TYPE.title2, { fontWeight: "600" }]}
           />
         </View>
-      )}
+
+        <View>
+          <Text
+            style={[
+              TYPE.callout,
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+            ]}
+          >
+            💝 Gotcha day (optional)
+          </Text>
+          <DateField
+            value={formData.adoptionDate}
+            placeholder="Add an adoption / gotcha day"
+            onChange={(adoptionDate) => setFormData((prev) => ({ ...prev, adoptionDate }))}
+            maximumDate={new Date()}
+            fieldStyle={dateFieldStyle(!!formData.adoptionDate)}
+            textStyle={[TYPE.title2, { fontWeight: "600" }]}
+          />
+        </View>
+      </View>
     </View>
   );
 };
@@ -1514,13 +1511,14 @@ const StepReview = ({ formData, goToStep }) => {
           onEdit={() => goToStep(5)}
         />
         <ReviewRow
-          label="Birthday"
+          label="Special days"
           value={
-            formData.date && formData.dateType !== "unknown"
-              ? `${
-                  formData.dateType === "birthday" ? "🎂" : "💝"
-                } ${formatDisplayDate(formData.date)}`
-              : "Not specified"
+            [
+              formData.birthday ? `🎂 ${formatDisplayDate(formData.birthday)}` : null,
+              formData.adoptionDate ? `💝 ${formatDisplayDate(formData.adoptionDate)}` : null,
+            ]
+              .filter(Boolean)
+              .join("   ") || "Not specified"
           }
           onEdit={() => goToStep(6)}
         />
@@ -1585,10 +1583,14 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
   </View>
 );
 
-// Success Screen
-const StepSuccess = ({ formData, goToRoutines, goToFeed }) => {
+// Success Screen — E6: the first session ends with the Care Ring STARTED. If the first moment was
+// posted, we show the day-1 streak + the labelled "PawPi Welcome" paw; otherwise a gentle nudge to
+// take the first photo to close today's ring. Never shames.
+const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const dogName = formData.name || "Your dog";
+  const started = !!welcome?.streak;
 
   return (
     <View
@@ -1618,6 +1620,49 @@ const StepSuccess = ({ formData, goToRoutines, goToFeed }) => {
         >
           {dogName} is ready!
         </Text>
+
+        {started ? (
+          <View
+            style={{
+              backgroundColor: "#FFE7D6",
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.lg,
+              paddingHorizontal: SPACING.xl,
+              alignItems: "center",
+              marginBottom: SPACING.lg,
+              alignSelf: "stretch",
+            }}
+          >
+            <Text style={[TYPE.title2, { fontWeight: "800", color: COLORS.terracotta }]}>
+              {t("onboarding.streakStarted", { name: dogName })}
+            </Text>
+            <Text
+              style={[
+                TYPE.callout,
+                { color: COLORS.mutedBrown, textAlign: "center", marginTop: 4 },
+              ]}
+            >
+              {t("onboarding.welcomePaw", { name: dogName })}
+            </Text>
+          </View>
+        ) : (
+          <Text
+            style={[
+              TYPE.title2,
+              {
+                fontWeight: "600",
+                color: COLORS.terracotta,
+                textAlign: "center",
+                lineHeight: 28,
+                paddingHorizontal: SPACING.xl,
+                marginBottom: SPACING.lg,
+              },
+            ]}
+          >
+            {t("onboarding.ringPrompt", { name: dogName })}
+          </Text>
+        )}
+
         <Text
           style={[
             TYPE.title2,
