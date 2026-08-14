@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 
 async function POST(request) {
   try {
@@ -20,7 +21,7 @@ async function POST(request) {
       );
     }
 
-    const ownerUserId = userProfiles[0].id;
+    const callerId = userProfiles[0].id;
 
     const body = await request.json();
     const {
@@ -40,16 +41,12 @@ async function POST(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const pets = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-
-    if (pets.length === 0) {
-      return Response.json(
-        { error: "Pet not found or access denied" },
-        { status: 403 },
-      );
+    // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to the pet's OWNER.
+    const access = await resolvePetLogOwner(callerId, petId);
+    if (access.error) {
+      return Response.json({ error: access.error }, { status: access.status });
     }
+    const ownerUserId = access.ownerUserId;
 
     const result = await sql`
       INSERT INTO health_general_checks (

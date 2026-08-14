@@ -18,7 +18,9 @@ import {
   X,
   ShieldCheck,
   Heart,
+  PawPrint,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 import {
@@ -28,6 +30,7 @@ import {
   useRespondGrant,
   useRevokeGrant,
 } from "@/hooks/usePetSharing";
+import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
 
 const C = {
   cream: "#FFF7EF",
@@ -50,8 +53,12 @@ const ROLE_LABEL = {
 export default function PetSharingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
+
+  // FF2: the shared pet a family caregiver is logging a walk for ({ id, name } | null).
+  const [logWalkPet, setLogWalkPet] = useState(null);
 
   const [tab, setTab] = useState("manage"); // 'manage' | 'shared'
   const [role, setRole] = useState("family");
@@ -229,6 +236,30 @@ export default function PetSharingScreen() {
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                     from @{g.owner_username} · {ROLE_LABEL[g.role]} · {g.status}
                   </Text>
+                  {/* FF2: a FAMILY caregiver on an ACTIVE grant can log day-to-day care (a Viewer
+                      cannot — the server rejects a health write, and 0049 keeps it read-only). */}
+                  {g.status === "active" && g.role === "family" ? (
+                    <TouchableOpacity
+                      testID={`log-walk-${g.id}`}
+                      onPress={() => setLogWalkPet({ id: g.pet_id, name: g.pet_name })}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        alignSelf: "flex-start",
+                        marginTop: 8,
+                        backgroundColor: C.coral + "1A",
+                        borderRadius: 10,
+                        paddingVertical: 6,
+                        paddingHorizontal: 10,
+                      }}
+                    >
+                      <PawPrint size={14} color={C.coral} />
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: C.coral }}>
+                        {t("caregiverLog.logWalkCta")}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
                 {g.status === "pending" ? (
                   <View style={{ flexDirection: "row", gap: 8 }}>
@@ -255,6 +286,14 @@ export default function PetSharingScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* FF2: family caregiver quick "Log a walk" for a shared pet. */}
+      <CaregiverLogWalkModal
+        visible={!!logWalkPet}
+        petId={logWalkPet?.id}
+        petName={logWalkPet?.name}
+        onClose={() => setLogWalkPet(null)}
+      />
     </View>
   );
 }

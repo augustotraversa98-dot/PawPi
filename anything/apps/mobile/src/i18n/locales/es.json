@@ -1072,5 +1072,17 @@
     "seniorTip": "Un paseo suave y cortito y un control de bienestar cierran el aro de {{name}} 🐾",
     "overrideLabel": "ETAPA DE VIDA",
     "detectedNote": "Detectado automáticamente: {{stage}}"
+  },
+  "caregiverLog": {
+    "logWalkTitle": "Registrar un paseo",
+    "logWalkFor": "Para {{name}}",
+    "duration": "Duración (minutos)",
+    "durationPlaceholder": "ej. 20",
+    "notes": "Notas (opcional)",
+    "notesPlaceholder": "¿Cómo estuvo el paseo?",
+    "logWalkCta": "Registrar un paseo",
+    "save": "Guardar paseo",
+    "saved": "Paseo registrado 🐾",
+    "saveError": "No se pudo registrar el paseo. Intentá de nuevo."
   }
 }
