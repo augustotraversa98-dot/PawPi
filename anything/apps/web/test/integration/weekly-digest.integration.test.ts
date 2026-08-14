@@ -16,6 +16,12 @@ import { makeTestSql, resetDb, seedOwnerWithPet, seedFriendship } from "./db";
 const authState = vi.hoisted(() => ({ session: null as any }));
 vi.mock("@/auth", () => ({ auth: async () => authState.session }));
 
+// FF1: capture outbound emails so we can assert the digest renders in the recipient's locale.
+const emailCalls = vi.hoisted(() => [] as any[]);
+vi.mock("@/app/api/utils/email", () => ({
+  sendEmail: async (m: any) => { emailCalls.push(m); },
+}));
+
 const OWNER = { authUserId: 1, profileId: 1, username: "owner", petId: 1, petName: "Rex" };
 const OTHER = { authUserId: 2, profileId: 2, username: "other", petId: 2, petName: "Bella" };
 const DAY = "2026-08-16"; // a Sunday; its owner-tz week is Mon 2026-08-10 .. Sun 2026-08-16
@@ -205,5 +211,32 @@ describe("E11 — weekly digest sender (cron)", () => {
     expect((await digestNotifs(OWNER.profileId)).length).toBe(0);
     const [state] = await raw`select * from weekly_digest_state where pet_id = ${OWNER.petId}`;
     expect(state).toBeTruthy(); // week was claimed so it won't be reconsidered
+  });
+
+  // FF1 — the email renders in the recipient's stored locale (es-AR fallback when null).
+  it("renders the digest email in the recipient's preferred_locale", async () => {
+    await raw`insert into weekly_digest_prefs (owner_user_id, push_enabled, email_enabled)
+              values (${OWNER.profileId}, true, true)`;
+
+    // English user → English subject.
+    emailCalls.length = 0;
+    await raw`update user_profiles set preferred_locale = 'en' where id = ${OWNER.profileId}`;
+    await runAt(SUNDAY_EVENING);
+    expect(emailCalls.length).toBe(1);
+    expect(emailCalls[0].to).toBe("owner@example.com");
+    expect(emailCalls[0].subject).toMatch(/week/i);
+    expect(emailCalls[0].subject).not.toMatch(/semana/i);
+
+    // A different pet/owner with NULL locale → Spanish (es-AR) fallback, same run mechanics.
+    emailCalls.length = 0;
+    await raw`insert into weekly_digest_prefs (owner_user_id, push_enabled, email_enabled)
+              values (${OTHER.profileId}, true, true)`;
+    await raw`update user_profiles set preferred_locale = null where id = ${OTHER.profileId}`;
+    authState.session = sessionFor(OTHER.authUserId);
+    // Next Sunday so OTHER's week hasn't been claimed yet.
+    await runAt("2026-08-23 21:30:00+00");
+    const otherEmail = emailCalls.find((m) => m.to === "other@example.com");
+    expect(otherEmail).toBeTruthy();
+    expect(otherEmail.subject).toMatch(/semana/i);
   });
 });
