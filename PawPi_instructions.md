@@ -682,6 +682,25 @@ time and should be restarted at the right moments. Help me manage that.
    branch's individual commits. Remind me it's a per-PR choice with identical final
    code — it only affects main's history.
 
+5. Persist every feature decision into the SYSTEM, not just the chat. (RULE — Tats, 2026-08-13.)
+   Whenever we DECIDE to develop a function/feature here in Cowork — its purpose, UX,
+   data model, guardrails, build order — that design must be written into the project
+   files before we consider it "done deciding". A decision that lives only in a Cowork
+   chat is lost when the chat is restarted; only files survive.
+   How to apply it:
+   - Give the feature (or feature set) its own living spec doc under `docs/`
+     (e.g. `docs/pet-owner-engagement.md`). Include: purpose, how it maps to existing
+     app features, data/DB rules (pet_id/owner_user_id scoping, integer IDs, soft
+     delete, RLS, migration-or-not), guardrails, acceptance criteria, build order, and
+     the copy-paste Claude Code prompt(s).
+   - Keep it a LIVING doc: when a decision changes, update the doc — don't just say it
+     in chat.
+   - Leave live build status to Code (`docs/roadmap.md`, `docs/phase2-tickets/`,
+     `docs/test-backlog.md`); the spec doc is the DESIGN of record, the roadmap is the
+     STATUS of record. The first Code prompt for a new spec should tell Code to add the
+     items to the roadmap build queue.
+   - This applies to every feature from now on, not just this one.
+
 ## Migration roadmap (moving PawPi off Anything onto Supabase)
 
 The app was exported from "Anything" (create.xyz + Neon Postgres). We are no longer
@@ -725,7 +744,43 @@ not a hand-maintained log here:
 
 ### Snapshot (2026-07-29) — CURRENT
 
-> **Latest (2026-08-12c):** **live walk map + walk history in the vet record** (mobile + web, **no migration**).
+> **Latest (2026-08-14): ✅ Pet Owner engagement WAVE 2 (E11–E15) — Household & Retention — BUILT & MERGED.**
+> The second retention wave (`docs/pet-owner-engagement.md` "WAVE 2") shipped in one autonomous Claude Code
+> run — 7 PRs, all CI-green + merged + Railway-deployed: **E11 weekly digest "Rex's Week"** (real weekly
+> stats + a `CRON_SECRET` Sunday-evening sender via push + optional email + server-side channel prefs +
+> share; honest quiet/empty states, no fake numbers), **E12 comeback loop** (server-side "lapsed" ≥7d → a
+> warm win-back on a REAL hook — milestone / a friend's real moment / the dog's own memory, never guilt —
+> + welcome-back screen + one-tap streak repair with a grace window), **E13 shared custody (3 PRs)** — the
+> riskiest — (shared ring/streak, a multi-caregiver day-card carousel, a private household leaderboard;
+> **reused the existing 0049 `pet_caregivers`** rather than a new table, extending its owner-OR-caregiver
+> RLS to the engagement layer; role map owner=Owner/Admin · 0049 family=Caregiver · 0049 caregiver=Viewer),
+> **E14 multi-pet household** (household home + pet switcher on the existing persisted store + an opt-in
+> family streak that advances only when every dog's ring closed, forgiveness-aware), and **E15 life-stage
+> ring goals** (puppy/adult/senior copy adapts, size-scaled senior threshold, owner override; the ring
+> keeps its three segments; behavioral, never diagnostic). PRs #391–#397. **Migrations 0100–0106 are
+> additive + degrade cleanly and AWAIT HAND-APPLY to Supabase** (each has a `verify_010x.sql`); a solo
+> single-dog owner is a strict no-op everywhere. **New baselines: mobile jest 1847 · web vitest 1970 · web
+> integration 989.** Deferred (logged in `docs/night-run-log.md`): caregiver health-log route gates beyond
+> the daily moment, day-card main-feed wire-in, server-side per-user locale for digest/win-back email.
+>
+> **Latest (2026-08-14): ✅ Pet Owner engagement wave (E0–E10) SHIPPED & LIVE.** The full retention
+> system designed in Cowork (`docs/pet-owner-engagement.md`) is built, merged, and deployed via two
+> autonomous Claude Code runs. Spine = the **Care Ring** (Walk · Moment · Care, derived over existing
+> logs) with a **streak + forgiveness** (auto paw-freeze, one-tap repair, rest/vacation mode); plus
+> **milestone moments** (birthday/gotcha/adoption frame + feed event + share CTA), a branded **share-card
+> deck** (story-sized, real-stats-only), a **notification rewrite** (wanted triggers only; guilt/chore copy
+> removed; at-risk streak-save; per-category toggles + personalized send time), **onboarding D1 polish**
+> (first session ends with the ring started + a labelled "PawPi Welcome" first paw + birthday/gotcha
+> captured), **pack/shared streaks** (opt-in, both-close-to-advance, friendly boop), **care-effort
+> leaderboards** (XP from paw *given*/walk/ring/care not likes; density-gated with friends fallback; coarse
+> opt-in geo, never home location), an **always-positive comparative health insight** (personal-history
+> first; cohort only above median; no bare-negative can render), and **health reinforcement** (one-tap
+> "all good", Vet-Summary readiness, monthly care recap filling the E4 stub). E5–E10 = PRs #384–#389 +
+> docs #390. **Migrations 0096–0099 APPLIED + VERIFIED on Supabase** (E0–E4 used 0094–0095). Baselines:
+> **mobile jest 1809 · web vitest 1924 · web integration 932.** Resolved config knobs (leaderboard/E9
+> min cohort = 5; neighborhood = coarse area label) live in the spec doc; tune with real density.
+>
+> **Prev (2026-08-12c):** **live walk map + walk history in the vet record** (mobile + web, **no migration**).
 > Finishes the ~90%-built walker GPS feature (2.7) by closing four gaps: (1) a business **entry point** — a
 > **"Walks"** quick action on the business **Today** hub (walker-capable businesses) + a **"Start walk"** affordance
 > on walker booking rows, both opening the walker workspace; (2) the owner's **live watch** now draws the route on a

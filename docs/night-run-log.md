@@ -1,5 +1,36 @@
 # Night-run log — 2026-07-29
 
+---
+
+## ✅ WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — COMPLETE 2026-08-14
+
+Autonomous run, all 7 PRs **MERGED CI-green** (merge commit + branch deleted each), Railway deploys
+healthy. Every migration is **additive + degrades cleanly** (42P01/42883/42703/RLS-denial → feature
+absent, never a 500), so production stayed healthy while **migrations 0100–0106 AWAIT HAND-APPLY to
+Supabase** (this environment can't apply DDL). Each unit's `verify_01xx.sql` is ready.
+
+| Unit | PR(s) | Migration(s) | Gist |
+|---|---|---|---|
+| E11 Weekly digest "Rex's Week" | [#391](https://github.com/augustotraversa98-dot/PawPi/pull/391) | 0100 | real weekly stats + CRON Sunday-evening sender (push+email) + prefs + share |
+| E12 Comeback loop | [#392](https://github.com/augustotraversa98-dot/PawPi/pull/392) | 0101 | server-side "lapsed" (7d) → warm win-back on a REAL hook + welcome-back + repair |
+| E13 Shared custody (3 PRs) | [#393](https://github.com/augustotraversa98-dot/PawPi/pull/393) · [#394](https://github.com/augustotraversa98-dot/PawPi/pull/394) · [#395](https://github.com/augustotraversa98-dot/PawPi/pull/395) | 0102·0103·0104 | shared ring/streak + multi-caregiver day-card + household leaderboard (**reused 0049 pet_caregivers**) |
+| E14 Multi-pet household | [#396](https://github.com/augustotraversa98-dot/PawPi/pull/396) | 0105 | household home + pet switcher (existing store) + opt-in family streak |
+| E15 Life-stage ring goals | [#397](https://github.com/augustotraversa98-dot/PawPi/pull/397) | 0106 | puppy/adult/senior copy adapt (3 segments unchanged) + owner override |
+
+**Final gates:** web vitest **1970** (from 1924), web integration **989** (from 932), mobile jest **1847**
+(from 1809). **All decisions taken = the driver's recommended defaults** (logged per unit below). **Key
+reconciliation:** E13 did NOT create a new `pet_caregivers` table — ticket 2.47 / migration 0049 already
+ships the caregiver model + owner-OR-caregiver RLS; E13 extended it to the engagement layer (role map:
+owner=Owner/Admin, 0049 family=Caregiver, 0049 caregiver=Viewer). **Deferred (logged):** caregiver
+health-log route gates beyond the daily moment (0049 RLS already permits; route-gate follow-up); day-card
+main-FEED grouping wire-in (component + endpoint ready); server-side per-user locale for digest/win-back
+email (defaults to es-AR fallback; both langs present). **HAND-APPLY OWED:** migrations 0100–0106 +
+run each `supabase/verify_010x.sql`.
+
+Per-unit detail below.
+
+---
+
 Fast, timestamped, one-line-per-merge scan for Augusto. Full detail lives in each PR and in
 `docs/roadmap.md` / `PawPi_instructions.md`'s status block (updated in step). Ticket briefs:
 `docs/phase2-tickets/N1-N10`; run preamble: `docs/night-run-2026-07-29.md`.
@@ -102,6 +133,21 @@ Design of record: `docs/pet-owner-engagement.md` "WAVE 2" section. Each unit its
     the household UI + family streak on top rather than re-plumbing pet selection. Single-dog account unchanged.
   - **Gates:** web vitest **1958** (no new web unit — integration-tested), integration 976→**983** (+7),
     mobile jest green (+E14 suites).
+
+- **2026-08-14 — E15 life-stage ring goals** — [#397](https://github.com/augustotraversa98-dot/PawPi/pull/397)
+  MERGED (merge commit, branch deleted), CI-green. **Completes Wave 2.**
+  - **What shipped:** `GET/POST /api/pets/[id]/life-stage` (owner or caregiver reads detected + override +
+    effective stage + ring goals; OWNER-only sets/clears the override). Pure `detectLifeStage` (age from
+    birthday/age; SIZE-scaled senior threshold via weight — larger dogs age faster; conservative 'adult'
+    when age unknown, with an explicit null-vs-0 guard) + `effectiveLifeStage` + `ringGoalsForStage`
+    (always the same 3 segments). Mobile `LifeStageCard` (per-stage positive tip + owner override picker,
+    read-only for caregivers) + `useLifeStage`. EN+ES.
+  - **Migration 0106** (`pets.life_stage_override text` CHECK null|puppy|adult|senior; NULL = auto-detect)
+    + `verify_0106.sql`. **⚠️ awaits hand-apply**; degrades clean (missing column 42703 → auto-detect).
+  - **Decision (recommended default):** puppy < 1yr; senior at a size-scaled threshold (small 11 / medium
+    8 / large 7 / giant 6 yr; unknown size → 9); owner override always wins; the ring keeps its THREE
+    segments — life stage only tunes copy/suggested actions, never diagnostic.
+  - **Gates:** web vitest 1958→**1970** (+12), integration 983→**989** (+6), mobile jest 1816→**1847**.
 
 - **2026-07-29 00:19** — Prereq: password reset flow (migration 0069) merged — [#261](https://github.com/augustotraversa98-dot/PawPi/pull/261) (predates tonight's queue, landed first to bring `main` current).
 - **2026-07-29 00:19** — Prereq: support-contact domain fix (augusto@pawpi.info) merged — [#262](https://github.com/augustotraversa98-dot/PawPi/pull/262).

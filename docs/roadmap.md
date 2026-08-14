@@ -112,7 +112,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   `CareRingCard`. EN+ES; behavioral, not diagnostic. Proven: health-reinforcement integration (+4),
   hooks/shareLinks/no-shame jest (+4). **Pet Owner engagement wave E5–E10 COMPLETE.**
 
-### 🐾 WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — ☐ QUEUED (designed 2026-08-14)
+### 🐾 WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — ✅ COMPLETE (built 2026-08-14, migrations 0100–0106 await hand-apply)
 
 Design of record: [`docs/pet-owner-engagement.md`](pet-owner-engagement.md) → "WAVE 2" section (full unit
 specs + paste-ready grey-box Claude Code prompts). Chosen with Tats. Run each unit as its own CC session, in
@@ -152,8 +152,11 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   forgiveness-aware) wired into care-ring close — **awaits hand-apply**; degrades clean; single-dog
   account a strict no-op. Family-streak metric decided: "every dog's ring closed". EN+ES. Gates: vitest
   1958, integration 983.
-- ☐ **E15 — Life-stage ring goals.** Ring targets/copy adapt to puppy/adult/senior (3 segments unchanged),
-  owner override. The deferred E-series item.
+- ✅ **E15 — Life-stage ring goals** — [#397](https://github.com/augustotraversa98-dot/PawPi/pull/397)
+  MERGED 2026-08-14. Ring copy/suggested-actions adapt to puppy/adult/senior (3 segments UNCHANGED),
+  size-scaled senior threshold, owner override. **Migration 0106** (`pets.life_stage_override`; NULL =
+  auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
+  1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

@@ -878,15 +878,40 @@ CI-green + merge in ONE go. START A NEW CLAUDE CODE CHAT.
 
 ---
 
+## Wave 2 — AS BUILT (2026-08-14, autonomous run — 7 PRs #391–#397, migrations 0100–0106 await hand-apply)
+
+The wave built exactly to this spec with the driver's recommended defaults, **except one structural
+reconciliation worth recording** (persist-to-system rule):
+
+- **E13 reused the EXISTING `pet_caregivers` (ticket 2.47 / migration 0049), it did NOT create a new
+  table.** 0049 already ships the person↔person caregiver model (roles `family` | `caregiver`, status
+  pending/active/revoked), invite/accept/revoke (`/api/pet-caregivers`), the mobile UI
+  (`pet-sharing.jsx`), and the owner-OR-caregiver RLS generalization across pets / routines /
+  pet_medical_profiles / all health logs (DEFINER gates `app_owns_pet` / `app_user_has_pet_access` /
+  `app_user_has_pet_family`). E13 **extended** that to the E0–E2 engagement layer (shared ring/streak,
+  day-card, leaderboard). **Role mapping:** pet owner = "Owner/Admin"; 0049 `family` = E13 "Caregiver"
+  (full day-to-day); 0049 `caregiver` = E13 "Viewer". The tiered `owner/caregiver/viewer` names are a
+  presentation layer over 0049's two grantee roles + the pet owner.
+- **Attribution needs no `logged_by` column** — the daily moment already carries its author
+  (`posts.user_id`) and every health log stores the LOGGER as `owner_user_id`; the SHARED ring counts by
+  `pet_id` (0102) while the leaderboard groups by logger.
+- **Family-streak metric — DECIDED: "every active dog's ring closed"** (not the softer "all dogs cared
+  for"); forgiveness-aware; opt-in; per-owner over OWNED pets. Co-cared pets belong to their own owner's
+  family streak.
+- **Deferred (logged in `docs/night-run-log.md`):** caregiver health-log route gates beyond the daily
+  moment (0049 RLS already permits the writes — a route-gate follow-up); day-card MAIN-FEED grouping
+  wire-in (the `DayCard` component + `/api/pets/[id]/day-card` endpoint are ready); server-side per-user
+  locale for the digest / win-back EMAIL (defaults to the app's es-AR fallback — both languages present).
+
 ## Wave 2 open decisions (tracked, not blocking)
 
 - **Ownership transfer / multiple admins** — v1 ships a single Owner/Admin per pet; transfer + co-admins
   deferred.
 - **Per-slide reactions on the day card** — v1 keeps paws/barks at the day-card level; per-slide reactions
   deferred.
-- **Family-streak metric** — "every dog's ring closed" vs a softer "all dogs cared for"; pick during E14
-  with a real multi-pet account and record the choice here.
-- **Sensitive-medical-field editing by caregivers** — shipped config-gated; default to owner-only edit of
-  insurance/microchip; revisit with real family usage.
+- **Family-streak metric** — ✅ DECIDED (E14): "every active dog's ring closed" (forgiveness-aware, opt-in).
+- **Sensitive-medical-field editing by caregivers** — inherits 0049's model (a 'family' caregiver can edit
+  the pet profile / medical via `pets_family_update`); E13's sensitive-field owner-only carve-out (insurance/
+  microchip) is not separately gated in v1 — revisit with real family usage.
 
 _When any of these is decided, update THIS doc (persist-to-system rule, PawPi_instructions.md Rule 5)._
