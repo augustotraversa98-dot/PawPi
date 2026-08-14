@@ -15,7 +15,16 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush, replace: mockReplace }) }));
+
+// Account section deps (BX1): the signed-in identity + the dual-account (also a pet owner) gate.
+let mockPets = [];
+jest.mock("@/hooks/usePetProfile", () => ({ usePetProfile: () => ({ data: mockPets }) }));
+const mockSetAuth = jest.fn();
+jest.mock("@/utils/auth/useAuth", () => ({
+  useAuth: () => ({ auth: { user: { name: "Ada Vet", email: "ada@city-vets.com" } }, setAuth: mockSetAuth }),
+}));
 
 const mockActive = {
   activeProvider: { id: 7, slug: "city-vets", name: "City Vets", logo_url: null, bio: "We love pets" },
@@ -42,7 +51,10 @@ import BusinessProfile from "./profile";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockReplace.mockReset();
   mockStash.mockReset();
+  mockSetAuth.mockReset();
+  mockPets = [];
   mockProfile.data = undefined;
   mockProfile.isError = false;
 });
@@ -91,4 +103,44 @@ test("tapping a moment stashes the post and opens the provider-post detail", () 
     pathname: "/service/provider-post",
     params: { providerId: "7", postId: "11" },
   });
+});
+
+// --- BX1: account section (identity + settings + log out) ---
+
+test("shows the signed-in account identity + the active business name", () => {
+  const { getByTestId, getAllByText } = render(<BusinessProfile />);
+  expect(getByTestId("business-account-name").props.children).toBe("Ada Vet");
+  expect(getByTestId("business-account-email").props.children).toBe("ada@city-vets.com");
+  // The active business name appears in the header AND the identity card.
+  expect(getAllByText("City Vets").length).toBeGreaterThanOrEqual(1);
+});
+
+test("Settings row deep-links to the shared app settings screen", () => {
+  const { getByTestId } = render(<BusinessProfile />);
+  fireEvent.press(getByTestId("business-account-settings"));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/settings");
+});
+
+test("Log out confirms, then clears the session and returns to welcome", () => {
+  const { Alert } = require("react-native");
+  const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  const { getByTestId } = render(<BusinessProfile />);
+  fireEvent.press(getByTestId("business-account-logout"));
+  // A confirm dialog is shown; drive its destructive "Log out" button.
+  expect(spy).toHaveBeenCalledTimes(1);
+  const buttons = spy.mock.calls[0][2];
+  const logoutBtn = buttons.find((b) => b.style === "destructive");
+  return Promise.resolve(logoutBtn.onPress()).then(() => {
+    expect(mockSetAuth).toHaveBeenCalledWith(null);
+    expect(mockReplace).toHaveBeenCalledWith("/welcome");
+    spy.mockRestore();
+  });
+});
+
+test("'Switch to Pet app' shows only when the account also owns pets", () => {
+  const { queryByTestId, rerender } = render(<BusinessProfile />);
+  expect(queryByTestId("business-account-switch-pet")).toBeNull();
+  mockPets = [{ id: 1, name: "Rex" }];
+  rerender(<BusinessProfile />);
+  expect(queryByTestId("business-account-switch-pet")).toBeTruthy();
 });

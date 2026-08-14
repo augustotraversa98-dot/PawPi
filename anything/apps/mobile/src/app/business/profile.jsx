@@ -1,9 +1,17 @@
 import React, { useCallback } from "react";
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
-import { ExternalLink, MessageCircle, Globe } from "lucide-react-native";
+import {
+  ExternalLink,
+  MessageCircle,
+  Globe,
+  Settings as SettingsIcon,
+  PawPrint,
+  LogOut,
+  ChevronRight,
+} from "lucide-react-native";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import BusinessHeader from "@/components/Business/BusinessHeader";
@@ -11,6 +19,8 @@ import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessSta
 import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useActiveProvider } from "@/hooks/useActiveProvider";
 import { useProviderProfile } from "@/hooks/useProviders";
+import { usePetProfile } from "@/hooks/usePetProfile";
+import { useAuth } from "@/utils/auth/useAuth";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
 
 // Business mode v2 → Profile tab. The business's PUBLIC storefront/profile as followers see it,
@@ -26,10 +36,53 @@ export default function BusinessProfile() {
   const slug = activeProvider?.slug;
   const providerId = activeProvider?.id;
 
+  const { auth, setAuth } = useAuth();
+  const accountName = auth?.user?.name;
+  const accountEmail = auth?.user?.email;
+
+  // Dual account: an account can be BOTH provider staff AND a pet owner. If the
+  // signed-in account also owns pets, offer a way back to the Pet app. A pure
+  // staff account has no pets → the row never renders.
+  const { data: pets } = usePetProfile();
+  const isAlsoPetOwner = (pets?.length ?? 0) > 0;
+
   const { data, isLoading, isError, refetch } = useProviderProfile(slug);
   const provider = data?.provider ?? activeProvider;
   const stats = data?.stats;
   const posts = data?.posts ?? [];
+
+  const openSettings = useCallback(() => {
+    router.push("/(tabs)/more/settings");
+  }, [router]);
+
+  const switchToPetApp = useCallback(() => {
+    router.replace("/(tabs)");
+  }, [router]);
+
+  // Log out — mirrors the pet-owner OwnerMenu logout exactly: clear local
+  // storage, drop the auth session, and return to the auth/welcome screen.
+  const doLogout = useCallback(async () => {
+    try {
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      await AsyncStorage.clear();
+    } catch {
+      // ignore — still clear the session below
+    }
+    if (setAuth) setAuth(null);
+    router.replace("/welcome");
+  }, [setAuth, router]);
+
+  const confirmLogout = useCallback(() => {
+    Alert.alert(
+      t("business.profile.logOutConfirmTitle"),
+      t("business.profile.logOutConfirmBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("business.profile.logOut"), style: "destructive", onPress: doLogout },
+      ],
+    );
+  }, [t, doLogout]);
 
   // Map provider posts → the shared moments grid shape (image OR video poster; comment badge).
   const moments = posts.map((post) => {
@@ -83,38 +136,41 @@ export default function BusinessProfile() {
         subtitle={t("business.profile.subtitle")}
       />
 
-      {isLoading ? (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator color={COLORS.coral} />
-        </View>
-      ) : isError ? (
-        <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
-          <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}>
-            {t("business.profile.loadError")}
-          </Text>
-          <PressableScale
-            onPress={() => refetch()}
-            accessibilityRole="button"
-            testID="business-profile-retry"
-            style={{
-              backgroundColor: COLORS.coral,
-              borderRadius: RADIUS.chip,
-              paddingHorizontal: SPACING.xl,
-              paddingVertical: SPACING.sm,
-            }}
-          >
-            <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "700" }]}>
-              {t("business.profile.retry")}
+      {/* Single scroll surface so the account section (identity + settings + log out)
+          is ALWAYS reachable, even while the storefront is loading or failed to load. */}
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
+        {isLoading ? (
+          <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
+            <ActivityIndicator color={COLORS.coral} />
+          </View>
+        ) : isError ? (
+          <View style={{ alignItems: "center", paddingVertical: SPACING.huge }}>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}>
+              {t("business.profile.loadError")}
             </Text>
-          </PressableScale>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-          {/* The same stat strip the storefront shows (tapping-through handled by the storefront). */}
-          <BusinessStatRow providerId={providerId} stats={stats} />
+            <PressableScale
+              onPress={() => refetch()}
+              accessibilityRole="button"
+              testID="business-profile-retry"
+              style={{
+                backgroundColor: COLORS.coral,
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.xl,
+                paddingVertical: SPACING.sm,
+              }}
+            >
+              <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "700" }]}>
+                {t("business.profile.retry")}
+              </Text>
+            </PressableScale>
+          </View>
+        ) : (
+          <>
+            {/* The same stat strip the storefront shows (tapping-through handled by the storefront). */}
+            <BusinessStatRow providerId={providerId} stats={stats} />
 
-          <View style={{ padding: SPACING.xl }}>
-            {provider?.bio ? (
+            <View style={{ padding: SPACING.xl }}>
+              {provider?.bio ? (
               <Text style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}>
                 {provider.bio}
               </Text>
@@ -195,8 +251,118 @@ export default function BusinessProfile() {
               </View>
             </View>
           </View>
-        </ScrollView>
-      )}
+          </>
+        )}
+
+        {/* Account section — ALWAYS visible (identity + settings + log out). This is the
+            business-mode equivalent of the pet-owner "More" menu account block. */}
+        <View style={{ paddingHorizontal: SPACING.xl, marginTop: SPACING.xl }}>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontWeight: "800", letterSpacing: 0.8, marginBottom: SPACING.sm }]}>
+            {t("business.profile.account").toUpperCase()}
+          </Text>
+
+          {/* Identity card: who you're signed in as + the active business. */}
+          <View
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: RADIUS.card,
+              padding: SPACING.lg,
+              borderWidth: 1,
+              borderColor: COLORS.peach,
+              marginBottom: SPACING.md,
+            }}
+          >
+            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: 2 }]}>
+              {t("business.profile.signedInAs")}
+            </Text>
+            {accountName ? (
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown }]} testID="business-account-name">
+                {accountName}
+              </Text>
+            ) : null}
+            {accountEmail ? (
+              <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]} testID="business-account-email">
+                {accountEmail}
+              </Text>
+            ) : null}
+            {provider?.name ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm }}>
+                <Globe size={14} color={COLORS.sageDark} />
+                <Text style={[TYPE.footnote, { color: COLORS.warmBrown, fontWeight: "700" }]}>
+                  {provider.name}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Settings — the same app settings screen the pet app uses (language, notifications, help). */}
+          <PressableScale
+            onPress={openSettings}
+            accessibilityRole="button"
+            testID="business-account-settings"
+            style={rowStyle}
+          >
+            <SettingsIcon size={20} color={COLORS.mutedBrown} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}>
+              {t("business.profile.settings")}
+            </Text>
+            <ChevronRight size={18} color={COLORS.peach} />
+          </PressableScale>
+
+          {/* Switch to the Pet app — only for accounts that are ALSO a pet owner. */}
+          {isAlsoPetOwner ? (
+            <PressableScale
+              onPress={switchToPetApp}
+              accessibilityRole="button"
+              testID="business-account-switch-pet"
+              style={rowStyle}
+            >
+              <PawPrint size={20} color={COLORS.coral} />
+              <Text style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}>
+                {t("business.profile.switchToPet")}
+              </Text>
+              <ChevronRight size={18} color={COLORS.peach} />
+            </PressableScale>
+          ) : null}
+
+          {/* Log out — clears the session and returns to auth. */}
+          <PressableScale
+            onPress={confirmLogout}
+            accessibilityRole="button"
+            testID="business-account-logout"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: SPACING.sm,
+              paddingVertical: SPACING.md,
+              marginTop: SPACING.md,
+              backgroundColor: COLORS.card,
+              borderRadius: RADIUS.card,
+              borderWidth: 1.5,
+              borderColor: "#FFCDD2",
+            }}
+          >
+            <LogOut size={18} color="#E53935" />
+            <Text style={[TYPE.headline, { color: "#E53935" }]}>
+              {t("business.profile.logOut")}
+            </Text>
+          </PressableScale>
+        </View>
+      </ScrollView>
     </View>
   );
 }
+
+const rowStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: SPACING.md,
+  paddingVertical: SPACING.md,
+  paddingHorizontal: SPACING.lg,
+  backgroundColor: COLORS.card,
+  borderRadius: RADIUS.card,
+  borderWidth: 1,
+  borderColor: COLORS.peach,
+  marginBottom: SPACING.md,
+};

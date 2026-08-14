@@ -718,7 +718,14 @@
       "loadError": "No pudimos cargar tu perfil.",
       "retry": "Reintentar",
       "manageTitle": "Gestionar en la web",
-      "manageBody": "Edita tus servicios, productos, horarios y tienda en el panel web de PawPi."
+      "manageBody": "Edita tus servicios, productos, horarios y tienda en el panel web de PawPi.",
+      "account": "Cuenta",
+      "signedInAs": "Sesión iniciada como",
+      "settings": "Ajustes",
+      "switchToPet": "Ir a la app de mascotas",
+      "logOut": "Cerrar sesión",
+      "logOutConfirmTitle": "¿Cerrar sesión?",
+      "logOutConfirmBody": "Tendrás que iniciar sesión de nuevo para gestionar tu negocio."
     },
     "adoption": {
       "title": "Solicitudes",
