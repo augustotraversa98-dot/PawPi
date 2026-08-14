@@ -97,6 +97,14 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["household", "familyStreakTitle"],
     ["household", "familyStreakActive"],
     ["household", "familyStreakHint"],
+    ["lifeStage", "puppyTitle"],
+    ["lifeStage", "adultTitle"],
+    ["lifeStage", "seniorTitle"],
+    ["lifeStage", "puppyTip"],
+    ["lifeStage", "adultTip"],
+    ["lifeStage", "seniorTip"],
+    ["lifeStage", "overrideLabel"],
+    ["lifeStage", "detectedNote"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");
