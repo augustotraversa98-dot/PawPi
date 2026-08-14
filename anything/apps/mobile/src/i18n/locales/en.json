@@ -718,7 +718,14 @@
       "loadError": "Couldn't load your profile.",
       "retry": "Try again",
       "manageTitle": "Manage on the web",
-      "manageBody": "Edit your services, products, hours and storefront on the PawPi web dashboard."
+      "manageBody": "Edit your services, products, hours and storefront on the PawPi web dashboard.",
+      "account": "Account",
+      "signedInAs": "Signed in as",
+      "settings": "Settings",
+      "switchToPet": "Switch to Pet app",
+      "logOut": "Log out",
+      "logOutConfirmTitle": "Log out?",
+      "logOutConfirmBody": "You'll need to sign in again to manage your business."
     },
     "adoption": {
       "title": "Applications",
