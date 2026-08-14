@@ -33,6 +33,26 @@ Design of record: `docs/pet-owner-engagement.md` "WAVE 2" section. Each unit its
     es-AR fallback (both EN+ES live in the copy module); the PUSH body is JSON localized client-side.
   - **Gates:** web vitest 1924→**1942** (+18), integration 932→**948** (+16), mobile jest ~1809→**1816**.
 
+- **2026-08-14 — E12 comeback / re-engagement loop** — [#392](https://github.com/augustotraversa98-dot/PawPi/pull/392)
+  MERGED (merge commit, branch deleted), CI-green.
+  - **What shipped:** `GET/POST /api/pets/[id]/reengagement` (lapse status = no ring activity for N owner-tz
+    days, default 7, `?n` override; welcome-back payload = friends' REAL recent moments + next milestone +
+    pack/streak status + repair availability; POST opt_out / repair / seen). `POST
+    /api/engagement/reengagement/run` (`CRON_SECRET` win-back sender; DEFINER `app_reengagement_due`
+    enumerates lapsed+due pets with real hook signals; claim-then-send cap guard = at most one per cap
+    window; warm push `winback` + email preferred). Mobile "Welcome back" screen + `useReengagement` hooks +
+    `winback` notif mapper/deep-link. EN+ES; no-shame grep test.
+  - **Migration 0101** (reengagement_state own-row RLS; notifications_type_check += 'winback';
+    `app_reengagement_due(timestamptz,int,int,int)` DEFINER; `app_winback_repair_streak(int,int,int)` DEFINER
+    = E2 repair with a configurable grace window) + `verify_0101.sql`. **⚠️ awaits hand-apply**; routes
+    degrade clean (42P01/42883) so Railway stays healthy.
+  - **Decisions (recommended defaults taken):** lapsed threshold 7 days; win-back prefers email + at most one
+    gentle in-app push; real hooks only (milestone > friend > memory fallback, never fabricated); returning-user
+    repair grace window 14 days (kept free, v1). Cross-owner friend-activity + milestone signals computed in
+    the DEFINER enumerator (owner RLS hides other pets). Reused E11's `upcomingMilestone` (same [id] dir) in the
+    GET route; inlined the milestone math in the cron to avoid a cross-`[id]`-dir import.
+  - **Gates:** web vitest 1942→**1954** (+12), integration 948→**958** (+10), mobile jest green (+E12 suites).
+
 - **2026-07-29 00:19** — Prereq: password reset flow (migration 0069) merged — [#261](https://github.com/augustotraversa98-dot/PawPi/pull/261) (predates tonight's queue, landed first to bring `main` current).
 - **2026-07-29 00:19** — Prereq: support-contact domain fix (augusto@pawpi.info) merged — [#262](https://github.com/augustotraversa98-dot/PawPi/pull/262).
 - **2026-07-29 00:20** — Prereq: demo accounts renamed to pawpi.info — [#263](https://github.com/augustotraversa98-dot/PawPi/pull/263).

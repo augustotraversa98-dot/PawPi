@@ -125,8 +125,12 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   claim-then-send idempotency) + server-side channel prefs + E4 share. **Migration 0100** (weekly_digest_prefs
   / weekly_digest_state / app_weekly_digest_due DEFINER) — **awaits hand-apply**; degrades clean while absent.
   EN+ES. Gates: vitest 1942 (+18), integration 948 (+16), jest 1816.
-- ☐ **E12 — Comeback / re-engagement loop.** Server-side "lapsed" (default 7d) → warm win-back on a REAL
-  hook (friend activity / gotcha day / memory) + welcome-back screen + one-tap streak repair. No guilt.
+- ✅ **E12 — Comeback / re-engagement loop** — [#392](https://github.com/augustotraversa98-dot/PawPi/pull/392)
+  MERGED 2026-08-14. Server-side "lapsed" (no ring activity N owner-tz days, default 7) → warm win-back on a
+  REAL hook (upcoming gotcha/birthday · a friend's real moment · the pet's own memory), frequency-capped,
+  one-tap opt-out; `CRON_SECRET` sender + welcome-back screen + one-tap streak repair (grace window). No
+  guilt. **Migration 0101** (reengagement_state own-row RLS; app_reengagement_due + app_winback_repair_streak
+  DEFINER) — **awaits hand-apply**; degrades clean. EN+ES. Gates: vitest 1954, integration 958, jest green.
 - ☐ **E13 — Shared custody / caregivers (tiered).** Owner/Admin · Caregiver · Viewer via new `pet_caregivers`
   (RLS = owner OR accepted caregiver, no leakage). Multi-caregiver daily moment = per-pet-per-day, 1/caregiver,
   one bumping "day card" carousel with per-author slides. Shared per-pet ring/streak. Private household
