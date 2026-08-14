@@ -914,5 +914,10 @@
     "streakHint": "One friendly evening nudge when your ring is almost closed",
     "care": "Care reminders",
     "careHint": "Your own feeding, walk and health reminders"
+  },
+  "onboarding": {
+    "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",
+    "welcomePaw": "🐾 PawPi Welcome sent {{name}} a first paw",
+    "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾"
   }
 }

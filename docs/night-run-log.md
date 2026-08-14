@@ -112,3 +112,18 @@ day one; no fake data. One line per merge.
   toggles (Social / Milestones / Streak / Care). Warm friend-based dormant re-engagement copy ("Bella
   misses Rex", never "you haven't opened"). A no-guilt grep test scans EN+ES copy. Gates: mobile jest
   1752→1782 (+30); web vitest + integration unchanged (mobile-only).
+- **2026-08-14 (E6)** — Onboarding D1 polish merged — PR TBD. **Migration 0096** (welcome paw; PENDING
+  hand-apply + verify_0096.sql). The first session now ends with the Care Ring STARTED: after the first
+  daily moment is posted, `POST /api/onboarding/welcome` (a) seeds the day-1 streak (pet_streaks
+  current_count=1, ON CONFLICT DO NOTHING so a real streak is never overwritten) and (b) grants the ONE
+  allowed, honest, LABELLED seeded interaction — a first paw from the official "PawPi Welcome" account.
+  The account is created LAZILY by the `app_welcome_account` DEFINER helper (NOT a migration-time seed
+  INSERT — that would collide with the integration harness's explicit-id seeding in the first test),
+  and `app_welcome_paw` DEFINER inserts the paw (post_paws' write policy only lets the actor paw) + a
+  labelled `welcome` notification (notifications_type_check widened). Endpoint is idempotent and
+  degrades cleanly pre-migration (42883/42P01 -> welcomed:false, never a 500). Onboarding now captures
+  BOTH birthday AND gotcha/adoption day inline (both optional, two DateFields -- was either/or); the
+  success screen shows "Day 1 -- {dog}'s care ring has begun" + "PawPi Welcome sent {dog} a paw", or a
+  ring-start nudge ("Take {dog}'s first photo to close today's ring") when no moment was posted. No
+  medical/health fields forced at signup. EN+ES (new onboarding.* keys). Gates: mobile jest 1782->1786
+  (+4), web integration 910->915 (+5), web vitest 1920 (unchanged).
