@@ -50,12 +50,12 @@ Preamble: `docs/pet-owner-engagement.md`. Sequential retention build: E0 foundat
 E2 streak → E3 milestones → E4 share cards. Celebrate the dog, never shame the owner; forgiveness on
 day one; no fake data. One line per merge.
 
-- **2026-08-13 (E0)** — Data foundations merged — [#PENDING]. **Migration 0094** (`pet_care_days`,
+- **2026-08-13 (E0)** — Data foundations merged — [#378](https://github.com/augustotraversa98-dot/PawPi/pull/378). **Migration 0094** (`pet_care_days`,
   `pet_streaks`, `user_profiles.timezone`; ENABLE+FORCE own-row RLS, `pawpi_app`). The gotcha/adoption
   day reuses the existing `pets.adoption_date` (already synced Dog Profile ↔ Medical Profile — no new
   column). `verify_0094.sql`; RLS proven in `engagement-foundations-rls.integration.test.ts` (+9
-  integration). No mobile/web-app code change. **0094 PENDING hand-apply.**
-- **2026-08-13 (E1)** — Care Ring merged — [#PENDING]. **NO migration** (visualization over existing
+  integration). No mobile/web-app code change. **0094 ✅ APPLIED + verified on Supabase 2026-08-13.**
+- **2026-08-13 (E1)** — Care Ring merged — [#379](https://github.com/augustotraversa98-dot/PawPi/pull/379). **NO migration** (visualization over existing
   walk/moment/care logs; reuses E0's `pet_care_days`/`pet_streaks`). New owner-scoped route
   `GET/POST /api/pets/[id]/care-ring`: derives the three segments for the **owner-tz day**
   (`(ts AT TIME ZONE tz)::date`, tz = `COALESCE(user_profiles.timezone,'America/Buenos_Aires')`),
@@ -67,7 +67,7 @@ day one; no fake data. One line per merge.
   avatar; `useCareRing`/`useSetRestDay`/`useSetPause`; walk/moment/care log mutations invalidate
   `["care-ring", petId]` so a segment fills without reload. EN+ES. Gates: integration 872→893 (+21
   incl. E0), web vitest 1920 (unchanged), mobile jest 1721→1735 (+14 careRing util).
-- **2026-08-13 (E2)** — Streak + forgiveness merged — [#PENDING]. **Migration 0095** (`pet_streaks`
+- **2026-08-13 (E2)** — Streak + forgiveness merged — [#380](https://github.com/augustotraversa98-dot/PawPi/pull/380). **Migration 0095** (`pet_streaks`
   += `pre_reset_count`/`reset_at`/`last_award_count`; `app_advance_care_streak` /
   `app_repair_care_streak` SECURITY DEFINER helpers — the single source of truth for the streak math,
   granted to pawpi_app). The ring route advances the streak when the ring closes (idempotent; a gap of
@@ -77,7 +77,7 @@ day one; no fake data. One line per merge.
   streak). Mobile: 🔥 `StreakChip` on the pet-profile + feed header (renders nothing at 0), a "streak
   is safe" line + "Restore your streak" CTA on the ring card; `useRepairStreak`. EN+ES. Gates:
   integration 893→901 (+8 forgiveness matrix), web vitest 1920 (unchanged), mobile jest 1735→1738 (+3).
-- **2026-08-13 (E3)** — Milestone moments merged — [#PENDING]. **NO migration** (reuses `pets.birthday`
+- **2026-08-13 (E3)** — Milestone moments merged — [#381](https://github.com/augustotraversa98-dot/PawPi/pull/381). **NO migration** (reuses `pets.birthday`
   + `pets.adoption_date`). `feedDelight.js` gains `getMilestone` (type: birthday|gotcha + years) and
   `getUpcomingMilestone` (3-day countdown, strictly future). On a milestone day a daily moment gets an
   animated `MilestoneRibbon` + one-shot `Confetti` (RN Animated, jest-safe) + a "Share this 🎉" CTA
@@ -88,7 +88,7 @@ day one; no fake data. One line per merge.
   pet-profile shows only in the 3-day window (feeds E5). Profile route now also returns `adoption_date`.
   EN+ES. Real dates only — nothing renders without a matching date. Gates: integration 901→906 (+5),
   web vitest 1920 (unchanged), mobile jest 1738→1746 (+8).
-- **2026-08-13 (E4)** — Share cards deck merged — [#PENDING]. **NO migration** (reads existing
+- **2026-08-13 (E4)** — Share cards deck merged — [#382](https://github.com/augustotraversa98-dot/PawPi/pull/382). **NO migration** (reads existing
   walk/moment logs + E0/E2 `pet_streaks`). New owner-scoped `GET /api/pets/[id]/share-stats?day=`
   returns REAL stats — streak (from `pet_streaks`, degrade-clean), walks in the last 7 owner-tz days,
   total daily moments; a non-owned pet 404s and another owner's logs never leak. Mobile:

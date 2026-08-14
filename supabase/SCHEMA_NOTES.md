@@ -118,8 +118,8 @@ ACTION 1).
 >   state. Both **ENABLE+FORCE RLS** with a single own-row `FOR ALL` policy
 >   (`owner_user_id = current_app_user_id()`), the 0048/0050 pattern; app connects as `pawpi_app`.
 > - Idempotent. Verify: `supabase/verify_0094.sql` (all PASS). RLS proven as `pawpi_app` in
->   `engagement-foundations-rls.integration.test.ts`. HARNESS-ONLY this ticket — hand-applied to Supabase
->   after merge.
+>   `engagement-foundations-rls.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-13**
+>   (verify_0094 all PASS).
 
 > **0095** adds the engagement STREAK + FORGIVENESS layer (unit E2) on top of the Care Ring — no
 > existing table's RLS touched. TWO additive changes:
@@ -137,7 +137,7 @@ ACTION 1).
 >   `app_grant_walk_credits`). The `/api/pets/[id]/care-ring` route calls advance on close and exposes a
 >   `repair_streak` POST action; both DEGRADE CLEANLY pre-migration (undefined_table 42P01 /
 >   undefined_function 42883 → ring without a streak, never a 500). Idempotent. Verify:
-> `supabase/verify_0095.sql`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
+> `supabase/verify_0095.sql`. **✅ APPLIED + VERIFIED on Supabase 2026-08-13** (verify_0095 all PASS).
 
 Still deferred: **no RLS, no seed data, no app-code changes.**
 

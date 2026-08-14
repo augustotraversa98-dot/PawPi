@@ -32,7 +32,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
 - ✅ **E0** — Data foundations. Migration **0094** (`pet_care_days`, `pet_streaks`, `user_profiles.timezone`;
   ENABLE+FORCE own-row RLS). Reuses the existing `pets.adoption_date` as the gotcha/adoption day (already
   synced Dog Profile ↔ Medical Profile — no new column, no duplicate storage). `verify_0094.sql`;
-  RLS proven as `pawpi_app` in `engagement-foundations-rls.integration.test.ts`. **0094 PENDING hand-apply.**
+  RLS proven as `pawpi_app` in `engagement-foundations-rls.integration.test.ts`. **0094 ✅ APPLIED + verified on Supabase 2026-08-13.**
 - ✅ **E1** — The Care Ring. **No migration** (derives over existing logs + reuses E0's `pet_care_days`/
   `pet_streaks`). New route `GET/POST /api/pets/[id]/care-ring` (owner-tz day derivation of Walk/Moment/
   Care, upserts `pet_care_days`, rest-day + pause writes; degrades cleanly pre-0094 via savepoint).
@@ -45,7 +45,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   miss; milestones 7/30/100 bank a freeze, capped 2) and exposes a one-tap repair (~48h). Mobile:
   🔥 `StreakChip` on the pet-profile + feed header, "streak is safe" line + "Restore your streak" CTA
   on the ring card. EN+ES. Proven: care-streak integration (+8: forgiveness matrix), careRing util
-  jest (+3). **0095 PENDING hand-apply.**
+  jest (+3). **0095 ✅ APPLIED + verified on Supabase 2026-08-13.**
 - ✅ **E3** — Milestone moments. **No migration** (reuses `pets.birthday` + `pets.adoption_date`). Extends
   `feedDelight.js` (`getMilestone` type+years, `getUpcomingMilestone` 3-day countdown). On a milestone
   day a moment gets an animated `MilestoneRibbon` + `Confetti` + a "Share this" CTA (stubbed to the
