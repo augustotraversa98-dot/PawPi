@@ -12,6 +12,7 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 import { CareRingCard } from "@/components/Health/CareRingCard";
 import { PackStreaksCard } from "@/components/Health/PackStreaksCard";
+import { LeaderboardCard } from "@/components/Health/LeaderboardCard";
 import {
   Calendar,
   TrendingUp,
@@ -546,6 +547,10 @@ export default function HealthToday() {
           {/* Pack streaks — shared flame with a dog friend (E7) */}
           <View style={{ marginTop: SPACING.lg }}>
             <PackStreaksCard petId={currentPet.id} />
+          </View>
+          {/* Care-effort leagues — density-gated, empty-safe (E8) */}
+          <View style={{ marginTop: SPACING.lg }}>
+            <LeaderboardCard petId={currentPet.id} />
           </View>
         </View>
       )}

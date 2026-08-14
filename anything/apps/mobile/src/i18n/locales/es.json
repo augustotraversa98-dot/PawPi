@@ -941,5 +941,25 @@
     "handlePlaceholder": "@usuario del amigo",
     "start": "Empezar",
     "requestFailed": "No se pudo iniciar — revisá el @usuario."
+  },
+  "leaderboard": {
+    "title": "Ligas de cuidado 🏆",
+    "subtitle": "XP semanal por esfuerzo de cuidado — no por likes",
+    "flavor_friends": "Amigos",
+    "flavor_breed": "Raza",
+    "flavor_neighborhood": "Cerca",
+    "gated_breed": "Todavía no hay suficientes perros de esta raza — mostramos tu tabla de amigos.",
+    "gated_neighborhood": "Todavía no hay suficientes perros cerca tuyo — mostramos tu tabla de amigos.",
+    "empty": "Registrá un paseo, cerrá tu anillo o dale una patita a un amigo para ganar XP esta semana.",
+    "xp": "{{xp}} XP",
+    "you": "vos",
+    "tier_gold": "Liga oro",
+    "tier_silver": "Liga plata",
+    "tier_bronze": "Liga bronce",
+    "promoted": "— ¡subiste! 🎉",
+    "optInHint": "Agregá una zona aproximada (como un barrio) para ver perros cercanos. Nunca compartimos tu dirección.",
+    "areaPlaceholder": "ej. Palermo",
+    "optIn": "Sumarme",
+    "effortNote": "XP = paseos, anillos cerrados, acciones de cuidado y patitas que das. Esfuerzo, nunca popularidad."
   }
 }

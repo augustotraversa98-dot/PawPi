@@ -143,3 +143,18 @@ day one; no fake data. One line per merge.
   PackStreaksCard on Health->Today (flame+count, boop, accept invite, start by @handle; break copy shows
   the best run, never blames). Notifications screen localizes the new welcome/pack/boop types (EN+ES).
   Opt-in only. Gates: mobile jest 1786->1791 (+5), web integration 915->919 (+4), web vitest 1920.
+- **2026-08-14 (E8)** — Leaderboards (density-gated) merged — PR TBD. **Migration 0098** (PENDING
+  hand-apply + verify_0098.sql). Weekly care-effort leagues. XP = walks*10 + ring-closes*15 +
+  care-actions*5 + paws-GIVEN*2 over the owner-tz week (paws RECEIVED / likes never count) via
+  `app_pet_week_xp` DEFINER; `app_leaderboard` DEFINER builds the cohort per flavor (friends /
+  breed / neighborhood), scores + ranks it, and returns NOTHING below the min cohort size so the
+  route falls back to the friends board (never empty/fake) — DEFINER because ranking must read other
+  owners' logs. Coarse OPT-IN geo added additively to pets (`lb_opt_in`/`lb_area`; never lat/lng);
+  new `pet_leaderboard_weeks` (own-row ENABLE+FORCE RLS) snapshots each week so promotion/relegation
+  movement (bronze<silver<gold, top/mid/bottom third) is real vs the prior week. `GET/POST /api/pets/
+  [id]/leaderboard`; the reader needs `#variable_conflict use_column` and `drop table if exists
+  _cohort` (re-callable within one tx — the route may call it twice: requested flavor then friends
+  fallback). Degrades clean pre-migration (empty-safe board / opt-in 503). Mobile: useLeaderboard +
+  LeaderboardCard on Health->Today (flavor tabs, tier badge + movement, gated fallback note,
+  neighborhood coarse-area opt-in). EN+ES. Gates: mobile jest 1791->1793 (+2), web integration
+  919->924 (+5), web vitest 1920.
