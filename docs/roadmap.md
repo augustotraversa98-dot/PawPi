@@ -112,6 +112,30 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   `CareRingCard`. EN+ES; behavioral, not diagnostic. Proven: health-reinforcement integration (+4),
   hooks/shareLinks/no-shame jest (+4). **Pet Owner engagement wave E5–E10 COMPLETE.**
 
+### 🐾 WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — ☐ QUEUED (designed 2026-08-14)
+
+Design of record: [`docs/pet-owner-engagement.md`](pet-owner-engagement.md) → "WAVE 2" section (full unit
+specs + paste-ready grey-box Claude Code prompts). Chosen with Tats. Run each unit as its own CC session, in
+order; prepend the Wave 2 orientation preamble. Live DB at 0099 — use the next migration number. Status
+mirror (☐ queued · 🔨 building · ✅ merged):
+
+- ✅ **E11 — "Rex's Week" weekly digest** — [#391](https://github.com/augustotraversa98-dot/PawPi/pull/391)
+  MERGED 2026-08-14. In-app weekly recap (real owner-tz-week stats; honest rich/quiet/empty state, never a
+  fake number) + `CRON_SECRET`-gated Sunday-evening sender (push via `weekly_digest` notif + optional email;
+  claim-then-send idempotency) + server-side channel prefs + E4 share. **Migration 0100** (weekly_digest_prefs
+  / weekly_digest_state / app_weekly_digest_due DEFINER) — **awaits hand-apply**; degrades clean while absent.
+  EN+ES. Gates: vitest 1942 (+18), integration 948 (+16), jest 1816.
+- ☐ **E12 — Comeback / re-engagement loop.** Server-side "lapsed" (default 7d) → warm win-back on a REAL
+  hook (friend activity / gotcha day / memory) + welcome-back screen + one-tap streak repair. No guilt.
+- ☐ **E13 — Shared custody / caregivers (tiered).** Owner/Admin · Caregiver · Viewer via new `pet_caregivers`
+  (RLS = owner OR accepted caregiver, no leakage). Multi-caregiver daily moment = per-pet-per-day, 1/caregiver,
+  one bumping "day card" carousel with per-author slides. Shared per-pet ring/streak. Private household
+  leaderboard (celebrate, never shame a co-parent). **Riskiest unit — 3 PRs in one chat.**
+- ☐ **E14 — Multi-pet household.** Household home view + fast pet switcher (strict per-pet scoping) +
+  optional opt-in family streak. Rides on E13's household model.
+- ☐ **E15 — Life-stage ring goals.** Ring targets/copy adapt to puppy/adult/senior (3 segments unchanged),
+  owner override. The deferred E-series item.
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map

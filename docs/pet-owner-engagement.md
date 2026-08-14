@@ -3,6 +3,18 @@
 **Owner:** Tats · **Designed in Cowork:** 2026-08-13 · **Status of record:** this doc is the DESIGN;
 live build status lives in `docs/roadmap.md`. Update this doc when a decision changes.
 
+> ✅ **SHIPPED 2026-08-14 — the full E0–E10 wave is built, merged, and live in production.**
+> Two autonomous Claude Code runs. E0–E4 = migrations 0094–0095; E5–E10 = PRs #384–#389 +
+> docs PR #390, migrations 0096–0099 (all APPLIED + VERIFIED on Supabase). Test baselines at
+> completion: mobile jest 1809 · web vitest 1924 · web integration 932. Every feature degrades
+> cleanly and is now fully live against the real DB. Per-merge detail: `docs/roadmap.md` +
+> `docs/night-run-log.md`. This doc stays the DESIGN of record; the sections below are unchanged
+> from the as-built spec except the resolved config knobs at the bottom.
+
+> 🔜 **WAVE 2 (E11–E15) — Household & Retention — DESIGNED + QUEUED 2026-08-14.** Weekly digest, comeback
+> loop, shared custody (tiered + multi-caregiver daily-moment carousel + household leaderboard), multi-pet
+> household, life-stage ring goals. Full spec + grey-box Claude Code prompts at the **bottom of this doc**.
+
 ---
 
 ## Why this exists
@@ -526,11 +538,355 @@ CI-green + merge in ONE go. START A NEW CLAUDE CODE CHAT if the prior chat is lo
 
 ---
 
-## Open decisions to confirm with Tats (tracked, not blocking)
+## Resolved config knobs (as shipped 2026-08-14) — tune with real density
 
-- **Ring goal per life stage** (puppy/adult/senior) — deferred to post-v1; v1 = same three for all.
-- **Streak repair cost** — v1 free one-tap; revisit if abused.
-- **Leaderboard min cohort size + neighborhood radius** — set a starting config, tune with real density.
-- **Which E4 templates ship first** — milestone + streak are highest-leverage; recap depends on E10.
+- **Leaderboard min cohort size** — shipped at **5 dogs**. Below that, the neighborhood/breed board
+  falls back to the friends board or a clean "not enough dogs near you yet" state. Raise toward ~30
+  (Duolingo-league feel) once density supports it.
+- **Neighborhood radius** — shipped as a **coarse same-area label** (not a fine GPS radius), opt-in,
+  never exposing home location. Revisit the grouping once we have real geographic density.
+- **E9 cohort minimum** — shipped at **5**; same tuning logic as the leaderboard cohort.
+- **E4 templates that shipped first** — milestone, week-in-walks, X-day streak, pet-of-the-day; the
+  monthly care-recap card was filled by E10.
+
+## Open decisions still deferred (post-v1, tracked, not blocking)
+
+- **Ring goal per life stage** (puppy/adult/senior) — deferred; v1 ships the same three for all.
+- **Streak repair cost** — shipped free one-tap; revisit only if abused.
 
 _When any of these is decided, update THIS doc (per the persist-to-system rule in PawPi_instructions.md)._
+
+---
+
+# WAVE 2 — Household & Retention (E11–E15)
+
+**Designed in Cowork:** 2026-08-14 · **Status:** DESIGNED + QUEUED (not yet built). This wave extends the
+shipped E0–E10 retention system. Same design-of-record rules apply: this doc is the DESIGN; live build
+status lives in `docs/roadmap.md`. Update this doc when a decision changes; refresh the Snapshot in
+`PawPi_instructions.md` when the wave (or a unit) merges.
+
+## Why this wave
+
+E0–E10 built the daily loop (Care Ring) and its amplifiers. Wave 2 attacks the two return-drivers the
+first wave left thin: **belonging** (make caring a shared family act, not a solo one) and **resurrection**
+(pull back the owners who slipped out of the loop). The thesis, restated from the retention discussion
+with Tats (2026-08-14): social relationships + belonging outlast every mechanic; streaks and reminders are
+amplifiers, not the reason people stay. Email/scheduled triggers are NOT a daily nag here — they belong on
+a **weekly beat** (E11) and in **reactivation** (E12), exactly the two channels where they earn their keep.
+
+**Build order (chosen with Tats):** E11 Weekly digest → E12 Comeback loop → E13 Shared custody →
+E14 Multi-pet household → E15 Life-stage ring goals. Two cheap standalone wins first for momentum, then the
+riskiest schema change (custody generalises RLS) isolated, then multi-pet rides on the household model, then
+polish. **Run each unit as its own Claude Code session, in this order.** E13 is multi-PR (sequence inside it).
+
+## Guardrails (inherit all E0–E10 principles, plus)
+
+- **Celebrate the family, never shame a co-parent.** The household leaderboard (E13) celebrates
+  participation; it never frames the less-active caregiver as failing. Same rule as "never shame the owner".
+- **A solo owner is a household of one.** Every household/custody/multi-pet change must be a no-op for a
+  single-owner, single-dog account — no regression to shipped behaviour.
+- **Real re-surfacing only.** The feed "bump" when a caregiver adds a moment (E13) is real new content, not
+  fabricated activity. Comeback hooks (E12) reference REAL friend activity / real dates only.
+- **Strict scoping survives sharing.** Access widens from "owner only" to "owner OR accepted caregiver" —
+  and NOT one inch further. No cross-household leakage; revoked caregivers lose write, history is preserved.
+
+## Data rules (this wave)
+
+- Identity chain unchanged (`auth_users.id` → `user_profiles.auth_user_id` → `user_profiles.id`). Pet access
+  becomes **owner OR accepted caregiver** via a new `pet_caregivers` join (E13). Integer IDs; soft delete;
+  preserve health history. New tables ENABLE+FORCE RLS, household-scoped policies, app runs as `pawpi_app`.
+- Migrations additive + numbered + `verify_XXXX.sql`. **Live DB is at 0099** — use the next available number.
+- EN + ES for every user-facing surface.
+
+## Orientation preamble — prepend to EVERY Wave 2 Claude Code chat
+
+```
+You are working on PawPi. The Pet Owner engagement wave E0–E10 is SHIPPED and live (Care Ring, streaks +
+forgiveness, milestones, share cards, notification rewrite, D1 onboarding, pack streaks, care-effort
+leaderboards, positive health insight, health reinforcement). Design of record: docs/pet-owner-engagement.md.
+This is WAVE 2 (E11–E15): Household & Retention. Read ARCHITECTURE.md and supabase/SCHEMA_NOTES.md to orient,
+then read the WAVE 2 section of docs/pet-owner-engagement.md for the unit named below. Data rules: integer
+IDs; owner_user_id = user_profiles.id via the identity chain; pet access = owner OR accepted caregiver once
+E13 lands; additive numbered migrations each with a verify_XXXX.sql; new tables ENABLE+FORCE RLS + app runs
+as pawpi_app; NO fake/mock data (empty states only); EN+ES on every surface; celebrate the dog/family, never
+shame. Live DB is at migration 0099 — use the next available number. Build the assigned unit ONLY.
+```
+
+---
+
+## E11 — "Rex's Week" weekly digest (broad return beat + growth)
+
+**Purpose:** a weekly moment of pride that (a) gives everyone a scheduled reason to come back on a weekly
+beat, (b) is a re-entry point for anyone who slipped out of the daily loop, (c) is shareable → organic
+growth. **Distinct from E10's monthly recap** — this is weekly, social, and delivered (push + optional
+email), not just an in-app card.
+
+**What it is:** an in-app **"Rex's Week"** screen showing this week's REAL stats — walks, ring days closed
+(x/7), best moment (most-pawed post of the week), current streak, care actions logged — plus a peek at
+friends' dogs ("Bella and Max also had a great week") and a milestone preview if one falls within ~7 days.
+Delivered on a fixed weekly cadence (default **Sunday evening, owner timezone**) via **push AND optional
+email**, reusing E5's personalised send-time + caps + toggles. One-tap **"Share Rex's week"** → the E4
+week-in-walks / recap card. This is the correct home for the "email like Duolingo" instinct: weekly, warm,
+shareable — never a daily nag.
+
+**Guardrails:** real stats only; quiet weeks degrade to an honest gentle state ("A quieter week — here's one
+nice moment"), never a shame frame; if there's genuinely nothing, a soft forward nudge, no fake numbers. New
+**"Weekly digest"** setting with independent push + email toggles.
+
+```
+CONTEXT: Unit E11 of docs/pet-owner-engagement.md (WAVE 2). E0–E10 shipped. Do E11 ONLY. (Prepend the Wave 2
+orientation preamble.)
+
+TASK (E11): Build the "Rex's Week" weekly digest.
+- In-app "Rex's Week" screen: compute this week's REAL stats for the current pet (owner-timezone week,
+  Mon–Sun): walk count, ring days closed (x/7), best moment (most-pawed post this week), current streak,
+  care actions logged; a small "friends' dogs this week" strip (real friend activity only); a milestone
+  preview if pets.birthday/adopted_on falls within ~7 days. Empty/quiet week → honest gentle state, no fake.
+- Delivery: a weekly job (default Sunday evening, per-owner timezone) sends a push AND, if opted in, an
+  email digest. Reuse E5's personalised send-time, frequency caps, and per-category toggles; add a new
+  "Weekly digest" preference with independent push + email switches (default push on, email off).
+- One-tap "Share Rex's week" opens the E4 week-in-walks/recap share card with the real stats.
+- EN + ES for screen + push + email copy.
+
+DATA RULES: reads existing walks/moments/paws/care logs/streaks scoped to pet_id + owner_user_id for the
+week; no new activity storage. Add a small idempotency/state row (e.g. weekly_digest_state: pet_id,
+owner_user_id, last_sent_week, channels) so a week is never double-sent. No fabricated stats.
+
+ACCEPTANCE: screen shows real weekly stats live; a seeded week of real logs produces a correct digest; a
+quiet week degrades to the gentle state (no fake numbers); the weekly job is idempotent (re-running the same
+week doesn't resend); push/email respect the new toggle + E5 caps; share card carries real stats; EN+ES.
+
+CI-green + merge in ONE go (push → PR → CI → merge commit + delete branch + Railway healthy; red = STOP).
+START A NEW CLAUDE CODE CHAT for this unit.
+```
+
+---
+
+## E12 — Comeback / re-engagement loop (rescue the lapsed)
+
+**Purpose:** reactivate lapsed owners — the cheapest, highest-ROI retention lever — using their existing
+investment (dog, history, friends, streak repair) with warmth, never guilt.
+
+**What it is:** define **"lapsed"** server-side (no ring activity for N days, config; default 7). When a
+lapsed owner returns, greet them with a **"Welcome back — here's what your pack did"** screen: friends'
+dogs' recent real moments, pack-streak status (E7), an upcoming milestone, and a **one-tap streak repair**
+(extends E2 repair with a configurable returning-user grace window). The **win-back message** goes on the
+right channel — a lapsed user has likely muted daily push, so prefer **email** (plus at most one gentle
+push if allowed), tied to a REAL hook: a friend's dog's activity, an upcoming gotcha day, or the E5
+celebrate-the-dog dormant line ("Bella misses Rex"). Frequency-capped, escalation-free, one-tap opt-out.
+
+**Guardrails:** no guilt / no streak-shaming; warm, not escalating; caps + toggles respected; **real hooks
+only** — if there's no real friend activity, fall back to the dog's own memory ("On this day last year…")
+or a soft "pick up where you left off," never fabricated social proof.
+
+```
+CONTEXT: Unit E12 of docs/pet-owner-engagement.md (WAVE 2). E0–E11 shipped. Do E12 ONLY. (Prepend the Wave 2
+orientation preamble.)
+
+TASK (E12): Build the comeback / re-engagement loop.
+- Server-side "lapsed" definition: no ring activity for N owner-timezone days (config, default 7). Track
+  lapsed state per owner/pet (reengagement_state: owner_user_id, pet_id, lapsed_since, last_winback_sent,
+  channel) for capping + idempotency.
+- Win-back message: prefer email (fallback one gentle push if permitted by E5 caps/toggles), tied to a REAL
+  hook — a friend's real recent activity, an upcoming birthday/gotcha (pets.adopted_on/birthday), or the E5
+  dormant celebrate-the-dog line. If no real hook exists, use the pet's own memory / a soft resume nudge. No
+  fabricated activity. Escalation-free, frequency-capped, one-tap opt-out.
+- Return experience: on next open after lapse, a "Welcome back — here's what your pack did" screen (friends'
+  real recent moments, pack-streak status, next milestone) + one-tap streak repair with a configurable
+  returning-user grace window (extends E2; keep it free for v1).
+- EN + ES.
+
+DATA RULES: reads last-activity per owner/pet; reuses E5 notifications + E2 repair + memories. Only real
+hooks. Scope everything to the owner/pet.
+
+ACCEPTANCE: a pet with no ring activity for N days marks lapsed; win-back fires at most once per cap window
+on a real hook (tested), never on a fabricated one; the welcome-back screen shows real friend/memory data or
+a clean empty state; one-tap repair restores the streak within the grace window; no guilt/shame copy (grep);
+EN+ES.
+
+CI-green + merge in ONE go. START A NEW CLAUDE CODE CHAT.
+```
+
+---
+
+## E13 — Shared custody / caregivers (tiered) + multi-caregiver daily moment + household leaderboard
+
+**Purpose:** let a whole family/household care for the same dog — everyone can post the daily moment, log
+care, log walks, and contribute to the SHARED ring/streak. This is the wave's biggest belonging lever ("our
+dog, our streak") and multiplies daily-active users per pet. **This is the riskiest unit** (it generalises
+pet-access RLS), so it is isolated in the build order and sequenced into focused PRs.
+
+**Roles (tiered, chosen by Tats):**
+- **Owner / Admin** — the creating owner. Can invite/remove caregivers, set roles, edit the Pet Medical
+  Profile, and delete the pet. Single admin for v1 (ownership transfer deferred).
+- **Caregiver** — full day-to-day care: post the daily moment, log care/health, log walks, close the ring,
+  view everything. Cannot manage membership or delete the pet (and, config, cannot edit sensitive
+  medical/insurance fields).
+- **Viewer** (optional tier, ship it thin) — walker / sitter / grandparent: read, and optionally log a
+  walk/care action, but cannot post to the public social profile. Wire minimal perms now; expandable later
+  (this also foreshadows the Walker section).
+
+**Invitations:** invite by handle / email / link; the invitee **accepts** (both-sides opt-in). Revoking a
+caregiver is a soft-remove that **preserves the history they contributed**.
+
+**The multi-caregiver daily moment (Tats's design — build exactly this):**
+- The daily moment is **per-pet-per-day**, not per-user. Each caregiver may add **one** moment for that pet
+  per day (**cap 1 / caregiver / day** — keeps it "the daily moment", prevents spam).
+- All of a pet's moments for a given day render as **ONE feed post — a "day card" — containing a horizontal
+  carousel** of slides. Each slide is **attributed to its author** ("Posted by Tats", "Posted by Sofia").
+- When a **new caregiver adds their moment**, that pet's day-card **re-surfaces to the top of the feed**
+  (bump by latest real contribution) so followers re-see it — honest re-surfacing, real new content.
+- Paws/barks attach at the **day-card level** for v1 (simplest), with per-slide author shown. (Per-slide
+  reactions deferred.)
+
+**Household leaderboard (internal, private to the household):**
+- A private view of each caregiver's contributions this week/month: moments posted, care actions logged,
+  walks, ring-days contributed. Positive, celebratory framing ("Sofia logged 12 care actions this week 💪"),
+  a friendly "most active caregiver" — **never shame the less-active partner** (guardrail: celebrate the
+  family). Per-household opt-out if it ever creates friction.
+
+**Shared ring/streak semantics:** the ring + streak stay **per-pet** (shared). ANY caregiver's walk / moment
+/ care action fills the shared segment; the streak is the **household's shared streak** (belonging).
+Leaderboard attribution rides on a `logged_by` (author `user_profiles.id`) column on the activity rows.
+
+**RLS (the careful part):** introduce `pet_caregivers` (id, pet_id, user_id, role, status, invited_by,
+accepted_at, revoked_at). Generalise pet-scoped read/write policies from "owner only" to "owner OR accepted
+caregiver" across the pet-scoped tables (posts/moments, care logs, walks, pet_care_days, pet_streaks, health
+records per the medical-field role rule, etc.). Prove: an accepted caregiver can read/write the pet's data; a
+non-caregiver cannot; NO cross-household leakage; a revoked caregiver loses write but contributed history
+remains; a solo owner is unaffected (household of one).
+
+```
+CONTEXT: Unit E13 of docs/pet-owner-engagement.md (WAVE 2). E0–E12 shipped. Do E13 ONLY. This is the riskiest
+unit (it generalises pet-access RLS) — be surgical, additive, and prove RLS. Sequence it as THREE PRs in one
+focused chat/wave: (1) caregiver model + RLS generalisation + invites/roles; (2) multi-caregiver daily-moment
+day-card carousel + feed bump; (3) household leaderboard. (Prepend the Wave 2 orientation preamble.)
+
+TASK (E13):
+PR1 — Caregiver model + access:
+- New table pet_caregivers (id, pet_id, user_id, role IN owner/caregiver/viewer, status IN pending/accepted/
+  revoked, invited_by, accepted_at, revoked_at, created_at, updated_at). ENABLE+FORCE RLS.
+- Generalise pet-scoped RLS from "owner only" to "owner OR accepted caregiver" across pet-scoped tables
+  (posts/moments, care/health logs, walks, pet_care_days, pet_streaks, and medical fields per the existing
+  role/shared-field rule). Owner/Admin = manage membership + edit medical + delete pet; Caregiver = full
+  day-to-day except membership/delete (+ config on sensitive medical fields); Viewer = read + optional
+  walk/care log, no public post. A solo owner must be unaffected.
+- Invites: invite by handle/email/link → invitee accepts (both-sides opt-in). Revoke = soft-remove, history
+  preserved. EN+ES.
+PR2 — Multi-caregiver daily moment:
+- Daily moment becomes per-pet-per-day; each caregiver may add ONE moment/day (cap enforced). Render a pet's
+  day's moments as ONE feed "day card" with a horizontal carousel; each slide attributed to its author.
+  Adding a new caregiver's moment bumps that day-card to the top of the feed (real re-surfacing). Paws/barks
+  at day-card level for v1; show per-slide author. EN+ES.
+PR3 — Household leaderboard:
+- Private-to-household view of per-caregiver contributions this week/month (moments, care logs, walks,
+  ring-days contributed) via a logged_by author column on activity rows. Positive framing, "most active
+  caregiver", never shame the less-active; per-household opt-out. EN+ES.
+
+DATA RULES: pet access = owner OR accepted caregiver (and no further); integer IDs; soft delete; logged_by =
+user_profiles.id; ring/streak stay per-pet (shared); no fake data.
+
+ACCEPTANCE: accepted caregiver can post/log/close-ring for the shared pet; non-caregiver denied; revoked
+caregiver loses write but their history remains; NO cross-household leakage (RLS proven via the real
+router/harness as pawpi_app); solo-owner behaviour unchanged; daily moment caps at 1/caregiver/day and
+renders as an attributed carousel that bumps on new contribution; shared ring closes from ANY caregiver's
+action and the streak is shared; leaderboard reflects real per-caregiver counts with no shame copy (grep);
+EN+ES throughout.
+
+CI-green + merge each PR (push → PR → CI → merge commit + delete branch + Railway healthy; red = STOP).
+START A NEW CLAUDE CODE CHAT; keep all three PRs in this one chat/wave.
+```
+
+---
+
+## E14 — Multi-pet household (owner/household with 2+ dogs)
+
+**Purpose:** first-class support for households with multiple dogs — each dog keeps its own
+ring/streak/profile, but the owner gets a clean household view + fast switching, so a two-dog family isn't
+fragmented. Protects high-LTV multi-dog users. **Rides on E13's household model** (a "household" is the set
+of pets a user owns or co-cares for; E13 is the many-people side, E14 the many-pets side).
+
+**What it is:** a **household/home view** listing all the household's dogs with each one's ring status +
+streak at a glance; a fast **pet switcher** in the header (avatars) so ring / health / profile / feed
+authoring always respect the active pet. Optional **"family streak"**: a household-level flame that advances
+on days when every active dog's ring closed (or a softer "all dogs cared for" metric) — forgiveness-aware,
+opt-in, a belonging bonus.
+
+**Guardrails:** strict pet scoping preserved (no cross-pet data bleed — existing rule); each dog's history +
+streak independent; the family streak never shames one dog for another's miss.
+
+```
+CONTEXT: Unit E14 of docs/pet-owner-engagement.md (WAVE 2). E0–E13 shipped. Do E14 ONLY. Builds on E13's
+household model. (Prepend the Wave 2 orientation preamble.)
+
+TASK (E14): Multi-pet household support.
+- Household/home view: list all of the household's dogs (owned + co-cared via pet_caregivers) with each
+  dog's ring status + streak at a glance; tap to switch active pet.
+- Fast pet switcher in the header (avatars); ring, health, profile, and feed authoring all respect the
+  active pet (no cross-pet bleed — each dog's ring/streak/history stays independent).
+- Optional "family streak": a household-level flame advancing on days when every active dog's ring closed
+  (forgiveness-aware; opt-in). Never shames one dog for another. EN+ES.
+
+DATA RULES: pets already keyed by owner/caregiver; strict per-pet scoping preserved; family-streak is
+additive (household_streaks or a derived aggregation); no fake data.
+
+ACCEPTANCE: a household with 2+ dogs sees all of them with correct per-dog ring/streak; switching pets scopes
+every surface correctly (no data bleed, tested); a single-dog account is unchanged; family streak advances
+only when all active dogs' rings closed and is forgiveness-aware; EN+ES.
+
+CI-green + merge in ONE go. START A NEW CLAUDE CODE CHAT.
+```
+
+---
+
+## E15 — Life-stage ring goals (puppy / adult / senior)
+
+**Purpose:** make the daily Care Ring feel personalised and credible by adapting targets to the dog's life
+stage — the explicitly-deferred item from the E-series ("Ring goal per life stage").
+
+**What it is:** derive **life stage** from age (birthday) + size/breed where available (puppy / adult /
+senior thresholds, config; senior varies by size — larger dogs age faster). The ring stays **three
+closeable segments** — life stage tunes *what counts / the copy / suggested actions*, not the number of
+segments. E.g. puppies → shorter, more frequent walks / potty check; seniors → a lower walk bar + a gentle
+wellness/comfort emphasis; adults → the current three. Copy adapts ("A short senior-friendly walk closes
+Rex's ring"). The owner can **override** the detected stage.
+
+**Guardrails:** never diagnostic; positive framing; a senior dog is never judged against a puppy's bar;
+override always available; conservative defaults; EN+ES.
+
+```
+CONTEXT: Unit E15 of docs/pet-owner-engagement.md (WAVE 2). E0–E14 shipped. Do E15 ONLY. (Prepend the Wave 2
+orientation preamble.)
+
+TASK (E15): Life-stage-aware Care Ring goals.
+- Derive life stage (puppy/adult/senior) from pets.birthday + breed/size where available (config thresholds;
+  senior scaled by size). Store a per-pet life_stage with an owner override.
+- Adapt the ring WITHOUT changing its three-segment shape: tune what counts / suggested actions / copy per
+  stage (puppies → shorter more-frequent walk + potty; seniors → lower walk bar + wellness/comfort emphasis;
+  adults → current). Never punish a senior against a puppy's bar. EN+ES copy per stage.
+- Owner can override the detected stage in Dog Profile.
+
+DATA RULES: reads pets.birthday/breed/size; additive per-pet life_stage + override; no fake data; behavioral,
+not diagnostic.
+
+ACCEPTANCE: a puppy/adult/senior test pet each gets stage-appropriate ring targets + copy; the ring is still
+three closeable segments; override changes the stage and persists; defaults are conservative; nothing
+diagnostic; EN+ES.
+
+CI-green + merge in ONE go. START A NEW CLAUDE CODE CHAT.
+```
+
+---
+
+## Wave 2 open decisions (tracked, not blocking)
+
+- **Ownership transfer / multiple admins** — v1 ships a single Owner/Admin per pet; transfer + co-admins
+  deferred.
+- **Per-slide reactions on the day card** — v1 keeps paws/barks at the day-card level; per-slide reactions
+  deferred.
+- **Family-streak metric** — "every dog's ring closed" vs a softer "all dogs cared for"; pick during E14
+  with a real multi-pet account and record the choice here.
+- **Sensitive-medical-field editing by caregivers** — shipped config-gated; default to owner-only edit of
+  insurance/microchip; revisit with real family usage.
+
+_When any of these is decided, update THIS doc (persist-to-system rule, PawPi_instructions.md Rule 5)._

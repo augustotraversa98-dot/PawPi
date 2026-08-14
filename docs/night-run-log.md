@@ -4,6 +4,35 @@ Fast, timestamped, one-line-per-merge scan for Augusto. Full detail lives in eac
 `docs/roadmap.md` / `PawPi_instructions.md`'s status block (updated in step). Ticket briefs:
 `docs/phase2-tickets/N1-N10`; run preamble: `docs/night-run-2026-07-29.md`.
 
+---
+
+## Wave 2 — Pet Owner engagement: Household & Retention (E11–E15) — autonomous run 2026-08-14
+
+Design of record: `docs/pet-owner-engagement.md` "WAVE 2" section. Each unit its own PR, CI-green + merge
++ deploy + log before the next. Recommended defaults taken per the driver prompt (logged per unit).
+
+- **2026-08-14 — E11 "Rex's Week" weekly digest** — [#391](https://github.com/augustotraversa98-dot/PawPi/pull/391)
+  MERGED (merge commit, branch deleted), CI-green (mobile jest / web vitest / integration all pass).
+  - **What shipped:** `GET /api/pets/[id]/weekly-digest` (real owner-tz Mon–Sun stats: walks, ring days
+    x/7, care actions, moments, best moment = most-pawed daily post, friends strip = accepted-friend pets
+    that posted this week, milestone ≤7d; server owns honest `state` rich|quiet|empty). `GET/PUT
+    /api/engagement/weekly-digest-prefs` (server-side push/email toggles). `POST
+    /api/engagement/weekly-digest/run` (`CRON_SECRET`-gated Sunday-evening sender; DEFINER
+    `app_weekly_digest_due` enumeration; claim-then-send idempotency; push + optional email). Mobile "Rex's
+    Week" screen + `useWeeklyDigest` hooks + `weekly_digest` notification mapper/deep-link. EN+ES throughout.
+  - **Migration 0100** (weekly_digest_prefs + weekly_digest_state own-row RLS, notifications_type_check +=
+    'weekly_digest', app_weekly_digest_due DEFINER) + `verify_0100.sql`. **⚠️ awaits hand-apply to
+    Supabase** (this env can't apply DDL); routes degrade cleanly while absent (42P01/42883 → feature
+    absent, never 500) so Railway stays healthy.
+  - **Decisions (recommended defaults taken):** weekly cadence Sunday evening owner-tz; push default ON /
+    email default OFF; reused idempotency-state row (weekly_digest_state) per (pet, week); quiet/empty week
+    degrades honestly (no fake numbers). **Deviation from spec:** E5's toggles are client-only (AsyncStorage),
+    but a server-side sender can't read them, so the weekly-digest channel prefs are a NEW server-side table
+    (weekly_digest_prefs) rather than "reuse E5 toggles" — logged; E5's send-time/caps concept is honoured by
+    the tz-aware Sunday-evening gate. Server has no per-user locale column, so the EMAIL defaults to the app's
+    es-AR fallback (both EN+ES live in the copy module); the PUSH body is JSON localized client-side.
+  - **Gates:** web vitest 1924→**1942** (+18), integration 932→**948** (+16), mobile jest ~1809→**1816**.
+
 - **2026-07-29 00:19** — Prereq: password reset flow (migration 0069) merged — [#261](https://github.com/augustotraversa98-dot/PawPi/pull/261) (predates tonight's queue, landed first to bring `main` current).
 - **2026-07-29 00:19** — Prereq: support-contact domain fix (augusto@pawpi.info) merged — [#262](https://github.com/augustotraversa98-dot/PawPi/pull/262).
 - **2026-07-29 00:20** — Prereq: demo accounts renamed to pawpi.info — [#263](https://github.com/augustotraversa98-dot/PawPi/pull/263).
