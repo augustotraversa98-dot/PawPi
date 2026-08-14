@@ -51,10 +51,16 @@ import { startReminderNotificationSync } from "@/utils/reminderNotificationSync"
 import { getScheduledNotifications } from "@/utils/notifications";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
+import { syncLocaleToServer } from "@/i18n/localePreference";
 
 export default function TabLayout() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // FF1: once the authenticated pet shell mounts (i.e. on login/app entry), mirror the
+  // app's resolved locale to the server so digest/win-back emails match. Best-effort.
+  useEffect(() => {
+    syncLocaleToServer();
+  }, []);
   useEffect(() => {
     // Initialize reminders from routines on app start
     const routinesStore = useRoutinesStore.getState();

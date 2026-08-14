@@ -1,7 +1,8 @@
 // E12 — the win-back copy (push body + email), EN + ES. WARM, never guilt: no "you haven't", no
 // streak-shaming, no escalation. Tied to a REAL hook only (milestone / friend / the pet's own memory).
-// The PUSH body is a compact JSON payload localized on the client; the EMAIL is server-rendered and
-// defaults to the app's es-AR fallback (both languages live here).
+// The PUSH body is a compact JSON payload localized on the client; the EMAIL is server-rendered in
+// the recipient's stored locale (FF1: user_profiles.preferred_locale, 'en'|'es'), defaulting to the
+// app's es-AR fallback when null (both languages live here).
 
 /** Compact JSON body for the 'winback' notification; localized client-side by hook. */
 export function winbackPushBody({ hook, petName, friendName = null, milestoneKind = null, inDays = null }) {

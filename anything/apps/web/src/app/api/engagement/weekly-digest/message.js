@@ -2,9 +2,9 @@
 //
 // The PUSH body is a compact JSON payload the mobile client localizes by type (the booking/adoption
 // notification pattern) — the server never guesses the user's language for the in-app surface. The
-// EMAIL is server-rendered; PawPi has no per-user locale column yet, so the job defaults to the app's
-// Spanish (es-AR) fallback while both languages live here so the copy is EN+ES and ready when a locale
-// signal exists. Warm and honest for every `state`: a quiet/empty week is never a shame frame.
+// EMAIL is server-rendered in the recipient's stored locale (FF1: user_profiles.preferred_locale,
+// 'en'|'es'), defaulting to the app's Spanish (es-AR) fallback when null. Warm and honest for every
+// `state`: a quiet/empty week is never a shame frame.
 
 /** The compact JSON body stored on the 'weekly_digest' notification; localized on the client. */
 export function digestPushBody({ petName, walks, ringDays, streak, state, weekStart }) {

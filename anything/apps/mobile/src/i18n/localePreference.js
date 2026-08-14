@@ -42,4 +42,24 @@ export async function setLocalePreference(value) {
   } catch {
     // best-effort; ignore storage errors
   }
+  // FF1: mirror the RESOLVED language to the server so the E11 weekly-digest + E12
+  // win-back EMAILS (server-rendered) render in the user's language. Fire-and-forget.
+  syncLocaleToServer();
+}
+
+// FF1: persist the currently-resolved app language ('en'|'es') to the signed-in
+// user's profile, so server-side emails match the app. Best-effort: an unauthenticated
+// call (401) or an offline error is swallowed; the emails simply keep the es-AR fallback
+// until the next successful sync. The patched global fetch attaches the auth JWT.
+export async function syncLocaleToServer() {
+  try {
+    const lng = i18n.language === "es" ? "es" : "en";
+    await fetch("/api/user-profile/locale", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: lng }),
+    });
+  } catch {
+    // best-effort; ignore network/auth errors
+  }
 }

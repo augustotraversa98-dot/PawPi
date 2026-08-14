@@ -128,7 +128,11 @@ async function POST(request) {
 
       // Email preferred, outside the transaction (sendEmail never throws).
       if (row.email) {
+        // FF1: render in the recipient's stored locale ('en'|'es'); es-AR when null/absent
+        // (pre-0107 the enumerator omits preferred_locale → undefined → the es fallback).
+        const locale = row.preferred_locale === "en" ? "en" : "es";
         const { subject, text } = winbackEmail({
+          locale,
           hook: hook.hook, petName: hook.petName, friendName: hook.friendName ?? null,
           milestoneKind: hook.milestoneKind ?? null, inDays: hook.inDays ?? null,
         });
