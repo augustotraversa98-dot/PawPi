@@ -158,7 +158,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
   1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
-### 🔧 WAVE 2 FIX-PACK (BX1·BX2·FF1–FF3) — IN PROGRESS 2026-08-14
+### 🔧 WAVE 2 FIX-PACK (BX1·BX2·FF1–FF3) — ✅ COMPLETE 2026-08-14
 
 Design of record: [`docs/wave2-finish-fixpack.md`](wave2-finish-fixpack.md). Closes the 3 deferred Wave 2
 niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued · 🔨 building · ✅ merged):
@@ -177,7 +177,13 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
   MERGED 2026-08-14. `resolvePetLogOwner` owner-OR-family write gate on walk/food/general-check routes
   (family writes anchor to the pet's owner, Viewer→403); mobile "Log a walk" on active family shared rows.
   NO migration (0049 RLS unchanged). Gates: vitest 1976→1982, integration 990→995, jest 1852→1854.
-- ☐ **FF3 — Day-card into the main feed**
+- ✅ **FF3 — Day-card into the main feed** — [#402](https://github.com/augustotraversa98-dot/PawPi/pull/402)
+  MERGED 2026-08-14. `groupFeedDayCards` collapses a pet's same-day daily moments into the multi-caregiver
+  DayCard (reuses component + endpoint shape; built from feed data, no per-group call); non-moment posts
+  unchanged. NO migration. Gates: jest 1854→1863.
+
+**Fix-pack final gates:** mobile jest **1863**, web vitest **1982**, web integration **995**. **⚠️
+Migration 0107 (FF1) awaits hand-apply to Supabase.** **BX2 needs an on-device tap confirmation.**
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

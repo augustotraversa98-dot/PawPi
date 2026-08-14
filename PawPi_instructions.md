@@ -744,6 +744,23 @@ not a hand-maintained log here:
 
 ### Snapshot (2026-07-29) — CURRENT
 
+> **Latest (2026-08-14): ✅ WAVE 2 FIX-PACK (BX2·BX1·FF1·FF2·FF3) — BUILT & MERGED.** One autonomous
+> Claude Code run closed the three deferred Wave 2 niceties + two on-device bugs — 5 PRs, all CI-green +
+> merged + Railway-healthy (`docs/wave2-finish-fixpack.md`, `docs/night-run-log.md`): **BX2** the walker
+> QR "Scan pickup" close (X) now sits above the native camera layer (zIndex/elevation/opaque bg +
+> box-none row + hitSlop) so it's tappable — *needs an on-device tap confirmation*; **BX1** business/staff
+> mobile accounts get an Account section on the business Profile tab (identity + Settings + "Switch to Pet
+> app" for dual accounts + a working **Log out**, mirroring the pet-owner More menu); **FF1** per-user
+> email locale — `user_profiles.preferred_locale` (**migration 0107**) threaded through the E11 digest +
+> E12 win-back senders so each email renders in the recipient's language (es-AR fallback when null), written
+> from the app on login + Settings language change; **FF2** accepted **family** caregivers can now log
+> walks/health (owner-OR-family route gate anchored to the pet's owner per 0049 — Viewer stays read-only)
+> with a "Log a walk" action on shared pets; **FF3** a pet's same-day daily moments now group into the
+> multi-caregiver **DayCard** carousel in the main feed (single author = clean one-slide card; a new
+> contribution bumps it up; non-moment posts unchanged). PRs #398–#402. **⚠️ Migration 0107 awaits
+> hand-apply to Supabase** (routes degrade cleanly until then). **New baselines: mobile jest 1863 · web
+> vitest 1982 · web integration 995.** This CLOSES all three Wave 2 deferrals noted below.
+>
 > **Latest (2026-08-14): ✅ Pet Owner engagement WAVE 2 (E11–E15) — Household & Retention — BUILT & MERGED.**
 > The second retention wave (`docs/pet-owner-engagement.md` "WAVE 2") shipped in one autonomous Claude Code
 > run — 7 PRs, all CI-green + merged + Railway-deployed: **E11 weekly digest "Rex's Week"** (real weekly

@@ -2,6 +2,32 @@
 
 ---
 
+## ✅ WAVE 2 FIX-PACK — COMPLETE 2026-08-14
+
+Autonomous run, all **5 PRs MERGED CI-green** (merge commit + branch deleted each), Railway healthy
+throughout (every change additive + degrades cleanly). Built in order BX2 → BX1 → FF1 → FF2 → FF3.
+
+| Ticket | PR | Migration | Gist |
+|---|---|---|---|
+| BX2 walker QR close (X) not tappable | [#398](https://github.com/augustotraversa98-dot/PawPi/pull/398) | — | header pinned above native camera (zIndex/elevation/opaque + hitSlop + box-none) |
+| BX1 business mobile profile / log out | [#399](https://github.com/augustotraversa98-dot/PawPi/pull/399) | — | Account section on business Profile: identity + Settings + switch-to-pet + Log out |
+| FF1 per-user email locale | [#400](https://github.com/augustotraversa98-dot/PawPi/pull/400) | **0107** | `user_profiles.preferred_locale` + both digest/win-back senders render in it (es-AR fallback) |
+| FF2 caregiver walk/health logging | [#401](https://github.com/augustotraversa98-dot/PawPi/pull/401) | — | owner-OR-family write gate (`resolvePetLogOwner`) on walk/food/general-check + mobile "Log a walk" |
+| FF3 day-card into the main feed | [#402](https://github.com/augustotraversa98-dot/PawPi/pull/402) | — | `groupFeedDayCards` collapses same-pet same-day moments into the multi-caregiver DayCard |
+
+**Final gates:** mobile jest **1863** (from 1847), web vitest **1982** (from 1970), web integration
+**995** (from 989). **All decisions = the driver's recommended defaults** (per-ticket deviations logged
+below, each with reasoning: FF2 anchors caregiver writes to the pet's owner per the as-built care-ring
+model; FF3 builds the DayCard payload from feed data rather than N per-group endpoint calls).
+
+**⚠️ Still owed (hand-apply):** **migration 0107 awaits hand-apply to Supabase** (this env can't apply
+DDL) — routes degrade cleanly until then (es-AR fallback, never a 500). **NEEDS ON-DEVICE CONFIRMATION:**
+**BX2** — the walker QR close (X) tap fix is layering + hitSlop; the `onPress` wiring is unit-proven but
+the actual tap must be confirmed on the simulator/device (CC can't tap the simulator). No other ticket
+needs device confirmation, though a device smoke of BX1 logout + FF2 "Log a walk" + FF3 feed is nice-to-have.
+
+---
+
 ## 🔧 WAVE 2 FIX-PACK (BX2·BX1·FF1·FF2·FF3) — autonomous run 2026-08-14
 
 Design of record: `docs/wave2-finish-fixpack.md`. Closes the three deferred Wave 2 niceties
@@ -91,6 +117,24 @@ jest **1847**, web vitest **1970**, web integration **989**. Next migration numb
     modal posts petId).
   - **Deploy:** mobile + web code, NO migration — nothing to hand-apply; Railway auto-deploy healthy
     (all changes additive; degrade cleanly pre-0049).
+
+- **2026-08-14 — FF3 day-card into the main feed** — [#402](https://github.com/augustotraversa98-dot/PawPi/pull/402)
+  MERGED (merge commit, branch deleted), **CI-green** (web vitest needed one re-run for a transient
+  `bun install` pdfjs-dist tarball flake — code was never red; mobile jest / integration passed first try).
+  - **What shipped (mobile-only, NO migration):** new pure util `groupFeedDayCards(posts)` collapses a
+    pet's same-day daily moments (`is_daily_update`) into one `{ kind:"daycard" }` item matching the
+    endpoint's contract, so the existing `DayCard` component renders it unchanged — with NO extra
+    per-group network call (feed already carries every field). `UnlockedFeed` groups BEFORE interleaving
+    suggestions, adds a daycard branch, and counts day cards for the Suggested divider. `DayCard` gains an
+    optional `onOpenDetail` (tap opens the shown slide's real post). Non-moment posts / suggestions /
+    business posts untouched. EN+ES (reuses `dayCard.*`).
+  - **Decision (default: "reuse the existing endpoint/component"):** reused the COMPONENT + the endpoint's
+    OUTPUT SHAPE, but build the payload from the feed posts client-side rather than calling
+    `/api/pets/[id]/day-card` per pet-day group — calling it per group would be a feed perf regression
+    (N requests). Logged as a justified deviation from a literal "call the endpoint" reading.
+  - **Gates:** mobile jest 1854→**1863** (+9: grouping util +6, feed integration +3); web vitest **1982**
+    / integration **995** unchanged (no web changes).
+  - **Deploy:** mobile-only, no DB/Railway change — nothing to apply; Railway unaffected.
 
 ---
 
