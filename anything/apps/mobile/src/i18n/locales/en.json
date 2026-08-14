@@ -1072,5 +1072,17 @@
     "seniorTip": "A gentle, shorter walk and a comfort check close {{name}}'s ring 🐾",
     "overrideLabel": "LIFE STAGE",
     "detectedNote": "Auto-detected: {{stage}}"
+  },
+  "caregiverLog": {
+    "logWalkTitle": "Log a walk",
+    "logWalkFor": "For {{name}}",
+    "duration": "Duration (minutes)",
+    "durationPlaceholder": "e.g. 20",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "How was the walk?",
+    "logWalkCta": "Log a walk",
+    "save": "Save walk",
+    "saved": "Walk logged 🐾",
+    "saveError": "Couldn't log the walk. Please try again."
   }
 }

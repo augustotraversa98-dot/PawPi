@@ -23,6 +23,9 @@ jest.mock("lucide-react-native", () =>
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+// The caregiver log-walk sheet pulls in react-query; stub it (its own test covers it).
+jest.mock("@/components/Pets/CaregiverLogWalkModal", () => () => null);
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 1, name: "Rex" } }),
 }));
@@ -82,4 +85,20 @@ test("the 'Shared with me' tab shows a pending invite with accept/decline", () =
   expect(mockRespond.mutate).toHaveBeenCalledWith({ grantId: 20, accept: true });
   fireEvent.press(getByTestId("decline-20"));
   expect(mockRespond.mutate).toHaveBeenCalledWith({ grantId: 20, accept: false });
+});
+
+test("FF2: an ACTIVE FAMILY grant shows a 'Log a walk' action; a Viewer/pending does not", () => {
+  mockShared = {
+    data: [
+      { id: 30, pet_id: 5, pet_name: "Rex", owner_username: "bob", role: "family", status: "active" },
+      { id: 31, pet_id: 6, pet_name: "Coco", owner_username: "bob", role: "caregiver", status: "active" },
+      { id: 32, pet_id: 7, pet_name: "Duke", owner_username: "bob", role: "family", status: "pending" },
+    ],
+    isLoading: false,
+  };
+  const { getByTestId, queryByTestId } = render(<PetSharingScreen />);
+  fireEvent.press(getByTestId("tab-shared"));
+  expect(getByTestId("log-walk-30")).toBeTruthy(); // family + active
+  expect(queryByTestId("log-walk-31")).toBeNull(); // Viewer (caregiver role) → no write
+  expect(queryByTestId("log-walk-32")).toBeNull(); // pending → not yet
 });
