@@ -131,7 +131,17 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   one-tap opt-out; `CRON_SECRET` sender + welcome-back screen + one-tap streak repair (grace window). No
   guilt. **Migration 0101** (reengagement_state own-row RLS; app_reengagement_due + app_winback_repair_streak
   DEFINER) — **awaits hand-apply**; degrades clean. EN+ES. Gates: vitest 1954, integration 958, jest green.
-- ☐ **E13 — Shared custody / caregivers (tiered).** Owner/Admin · Caregiver · Viewer via new `pet_caregivers`
+- ✅ **E13 — Shared custody / caregivers (tiered)** — 3 PRs MERGED 2026-08-14: shared ring
+  [#393](https://github.com/augustotraversa98-dot/PawPi/pull/393) · day-card
+  [#394](https://github.com/augustotraversa98-dot/PawPi/pull/394) · household leaderboard
+  [#395](https://github.com/augustotraversa98-dot/PawPi/pull/395). **RECONCILED with the EXISTING
+  `pet_caregivers` (ticket 2.47/migration 0049)** — it already ships the membership + invite/accept/revoke
+  + owner-OR-caregiver RLS on pets/routines/medical/health. E13 extended it to the engagement layer: shared
+  ring/streak (0102, caregiver policies on pet_care_days/pet_streaks + `app_pet_ring_segments` by pet_id),
+  per-author daily moment + day-card carousel (0103), household leaderboard (0104). Role map: owner=Owner/Admin,
+  0049 family=Caregiver, 0049 caregiver=Viewer. **Migrations 0102–0104 await hand-apply.** Solo owner a strict
+  no-op. EN+ES. (original spec below — superseded by the reconciliation)
+- ☐ ~~E13 — Shared custody / caregivers (tiered).~~ Owner/Admin · Caregiver · Viewer via new `pet_caregivers`
   (RLS = owner OR accepted caregiver, no leakage). Multi-caregiver daily moment = per-pet-per-day, 1/caregiver,
   one bumping "day card" carousel with per-author slides. Shared per-pet ring/streak. Private household
   leaderboard (celebrate, never shame a co-parent). **Riskiest unit — 3 PRs in one chat.**

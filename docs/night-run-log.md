@@ -53,6 +53,39 @@ Design of record: `docs/pet-owner-engagement.md` "WAVE 2" section. Each unit its
     GET route; inlined the milestone math in the cron to avoid a cross-`[id]`-dir import.
   - **Gates:** web vitest 1942→**1954** (+12), integration 948→**958** (+10), mobile jest green (+E12 suites).
 
+- **2026-08-14 — E13 shared custody / caregivers (3 PRs)** — the riskiest unit; RLS generalization.
+  MERGED CI-green: PR1 shared ring [#393](https://github.com/augustotraversa98-dot/PawPi/pull/393) ·
+  PR2 day-card [#394](https://github.com/augustotraversa98-dot/PawPi/pull/394) ·
+  PR3 household leaderboard [#395](https://github.com/augustotraversa98-dot/PawPi/pull/395).
+  - **KEY DECISION (logged, spec reconciliation):** the caregiver MODEL already existed — **ticket 2.47 /
+    migration 0049 (`family_caregiver_sharing`)** ships `pet_caregivers` (person↔person grants, roles
+    family|caregiver, status pending/active/revoked), the invite/accept/revoke API (`/api/pet-caregivers`),
+    the mobile UI (`pet-sharing.jsx`), and the owner-OR-caregiver RLS generalization across
+    pets/routines/pet_medical_profiles/all health logs (via DEFINER gates app_owns_pet /
+    app_user_has_pet_access / app_user_has_pet_family). So E13 did NOT create a new pet_caregivers table
+    (would have collided). Instead it **extended 0049 to the E0–E2 engagement layer**. Role mapping:
+    pet owner = Owner/Admin; 0049 'family' = E13 "Caregiver" (full day-to-day); 0049 'caregiver' = E13 "Viewer".
+  - **PR1 (0102):** pet_care_days + pet_streaks gain an active-caregiver FOR ALL policy (alongside the owner
+    own-row); `app_pet_ring_segments(pet,tz,day)` DEFINER derives the ring by pet_id across ALL contributors.
+    care-ring route gate widened to owner-OR-caregiver (`requirePetAccess`); persist tolerates a pre-0102 RLS
+    denial. Solo owner byte-for-byte unchanged (existing care-ring suite green).
+  - **PR2 (0103):** daily-moment uniqueness swapped one-per-pet-per-day → one-per-AUTHOR-per-pet-per-day.
+    posts route: daily-moment gate widened to owner OR 'family' caregiver (Viewer still can't post); cap now
+    per-author. `GET /api/pets/[id]/day-card` groups the day's moments into attributed carousel slides +
+    day-card paw/bark totals + latest_contribution_at (bump). Mobile `DayCard` component + `useDayCard`.
+  - **PR3 (0104):** `household_leaderboard_prefs` (owner-manage + caregiver-read) + `app_household_leaderboard`
+    DEFINER (per-member weekly counts — moments by author, walks/care by logger owner_user_id — for owner +
+    active caregivers). Pure `rankHousehold` = positive-only, NEVER a least-active flag (grep). Owner-only
+    opt-out. Mobile `HouseholdLeaderboardCard` (renders nothing solo/opted-out). **No new logged_by column
+    needed** — attribution rides existing posts.user_id + health-log owner_user_id (the logger).
+  - **Migrations 0102 + 0103 + 0104 await hand-apply.** All degrade clean (missing fn/policy/table or a
+    caregiver RLS denial → derived-only / empty board / owner-only, never a 500).
+  - **Deferred (logged):** caregiver LOG routing into the ring via the health-log routes beyond the daily
+    moment (the health-spine route gates stay owner-only for now; 0049's family RLS already permits the
+    writes, so it's a route-gate follow-up, not a data-model gap). Day-card main-FEED grouping wire-in is a
+    mobile follow-up (the DayCard component + endpoint are ready). Viewer optional walk/care logging deferred.
+  - **Gates:** web vitest 1954→**1958** (+4), integration 958→**976** (+18 across the 3 PRs), mobile jest green.
+
 - **2026-07-29 00:19** — Prereq: password reset flow (migration 0069) merged — [#261](https://github.com/augustotraversa98-dot/PawPi/pull/261) (predates tonight's queue, landed first to bring `main` current).
 - **2026-07-29 00:19** — Prereq: support-contact domain fix (augusto@pawpi.info) merged — [#262](https://github.com/augustotraversa98-dot/PawPi/pull/262).
 - **2026-07-29 00:20** — Prereq: demo accounts renamed to pawpi.info — [#263](https://github.com/augustotraversa98-dot/PawPi/pull/263).
