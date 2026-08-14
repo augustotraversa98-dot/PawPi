@@ -73,6 +73,17 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["weeklyDigest", "milestoneGotcha"],
     ["weeklyDigest", "shareSubtitle"],
     ["weeklyDigest", "prefsHint"],
+    ["notifications", "winbackTitle"],
+    ["notifications", "winbackBirthday"],
+    ["notifications", "winbackFriend"],
+    ["notifications", "winbackMemory"],
+    ["welcomeBack", "title"],
+    ["welcomeBack", "headline"],
+    ["welcomeBack", "repair"],
+    ["welcomeBack", "milestoneGotcha"],
+    ["welcomeBack", "friendPosted"],
+    ["welcomeBack", "friendsEmpty"],
+    ["welcomeBack", "optOut"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");

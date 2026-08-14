@@ -132,6 +132,12 @@
     "weeklyDigestRich": "{{walks}} paseos y {{ring}}/7 días con el aro — tocá para ver el resumen",
     "weeklyDigestQuiet": "Una semana más tranquila para {{name}} — mirá un lindo momento",
     "weeklyDigestEmpty": "Una semana nueva para {{name}} — tocá para retomar donde lo dejaste",
+    "winbackPetFallback": "tu compañero",
+    "winbackTitle": "{{name}} te extraña 🐾",
+    "winbackBirthday": "El cumple de {{name}} es en {{days}} días — un lindo momento para reencontrarse 🎂",
+    "winbackGotcha": "El día de adopción de {{name}} es en {{days}} días — vení a festejar 🎉",
+    "winbackFriend": "{{friend}} anduvo publicando — {{name}} quiere saludar 🐾",
+    "winbackMemory": "{{name}} te espera con la cola lista 🐾 Sin apuro",
     "walk_request_targeted": "Nueva solicitud de paseo de {{provider}}",
     "walk_request_broadcast": "Se necesita un paseo cerca",
     "walk_request_accepted": "Aceptada — {{provider}} paseará a tu perro",
@@ -1012,5 +1018,17 @@
     "pushToggle": "Notificación push",
     "emailToggle": "Email",
     "prefsHint": "Un resumen semanal cálido, el domingo a la tarde. Nunca un recordatorio diario."
+  },
+  "welcomeBack": {
+    "petFallback": "tu compañero",
+    "title": "Bienvenido de vuelta",
+    "headline": "{{name}} está feliz de verte 🐾",
+    "repair": "Recuperá la racha de {{name}} — un toque, gratis 🔥",
+    "milestoneBirthday": "El cumple de {{name}} es en {{days}} días 🎂",
+    "milestoneGotcha": "El día de adopción de {{name}} es en {{days}} días 🎉",
+    "friendsTitle": "LO QUE HIZO TU GRUPO",
+    "friendPosted": "{{name}} compartió un momento",
+    "friendsEmpty": "Cuando los amigos de {{name}} publiquen, los vas a ver acá 🐾",
+    "optOut": "No me mandes estos mensajes"
   }
 }

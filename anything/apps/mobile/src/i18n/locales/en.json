@@ -132,6 +132,12 @@
     "weeklyDigestRich": "{{walks}} walks and {{ring}}/7 ring days — tap to see the recap",
     "weeklyDigestQuiet": "A quieter week for {{name}} — here's one nice moment",
     "weeklyDigestEmpty": "A fresh week for {{name}} — tap to pick up where you left off",
+    "winbackPetFallback": "your pup",
+    "winbackTitle": "{{name}} misses you 🐾",
+    "winbackBirthday": "{{name}}'s birthday is in {{days}} days — a lovely moment to reconnect 🎂",
+    "winbackGotcha": "{{name}}'s gotcha day is in {{days}} days — come celebrate 🎉",
+    "winbackFriend": "{{friend}} has been posting — {{name}} would love to say hi 🐾",
+    "winbackMemory": "{{name}} is waiting, tail ready 🐾 No rush at all",
     "walk_request_targeted": "New walk request from {{provider}}",
     "walk_request_broadcast": "A walk is needed nearby",
     "walk_request_accepted": "Accepted — {{provider}} will walk your dog",
@@ -1012,5 +1018,17 @@
     "pushToggle": "Push notification",
     "emailToggle": "Email",
     "prefsHint": "A warm weekly recap, Sunday evening. Never a daily nag."
+  },
+  "welcomeBack": {
+    "petFallback": "your pup",
+    "title": "Welcome back",
+    "headline": "{{name}} is so happy you're here 🐾",
+    "repair": "Bring back {{name}}'s streak — one tap, free 🔥",
+    "milestoneBirthday": "{{name}}'s birthday is in {{days}} days 🎂",
+    "milestoneGotcha": "{{name}}'s gotcha day is in {{days}} days 🎉",
+    "friendsTitle": "WHAT YOUR PACK DID",
+    "friendPosted": "{{name}} shared a moment",
+    "friendsEmpty": "When {{name}}'s friends post, you'll see them here 🐾",
+    "optOut": "Don't send me these"
   }
 }
