@@ -158,3 +158,16 @@ day one; no fake data. One line per merge.
   LeaderboardCard on Health->Today (flavor tabs, tier badge + movement, gated fallback note,
   neighborhood coarse-area opt-in). EN+ES. Gates: mobile jest 1791->1793 (+2), web integration
   919->924 (+5), web vitest 1920.
+- **2026-08-14 (E9)** — Comparative health insight merged — PR TBD. **Migration 0099** (PENDING
+  hand-apply + verify_0099.sql). A positive, behavioral activity reward after logging. v1 defaults to
+  the dog's OWN history: this week's walk count vs the prior 3 weeks → best-week-in-a-month /
+  more-than-last-week / keep-going / gentle forward nudge. A breed+age COHORT win ("more active than
+  X% of {breed}s his age") only renders when the pet is ABOVE median AND the cohort is >= min size, via
+  `app_activity_cohort` DEFINER (owner-scoped RLS forbids reading peers' logs; the aggregate is
+  same-breed + age±1yr weekly walk counts). The positive-only rule is ENFORCED in a pure,
+  server-authoritative `decideInsight` (logic.js) — no bare-negative kind can ever be returned; below
+  median falls through to personal/nudge. `GET /api/pets/[id]/activity-insight`; disclaimer always
+  present (behavioral, never diagnostic); degrades clean pre-migration (cohort branch drops, personal
+  history still renders). Mobile: useActivityInsight + ActivityInsightCard on Health->Today (maps the
+  server `kind` to positive EN+ES copy; a no-negative grep test guards the strings). Gates: mobile jest
+  1793->1805 (+12), web vitest 1920->1924 (+4), web integration 924->928 (+4).

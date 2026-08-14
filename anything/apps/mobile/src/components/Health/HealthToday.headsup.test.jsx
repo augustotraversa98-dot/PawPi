@@ -18,6 +18,7 @@ const mockPush = jest.fn();
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
 jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("@/components/Health/LeaderboardCard", () => ({ LeaderboardCard: () => null }));
+jest.mock("@/components/Health/ActivityInsightCard", () => ({ ActivityInsightCard: () => null }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),

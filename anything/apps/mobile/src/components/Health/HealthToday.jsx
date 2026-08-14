@@ -13,6 +13,7 @@ import { Card, PressableScale } from "@/components/ui";
 import { CareRingCard } from "@/components/Health/CareRingCard";
 import { PackStreaksCard } from "@/components/Health/PackStreaksCard";
 import { LeaderboardCard } from "@/components/Health/LeaderboardCard";
+import { ActivityInsightCard } from "@/components/Health/ActivityInsightCard";
 import {
   Calendar,
   TrendingUp,
@@ -544,6 +545,10 @@ export default function HealthToday() {
               router.push(seg === "moment" ? "/(tabs)" : "/(tabs)/health")
             }
           />
+          {/* Activity insight — a positive, behavioral reward (E9) */}
+          <View style={{ marginTop: SPACING.lg }}>
+            <ActivityInsightCard petId={currentPet.id} petName={currentPet.name} />
+          </View>
           {/* Pack streaks — shared flame with a dog friend (E7) */}
           <View style={{ marginTop: SPACING.lg }}>
             <PackStreaksCard petId={currentPet.id} />

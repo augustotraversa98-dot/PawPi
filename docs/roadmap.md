@@ -93,8 +93,15 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   drives real promotion/relegation movement. `GET/POST /api/pets/[id]/leaderboard`. Mobile:
   `useLeaderboard` + `LeaderboardCard` on Health→Today (flavor tabs, tier + movement, gated empty-safe
   state, neighborhood opt-in). EN+ES. Proven: leaderboard integration (+5), useLeaderboard jest (+2).
-- ☐ **E9** — Comparative insight (density-gated) ·
-  ☐ **E10** — Health-update reinforcement. _(E9–E10 are later units, tracked here for the full wave.)_
+- ✅ **E9** — Comparative health insight (density-gated, always positive). **Migration 0099** (PENDING
+  hand-apply). Positive, behavioral activity reward. v1 defaults to the dog's OWN history (best-week-in-
+  a-month / more-than-last / gentle nudge). A breed+age cohort win ("more active than X% of {breed}s his
+  age") only renders ABOVE median + at/above a min cohort via `app_activity_cohort` DEFINER; below median
+  NEVER shows a negative comparison — enforced in a pure server-authoritative `decideInsight` (no bare
+  negative kind can be returned). `GET /api/pets/[id]/activity-insight`; disclaimer always present, never
+  diagnostic. Mobile: `useActivityInsight` + `ActivityInsightCard` on Health→Today. EN+ES. Proven:
+  activity-insight integration (+4), decideInsight vitest (+4), renderer jest (+12).
+- ☐ **E10** — Health-update reinforcement. _(E10 is the last unit, tracked here for the full wave.)_
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
