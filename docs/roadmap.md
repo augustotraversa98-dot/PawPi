@@ -112,7 +112,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   `CareRingCard`. EN+ES; behavioral, not diagnostic. Proven: health-reinforcement integration (+4),
   hooks/shareLinks/no-shame jest (+4). **Pet Owner engagement wave E5–E10 COMPLETE.**
 
-### 🐾 WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — ✅ COMPLETE (built 2026-08-14, migrations 0100–0106 await hand-apply)
+### 🐾 WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — ✅ COMPLETE (built 2026-08-14; migrations 0100–0106 ✅ APPLIED + VERIFIED on Supabase 2026-08-14 — all verify_010x.sql PASS)
 
 Design of record: [`docs/pet-owner-engagement.md`](pet-owner-engagement.md) → "WAVE 2" section (full unit
 specs + paste-ready grey-box Claude Code prompts). Chosen with Tats. Run each unit as its own CC session, in

@@ -163,7 +163,29 @@ ACTION 1).
 >   counts → cohort_size / above_median / percentile); no table. The positive-only rule lives in the
 >   route's pure `decideInsight`. Verify: `verify_0099.sql`.
 
-Still deferred: **no RLS, no seed data, no app-code changes.**
+> **0100–0106** are the "Pet Owner engagement" **WAVE 2** (units E11–E15, Household & Retention). All
+> ADDITIVE, harness-proven, and **✅ APPLIED + VERIFIED on Supabase 2026-08-14** (verify_0100–0106 all
+> PASS). No existing table's RLS is loosened beyond "owner OR accepted caregiver"; consumers degrade
+> cleanly (42P01/42883/42703/RLS-denial → feature absent, never 500).
+> - **0100** (E11 weekly digest): `weekly_digest_prefs` + `weekly_digest_state` (own-row RLS,
+>   UNIQUE(pet,week)); notifications_type_check += 'weekly_digest'; `app_weekly_digest_due(timestamptz,int)`
+>   DEFINER cross-owner "Sunday-evening due" enumerator (like app_due_subscriptions). Verify `verify_0100.sql`.
+> - **0101** (E12 comeback): `reengagement_state` (own-row); type_check += 'winback';
+>   `app_reengagement_due(...)` DEFINER lapsed-pet enumerator w/ real hook signals + `app_winback_repair_streak`
+>   (E2 repair w/ configurable grace window). Verify `verify_0101.sql`.
+> - **0102** (E13 PR1 shared ring): caregiver `FOR ALL` policies on pet_care_days + pet_streaks (alongside
+>   the 0094 owner own-row) + `app_pet_ring_segments(pet,tz,day)` DEFINER (derives by pet_id across ALL
+>   contributors). Reuses 0049's `app_user_has_pet_access`. Verify `verify_0102.sql`.
+> - **0103** (E13 PR2 day-card): swap the daily-moment unique index from one-per-pet-per-day (0004) to
+>   one-per-AUTHOR-per-pet-per-day (`idx_posts_one_daily_per_author_per_pet_per_day`). Verify `verify_0103.sql`.
+> - **0104** (E13 PR3 leaderboard): `household_leaderboard_prefs` (owner-manage + caregiver-read) +
+>   `app_household_leaderboard(pet,week_start)` DEFINER (per-member weekly counts). Verify `verify_0104.sql`.
+> - **0105** (E14 family streak): `household_streaks` (own-row) + `app_advance_household_streak(owner,day)`
+>   DEFINER (advances only when EVERY owned dog closed; forgiveness-aware; opt-in). Verify `verify_0105.sql`.
+> - **0106** (E15 life stage): additive `pets.life_stage_override` (CHECK null|puppy|adult|senior; NULL =
+>   auto-detect). No RLS change. Verify `verify_0106.sql`.
+
+Still deferred: **no seed data.**
 
 ---
 

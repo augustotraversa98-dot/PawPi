@@ -757,8 +757,8 @@ not a hand-maintained log here:
 > **E14 multi-pet household** (household home + pet switcher on the existing persisted store + an opt-in
 > family streak that advances only when every dog's ring closed, forgiveness-aware), and **E15 life-stage
 > ring goals** (puppy/adult/senior copy adapts, size-scaled senior threshold, owner override; the ring
-> keeps its three segments; behavioral, never diagnostic). PRs #391–#397. **Migrations 0100–0106 are
-> additive + degrade cleanly and AWAIT HAND-APPLY to Supabase** (each has a `verify_010x.sql`); a solo
+> keeps its three segments; behavioral, never diagnostic). PRs #391–#397. **Migrations 0100–0106 ✅ APPLIED
+> + VERIFIED on Supabase 2026-08-14** (additive + degrade-clean; all `verify_010x.sql` PASS); a solo
 > single-dog owner is a strict no-op everywhere. **New baselines: mobile jest 1847 · web vitest 1970 · web
 > integration 989.** Deferred (logged in `docs/night-run-log.md`): caregiver health-log route gates beyond
 > the daily moment, day-card main-feed wire-in, server-side per-user locale for digest/win-back email.

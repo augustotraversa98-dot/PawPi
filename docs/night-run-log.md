@@ -6,8 +6,8 @@
 
 Autonomous run, all 7 PRs **MERGED CI-green** (merge commit + branch deleted each), Railway deploys
 healthy. Every migration is **additive + degrades cleanly** (42P01/42883/42703/RLS-denial → feature
-absent, never a 500), so production stayed healthy while **migrations 0100–0106 AWAIT HAND-APPLY to
-Supabase** (this environment can't apply DDL). Each unit's `verify_01xx.sql` is ready.
+absent, never a 500), so production stayed healthy at all times. **✅ Migrations 0100–0106 APPLIED +
+VERIFIED on Supabase 2026-08-14** (Tats hand-applied; all `verify_010x.sql` PASS).
 
 | Unit | PR(s) | Migration(s) | Gist |
 |---|---|---|---|
@@ -24,8 +24,8 @@ ships the caregiver model + owner-OR-caregiver RLS; E13 extended it to the engag
 owner=Owner/Admin, 0049 family=Caregiver, 0049 caregiver=Viewer). **Deferred (logged):** caregiver
 health-log route gates beyond the daily moment (0049 RLS already permits; route-gate follow-up); day-card
 main-FEED grouping wire-in (component + endpoint ready); server-side per-user locale for digest/win-back
-email (defaults to es-AR fallback; both langs present). **HAND-APPLY OWED:** migrations 0100–0106 +
-run each `supabase/verify_010x.sql`.
+email (defaults to es-AR fallback; both langs present). **✅ Migrations 0100–0106 APPLIED + VERIFIED on
+Supabase 2026-08-14 (all `verify_010x.sql` PASS)** — nothing owed.
 
 Per-unit detail below.
 
