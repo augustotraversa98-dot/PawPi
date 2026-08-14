@@ -1050,5 +1050,20 @@
     "familyStreakTitle": "Family streak",
     "familyStreakActive": "{{count}} days with every dog's ring closed 🔥",
     "familyStreakHint": "Turn on a household flame — it grows on days all your dogs close their ring."
+  },
+  "lifeStage": {
+    "petFallback": "your pup",
+    "auto": "Auto",
+    "puppyShort": "Puppy",
+    "adultShort": "Adult",
+    "seniorShort": "Senior",
+    "puppyTitle": "Puppy stage 🐶",
+    "adultTitle": "Adult stage 🐕",
+    "seniorTitle": "Senior stage 🦴",
+    "puppyTip": "Short, frequent walks and a potty check close {{name}}'s ring 🐾",
+    "adultTip": "A daily walk, a moment, and a care check close {{name}}'s ring 🐾",
+    "seniorTip": "A gentle, shorter walk and a comfort check close {{name}}'s ring 🐾",
+    "overrideLabel": "LIFE STAGE",
+    "detectedNote": "Auto-detected: {{stage}}"
   }
 }

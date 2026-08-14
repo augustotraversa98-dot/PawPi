@@ -1050,5 +1050,20 @@
     "familyStreakTitle": "Racha familiar",
     "familyStreakActive": "{{count}} días con el aro de todos los perros cerrado 🔥",
     "familyStreakHint": "Activá una llama del hogar — crece los días que todos tus perros cierran su aro."
+  },
+  "lifeStage": {
+    "petFallback": "tu compañero",
+    "auto": "Auto",
+    "puppyShort": "Cachorro",
+    "adultShort": "Adulto",
+    "seniorShort": "Senior",
+    "puppyTitle": "Etapa cachorro 🐶",
+    "adultTitle": "Etapa adulta 🐕",
+    "seniorTitle": "Etapa senior 🦴",
+    "puppyTip": "Paseos cortos y frecuentes y un control de pis cierran el aro de {{name}} 🐾",
+    "adultTip": "Un paseo diario, un momento y un cuidado cierran el aro de {{name}} 🐾",
+    "seniorTip": "Un paseo suave y cortito y un control de bienestar cierran el aro de {{name}} 🐾",
+    "overrideLabel": "ETAPA DE VIDA",
+    "detectedNote": "Detectado automáticamente: {{stage}}"
   }
 }
