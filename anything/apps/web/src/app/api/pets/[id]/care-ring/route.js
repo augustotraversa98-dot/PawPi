@@ -219,6 +219,19 @@ async function GET(request, { params }) {
       }
     }
 
+    // E14 family streak: on close, advance the household flame IF every one of the owner's dogs closed
+    // today (and they opted in). Its OWN savepoint so a pre-migration (0105 absent) helper never degrades
+    // the personal ring. No-op for a single-dog / not-opted-in household.
+    if (seg.ringClosed) {
+      try {
+        await withSavepoint(async () => {
+          await sql`SELECT app_advance_household_streak(${ownerUserId}, ${day}::date)`;
+        });
+      } catch (e) {
+        if (!isMissingSchema(e)) throw e;
+      }
+    }
+
     const paused = pausedUntil != null && pausedUntil >= day;
     return Response.json({
       day,

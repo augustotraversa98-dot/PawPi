@@ -1042,6 +1042,13 @@
     "someone": "Un cuidador",
     "mostActive": "más activo 💪",
     "stats": "{{moments}} momentos · {{care}} cuidados · {{walks}} paseos",
-    "footer": "Cada gesto de cuidado suma — ¡gracias, equipo! 🐾"
+    "footer": "Cada gesto de cuidado suma — ¡gracias, equipo! 🐾",
+    "homeTitle": "Tus perros 🏡",
+    "dogsLabel": "TOCÁ PARA CAMBIAR",
+    "coCared": "compartido",
+    "streakDays": "racha de {{count}} días 🔥",
+    "familyStreakTitle": "Racha familiar",
+    "familyStreakActive": "{{count}} días con el aro de todos los perros cerrado 🔥",
+    "familyStreakHint": "Activá una llama del hogar — crece los días que todos tus perros cierran su aro."
   }
 }

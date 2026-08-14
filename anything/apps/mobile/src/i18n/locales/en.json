@@ -1042,6 +1042,13 @@
     "someone": "A caregiver",
     "mostActive": "most active 💪",
     "stats": "{{moments}} moments · {{care}} care · {{walks}} walks",
-    "footer": "Every bit of care counts — thanks, team 🐾"
+    "footer": "Every bit of care counts — thanks, team 🐾",
+    "homeTitle": "Your dogs 🏡",
+    "dogsLabel": "TAP TO SWITCH",
+    "coCared": "co-cared",
+    "streakDays": "{{count}}-day streak 🔥",
+    "familyStreakTitle": "Family streak",
+    "familyStreakActive": "{{count}} days with every dog's ring closed 🔥",
+    "familyStreakHint": "Turn on a household flame — it grows on days all your dogs close their ring."
   }
 }
