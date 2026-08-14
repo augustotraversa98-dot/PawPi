@@ -67,7 +67,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   into `CareRingCard`). Guilt/chore copy removed (reframed `notificationGenerator` + daily-return);
   Settings → Notifications now real per-category toggles (Social / Milestones / Streak / Care). Proven:
   policy/prefs/engagement/no-guilt-grep jest (+30).
-- ✅ **E6** — Onboarding D1 polish. **Migration 0096** (welcome paw; PENDING hand-apply). First session
+- ✅ **E6** — Onboarding D1 polish. **Migration 0096** (welcome paw; ✅ APPLIED + verified 2026-08-14). First session
   ends with the ring STARTED: first moment posted → day-1 streak seeded + the ONE allowed labelled
   seeded interaction, a first paw from the official "PawPi Welcome" account (lazily created by the
   `app_welcome_account` / `app_welcome_paw` DEFINER helpers — NO migration-time seed row, so the
@@ -76,7 +76,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   gotcha/adoption day inline (optional); success screen shows "🔥 Day 1" + the welcome paw, or a
   ring-start nudge. No health fields forced. EN+ES. Proven: onboarding-welcome integration (+5),
   onboardingWelcome jest (+4).
-- ✅ **E7** — Pack / shared streaks. **Migration 0097** (pack streaks; PENDING hand-apply). New
+- ✅ **E7** — Pack / shared streaks. **Migration 0097** (pack streaks; ✅ APPLIED + verified 2026-08-14). New
   `pet_pack_streaks` (participant-scoped ENABLE+FORCE RLS) + 5 DEFINER helpers (request by @handle /
   accept / advance-on-close / boop / reader) — DEFINER because every action crosses the owner boundary
   (pets + pet_care_days are owner-scoped). A pack advances only when BOTH close their ring the same
@@ -85,7 +85,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   `usePackStreaks` hooks + `PackStreaksCard` on Health→Today (flame + boop + accept + start-by-handle;
   break copy celebrates the best run, never blames). Opt-in. EN+ES. Proven: pack-streaks integration
   (+4), usePackStreaks jest (+5).
-- ✅ **E8** — Leaderboards (density-gated). **Migration 0098** (PENDING hand-apply). Weekly care-effort
+- ✅ **E8** — Leaderboards (density-gated). **Migration 0098** (✅ APPLIED + verified 2026-08-14). Weekly care-effort
   leagues: XP from walks / ring closes / care actions / paws GIVEN (never likes received) via
   `app_pet_week_xp` + `app_leaderboard` DEFINER (ranks across owners). DENSITY-GATED — friends always;
   breed/neighborhood only at/above a min cohort (config) else fall back to friends (never empty/fake).
@@ -93,7 +93,7 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   drives real promotion/relegation movement. `GET/POST /api/pets/[id]/leaderboard`. Mobile:
   `useLeaderboard` + `LeaderboardCard` on Health→Today (flavor tabs, tier + movement, gated empty-safe
   state, neighborhood opt-in). EN+ES. Proven: leaderboard integration (+5), useLeaderboard jest (+2).
-- ✅ **E9** — Comparative health insight (density-gated, always positive). **Migration 0099** (PENDING
+- ✅ **E9** — Comparative health insight (density-gated, always positive). **Migration 0099** (✅ APPLIED + verified 2026-08-14 —
   hand-apply). Positive, behavioral activity reward. v1 defaults to the dog's OWN history (best-week-in-
   a-month / more-than-last / gentle nudge). A breed+age cohort win ("more active than X% of {breed}s his
   age") only renders ABOVE median + at/above a min cohort via `app_activity_cohort` DEFINER; below median
