@@ -29,35 +29,81 @@ const UNDEFINED_FUNCTION = "42883";
 // derived-only" rather than 500.
 const isMissingSchema = (e) => e?.code === UNDEFINED_TABLE || e?.code === UNDEFINED_FUNCTION;
 const isMissingTable = (e) => e?.code === UNDEFINED_TABLE;
+const INSUFFICIENT_PRIV = "42501"; // RLS denial (a caregiver write on a pre-0102 DB) → degrade, not 500
 const REPAIR_WINDOW_MS = 48 * 60 * 60 * 1000;
 const isIntId = (v) => /^\d+$/.test(String(v));
 const isDayStr = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v ?? ""));
 const toDayStr = (v) =>
   v instanceof Date ? v.toISOString().slice(0, 10) : v == null ? null : String(v).slice(0, 10);
 
-// Resolve caller + verify pet ownership. Returns { ownerUserId, tz, today } or { error, status }.
-async function requireOwnedPet(session, petIdRaw) {
+// Resolve caller + verify pet ACCESS (owner OR an active caregiver — E13, the shared ring). Returns
+// { ownerUserId (the PET's owner, the ring's storage/tz anchor), petId, tz, today, role } or { error }.
+// A solo owner is unchanged: the owner branch resolves exactly as before. The caregiver branch reuses
+// 0049's app_user_has_pet_access (any active grantee) and reads the pet's owner via 0049 pets_grantee_read;
+// if that function is absent (pre-0049) the caller simply isn't a caregiver → 404 (never a 500).
+async function requirePetAccess(session, petIdRaw) {
   if (!session?.user?.id) return { error: "Unauthorized", status: 401 };
   if (!isIntId(petIdRaw)) return { error: "Pet not found", status: 404 };
-  const ownerUserId = await resolveUserId(session.user.id);
-  if (ownerUserId === null) return { error: "User profile not found", status: 404 };
+  const callerId = await resolveUserId(session.user.id);
+  if (callerId === null) return { error: "User profile not found", status: 404 };
 
   const petId = parseInt(petIdRaw, 10);
   const owned = await sql`
-    SELECT 1 FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId} LIMIT 1
+    SELECT 1 FROM pets WHERE id = ${petId} AND owner_user_id = ${callerId} LIMIT 1
   `;
-  if (owned.length === 0) return { error: "Pet not found", status: 404 };
+  let ownerUserId = null;
+  let role = null;
+  if (owned.length > 0) {
+    ownerUserId = callerId;
+    role = "owner";
+  } else {
+    // Active caregiver? app_user_has_pet_access keys off current_app_user_id() (= callerId).
+    let hasAccess = false;
+    try {
+      await withSavepoint(async () => {
+        const [r] = await sql`SELECT app_user_has_pet_access(${petId}) AS ok`;
+        hasAccess = !!r?.ok;
+      });
+    } catch (e) {
+      if (!isMissingSchema(e)) throw e; // pre-0049 → not a caregiver
+    }
+    if (!hasAccess) return { error: "Pet not found", status: 404 };
+    const [p] = await sql`SELECT owner_user_id FROM pets WHERE id = ${petId} LIMIT 1`;
+    if (!p) return { error: "Pet not found", status: 404 };
+    ownerUserId = p.owner_user_id;
+    role = "caregiver";
+  }
 
   const [prof] = await sql`
     SELECT COALESCE(timezone, 'America/Buenos_Aires') AS tz,
            (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS today
     FROM user_profiles WHERE id = ${ownerUserId}
   `;
-  return { ownerUserId, petId, tz: prof.tz, today: toDayStr(prof.today) };
+  return { ownerUserId, petId, tz: prof.tz, today: toDayStr(prof.today), role };
 }
 
-// Derive the three segment booleans for (pet, owner, day, tz) straight from the source logs.
+// Derive the three segment booleans for (pet, owner, day, tz). Prefers the SHARED derivation
+// (app_pet_ring_segments, E13/0102 — counts EVERY contributor's logs by pet_id so any caregiver's walk/
+// moment/care fills the shared segment); degrades to the owner-scoped inline derivation when the function
+// is absent (pre-0102). For a household of one the two are identical.
 async function deriveSegments(petId, ownerUserId, tz, day) {
+  let shared = null;
+  try {
+    await withSavepoint(async () => {
+      const [d] = await sql`SELECT * FROM app_pet_ring_segments(${petId}, ${tz}, ${day}::date)`;
+      if (d) shared = { walkDone: !!d.walk_done, momentDone: !!d.moment_done, careDone: !!d.care_done };
+    });
+  } catch (e) {
+    if (e?.code !== UNDEFINED_FUNCTION) throw e; // only a missing function degrades to owner-scoped
+  }
+  if (shared) {
+    return { ...shared, ringClosed: shared.walkDone && shared.momentDone && shared.careDone };
+  }
+  return deriveSegmentsOwnerScoped(petId, ownerUserId, tz, day);
+}
+
+// Owner-scoped fallback (pre-0102) — the original derivation, filtered by owner_user_id.
+async function deriveSegmentsOwnerScoped(petId, ownerUserId, tz, day) {
   const [d] = await sql`
     SELECT
       EXISTS (
@@ -95,10 +141,10 @@ async function GET(request, { params }) {
   try {
     const session = await auth();
     const { searchParams } = new URL(request.url);
-    const gate = await requireOwnedPet(session, params.id);
+    const gate = await requirePetAccess(session, params.id);
     if (gate.error) return Response.json({ error: gate.error }, { status: gate.status });
 
-    const { ownerUserId, petId, tz, today } = gate;
+    const { ownerUserId, petId, tz, today, role } = gate;
     const dayParam = searchParams.get("day");
     const day = isDayStr(dayParam) ? dayParam : today;
 
@@ -156,7 +202,9 @@ async function GET(request, { params }) {
         persisted = true;
       });
     } catch (e) {
-      if (!isMissingSchema(e)) throw e; // real error still 500s; a missing table/fn just degrades
+      // A missing table/fn degrades; so does an RLS denial for a caregiver on a pre-0102 DB (the
+      // pet_care_days/pet_streaks caregiver policies aren't applied yet) — derived-only, never a 500.
+      if (!isMissingSchema(e) && e?.code !== INSUFFICIENT_PRIV) throw e;
     }
 
     // E7 pack streaks: on close, advance any shared "pack" flames where the partner also closed today.
@@ -184,6 +232,7 @@ async function GET(request, { params }) {
       paused_until: pausedUntil,
       streak,
       persisted,
+      role, // 'owner' | 'caregiver' (E13 shared ring)
     });
   } catch (error) {
     console.error("[GET /api/pets/[id]/care-ring] ERROR:", error.message);
@@ -194,7 +243,7 @@ async function GET(request, { params }) {
 async function POST(request, { params }) {
   try {
     const session = await auth();
-    const gate = await requireOwnedPet(session, params.id);
+    const gate = await requirePetAccess(session, params.id);
     if (gate.error) return Response.json({ error: gate.error }, { status: gate.status });
     const { ownerUserId, petId, today } = gate;
 
