@@ -1035,5 +1035,13 @@
     "postedBy": "Publicado por {{name}}",
     "authors": "{{count}} cuidadores compartieron hoy 🐾",
     "someone": "alguien"
+  },
+  "household": {
+    "title": "Tu hogar 🏡",
+    "subtitle": "Todo lo que hizo tu familia esta semana",
+    "someone": "Un cuidador",
+    "mostActive": "más activo 💪",
+    "stats": "{{moments}} momentos · {{care}} cuidados · {{walks}} paseos",
+    "footer": "Cada gesto de cuidado suma — ¡gracias, equipo! 🐾"
   }
 }

@@ -87,6 +87,11 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["dayCard", "postedBy"],
     ["dayCard", "authors"],
     ["dayCard", "someone"],
+    ["household", "title"],
+    ["household", "subtitle"],
+    ["household", "mostActive"],
+    ["household", "stats"],
+    ["household", "footer"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");
