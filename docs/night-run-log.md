@@ -68,6 +68,30 @@ jest **1847**, web vitest **1970**, web integration **989**. Next migration numb
     500) → Railway healthy. Railway auto-deploy of `e7ffc03b` triggered (BUILDING at log time; prior
     deploy SUCCESS; additive/degrading so production stays healthy).
 
+- **2026-08-14 — FF2 caregiver in-app logging (walks / health beyond the daily moment)** — [#401](https://github.com/augustotraversa98-dot/PawPi/pull/401)
+  MERGED (merge commit, branch deleted), **CI-green** (mobile jest / web vitest / integration all pass).
+  - **Problem:** 0049 RLS already lets an accepted FAMILY caregiver write health/walk logs, but the app
+    never wired the route gates or surfaced any log buttons beyond the daily moment.
+  - **What shipped (NO migration — 0049 RLS unchanged):** new `resolvePetLogOwner(callerId, petId)`
+    owner-OR-family write gate; applied to `health/walk-logs`, `food-logs`, `general-checks` POST.
+    Mobile `CaregiverLogWalkModal` (petId-scoped "Log a walk") surfaced on the "Shared with me" tab for
+    ACTIVE FAMILY grants only (Viewer/pending → no button). EN+ES.
+  - **Attribution decision (DEVIATION from the brief's parenthetical, logged):** the brief said
+    "owner_user_id = the logger", but the **as-built** model (E13 care-ring `resolveOwnerGate`) anchors a
+    caregiver's write to the **pet's OWNER** — health tables use `owner_user_id` as the shared read key,
+    and under 0049 RLS a logger-attributed row is **invisible to the owner** (no policy grants it).
+    Anchoring to the owner is the only model where the household sees shared logs AND RLS isn't widened.
+    Followed the as-built model; logged the deviation with reasoning.
+  - **Scope decision (default: "match 0049, family=full, Viewer=read-only"):** health writes gated to
+    FAMILY per 0049 (`app_user_has_pet_family`); a Viewer gets a clean 403. Broadened the walk + food +
+    general-check routes (the ring's care/health/walk trio); remaining health-log routes share the
+    identical helper and are a trivial follow-up (kept out to bound the PR — LOGGED).
+  - **Gates:** web vitest 1976→**1982** (+6 helper), integration 990→**995** (+5: owner/family log,
+    Viewer+stranger 403, family write anchored to owner), mobile jest 1852→**1854** (+2: button gating,
+    modal posts petId).
+  - **Deploy:** mobile + web code, NO migration — nothing to hand-apply; Railway auto-deploy healthy
+    (all changes additive; degrade cleanly pre-0049).
+
 ---
 
 ## ✅ WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — COMPLETE 2026-08-14

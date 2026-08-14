@@ -173,7 +173,10 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
   MERGED 2026-08-14. `user_profiles.preferred_locale` (0107) + both DEFINER enumerators return it; senders
   render in the recipient's locale (es-AR fallback); `PUT /api/user-profile/locale` + mobile sync on
   login/Settings. **⚠️ Migration 0107 awaits hand-apply.** Gates: vitest 1970→1976, integration 989→990.
-- ☐ **FF2 — Caregiver in-app logging buttons (walks / health)**
+- ✅ **FF2 — Caregiver in-app logging buttons (walks / health)** — [#401](https://github.com/augustotraversa98-dot/PawPi/pull/401)
+  MERGED 2026-08-14. `resolvePetLogOwner` owner-OR-family write gate on walk/food/general-check routes
+  (family writes anchor to the pet's owner, Viewer→403); mobile "Log a walk" on active family shared rows.
+  NO migration (0049 RLS unchanged). Gates: vitest 1976→1982, integration 990→995, jest 1852→1854.
 - ☐ **FF3 — Day-card into the main feed**
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
