@@ -19,6 +19,7 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
+jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),

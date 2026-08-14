@@ -16,6 +16,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 
 const mockPush = jest.fn();
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
+jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),

@@ -132,7 +132,12 @@
     "walk_request_targetedFallback": "Nueva solicitud de paseo",
     "walk_request_broadcastFallback": "Se necesita un paseo cerca",
     "walk_request_acceptedFallback": "Tu solicitud de paseo fue aceptada",
-    "walk_request_takenFallback": "Otro paseador tomó este paseo"
+    "walk_request_takenFallback": "Otro paseador tomó este paseo",
+    "welcomeTitle": "PawPi Welcome 🐾",
+    "welcome": "¡Bienvenido a PawPi! Acá está tu primera patita 🐾",
+    "pack_invite": "te invitó a una racha en manada 🐾",
+    "pack_accepted": "aceptó tu racha en manada — ¡vamos! 🔥",
+    "boop": "te dio un boop — cerrá tu anillo para mantener la llama 🔥"
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",
@@ -919,5 +924,22 @@
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",
     "welcomePaw": "🐾 PawPi Welcome le dio a {{name}} su primera patita",
     "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾"
+  },
+  "packStreaks": {
+    "title": "Rachas en manada 🐾",
+    "subtitle": "Mantené la llama con un amigo perruno",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "bestRun": "Tu mejor racha con {{name}}: {{count}} días 🎉",
+    "boop": "Boop",
+    "booped": "¡Boop enviado! 🐾",
+    "boopSkip": "No hace falta boop ahora 🎉",
+    "accept": "Aceptar",
+    "invite": "{{name}} te invitó a una racha en manada",
+    "pending": "Esperando que {{name}} acepte…",
+    "empty": "Empezá una racha en manada con un amigo — los dos cierran su anillo el mismo día para armar una llama compartida.",
+    "handlePlaceholder": "@usuario del amigo",
+    "start": "Empezar",
+    "requestFailed": "No se pudo iniciar — revisá el @usuario."
   }
 }

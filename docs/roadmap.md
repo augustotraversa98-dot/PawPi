@@ -76,9 +76,17 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   gotcha/adoption day inline (optional); success screen shows "🔥 Day 1" + the welcome paw, or a
   ring-start nudge. No health fields forced. EN+ES. Proven: onboarding-welcome integration (+5),
   onboardingWelcome jest (+4).
-- ☐ **E7** — Pack streaks ·
-  ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
-  ☐ **E10** — Health-update reinforcement. _(E7–E10 are later units, tracked here for the full wave.)_
+- ✅ **E7** — Pack / shared streaks. **Migration 0097** (pack streaks; PENDING hand-apply). New
+  `pet_pack_streaks` (participant-scoped ENABLE+FORCE RLS) + 5 DEFINER helpers (request by @handle /
+  accept / advance-on-close / boop / reader) — DEFINER because every action crosses the owner boundary
+  (pets + pet_care_days are owner-scoped). A pack advances only when BOTH close their ring the same
+  owner-tz day (wired into the care-ring close, own savepoint); a "boop" nudges a friend whose ring
+  isn't closed (rate-limited, only if open). `GET/POST /api/pets/[id]/pack-streaks`. Mobile:
+  `usePackStreaks` hooks + `PackStreaksCard` on Health→Today (flame + boop + accept + start-by-handle;
+  break copy celebrates the best run, never blames). Opt-in. EN+ES. Proven: pack-streaks integration
+  (+4), usePackStreaks jest (+5).
+- ☐ **E8** — Leaderboards (density-gated) · ☐ **E9** — Comparative insight (density-gated) ·
+  ☐ **E10** — Health-update reinforcement. _(E8–E10 are later units, tracked here for the full wave.)_
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

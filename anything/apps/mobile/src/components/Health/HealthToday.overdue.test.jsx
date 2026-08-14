@@ -17,6 +17,7 @@ import { render } from "@testing-library/react-native";
 let mockProgress = { chips: [], isEmpty: true };
 
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
+jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
