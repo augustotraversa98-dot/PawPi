@@ -46,6 +46,15 @@ describe("PickupScannerModal", () => {
     expect(getByTestId("pickup-camera").props.onBarcodeScanned).toBeUndefined();
   });
 
+  it("calls onClose when the close (X) control is pressed", () => {
+    const onClose = jest.fn();
+    const { getByTestId } = render(
+      <PickupScannerModal visible onClose={onClose} onScanned={jest.fn()} />,
+    );
+    fireEvent.press(getByTestId("pickup-scanner-close"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the denied state + an enable button when permission is not granted", () => {
     mockPermission = { granted: false, canAskAgain: true };
     const { getByTestId } = render(
