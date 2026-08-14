@@ -14,6 +14,7 @@ import { CareRingCard } from "@/components/Health/CareRingCard";
 import { PackStreaksCard } from "@/components/Health/PackStreaksCard";
 import { LeaderboardCard } from "@/components/Health/LeaderboardCard";
 import { ActivityInsightCard } from "@/components/Health/ActivityInsightCard";
+import { VetSummaryReadinessCard } from "@/components/Health/VetSummaryReadinessCard";
 import {
   Calendar,
   TrendingUp,
@@ -556,6 +557,10 @@ export default function HealthToday() {
           {/* Care-effort leagues — density-gated, empty-safe (E8) */}
           <View style={{ marginTop: SPACING.lg }}>
             <LeaderboardCard petId={currentPet.id} />
+          </View>
+          {/* Vet-Summary readiness + monthly care recap — positive payoff loop (E10) */}
+          <View style={{ marginTop: SPACING.lg }}>
+            <VetSummaryReadinessCard petId={currentPet.id} petName={currentPet.name} />
           </View>
         </View>
       )}

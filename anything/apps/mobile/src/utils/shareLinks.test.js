@@ -33,7 +33,22 @@ describe("buildShareCards — real stats only, empty-safe", () => {
     expect(by.week_in_walks).toMatchObject({ available: true, value: 3 });
     expect(by.milestone).toMatchObject({ available: true });
     expect(by.pet_of_the_day.available).toBe(true);
-    expect(by.care_recap).toMatchObject({ available: false, stub: true }); // depends on E10
+    // E10: care_recap is available with a REAL monthly completion percent.
+    expect(by.care_recap).toMatchObject({ available: false }); // no care_recap stat in this fixture
+  });
+
+  it("E10: care_recap renders the REAL monthly percent, empty-safe at 0%", () => {
+    const withRecap = buildShareCards({
+      stats: { pet, care_recap: { percent: 80, days_elapsed: 10, ring_closed_days: 8 } },
+    });
+    const recap = withRecap.find((c) => c.template === "care_recap");
+    expect(recap).toMatchObject({ available: true, value: 80 });
+
+    // A month with no closed rings stays a clean empty state (no fake number).
+    const empty = buildShareCards({
+      stats: { pet, care_recap: { percent: 0, days_elapsed: 10, ring_closed_days: 0 } },
+    });
+    expect(empty.find((c) => c.template === "care_recap").available).toBe(false);
   });
 
   it("degrades to empty (no fake numbers) when stats are zero/absent", () => {
@@ -44,10 +59,10 @@ describe("buildShareCards — real stats only, empty-safe", () => {
     expect(by.milestone.available).toBe(false); // no milestone today
   });
 
-  it("covers every template, care_recap always a stub", () => {
+  it("covers every template; care_recap is empty-safe without a recap stat", () => {
     const cards = buildShareCards({ stats: { pet } });
     expect(cards.map((c) => c.template).sort()).toEqual([...SHARE_TEMPLATES].sort());
-    expect(cards.find((c) => c.template === "care_recap").stub).toBe(true);
+    expect(cards.find((c) => c.template === "care_recap").available).toBe(false);
   });
 
   it("is safe with no input", () => {

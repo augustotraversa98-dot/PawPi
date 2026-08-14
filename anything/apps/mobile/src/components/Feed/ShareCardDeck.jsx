@@ -19,6 +19,7 @@ function statLine(t, card) {
   if (card.template === "week_in_walks") return t("share.walksSub", { count: card.value });
   if (card.template === "milestone") return t("share.deckMilestoneReady");
   if (card.template === "pet_of_the_day") return t("share.deckPotdReady");
+  if (card.template === "care_recap") return t("share.deckRecapReady", { percent: card.value });
   return "";
 }
 

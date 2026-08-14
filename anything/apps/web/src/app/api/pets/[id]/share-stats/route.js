@@ -79,12 +79,45 @@ async function GET(request, { params }) {
       if (!isMissingTable(e)) throw e;
     }
 
+    // Monthly care recap (E10): the share of this month's elapsed owner-tz days on which the ring
+    // closed. REAL completion only — degrades cleanly (missing pet_care_days → null, no fake number).
+    let careRecap = null;
+    try {
+      await withSavepoint(async () => {
+        const [r] = await sql`
+          WITH bounds AS (
+            SELECT date_trunc('month', ${day}::date)::date AS month_start,
+                   ${day}::date AS today
+          )
+          SELECT
+            (SELECT month_start FROM bounds) AS month_start,
+            ((SELECT today FROM bounds) - (SELECT month_start FROM bounds) + 1)::int AS days_elapsed,
+            (SELECT count(*) FROM pet_care_days cd, bounds b
+              WHERE cd.pet_id = ${petId} AND cd.ring_closed = true
+                AND cd.day >= b.month_start AND cd.day <= b.today)::int AS ring_closed_days
+        `;
+        if (r) {
+          const daysElapsed = Number(r.days_elapsed || 0);
+          const closed = Number(r.ring_closed_days || 0);
+          careRecap = {
+            month: toDayStr(r.month_start),
+            days_elapsed: daysElapsed,
+            ring_closed_days: closed,
+            percent: daysElapsed > 0 ? Math.round((closed / daysElapsed) * 100) : 0,
+          };
+        }
+      });
+    } catch (e) {
+      if (!isMissingTable(e)) throw e;
+    }
+
     return Response.json({
       day,
       pet: { id: pet.id, name: pet.name, handle: pet.handle, avatar_url: pet.avatar_url },
       streak,
       walks_this_week: walkRow.n,
       moments_total: momentRow.n,
+      care_recap: careRecap,
     });
   } catch (error) {
     console.error("[GET /api/pets/[id]/share-stats] ERROR:", error.message);

@@ -101,7 +101,16 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   negative kind can be returned). `GET /api/pets/[id]/activity-insight`; disclaimer always present, never
   diagnostic. Mobile: `useActivityInsight` + `ActivityInsightCard` on Health→Today. EN+ES. Proven:
   activity-insight integration (+4), decideInsight vitest (+4), renderer jest (+12).
-- ☐ **E10** — Health-update reinforcement. _(E10 is the last unit, tracked here for the full wave.)_
+- ✅ **E10** — Health-update reinforcement. **No migration** (reads/writes existing tables). Three
+  positive payoff loops: (1) one-tap "all good" on the Care Ring writes a REAL wellness (general) log →
+  closes the Care segment in a tap; (2) a positive **Vet-Summary readiness** indicator (`GET /api/pets/
+  [id]/vet-summary-readiness`) that grows with real records (weight/meds/photo-checks/vet-visits),
+  celebrates progress, links to the Vet Summary — 0 records → honest low state, never shame; (3) a
+  **monthly care recap** ("{name}'s care was X% this month") from real ring completion (share-stats
+  `care_recap`), surfaced in-app AND wired into the E4 share-card deck (fills the recap stub). Mobile:
+  `useHealthReinforcement` + `VetSummaryReadinessCard` on Health→Today + the one-tap button on
+  `CareRingCard`. EN+ES; behavioral, not diagnostic. Proven: health-reinforcement integration (+4),
+  hooks/shareLinks/no-shame jest (+4). **Pet Owner engagement wave E5–E10 COMPLETE.**
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

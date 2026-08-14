@@ -45,8 +45,8 @@ const ShareableStatCard = forwardRef(function ShareableStatCard(
     big = "⭐️";
     sub = t("share.potdSub", { name });
   } else if (card.template === "care_recap") {
-    big = "🗓️";
-    sub = t("share.recapStub", { name });
+    big = `${card.value}%`;
+    sub = t("share.recapSub", { name, percent: card.value });
   }
 
   return (
