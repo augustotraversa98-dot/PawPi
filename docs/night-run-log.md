@@ -43,6 +43,31 @@ jest **1847**, web vitest **1970**, web integration **989**. Next migration numb
     confirm→clear→welcome, dual-account switch gating); web vitest **1970** / integration **989** unchanged.
   - **Deploy:** mobile-only, no DB/Railway change — nothing to apply; Railway unaffected.
 
+- **2026-08-14 — FF1 per-user language for digest / win-back emails** — [#400](https://github.com/augustotraversa98-dot/PawPi/pull/400)
+  MERGED (merge commit `e7ffc03b`, branch deleted), **CI-green** (mobile jest / web vitest / integration all pass).
+  - **Problem:** E11/E12 emails are server-rendered but PawPi had no per-user locale → every email
+    defaulted to es-AR (an English user would get a Spanish email; breaks the EN+ES guardrail).
+  - **What shipped:** **Migration 0107** (additive) — `user_profiles.preferred_locale` (CHECK
+    null|'en'|'es'; NULL → es-AR fallback so current behaviour is preserved) + extends both DEFINER
+    enumerators (`app_weekly_digest_due`, `app_reengagement_due`) to return `preferred_locale`. Both
+    senders render the email in the recipient's stored locale (es-AR when null/absent). New
+    `PUT /api/user-profile/locale` owner-scoped writer (persists only en/es, else NULL; degrades clean
+    pre-0107 via undefined_column → 200 no-op). Mobile `syncLocaleToServer()` mirrors the resolved app
+    language on login (tabs-shell mount) + every Settings language change (existing control reused).
+    + `verify_0107.sql`.
+  - **Decisions (defaults taken):** FF1 default — column `preferred_locale text null`, values en/es,
+    es-AR fallback, populate from device locale on next login. Applied exactly. Chose to thread locale
+    through the existing DEFINER enumerators (already join user_profiles) rather than a per-owner
+    re-read in the run tx — one place, DEFINER-privileged, backward-compatible. Reused the existing
+    Settings language control (no new control needed).
+  - **Gates:** web vitest 1970→**1976** (+6 locale route), integration 989→**990** (+1 digest renders
+    EN for an English user / es-AR for a null-locale user); mobile jest **1852** unchanged (source-only
+    wiring, existing tests pass).
+  - **Deploy:** ⚠️ **Migration 0107 awaits hand-apply to Supabase** (this env can't apply DDL). Routes
+    degrade cleanly while absent (undefined_column / old-function-without-column → es-AR fallback, never
+    500) → Railway healthy. Railway auto-deploy of `e7ffc03b` triggered (BUILDING at log time; prior
+    deploy SUCCESS; additive/degrading so production stays healthy).
+
 ---
 
 ## ✅ WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — COMPLETE 2026-08-14

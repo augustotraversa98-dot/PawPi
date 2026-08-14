@@ -169,7 +169,10 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 - ✅ **BX1 — Business account: no profile / log out on mobile** — [#399](https://github.com/augustotraversa98-dot/PawPi/pull/399)
   MERGED 2026-08-14. Always-visible Account section on the business Profile tab: identity + Settings +
   "Switch to Pet app" (dual account) + working Log out (mirrors OwnerMenu). NO migration. Gates: jest 1848→1852.
-- ☐ **FF1 — Per-user language for digest / win-back emails** (migration 0107)
+- ✅ **FF1 — Per-user language for digest / win-back emails** — [#400](https://github.com/augustotraversa98-dot/PawPi/pull/400)
+  MERGED 2026-08-14. `user_profiles.preferred_locale` (0107) + both DEFINER enumerators return it; senders
+  render in the recipient's locale (es-AR fallback); `PUT /api/user-profile/locale` + mobile sync on
+  login/Settings. **⚠️ Migration 0107 awaits hand-apply.** Gates: vitest 1970→1976, integration 989→990.
 - ☐ **FF2 — Caregiver in-app logging buttons (walks / health)**
 - ☐ **FF3 — Day-card into the main feed**
 
