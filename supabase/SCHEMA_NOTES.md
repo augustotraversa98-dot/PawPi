@@ -185,6 +185,18 @@ ACTION 1).
 > - **0106** (E15 life stage): additive `pets.life_stage_override` (CHECK null|puppy|adult|senior; NULL =
 >   auto-detect). No RLS change. Verify `verify_0106.sql`.
 
+> **0107** is the Wave 2 **Fix-pack** FF1 (per-user email locale). ADDITIVE, harness-proven, and
+> **✅ APPLIED + VERIFIED on Supabase 2026-08-14** (verify_0107 all PASS). No existing table's RLS is
+> touched; consumers degrade cleanly (undefined_column / old-function-without-column → es-AR fallback).
+> - Adds `user_profiles.preferred_locale text` (CHECK null|'en'|'es'; NULL = es-AR fallback, so current
+>   behaviour is preserved) — the E11 weekly-digest + E12 win-back EMAILS are server-rendered and now
+>   render in the recipient's stored language.
+> - DROPs+recreates the two DEFINER enumerators `app_weekly_digest_due` / `app_reengagement_due` to also
+>   RETURN `preferred_locale` (RETURNS TABLE gains a column → can't CREATE OR REPLACE; drop-then-create,
+>   re-grant to pawpi_app). The senders pass it to `digestEmail`/`winbackEmail`. Written from the app via
+>   `PUT /api/user-profile/locale` (owner-scoped; only en/es persist, else NULL) on login + Settings change.
+> - Verify: `supabase/verify_0107.sql`.
+
 Still deferred: **no seed data.**
 
 ---

@@ -172,7 +172,7 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 - ✅ **FF1 — Per-user language for digest / win-back emails** — [#400](https://github.com/augustotraversa98-dot/PawPi/pull/400)
   MERGED 2026-08-14. `user_profiles.preferred_locale` (0107) + both DEFINER enumerators return it; senders
   render in the recipient's locale (es-AR fallback); `PUT /api/user-profile/locale` + mobile sync on
-  login/Settings. **⚠️ Migration 0107 awaits hand-apply.** Gates: vitest 1970→1976, integration 989→990.
+  login/Settings. **Migration 0107 ✅ APPLIED + VERIFIED 2026-08-14.** Gates: vitest 1970→1976, integration 989→990.
 - ✅ **FF2 — Caregiver in-app logging buttons (walks / health)** — [#401](https://github.com/augustotraversa98-dot/PawPi/pull/401)
   MERGED 2026-08-14. `resolvePetLogOwner` owner-OR-family write gate on walk/food/general-check routes
   (family writes anchor to the pet's owner, Viewer→403); mobile "Log a walk" on active family shared rows.
@@ -182,8 +182,8 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
   DayCard (reuses component + endpoint shape; built from feed data, no per-group call); non-moment posts
   unchanged. NO migration. Gates: jest 1854→1863.
 
-**Fix-pack final gates:** mobile jest **1863**, web vitest **1982**, web integration **995**. **⚠️
-Migration 0107 (FF1) awaits hand-apply to Supabase.** **BX2 needs an on-device tap confirmation.**
+**Fix-pack final gates:** mobile jest **1863**, web vitest **1982**, web integration **995**. **Migration
+0107 (FF1) ✅ APPLIED + VERIFIED on Supabase 2026-08-14.** **BX2 still needs an on-device tap confirmation.**
 
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,

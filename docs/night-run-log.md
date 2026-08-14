@@ -20,8 +20,8 @@ throughout (every change additive + degrades cleanly). Built in order BX2 → BX
 below, each with reasoning: FF2 anchors caregiver writes to the pet's owner per the as-built care-ring
 model; FF3 builds the DayCard payload from feed data rather than N per-group endpoint calls).
 
-**⚠️ Still owed (hand-apply):** **migration 0107 awaits hand-apply to Supabase** (this env can't apply
-DDL) — routes degrade cleanly until then (es-AR fallback, never a 500). **NEEDS ON-DEVICE CONFIRMATION:**
+**Migration status:** **0107 ✅ APPLIED + VERIFIED on Supabase 2026-08-14** (hand-applied; `verify_0107.sql`
+all PASS) — nothing owed on the DB side. **NEEDS ON-DEVICE CONFIRMATION:**
 **BX2** — the walker QR close (X) tap fix is layering + hitSlop; the `onPress` wiring is unit-proven but
 the actual tap must be confirmed on the simulator/device (CC can't tap the simulator). No other ticket
 needs device confirmation, though a device smoke of BX1 logout + FF2 "Log a walk" + FF3 feed is nice-to-have.
@@ -89,10 +89,10 @@ jest **1847**, web vitest **1970**, web integration **989**. Next migration numb
   - **Gates:** web vitest 1970→**1976** (+6 locale route), integration 989→**990** (+1 digest renders
     EN for an English user / es-AR for a null-locale user); mobile jest **1852** unchanged (source-only
     wiring, existing tests pass).
-  - **Deploy:** ⚠️ **Migration 0107 awaits hand-apply to Supabase** (this env can't apply DDL). Routes
-    degrade cleanly while absent (undefined_column / old-function-without-column → es-AR fallback, never
-    500) → Railway healthy. Railway auto-deploy of `e7ffc03b` triggered (BUILDING at log time; prior
-    deploy SUCCESS; additive/degrading so production stays healthy).
+  - **Deploy:** **Migration 0107 ✅ APPLIED + VERIFIED on Supabase 2026-08-14** (hand-applied;
+    `verify_0107.sql` all PASS). Railway deploy of `e7ffc03b` SUCCESS. (Pre-apply the routes degraded
+    cleanly — undefined_column / old-function-without-column → es-AR fallback — so production was healthy
+    the whole time; now the per-user locale is live.)
 
 - **2026-08-14 — FF2 caregiver in-app logging (walks / health beyond the daily moment)** — [#401](https://github.com/augustotraversa98-dot/PawPi/pull/401)
   MERGED (merge commit, branch deleted), **CI-green** (mobile jest / web vitest / integration all pass).

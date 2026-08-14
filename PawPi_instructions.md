@@ -757,9 +757,10 @@ not a hand-maintained log here:
 > walks/health (owner-OR-family route gate anchored to the pet's owner per 0049 — Viewer stays read-only)
 > with a "Log a walk" action on shared pets; **FF3** a pet's same-day daily moments now group into the
 > multi-caregiver **DayCard** carousel in the main feed (single author = clean one-slide card; a new
-> contribution bumps it up; non-moment posts unchanged). PRs #398–#402. **⚠️ Migration 0107 awaits
-> hand-apply to Supabase** (routes degrade cleanly until then). **New baselines: mobile jest 1863 · web
-> vitest 1982 · web integration 995.** This CLOSES all three Wave 2 deferrals noted below.
+> contribution bumps it up; non-moment posts unchanged). PRs #398–#402. **Migration 0107 ✅ APPLIED +
+> VERIFIED on Supabase 2026-08-14** (`verify_0107.sql` all PASS). **New baselines: mobile jest 1863 · web
+> vitest 1982 · web integration 995.** This CLOSES all three Wave 2 deferrals noted below. Only remaining
+> follow-up: **BX2** — an on-device tap confirmation of the walker QR close (X).
 >
 > **Latest (2026-08-14): ✅ Pet Owner engagement WAVE 2 (E11–E15) — Household & Retention — BUILT & MERGED.**
 > The second retention wave (`docs/pet-owner-engagement.md` "WAVE 2") shipped in one autonomous Claude Code
