@@ -207,6 +207,30 @@ function weeklyDigestDisplay(n, t) {
   return { title, message };
 }
 
+// Build the localized title/message for a win-back notification (E12). The server stores a compact JSON
+// body ({ hook, pet, friend, milestone_kind, in_days }); parse it and render a WARM per-hook line in the
+// recipient's language — a lapsed owner is never guilt-tripped.
+function winbackDisplay(n, t) {
+  let payload = null;
+  try {
+    payload = n.body ? JSON.parse(n.body) : null;
+  } catch {
+    payload = null;
+  }
+  const name = payload?.pet || t("notifications.winbackPetFallback");
+  const title = t("notifications.winbackTitle", { name });
+  const hook = payload?.hook || "memory";
+  let message;
+  if (hook === "milestone" && payload?.milestone_kind === "birthday")
+    message = t("notifications.winbackBirthday", { name, days: payload?.in_days ?? 0 });
+  else if (hook === "milestone")
+    message = t("notifications.winbackGotcha", { name, days: payload?.in_days ?? 0 });
+  else if (hook === "friend" && payload?.friend)
+    message = t("notifications.winbackFriend", { name, friend: payload.friend });
+  else message = t("notifications.winbackMemory", { name });
+  return { title, message };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
@@ -290,6 +314,24 @@ function mapDbNotification(n, t) {
       relatedPostId: null,
     };
   }
+  if (n.type === "winback") {
+    const { title, message } = winbackDisplay(n, t);
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title,
+      message,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: null,
+      relatedWelcomeBack: true, // tap → the "Welcome back" screen
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   const isEngagement = ENGAGEMENT_TYPES.has(n.type);
   return {
     id: `db-${n.id}`,
@@ -326,6 +368,9 @@ const NotificationIcon = ({ type }) => {
   }
   if (type === "weekly_digest") {
     return <CalendarCheck size={18} color={COLORS.coral} />;
+  }
+  if (type === "winback") {
+    return <PawPrint size={18} color={COLORS.coral} fill={COLORS.coral} />;
   }
   switch (type) {
     case "walk":
@@ -477,6 +522,9 @@ export default function NotificationsScreen() {
       } else if (notif.relatedWeeklyDigest) {
         // Weekly digest (E11) → open the "Rex's Week" screen.
         router.push("/weekly-digest");
+      } else if (notif.relatedWelcomeBack) {
+        // Win-back (E12) → open the "Welcome back" screen.
+        router.push("/welcome-back");
       } else if (notif.relatedPetId) {
         router.push({
           pathname: "/pet-profile",
