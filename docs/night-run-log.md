@@ -2,6 +2,39 @@
 
 ---
 
+## ✅ BX3 — Business Settings dropped into the pet-owner app + back → feed — 2026-08-14
+
+Single surgical bugfix, **1 PR MERGED CI-green** (squash + branch deleted), Railway healthy
+(mobile-only; no web/API/migration change).
+
+| Ticket | PR | Migration | Gist |
+|---|---|---|---|
+| BX3 business Settings routes into pet-owner tabs | [#403](https://github.com/augustotraversa98-dot/PawPi/pull/403) | — | shared route-agnostic `AppSettings` + in-business `settings` route so back → business Profile |
+
+- **Bug (confirmed):** business `Profile → Settings` called `router.push("/(tabs)/more/settings")`,
+  which navigates into the **pet-owner** tab group. Two symptoms: (1) the user lands in pet-owner
+  context; (2) the settings back arrow (`router.back()` in the settings header) then reveals the
+  pet-owner group's **default tab (the feed)** instead of returning to the business Profile.
+- **Root cause:** the business host reused the pet-owner *route* for settings, so pressing it
+  entered the `(tabs)` group; the back gesture then unwinds to that group's initial tab.
+- **Fix (recommended default taken):** extract the settings screen body into a shared,
+  route-agnostic component `components/Settings/AppSettings.jsx` (header back = `router.back()`).
+  The pet-owner route `app/(tabs)/more/settings.jsx` now just renders it (More → Settings
+  **unchanged**; back → More). A **new** business route `app/business/settings.jsx` renders the
+  same component and is registered in `business/_layout` with `options={{ href: null }}` (reachable
+  route, **not** a visible tab) → its back arrow returns to the business **Profile**.
+  `business/profile.jsx` now pushes `/business/settings`. "Switch to Pet app"
+  (`router.replace("/(tabs)")`) left exactly as-is.
+- **Tests:** `business/profile.test.jsx` (Settings press → `/business/settings`, **not**
+  `/(tabs)/more/settings`); `components/Settings/AppSettings.test.jsx` (shared component renders +
+  header back = `router.back()`); `business/settings.test.jsx` (business route delegates to
+  `AppSettings`); pet-owner `settings.test.jsx` unchanged + green. EN+ES intact.
+- **Gates:** mobile jest **1866** (from 1863, +3); web vitest / integration untouched (mobile-only).
+- **NEEDS ON-DEVICE CONFIRMATION:** the final nav feel (present + back returning to the business
+  Profile, no feed flash) is best confirmed on the simulator/device — CC can't drive the sim tap.
+
+---
+
 ## ✅ WAVE 2 FIX-PACK — COMPLETE 2026-08-14
 
 Autonomous run, all **5 PRs MERGED CI-green** (merge commit + branch deleted each), Railway healthy
