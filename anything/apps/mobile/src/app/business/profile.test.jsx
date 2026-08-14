@@ -115,10 +115,12 @@ test("shows the signed-in account identity + the active business name", () => {
   expect(getAllByText("City Vets").length).toBeGreaterThanOrEqual(1);
 });
 
-test("Settings row deep-links to the shared app settings screen", () => {
+test("Settings row opens the in-business settings route (not the pet-owner tabs)", () => {
   const { getByTestId } = render(<BusinessProfile />);
   fireEvent.press(getByTestId("business-account-settings"));
-  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/settings");
+  // BX3: must stay inside the business group so back returns to Profile, not the feed.
+  expect(mockPush).toHaveBeenCalledWith("/business/settings");
+  expect(mockPush).not.toHaveBeenCalledWith("/(tabs)/more/settings");
 });
 
 test("Log out confirms, then clears the session and returns to welcome", () => {

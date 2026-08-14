@@ -81,6 +81,10 @@ export default function BusinessLayout() {
           tabBarIcon: ({ color }) => <Store color={color} size={23} />,
         }}
       />
+      {/* Settings (BX3): reachable from the Profile tab, but NOT a visible tab itself.
+          Keeping it inside the business group means its back arrow returns to the business
+          Profile rather than dropping into the pet-owner feed. */}
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

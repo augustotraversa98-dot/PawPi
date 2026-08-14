@@ -51,8 +51,10 @@ export default function BusinessProfile() {
   const stats = data?.stats;
   const posts = data?.posts ?? [];
 
+  // BX3: open the SAME app settings UI but stay inside the business group, so the settings
+  // back arrow returns to the business Profile rather than dropping into the pet-owner feed.
   const openSettings = useCallback(() => {
-    router.push("/(tabs)/more/settings");
+    router.push("/business/settings");
   }, [router]);
 
   const switchToPetApp = useCallback(() => {
