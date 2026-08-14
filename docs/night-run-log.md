@@ -100,7 +100,7 @@ day one; no fake data. One line per merge.
   on E10). Opened from a "Share a card" button on the owner's own pet-profile. EN+ES. Gates: integration
   906→910 (+4), web vitest 1920 (unchanged), mobile jest 1746→1752 (+6). **Pet Owner engagement wave
   E0–E4 COMPLETE.**
-- **2026-08-14 (E5)** — Notification rewrite merged — PR TBD. **NO migration** (client-side policy;
+- **2026-08-14 (E5)** — Notification rewrite merged — #384. **NO migration** (client-side policy;
   toggles in AsyncStorage, streak-save is a local evening notification, send time from app-open history).
   Rebuilt around WANTED triggers only: `notificationPolicy.js` (pure — the exact at-risk streak-save
   condition [ring exactly one segment from close AND streak>0 AND not closed AND not rest/paused AND
@@ -112,8 +112,8 @@ day one; no fake data. One line per merge.
   toggles (Social / Milestones / Streak / Care). Warm friend-based dormant re-engagement copy ("Bella
   misses Rex", never "you haven't opened"). A no-guilt grep test scans EN+ES copy. Gates: mobile jest
   1752→1782 (+30); web vitest + integration unchanged (mobile-only).
-- **2026-08-14 (E6)** — Onboarding D1 polish merged — PR TBD. **Migration 0096** (welcome paw; PENDING
-  hand-apply + verify_0096.sql). The first session now ends with the Care Ring STARTED: after the first
+- **2026-08-14 (E6)** — Onboarding D1 polish merged — #385. **Migration 0096** (welcome paw; ✅ APPLIED + verified on Supabase
+  2026-08-14, verify_0096.sql all PASS). The first session now ends with the Care Ring STARTED: after the first
   daily moment is posted, `POST /api/onboarding/welcome` (a) seeds the day-1 streak (pet_streaks
   current_count=1, ON CONFLICT DO NOTHING so a real streak is never overwritten) and (b) grants the ONE
   allowed, honest, LABELLED seeded interaction — a first paw from the official "PawPi Welcome" account.
@@ -127,8 +127,8 @@ day one; no fake data. One line per merge.
   ring-start nudge ("Take {dog}'s first photo to close today's ring") when no moment was posted. No
   medical/health fields forced at signup. EN+ES (new onboarding.* keys). Gates: mobile jest 1782->1786
   (+4), web integration 910->915 (+5), web vitest 1920 (unchanged).
-- **2026-08-14 (E7)** — Pack / shared streaks merged — PR TBD. **Migration 0097** (PENDING hand-apply +
-  verify_0097.sql). New `pet_pack_streaks` (requester/receiver user+pet, status pending/active/ended,
+- **2026-08-14 (E7)** — Pack / shared streaks merged — #386. **Migration 0097** (✅ APPLIED + verified on Supabase 2026-08-14,
+  verify_0097.sql all PASS). New `pet_pack_streaks` (requester/receiver user+pet, status pending/active/ended,
   current/longest count, last_active_day; unordered-pair unique index; participant-scoped ENABLE+FORCE
   RLS) + 5 SECURITY DEFINER helpers — every action crosses the owner boundary (pets + pet_care_days are
   owner-scoped, so a caller can't read a friend's pet, see their ring, or notify them): app_request_
@@ -143,8 +143,8 @@ day one; no fake data. One line per merge.
   PackStreaksCard on Health->Today (flame+count, boop, accept invite, start by @handle; break copy shows
   the best run, never blames). Notifications screen localizes the new welcome/pack/boop types (EN+ES).
   Opt-in only. Gates: mobile jest 1786->1791 (+5), web integration 915->919 (+4), web vitest 1920.
-- **2026-08-14 (E8)** — Leaderboards (density-gated) merged — PR TBD. **Migration 0098** (PENDING
-  hand-apply + verify_0098.sql). Weekly care-effort leagues. XP = walks*10 + ring-closes*15 +
+- **2026-08-14 (E8)** — Leaderboards (density-gated) merged — #387. **Migration 0098** (✅ APPLIED + verified on Supabase
+  2026-08-14, verify_0098.sql all PASS). Weekly care-effort leagues. XP = walks*10 + ring-closes*15 +
   care-actions*5 + paws-GIVEN*2 over the owner-tz week (paws RECEIVED / likes never count) via
   `app_pet_week_xp` DEFINER; `app_leaderboard` DEFINER builds the cohort per flavor (friends /
   breed / neighborhood), scores + ranks it, and returns NOTHING below the min cohort size so the
@@ -158,8 +158,8 @@ day one; no fake data. One line per merge.
   LeaderboardCard on Health->Today (flavor tabs, tier badge + movement, gated fallback note,
   neighborhood coarse-area opt-in). EN+ES. Gates: mobile jest 1791->1793 (+2), web integration
   919->924 (+5), web vitest 1920.
-- **2026-08-14 (E9)** — Comparative health insight merged — PR TBD. **Migration 0099** (PENDING
-  hand-apply + verify_0099.sql). A positive, behavioral activity reward after logging. v1 defaults to
+- **2026-08-14 (E9)** — Comparative health insight merged — #388. **Migration 0099** (✅ APPLIED + verified on Supabase
+  2026-08-14, verify_0099.sql all PASS). A positive, behavioral activity reward after logging. v1 defaults to
   the dog's OWN history: this week's walk count vs the prior 3 weeks → best-week-in-a-month /
   more-than-last-week / keep-going / gentle forward nudge. A breed+age COHORT win ("more active than
   X% of {breed}s his age") only renders when the pet is ABOVE median AND the cohort is >= min size, via
@@ -171,7 +171,7 @@ day one; no fake data. One line per merge.
   history still renders). Mobile: useActivityInsight + ActivityInsightCard on Health->Today (maps the
   server `kind` to positive EN+ES copy; a no-negative grep test guards the strings). Gates: mobile jest
   1793->1805 (+12), web vitest 1920->1924 (+4), web integration 924->928 (+4).
-- **2026-08-14 (E10)** — Health-update reinforcement merged — PR TBD. **NO migration** (reads/writes
+- **2026-08-14 (E10)** — Health-update reinforcement merged — #389. **NO migration** (reads/writes
   existing tables). Three positive payoff loops: (1) one-tap "all good" on the Care Ring — writes a
   REAL health_wellness_logs general log (in the care-ring derivation), closing the Care segment in a
   single tap; (2) Vet-Summary readiness — new `GET /api/pets/[id]/vet-summary-readiness` counts REAL

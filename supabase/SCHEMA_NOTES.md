@@ -139,6 +139,30 @@ ACTION 1).
 >   undefined_function 42883 → ring without a streak, never a 500). Idempotent. Verify:
 > `supabase/verify_0095.sql`. **✅ APPLIED + VERIFIED on Supabase 2026-08-13** (verify_0095 all PASS).
 
+> **0096–0099** are the "Pet Owner engagement" wave PART 2 (units E6–E9, `docs/pet-owner-engagement.md`).
+> All ADDITIVE, harness-proven, and **✅ APPLIED + VERIFIED on Supabase 2026-08-14** (verify_0096–0099
+> all PASS). No existing table's RLS is touched; consumer code degraded cleanly (42P01/42883 → feature
+> absent, never 500) before they were applied. (E5 + E10 shipped with NO migration.)
+> - **0096** (E6 onboarding welcome paw): `app_welcome_account()` **lazily** creates the single official
+>   "PawPi Welcome" account (username `pawpi_welcome`) — deliberately NOT a migration-time seed INSERT,
+>   because seeding an identity row at migration time collides with the integration harness's explicit-id
+>   first-test seeding. `app_welcome_paw(post_id)` DEFINER inserts that account's paw on a new owner's
+>   first post + a labelled `welcome` notification (post_paws' write policy only lets the *actor* paw).
+>   `notifications_type_check` widened with `'welcome'`. Verify: `verify_0096.sql`.
+> - **0097** (E7 pack streaks): `pet_pack_streaks` (participant-scoped ENABLE+FORCE RLS, unordered-pair
+>   unique index) + 5 DEFINER helpers (request-by-@handle / accept / advance-on-close / boop / reader) —
+>   DEFINER because every action crosses the owner boundary. Reader needs `#variable_conflict use_column`
+>   (RETURNS TABLE out-cols shadow the joined tables' `id`/`status`). Type check += `pack_invite` /
+>   `pack_accepted` / `boop`. Verify: `verify_0097.sql`.
+> - **0098** (E8 leaderboards): additive opt-in coarse-geo on `pets` (`lb_opt_in` / `lb_area`; **never**
+>   lat/lng) + `pet_leaderboard_weeks` (own-row ENABLE+FORCE RLS, weekly snapshot for promotion/
+>   relegation) + `app_pet_week_xp` / `app_leaderboard` DEFINER (XP from care effort incl. paws GIVEN,
+>   never received; density-gated cohorts). Reader uses `#variable_conflict use_column` + `drop table if
+>   exists _cohort` (re-callable within one tx). Verify: `verify_0098.sql`.
+> - **0099** (E9 activity insight): `app_activity_cohort` DEFINER (same-breed + age±1yr weekly walk
+>   counts → cohort_size / above_median / percentile); no table. The positive-only rule lives in the
+>   route's pure `decideInsight`. Verify: `verify_0099.sql`.
+
 Still deferred: **no RLS, no seed data, no app-code changes.**
 
 ---
