@@ -182,6 +182,31 @@ function walkRequestDisplay(n, t) {
   };
 }
 
+// Build the localized title/message for a weekly-digest notification (E11). The server stores a
+// compact JSON body ({ pet, walks, ring_days, streak, state }); parse it and render an honest per-state
+// line in the recipient's language — a quiet/empty week is warm, never a shame frame.
+function weeklyDigestDisplay(n, t) {
+  let payload = null;
+  try {
+    payload = n.body ? JSON.parse(n.body) : null;
+  } catch {
+    payload = null;
+  }
+  const name = payload?.pet || t("notifications.weeklyDigestPetFallback");
+  const state = payload?.state || "rich";
+  const title = t("notifications.weeklyDigestTitle", { name });
+  let message;
+  if (state === "empty") message = t("notifications.weeklyDigestEmpty", { name });
+  else if (state === "quiet") message = t("notifications.weeklyDigestQuiet", { name });
+  else
+    message = t("notifications.weeklyDigestRich", {
+      name,
+      walks: payload?.walks ?? 0,
+      ring: payload?.ring_days ?? 0,
+    });
+  return { title, message };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
@@ -247,6 +272,24 @@ function mapDbNotification(n, t) {
       relatedPostId: null,
     };
   }
+  if (n.type === "weekly_digest") {
+    const { title, message } = weeklyDigestDisplay(n, t);
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title,
+      message,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: null,
+      relatedWeeklyDigest: true, // tap → the "Rex's Week" screen
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   const isEngagement = ENGAGEMENT_TYPES.has(n.type);
   return {
     id: `db-${n.id}`,
@@ -280,6 +323,9 @@ const NotificationIcon = ({ type }) => {
   }
   if (WALK_REQUEST_TYPES.has(type)) {
     return <Footprints size={18} color={COLORS.coral} />;
+  }
+  if (type === "weekly_digest") {
+    return <CalendarCheck size={18} color={COLORS.coral} />;
   }
   switch (type) {
     case "walk":
@@ -428,6 +474,9 @@ export default function NotificationsScreen() {
       } else if (notif.relatedWalkRequestId) {
         // Walk request (walker-facing) → open the walker workspace's incoming list.
         router.push("/walker-walks");
+      } else if (notif.relatedWeeklyDigest) {
+        // Weekly digest (E11) → open the "Rex's Week" screen.
+        router.push("/weekly-digest");
       } else if (notif.relatedPetId) {
         router.push({
           pathname: "/pet-profile",
