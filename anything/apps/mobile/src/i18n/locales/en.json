@@ -1030,5 +1030,10 @@
     "friendPosted": "{{name}} shared a moment",
     "friendsEmpty": "When {{name}}'s friends post, you'll see them here 🐾",
     "optOut": "Don't send me these"
+  },
+  "dayCard": {
+    "postedBy": "Posted by {{name}}",
+    "authors": "{{count}} caregivers shared today 🐾",
+    "someone": "someone"
   }
 }
