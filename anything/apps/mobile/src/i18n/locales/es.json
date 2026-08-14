@@ -961,5 +961,14 @@
     "areaPlaceholder": "ej. Palermo",
     "optIn": "Sumarme",
     "effortNote": "XP = paseos, anillos cerrados, acciones de cuidado y patitas que das. Esfuerzo, nunca popularidad."
+  },
+  "activityInsight": {
+    "petFallback": "tu perro",
+    "cohortTop": "{{name}} estuvo más activo que el {{percentile}}% de los {{breed}} de su edad esta semana 🎉",
+    "bestMonth": "¡La semana más activa de {{name}} en un mes — {{walks}} paseos! 🎉",
+    "moreThanLast": "{{name}} sumó {{diff}} paseos más que la semana pasada — ¡muy bien! 🐾",
+    "keepGoing": "{{name}} sigue sumando paseos esta semana 🐾",
+    "gentleNudge": "Un paseo cortito sería una linda forma de empezar la semana de {{name}} 🐾",
+    "disclaimer": "Una tendencia de actividad, no un consejo médico. Consultá dudas de salud con tu veterinario."
   }
 }

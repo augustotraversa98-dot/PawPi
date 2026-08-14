@@ -961,5 +961,14 @@
     "areaPlaceholder": "e.g. Palermo",
     "optIn": "Opt in",
     "effortNote": "XP = walks, ring closes, care actions, and paws you give. Effort, never popularity."
+  },
+  "activityInsight": {
+    "petFallback": "your pup",
+    "cohortTop": "{{name}} was more active than {{percentile}}% of {{breed}}s his age this week 🎉",
+    "bestMonth": "{{name}}'s most active week in a month — {{walks}} walks! 🎉",
+    "moreThanLast": "{{name}} added {{diff}} more walks than last week — nice work! 🐾",
+    "keepGoing": "{{name}} is keeping the walks going this week 🐾",
+    "gentleNudge": "A short walk would be a lovely way to start {{name}}'s week 🐾",
+    "disclaimer": "A friendly activity trend, not medical advice. Chat with your vet about health questions."
   }
 }
