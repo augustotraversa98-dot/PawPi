@@ -166,7 +166,9 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
   MERGED 2026-08-14. `PickupScannerModal` header pinned above the native camera (opaque bg + zIndex/elevation),
   row `pointerEvents="box-none"`, close button hitSlop. NO migration. **⚠️ needs on-device tap confirmation.**
   Gates: jest 1847→1848.
-- ☐ **BX1 — Business account: no profile / log out on mobile**
+- ✅ **BX1 — Business account: no profile / log out on mobile** — [#399](https://github.com/augustotraversa98-dot/PawPi/pull/399)
+  MERGED 2026-08-14. Always-visible Account section on the business Profile tab: identity + Settings +
+  "Switch to Pet app" (dual account) + working Log out (mirrors OwnerMenu). NO migration. Gates: jest 1848→1852.
 - ☐ **FF1 — Per-user language for digest / win-back emails** (migration 0107)
 - ☐ **FF2 — Caregiver in-app logging buttons (walks / health)**
 - ☐ **FF3 — Day-card into the main feed**

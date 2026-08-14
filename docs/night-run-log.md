@@ -26,6 +26,23 @@ jest **1847**, web vitest **1970**, web integration **989**. Next migration numb
   - **Gates:** mobile jest 1847→**1848** (+1); web vitest **1970** / integration **989** unchanged.
   - **Deploy:** mobile-only, no DB/Railway change — nothing to apply; Railway unaffected.
 
+- **2026-08-14 — BX1 business account: no profile / log out on mobile** — [#399](https://github.com/augustotraversa98-dot/PawPi/pull/399)
+  MERGED (merge commit, branch deleted), **CI-green** (mobile jest / web vitest / integration all pass).
+  - **What shipped (mobile-only, no migration):** an always-visible **Account** section on the
+    business Profile tab (`app/business/profile.jsx`): signed-in identity (name + email) + active
+    business name; **Settings** → the shared `/(tabs)/more/settings` screen; **Switch to Pet app**
+    (only when the account ALSO owns pets — dual account); **Log out** (Alert confirm → mirrors the
+    pet-owner `OwnerMenu` logout exactly: `AsyncStorage.clear` + `setAuth(null)` +
+    `router.replace("/welcome")`). Section renders OUTSIDE the storefront load/error branches so
+    logout is always reachable. Pet-owner "More" untouched — logout works from BOTH surfaces. EN+ES.
+  - **Decisions (defaults taken):** BX1 default — "mirror the pet-owner More/settings/logout exactly;
+    business profile entry in the business nav; dual staff+owner accounts keep both surfaces." Applied.
+    Added a confirm dialog before logout (safer UX; logout is reversible so not a prohibited action).
+    Reused the existing app Settings screen rather than a business-specific one (simplest, consistent).
+  - **Gates:** mobile jest 1848→**1852** (+4: identity render, Settings deep-link, logout
+    confirm→clear→welcome, dual-account switch gating); web vitest **1970** / integration **989** unchanged.
+  - **Deploy:** mobile-only, no DB/Railway change — nothing to apply; Railway unaffected.
+
 ---
 
 ## ✅ WAVE 2 — Pet Owner engagement: Household & Retention (E11–E15) — COMPLETE 2026-08-14
