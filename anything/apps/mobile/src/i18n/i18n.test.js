@@ -61,6 +61,18 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["booking", "modalityVideo"],
     ["telehealth", "availableAt"],
     ["telehealth", "availableWhenVetStarts"],
+    ["notifications", "weeklyDigestTitle"],
+    ["notifications", "weeklyDigestRich"],
+    ["notifications", "weeklyDigestQuiet"],
+    ["notifications", "weeklyDigestEmpty"],
+    ["weeklyDigest", "title"],
+    ["weeklyDigest", "headlineRich"],
+    ["weeklyDigest", "headlineQuiet"],
+    ["weeklyDigest", "headlineEmpty"],
+    ["weeklyDigest", "milestoneBirthday"],
+    ["weeklyDigest", "milestoneGotcha"],
+    ["weeklyDigest", "shareSubtitle"],
+    ["weeklyDigest", "prefsHint"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");
