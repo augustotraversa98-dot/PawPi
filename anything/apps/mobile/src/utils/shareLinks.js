@@ -41,7 +41,12 @@ export function buildShareCards({ stats, milestone } = {}) {
     { template: "streak", available: streak > 0, value: streak },
     // An identity/belonging badge — real photo + name, no numeric claim (needs a named pet).
     { template: "pet_of_the_day", available: !!(s.pet && s.pet.name), value: null },
-    // Monthly care recap depends on E10 — ships as an empty-safe stub for now.
-    { template: "care_recap", available: false, stub: true },
+    // Monthly care recap (E10) — REAL ring completion this month. Available once the month has any
+    // elapsed days AND at least one closed ring, so a 0%/empty month stays a clean empty state.
+    {
+      template: "care_recap",
+      available: !!(s.care_recap && s.care_recap.days_elapsed > 0 && s.care_recap.ring_closed_days > 0),
+      value: s.care_recap?.percent ?? null,
+    },
   ];
 }

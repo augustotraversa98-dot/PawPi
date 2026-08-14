@@ -171,3 +171,17 @@ day one; no fake data. One line per merge.
   history still renders). Mobile: useActivityInsight + ActivityInsightCard on Health->Today (maps the
   server `kind` to positive EN+ES copy; a no-negative grep test guards the strings). Gates: mobile jest
   1793->1805 (+12), web vitest 1920->1924 (+4), web integration 924->928 (+4).
+- **2026-08-14 (E10)** — Health-update reinforcement merged — PR TBD. **NO migration** (reads/writes
+  existing tables). Three positive payoff loops: (1) one-tap "all good" on the Care Ring — writes a
+  REAL health_wellness_logs general log (in the care-ring derivation), closing the Care segment in a
+  single tap; (2) Vet-Summary readiness — new `GET /api/pets/[id]/vet-summary-readiness` counts REAL
+  records across weight / meds / photo-checks / vet-visits (each in its own savepoint so a missing
+  table degrades to 0, never 500), returns filled/total/percent + a positive level (start/building/
+  great); 0 records → honest low state, never shames gaps; (3) monthly care recap — share-stats
+  extended with `care_recap` (this month's ring_closed days / elapsed owner-tz days = percent, degrade
+  clean), surfaced in-app via `VetSummaryReadinessCard` AND wired into the E4 share-card deck
+  (`buildShareCards` + ShareableStatCard + ShareCardDeck now render the REAL recap percent, empty-safe
+  at 0%). Mobile: useHealthReinforcement (useLogAllGood / useVetSummaryReadiness) + the one-tap button
+  on CareRingCard + VetSummaryReadinessCard on Health->Today (links to the Vet Record). Behavioral, not
+  diagnostic; a no-shame grep test guards the copy. EN+ES. Gates: mobile jest 1805->1809 (+4), web
+  integration 928->932 (+4), web vitest 1924. **Pet Owner engagement wave E5–E10 COMPLETE.**

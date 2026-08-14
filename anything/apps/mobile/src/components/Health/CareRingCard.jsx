@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { maybeScheduleStreakSave } from "@/utils/engagementNotifications";
+import { useLogAllGood } from "@/hooks/useHealthReinforcement";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
 import { CareRing } from "@/components/Health/CareRing";
@@ -35,6 +36,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const setRest = useSetRestDay(petId);
   const setPause = useSetPause(petId);
   const repairStreak = useRepairStreak(petId);
+  const logAllGood = useLogAllGood(petId); // E10 one-tap care log
   const [showPause, setShowPause] = useState(false);
   const count = streakCount(data);
 
@@ -110,6 +112,20 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         })}
       </View>
 
+      {/* One-tap "all good" — closes the Care segment with a single tap (E10). Writes a real care log. */}
+      {!s.care_done && !s.rest_day && !s.paused ? (
+        <Pressable
+          style={styles.allGood}
+          onPress={() => logAllGood.mutate()}
+          disabled={logAllGood.isPending}
+          accessibilityRole="button"
+          accessibilityLabel={t("health.careRing.allGood")}
+        >
+          <Text style={styles.allGoodText}>✓ {t("health.careRing.allGood")}</Text>
+          <Text style={styles.allGoodHint}>{t("health.careRing.allGoodHint", { name })}</Text>
+        </Pressable>
+      ) : null}
+
       {/* Rest / vacation mode — always visible, always gentle. */}
       <View style={styles.restRow}>
         {s.paused ? (
@@ -174,6 +190,9 @@ const styles = StyleSheet.create({
   pillDone: { backgroundColor: "#E7F1E4" },
   pillText: { fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown },
   pillTextDone: { color: COLORS.sageDark },
+  allGood: { marginTop: 14, backgroundColor: "#E7F1E4", borderRadius: 12, padding: 12, alignItems: "center" },
+  allGoodText: { fontSize: 14, fontWeight: "800", color: COLORS.sageDark },
+  allGoodHint: { marginTop: 2, fontSize: 12, color: COLORS.mutedBrown },
   restRow: { flexDirection: "row", alignItems: "center", marginTop: 14 },
   restLink: { fontSize: 13, fontWeight: "600", color: COLORS.coral },
   dot: { marginHorizontal: 8, color: COLORS.mutedBrown },

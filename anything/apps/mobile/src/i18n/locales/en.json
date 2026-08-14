@@ -83,7 +83,9 @@
       "streakChip": "🔥 {{count}}",
       "streakSafe": "{{name}}'s streak is safe — 🔥 {{count}}",
       "streakRepairCta": "Restore your streak",
-      "streakRepairHint": "Missed a day? Bring your 🔥 {{count}} streak back — no harm done."
+      "streakRepairHint": "Missed a day? Bring your 🔥 {{count}} streak back — no harm done.",
+      "allGood": "All good today",
+      "allGoodHint": "One tap to close {{name}}'s care ring"
     }
   },
   "services": {
@@ -890,7 +892,9 @@
       "streak": "Close today's ring to start a streak",
       "pet_of_the_day": "Add a photo to unlock",
       "care_recap": "Coming soon — monthly care recap"
-    }
+    },
+    "recapSub": "{{name}}'s care was {{percent}}% this month",
+    "deckRecapReady": "Care recap ready — {{percent}}% this month"
   },
   "engageNotif": {
     "petFallback": "your pup",
@@ -970,5 +974,16 @@
     "keepGoing": "{{name}} is keeping the walks going this week 🐾",
     "gentleNudge": "A short walk would be a lovely way to start {{name}}'s week 🐾",
     "disclaimer": "A friendly activity trend, not medical advice. Chat with your vet about health questions."
+  },
+  "vetReadiness": {
+    "petFallback": "your pup",
+    "title": "{{name}}'s vet summary is building 📋",
+    "level_start": "Start logging and {{name}}'s next vet summary gets richer.",
+    "level_building": "Nice — the more you log, the better {{name}}'s next vet summary.",
+    "level_great": "Amazing — {{name}}'s vet summary is looking thorough! 🎉",
+    "count": "{{filled}} of {{total}} areas started",
+    "viewSummary": "View Vet Summary",
+    "recap": "{{name}}'s care was {{percent}}% this month 🎉",
+    "recapStart": "Let's build {{name}}'s care story this month 🐾"
   }
 }

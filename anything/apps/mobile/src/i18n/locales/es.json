@@ -83,7 +83,9 @@
       "streakChip": "🔥 {{count}}",
       "streakSafe": "La racha de {{name}} está a salvo — 🔥 {{count}}",
       "streakRepairCta": "Recupera tu racha",
-      "streakRepairHint": "¿Se te pasó un día? Recupera tu racha de 🔥 {{count}}: no pasa nada."
+      "streakRepairHint": "¿Se te pasó un día? Recupera tu racha de 🔥 {{count}}: no pasa nada.",
+      "allGood": "Todo bien hoy",
+      "allGoodHint": "Un toque para cerrar el anillo de {{name}}"
     }
   },
   "services": {
@@ -890,7 +892,9 @@
       "streak": "Cierra el anillo de hoy para empezar una racha",
       "pet_of_the_day": "Agrega una foto para desbloquear",
       "care_recap": "Pronto: resumen mensual de cuidado"
-    }
+    },
+    "recapSub": "El cuidado de {{name}} fue del {{percent}}% este mes",
+    "deckRecapReady": "Resumen de cuidado listo — {{percent}}% este mes"
   },
   "engageNotif": {
     "petFallback": "tu perro",
@@ -970,5 +974,16 @@
     "keepGoing": "{{name}} sigue sumando paseos esta semana 🐾",
     "gentleNudge": "Un paseo cortito sería una linda forma de empezar la semana de {{name}} 🐾",
     "disclaimer": "Una tendencia de actividad, no un consejo médico. Consultá dudas de salud con tu veterinario."
+  },
+  "vetReadiness": {
+    "petFallback": "tu perro",
+    "title": "El resumen veterinario de {{name}} se va armando 📋",
+    "level_start": "Empezá a registrar y el próximo resumen de {{name}} será más completo.",
+    "level_building": "¡Genial! Cuanto más registrás, mejor será el próximo resumen de {{name}}.",
+    "level_great": "¡Increíble! El resumen veterinario de {{name}} quedó muy completo 🎉",
+    "count": "{{filled}} de {{total}} áreas iniciadas",
+    "viewSummary": "Ver resumen veterinario",
+    "recap": "¡El cuidado de {{name}} fue del {{percent}}% este mes! 🎉",
+    "recapStart": "Armemos la historia de cuidado de {{name}} este mes 🐾"
   }
 }
