@@ -1035,5 +1035,13 @@
     "postedBy": "Posted by {{name}}",
     "authors": "{{count}} caregivers shared today 🐾",
     "someone": "someone"
+  },
+  "household": {
+    "title": "Your household 🏡",
+    "subtitle": "Everything your family did this week",
+    "someone": "A caregiver",
+    "mostActive": "most active 💪",
+    "stats": "{{moments}} moments · {{care}} care · {{walks}} walks",
+    "footer": "Every bit of care counts — thanks, team 🐾"
   }
 }
