@@ -8,10 +8,14 @@ import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 let mockDiscover;
 let mockSearch;
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: mockPush }),
+  useRouter: () => ({ back: mockBack, push: mockPush }),
 }));
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("expo-image", () => {
   const { View } = require("react-native");
   return { Image: (props) => <View {...props} /> };
@@ -35,6 +39,7 @@ import SearchScreen from "./search";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockBack.mockReset();
   mockDiscover = { data: { profiles: [], moments: [] }, isLoading: false };
   mockSearch = { data: { pets: [], owners: [], providers: [] }, isLoading: false };
 });
@@ -117,4 +122,40 @@ test("empty discover shows 'Nothing here yet' (no fakes)", () => {
   mockDiscover = { data: { profiles: [], moments: [] }, isLoading: false };
   const { getByText } = render(<SearchScreen />);
   expect(getByText("Nothing here yet")).toBeTruthy();
+});
+
+// ── PP1: Search is a CARD PUSH, not a modal ────────────────────────────────
+// The header affordance must read as "back" (it pops the stack) rather than a
+// modal dismiss, and every tap-through has to PUSH so the chain
+// search → pet-profile → photo shares one back stack.
+test("header shows a labelled BACK affordance that pops the stack", () => {
+  const { getByTestId, getByLabelText } = render(<SearchScreen />);
+  const back = getByTestId("search-back");
+  expect(getByLabelText("Back")).toBeTruthy();
+  fireEvent.press(back);
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});
+
+test("tap-throughs push (never replace/dismiss), keeping one back stack", () => {
+  mockDiscover = {
+    data: {
+      profiles: [{ id: 7, name: "Cooper", breed: "Golden", paws: 1, barks: 0 }],
+      moments: [{ id: 5, pet_id: 9, image_url: "x", pet_name: "Bella" }],
+    },
+    isLoading: false,
+  };
+  const { getByTestId } = render(<SearchScreen />);
+
+  fireEvent.press(getByTestId("discover-profile"));
+  fireEvent.press(getByTestId("discover-moment"));
+
+  expect(mockPush).toHaveBeenNthCalledWith(1, {
+    pathname: "/pet-profile",
+    params: { petId: "7" },
+  });
+  expect(mockPush).toHaveBeenNthCalledWith(2, {
+    pathname: "/pet-profile",
+    params: { petId: "9" },
+  });
+  expect(mockBack).not.toHaveBeenCalled();
 });

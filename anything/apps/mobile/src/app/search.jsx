@@ -10,6 +10,7 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  ChevronLeft,
   X,
   Search,
   PawPrint,
@@ -19,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useDiscover } from "@/hooks/useDiscover";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
@@ -29,6 +31,7 @@ import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 300);
   const searching = debounced.trim().length >= 2;
@@ -61,8 +64,15 @@ export default function SearchScreen() {
             marginBottom: 14,
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
-            <X size={22} color={COLORS.mutedBrown} />
+          {/* Back (not a close X): PP1 made this screen a card push, so it sits on a
+              real back stack — the affordance has to read as "back", not "dismiss". */}
+          <TouchableOpacity
+            testID="search-back"
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back")}
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} color={COLORS.mutedBrown} />
           </TouchableOpacity>
           <Text
             style={{
