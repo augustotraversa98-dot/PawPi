@@ -1,7 +1,11 @@
 # PawPi Terms of Service
 
-**Effective date:** June 22, 2026
-**Last updated:** June 22, 2026
+> **DRAFT — needs a lawyer's review before launch; not legal advice.** Prepared to reflect PawPi's
+> actual features and policies, but not reviewed by counsel. Have an attorney review and adapt it
+> (especially liability, governing-law, and arbitration/disputes) before relying on it publicly.
+
+**Effective date:** _to be set at launch_
+**Last updated:** August 15, 2026
 
 These Terms of Service ("Terms") govern your use of the PawPi mobile app and related services (the
 "Service"), provided by Augusto Traversa ("PawPi," "we," "us"). By creating an account or using
@@ -98,6 +102,14 @@ Adoption listings are posted by shelters/providers; eligibility, fees, and decis
 Insurance products are offered by third-party insurers who are the party of record; PawPi facilitates
 discovery, application, and payment but **does not underwrite insurance** and is not an insurer or
 broker except as expressly stated. Read each provider's and insurer's terms before you commit.
+
+## 8b. Caregivers and shared access
+
+You can invite family members or caregivers and grant them scoped access to a pet's information for a
+duration you choose. You are responsible for who you invite and what you share. Anyone you grant
+access to must use the Service in line with these Terms; you can revoke their access at any time. Pet
+health data is shared with a provider only through your explicit in-app consent, which is scoped and
+revocable.
 
 ## 9. Notifications and calendar
 

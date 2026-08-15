@@ -796,3 +796,9 @@ day one; no fake data. One line per merge.
   renders ModerationMenu (report+block via c.author_user_id) on non-own comments. Test: reports
   route unit + provider-post mobile. Noted follow-up: ModerationMenu labels are English-only
   (pre-existing EN/ES gap) — flagged for an i18n sweep.
+- **2026-08-15 (Phase C — Legal)** — Privacy Policy + Terms rewritten EN+ES and DRAFT-stamped
+  ("needs a lawyer's review; not legal advice"). Data-collection audit from the live schema drives an
+  expanded Privacy Policy (legal bases, subprocessor table incl. Supabase/Railway/Expo/MercadoPago+
+  Binance+Stripe/Resend/Uploadcare/Google Maps, push tokens, coarse-geo, caregivers, retention). New
+  files: privacy-policy.es.md, terms-of-service.es.md, LEGAL-REVIEW-CHECKLIST.md. Docs-only, no code.
+  Tats action: lawyer review → publish to the hosted pawpi-legal repo + confirm EXPO_PUBLIC_*_URL env.
