@@ -814,3 +814,12 @@ day one; no fake data. One line per merge.
   (content pack §13). Config: v1.0.0, com.pawpi.app, iPhone-only, encryption-exempt, permission
   strings present (EN; ES InfoPlist localization flagged as optional). CC does NOT submit — Tats runs
   the eas commands + ASC console steps per the runbook.
+- **2026-08-15 (Phase A audit + closeout)** — A1 lifecycle VERIFIED via the existing per-stage
+  integration suite (+2 new tests: demo-content-guard, bark-delete); no new backend bugs beyond
+  A2/A3. A2c "layers on layers" ROOT-CAUSED (search is presentation:"modal" so pet-profile/photo
+  stack over it) → punch list with the concrete modal→card fix to verify on device. A3 interactive
+  controls CLEAN (no dead/no-op/broken handlers; honest empty states). A4 STRONG: 48 *-rls
+  integration files prove cross-tenant denial + input validation present; one gap flagged =
+  no app-level write rate-limiting. Deferred/flagged: ModerationMenu EN-only labels, EN-only iOS
+  permission strings, rate-limiting, redundant duplicate indexes. Docs-only closeout PR.
+  Run COMPLETE: PRs #410-#415 merged; migrations 0111+0112 live on prod.

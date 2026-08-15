@@ -9,11 +9,21 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 
 ## Executive summary (updated as the run proceeds)
 
-**Shipped so far:**
-- (A2a) **Demo/seed content leak into real users' feeds — FIXED & MERGED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod).
-- (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED & MERGED** ([#411](https://github.com/augustotraversa98-dot/PawPi/pull/411)).
-- (A3) **Comment moderation gap — feed comments (barks) lacked Block + Delete-own — FIXED & MERGED** ([#412](https://github.com/augustotraversa98-dot/PawPi/pull/412)).
-- (A3-follow-up) **Business-post (provider-post) comments lacked Report + Block — FIXED** (migration 0112 applied+verified on prod; PR pending).
+**Run status: COMPLETE.** All four phases worked through. 6 PRs (#410–#415) merged; migrations 0111
++ 0112 applied + verified on prod; final closeout PR pending. Full test suite green at closeout:
+**mobile jest 1887 · web vitest 2023 · web integration 1020.**
+
+**Shipped (merged):**
+- (A2a) **Demo/seed content leak into real users' feeds — FIXED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod; 58 demo profiles + 1 provider backfilled).
+- (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED** ([#411](https://github.com/augustotraversa98-dot/PawPi/pull/411)).
+- (A3) **Feed comment (bark) moderation — added Block + Delete-own — FIXED** ([#412](https://github.com/augustotraversa98-dot/PawPi/pull/412)).
+- (A3-follow-up) **Business-post comment moderation — added Report + Block — FIXED** ([#413](https://github.com/augustotraversa98-dot/PawPi/pull/413); migration 0112 applied+verified on prod).
+- (Phase C) **Privacy Policy + Terms rewritten EN+ES, DRAFT-stamped** ([#414](https://github.com/augustotraversa98-dot/PawPi/pull/414)).
+- (Phase B + D) **Perf audit (no migration warranted) + Apple submission runbook / config / metadata / privacy map** ([#415](https://github.com/augustotraversa98-dot/PawPi/pull/415)).
+
+**Assessed (no code change needed / device-gated):** A1 lifecycle **verified** via the existing
+integration suite (+2 new tests); A2c navigation **root-caused** (search-is-modal) → punch list; A3
+interactive controls **clean**; A4 security **strong** (48 RLS test files) with one gap (rate-limiting).
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
@@ -132,7 +142,80 @@ affordance states.
 **Follow-up (business-post comments):** tracked below in DEFERRED — small, needs a CHECK-widen
 migration; doing it next.
 
-**PR:** _feat/comment-moderation-block-delete (pending push/CI/merge)._
+**PR:** [#412](https://github.com/augustotraversa98-dot/PawPi/pull/412) (barks) +
+[#413](https://github.com/augustotraversa98-dot/PawPi/pull/413) (business-post comments, migration
+0112) — **MERGED**.
+
+### A1 — End-to-end journey (lifecycle) — **VERIFIED (no new backend bugs beyond A2/A3)**
+
+CC cannot tap a device, so the "act like a user" journey is realized as API-level integration
+coverage against real Postgres (as `pawpi_app`, FORCE RLS). **Every lifecycle stage already has a
+passing integration test**, and this run added two more:
+
+| Journey step | Integration coverage |
+|---|---|
+| signup → onboarding (profile created lazily) | `onboarding-rls` |
+| create pet | `pets-rls` |
+| reminders / care ring / streak | `care-ring`, `care-streak` |
+| post moment · paws/barks · milestones · day-card | `social-rls`, `feed-milestones`, `day-card`, **`bark-delete` (new)** |
+| invite + accept caregiver | `family-caregiver-rls`, `caregiver-health-logs` |
+| book provider → cancel | `generalized-booking-rls` |
+| weekly digest / streak | `weekly-digest`, `care-streak` |
+| delete account | `account-deletion` |
+| demo content excluded from real feeds | **`demo-content-guard` (new)** |
+
+Full suite green: **web integration 1020 / vitest 2023 / mobile jest 1887** at closeout. The only
+backend defects found this run were A2a/A2b/A3 (all fixed). No further lifecycle bugs surfaced.
+
+### A2c — Navigation "layers on top of layers" — **P2 → ON-DEVICE PUNCH LIST (root cause found)**
+
+**Root cause (code-level).** `search` is declared `presentation: "modal"` in
+`src/app/_layout.jsx`. Discovery/search opens as a modal; tapping a pet does
+`router.push("/pet-profile")` (a normal **card**), which stacks *over* the modal, and opening a photo
+adds another layer — the "modal-on-modal" feel. `pet-profile` itself is already a card push (good).
+
+**Recommended fix (needs on-device confirmation — do NOT change blind):** make `search` a standard
+card push by removing `presentation: "modal"` from its `<Stack.Screen>`, and give the search screen a
+header with a back affordance. Then Discovery → pet-profile → photo is a single push stack with a
+proper back stack. Verify on device: iOS swipe-back through the chain, and that dismissing search
+still feels right (it loses swipe-down-to-dismiss). Also confirm the photo viewer is a pushed
+screen/route rather than a stacked in-component `<Modal>`. Left as a punch-list item because changing
+nav presentation is a UX change CC can't validate headless.
+
+### A3 (remaining audits) — interactive controls · empty states · i18n · responsive/a11y
+
+- **Interactive controls — clean.** Repo-wide scan found **no dead/broken/no-op handlers**: the only
+  two `onPress={() => {}}` are intentional (a **disabled** adoption status button + the moderation
+  sheet's backdrop swallow). No "coming soon" stubs in app screens (the matches were input
+  placeholders); a single TODO. No broken nav targets found.
+- **Empty states — honest.** Feed/search/messages and the engagement surfaces have real empty-state
+  copy (`feed.empty`, `search.nothingHere`, `messages.empty`, …) — no fabricated fillers (reinforced
+  by the A2a demo-guard).
+- **i18n parity — enforced, two gaps.** `i18n.test.js` enforces EN/ES key parity; A2b + A3 kept both
+  catalogs in sync. **Gaps flagged (DEFERRED):** the shared `ModerationMenu` component labels
+  ("Report"/"Block user"/reason labels) are hardcoded English, and the iOS permission usage strings
+  are EN-only.
+- **Responsive / accessibility — mostly code-clean; punch-list the visual.** Moderation controls
+  carry `accessibilityRole`/`accessibilityLabel`; images use `expo-image` with sizing. Small-screen
+  (iPhone SE) text overflow/truncation and contrast can only be confirmed on device → punch list.
+
+### A4 — Abuse / security hardening — **STRONG; one gap (rate-limiting)**
+
+- **RLS / authz — comprehensively proven.** **48 `*-rls` integration test files** exercise the real
+  handlers as `pawpi_app` under FORCE RLS and assert cross-user / cross-pet / cross-business /
+  cross-tenant **denial** (owner-private, pets, social, provider-business, care-access,
+  family-caregiver, chat + owner messaging, payments, prescriptions, adoption, insurance, shop,
+  places, notifications, push-tokens, …). The new `bark-delete` test adds an explicit IDOR check
+  (non-author DELETE → 404, row survives). The `biz_*` notify + caregiver paths resolve recipients
+  via SECURITY DEFINER readers (0093/0109) without loosening own-row RLS.
+- **Input validation — present** on write routes (integer-id guards, required-field 400s, report
+  `target_type`/`target_id`/`reason` allow-lists, caption length cap, on-submit content-moderation
+  filter for posts/barks).
+- **Rate-limiting — GAP (DEFERRED).** No application-level rate-limiting on write endpoints (no
+  429/limiter found). Auth + RLS + content-filter mitigate abuse, but a determined authed user can
+  spam writes. **Recommendation:** add lightweight rate-limiting (edge via Railway/Cloudflare, or a
+  small per-identity limiter) on the highest-risk writes (posts, barks, reports, messages, bookings).
+  Not built here — it needs a shared store + design; flagged as a hardening follow-up.
 
 ---
 
@@ -247,6 +330,16 @@ Submit for Review.
   nice-to-have (not an Apple blocker since Report is reachable).
 - **Bark/comment Delete + Block feel** — verify the new trash icon + confirm dialog and the
   Report/Block sheet look right on device (added headless; A3).
+- **A2c navigation feel** — after the recommended `search` modal→card change (see A2c), verify on
+  device that Discovery → pet profile → photo pushes as a real back stack (no modal-on-modal), iOS
+  swipe-back works through the chain, and dismissing search still feels right.
+- **Responsive / small-screen (A3)** — check iPhone SE vs large: text overflow/truncation, safe-area
+  insets, and contrast on the main screens (feed, health/today, vet record, discovery, booking).
+- **Timestamps on device (A2b)** — confirm real relative times render (e.g. "5m", "hace 2 h", "ayer")
+  and no post shows a fabricated "just now".
+- **Demo content gone from real feeds (A2a)** — on a fresh (non-demo) account, confirm Discover /
+  Search / Suggested / provider+adoption discovery no longer show Mango, the seed clinic, or the
+  filler "fans".
 
 ## DEFERRED / BLOCKED
 
@@ -255,3 +348,16 @@ Submit for Review.
   gap on every moderation surface, not introduced here. Flagged for an i18n pass (localize the
   `ModerationMenu` component + `REPORT_REASONS`). Not an Apple blocker (the actions work); tracked
   for the A3 i18n sweep.
+- **iOS permission usage strings are EN-only.** Localize via `CFBundleLocalizations: ["en","es"]` +
+  per-locale `InfoPlist.strings` (needs a config-plugin / prebuild step). Not a submission blocker —
+  English usage strings are accepted — but recommended for the ES store listing (A3/Phase D).
+- **No application-level rate-limiting on writes (A4).** Auth + RLS + content-filter mitigate abuse,
+  but there is no per-identity write throttle. Recommend edge (Railway/Cloudflare) or a small
+  per-identity limiter on posts/barks/reports/messages/bookings. Needs a shared store + design; not
+  built here.
+- **Redundant duplicate indexes (Phase B).** Harmless but add write cost; a future cleanup migration
+  can drop one of each pair (SCHEMA_NOTES lists them). Low benefit at current scale.
+- **`PawPi_instructions.md` snapshot refresh — left to Augusto.** The file has **uncommitted local
+  edits** in the working tree, so CC did not modify it (avoids clobbering WIP / mixing unrelated
+  changes). This report's executive summary is the authoritative night-run snapshot; fold the
+  highlights into `PawPi_instructions.md` when convenient.
