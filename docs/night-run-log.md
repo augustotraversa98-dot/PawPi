@@ -802,3 +802,15 @@ day one; no fake data. One line per merge.
   Binance+Stripe/Resend/Uploadcare/Google Maps, push tokens, coarse-geo, caregivers, retention). New
   files: privacy-policy.es.md, terms-of-service.es.md, LEGAL-REVIEW-CHECKLIST.md. Docs-only, no code.
   Tats action: lawyer review → publish to the hosted pawpi-legal repo + confirm EXPO_PUBLIC_*_URL env.
+- **2026-08-15 (Phase B — Performance)** — Audit only; NO migration (evidence-based decision). Prod
+  pg_stat_statements shows every app query <~2ms mean (identity lookup 0.04ms @95k calls; bookings
+  1.5-2ms; chat 1.45ms); hot tables fully indexed; N+1s avoided via JOIN-aggregates. No index/rewrite
+  warranted at current scale — deliberately did not ship a make-work migration. Flagged optional:
+  drop redundant duplicate indexes (write-amp) + re-profile as data grows + possible partial
+  notifications(recipient) WHERE read_at IS NULL index later.
+- **2026-08-15 (Phase D — Apple submission prep)** — Built docs/app-store-submission-runbook.md
+  (every ASC step + exact eas build/submit commands + APNs setup), added eas.json appleId placeholder,
+  docs/app-store-privacy-data-map.md (App Privacy nutrition label from Phase C), ES App Store metadata
+  (content pack §13). Config: v1.0.0, com.pawpi.app, iPhone-only, encryption-exempt, permission
+  strings present (EN; ES InfoPlist localization flagged as optional). CC does NOT submit — Tats runs
+  the eas commands + ASC console steps per the runbook.

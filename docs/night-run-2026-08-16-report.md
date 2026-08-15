@@ -19,7 +19,15 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 
 **Legal-review checklist:** ✅ drafted — see [docs/legal/LEGAL-REVIEW-CHECKLIST.md](legal/LEGAL-REVIEW-CHECKLIST.md). Privacy Policy + Terms rewritten EN+ES, DRAFT-stamped; awaits a lawyer's review + publishing to the hosted `pawpi-legal` repo.
 
-**Apple runbook next-steps:** _pending Phase D._
+**Apple runbook next-steps:** ✅ [docs/app-store-submission-runbook.md](app-store-submission-runbook.md)
+— every ASC console step + the exact `eas build`/`eas submit` commands + APNs setup. Config finalized
+(eas.json `appleId` placeholder added; ascAppId/appleTeamId present; permission strings present).
+EN+ES metadata + App Privacy data map ready. **Tats runs the eas commands + ASC steps** (CC never
+submits). Top next-steps: fill `appleId`, create the APNs key (`eas credentials`), publish reviewed
+legal to `pawpi-legal`, build → submit → paste metadata → screenshots → Submit for Review.
+
+**Performance (Phase B):** ✅ audited — **no urgent optimization warranted** (evidence below): every
+app query on prod is <~2ms mean (`pg_stat_statements`), hot tables fully indexed, N+1s avoided.
 
 **Environment note:** This run has live Supabase MCP access to the prod project
 (`qaebbesldduvgwttqlnq`, "PawPi - Supabase") and Railway MCP, so additive migrations are applied +
@@ -154,6 +162,81 @@ resolve to the hosted `pawpi-legal` GitHub Pages repo. **Tats action:** publish 
 to `pawpi-legal`, set the effective date, drop the DRAFT banner, confirm the env vars point live.
 
 **PR:** _docs/legal-privacy-terms-en-es (pending push/CI/merge)._
+
+---
+
+## PHASE B — Performance
+
+**Method.** Index audit (compared every hot query's WHERE/JOIN/ORDER columns against
+`pg_indexes`), N+1 review of the hot API routes, and **`pg_stat_statements`** on prod (the
+gold-standard evidence — independent of table size).
+
+**Evidence (top app queries by total time on prod, `pg_stat_statements`):**
+
+| Query | Calls | Mean |
+|---|---|---|
+| `SELECT id FROM user_profiles WHERE auth_user_id = $1` (identity, every request) | 95,498 | **0.04 ms** |
+| vet_appointments (reminders/bookings view) | 5,859 | 1.50 ms |
+| threads (chat inbox) | 5,232 | 1.45 ms |
+| vet_appointments (booking view) | 3,229 | 2.01 ms |
+| provider_staff membership check | 10,621 | 0.30 ms |
+| adoption_applications | 4,069 | 0.75 ms |
+
+No app query exceeds ~2 ms mean; the identity lookup that runs on nearly every request is 0.04 ms.
+Everything above the app rows in the raw output is Supabase internal (pgbouncer auth, role/extension
+introspection, WAL) — not PawPi's queries.
+
+**Index coverage.** The retention-critical paths are already indexed on their scoped columns:
+`notifications(recipient_user_id, created_at DESC)`, `posts` created_at/pet/user, `pet_follows` both
+directions, `pet_care_days(pet_id, day)`, `vet_appointments` (pet/owner/provider/date/start_at), the
+0111 demo-exclusion is backed by partial `idx_user_profiles_is_demo` / `idx_providers_is_demo`.
+N+1s are avoided — discover/feed compute paw/bark counts via `LEFT JOIN` grouped aggregates, not
+per-row fetches.
+
+**Conclusion.** No index migration or query rewrite is warranted right now — the data is small and the
+hot paths are fast and indexed. Shipping a speculative index would add write-amplification with no
+measured benefit. **Deliberately NOT shipping a make-work migration** (surgical-change discipline).
+
+**Optional follow-ups (flagged, not shipped):**
+- **Redundant duplicate indexes** exist (e.g. `idx_posts_pet` + `idx_posts_pet_id`, the doubled
+  `post_paws`/`post_barks` post/user indexes) — SCHEMA_NOTES already flags them. A future cleanup
+  migration could drop one of each pair to cut write cost; low benefit at current scale, so left for a
+  dedicated, carefully-verified cleanup.
+- **Re-profile as data grows.** `pg_stat_statements` is enabled on prod — re-run the query above
+  periodically; add a partial `notifications(recipient_user_id) WHERE read_at IS NULL` index only if
+  the mark-all-read path ever shows up hot.
+
+---
+
+## PHASE D — Apple submission prep (build-to-`eas submit`-ready + runbook; CC never submits)
+
+**Delivered.**
+- **`docs/app-store-submission-runbook.md`** (new): ordered one-time prerequisites (App record, Push
+  capability, `eas credentials`/APNs key, `appleId`, legal URLs, review demo account) → build →
+  submit → ASC listing → screenshots + localized metadata → Submit for Review, with the exact `eas`
+  commands. Explicitly documents what CC did **not** do (no Apple login/submit).
+- **`eas.json`**: added the `appleId` placeholder under `submit.production.ios` (ascAppId
+  `6785949610` + appleTeamId `YHQ4T9T96K` already present; `appVersionSource: remote` +
+  `autoIncrement` manages buildNumber).
+- **`docs/app-store-privacy-data-map.md`** (new): the App Privacy "nutrition label" derived from
+  Phase C — Contact Info, User Content, Location (precise + coarse), Identifiers (User ID + push
+  Device ID), Purchase History; Tracking = No, Analytics = None, Data deletion = Yes.
+- **ES App Store metadata** (`app-store-connect-content.md` §13): Spanish subtitle, promo text,
+  description, keywords, "What's New".
+- **Cross-checked** `app-store-readiness.md` + `guideline-1.2-audit.md`: the 1.2 UGC requirements
+  (Report + Block on posts AND comments) are now fully satisfied after A3/A3-follow-up.
+
+**Config status.** version `1.0.0`; bundle `com.pawpi.app`; iPhone-only (`supportsTablet:false`);
+`ITSAppUsesNonExemptEncryption:false`; permission usage strings present (EN). **EN/ES permission
+strings** need `CFBundleLocalizations` + per-locale `InfoPlist.strings` (config-plugin/prebuild) —
+not a blocker (English usage strings are accepted); flagged in the runbook + punch list.
+
+**Tats next-steps (from the runbook):** fill `appleId` → `eas credentials` (APNs) → publish reviewed
+legal to `pawpi-legal` + confirm the URL env vars → `eas build -p ios --profile production` →
+`eas submit -p ios` → paste EN+ES metadata + App Privacy → shoot iPhone 6.9"/6.7" screenshots →
+Submit for Review.
+
+**PR:** _docs/apple-submission-runbook-phase-d (pending push/CI/merge)._
 
 ---
 
