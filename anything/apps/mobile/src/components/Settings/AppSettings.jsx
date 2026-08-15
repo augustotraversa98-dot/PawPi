@@ -12,6 +12,7 @@ import {
   PawPrint,
   Activity,
   Check,
+  Footprints,
   Trash2,
 } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -25,6 +26,11 @@ import {
   setCategoryEnabled,
 } from "@/utils/notificationPreferences";
 import { NOTIF_CATEGORIES } from "@/utils/notificationPolicy";
+import {
+  BUSINESS_NOTIF_CATEGORIES,
+  getBusinessNotificationPrefs,
+  setBusinessCategoryEnabled,
+} from "@/utils/businessNotificationPrefs";
 import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
 
 const C = {
@@ -182,12 +188,92 @@ function NotificationToggles() {
   );
 }
 
-// Shared, route-agnostic app-settings body (BX3). Both the pet-owner route
+// BX4 business-mode notifications: SERVER-BACKED per-category toggles that truly gate delivery
+// of real, server-sent business notifications (migration 0108 / GET+PUT /api/notification-prefs).
+// Only categories that actually fire to a business are shown — today just walk/job requests — so
+// there is never a toggle for a notification that doesn't fire. Distinct from the pet-owner E5
+// toggles above (client-side AsyncStorage). Icon lives here, labels/hints are i18n keys.
+const BUSINESS_NOTIF_ICON = { walk_requests: Footprints };
+
+function BusinessNotificationToggles() {
+  const { t } = useTranslation();
+  const [prefs, setPrefs] = useState(null);
+
+  useEffect(() => {
+    getBusinessNotificationPrefs().then(setPrefs);
+  }, []);
+
+  const toggle = async (category, value) => {
+    setPrefs((p) => ({ ...(p || {}), [category]: value })); // optimistic
+    const next = await setBusinessCategoryEnabled(category, value);
+    setPrefs(next);
+  };
+
+  return (
+    <View>
+      {BUSINESS_NOTIF_CATEGORIES.map((row, i) => {
+        const Icon = BUSINESS_NOTIF_ICON[row.key] || Bell;
+        const enabled = prefs ? prefs[row.key] !== false : true;
+        return (
+          <View
+            key={row.key}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 14,
+              borderBottomWidth: i < BUSINESS_NOTIF_CATEGORIES.length - 1 ? 1 : 0,
+              borderBottomColor: C.peach,
+            }}
+          >
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 14,
+                borderWidth: 1,
+                borderColor: C.peach,
+              }}
+            >
+              <Icon size={18} color={C.mutedBrown} />
+            </View>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
+                {t(row.labelKey)}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+                {t(row.hintKey)}
+              </Text>
+            </View>
+            <Switch
+              testID={`biz-notif-toggle-${row.key}`}
+              value={enabled}
+              onValueChange={(v) => toggle(row.key, v)}
+              trackColor={{ false: C.peach, true: C.coral }}
+              thumbColor="#FFF"
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// Shared, route-agnostic app-settings body (BX3 + BX4). Both the pet-owner route
 // app/(tabs)/more/settings.jsx AND the business route app/business/settings.jsx render this
 // component, so the SAME settings UI is reachable from either host without the business host
 // having to jump into the (tabs) pet-owner group. The header back button is always router.back(),
 // so it returns to whichever screen pushed it (More in the pet app, Profile in business mode).
-export default function AppSettings() {
+//
+// mode (BX4): "petOwner" (default) renders the pet-owner notification categories + the
+// Walk-tracking / Apple Health block, exactly as before — the pet route is byte-for-byte
+// unchanged. "business" swaps in the server-backed business categories and HIDES the pet-owner
+// categories + the walk-tracking block; Language / Help / Contact / Delete account stay in both.
+export default function AppSettings({ mode = "petOwner" }) {
+  const isBusiness = mode === "business";
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
@@ -373,25 +459,29 @@ export default function AppSettings() {
           {t("notifications.title").toUpperCase()}
         </Text>
         <SectionCard>
-          <NotificationToggles />
+          {isBusiness ? <BusinessNotificationToggles /> : <NotificationToggles />}
         </SectionCard>
 
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "800",
-            color: C.mutedBrown,
-            marginBottom: 10,
-            letterSpacing: 0.8,
-          }}
-        >
-          WALK TRACKING
-        </Text>
-        <SectionCard>
-          <View style={{ paddingVertical: 6 }}>
-            <WalkTrackingSettings />
-          </View>
-        </SectionCard>
+        {!isBusiness && (
+          <>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "800",
+                color: C.mutedBrown,
+                marginBottom: 10,
+                letterSpacing: 0.8,
+              }}
+            >
+              WALK TRACKING
+            </Text>
+            <SectionCard>
+              <View style={{ paddingVertical: 6 }}>
+                <WalkTrackingSettings />
+              </View>
+            </SectionCard>
+          </>
+        )}
 
         <Text
           style={{
