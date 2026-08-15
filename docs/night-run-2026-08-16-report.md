@@ -17,7 +17,7 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
-**Legal-review checklist:** _pending Phase C._
+**Legal-review checklist:** ✅ drafted — see [docs/legal/LEGAL-REVIEW-CHECKLIST.md](legal/LEGAL-REVIEW-CHECKLIST.md). Privacy Policy + Terms rewritten EN+ES, DRAFT-stamped; awaits a lawyer's review + publishing to the hosted `pawpi-legal` repo.
 
 **Apple runbook next-steps:** _pending Phase D._
 
@@ -125,6 +125,35 @@ affordance states.
 migration; doing it next.
 
 **PR:** _feat/comment-moderation-block-delete (pending push/CI/merge)._
+
+---
+
+## PHASE C — Legal (Privacy Policy + Terms, EN + ES)
+
+**Data-collection audit (from the live schema).** PawPi collects/processes: account+email+auth
+(hashed passwords), pet profiles, **health/medical data** (incl. microchip, vet + emergency contact
++ insurance details the user enters), **location** (nearby, walks, pet-taxi live-share, lost&found;
+coarse-geo leaderboard opt-in), photos/videos + social content, **caregivers/shared custody** (scoped
++ revocable), **push tokens** + notification prefs, **payments/orders** (amounts, shipping address;
+processors keep card data), adoption applications, legal-consent records, and device/usage
+diagnostics. Subprocessors: Supabase (DB), Railway (hosting), Expo (push), MercadoPago/Binance/Stripe
+(payments), Resend (email), Uploadcare/media-upload (storage), Google Maps (maps).
+
+**Delivered.**
+- Rewrote `docs/legal/privacy-policy.md` (EN) — expanded with legal bases, a subprocessor table, push
+  tokens, coarse-geo, caregivers, retention specifics, and a **DRAFT — not legal advice** stamp.
+- Rewrote/stamped `docs/legal/terms-of-service.md` (EN) — added the DRAFT stamp + a caregivers/shared
+  access section (UGC/moderation, health-not-diagnostic, payments, liability already strong).
+- Added full **ES** translations: `privacy-policy.es.md`, `terms-of-service.es.md` (Argentine
+  Spanish; kept in sync with EN).
+- Added `docs/legal/LEGAL-REVIEW-CHECKLIST.md` — the 12-point list for counsel + the publishing steps.
+
+**Reachability.** In-app links are config slots (`EXPO_PUBLIC_PRIVACY_POLICY_URL` /
+`EXPO_PUBLIC_TERMS_URL`, `constants/legal.js`) consumed by Settings + the signup consent line, and
+resolve to the hosted `pawpi-legal` GitHub Pages repo. **Tats action:** publish the reviewed drafts
+to `pawpi-legal`, set the effective date, drop the DRAFT banner, confirm the env vars point live.
+
+**PR:** _docs/legal-privacy-terms-en-es (pending push/CI/merge)._
 
 ---
 
