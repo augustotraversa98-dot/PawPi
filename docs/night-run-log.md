@@ -2,6 +2,43 @@
 
 ---
 
+## ✅ BN2 PR3 — Channel-aware business Settings UI — 2026-08-15 — **BN2 COMPLETE**
+
+**Branch:** `feat/bn2-pr3-business-settings` · **No migration** · Mobile-only.
+
+**What shipped.** The business-mode notification settings now present the real BN2 categories grouped by
+their PUSH channel class instead of one flat list, consuming the PR2 catalog.
+
+- **`AppSettings` (`mode="business"`) → `BusinessNotificationToggles`** rebuilt into three groups from
+  `businessNotificationPrefs.js`:
+  - **"Notify my phone"** — the PUSH categories (walk requests · new bookings · booking changes · orders
+    · messages · adoption applications), each a Switch, default ON.
+  - **"Optional push"** — the OPTIONAL_PUSH categories (reviews · payments/payouts), each a Switch,
+    default OFF (opt-in). The displayed default now honors `categoryDefaultEnabled` (OPTIONAL shows off
+    until turned on), so a category reads its true state before/after the server load.
+  - **"In-app only"** — an info group (post activity · new followers) rendered with a bell tag and a
+    "always shown … never sent to your phone" note; **no toggle** (these can't be turned off — they're
+    never pushed).
+- Toggles write `notification_prefs` via the existing GET/PUT `/api/notification-prefs` (BX4); the PR1
+  send-hook already respects them. New per-category icons; group headers + labels/hints are EN+ES i18n
+  keys (`bizNotif.group*` + the `bizNotif.*` labels added in PR2).
+- **Pet-owner Settings unchanged** — the `mode` gate is untouched: pet mode still renders the E5
+  client-side categories + the Walk-tracking / Apple-Health block byte-for-byte.
+
+**Tests / gates.** mobile jest 1882→**1883** (+1: `AppSettings.test.jsx` asserts the three groups render,
+PUSH+OPTIONAL categories get a toggle, the in-app-only category is info-only never a toggle; the existing
+pet-mode-unchanged + toggle-PUTs-the-pref cases still pass). Web/integration unchanged (no web change).
+
+**Flag:** **NEEDS ON-DEVICE CONFIRMATION** of the grouped screen (RNTL covers structure/behavior; a
+device pass confirms the visual). Real phone push still awaits the APNs/EAS setup in the BN2 PR1 entry
+below.
+
+**BN2 is COMPLETE** (PR1 remote-push foundation · PR2 emission + catalog · PR3 channel-aware settings).
+The only remaining external dependencies: hand-apply migrations **0109 + 0110** on Supabase, and
+configure **APNs/Expo credentials** (PR1 steps) to light up iOS delivery.
+
+---
+
 ## ✅ BN2 PR2 — Business notification EMISSION + channel catalog — 2026-08-15
 
 **Branch:** `feat/bn2-pr2-business-emission` · **Migration:** 0110 (awaits hand-apply) · Design of

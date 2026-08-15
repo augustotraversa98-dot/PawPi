@@ -108,10 +108,12 @@ night-run-log so it's actionable when the Apple account is ready.
   maps). Bilingual EN+ES bell + push copy. Migration 0110 widens `notifications_type_check` for the
   `biz_*` types. Harness-proven end-to-end (real router, owner+staff recipients, no cross-business leak,
   idempotent). `biz_review`/`biz_payout` reserved in the catalog (OPTIONAL_PUSH) but not emitted yet.
-- **PR3 — Business Settings UI (channel-aware).** Business notifications section shows the real
-  categories grouped: "Notify my phone" (the PUSH toggles) · "Optional push" (review/payout, default
-  off) · an "In-app only" info group (post activity, followers — shown, not pushed). Toggles write
-  `notification_prefs`; the PR1 send layer respects them. Pet-owner settings unchanged. EN+ES.
+- **PR3 — Business Settings UI (channel-aware). ✅ SHIPPED 2026-08-15** (`feat/bn2-pr3-business-settings`;
+  mobile-only, no migration). `AppSettings` `mode="business"` renders the real categories grouped:
+  "Notify my phone" (PUSH toggles, default on) · "Optional push" (review/payout, default off) · an
+  "In-app only" info group (post activity, followers — shown with a bell tag + note, no toggle). Toggles
+  write `notification_prefs`; the PR1 send layer respects them. Pet-owner settings unchanged (mode gate
+  untouched). EN+ES (group headers + labels/hints). **BN2 COMPLETE.**
 
 ---
 
