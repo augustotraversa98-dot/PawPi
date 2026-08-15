@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { createCheckout } from "@/app/api/utils/payments";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import {
   SUPPORTED_RAILS,
   PaymentsNotConfiguredError,
@@ -205,6 +207,20 @@ async function POST(request, { params }) {
     // Hand off to the 2.3 payment layer — same createCheckout the generic checkout uses.
     const idempotencyKey = idempotency_key || `order-${order.id}`;
     const result = await createCheckout(order, { rail, idempotencyKey });
+
+    // PROVIDER NOTIFICATION (BN2 biz_order) — a new product order for this store. actor =
+    // the paying owner so the provider team is notified.
+    await notifyProviderTeam({
+      providerId: provider_id,
+      actor: userId,
+      type: "biz_order",
+      subjectRef: order.id,
+      body: bizNotifyBody({
+        kind: "order",
+        amount_cents: order.amount_cents,
+        currency: order.currency,
+      }),
+    });
 
     return Response.json(
       {

@@ -97,10 +97,17 @@ night-run-log so it's actionable when the Apple account is ready.
   Graceful no-op when creds/tokens/table absent (never crashes, never blocks the action). Catalog stubbed
   with today's types (`walk_request_*` = PUSH; everything else IN_APP_ONLY) — PR2 fills it in. **iOS
   delivery dark until APNs configured — steps in `docs/night-run-log.md`.**
-- **PR2 — Business notification emission + catalog.** Locate each action route and emit to owner +
-  relevant staff: booking create, booking cancel/reschedule, order create, chat message send, adoption
-  application submit (keep walk/job). Add the shared channel catalog. Engagement (post paws/comments,
-  new follower) create IN_APP_ONLY bell rows for the business. Harness-prove recipients + gating.
+- **PR2 — Business notification emission + catalog. ✅ SHIPPED 2026-08-15** (`feat/bn2-pr2-business-emission`;
+  migration 0110 awaits hand-apply). Each action route emits to owner + relevant staff via one resolver
+  `notifyProviderTeam` (`app_provider_active_staff_ids`, since the owner is enrolled as active staff):
+  booking create (`biz_booking`), client cancel/reschedule (`biz_booking_change`), product order create
+  (`biz_order`, both checkout paths), client chat message (`biz_message`, client→business only), adoption
+  application submit (`biz_adoption_application`); walk/job kept. Engagement is IN_APP_ONLY (a bell, never
+  a push): paws/comments (`biz_post_engagement`) + new follower (`biz_follow`, owner-only), each only on a
+  genuinely new row. Shared channel catalog added web + mobile (category → PUSH class + type↔category
+  maps). Bilingual EN+ES bell + push copy. Migration 0110 widens `notifications_type_check` for the
+  `biz_*` types. Harness-proven end-to-end (real router, owner+staff recipients, no cross-business leak,
+  idempotent). `biz_review`/`biz_payout` reserved in the catalog (OPTIONAL_PUSH) but not emitted yet.
 - **PR3 — Business Settings UI (channel-aware).** Business notifications section shows the real
   categories grouped: "Notify my phone" (the PUSH toggles) · "Optional push" (review/payout, default
   off) · an "In-app only" info group (post activity, followers — shown, not pushed). Toggles write

@@ -127,25 +127,25 @@ export async function pushForNotification({ recipient, actor, type, subjectRef, 
     const channelClass = channelClassForType(type);
     if (channelClass === CHANNEL_CLASS.IN_APP_ONLY) return { pushed: false };
 
-    // OPTIONAL_PUSH is opt-IN: only push when the recipient explicitly enabled it.
-    if (channelClass === CHANNEL_CLASS.OPTIONAL_PUSH) {
-      const category = businessCategoryForType(type);
-      let prefEnabled;
-      if (category) {
-        try {
-          const rows = await sql`
-            SELECT app_notification_pref_enabled(${recipient}, ${category}) AS enabled
-          `;
-          prefEnabled = rows?.[0]?.enabled ?? undefined;
-        } catch (e) {
-          if (e?.code !== "42P01" && e?.code !== "42883") throw e;
-          prefEnabled = undefined; // unmigrated → treat as absent (OPTIONAL_PUSH ⇒ off)
-        }
+    // Both PUSH and OPTIONAL_PUSH consult the recipient's per-category pref (via the
+    // DEFINER reader — the recipient's own-row prefs are invisible to the actor). decidePush
+    // applies the rule: PUSH pushes unless explicitly off (absent = on); OPTIONAL_PUSH pushes
+    // only when explicitly on (absent = off). (For the DB-gated `walk_requests` category a
+    // disabled pref already dropped the bell upstream, so we only reach here when it's on.)
+    const category = businessCategoryForType(type);
+    let prefEnabled;
+    if (category) {
+      try {
+        const rows = await sql`
+          SELECT app_notification_pref_enabled(${recipient}, ${category}) AS enabled
+        `;
+        prefEnabled = rows?.[0]?.enabled ?? undefined;
+      } catch (e) {
+        if (e?.code !== "42P01" && e?.code !== "42883") throw e;
+        prefEnabled = undefined; // unmigrated → treat as absent (catalog default)
       }
-      if (!decidePush(channelClass, prefEnabled)) return { pushed: false };
     }
-    // For PUSH the DB gate (app_notify) already dropped the bell row when the
-    // category was disabled, so reaching here means it's enabled — push.
+    if (!decidePush(channelClass, prefEnabled)) return { pushed: false };
 
     const locale = await resolveRecipientLocale(recipient);
     const { title, message } = renderPushContent(type, body, locale);
@@ -186,6 +186,34 @@ const PUSH_COPY = {
   walk_request_broadcast: {
     en: { title: "Walker needed nearby", body: "A pet owner is looking for a walker now." },
     es: { title: "Se busca paseador cerca", body: "Un dueño busca un paseador ahora." },
+  },
+  biz_booking: {
+    en: { title: "New booking", body: "You have a new booking request." },
+    es: { title: "Nueva reserva", body: "Tenés una nueva solicitud de reserva." },
+  },
+  biz_booking_change: {
+    en: { title: "Booking changed", body: "A client cancelled or rescheduled a booking." },
+    es: { title: "Reserva modificada", body: "Un cliente canceló o reprogramó una reserva." },
+  },
+  biz_order: {
+    en: { title: "New order", body: "You received a new order." },
+    es: { title: "Nuevo pedido", body: "Recibiste un nuevo pedido." },
+  },
+  biz_message: {
+    en: { title: "New message", body: "A client sent you a message." },
+    es: { title: "Nuevo mensaje", body: "Un cliente te envió un mensaje." },
+  },
+  biz_adoption_application: {
+    en: { title: "New adoption application", body: "Someone applied to adopt." },
+    es: { title: "Nueva solicitud de adopción", body: "Alguien solicitó una adopción." },
+  },
+  biz_review: {
+    en: { title: "New review", body: "You received a new review." },
+    es: { title: "Nueva reseña", body: "Recibiste una nueva reseña." },
+  },
+  biz_payout: {
+    en: { title: "Payment received", body: "A payment was received." },
+    es: { title: "Pago recibido", body: "Se recibió un pago." },
   },
 };
 

@@ -237,6 +237,20 @@ function winbackDisplay(n, t) {
 const TYPE_LABEL = { paw: "New paw", bark: "New bark", follow: "New follower" };
 // E6/E7 engagement notifications — rendered from localized copy (EN+ES), not the server's body string.
 const ENGAGEMENT_TYPES = new Set(["welcome", "pack_invite", "pack_accepted", "boop"]);
+// BN2 business (provider-facing) notifications — rendered from localized copy (EN+ES) via the
+// bizNotifBell.* keys, NOT the server's JSON body (which the client localizes). A provider/staff
+// account sees these in its bell.
+const BUSINESS_TYPES = new Set([
+  "biz_booking",
+  "biz_booking_change",
+  "biz_order",
+  "biz_message",
+  "biz_adoption_application",
+  "biz_review",
+  "biz_payout",
+  "biz_post_engagement",
+  "biz_follow",
+]);
 function mapDbNotification(n, t) {
   if (WALK_REQUEST_TYPES.has(n.type)) {
     const { title, message } = walkRequestDisplay(n, t);
@@ -327,6 +341,24 @@ function mapDbNotification(n, t) {
       read: !!n.read_at,
       avatar: null,
       relatedWelcomeBack: true, // tap → the "Welcome back" screen
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
+  if (BUSINESS_TYPES.has(n.type)) {
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title: t(`bizNotifBell.${n.type}`),
+      message: t(`bizNotifBell.${n.type}Message`),
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: n.actor_avatar || null,
+      // subject_ref meaning varies by type (booking/application/post/provider id); the business
+      // hub surfaces the detail — the bell renders the localized headline + marks read.
       relatedBookingId: null,
       relatedPetId: null,
       relatedPostId: null,

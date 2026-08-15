@@ -2,6 +2,74 @@
 
 ---
 
+## ✅ BN2 PR2 — Business notification EMISSION + channel catalog — 2026-08-15
+
+**Branch:** `feat/bn2-pr2-business-emission` · **Migration:** 0110 (awaits hand-apply) · Design of
+record: `docs/business-provider.md`.
+
+**What shipped.** PawPi now emits the provider-facing notifications owners actually want, to the
+**OWNER + the relevant active STAFF**, and stands up the full shared channel catalog. Until now the
+only notification reaching a business was a walk request.
+
+- **Recipient resolution — `notifyProviderTeam` (`utils/providerNotify.js`).** One resolver for all
+  business events: `app_provider_active_staff_ids([providerId])` (0093, DEFINER) returns owner + every
+  active staff in a single call (the owner is enrolled as active staff at provider creation), so the
+  emitting route — running in the *actor's* identity, which can't read another provider's staff — still
+  reaches the whole team. `ownerOnly` targets just `providers.owner_user_profile_id` (used by
+  `biz_follow`). Never throws, never double-notifies the actor (safeNotify skips `recipient === actor`),
+  never leaks across businesses (scoped to one providerId), degrades clean if the DEFINER reader is
+  absent.
+- **Events wired (route → type → recipients):**
+  - `providers/[id]/book` → **`biz_booking`** → owner + staff (actor = the booking client).
+  - `vet-appointments` PUT (reschedule / status) + DELETE (cancel) → **`biz_booking_change`** → owner +
+    staff, gated on a real `provider_id` (personal vet appts have none) + a schedule-relevant change.
+  - `payments/checkout` (`kind='product'`) + `pets/[id]/shop-checkout` → **`biz_order`** → owner + staff.
+    Booking payments are excluded (they already fired `biz_booking`).
+  - `threads/[id]/messages` → **`biz_message`** → owner + staff, **only when the CLIENT (thread owner)
+    messages** the business; the staff→client direction is owner-facing and left out of BN2 scope.
+  - `adoption/applications` → **`biz_adoption_application`** → shelter owner + staff.
+  - Engagement (IN-APP-ONLY — a bell, never a push): `providers/[id]/posts/[postId]/paw` +
+    `.../comments` → **`biz_post_engagement`** (owner + staff); `providers/[id]/follow` → **`biz_follow`**
+    (OWNER ONLY). Paw/follow only notify on a *genuinely new* row (`ON CONFLICT DO NOTHING RETURNING id`),
+    so a repeat tap doesn't re-notify.
+- **Shared channel catalog** — web `notificationCategories.js` + mobile `businessNotificationPrefs.js`,
+  the single source of truth: category → PUSH channel class (PUSH default-on · OPTIONAL_PUSH review/
+  payout default-off · IN_APP_ONLY post-activity/followers) and the type↔category maps. The BN2 model:
+  **every business notification ALWAYS writes an in-app bell**; the channel class + `notification_prefs`
+  decide whether the PR1 send-hook also pushes. The PR1 push hook now consults the pref for **both** PUSH
+  and OPTIONAL_PUSH (new PUSH categories aren't DB-gated, so the bell is never suppressed). The
+  `notification-prefs` GET returns per-category defaults (OPTIONAL_PUSH absent = off).
+- **Bilingual (EN + ES)** — push banner copy (`push.js`) + the in-app bell (`bizNotifBell.*` +
+  a `BUSINESS_TYPES` branch in mobile `notifications.jsx`) for every `biz_*` type; the settings
+  category labels/hints (`bizNotif.*`) for PR3.
+- **DB — migration 0110** widens `notifications_type_check` for the nine `biz_*` types. The ONLY DB
+  change; `app_notify()`'s BX4 gate is untouched (still only `walk_requests`). Verify `verify_0110.sql`.
+  Degrades clean while absent: safeNotify swallows the CHECK violation, dropping the new bell rows,
+  never 500.
+
+**Tests / gates.** vitest 2010→**2022** (+12: catalog + `providerNotify` + push OPTIONAL/disabled paths),
+integration 1006→**1011** (+5: `business-notification-emission.integration.test.ts` proves each event
+through the REAL router on real Postgres — owner+staff recipients, actor = client, no cross-business
+leak, owner-only follow, idempotent no-re-notify, staff-reply emits nothing), mobile jest 1879→**1882**
+(+3: catalog shape + per-category defaults).
+
+**Decisions / deviations.**
+- Kept the walk-request pair on the **legacy `walk_requests` category key** (shipped in 0108) rather
+  than the design's `biz_walk_job` label, so no pref rows migrate. Documented as a benign quirk:
+  `walk_requests` is the one category `app_notify` still DB-gates (disabling suppresses its bell); the
+  new categories follow the BN2 "bell always writes" model.
+- `biz_review` / `biz_payout` are in the catalog (OPTIONAL_PUSH) but **not emitted** — no review/payout
+  event fires today; reserved for when it does (no fake toggle for an event that can't fire, but the
+  type is pre-allowed in 0110 so no future migration is needed).
+- Emitted `biz_order` at **both** product-order paths (generic `payments/checkout kind=product` and the
+  dedicated `shop-checkout`) since they insert orders independently — no double-notify (distinct paths).
+
+**Flag:** **0110 awaits hand-apply on Supabase.** **NEEDS ON-DEVICE CONFIRMATION** — a provider/staff
+account should see these land in its bell (and, once APNs is configured per PR1's steps below, ring the
+phone).
+
+---
+
 ## ✅ BN2 PR1 — Remote-push FOUNDATION (server→phone) — 2026-08-15
 
 **Branch:** `feat/bn2-pr1-push-foundation` · **Migration:** 0109 (awaits hand-apply) · Design of record:

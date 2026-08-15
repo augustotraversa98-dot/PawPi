@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // /api/providers/[id]/follow — a signed-in pet owner follows / unfollows a provider (ticket 2.92).
 //   • GET    → { following, followersCount } for the current user + this provider.
@@ -77,11 +79,13 @@ async function POST(request, { params }) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
 
+    let inserted = [];
     try {
-      await sql`
+      inserted = await sql`
         INSERT INTO provider_follows (follower_user_id, provider_id)
         VALUES (${gate.userId}, ${providerId})
         ON CONFLICT (follower_user_id, provider_id) DO NOTHING
+        RETURNING id
       `;
     } catch (e) {
       // Pre-migration: accept the tap as a no-op so the UI never errors; it re-syncs once
@@ -90,6 +94,20 @@ async function POST(request, { params }) {
         return Response.json({ following: false, followersCount: 0, pending: true });
       }
       throw e;
+    }
+
+    // ENGAGEMENT NOTIFICATION (BN2 biz_follow, IN_APP_ONLY — a bell, never a push). Only on a
+    // genuinely NEW follow (ON CONFLICT DO NOTHING returns no row on a re-follow), so a repeat
+    // tap doesn't re-notify. Owner-only per the catalog. actor = the follower.
+    if (inserted?.length > 0) {
+      await notifyProviderTeam({
+        providerId,
+        actor: gate.userId,
+        type: "biz_follow",
+        subjectRef: providerId,
+        body: bizNotifyBody({ kind: "follow" }),
+        ownerOnly: true,
+      });
     }
 
     const followersCount = await followerCount(providerId);

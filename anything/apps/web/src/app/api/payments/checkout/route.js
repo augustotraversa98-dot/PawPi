@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { createCheckout } from "@/app/api/utils/payments";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import {
   SUPPORTED_RAILS,
   PaymentsNotConfiguredError,
@@ -100,6 +102,23 @@ async function POST(request) {
     const result = await createCheckout(order, { rail, idempotencyKey });
 
     try { paymentAttempt.add(1, { rail }); } catch {}
+
+    // PROVIDER NOTIFICATION (BN2 biz_order) — a new PRODUCT order. Only 'product' (a booking
+    // payment already fired biz_booking at the book route; adoption/donation/subscription are
+    // not "orders" a provider stocks). actor = the payer so the provider team is notified.
+    if (kind === "product") {
+      await notifyProviderTeam({
+        providerId: provider_id,
+        actor: userId,
+        type: "biz_order",
+        subjectRef: order.id,
+        body: bizNotifyBody({
+          kind: "order",
+          amount_cents: order.amount_cents,
+          currency: order.currency,
+        }),
+      });
+    }
 
     return Response.json(
       {

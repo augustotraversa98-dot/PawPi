@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // "Paws" (likes) on one provider STOREFRONT post (ticket 2.94, migration 0085). Mirrors the pet-feed
 // paw (posts/[id]/paw) but keyed on (providerId, postId).
@@ -57,14 +59,27 @@ async function POST(request, { params }) {
 
     try {
       // Idempotent paw: a repeat is a no-op (unique(post_id, user_id) also backstops this).
-      await sql`
+      const inserted = await sql`
         INSERT INTO provider_post_paws (post_id, user_id)
         VALUES (${postId}, ${userId})
         ON CONFLICT (post_id, user_id) DO NOTHING
+        RETURNING id
       `;
       const countRows = await sql`
         SELECT COUNT(*)::int AS count FROM provider_post_paws WHERE post_id = ${postId}
       `;
+      // ENGAGEMENT NOTIFICATION (BN2 biz_post_engagement, IN_APP_ONLY — bell, never push).
+      // Only on a NEW paw (no row back on a repeat), so double-taps don't re-notify. Owner +
+      // active staff; actor = the user who pawed (never self-notifies).
+      if (inserted?.length > 0) {
+        await notifyProviderTeam({
+          providerId,
+          actor: userId,
+          type: "biz_post_engagement",
+          subjectRef: postId,
+          body: bizNotifyBody({ kind: "paw", post_id: Number(postId) }),
+        });
+      }
       return Response.json({
         success: true,
         paw_count: countRows[0].count,
