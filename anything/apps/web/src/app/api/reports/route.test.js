@@ -6,10 +6,12 @@ import { GET, POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolveUserId } from "@/app/api/utils/currentUser";
+import { alertAdminsOfReport } from "@/app/api/utils/adminAlert";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
+vi.mock("@/app/api/utils/adminAlert", () => ({ alertAdminsOfReport: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const post = (body) =>
@@ -51,6 +53,25 @@ describe("POST /api/reports", () => {
     expect(res.status).toBe(201);
     expect((await res.json()).report).toMatchObject({ reporter_user_id: 7 });
     expect(sql.mock.calls[1][0].join(" ")).toContain("INSERT INTO content_reports");
+  });
+
+  it("a genuinely new report alerts admins exactly once", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]); // no existing open report
+    sql.mockResolvedValueOnce([{ id: 1, reporter_user_id: 7, target_type: "post", target_id: 5 }]);
+    await POST(post(good));
+    expect(alertAdminsOfReport).toHaveBeenCalledTimes(1);
+    expect(alertAdminsOfReport).toHaveBeenCalledWith(
+      expect.objectContaining({ report: expect.objectContaining({ id: 1 }), reporterId: 7 }),
+    );
+  });
+
+  it("the idempotent duplicate does NOT alert admins", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1, reporter_user_id: 7, status: "open" }]);
+    const res = await POST(post(good));
+    expect(res.status).toBe(200);
+    expect(alertAdminsOfReport).not.toHaveBeenCalled();
   });
 
   it("accepts provider_post_comment as a target_type (A3)", async () => {
