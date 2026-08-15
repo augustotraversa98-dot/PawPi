@@ -34,14 +34,14 @@ device pass confirms the visual). Real phone push still awaits the APNs/EAS setu
 below.
 
 **BN2 is COMPLETE** (PR1 remote-push foundation · PR2 emission + catalog · PR3 channel-aware settings).
-The only remaining external dependencies: hand-apply migrations **0109 + 0110** on Supabase, and
+Migrations **0109 + 0110** are ✅ APPLIED + VERIFIED on Supabase (2026-08-15). The only remaining external dependency:
 configure **APNs/Expo credentials** (PR1 steps) to light up iOS delivery.
 
 ---
 
 ## ✅ BN2 PR2 — Business notification EMISSION + channel catalog — 2026-08-15
 
-**Branch:** `feat/bn2-pr2-business-emission` · **Migration:** 0110 (awaits hand-apply) · Design of
+**Branch:** `feat/bn2-pr2-business-emission` · **Migration:** 0110 (✅ APPLIED + VERIFIED on Supabase 2026-08-15) · Design of
 record: `docs/business-provider.md`.
 
 **What shipped.** PawPi now emits the provider-facing notifications owners actually want, to the
@@ -101,7 +101,7 @@ leak, owner-only follow, idempotent no-re-notify, staff-reply emits nothing), mo
 - Emitted `biz_order` at **both** product-order paths (generic `payments/checkout kind=product` and the
   dedicated `shop-checkout`) since they insert orders independently — no double-notify (distinct paths).
 
-**Flag:** **0110 awaits hand-apply on Supabase.** **NEEDS ON-DEVICE CONFIRMATION** — a provider/staff
+**Flag:** **0110 ✅ APPLIED + VERIFIED on Supabase 2026-08-15.** **NEEDS ON-DEVICE CONFIRMATION** — a provider/staff
 account should see these land in its bell (and, once APNs is configured per PR1's steps below, ring the
 phone).
 
@@ -109,7 +109,7 @@ phone).
 
 ## ✅ BN2 PR1 — Remote-push FOUNDATION (server→phone) — 2026-08-15
 
-**Branch:** `feat/bn2-pr1-push-foundation` · **Migration:** 0109 (awaits hand-apply) · Design of record:
+**Branch:** `feat/bn2-pr1-push-foundation` · **Migration:** 0109 (✅ APPLIED + VERIFIED on Supabase 2026-08-15) · Design of record:
 `docs/business-provider.md` ("Business / Provider Notifications v2").
 
 **What shipped.** The first server→phone push layer PawPi has ever had. Until now the mobile app only
@@ -180,9 +180,9 @@ stays dark until APNs credentials are configured** in EAS/Apple against the PawP
 4. **Build + install a real build** — `eas build -p ios` (dev or TestFlight). Simulators never receive a
    token, so this must be a **physical device** (or TestFlight). On first authed launch the app registers
    its token to `POST /api/push-tokens`.
-5. **Apply migration 0109** on Supabase (`supabase/migrations/0109_device_push_tokens.sql`) + run
-   `supabase/verify_0109.sql` (all rows PASS). Until applied, `POST /api/push-tokens` returns a friendly
-   503 and the send layer no-ops — nothing breaks.
+5. ~~**Apply migration 0109**~~ ✅ DONE — **0109 + 0110 APPLIED + VERIFIED on Supabase 2026-08-15**
+   (`verify_0109.sql` / `verify_0110.sql` all PASS). `POST /api/push-tokens` + the `biz_*` bell rows are
+   live server-side; only the phone DELIVERY awaits APNs (steps 1–4 above).
 6. **Confirm on device** — sign in on the physical build, verify a `device_push_tokens` row appears for
    the account, then trigger a **PUSH-class** notification (PR2 will make business bookings/chat do this;
    for PR1, a walk request to a walker's staff) and confirm the phone banner arrives.
