@@ -901,3 +901,13 @@ day one; no fake data. One line per merge.
   always read it right. Two `max(boolean)` aggregates in the same script were fixed to `bool_or`.
   Railway needs no action beyond the normal deploy on merge — the limiter fails open, so the window
   between deploy and apply was a no-op.
+- **2026-08-15 (PP1–PP3 CLOSEOUT)** — Pre-launch polish fix-pack **COMPLETE**. 5 PRs, each CI-green
+  before merge: #417 (PP1 nav card push) · #418 (PP1 docs) · #419 (PP2 EN/ES parity) · #420 (PP3
+  rate limiting, migration 0113) · #421 (0113 verify-script fix). Migration **0113 APPLIED +
+  VERIFIED on Supabase prod**; prod DB now at **0113**. Railway redeployed on each merge (latest
+  SUCCESS on #420, `GET /` → 200); no env var changes needed. Gates across the pack: mobile jest
+  1887→**1905**, web vitest 2023→**2048**, web integration 1020→**1035**. Owed by a human:
+  (1) ⚠️ PP1 on-device nav feel, (2) PP2 Spanish OS permission prompt on a NATIVE build (Expo Go
+  can't show it — `expo.locales` applies at prebuild), (3) the pre-existing legal-review + Apple
+  submission path. New DEFERRED item raised and measured, not silently skipped: the wider
+  hardcoded-English debt (158 `Alert.alert` literals; 83/255 non-test .jsx use `useTranslation`).

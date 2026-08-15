@@ -9,9 +9,11 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 
 ## Executive summary (updated as the run proceeds)
 
-**Run status: COMPLETE.** All four phases worked through. 6 PRs (#410–#415) merged; migrations 0111
-+ 0112 applied + verified on prod; final closeout PR pending. Full test suite green at closeout:
-**mobile jest 1887 · web vitest 2023 · web integration 1020.**
+**Run status: COMPLETE**, and the three buildable items it left behind are **also complete** — see
+[Follow-up: Pre-launch Polish Fix-pack (PP1–PP3)](#follow-up-pre-launch-polish-fix-pack-pp1pp3--2026-08-15)
+at the end of this file. 6 PRs (#410–#415) for the run itself + 5 more (#417–#421) for the fix-pack;
+migrations 0111, 0112 and **0113** applied + verified on prod (prod DB is at **0113**). Full suite
+green: **mobile jest 1905 · web vitest 2048 · web integration 1035**.
 
 **Shipped (merged):**
 - (A2a) **Demo/seed content leak into real users' feeds — FIXED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod; 58 demo profiles + 1 provider backfilled).
@@ -27,7 +29,9 @@ PP1 fix-pack, [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417)** 
 still owed); A3 interactive controls **clean**; A4 security **strong** (48 RLS test files) with one
 gap (rate-limiting — being closed by PP3).
 
-**On-device punch list (for Tats):** _accumulating — see the Punch List section._
+**On-device punch list (for Tats):** see the Punch List section — 8 items, now including the two
+the PP1–PP3 fix-pack added (nav feel after the modal→card change; Spanish OS permission prompts,
+which need a native build to observe).
 
 **Legal-review checklist:** ✅ drafted — see [docs/legal/LEGAL-REVIEW-CHECKLIST.md](legal/LEGAL-REVIEW-CHECKLIST.md). Privacy Policy + Terms rewritten EN+ES, DRAFT-stamped; awaits a lawyer's review + publishing to the hosted `pawpi-legal` repo.
 
@@ -345,9 +349,12 @@ Submit for Review.
   nice-to-have (not an Apple blocker since Report is reachable).
 - **Bark/comment Delete + Block feel** — verify the new trash icon + confirm dialog and the
   Report/Block sheet look right on device (added headless; A3).
-- **A2c navigation feel** — after the recommended `search` modal→card change (see A2c), verify on
-  device that Discovery → pet profile → photo pushes as a real back stack (no modal-on-modal), iOS
-  swipe-back works through the chain, and dismissing search still feels right.
+- **A2c navigation feel — the fix is SHIPPED (PP1 #417), the feel is not yet confirmed.** `search`
+  is now a card push with a back affordance. On device: Discovery → pet profile → photo should be a
+  real back stack (no modal-on-modal), iOS swipe-back should work through the whole chain, and
+  losing swipe-down-to-dismiss on search should still feel right. If it doesn't, the open question
+  is whether `notifications` and `messages` (still modals that push cards from inside themselves —
+  the same shape) should get the same treatment.
 - **Responsive / small-screen (A3)** — check iPhone SE vs large: text overflow/truncation, safe-area
   insets, and contrast on the main screens (feed, health/today, vet record, discovery, booking).
 - **Timestamps on device (A2b)** — confirm real relative times render (e.g. "5m", "hace 2 h", "ayer")
@@ -355,6 +362,12 @@ Submit for Review.
 - **Demo content gone from real feeds (A2a)** — on a fresh (non-demo) account, confirm Discover /
   Search / Suggested / provider+adoption discovery no longer show Mango, the seed clinic, or the
   filler "fans".
+- **Spanish permission prompts (PP2)** — on a Spanish-language device/simulator running a NATIVE
+  build (not Expo Go — `expo.locales` only takes effect at prebuild), trigger the camera prompt and
+  confirm the OS text is Spanish. If it is English, the `.lproj` folders are missing from the
+  archive: `expo prebuild --clean` before `eas build`.
+- **Moderation menu + Search in Spanish (PP2)** — switch Settings → Language to Español and confirm
+  the ··· sheet (Reportar / Bloquear usuario / motivos) and Search & Discover read Spanish.
 
 ## DEFERRED / BLOCKED
 
@@ -383,8 +396,8 @@ Three of the DEFERRED items above are being closed by the fix-pack driven from
 | Ticket | Closes | Status |
 |---|---|---|
 | **PP1** — Search/Discovery card push | A2c "layers on layers" | ✅ **FIXED** — [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417) · ⚠️ on-device feel check owed |
-| **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | ✅ **FIXED** — see below |
-| **PP3** — Write rate-limiting | A4 rate-limiting gap | ✅ **FIXED** — see below (migration 0113) |
+| **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | ✅ **FIXED** — [#419](https://github.com/augustotraversa98-dot/PawPi/pull/419) |
+| **PP3** — Write rate-limiting | A4 rate-limiting gap | ✅ **FIXED** — [#420](https://github.com/augustotraversa98-dot/PawPi/pull/420); migration **0113 APPLIED + VERIFIED on prod** |
 
 ### PP2 — EN/ES parity
 
@@ -488,3 +501,30 @@ caller's own INSERT/UPDATE/DELETE against the counter are all denied and SELECT 
 through the **real** paw handler — that under-limit passes, over-limit 429s with EN+ES copy, one
 user's burst never spends another's allowance, and a GET never touches the counter. Gates: web
 vitest 2023 → **2048**, integration 1020 → **1035**.
+
+### Fix-pack closeout
+
+**All three tickets shipped.** PRs [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417)
+(PP1) · [#418](https://github.com/augustotraversa98-dot/PawPi/pull/418) (PP1 docs) ·
+[#419](https://github.com/augustotraversa98-dot/PawPi/pull/419) (PP2) ·
+[#420](https://github.com/augustotraversa98-dot/PawPi/pull/420) (PP3) ·
+[#421](https://github.com/augustotraversa98-dot/PawPi/pull/421) (0113 verify-script fix). Every PR
+CI-green before merge.
+
+**Migration 0113 APPLIED + VERIFIED on Supabase prod** (`qaebbesldduvgwttqlnq`) — all 9 structural
+checks PASS, and the behaviour probe on prod returns `1:true → 2:true → 3:false` at a limit of 2,
+collapsing to one live window row. Probe rows removed; `rate_limit_hits` sits at 0 rows. Prod DB is
+now at **0113**. Railway redeployed on each merge (latest deploy SUCCESS on #420; `GET /` → 200).
+The deploy-before-apply window was a no-op by design: the limiter fails open.
+
+**Test gates across the fix-pack:** mobile jest 1887 → **1905** · web vitest 2023 → **2048** · web
+integration 1020 → **1035**.
+
+**Still owed by a human:**
+1. **PP1 on-device confirmation** (nav feel) — punch list above.
+2. **PP2 on-device confirmation** — the Spanish permission prompt needs a native build to observe.
+3. The pre-existing path to the App Store: legal review + publish, then the submission runbook.
+
+**New DEFERRED item this fix-pack raised:** the wider hardcoded-English debt (158 `Alert.alert`
+literals; 83/255 non-test `.jsx` files use `useTranslation`) — measured, logged, and deliberately
+left for its own ticket.
