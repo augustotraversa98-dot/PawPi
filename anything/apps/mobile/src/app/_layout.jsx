@@ -102,7 +102,12 @@ export default function RootLayout() {
             name="notifications"
             options={{ presentation: "modal" }}
           />
-          <Stack.Screen name="search" options={{ presentation: "modal" }} />
+          {/* Search & Discover is a CARD PUSH, not a modal (PP1). It is a hub you
+              navigate ONWARD from — a tapped result pushes /pet-profile, whose photo
+              opens a full-screen viewer. As a modal it stacked card-on-modal-on-modal
+              with no back button ("layers on layers"); as a card the whole chain lives
+              on one back stack. Keep it a card. */}
+          <Stack.Screen name="search" />
           <Stack.Screen name="messages" options={{ presentation: "modal" }} />
           <Stack.Screen name="chat" />
           {/* Owner ↔ provider messaging (ticket 2.5) — distinct from the social-pet
