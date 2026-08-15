@@ -199,6 +199,25 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > 1982→**1989**, integration 995→**1000**, mobile jest 1863→**1874**. **⚠️ business Settings visual
 > needs on-device confirmation.**
 
+> **Update (2026-08-15, BN2 PR1 — remote-push FOUNDATION):** **1 PR** (feat/bn2-pr1-push-foundation)
+> — the first server→phone push layer PawPi has ever had. Before this, the app only scheduled **local**
+> reminders (`expo-notifications`) and server events wrote the in-app bell (`app_notify`); nothing rang
+> a phone. Ships: (a) **migration 0109** `device_push_tokens` (own-row FORCE RLS) + three DEFINER
+> readers (`app_recipient_push_tokens` / `app_notification_pref_enabled` / `app_recipient_locale`) so the
+> web send-hook — which runs as the *actor*, not the recipient — can resolve a recipient's tokens/pref/
+> locale across the owner boundary; (b) **`POST/DELETE /api/push-tokens`**; (c) a web **`sendPush()`**
+> layer (`expo-server-sdk`) wired as a **post-`app_notify` hook** in `safeNotify` — after a bell row is
+> created it consults the channel catalog + the recipient's `notification_prefs` and pushes per the BN2
+> rule (IN_APP_ONLY→never · PUSH→unless disabled · OPTIONAL_PUSH→only if enabled); (d) mobile
+> `registerPushTokenAsync` (reuses the startup permission — no cold prompt; no-ops on simulators),
+> registered after auth in `_layout`. **Degrades clean end-to-end**: no tokens / no creds / unmigrated →
+> log-and-no-op, never a crash or a failed action. **iOS delivery stays DARK until APNs/Expo creds are
+> configured** (same Apple-account dependency as widget PR #187) — the exact EAS/Apple steps are in
+> `docs/night-run-log.md`. PR1 catalog is stubbed with today's types only (`walk_request_*` = PUSH); PR2
+> adds the full business catalog + emission. Gates: vitest 1989→**2010** (+21), integration 1000→**1006**
+> (+6), mobile jest 1874→**1879** (+5). **0109 awaits hand-apply on Supabase.** **NEEDS ON-DEVICE
+> CONFIRMATION** (token registration + a real push once APNs is live).
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map
