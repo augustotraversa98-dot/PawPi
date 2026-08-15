@@ -1162,3 +1162,8 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   Privacy+Terms EN+ES DRAFT; Phase B perf audit (no migration warranted — all app queries <2ms);
   Phase D Apple submission runbook + config + EN/ES metadata + App Privacy map. Punch list + legal
   review + Apple next-steps in `docs/night-run-2026-08-16-report.md`. (2026-08-15.)
+- **PP1 — Search/Discovery is a card push, not a modal** — ✅ PR #417, mobile-only, no migration.
+  Closes the night run's A2c "layers on layers": `search` was a root-Stack modal while everything it
+  opens is a push, so pet-profile stacked on it and the photo sheet on that. Now one back stack, with
+  a real back affordance; a source-level nav-contract test pins it. mobile jest 1887→1891.
+  ⚠️ on-device feel check still owed. (2026-08-15.)

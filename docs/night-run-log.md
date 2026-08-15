@@ -823,3 +823,22 @@ day one; no fake data. One line per merge.
   no app-level write rate-limiting. Deferred/flagged: ModerationMenu EN-only labels, EN-only iOS
   permission strings, rate-limiting, redundant duplicate indexes. Docs-only closeout PR.
   Run COMPLETE: PRs #410-#415 merged; migrations 0111+0112 live on prod.
+
+## Pre-launch polish fix-pack (PP1–PP3) — see docs/pre-launch-polish-fixpack.md
+
+- **2026-08-15 (PP1)** — Navigation "layers on layers" FIXED — #417. Mobile-only, NO migration.
+  `search` was `presentation: "modal"` on the root Stack while everything it opens is a push
+  (result → `/pet-profile` card → photo → `PostDetailModal` pageSheet), so a card stacked on a modal
+  and a modal on that card: 3 layers, no back button, swipe-only dismiss. `search` is now a **card
+  push**, and its header affordance reads as **back** (`ChevronLeft` + `common.back` a11y label,
+  already EN+ES) instead of a modal-dismiss `X` — the clear-query `X` stays. Checked: there is no
+  separate full-screen photo route, so `PostDetailModal` is the ONLY modal in the chain (and
+  `BarkModal` can't stack on it — `onOpenBarks` closes the detail sheet first). Deep link `/search`
+  + the tab initial route unchanged. New guard `navigation-layers.test.js` (source-level nav
+  contract: `search`/`pet-profile` must never be modals) + back-affordance/push-only tests in
+  `search.test.jsx`. Gates: mobile jest 1887→**1891**, web vitest 2023, web integration 1020
+  (web untouched — no Railway deploy needed). **Deliberately NOT changed:** `notifications` and
+  `messages` are still modals that push cards from inside themselves (same shape) — PP1 was scoped
+  to Search/Discovery, so they are flagged for a follow-up decision rather than changed blind.
+  ⚠️ **NEEDS ON-DEVICE CONFIRMATION** — swipe-back through search → pet-profile → photo, and whether
+  losing swipe-down-to-dismiss on search feels right.
