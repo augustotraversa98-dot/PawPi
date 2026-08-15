@@ -789,3 +789,10 @@ day one; no fake data. One line per merge.
   (EN+ES). Tests: web integration bark-delete (4) + BarkModal affordance tests (2). Gates: mobile jest
   1887, web vitest 2022. Follow-up: business-post (provider-post) comments still need Report+Block
   (delete-own present) — needs content_reports.target_type CHECK widen; next PR.
+- **2026-08-15 (A3, business-post comments)** — Report + Block added to business-post
+  (provider-post) comments (delete-own was already present) — closes the A3 UGC-moderation matrix.
+  Migration **0112** widens content_reports.target_type CHECK to allow 'provider_post_comment'
+  (**APPLIED + VERIFIED on Supabase prod**); reports route allows the new type; provider-post.jsx
+  renders ModerationMenu (report+block via c.author_user_id) on non-own comments. Test: reports
+  route unit + provider-post mobile. Noted follow-up: ModerationMenu labels are English-only
+  (pre-existing EN/ES gap) — flagged for an i18n sweep.
