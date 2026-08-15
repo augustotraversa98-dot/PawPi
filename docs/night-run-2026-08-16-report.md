@@ -207,9 +207,9 @@ search → pet-profile → photo, and whether losing swipe-down-to-dismiss on se
   copy (`feed.empty`, `search.nothingHere`, `messages.empty`, …) — no fabricated fillers (reinforced
   by the A2a demo-guard).
 - **i18n parity — enforced, two gaps.** `i18n.test.js` enforces EN/ES key parity; A2b + A3 kept both
-  catalogs in sync. **Gaps flagged (DEFERRED):** the shared `ModerationMenu` component labels
-  ("Report"/"Block user"/reason labels) are hardcoded English, and the iOS permission usage strings
-  are EN-only.
+  catalogs in sync. **Both gaps flagged here are now ✅ FIXED in PP2** (ModerationMenu labels; iOS
+  permission usage strings) — see the PP2 section. A wider, pre-existing i18n debt was measured
+  during that sweep and is tracked separately below.
 - **Responsive / accessibility — mostly code-clean; punch-list the visual.** Moderation controls
   carry `accessibilityRole`/`accessibilityLabel`; images use `expo-image` with sizing. Small-screen
   (iPhone SE) text overflow/truncation and contrast can only be confirmed on device → punch list.
@@ -358,14 +358,12 @@ Submit for Review.
 
 ## DEFERRED / BLOCKED
 
-- **ModerationMenu labels are English-only (EN/ES parity).** The shared `ModerationMenu`
-  ("Report", "Block user", the report-reason labels) is hardcoded English — a pre-existing parity
-  gap on every moderation surface, not introduced here. Flagged for an i18n pass (localize the
-  `ModerationMenu` component + `REPORT_REASONS`). Not an Apple blocker (the actions work); tracked
-  for the A3 i18n sweep.
-- **iOS permission usage strings are EN-only.** Localize via `CFBundleLocalizations: ["en","es"]` +
-  per-locale `InfoPlist.strings` (needs a config-plugin / prebuild step). Not a submission blocker —
-  English usage strings are accepted — but recommended for the ES store listing (A3/Phase D).
+- ~~**ModerationMenu labels are English-only (EN/ES parity).**~~ ✅ **FIXED in PP2** — every label,
+  a11y label and Alert in `ModerationMenu` goes through `t()` under `moderation.*` (EN+ES).
+  `REPORT_REASONS` now carries `labelKey` instead of `label`; the reason **`key` is unchanged** —
+  it is the wire value posted to `/api/reports` and must never be translated.
+- ~~**iOS permission usage strings are EN-only.**~~ ✅ **FIXED in PP2** — `expo.locales` +
+  `CFBundleLocalizations: ["en","es"]`; see below.
 - **No application-level rate-limiting on writes (A4).** Auth + RLS + content-filter mitigate abuse,
   but there is no per-identity write throttle. Recommend edge (Railway/Cloudflare) or a small
   per-identity limiter on posts/barks/reports/messages/bookings. Needs a shared store + design; not
@@ -387,5 +385,48 @@ Three of the DEFERRED items above are being closed by the fix-pack driven from
 | Ticket | Closes | Status |
 |---|---|---|
 | **PP1** — Search/Discovery card push | A2c "layers on layers" | ✅ **FIXED** — [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417) · ⚠️ on-device feel check owed |
-| **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | _in progress_ |
+| **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | ✅ **FIXED** — see below |
 | **PP3** — Write rate-limiting | A4 rate-limiting gap | _queued_ |
+
+### PP2 — EN/ES parity
+
+**(a) iOS permission usage strings — localized.** These prompts are drawn by the **OS**, not by
+React, so `t()` can never reach them. `app.json` now declares `expo.locales` →
+`anything/apps/mobile/locales/{en,es}.json` plus `ios.infoPlist.CFBundleLocalizations: ["en","es"]`;
+prebuild turns each file into an `<locale>.lproj/InfoPlist.strings`. Camera, photo library
+(read + add), location, microphone and both calendar strings ship EN+ES; ES is Argentine (voseo),
+matching `src/i18n/locales/es.json`. Copy is unchanged in English, so it still agrees with
+`docs/app-store-privacy-data-map.md` and with what Apple already reviewed. `CFBundleDisplayName`
+stays "PawPi" in both — a brand name, not copy.
+
+Nothing at runtime could ever catch drift here (it surfaces only in a native build, on a Spanish
+phone, at prompt time), so `locales/locales.test.js` pins it in CI: EN/ES key parity, every
+`…UsageDescription` in `app.json` present in both files, the English file **identical** to
+`ios.infoPlist` (it is iOS's base fallback for unshipped languages), and no ES value left equal to
+its English source. The runbook now carries a one-line on-device verification step.
+
+**(b) ModerationMenu — localized.** Every label, a11y label and Alert now resolves through `t()`
+under `moderation.*` (EN+ES): trigger, backdrop, Report, Block user, Cancel, the reason prompt, all
+six reasons, and the report/block success + failure dialogs. `REPORT_REASONS` carries `labelKey`
+instead of `label`; **the reason `key` is untouched** because it is the wire value posted to
+`/api/reports`. This one component is the moderation surface for the feed, comments, chat, events,
+the forum, reviews and adoption, so it was the single highest-leverage English-only string set left.
+
+**(c) Sweep — Search & Discover.** The screen surfaced by PP1 was 100% hardcoded English (title,
+placeholder, all five section headers, both empty states, the "by {owner}" byline) even though
+`search.title` / `search.noResults` / `search.nothingHere` had been sitting **unused** in the
+catalog. All of it now goes through `t()`; 10 new `search.*` keys EN+ES.
+
+**Proof.** `testMock.makeReactI18nextMock()` now takes a locale, so both surfaces have a companion
+`*.es.test.jsx` rendering the real Spanish catalog — that is what distinguishes "actually localized"
+from "calls `t()` against an English-only entry". The pre-existing English tests are unchanged and
+still pass, which pins that no user-visible English copy moved. Mobile jest 1891 → **1905**.
+
+**⚠️ Residual i18n debt — measured, NOT fixed (new DEFERRED item).** The sweep found the gap is much
+larger than the two flagged items: **158 `Alert.alert(...)` calls with hardcoded English literals**
+across the app, and only **83 of 255** non-test `.jsx` files use `useTranslation` at all. PP2
+deliberately did **not** attempt that — it is a large, mechanical, regression-prone change that
+wants its own ticket and its own review, not a fix-pack rider. Highest-value next targets (by
+traffic): the booking/service flows (`service/*.jsx`), `profile-edit`, the onboarding photo screens,
+and the walker/sitter workspaces. Not an Apple blocker — the ES store listing, the legal docs and
+now the permission prompts are all bilingual.

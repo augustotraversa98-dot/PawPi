@@ -842,3 +842,26 @@ day one; no fake data. One line per merge.
   to Search/Discovery, so they are flagged for a follow-up decision rather than changed blind.
   ⚠️ **NEEDS ON-DEVICE CONFIRMATION** — swipe-back through search → pet-profile → photo, and whether
   losing swipe-down-to-dismiss on search feels right.
+- **2026-08-15 (PP2)** — EN/ES parity gaps CLOSED. Mobile + app config, NO migration.
+  **(a) iOS permission prompts** are drawn by the OS, so `t()` can never reach them: `app.json` now
+  declares `expo.locales` → `anything/apps/mobile/locales/{en,es}.json` + `ios.infoPlist`
+  `CFBundleLocalizations: ["en","es"]`, which prebuild turns into `<locale>.lproj/InfoPlist.strings`.
+  Camera / photo library (read+add) / location / microphone / both calendar strings now ship EN+ES
+  (Argentine voseo); English copy is byte-identical to what Apple already reviewed. Guarded by
+  `locales/locales.test.js` (key parity; every `…UsageDescription` in both files; EN file == the
+  `ios.infoPlist` base fallback; no ES value left equal to its English source) because nothing at
+  runtime could ever catch drift here. **(b) ModerationMenu** — every label, a11y label and Alert
+  through `t()` under `moderation.*`; `REPORT_REASONS` carries `labelKey` (the reason **`key` is
+  unchanged** — it is the wire value posted to /api/reports). One component covers moderation on the
+  feed, comments, chat, events, forum, reviews and adoption. **(c) Sweep** — Search & Discover was
+  100% hardcoded English despite `search.title`/`noResults`/`nothingHere` sitting unused in the
+  catalog; 10 new `search.*` keys EN+ES. `testMock.makeReactI18nextMock()` now takes a locale, so
+  both surfaces get a `*.es.test.jsx` rendering the REAL Spanish catalog (that is what separates
+  "localized" from "calls t() against an English-only entry"); the pre-existing English tests are
+  unchanged and still pass, pinning that no visible English copy moved. Docs: runbook +
+  app-store-readiness flipped to DONE with an on-device verify step. Gates: mobile jest
+  1891→**1905**, web untouched (vitest 2023 / integration 1020, no Railway deploy needed).
+  ⚠️ **Residual debt measured, NOT fixed** (new DEFERRED item): **158 hardcoded English
+  `Alert.alert` literals** app-wide and only **83 of 255** non-test `.jsx` files use
+  `useTranslation`. Deliberately left for its own ticket — too large and regression-prone to ride
+  along in a fix-pack. Not an Apple blocker (store listing, legal docs and prompts are bilingual).

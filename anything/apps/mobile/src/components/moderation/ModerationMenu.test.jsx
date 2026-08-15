@@ -11,6 +11,12 @@ jest.mock("@/hooks/useModeration", () => ({
   blockUser: (...args) => mockBlock(...args),
 }));
 
+// Resolves t() against the REAL English catalog, so these assertions double as a
+// check that every moderation key actually exists (a typo renders the raw key).
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 jest.mock("lucide-react-native", () => {
   const React = require("react");
   const { Text } = require("react-native");

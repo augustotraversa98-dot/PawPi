@@ -18,7 +18,29 @@
   "moderation": {
     "deleteCommentTitle": "Delete comment?",
     "deleteCommentBody": "This will remove your comment for everyone. This can't be undone.",
-    "deleteCommentA11y": "Delete your comment"
+    "deleteCommentA11y": "Delete your comment",
+    "moreOptions": "More options",
+    "dismissMenu": "Dismiss menu",
+    "report": "Report",
+    "blockUser": "Block user",
+    "reasonPrompt": "Why are you reporting this?",
+    "reasonA11y": "Report reason {{reason}}",
+    "reasonSpam": "Spam or scam",
+    "reasonHarassment": "Harassment or bullying",
+    "reasonHate": "Hate speech",
+    "reasonSexual": "Nudity or sexual content",
+    "reasonViolence": "Violence or threats",
+    "reasonOther": "Something else",
+    "reportedTitle": "Thanks for reporting",
+    "reportedBody": "Our team will review this within 24 hours.",
+    "reportFailedTitle": "Couldn't report",
+    "blockConfirmTitle": "Block this user?",
+    "blockConfirmBody": "You won't see each other's posts, comments, walks, or messages, and neither of you can contact the other.",
+    "blockAction": "Block",
+    "blockedTitle": "User blocked",
+    "blockedBody": "Their content will disappear from your app.",
+    "blockFailedTitle": "Couldn't block",
+    "pleaseTryAgain": "Please try again."
   },
   "common": {
     "save": "Save",
@@ -104,7 +126,17 @@
   "search": {
     "title": "Search & Discover",
     "noResults": "No results",
-    "nothingHere": "Nothing here yet"
+    "nothingHere": "Nothing here yet",
+    "placeholder": "Search pets, breeds, owners, or businesses…",
+    "clearQuery": "Clear search",
+    "pets": "PETS",
+    "businesses": "BUSINESSES",
+    "petParents": "PET PARENTS",
+    "popularProfiles": "POPULAR PROFILES",
+    "popularMoments": "POPULAR PET MOMENTS",
+    "noResultsHint": "Try a different search term",
+    "nothingHereHint": "Popular pets and moments will appear as the community grows",
+    "byOwner": "by {{name}}"
   },
   "messages": {
     "title": "Messages",

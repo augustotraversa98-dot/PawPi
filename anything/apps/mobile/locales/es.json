@@ -1,0 +1,10 @@
+{
+  "CFBundleDisplayName": "PawPi",
+  "NSLocationWhenInUseUsageDescription": "PawPi usa tu ubicación para encontrar lugares pet friendly, veterinarias, paseadores y encuentros cerca tuyo, para fijar la ubicación de paseos sociales, viajes y eventos, y para compartir tu ubicación en vivo mientras hacés un viaje de pet-taxi.",
+  "NSCameraUsageDescription": "PawPi usa la cámara para que puedas sacarle fotos a tu mascota para su perfil, sus momentos diarios, los chequeos de salud y la libreta veterinaria.",
+  "NSPhotoLibraryUsageDescription": "PawPi accede a tu galería para que puedas elegir fotos y documentos para el perfil de tu mascota, tus publicaciones, la libreta de salud y los chats.",
+  "NSPhotoLibraryAddUsageDescription": "PawPi guarda en tu galería las fotos que creás en la app, como el recuadro compartible del momento diario de tu mascota.",
+  "NSMicrophoneUsageDescription": "PawPi usa el micrófono para el audio de las videoconsultas de telemedicina veterinaria.",
+  "NSCalendarsFullAccessUsageDescription": "PawPi agrega los turnos, reservas y recordatorios de tu mascota a tu calendario para que no se te pasen.",
+  "NSCalendarsUsageDescription": "PawPi agrega los turnos, reservas y recordatorios de tu mascota a tu calendario para que no se te pasen."
+}
