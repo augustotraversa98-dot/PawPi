@@ -15,6 +15,11 @@
     "walkerEntryTitle": "Walkers",
     "walkerEntryBody": "Request a walk or find one now"
   },
+  "moderation": {
+    "deleteCommentTitle": "Delete comment?",
+    "deleteCommentBody": "This will remove your comment for everyone. This can't be undone.",
+    "deleteCommentA11y": "Delete your comment"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

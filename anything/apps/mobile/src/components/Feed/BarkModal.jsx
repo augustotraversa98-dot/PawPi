@@ -13,11 +13,17 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Megaphone, Send } from "lucide-react-native";
+import { Megaphone, Send, Trash2 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
-import { usePostBarks, useCreateBark } from "@/hooks/useFeedPosts";
+import {
+  usePostBarks,
+  useCreateBark,
+  useDeleteBark,
+} from "@/hooks/useFeedPosts";
+import { useMyProfileId } from "@/hooks/useUserProfile";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
+import { useTranslation } from "react-i18next";
 
 export const BarkModal = memo(function BarkModal({
   visible,
@@ -26,14 +32,38 @@ export const BarkModal = memo(function BarkModal({
   onBarkAdded,
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const inputRef = useRef(null);
 
   // Fetch barks from database
   const { data: barks = [], isLoading, refetch } = usePostBarks(post?.id);
 
-  // Create bark mutation
+  // Create + delete bark mutations
   const createBarkMutation = useCreateBark(post?.id);
+  const deleteBarkMutation = useDeleteBark(post?.id);
+
+  // My own profile id — so a comment I authored shows Delete (and never a Block-me).
+  const { data: myProfileId } = useMyProfileId();
+
+  // Confirm + delete one of MY OWN comments (A3 — Apple-1.2 delete-your-own-content).
+  const handleDeleteBark = useCallback(
+    (barkId) => {
+      Alert.alert(
+        t("moderation.deleteCommentTitle"),
+        t("moderation.deleteCommentBody"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => deleteBarkMutation.mutate(barkId),
+          },
+        ],
+      );
+    },
+    [deleteBarkMutation, t],
+  );
 
   useEffect(() => {
     if (visible && post) {
@@ -239,8 +269,25 @@ export const BarkModal = memo(function BarkModal({
                         <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
                           {new Date(bark.created_at).toLocaleDateString()}
                         </Text>
-                        {/* Report this comment (T4). */}
-                        <ModerationMenu targetType="bark" targetId={bark.id} iconSize={15} />
+                        {myProfileId != null && bark.user_id === myProfileId ? (
+                          // My own comment: Delete-your-own-content (A3).
+                          <TouchableOpacity
+                            onPress={() => handleDeleteBark(bark.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={t("moderation.deleteCommentA11y")}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Trash2 size={15} color={COLORS.mutedBrown} />
+                          </TouchableOpacity>
+                        ) : (
+                          // Someone else's comment: Report + Block the commenter (Apple 1.2).
+                          <ModerationMenu
+                            targetType="bark"
+                            targetId={bark.id}
+                            authorUserId={bark.user_id}
+                            iconSize={15}
+                          />
+                        )}
                       </View>
                     </View>
                     <Text

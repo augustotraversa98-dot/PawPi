@@ -15,6 +15,11 @@
     "walkerEntryTitle": "Paseadores",
     "walkerEntryBody": "Pide un paseo o encuentra uno ahora"
   },
+  "moderation": {
+    "deleteCommentTitle": "¿Eliminar comentario?",
+    "deleteCommentBody": "Esto eliminará tu comentario para todos. No se puede deshacer.",
+    "deleteCommentA11y": "Eliminar tu comentario"
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",

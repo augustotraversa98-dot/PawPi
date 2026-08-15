@@ -11,7 +11,8 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 
 **Shipped so far:**
 - (A2a) **Demo/seed content leak into real users' feeds — FIXED & MERGED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod).
-- (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED** (PR pending).
+- (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED & MERGED** ([#411](https://github.com/augustotraversa98-dot/PawPi/pull/411)).
+- (A3) **Comment moderation gap — feed comments (barks) lacked Block + Delete-own — FIXED** (PR pending).
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
@@ -98,12 +99,46 @@ removes the dishonest fallback + closes the i18n gap.
 
 **PR:** _fix/honest-relative-timestamps (pending push/CI/merge)._
 
+### A3 — Comment moderation affordances (Apple 1.2) — **P1 → PARTIALLY FIXED**
+
+**Audit (Report / Block / Delete-own on posts AND comments):**
+
+| Surface | Report | Block author | Delete own | Notes |
+|---|---|---|---|---|
+| Feed **post** (PostDetailModal) | ✓ | ✓ | ✓ | complete (was already wired) |
+| Feed post (PostCard) | ✓ via detail | ✓ via detail | ✓ via detail | moderation reachable by opening the post; a card-level ··· is a nice-to-have (punch list) |
+| Feed **comment (bark)** | ✓ | **added** | **added** | **FIXED this PR** — was Report-only |
+| Business **post** (provider-post) | ✓ | ✓ | ✓ | complete |
+| Business **comment** (provider-post) | **✗ missing** | **✗ missing** | ✓ | delete-own present; Report+Block absent → **A3-follow-up PR** (needs `content_reports.target_type` CHECK widened for `provider_post_comment` + ModerationMenu wiring) |
+| Forum thread/comment, DM, reviews, adoption, events, lost | ✓ | ✓ | — | ModerationMenu already present |
+
+**Fixed this PR (feed comments / barks):** added a DELETE endpoint
+`/api/posts/[id]/barks/[barkId]` (author-scoped, RLS `post_barks_author_all` as defence-in-depth,
+no migration), a `useDeleteBark` hook, and wired `BarkModal` so a comment I authored shows **Delete**
+(confirm dialog, EN+ES) and someone else's shows **Report + Block the commenter** (via
+`bark.user_id`). New `moderation.*` i18n keys (EN+ES). Integration test `bark-delete` (author deletes;
+non-author 404 + row survives — IDOR-safe; wrong-post 404; 401). Mobile `BarkModal` tests for both
+affordance states.
+
+**Follow-up (business-post comments):** tracked below in DEFERRED — small, needs a CHECK-widen
+migration; doing it next.
+
+**PR:** _feat/comment-moderation-block-delete (pending push/CI/merge)._
+
 ---
 
 ## ON-DEVICE PUNCH LIST (visual/interaction items CC cannot confirm headless)
 
-_(accumulating)_
+- **Feed card (PostCard) has no inline ··· moderation** — Report/Block/Delete are reachable only by
+  opening the post detail. Confirm on device this feels acceptable; a card-level overflow menu is a
+  nice-to-have (not an Apple blocker since Report is reachable).
+- **Bark/comment Delete + Block feel** — verify the new trash icon + confirm dialog and the
+  Report/Block sheet look right on device (added headless; A3).
 
 ## DEFERRED / BLOCKED
 
-_(none yet)_
+- **A3-follow-up — Business-post (provider-post) comments need Report + Block.** Delete-own is
+  present; Report/Block are not. Fix: migration to widen `content_reports.target_type` CHECK with
+  `provider_post_comment`, add it to the reports route's allowed set, and render `ModerationMenu`
+  (report + block via the comment author's user id) on non-own business-post comments. **Being done
+  as the immediate next PR.**

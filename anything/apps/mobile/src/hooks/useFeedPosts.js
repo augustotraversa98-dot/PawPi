@@ -278,3 +278,26 @@ export function useCreateBark(postId) {
     },
   });
 }
+
+// Delete the caller's OWN comment/bark (A3 — Apple-1.2 delete-your-own-content).
+// The API (DELETE /api/posts/[id]/barks/[barkId]) is author-scoped, so this can only
+// ever remove the caller's bark. On success we refresh the post's bark thread + feed.
+export function useDeleteBark(postId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (barkId) => {
+      const response = await fetch(`/api/posts/${postId}/barks/${barkId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to delete comment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", postId, "barks"] });
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+    },
+  });
+}

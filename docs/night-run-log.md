@@ -782,3 +782,10 @@ day one; no fake data. One line per merge.
   `post.timestamp` fallback was dead mock code). `formatRelativeTime` now localizes via an optional
   `{ now, t }` arg (back-compat with the positional `now`); added feed.minutesShort/hoursShort/
   daysShort/yesterday to en+es. All 5 call sites pass `{ t }` + drop the lie. Gates: mobile jest 1885.
+- **2026-08-15 (A3, feed comments)** — Comment moderation gap FIXED for feed comments (barks). NO
+  migration (post_barks_author_all FOR ALL already permits author DELETE). New endpoint DELETE
+  /api/posts/[id]/barks/[barkId] (author-scoped, IDOR-safe) + useDeleteBark hook; BarkModal now shows
+  Delete on own comments and Report+Block (via bark.user_id) on others'. New moderation.* i18n keys
+  (EN+ES). Tests: web integration bark-delete (4) + BarkModal affordance tests (2). Gates: mobile jest
+  1887, web vitest 2022. Follow-up: business-post (provider-post) comments still need Report+Block
+  (delete-own present) — needs content_reports.target_type CHECK widen; next PR.
