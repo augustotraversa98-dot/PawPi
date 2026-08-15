@@ -22,8 +22,10 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 - (Phase B + D) **Perf audit (no migration warranted) + Apple submission runbook / config / metadata / privacy map** ([#415](https://github.com/augustotraversa98-dot/PawPi/pull/415)).
 
 **Assessed (no code change needed / device-gated):** A1 lifecycle **verified** via the existing
-integration suite (+2 new tests); A2c navigation **root-caused** (search-is-modal) → punch list; A3
-interactive controls **clean**; A4 security **strong** (48 RLS test files) with one gap (rate-limiting).
+integration suite (+2 new tests); A2c navigation **root-caused** (search-is-modal) → **FIXED in the
+PP1 fix-pack, [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417)** (on-device feel check
+still owed); A3 interactive controls **clean**; A4 security **strong** (48 RLS test files) with one
+gap (rate-limiting — being closed by PP3).
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
@@ -167,20 +169,33 @@ passing integration test**, and this run added two more:
 Full suite green: **web integration 1020 / vitest 2023 / mobile jest 1887** at closeout. The only
 backend defects found this run were A2a/A2b/A3 (all fixed). No further lifecycle bugs surfaced.
 
-### A2c — Navigation "layers on top of layers" — **P2 → ON-DEVICE PUNCH LIST (root cause found)**
+### A2c — Navigation "layers on top of layers" — **P2 → FIXED (PP1, [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417)) · still needs an on-device feel check**
 
 **Root cause (code-level).** `search` is declared `presentation: "modal"` in
 `src/app/_layout.jsx`. Discovery/search opens as a modal; tapping a pet does
 `router.push("/pet-profile")` (a normal **card**), which stacks *over* the modal, and opening a photo
 adds another layer — the "modal-on-modal" feel. `pet-profile` itself is already a card push (good).
 
-**Recommended fix (needs on-device confirmation — do NOT change blind):** make `search` a standard
-card push by removing `presentation: "modal"` from its `<Stack.Screen>`, and give the search screen a
-header with a back affordance. Then Discovery → pet-profile → photo is a single push stack with a
-proper back stack. Verify on device: iOS swipe-back through the chain, and that dismissing search
-still feels right (it loses swipe-down-to-dismiss). Also confirm the photo viewer is a pushed
-screen/route rather than a stacked in-component `<Modal>`. Left as a punch-list item because changing
-nav presentation is a UX change CC can't validate headless.
+**Fix shipped (PP1, [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417)).**
+- `_layout.jsx` — `search` is a plain **card push**; `presentation: "modal"` removed. The chain
+  Discovery → pet-profile → photo now lives on **one back stack**.
+- `search.jsx` — the header affordance reads as **back** (`ChevronLeft`) instead of a modal-dismiss
+  `X`, with a localized a11y label (`common.back`, already EN+ES). The clear-query `X` is untouched.
+- **Photo viewer checked:** there is no separate full-screen photo route — a tapped photo opens
+  `PostDetailModal` (`presentationStyle="pageSheet"`). With `search` now a card that page sheet is the
+  **only** modal in the chain, which satisfies the "never stack a modal on a modal" rule. `BarkModal`
+  can't stack on it either (`onOpenBarks` closes the detail sheet first).
+- Deep link `/search` and the tab's initial route are unchanged.
+- Guards: `navigation-layers.test.js` (source-level nav contract — `search`/`pet-profile` must never
+  be modals) + `search.test.jsx` back-affordance and push-only tap-through tests. Mobile jest 1891.
+
+**Left as-is on purpose (follow-up decision, not a regression).** `notifications` and `messages` are
+still `presentation: "modal"` and both `router.push` cards from inside themselves — the same shape as
+the search bug. PP1 was scoped to Search/Discovery, so they were **not** changed blind; whether they
+should become cards depends on whether swipe-down-to-dismiss is the right feel for them.
+
+**⚠️ STILL NEEDS ON-DEVICE CONFIRMATION (punch list).** Swipe-back through
+search → pet-profile → photo, and whether losing swipe-down-to-dismiss on search feels right.
 
 ### A3 (remaining audits) — interactive controls · empty states · i18n · responsive/a11y
 
@@ -361,3 +376,16 @@ Submit for Review.
   edits** in the working tree, so CC did not modify it (avoids clobbering WIP / mixing unrelated
   changes). This report's executive summary is the authoritative night-run snapshot; fold the
   highlights into `PawPi_instructions.md` when convenient.
+
+---
+
+## Follow-up: Pre-launch Polish Fix-pack (PP1–PP3) — 2026-08-15
+
+Three of the DEFERRED items above are being closed by the fix-pack driven from
+[docs/pre-launch-polish-fixpack.md](pre-launch-polish-fixpack.md). Status per ticket:
+
+| Ticket | Closes | Status |
+|---|---|---|
+| **PP1** — Search/Discovery card push | A2c "layers on layers" | ✅ **FIXED** — [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417) · ⚠️ on-device feel check owed |
+| **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | _in progress_ |
+| **PP3** — Write rate-limiting | A4 rate-limiting gap | _queued_ |
