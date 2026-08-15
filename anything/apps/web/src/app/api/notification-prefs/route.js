@@ -4,6 +4,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import {
   BUSINESS_NOTIFICATION_CATEGORIES,
   isBusinessNotificationCategory,
+  categoryDefaultEnabled,
 } from "@/app/api/utils/notificationCategories";
 
 // /api/notification-prefs — the caller's SERVER-SIDE notification preferences (BX4).
@@ -33,7 +34,7 @@ async function GET() {
     const ownerUserId = await resolveOwner(session);
     if (ownerUserId === null) {
       // No profile yet => no stored prefs => every category is at its fail-open default.
-      return Response.json({ prefs: defaultsAllEnabled() });
+      return Response.json({ prefs: defaultPrefs() });
     }
 
     const rows = await sql`
@@ -42,10 +43,10 @@ async function GET() {
     `;
     const stored = new Map(rows.map((r) => [r.category, r.enabled]));
 
-    // Fail-open: known business categories default to enabled when no row exists.
+    // Per-category default when no row exists: PUSH → on, OPTIONAL_PUSH → off.
     const prefs = {};
     for (const c of BUSINESS_NOTIFICATION_CATEGORIES) {
-      prefs[c] = stored.has(c) ? stored.get(c) : true;
+      prefs[c] = stored.has(c) ? stored.get(c) : categoryDefaultEnabled(c);
     }
     return Response.json({ prefs });
   } catch (e) {
@@ -90,9 +91,9 @@ async function PUT(request) {
   }
 }
 
-function defaultsAllEnabled() {
+function defaultPrefs() {
   const prefs = {};
-  for (const c of BUSINESS_NOTIFICATION_CATEGORIES) prefs[c] = true;
+  for (const c of BUSINESS_NOTIFICATION_CATEGORIES) prefs[c] = categoryDefaultEnabled(c);
   return prefs;
 }
 

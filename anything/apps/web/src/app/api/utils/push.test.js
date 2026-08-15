@@ -128,7 +128,8 @@ describe("pushForNotification (post-app_notify hook)", () => {
     expect(mock.send).not.toHaveBeenCalled();
   });
 
-  it("PUSH type (walk_request_targeted) → resolves locale + tokens and sends", async () => {
+  it("PUSH type (walk_request_targeted) → checks pref, resolves locale + tokens and sends", async () => {
+    sql.mockResolvedValueOnce([{ enabled: undefined }]); // pref absent → PUSH default on
     sql.mockResolvedValueOnce([{ locale: "en" }]); // app_recipient_locale
     sql.mockResolvedValueOnce([{ token: TOKEN, platform: "ios" }]); // tokens
     const res = await pushForNotification({
@@ -144,7 +145,30 @@ describe("pushForNotification (post-app_notify hook)", () => {
     expect(msg.data).toMatchObject({ type: "walk_request_targeted", subjectRef: "42" });
   });
 
+  it("PUSH type with the category disabled → pushed:false, never resolves tokens", async () => {
+    sql.mockResolvedValueOnce([{ enabled: false }]); // pref explicitly off
+    const res = await pushForNotification({
+      recipient: 5,
+      type: "biz_booking",
+      subjectRef: "1",
+    });
+    expect(res.pushed).toBe(false);
+    expect(mock.send).not.toHaveBeenCalled();
+  });
+
+  it("OPTIONAL_PUSH type pushes only when explicitly enabled", async () => {
+    // absent → off
+    sql.mockResolvedValueOnce([{ enabled: undefined }]);
+    expect((await pushForNotification({ recipient: 5, type: "biz_review", subjectRef: "1" })).pushed).toBe(false);
+    // explicitly on → push
+    sql.mockResolvedValueOnce([{ enabled: true }]); // pref on
+    sql.mockResolvedValueOnce([{ locale: "es" }]); // locale
+    sql.mockResolvedValueOnce([{ token: TOKEN, platform: "ios" }]); // tokens
+    expect((await pushForNotification({ recipient: 5, type: "biz_review", subjectRef: "1" })).pushed).toBe(true);
+  });
+
   it("PUSH type with no tokens → pushed:false, still no throw", async () => {
+    sql.mockResolvedValueOnce([{ enabled: undefined }]); // pref absent → on
     sql.mockResolvedValueOnce([{ locale: "es" }]);
     sql.mockResolvedValueOnce([]); // no tokens
     const res = await pushForNotification({

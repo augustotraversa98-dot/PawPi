@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// /api/notification-prefs — server-side business notification preferences (BX4).
+// /api/notification-prefs — server-side business notification preferences (BX4 + BN2).
 
 import { GET, PUT } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import {
+  BUSINESS_NOTIFICATION_CATEGORIES,
+  categoryDefaultEnabled,
+} from "@/app/api/utils/notificationCategories";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -27,21 +31,29 @@ describe("GET /api/notification-prefs", () => {
     expect((await GET()).status).toBe(401);
   });
 
-  it("reflects a stored disabled category; unstored ones fail-open to true", async () => {
+  it("reflects a stored disabled category; unstored ones fall back to their catalog default", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 7 }]); // resolveOwner
     sql.mockResolvedValueOnce([{ category: "walk_requests", enabled: false }]);
     const res = await GET();
     expect(res.status).toBe(200);
-    expect((await res.json()).prefs).toEqual({ walk_requests: false });
+    const prefs = (await res.json()).prefs;
+    // The stored one reflects its disabled state; every other toggleable category is at its default.
+    expect(prefs.walk_requests).toBe(false);
+    for (const c of BUSINESS_NOTIFICATION_CATEGORIES) {
+      if (c !== "walk_requests") expect(prefs[c]).toBe(categoryDefaultEnabled(c));
+    }
   });
 
-  it("no stored rows → every business category defaults to true", async () => {
+  it("no stored rows → PUSH categories default ON, OPTIONAL_PUSH default OFF", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 7 }]); // resolveOwner
     sql.mockResolvedValueOnce([]); // no prefs
-    const res = await GET();
-    expect((await res.json()).prefs).toEqual({ walk_requests: true });
+    const prefs = (await GET().then((r) => r.json())).prefs;
+    expect(prefs.walk_requests).toBe(true); // PUSH
+    expect(prefs.biz_booking).toBe(true); // PUSH
+    expect(prefs.biz_review).toBe(false); // OPTIONAL_PUSH
+    expect(prefs.biz_payout).toBe(false); // OPTIONAL_PUSH
   });
 });
 

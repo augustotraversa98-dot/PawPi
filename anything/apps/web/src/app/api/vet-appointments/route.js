@@ -1,6 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // GET - Fetch all non-deleted vet appointments for the current pet
 async function GET(request) {
@@ -319,6 +321,29 @@ async function PUT(request) {
       );
     }
 
+    // PROVIDER NOTIFICATION (BN2 biz_booking_change). When the CLIENT reschedules (date/time)
+    // or changes the status of a PROVIDER booking, tell the provider's team. Gate on a
+    // schedule-relevant change + a real provider (personal vet appts have no provider_id).
+    // actor = the client (ownerUserId) so the acting owner never self-notifies.
+    const scheduleChanged =
+      appointmentDate !== undefined ||
+      appointmentTime !== undefined ||
+      status !== undefined;
+    if (scheduleChanged && result[0].provider_id != null) {
+      await notifyProviderTeam({
+        providerId: result[0].provider_id,
+        actor: ownerUserId,
+        type: "biz_booking_change",
+        subjectRef: result[0].id,
+        body: bizNotifyBody({
+          kind: "reschedule",
+          date: result[0].appointment_date,
+          time: result[0].appointment_time,
+          status: result[0].status ?? null,
+        }),
+      });
+    }
+
     return Response.json({ appointment: result[0] });
   } catch (error) {
     console.error("[PUT /api/vet-appointments] Error:", error);
@@ -368,7 +393,7 @@ async function DELETE(request) {
       WHERE id = ${id}
         AND owner_user_id = ${ownerUserId}
         AND deleted_at IS NULL
-      RETURNING id
+      RETURNING id, provider_id, appointment_date, appointment_time
     `;
 
     if (result.length === 0) {
@@ -376,6 +401,22 @@ async function DELETE(request) {
         { error: "Appointment not found or unauthorized" },
         { status: 404 },
       );
+    }
+
+    // PROVIDER NOTIFICATION (BN2 biz_booking_change) — the CLIENT cancelled a PROVIDER
+    // booking. Gate on a real provider_id (personal vet appts have none). actor = the client.
+    if (result[0].provider_id != null) {
+      await notifyProviderTeam({
+        providerId: result[0].provider_id,
+        actor: ownerUserId,
+        type: "biz_booking_change",
+        subjectRef: result[0].id,
+        body: bizNotifyBody({
+          kind: "cancel",
+          date: result[0].appointment_date,
+          time: result[0].appointment_time,
+        }),
+      });
     }
 
     return Response.json({ success: true, deletedId: result[0].id });

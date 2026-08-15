@@ -37,6 +37,15 @@ export async function safeNotify({ recipient, actor, type, subjectRef, body }) {
   }
 }
 
+// Compact JSON body for a BUSINESS (provider-facing, BN2 PR2) notification. Carries the
+// dynamic values the business bell renders in the recipient's language (client @handle,
+// service/pet/listing name). Any absent field stays null so the client falls back cleanly.
+export function bizNotifyBody(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields ?? {})) out[k] = v ?? null;
+  return JSON.stringify(out);
+}
+
 // Compact JSON body for a booking-lifecycle notification. Carries the dynamic values
 // the mobile bell needs to render a localized title in the RECIPIENT's language
 // (service + provider name, and the raw appointment date/time so the client formats it

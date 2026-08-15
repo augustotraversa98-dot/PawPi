@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // /api/adoption/applications — the OWNER's adoption applications. Phase 2 ticket 2.12.
 //
@@ -128,6 +130,17 @@ async function POST(request) {
       }
       throw e;
     }
+
+    // PROVIDER NOTIFICATION (BN2 biz_adoption_application) — the shelter's team learns of a
+    // new applicant. actor = the applicant so no one self-notifies; scoped to the listing's
+    // provider (never leaks across shelters).
+    await notifyProviderTeam({
+      providerId: listing.provider_id,
+      actor: userId,
+      type: "biz_adoption_application",
+      subjectRef: created[0].id,
+      body: bizNotifyBody({ kind: "adoption_application", listing_id: listing.id }),
+    });
 
     return Response.json({ application: created[0] }, { status: 201 });
   } catch (error) {

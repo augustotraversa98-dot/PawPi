@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // Comments on one provider STOREFRONT post (Phase C, migration 0082).
 //   GET  — PUBLIC (no auth): the "guest can open" fix. Lists VISIBLE comments oldest→newest with
@@ -176,6 +178,16 @@ async function POST(request, { params }) {
       LEFT JOIN pets p ON p.id = ${storedPetId}
       WHERE up.id = ${userId}
     `;
+
+    // ENGAGEMENT NOTIFICATION (BN2 biz_post_engagement, IN_APP_ONLY — bell, never push). Owner
+    // + active staff; actor = the commenter (never self-notifies). subject_ref = the post id.
+    await notifyProviderTeam({
+      providerId,
+      actor: userId,
+      type: "biz_post_engagement",
+      subjectRef: postId,
+      body: bizNotifyBody({ kind: "comment", post_id: Number(postId) }),
+    });
 
     return Response.json(
       { comment: { ...created[0], pet_id: storedPetId, ...(enriched[0] ?? {}) } },

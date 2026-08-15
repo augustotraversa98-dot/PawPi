@@ -2,7 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
-import { safeNotify, bookingNotifyBody } from "@/app/api/utils/notify";
+import { safeNotify, bookingNotifyBody, bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
 import { getCalendarSync } from "@/app/api/utils/calendarSync";
 import {
@@ -616,6 +617,22 @@ async function POST(request, { params }) {
         }),
       });
     }
+
+    // PROVIDER NOTIFICATION (BN2 biz_booking). The owner+active staff learn a new booking
+    // landed. actor = the booking client (userId) so the acting owner never self-notifies.
+    // Best-effort; never blocks the booking.
+    await notifyProviderTeam({
+      providerId,
+      actor: userId,
+      type: "biz_booking",
+      subjectRef: created[0].id,
+      body: bizNotifyBody({
+        kind: "booking",
+        service: service?.name ?? null,
+        date: appointment_date,
+        time: appointment_time,
+      }),
+    });
 
     return Response.json({ appointment: created[0] }, { status: 201 });
   } catch (error) {

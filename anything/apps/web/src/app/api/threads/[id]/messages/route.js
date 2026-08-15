@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { bizNotifyBody } from "@/app/api/utils/notify";
+import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
 // /api/threads/[id]/messages — the conversation view (Phase 2 ticket 2.5).
 //
@@ -128,6 +130,28 @@ async function POST(request, { params }) {
     await sql`
       UPDATE message_threads SET last_message_at = now() WHERE id = ${threadId}
     `;
+
+    // PROVIDER NOTIFICATION (BN2 biz_message) — only when the CLIENT (thread owner) messages
+    // the business: notify the provider's team. The reverse direction (staff → client) is an
+    // owner-facing concern outside BN2's business scope and is left unchanged. The sender can
+    // read their own thread row under RLS. actor = the sender so no one self-notifies.
+    try {
+      const threadRows = await sql`
+        SELECT owner_user_id, provider_id FROM message_threads WHERE id = ${threadId}
+      `;
+      const thread = threadRows[0];
+      if (thread?.provider_id != null && thread.owner_user_id === userId) {
+        await notifyProviderTeam({
+          providerId: thread.provider_id,
+          actor: userId,
+          type: "biz_message",
+          subjectRef: threadId,
+          body: bizNotifyBody({ kind: "message" }),
+        });
+      }
+    } catch (notifyErr) {
+      console.error("[POST /api/threads/[id]/messages] notify (non-fatal):", notifyErr?.message);
+    }
 
     return Response.json({ message: created[0] }, { status: 201 });
   } catch (error) {

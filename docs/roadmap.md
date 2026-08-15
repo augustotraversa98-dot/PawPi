@@ -218,6 +218,27 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > (+6), mobile jest 1874→**1879** (+5). **0109 awaits hand-apply on Supabase.** **NEEDS ON-DEVICE
 > CONFIRMATION** (token registration + a real push once APNs is live).
 
+> **Update (2026-08-15, BN2 PR2 — business notification EMISSION + catalog):** **1 PR**
+> (feat/bn2-pr2-business-emission). PawPi now actually emits the business notifications owners care
+> about, to the provider **OWNER + relevant active STAFF** (one call: `app_provider_active_staff_ids`,
+> 0093 — the owner is enrolled as active staff). Events wired: **new booking** (`biz_booking`, the
+> book route) · **client cancel/reschedule** (`biz_booking_change`, vet-appointments PUT/DELETE) ·
+> **new product order** (`biz_order`, payments/checkout `kind=product` + shop-checkout) · **new client
+> chat message** (`biz_message`, threads/[id]/messages — only client→business; the staff→client
+> direction stays out of scope) · **new adoption application** (`biz_adoption_application`). Engagement
+> stays **IN-APP-ONLY** (a bell, never a push): **paws/comments** on the business's posts
+> (`biz_post_engagement`) + **new follower** (`biz_follow`, owner-only). Shared channel **catalog**
+> added web (`notificationCategories.js`) + mobile (`businessNotificationPrefs.js`) with the PUSH
+> channel class per category (PUSH default-on · OPTIONAL_PUSH review/payout default-off · IN_APP_ONLY).
+> The BN2 model: **every business notification always writes the in-app bell**; the channel class +
+> `notification_prefs` govern whether it also rings the phone (the PR1 send-hook). New helper
+> `notifyProviderTeam` (never double-notifies the actor, never leaks across businesses, degrades clean).
+> Bilingual EN+ES on the push copy + the in-app bell (`bizNotifBell.*`). **Migration 0110** widens
+> `notifications_type_check` for the `biz_*` types (**awaits hand-apply**). Gates: vitest 2010→**2022**
+> (+12), integration 1006→**1011** (+5, real-router emission end-to-end: owner+staff recipients, actor
+> = client, no cross-business leak, owner-only follow, idempotent no-re-notify), mobile jest 1879→**1882**
+> (+3). PR3 wires the grouped Settings UI. **0110 awaits hand-apply on Supabase.**
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map
