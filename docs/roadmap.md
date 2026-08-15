@@ -215,7 +215,7 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > configured** (same Apple-account dependency as widget PR #187) — the exact EAS/Apple steps are in
 > `docs/night-run-log.md`. PR1 catalog is stubbed with today's types only (`walk_request_*` = PUSH); PR2
 > adds the full business catalog + emission. Gates: vitest 1989→**2010** (+21), integration 1000→**1006**
-> (+6), mobile jest 1874→**1879** (+5). **0109 awaits hand-apply on Supabase.** **NEEDS ON-DEVICE
+> (+6), mobile jest 1874→**1879** (+5). **0109 ✅ APPLIED + VERIFIED on Supabase 2026-08-15.** **NEEDS ON-DEVICE
 > CONFIRMATION** (token registration + a real push once APNs is live).
 
 > **Update (2026-08-15, BN2 PR2 — business notification EMISSION + catalog):** **1 PR**
@@ -237,7 +237,7 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > `notifications_type_check` for the `biz_*` types (**awaits hand-apply**). Gates: vitest 2010→**2022**
 > (+12), integration 1006→**1011** (+5, real-router emission end-to-end: owner+staff recipients, actor
 > = client, no cross-business leak, owner-only follow, idempotent no-re-notify), mobile jest 1879→**1882**
-> (+3). PR3 wires the grouped Settings UI. **0110 awaits hand-apply on Supabase.**
+> (+3). PR3 wires the grouped Settings UI. **0110 ✅ APPLIED + VERIFIED on Supabase 2026-08-15.**
 
 > **Update (2026-08-15, BN2 PR3 — channel-aware business Settings UI):** **1 PR**
 > (feat/bn2-pr3-business-settings). **Mobile-only, no migration.** The business-mode notification

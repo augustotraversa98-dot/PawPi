@@ -197,6 +197,31 @@ ACTION 1).
 >   `PUT /api/user-profile/locale` (owner-scoped; only en/es persist, else NULL) on login + Settings change.
 > - Verify: `supabase/verify_0107.sql`.
 
+> **0109** is BN2 PR1 (remote-push foundation). ADDITIVE, harness-proven, and **✅ APPLIED + VERIFIED
+> on Supabase 2026-08-15** (verify_0109 all PASS). No existing table's RLS is touched; consumers degrade
+> cleanly (42P01/42883 → the send layer + `/api/push-tokens` no-op, never 500).
+> - `device_push_tokens` — per-device Expo push-token registry (`user_id → user_profiles.id`, `token`,
+>   `platform` (ios|android CHECK), `updated_at`, `UNIQUE(user_id, token)`). **ENABLE + FORCE RLS** with a
+>   single own-row `FOR ALL` policy; app connects as `pawpi_app`. It is the device side of the first
+>   server→phone push PawPi has had (mobile registers via `POST /api/push-tokens`).
+> - Three **SECURITY DEFINER** readers so the web push send-hook — which runs in the ACTOR's request
+>   identity, not the recipient's — can cross the owner boundary without loosening the own-row RLS (the
+>   0093 `app_provider_active_staff_ids` pattern): `app_recipient_push_tokens(user)` (setof token,platform),
+>   `app_notification_pref_enabled(user, category)` (boolean; NULL = absent → caller applies the catalog
+>   default), `app_recipient_locale(user)` (preferred_locale for bilingual push copy). All granted to
+>   pawpi_app. Idempotent. Verify: `supabase/verify_0109.sql`.
+
+> **0110** is BN2 PR2 (business notification emission). ADDITIVE, harness-proven, and **✅ APPLIED +
+> VERIFIED on Supabase 2026-08-15** (verify_0110 all PASS). The ONLY DB change PR2 needs: it widens
+> `notifications_type_check` (last set in 0101) to also allow the nine business types `biz_booking` /
+> `biz_booking_change` / `biz_order` / `biz_message` / `biz_adoption_application` / `biz_review` /
+> `biz_payout` / `biz_post_engagement` / `biz_follow`. No table/RLS change; `app_notify()`'s BX4 gate
+> (0108) is untouched (still maps only `walk_requests`) — the new categories follow the BN2 "bell always
+> writes, push gated in the JS send-hook" model. Recipient resolution reuses the 0093 DEFINER reader
+> (owner is enrolled as active staff). Idempotent (drop-if-exists + re-add). Degrades clean while absent
+> (safeNotify swallows the 23514 CHECK violation → the new bell rows drop, never 500). Verify:
+> `supabase/verify_0110.sql`.
+
 Still deferred: **no seed data.**
 
 ---
