@@ -14,6 +14,14 @@ import {
   Check,
   Footprints,
   Trash2,
+  Calendar,
+  CalendarClock,
+  ShoppingBag,
+  MessageCircle,
+  Heart,
+  Star,
+  DollarSign,
+  UserPlus,
 } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
@@ -28,6 +36,9 @@ import {
 import { NOTIF_CATEGORIES } from "@/utils/notificationPolicy";
 import {
   BUSINESS_NOTIF_CATEGORIES,
+  BUSINESS_NOTIF_INFO_CATEGORIES,
+  CHANNEL_GROUP,
+  categoryDefaultEnabled,
   getBusinessNotificationPrefs,
   setBusinessCategoryEnabled,
 } from "@/utils/businessNotificationPrefs";
@@ -188,12 +199,109 @@ function NotificationToggles() {
   );
 }
 
-// BX4 business-mode notifications: SERVER-BACKED per-category toggles that truly gate delivery
-// of real, server-sent business notifications (migration 0108 / GET+PUT /api/notification-prefs).
-// Only categories that actually fire to a business are shown — today just walk/job requests — so
-// there is never a toggle for a notification that doesn't fire. Distinct from the pet-owner E5
-// toggles above (client-side AsyncStorage). Icon lives here, labels/hints are i18n keys.
-const BUSINESS_NOTIF_ICON = { walk_requests: Footprints };
+// BX4 + BN2 business-mode notifications: SERVER-BACKED per-category preferences that gate real,
+// server-sent business notifications (migration 0108 / GET+PUT /api/notification-prefs). Distinct
+// from the pet-owner E5 toggles above (client-side AsyncStorage). BN2 groups the categories by their
+// PUSH channel class (businessNotificationPrefs.js):
+//   • "Notify my phone" (PUSH, default ON)   — booking / order / message / adoption / walk requests.
+//   • "Optional push"   (OPTIONAL, default OFF) — reviews / payouts (opt-in).
+//   • "In-app only"     (info, no toggle)     — post activity / followers: always a bell, never a push.
+// Every category ALWAYS writes an in-app bell; a toggle only governs the phone push. Icons live here;
+// labels/hints are i18n keys under bizNotif.*.
+const BUSINESS_NOTIF_ICON = {
+  walk_requests: Footprints,
+  biz_booking: Calendar,
+  biz_booking_change: CalendarClock,
+  biz_order: ShoppingBag,
+  biz_message: MessageCircle,
+  biz_adoption_application: Heart,
+  biz_review: Star,
+  biz_payout: DollarSign,
+  biz_post_engagement: PawPrint,
+  biz_follow: UserPlus,
+};
+
+// A small header above each channel group.
+function GroupHeader({ label }) {
+  return (
+    <Text
+      style={{
+        fontSize: 11,
+        fontWeight: "800",
+        color: C.mutedBrown,
+        letterSpacing: 0.6,
+        marginTop: 8,
+        marginBottom: 4,
+      }}
+    >
+      {label}
+    </Text>
+  );
+}
+
+// One category row. `onToggle` present → a Switch (push categories); absent → an info row with a
+// "bell only" tag (in-app-only categories are shown for transparency but can't be turned off).
+function BusinessNotifRow({ row, enabled, onToggle, isLast, t }) {
+  const Icon = BUSINESS_NOTIF_ICON[row.key] || Bell;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: C.peach,
+      }}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: C.sand,
+          justifyContent: "center",
+          alignItems: "center",
+          marginRight: 14,
+          borderWidth: 1,
+          borderColor: C.peach,
+        }}
+      >
+        <Icon size={18} color={C.mutedBrown} />
+      </View>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
+          {t(row.labelKey)}
+        </Text>
+        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+          {t(row.hintKey)}
+        </Text>
+      </View>
+      {onToggle ? (
+        <Switch
+          testID={`biz-notif-toggle-${row.key}`}
+          value={enabled}
+          onValueChange={(v) => onToggle(row.key, v)}
+          trackColor={{ false: C.peach, true: C.coral }}
+          thumbColor="#FFF"
+        />
+      ) : (
+        <View
+          testID={`biz-notif-info-${row.key}`}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 8,
+            backgroundColor: C.sand,
+          }}
+        >
+          <Bell size={12} color={C.mutedBrown} />
+        </View>
+      )}
+    </View>
+  );
+}
 
 function BusinessNotificationToggles() {
   const { t } = useTranslation();
@@ -209,55 +317,63 @@ function BusinessNotificationToggles() {
     setPrefs(next);
   };
 
+  // The enabled state to display: the loaded pref, else the category's catalog default.
+  const isEnabled = (key) =>
+    prefs && prefs[key] !== undefined ? prefs[key] : categoryDefaultEnabled(key);
+
+  const pushRows = BUSINESS_NOTIF_CATEGORIES.filter((c) => c.group === CHANNEL_GROUP.PUSH);
+  const optionalRows = BUSINESS_NOTIF_CATEGORIES.filter((c) => c.group === CHANNEL_GROUP.OPTIONAL);
+
   return (
     <View>
-      {BUSINESS_NOTIF_CATEGORIES.map((row, i) => {
-        const Icon = BUSINESS_NOTIF_ICON[row.key] || Bell;
-        const enabled = prefs ? prefs[row.key] !== false : true;
-        return (
-          <View
-            key={row.key}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 14,
-              borderBottomWidth: i < BUSINESS_NOTIF_CATEGORIES.length - 1 ? 1 : 0,
-              borderBottomColor: C.peach,
-            }}
-          >
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                backgroundColor: C.sand,
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 14,
-                borderWidth: 1,
-                borderColor: C.peach,
-              }}
-            >
-              <Icon size={18} color={C.mutedBrown} />
-            </View>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
-                {t(row.labelKey)}
-              </Text>
-              <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
-                {t(row.hintKey)}
-              </Text>
-            </View>
-            <Switch
-              testID={`biz-notif-toggle-${row.key}`}
-              value={enabled}
-              onValueChange={(v) => toggle(row.key, v)}
-              trackColor={{ false: C.peach, true: C.coral }}
-              thumbColor="#FFF"
+      {/* Notify my phone (PUSH, default ON) */}
+      <GroupHeader label={t("bizNotif.groupPush")} />
+      {pushRows.map((row, i) => (
+        <BusinessNotifRow
+          key={row.key}
+          row={row}
+          t={t}
+          enabled={isEnabled(row.key)}
+          onToggle={toggle}
+          isLast={i === pushRows.length - 1}
+        />
+      ))}
+
+      {/* Optional push (OPTIONAL_PUSH, default OFF) */}
+      {optionalRows.length > 0 && (
+        <>
+          <GroupHeader label={t("bizNotif.groupOptional")} />
+          {optionalRows.map((row, i) => (
+            <BusinessNotifRow
+              key={row.key}
+              row={row}
+              t={t}
+              enabled={isEnabled(row.key)}
+              onToggle={toggle}
+              isLast={i === optionalRows.length - 1}
             />
-          </View>
-        );
-      })}
+          ))}
+        </>
+      )}
+
+      {/* In-app only (info group — shown, never pushed, no toggle) */}
+      {BUSINESS_NOTIF_INFO_CATEGORIES.length > 0 && (
+        <>
+          <GroupHeader label={t("bizNotif.groupInApp")} />
+          <Text style={{ fontSize: 12, color: C.mutedBrown, marginBottom: 4 }}>
+            {t("bizNotif.groupInAppNote")}
+          </Text>
+          {BUSINESS_NOTIF_INFO_CATEGORIES.map((row, i) => (
+            <BusinessNotifRow
+              key={row.key}
+              row={row}
+              t={t}
+              onToggle={null}
+              isLast={i === BUSINESS_NOTIF_INFO_CATEGORIES.length - 1}
+            />
+          ))}
+        </>
+      )}
     </View>
   );
 }

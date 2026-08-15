@@ -24,12 +24,21 @@ jest.mock("@/i18n/localePreference", () => ({
 }));
 jest.mock("@/components/Health/WalkActivity/WalkTrackingSettings", () => () => null);
 
-const mockGetBizPrefs = jest.fn().mockResolvedValue({ walk_requests: true });
+const mockGetBizPrefs = jest
+  .fn()
+  .mockResolvedValue({ walk_requests: true, biz_booking: true, biz_review: false });
 const mockSetBizCategory = jest.fn().mockResolvedValue({ walk_requests: false });
 jest.mock("@/utils/businessNotificationPrefs", () => ({
+  CHANNEL_GROUP: { PUSH: "push", OPTIONAL: "optional", INAPP: "inapp" },
   BUSINESS_NOTIF_CATEGORIES: [
-    { key: "walk_requests", labelKey: "bizNotif.walkRequests", hintKey: "bizNotif.walkRequestsHint" },
+    { key: "walk_requests", group: "push", labelKey: "bizNotif.walkRequests", hintKey: "bizNotif.walkRequestsHint" },
+    { key: "biz_booking", group: "push", labelKey: "bizNotif.booking", hintKey: "bizNotif.bookingHint" },
+    { key: "biz_review", group: "optional", labelKey: "bizNotif.review", hintKey: "bizNotif.reviewHint" },
   ],
+  BUSINESS_NOTIF_INFO_CATEGORIES: [
+    { key: "biz_follow", group: "inapp", labelKey: "bizNotif.follow", hintKey: "bizNotif.followHint" },
+  ],
+  categoryDefaultEnabled: (k) => k !== "biz_review", // push→true, optional(biz_review)→false
   getBusinessNotificationPrefs: (...a) => mockGetBizPrefs(...a),
   setBusinessCategoryEnabled: (...a) => mockSetBizCategory(...a),
 }));
@@ -83,4 +92,20 @@ it("business mode toggle PUTs the server pref", async () => {
   await waitFor(() =>
     expect(mockSetBizCategory).toHaveBeenCalledWith("walk_requests", false),
   );
+});
+
+// ── BN2 channel-aware grouping ──────────────────────────────────────────────────
+
+it("business mode groups categories: Notify my phone / Optional push / In-app only", () => {
+  const { getByText, getByTestId } = render(<AppSettings mode="business" />);
+  // Group headers (t is identity in this harness → the i18n key renders).
+  expect(getByText("bizNotif.groupPush")).toBeTruthy();
+  expect(getByText("bizNotif.groupOptional")).toBeTruthy();
+  expect(getByText("bizNotif.groupInApp")).toBeTruthy();
+  // PUSH + OPTIONAL categories get a toggle…
+  expect(getByTestId("biz-notif-toggle-biz_booking")).toBeTruthy();
+  expect(getByTestId("biz-notif-toggle-biz_review")).toBeTruthy();
+  // …the in-app-only category is shown as info, NEVER a toggle.
+  expect(getByTestId("biz-notif-info-biz_follow")).toBeTruthy();
+  expect(() => getByTestId("biz-notif-toggle-biz_follow")).toThrow();
 });

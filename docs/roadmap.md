@@ -239,6 +239,19 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > = client, no cross-business leak, owner-only follow, idempotent no-re-notify), mobile jest 1879→**1882**
 > (+3). PR3 wires the grouped Settings UI. **0110 awaits hand-apply on Supabase.**
 
+> **Update (2026-08-15, BN2 PR3 — channel-aware business Settings UI):** **1 PR**
+> (feat/bn2-pr3-business-settings). **Mobile-only, no migration.** The business-mode notification
+> settings (`AppSettings` `mode="business"`) now render the real BN2 categories **grouped by channel
+> class**, consuming the PR2 catalog (`businessNotificationPrefs.js`): **"Notify my phone"** (the PUSH
+> toggles — bookings / changes / orders / messages / adoption / walk requests, default ON) · **"Optional
+> push"** (reviews / payouts, default OFF, opt-in) · an **"In-app only"** info group (post activity /
+> followers — shown with a bell tag, **never a toggle**, with a note that they stay in the app). Toggles
+> write `notification_prefs` via the existing GET/PUT (BX4); the PR1 send-hook respects them. **Pet-owner
+> Settings unchanged** (mode gate untouched — pet mode still shows the E5 categories + Walk-tracking).
+> EN+ES (group headers + all category labels/hints). Gates: mobile jest 1882→**1883** (+1; web/integration
+> unchanged — no web change). **BN2 COMPLETE** (3/3 PRs). **NEEDS ON-DEVICE CONFIRMATION** of the grouped
+> screen + a real push once APNs is configured (steps in `docs/night-run-log.md`).
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map
