@@ -2,6 +2,88 @@
 
 ---
 
+## ✅ BN2 PR1 — Remote-push FOUNDATION (server→phone) — 2026-08-15
+
+**Branch:** `feat/bn2-pr1-push-foundation` · **Migration:** 0109 (awaits hand-apply) · Design of record:
+`docs/business-provider.md` ("Business / Provider Notifications v2").
+
+**What shipped.** The first server→phone push layer PawPi has ever had. Until now the mobile app only
+scheduled **local** reminders (`expo-notifications`) and server events wrote the in-app bell
+(`app_notify`, 0044/0108) — nothing rang a phone. PR1 is the plumbing (emission of the business events
+themselves is PR2):
+
+- **DB — migration 0109 `device_push_tokens`** (`id, user_id→user_profiles.id, token, platform
+  (ios|android), updated_at, UNIQUE(user_id, token)`), **ENABLE + FORCE RLS** own-row policy, app runs as
+  `pawpi_app`. Plus **three SECURITY DEFINER readers** so the web send-hook — which runs in the **actor's**
+  request identity, not the recipient's — can cross the owner boundary without loosening RLS:
+  `app_recipient_push_tokens(user)`, `app_notification_pref_enabled(user, category)`,
+  `app_recipient_locale(user)`. Additive, idempotent. Verify: `supabase/verify_0109.sql`.
+- **Web token route** — `POST /api/push-tokens` (upsert, idempotent on the token) + `DELETE` (logout /
+  token change). Own-row; degrades clean (42P01 → friendly 503).
+- **Web send layer** — `src/app/api/utils/push.js` using **`expo-server-sdk`**: `sendPush(recipient,
+  {title, body, data})` resolves the recipient's tokens via the DEFINER reader and sends. Wired as a
+  **post-`app_notify` hook** inside `safeNotify` — after a bell row is created (`app_notify` returned a
+  non-null id) it consults the shared channel catalog (`notificationCategories.js`) + the recipient's
+  `notification_prefs` and pushes per the BN2 rule: **IN_APP_ONLY → never · PUSH → unless the category is
+  disabled (absent = ON) · OPTIONAL_PUSH → only if explicitly enabled (absent = OFF)**. Push copy is
+  **bilingual (EN + ES)**, rendered in the recipient's stored locale (0107). **Never throws / never
+  blocks the action**: no tokens, unmigrated table/fn, or an Expo/APNs error → log-and-no-op.
+- **Mobile registration** — `src/utils/registerPushToken.js`: reuses the permission already asked at
+  startup (**no cold prompt**), reads the Expo token (`getExpoPushTokenAsync` scoped to the EAS
+  `projectId`), and POSTs it. No-ops on simulators (`expo-device` `isDevice`) and when permission was
+  declined; memoized per session. Registered **after auth** in `src/app/_layout.jsx`.
+
+**Catalog scope (PR1).** The channel catalog is stubbed with the **types that exist today** — only the
+`walk_request_targeted` / `walk_request_broadcast` pair reaches a business recipient (both **PUSH**).
+Every un-cataloged type (all current pet-owner notifications) defaults to **IN_APP_ONLY**, so PR1 does
+**not** suddenly start pushing anything that was silent before. PR2 adds the full business catalog
+(`biz_booking` / `biz_order` / `biz_message` / `biz_adoption_application` PUSH; `biz_review` /
+`biz_payout` OPTIONAL_PUSH; `biz_post_engagement` / `biz_follow` IN_APP_ONLY) **and** the emission at each
+route.
+
+**Tests / gates.** vitest 1989→**2010** (+21: `push.test.js` 13, `push-tokens/route.test.js` 8),
+integration 1000→**1006** (+6: `push-tokens-rls.integration.test.ts` — own-row RLS, the spoof-write
+denial, the idempotent upsert, and all three DEFINER readers crossing the owner boundary), mobile jest
+1874→**1879** (+5: `registerPushToken.test.js`).
+
+**Decisions / deviations.**
+- Reused `notification_prefs` (0108) for the push pref — **no new prefs table** (recommended default).
+- Web installs with **bun** (`bun.lock`, `--frozen-lockfile` in CI), not npm — `expo-server-sdk` added
+  via `bun install`; a stray `package-lock.json` from an initial npm attempt was removed.
+- Push **content localization** honored now (EN + ES per recipient locale) rather than deferred, since
+  push text is a user-facing surface (Rule: EN+ES on every surface).
+- `EXPO_ACCESS_TOKEN` is **optional** for the Expo push service; unset (the current state) is not an
+  error — the client still constructs and sends, and delivery depends on the per-platform credentials at
+  Expo/Apple (below).
+
+### 🔴 NEEDS ON-DEVICE CONFIRMATION + iOS/APNs setup (what Tats must do to light up iOS push)
+
+The send layer is built and unit/integration-proven with the Expo client mocked, but **real iOS delivery
+stays dark until APNs credentials are configured** in EAS/Apple against the PawPi Apple Developer account
+(the same account dependency as widget PR #187). Exact steps:
+
+1. **Apple Developer** — ensure the app's **Push Notifications** capability is enabled for the bundle id
+   `com.pawpi.app` (Certificates, Identifiers & Profiles → Identifiers → the App ID → check *Push
+   Notifications*). Do **not** change the bundle id.
+2. **EAS credentials** — from `anything/apps/mobile`, run **`eas credentials`** (or `eas build` and let it
+   prompt): select **iOS → Push Notifications: Manage your Apple Push Notifications Key**, and let EAS
+   **create/upload an APNs Key (.p8)** for the Apple account. EAS stores it and links it to the Expo
+   project (`projectId e1ab38b2-5f41-4d15-bc18-64c8b0717a3d`). One APNs key covers dev + prod.
+3. **(Optional) Expo access token** — if you want server-side send auth/receipt checks, create an
+   **`EXPO_ACCESS_TOKEN`** in the Expo dashboard (Account → Access Tokens) and set it on **Railway** (web
+   service env). Not required for basic delivery; the send layer already no-ops gracefully without it.
+4. **Build + install a real build** — `eas build -p ios` (dev or TestFlight). Simulators never receive a
+   token, so this must be a **physical device** (or TestFlight). On first authed launch the app registers
+   its token to `POST /api/push-tokens`.
+5. **Apply migration 0109** on Supabase (`supabase/migrations/0109_device_push_tokens.sql`) + run
+   `supabase/verify_0109.sql` (all rows PASS). Until applied, `POST /api/push-tokens` returns a friendly
+   503 and the send layer no-ops — nothing breaks.
+6. **Confirm on device** — sign in on the physical build, verify a `device_push_tokens` row appears for
+   the account, then trigger a **PUSH-class** notification (PR2 will make business bookings/chat do this;
+   for PR1, a walk request to a walker's staff) and confirm the phone banner arrives.
+
+---
+
 ## ✅ BX4 — Business-specific notification settings (mode-aware + functional) — 2026-08-15
 
 **2 PRs MERGED CI-green** (merge commit + branch deleted). Gives the business its own

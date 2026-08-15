@@ -8,6 +8,7 @@ import { queryClient } from "@/utils/queryClient";
 import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
+import { registerPushTokenAsync } from "@/utils/registerPushToken";
 import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
@@ -18,7 +19,7 @@ SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
 
 export default function RootLayout() {
-  const { initiate, isReady } = useAuth();
+  const { initiate, isReady, isAuthenticated } = useAuth();
   markBootStep("layout:render");
 
   useEffect(() => {
@@ -33,6 +34,15 @@ export default function RootLayout() {
     // E5: learn the owner's usual open hour so the streak-save nudge sends at their time.
     recordAppOpenHour(new Date().getHours());
   }, []);
+
+  // BN2: once the user is authenticated, register this device's Expo push token so
+  // the backend can ring the phone (reuses the permission asked at startup — no cold
+  // prompt). No-ops on simulators / when permission was declined; never throws.
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerPushTokenAsync();
+    }
+  }, [isAuthenticated]);
 
   // Apply the saved language override (ticket 2.29) — defaults to the phone's language.
   useEffect(() => {
