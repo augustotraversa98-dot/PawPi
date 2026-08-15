@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
+import { alertAdminsOfReport } from "@/app/api/utils/adminAlert";
 
 // /api/reports — user-facing report/flag ledger (Guideline 1.2, ticket T2). Thin routes over
 // the 0065 content_reports table (RLS pins reporter = caller).
@@ -63,6 +64,12 @@ async function POST(request) {
       VALUES (${userId}, ${targetType}, ${targetId}, ${reason}, ${details})
       RETURNING *
     `;
+
+    // MOD1: a GENUINELY NEW report (never the idempotent repeat above) must reach a human who
+    // can act on it — alert every admin (in-app bell + rate-limited email). Best-effort and
+    // savepoint-protected: it can neither throw, block, nor poison the report's transaction.
+    await alertAdminsOfReport({ report: created[0], reporterId: userId, request });
+
     return Response.json({ report: created[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/reports] Error:", error.message);
