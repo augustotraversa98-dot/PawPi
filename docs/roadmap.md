@@ -1156,3 +1156,9 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
 - **QW-DEADCODE** — removed the unreachable SimpleRoutineModal create/edit UI; legacy GENERAL/WEIGHT enums + handlers kept. Draft **PR #109**, CI green (mobile 627, web 394). Awaiting merge. (2026-06-16, first pipeline run.)
 - **QW-PHOTOAREA** — already live before the roadmap existed (PhotoCheck body-area collapsible header). Verified 2026-06-16.
 - Phase 1: RLS arc complete + LIVE in Supabase (Jun 16); reminders engine (P1/P2 + cadence); date/time pickers (#38); keyboard (#37/#40); pull-to-refresh (#36); provider/vet spine end-to-end.
+- **Pre-launch night run (2026-08-16 plan)** — ✅ 4 phases, PRs #410–#415. A2a demo-content leak
+  guarded out of all global feeds/discovery (migration 0111, is_demo); A2b honest+localized post
+  timestamps; A3 Report/Block/Delete-own on feed + business-post comments (migration 0112); Phase C
+  Privacy+Terms EN+ES DRAFT; Phase B perf audit (no migration warranted — all app queries <2ms);
+  Phase D Apple submission runbook + config + EN/ES metadata + App Privacy map. Punch list + legal
+  review + Apple next-steps in `docs/night-run-2026-08-16-report.md`. (2026-08-15.)
