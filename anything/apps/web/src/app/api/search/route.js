@@ -43,6 +43,7 @@ async function GET(request) {
          OR species ILIKE ${pattern})
         AND NOT app_user_is_blocked(current_app_user_id(), owner_user_id)
         AND owner_user_id NOT IN (SELECT id FROM user_profiles WHERE banned_at IS NOT NULL)
+        AND owner_user_id NOT IN (SELECT id FROM user_profiles WHERE is_demo)
       ORDER BY name ASC
       LIMIT ${LIMIT}
     `;
@@ -55,6 +56,7 @@ async function GET(request) {
       WHERE (username ILIKE ${pattern}
          OR full_name ILIKE ${pattern})
         AND banned_at IS NULL
+        AND is_demo IS NOT TRUE
         AND NOT app_user_is_blocked(current_app_user_id(), id)
       ORDER BY username ASC
       LIMIT ${LIMIT}
@@ -66,6 +68,7 @@ async function GET(request) {
       FROM providers
       WHERE status = 'published'
         AND name ILIKE ${pattern}
+        AND is_demo IS NOT TRUE
       ORDER BY name ASC
       LIMIT ${LIMIT}
     `;

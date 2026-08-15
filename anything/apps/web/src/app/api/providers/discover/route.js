@@ -129,6 +129,8 @@ async function GET(request) {
         LIMIT 1
       ) loc ON true
       WHERE p.status = 'published'
+        -- Exclude demo/seed providers (0111) from real discovery.
+        AND p.is_demo IS NOT TRUE
         AND (
           ${capability}::text IS NULL
           OR EXISTS (

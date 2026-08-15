@@ -288,6 +288,8 @@ async function GET(request) {
       -- Moderation (T3): hide content removed by us + content from a blocked user.
       AND p.hidden_at IS NULL
       AND NOT app_user_is_blocked(current_app_user_id(), p.user_id)
+      -- Exclude demo/seed posts (0111) from the Suggested feed of real users.
+      AND up.is_demo IS NOT TRUE
       ORDER BY p.created_at DESC
       LIMIT ${groupLimit}
     `;
