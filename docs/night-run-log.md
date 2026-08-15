@@ -2,6 +2,39 @@
 
 ---
 
+## ✅ MOD1 PR2 — Moderation console + provider_post_comment gap — 2026-08-15 — **MERGED + LIVE**
+
+**PR #424** (`feat/mod1-pr2-moderation-console`, merge `0b2f0514`, branch deleted) · **Migration
+0115 APPLIED + VERIFIED on prod** · **Railway redeploy SUCCESS** · builds on PR1.
+
+**What shipped.**
+- **`/admin/moderation` console.** Reads `GET /api/admin/reports` (open/actioned/dismissed/all);
+  each report shows target (type + id), reason, reporter details, a per-target reporter count, and
+  age. Per open report → `POST /api/admin/reports/[id]/action`: **Remove content**, **Dismiss**, and
+  a **"Ban the author when removing"** toggle. **Gated by the admin-only API** — a non-admin gets 403
+  → bare no-access state with NO report data (401 → sign-in); the only data source is the gated
+  endpoint, so the page can't leak. EN-only internal tool, app Tailwind palette.
+- **Migration 0115 — closed the one unhandled reportable type.** Confirming `app_admin_action_report`
+  (per the ticket) surfaced the gap: **0112 made `provider_post_comment` reportable but never
+  extended the moderation helpers**, so Remove would have silently flipped the report to `actioned`
+  WITHOUT hiding the comment, and Ban resolved no author. 0115 adds the
+  `provider_post_comment → provider_post_comments` branch to `app_moderate_hide` / `_unhide` /
+  `app_admin_action_report` (mirrors 0066's `provider_post`). No table/column change —
+  `provider_post_comments` has had `hidden_at` since 0082 and its read policy already filters it, so
+  only the CASE mapping was missing. `verify_0115.sql`.
+
+**Confirmed (ticket ask).** `moderate-provider-post-comment.integration.test.ts` (real Postgres, as
+`pawpi_app`): remove+ban sets the comment's `hidden_at`, flips the report to `actioned`, bans the
+author; a guest then can't SELECT the hidden comment (it truly disappears); a non-admin is rejected.
+Other target types were already proven by 0065/0066 + `ugc-moderation.integration`. Gates: web vitest
+2057→**2065**, integration +3.
+
+**Apply status.** Migration **0115 APPLIED + VERIFIED on Supabase prod** (`qaebbesldduvgwttqlnq`) —
+all 5 shape checks PASS (hidden_at present; the `provider_post_comment` branch present in
+hide/unhide/action; all three helpers EXECUTE-granted to pawpi_app). **Prod DB now at 0115.**
+
+---
+
 ## ✅ MOD1 PR1 — Admin identity + new-report alerting — 2026-08-15 — **MERGED + LIVE (with one action owed)**
 
 **PR #423** (`feat/mod1-pr1-admin-identity-alerting`) · **Migration 0114** · CI-green (mobile jest, web

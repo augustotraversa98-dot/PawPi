@@ -824,17 +824,21 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
-## 🛡️ MOD1 — Report routing + moderation console (Guideline 1.2 "act within 24h") — 🔨 PR1 done, PR2 building
+## 🛡️ MOD1 — Report routing + moderation console (Guideline 1.2 "act within 24h") — ✅ SHIPPED (1 human action owed)
 > The 1.2 *safeguards* (T1–T9 below) shipped, but reports went into a drawer nobody could open: prod had
-> **zero admins**, nothing alerted anyone, and there was no admin UI. MOD1 closes that in 2 PRs.
+> **zero admins**, nothing alerted anyone, and there was no admin UI. MOD1 closed that in 2 PRs.
 > - ✅ **PR1 — Admin identity + alerting** (#423, migration **0114 APPLIED + VERIFIED on prod**).
 >   `user_profiles.is_admin` + `app_is_admin()` widened (`role='admin' OR is_admin=true`) +
 >   `app_admin_recipients()` DEFINER reader; `POST /api/reports` now bells + rate-limited-emails every
->   admin on a new report (best-effort, savepoint-safe, degrades clean). ⚠️ **Owed:** the launch-admin
->   seed is a no-op until `augustotraversa98@gmail.com` has a **prod account** — sign in once + re-run
->   0114's one-liner, or name an existing account to flag (see night-run-log 2026-08-15 MOD1 PR1).
-> - 🔨 **PR2 — Moderation console** `/admin/moderation` (gated by `app_is_admin`, non-admin → no data),
->   lists `GET /api/admin/reports`, Remove/Dismiss/Ban buttons → the action route.
+>   admin on a new report (best-effort, savepoint-safe, degrades clean).
+> - ✅ **PR2 — Moderation console** (#424, migration **0115 APPLIED + VERIFIED on prod**).
+>   `/admin/moderation` gated by the admin-only API (non-admin 403 → no data); lists
+>   `GET /api/admin/reports`; Remove/Dismiss/Ban → the action route. 0115 closed the one unhandled
+>   reportable type (`provider_post_comment`) — Remove now actually hides it + Ban resolves the author.
+> - ⚠️ **OWED (human):** the launch-admin seed is a no-op until `augustotraversa98@gmail.com` has a
+>   **prod account** — sign in once + re-run 0114's one-liner, or name an existing account to flag (see
+>   night-run-log 2026-08-15 MOD1 PR1). Until then the console is live + correctly gated, but there is
+>   no admin to open it with.
 
 ## 🛡️ UGC MODERATION — App Store Guideline 1.2 (tickets T1–T9) — ✅ COMPLETE (PRs #228–#237)
 > **Both go-live steps are now DONE:** migrations `0065` + `0066` were APPLIED + VERIFIED on Supabase
