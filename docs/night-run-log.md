@@ -2,6 +2,51 @@
 
 ---
 
+## ✅ MOD1 PR1 — Admin identity + new-report alerting — 2026-08-15 — **MERGED + LIVE (with one action owed)**
+
+**PR #423** (`feat/mod1-pr1-admin-identity-alerting`) · **Migration 0114** · CI-green (mobile jest, web
+vitest, web integration) → merged (merge commit `26ec4885`, branch deleted) → **Railway redeploy
+SUCCESS** → **0114 applied + verified on Supabase prod** (`qaebbesldduvgwttqlnq`).
+
+**Why.** Apple Guideline 1.2 requires you can *act* on reports. Reports land in `content_reports`
+(0065) and an admin queue API exists, but prod had **zero admins** (queue 403s for everyone) and
+**nothing alerted anyone** on a new report. PR1 fixes identity + alerting; PR2 adds the console.
+
+**What shipped.**
+- **Migration 0114 (additive, idempotent).** `user_profiles.is_admin boolean default false` — a
+  *second* admin flag that does NOT overload `user_profiles.role` (a real pet_owner/business stays one
+  AND moderates). `app_is_admin()` widened to `role='admin' OR is_admin=true` (backward compatible).
+  `app_admin_recipients()` SECURITY DEFINER reader → `(user_id, email)` for non-banned admins, so the
+  report route (running in the reporter's identity) can enumerate admins it can't SELECT under FORCE
+  RLS. Guarded, idempotent, **email-matched** launch-admin seed (no hardcoded id/secret).
+- **Alerting — `POST /api/reports`, on a genuinely NEW report only.** New `utils/adminAlert.js`: per
+  admin, an in-app bell (`report_received`, `actor=null` → reporter-less) + a per-admin rate-limited
+  email (reuses 0113 `app_rate_limit_hit`, 20/hr). Best-effort: never throws/blocks/500s;
+  savepoint-protected so it can't poison the report's tx; degrades clean when unmigrated. Never fires
+  on the idempotent "already reported" repeat.
+- **Tests.** `reports/route` alerts once per new report + never on repeat; `adminAlert` bell/email/
+  no-email/rate-limited/degrade/never-throw paths; `admin-identity.integration` proves `app_is_admin`
+  honors both legacy role and the new flag (anon → false) and `app_admin_recipients` is
+  DEFINER-readable from a non-admin identity, excluding banned + non-admins. Gates: web vitest
+  2048→**2057**, integration 1035→**1040**, mobile untouched.
+
+**0114 verify on prod:** shape checks 1–5 **PASS** (column, both DEFINER fns with pinned search_path +
+grants, `app_is_admin` widened). Checks 6–7 (`≥1 admin` / owner flagged) **FAIL — expected**: the
+schema half of 0114 was already live from a prior run, but **`augustotraversa98@gmail.com` has no
+account in prod `auth_users`** (108 users; nearest are `augusto@gmail.com` and `augusto@gauvendi.com`),
+so the email-matched seed correctly flags nobody and prod still has **zero admins**.
+
+> ⚠️ **ACTION OWED (human) — blocks the 1.2 "act on reports" acceptance, not the code.** No account was
+> guess-granted admin: granting platform moderation/ban powers to an unconfirmed account is not a safe
+> autonomous default. To activate: **either** sign into the production app once with
+> `augustotraversa98@gmail.com` (creating the profile) then re-run 0114's one-line seed (it's
+> re-runnable and idempotent), **or** tell me which existing account (e.g. `augusto@gmail.com`) should
+> be the launch admin and I'll flag it. Until then, PR2's console is fully built and correctly gated,
+> but there's no admin to open it with. All alerting code is live and degrades to a clean no-op with
+> zero admins.
+
+---
+
 ## ✅ BN2 PR3 — Channel-aware business Settings UI — 2026-08-15 — **BN2 COMPLETE**
 
 **Branch:** `feat/bn2-pr3-business-settings` · **No migration** · Mobile-only.
