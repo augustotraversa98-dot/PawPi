@@ -18,7 +18,14 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("@/hooks/useFeedPosts", () => ({
   usePostBarks: () => ({ data: mockBarks, isLoading: false, refetch: jest.fn() }),
   useCreateBark: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useDeleteBark: () => ({ mutate: jest.fn(), isPending: false }),
 }));
+// A3: BarkModal reads the caller's own profile id to decide Delete-own vs Report/Block.
+let mockMyProfileId = null;
+jest.mock("@/hooks/useUserProfile", () => ({
+  useMyProfileId: () => ({ data: mockMyProfileId }),
+}));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
 import { BarkModal } from "./BarkModal";
 
@@ -26,6 +33,7 @@ const post = { id: 7, pet_name: "Phoebe", caption: "hi" };
 
 afterEach(() => {
   mockBarks = undefined;
+  mockMyProfileId = null;
 });
 
 describe("BarkModal — keyboard tap-to-focus (ticket 2.63)", () => {
@@ -95,5 +103,30 @@ describe("BarkModal — bark row pet identity", () => {
     expect(getByText("legacy bark")).toBeTruthy();
     // No fake handle is invented for legacy rows.
     expect(queryByText(/^@/)).toBeNull();
+  });
+});
+
+describe("BarkModal — comment moderation affordances (A3 / Apple 1.2)", () => {
+  const myBark = { id: 1, text: "mine", created_at: "2026-06-12T00:00:00.000Z", user_id: 42, username: "me" };
+  const otherBark = { id: 2, text: "theirs", created_at: "2026-06-12T00:00:00.000Z", user_id: 99, username: "them" };
+
+  it("shows Delete on MY OWN comment and NOT the Report/Block menu", () => {
+    mockMyProfileId = 42;
+    mockBarks = [myBark];
+    const { getByLabelText, queryByLabelText } = render(
+      <BarkModal visible post={post} onClose={jest.fn()} />,
+    );
+    expect(getByLabelText("Delete your comment")).toBeTruthy();
+    expect(queryByLabelText("More options")).toBeNull();
+  });
+
+  it("shows the Report/Block menu on someone else's comment and NOT Delete", () => {
+    mockMyProfileId = 42;
+    mockBarks = [otherBark];
+    const { getByLabelText, queryByLabelText } = render(
+      <BarkModal visible post={post} onClose={jest.fn()} />,
+    );
+    expect(getByLabelText("More options")).toBeTruthy();
+    expect(queryByLabelText("Delete your comment")).toBeNull();
   });
 });
