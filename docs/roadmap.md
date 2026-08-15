@@ -185,6 +185,20 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 **Fix-pack final gates:** mobile jest **1863**, web vitest **1982**, web integration **995**. **Migration
 0107 (FF1) ✅ APPLIED + VERIFIED on Supabase 2026-08-14.** **BX2 still needs an on-device tap confirmation.**
 
+> **Update (2026-08-15, BX4 — business notification settings, mode-aware + functional):** **2 PRs
+> MERGED CI-green** ([#404](https://github.com/augustotraversa98-dot/PawPi/pull/404) server prefs +
+> gating · [#405](https://github.com/augustotraversa98-dot/PawPi/pull/405) mode-aware business
+> Settings UI). Audited **every** `app_notify`/`safeNotify` site: the **only** notification that
+> reaches a **business** recipient today is a **walk request** (`walk_request_targeted`/`_broadcast`)
+> landing on a walker's active staff — regular provider bookings notify the **owner**, and chat /
+> reviews / payouts fire **no** notification — so exactly **one** honest category ships (**"Walk &
+> job requests"**); the rest are omitted (no fake toggle). New `notification_prefs` own-row table
+> (**0108**, ⏳ awaits hand-apply) gates delivery inside `app_notify()` (fail-open); `AppSettings`
+> gains `mode="business"` (server-backed toggle; hides the pet-owner categories + Walk-tracking; pet
+> mode unchanged). E5 pet-owner client-side prefs left as-is (logged split). EN+ES. Gates: vitest
+> 1982→**1989**, integration 995→**1000**, mobile jest 1863→**1874**. **⚠️ business Settings visual
+> needs on-device confirmation.**
+
 > **Update (2026-08-13, Wave B COMPLETE) — ticket B5 (walker walk history with map):** **NO
 > migration** (reads existing `walk_sessions` + B3's pickup columns). The walker's finished walks,
 > newest-first: dog + date + duration + distance, expandable to the real route drawn on a map

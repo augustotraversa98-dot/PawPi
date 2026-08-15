@@ -2,6 +2,88 @@
 
 ---
 
+## ✅ BX4 — Business-specific notification settings (mode-aware + functional) — 2026-08-15
+
+**2 PRs MERGED CI-green** (merge commit + branch deleted). Gives the business its own
+notification categories AND makes the toggles truly gate delivery — no fake toggle.
+
+| Ticket | PR | Migration | Gist |
+|---|---|---|---|
+| BX4 PR1 — server prefs + gating | [#404](https://github.com/augustotraversa98-dot/PawPi/pull/404) | **0108** (⏳ awaits hand-apply) | `notification_prefs` own-row + `app_notify()` gate |
+| BX4 PR2 — mode-aware business Settings UI | [#405](https://github.com/augustotraversa98-dot/PawPi/pull/405) | — | `AppSettings` `mode="business"` + server-backed toggle |
+
+### The audit (which provider/business notifications actually fire today)
+Grepped **every** `app_notify` / `safeNotify` call site + the booking / chat / review / payment
+routes. Recipient direction of each notification type:
+
+| Type | Recipient | Business? |
+|---|---|---|
+| `walk_request_targeted` · `walk_request_broadcast` | walker's **active staff** | ✅ **business** |
+| `booking_requested` / `booking_confirmed` (on book) | the OWNER (self-notify) | ❌ |
+| booking lifecycle `confirmed`/`declined`/`cancelled` | the OWNER | ❌ |
+| `walk_request_accepted` | the OWNER | ❌ |
+| `adoption_under_review`/`approved`/`declined` | the applicant (owner) | ❌ |
+| `paw` / `bark` / `follow` / engagement (`welcome`…`winback`) | owners | ❌ |
+
+**Real vs omitted (honest, per "never show a toggle for a notification that doesn't fire"):**
+- ✅ **Walk/job requests** — `walk_request_targeted` + `walk_request_broadcast` land on a walker
+  business. This is the **sole** business-recipient notification path in the app today → the **one**
+  category that ships.
+- ❌ **Booking request to a provider** — a regular provider booking (`providers/[id]/book`) notifies
+  **only the owner**; the provider is **not** notified. Omitted.
+- ❌ **Booking updates to a business** — all booking-lifecycle notifications are addressed to the
+  **owner**. Omitted.
+- ❌ **New client message (chat)** — chat routes (`dm-threads`, `threads/[id]/messages`, …) fire
+  **no** notification at all today. Omitted.
+- ❌ **Reviews · payments/payouts** — no notify fires. Omitted.
+
+### PR1 — server-side prefs + gating (the functional part)
+- **migration 0108**: `notification_prefs (user_id → user_profiles.id, category, enabled,
+  updated_at; UNIQUE(user_id, category))`, ENABLE+FORCE RLS, single own-row `FOR ALL` policy.
+  `app_notify()` now maps a business type → its gating category and **no-ops** (returns null,
+  inserts nothing) when the recipient's pref is `false`. **Fail-open** (absent row = enabled);
+  keeps the never-throw / never-self-notify contract; the DEFINER pref-lookup bypasses RLS exactly
+  like its existing cross-user insert. `verify_0108.sql` (8 checks).
+- **GET/PUT `/api/notification-prefs`** (owner-scoped): GET returns the effective on/off for every
+  business category (fail-open); PUT upserts one `{category, enabled}`.
+- **`utils/notificationCategories.js`**: the audited-real business-category catalog + type→category
+  map mirroring the SQL CASE.
+- Tests: integration proves own-row RLS + gating (disabled→no row, enabled/absent→delivered,
+  owner-only `paw` ungated); route unit test covers auth/validation/upsert.
+
+### PR2 — mode-aware business Settings UI
+- Shared `AppSettings` (BX3) gains a `mode` prop. `app/business/settings.jsx` renders
+  `mode="business"`; the pet route keeps `mode="petOwner"` (default) — its rendered output is
+  **unchanged** (new paths gated behind `isBusiness`).
+- **Business mode** shows the **one** audited-real category — **"Walk & job requests"** — reading/
+  writing the PR1 server prefs, and **HIDES** the pet-owner categories (social/milestone/streak/care)
+  + the Walk-tracking / Apple Health block. Keeps Language, Help Center, Contact Us, Delete account.
+- **`utils/businessNotificationPrefs.js`**: server-backed client helper (GET/PUT, fail-open, never
+  throws) + the category catalog (labels/hints = `bizNotif.*` i18n keys, **EN+ES**).
+- Tests: business mode renders the business category + hides the pet blocks; pet mode unchanged;
+  toggling PUTs the server pref; helper GET/PUT + fail-open covered.
+
+### Decisions / deviations
+- **Split logged (recommended default taken):** only **business** categories go server-side this
+  ticket; the pet-owner **E5** client-side (AsyncStorage) prefs mechanism is left **as-is**. The two
+  coexist for a dual owner+staff account (pet app = pet categories, business app = business).
+- Small table (not JSONB) so the sender's lookup is a trivial equality join.
+- Category catalog is **extensible**: a future business event = one arm in the `app_notify` CASE +
+  the JS catalog + a pref row. Shipped **only** what fires today.
+
+### Gates
+- PR1: web **vitest 1982→1989**, **integration 995→1000**. PR2: mobile **jest 1863→1874**.
+
+### Deploy / follow-ups
+- ⏳ **Migration 0108 awaits hand-apply** on Supabase (this env can't run DDL). Degrades cleanly:
+  until applied, the old `app_notify` keeps sending (nothing goes silent) and the prefs endpoint's
+  missing-table error is swallowed by the fail-open client helper (toggles read enabled, a change
+  just doesn't persist yet). Run `supabase/verify_0108.sql` after applying (all rows PASS).
+- ⚠️ **NEEDS ON-DEVICE CONFIRMATION** — business Settings visual (business Profile → Settings shows
+  the single "Walk & job requests" toggle; pet-owner categories + Walk-tracking hidden).
+
+---
+
 ## ✅ BX3 — Business Settings dropped into the pet-owner app + back → feed — 2026-08-14
 
 Single surgical bugfix, **1 PR MERGED CI-green** (squash + branch deleted), Railway healthy
