@@ -188,7 +188,7 @@ export const PostCard = memo(function PostCard({
             </Text>
           </View>
           <Text style={[TYPE.caption, { color: COLORS.mutedBrown }]}>
-            {formatRelativeTime(post.created_at) || post.timestamp || "just now"}
+            {formatRelativeTime(post.created_at, { t })}
           </Text>
         </View>
       </TouchableOpacity>

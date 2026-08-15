@@ -44,7 +44,11 @@
     "dailyPrompt": "Compartí el momento de hoy",
     "empty": "Todavía no hay nada por aquí",
     "businessEyebrow": "NEGOCIO QUE SEGUÍS",
-    "justNow": "ahora mismo"
+    "justNow": "ahora mismo",
+    "minutesShort": "hace {{count}} min",
+    "hoursShort": "hace {{count}} h",
+    "daysShort": "hace {{count}} d",
+    "yesterday": "ayer"
   },
   "health": {
     "title": "Salud",

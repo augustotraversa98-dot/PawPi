@@ -39,4 +39,25 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime(null, NOW)).toBe("");
     expect(formatRelativeTime("not-a-date", NOW)).toBe("");
   });
+
+  // A2b: the options form { now, t } localizes every bucket via react-i18next's translate fn.
+  describe("localized ({ now, t }) form", () => {
+    // Fake translator: returns "<key>|<count>" so we can assert the exact key + params used.
+    const t = (key, params) =>
+      params && params.count != null ? `${key}|${params.count}` : key;
+
+    it("uses feed.* keys for each bucket", () => {
+      expect(formatRelativeTime(ago(10 * SEC), { now: NOW, t })).toBe("feed.justNow");
+      expect(formatRelativeTime(ago(5 * MIN), { now: NOW, t })).toBe("feed.minutesShort|5");
+      expect(formatRelativeTime(ago(2 * HR), { now: NOW, t })).toBe("feed.hoursShort|2");
+      expect(formatRelativeTime(ago(1 * DAY), { now: NOW, t })).toBe("feed.yesterday");
+      expect(formatRelativeTime(ago(3 * DAY), { now: NOW, t })).toBe("feed.daysShort|3");
+    });
+
+    it("still returns empty for missing/invalid even with a translator (no fabricated time)", () => {
+      expect(formatRelativeTime(null, { now: NOW, t })).toBe("");
+      expect(formatRelativeTime("", { now: NOW, t })).toBe("");
+      expect(formatRelativeTime("not-a-date", { now: NOW, t })).toBe("");
+    });
+  });
 });

@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { PawPrint, Megaphone, Trash2, X, Pencil } from "lucide-react-native";
 import {
   COLORS,
@@ -46,6 +47,7 @@ export const PostDetailModal = memo(function PostDetailModal({
   onSaveCaption,
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   // Real bark thread for this post, scoped by post.id (same hook the BarkModal
   // uses). Called before the early return so hook order stays stable.
@@ -80,9 +82,9 @@ export const PostDetailModal = memo(function PostDetailModal({
   const videoUri = post.video_url;
   const posterUri = post.video_thumbnail_url;
   const caption = post.caption;
-  // Real relative time from created_at (ticket 2.38) — no more fake "Just now".
-  const timestamp =
-    formatRelativeTime(post.created_at) || post.timestamp || "just now";
+  // Real relative time from created_at (ticket 2.38; A2b) — localized, and honest when
+  // absent (empty string renders nothing rather than a fabricated "just now").
+  const timestamp = formatRelativeTime(post.created_at, { t });
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";

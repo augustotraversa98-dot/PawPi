@@ -192,7 +192,7 @@ export default function ProviderPostScreen() {
   const liked = pawData?.is_pawed ?? post?.is_pawed === true;
   const pawsCount = pawData?.paw_count ?? Number(post?.paw_count ?? 0);
   const commentCount = comments.length;
-  const timestamp = post?.created_at ? formatRelativeTime(post.created_at) : "";
+  const timestamp = post?.created_at ? formatRelativeTime(post.created_at, { t }) : "";
 
   // Tap the paw control → toggle (guest → sign-in). Optimistic + revert live in the hook.
   const handlePawPress = () => {
@@ -459,7 +459,7 @@ export default function ProviderPostScreen() {
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>
-                          {formatRelativeTime(c.created_at)}
+                          {formatRelativeTime(c.created_at, { t })}
                         </Text>
                         {mine ? (
                           <TouchableOpacity

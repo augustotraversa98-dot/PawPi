@@ -4,6 +4,10 @@
 import React from "react";
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
+// A2b: the relative timestamp is now localized via react-i18next. Resolve against the REAL
+// English catalog so the "2h" assertion below reflects real EN copy (and a bad key fails loudly).
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
