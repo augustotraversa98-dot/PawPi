@@ -1084,5 +1084,9 @@
     "save": "Save walk",
     "saved": "Walk logged 🐾",
     "saveError": "Couldn't log the walk. Please try again."
+  },
+  "bizNotif": {
+    "walkRequests": "Walk & job requests",
+    "walkRequestsHint": "When a pet owner requests a walk from your business"
   }
 }

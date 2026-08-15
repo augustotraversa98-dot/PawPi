@@ -105,6 +105,8 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
     ["lifeStage", "seniorTip"],
     ["lifeStage", "overrideLabel"],
     ["lifeStage", "detectedNote"],
+    ["bizNotif", "walkRequests"],
+    ["bizNotif", "walkRequestsHint"],
   ];
   for (const [ns, key] of newKeys) {
     expect(typeof en[ns]?.[key]).toBe("string");

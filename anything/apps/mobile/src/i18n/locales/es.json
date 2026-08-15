@@ -1084,5 +1084,9 @@
     "save": "Guardar paseo",
     "saved": "Paseo registrado 🐾",
     "saveError": "No se pudo registrar el paseo. Intentá de nuevo."
+  },
+  "bizNotif": {
+    "walkRequests": "Solicitudes de paseo y trabajo",
+    "walkRequestsHint": "Cuando un dueño le solicita un paseo a tu negocio"
   }
 }
