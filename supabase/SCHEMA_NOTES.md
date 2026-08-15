@@ -222,6 +222,25 @@ ACTION 1).
 > (safeNotify swallows the 23514 CHECK violation → the new bell rows drop, never 500). Verify:
 > `supabase/verify_0110.sql`.
 
+> **0113** is PP3 (pre-launch polish fix-pack) — the write rate limiter. ADDITIVE, harness-proven
+> (`test/integration/rate-limit.integration.test.ts`, 15 cases). No existing table, policy or function
+> is touched; the app **degrades cleanly while absent** — `utils/rateLimit.js` runs the counter call in
+> a SAVEPOINT and **fails open**, so a pre-migration deploy behaves exactly as today.
+> - `rate_limit_hits` — fixed-window counter, PK `(bucket, subject, window_start)`. `subject` is
+>   `'u:<user_profiles.id>'`, or `'ip:<addr>'` when unauthenticated (prefixed so the id spaces cannot
+>   collide). `bucket` is free-form on purpose: the limits live in the app-side catalog
+>   (`RATE_LIMITS` in `utils/rateLimit.js`), so adding a limited endpoint never needs a migration.
+> - **ENABLE + FORCE RLS with a SELECT-only own-row policy and NO write policy.** That is the security
+>   property, not an omission: `pawpi_app` cannot INSERT/UPDATE/DELETE this table on any code path, so a
+>   caller can never reset their own counter. The only writer is the DEFINER function below.
+> - `app_rate_limit_hit(bucket, subject, window_seconds, limit)` — **SECURITY DEFINER**, pinned
+>   search_path, granted to pawpi_app. One atomic upsert returns `(allowed, hits, retry_after_seconds)`;
+>   `allowed` is `hits <= limit` on the POST-increment count. Self-cleaning: the upsert detects that it
+>   INSERTED (`xmax = 0`, i.e. the first hit of a new window) and only then deletes that same
+>   `(bucket, subject)`'s older rows, so the steady state is one row per active subject.
+> - `app_rate_limit_gc(older_than_seconds)` — ops sweep for subjects that never came back (the
+>   self-clean only fires when a subject returns). Verify: `supabase/verify_0113.sql`.
+
 Still deferred: **no seed data.**
 
 ---

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 // Add a paw to a post
 async function POST(request, { params }) {
@@ -134,6 +135,8 @@ async function DELETE(request, { params }) {
 
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
-const wrappedPOST = withRequestContext(POST);
-const wrappedDELETE = withRequestContext(DELETE);
+// PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
+// — a shared, DB-backed fixed-window counter. Reads are never limited.
+const wrappedPOST = withRequestContext(withRateLimit("paw_toggle", POST));
+const wrappedDELETE = withRequestContext(withRateLimit("paw_toggle", DELETE));
 export { wrappedPOST as POST, wrappedDELETE as DELETE };

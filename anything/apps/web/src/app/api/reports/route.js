@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 // /api/reports — user-facing report/flag ledger (Guideline 1.2, ticket T2). Thin routes over
 // the 0065 content_reports table (RLS pins reporter = caller).
@@ -92,6 +93,8 @@ async function GET(request) {
   }
 }
 
+// PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
+// — a shared, DB-backed fixed-window counter. Reads are never limited.
 const wrappedGET = withRequestContext(GET);
-const wrappedPOST = withRequestContext(POST);
+const wrappedPOST = withRequestContext(withRateLimit("report_create", POST));
 export { wrappedGET as GET, wrappedPOST as POST };

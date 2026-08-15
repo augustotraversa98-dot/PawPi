@@ -865,3 +865,27 @@ day one; no fake data. One line per merge.
   `Alert.alert` literals** app-wide and only **83 of 255** non-test `.jsx` files use
   `useTranslation`. Deliberately left for its own ticket — too large and regression-prone to ride
   along in a fix-pack. Not an Apple blocker (store listing, legal docs and prompts are bilingual).
+- **2026-08-15 (PP3)** — Write rate-limiting SHIPPED — closes the night run's last A4 gap. Web-only.
+  **Migration 0113** (`rate_limit_hits` + `app_rate_limit_hit()` + `app_rate_limit_gc()`, additive,
+  verify_0113.sql). Store is Postgres ON PURPOSE: the app runs as multiple Railway instances, so an
+  in-process Map is per-instance and a burst just spreads across replicas. Table is
+  **ENABLE+FORCE RLS with a SELECT-only own-row policy and NO write policy** — pawpi_app cannot
+  INSERT/UPDATE/DELETE it on any path, so a caller can't reset their own counter; the only writer is
+  the SECURITY DEFINER function (pinned search_path, granted to pawpi_app), one atomic upsert
+  returning (allowed, hits, retry_after_seconds). Self-cleaning: the upsert detects it INSERTED
+  (`xmax = 0` = first hit of a new window) and only then drops that (bucket, subject)'s older rows,
+  so the table sizes with ACTIVE subjects, not traffic. Limits (generous): post 12/5min, bark 30/5min,
+  report 20/h, booking 15/h, paw 120/min, follow 60/5min — on 7 write handlers (posts, barks,
+  paw POST+DELETE, reports, pet follow, provider follow, provider book). **NO GET is wrapped**
+  (a test proves a read leaves the counter at 0). 429 carries Retry-After + code `rate_limited` +
+  BOTH message_en/message_es; `error` (what the mobile client shows) resolves from the caller's
+  preferred_locale → Accept-Language → English. Three rules: reads never limited; **fails open** on
+  any error (so the code could ship before the migration); runs inside a **SAVEPOINT** so it can
+  never poison the request tx into withRequestContext's blanket 500. Gotcha found + handled: the
+  limiter must skip entirely when no request transaction is open, or a route unit test's mocked `sql`
+  hands it a queued result and shifts every later assertion — detected by probing `sql.savepoint`
+  (porsager puts it on a tx handle, never the pool) rather than importing `getActiveTx`, which every
+  route test's `sql` mock would then have to provide. Accepted limitation, logged not hidden: the
+  increment is in the request tx, so a rolled-back 500 doesn't count (handled 4xx still do) —
+  under-counts, never over-counts. Gates: web vitest 2023→**2048**, integration 1020→**1035**
+  (+15 real-Postgres cases), mobile untouched (jest 1905).

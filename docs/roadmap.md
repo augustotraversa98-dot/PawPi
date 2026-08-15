@@ -1174,3 +1174,10 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   `key` unchanged); Search & Discover localized (10 new keys). `*.es.test.jsx` companions render the
   real Spanish catalog. mobile jest 1891→1905. Residual debt logged: 158 hardcoded `Alert.alert`
   literals, 83/255 files using `useTranslation` — its own ticket. (2026-08-15.)
+- **PP3 — write rate-limiting (migration 0113)** — ✅ web-only. DB-backed fixed-window limiter
+  (`rate_limit_hits` + `app_rate_limit_hit()` DEFINER) because multiple Railway instances make an
+  in-process counter useless. Table is FORCE-RLS with a SELECT-only own-row policy and **no write
+  policy**, so a caller can't reset their own counter. Seven write handlers wrapped (posts, barks,
+  paw, reports, pet+provider follow, provider book); **no GET**. 429 with `Retry-After` + EN+ES copy.
+  Fails open and runs in a SAVEPOINT, so it can neither block nor 500 the app. web vitest 2023→2048,
+  integration 1020→1035. (2026-08-15.)

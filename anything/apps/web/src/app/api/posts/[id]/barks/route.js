@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 
@@ -150,6 +151,8 @@ async function POST(request, { params }) {
 
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
+// PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
+// — a shared, DB-backed fixed-window counter. Reads are never limited.
 const wrappedGET = withRequestContext(GET);
-const wrappedPOST = withRequestContext(POST);
+const wrappedPOST = withRequestContext(withRateLimit("bark_create", POST));
 export { wrappedGET as GET, wrappedPOST as POST };
