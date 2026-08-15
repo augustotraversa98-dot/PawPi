@@ -9,7 +9,7 @@ notification categories AND makes the toggles truly gate delivery — no fake to
 
 | Ticket | PR | Migration | Gist |
 |---|---|---|---|
-| BX4 PR1 — server prefs + gating | [#404](https://github.com/augustotraversa98-dot/PawPi/pull/404) | **0108** (⏳ awaits hand-apply) | `notification_prefs` own-row + `app_notify()` gate |
+| BX4 PR1 — server prefs + gating | [#404](https://github.com/augustotraversa98-dot/PawPi/pull/404) | **0108** ✅ APPLIED + VERIFIED 2026-08-15 | `notification_prefs` own-row + `app_notify()` gate |
 | BX4 PR2 — mode-aware business Settings UI | [#405](https://github.com/augustotraversa98-dot/PawPi/pull/405) | — | `AppSettings` `mode="business"` + server-backed toggle |
 
 ### The audit (which provider/business notifications actually fire today)
@@ -75,10 +75,8 @@ routes. Recipient direction of each notification type:
 - PR1: web **vitest 1982→1989**, **integration 995→1000**. PR2: mobile **jest 1863→1874**.
 
 ### Deploy / follow-ups
-- ⏳ **Migration 0108 awaits hand-apply** on Supabase (this env can't run DDL). Degrades cleanly:
-  until applied, the old `app_notify` keeps sending (nothing goes silent) and the prefs endpoint's
-  missing-table error is swallowed by the fail-open client helper (toggles read enabled, a change
-  just doesn't persist yet). Run `supabase/verify_0108.sql` after applying (all rows PASS).
+- ✅ **Migration 0108 APPLIED + VERIFIED on Supabase 2026-08-15** (`verify_0108.sql` all rows PASS).
+  The gate is now live: business categories set to off truly stop delivery; fail-open otherwise.
 - ⚠️ **NEEDS ON-DEVICE CONFIRMATION** — business Settings visual (business Profile → Settings shows
   the single "Walk & job requests" toggle; pet-owner categories + Walk-tracking hidden).
 

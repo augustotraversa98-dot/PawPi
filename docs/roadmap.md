@@ -193,7 +193,7 @@ niceties (FF1–FF3) + 2 on-device bugs (BX1·BX2). Status mirror (☐ queued ·
 > landing on a walker's active staff — regular provider bookings notify the **owner**, and chat /
 > reviews / payouts fire **no** notification — so exactly **one** honest category ships (**"Walk &
 > job requests"**); the rest are omitted (no fake toggle). New `notification_prefs` own-row table
-> (**0108**, ⏳ awaits hand-apply) gates delivery inside `app_notify()` (fail-open); `AppSettings`
+> (**0108** ✅ APPLIED + VERIFIED on Supabase 2026-08-15) gates delivery inside `app_notify()` (fail-open); `AppSettings`
 > gains `mode="business"` (server-backed toggle; hides the pet-owner categories + Walk-tracking; pet
 > mode unchanged). E5 pet-owner client-side prefs left as-is (logged split). EN+ES. Gates: vitest
 > 1982→**1989**, integration 995→**1000**, mobile jest 1863→**1874**. **⚠️ business Settings visual
