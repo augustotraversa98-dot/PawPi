@@ -196,4 +196,57 @@ app already supports EN/ES.
 
 ---
 
+## 13. Spanish (es) localization — App Store metadata
+
+PawPi ships EN + ES, so add a **Spanish** localization in ASC and paste the following. Character
+limits are Apple's (same as the EN fields). Spanish screenshots are optional — ASC reuses the English
+set if you don't provide them.
+
+**Subtitle (≤ 30)**
+> Cuidá y conectá a tu perro
+
+**Promotional text (≤ 170)**
+> Seguí la salud de tu perro, poné recordatorios inteligentes, compartí momentos y reservá veterinarios, peluqueros, paseadores y más — todo en una app.
+
+**Keywords (≤ 100, comma-separated, no spaces)**
+```
+perro,cachorro,cuidado mascota,historia clinica,salud perro,recordatorios,paseador,adopcion,comunidad,veterinario
+```
+
+**Description (≤ 4000)**
+```
+PawPi es la app integral para personas con perros: reúne la salud, el día a día y el cuidado de tu perro en un solo lugar cálido y simple.
+
+SEGUÍ LA SALUD, COMO CORRESPONDE
+Registrá peso, chequeos de bienestar, fotos, medicación y vacunas. Llevá una historia clínica real: perfil médico, alergias, condiciones, recetas, resultados de laboratorio y documentos. PawPi te ayuda a registrar cambios y a preparar mejores conversaciones con tu veterinario/a — no diagnostica ni reemplaza la atención veterinaria profesional.
+
+RECORDATORIOS Y RUTINAS INTELIGENTES
+Configurá comidas, paseos, controles con foto, cuidados médicos, chequeos y turnos veterinarios. Cada ítem programado es su propio recordatorio, así no se te pasa nada — y tu vista de "Hoy" muestra exactamente qué toca.
+
+UN FEED SOCIAL PARA TU PERRO
+Dale un perfil a tu perro, compartí momentos del día, sumá patitas y ladridos, y hacé amigos. Armá una racha y celebrá cumpleaños y días de adopción.
+
+COMUNIDAD
+Sumate al foro, encontrá eventos y encuentros cerca, paseá con otros y ayudá a reunir perros perdidos con las alertas de perdidos y encontrados.
+
+TODO LO QUE TU PERRO NECESITA, RESERVABLE
+Descubrí y reservá proveedores de confianza — veterinaria y telemedicina, peluquería, paseos, guardería y hospedaje, cuidado, entrenamiento, transporte, farmacias y seguros — chateá, pagá de forma segura y dejá reseñas. Comprá productos y encontrá perros para adoptar o dar en tránsito.
+
+FAMILIA Y CUIDADO COMPARTIDO
+Compartí el cuidado de tu perro con familiares y cuidadores, con el nivel de acceso que elijas, y revocalo cuando quieras.
+
+PENSADA PARA TU TRANQUILIDAD
+Una tarjeta médica de emergencia imprimible, control total de tu cuenta y tus datos, y la opción de eliminar tu cuenta cuando quieras, desde la app.
+
+Las funciones de salud de PawPi son solo para registro y organización y no brindan diagnóstico ni tratamiento veterinario. Consultá siempre a un veterinario/a matriculado/a.
+```
+
+**"What's New" (v1.0)**
+> ¡Bienvenido/a a PawPi! La app integral para personas con perros: salud, recordatorios inteligentes, un feed social para tu perro, comunidad y un mercado de servicios de confianza. Nos encantaría tu opinión.
+
+**URLs (es):** Support/Marketing/Privacy — use the same hosted `pawpi-legal` URLs (add `/es` variants
+only if you publish Spanish pages; otherwise the EN pages are acceptable).
+
+---
+
 _Prepared as part of the pre-Apple-approval readiness work. Update counts if you change copy._
