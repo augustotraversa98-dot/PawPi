@@ -104,10 +104,15 @@ In App Store Connect → the PawPi app → the **1.0** version:
 - **Localization (EN + ES):** the app is bilingual, so add a **Spanish** ASC localization and paste
   the ES metadata from `app-store-connect-content.md` §13. Spanish screenshots are optional; if you
   skip them ASC reuses the English set.
-- **Permission strings EN/ES:** the `ios.infoPlist` usage strings are currently English. To localize
-  them, add `CFBundleLocalizations: ["en","es"]` and per-locale `InfoPlist.strings` (this needs a
-  config-plugin or a prebuild step; see the note in `app-store-readiness.md`). Not a submission
-  blocker — English usage strings are accepted — but recommended for the ES store listing.
+- **Permission strings EN/ES — ✅ DONE (PP2).** `expo.locales` in `app.json` points at
+  `anything/apps/mobile/locales/{en,es}.json`, and `ios.infoPlist.CFBundleLocalizations` is
+  `["en","es"]`. Prebuild turns each file into an `<locale>.lproj/InfoPlist.strings`, so iOS renders
+  the camera / photos / location / microphone / calendar prompts in the user's language. The English
+  file mirrors `ios.infoPlist` verbatim (the base fallback); `locales/locales.test.js` pins key
+  parity + that mirror in CI. **Verify once on the build:** run a Spanish-language device or
+  simulator against the TestFlight build and confirm one prompt (camera is easiest) comes up in
+  Spanish. If it doesn't, the cause is almost always the `.lproj` folders missing from the archive —
+  re-run `expo prebuild --clean` before `eas build`.
 
 ## 6. Submit for review
 

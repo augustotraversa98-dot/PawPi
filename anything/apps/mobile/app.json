@@ -15,12 +15,17 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
+    "locales": {
+      "en": "./locales/en.json",
+      "es": "./locales/es.json"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pawpi.app",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleLocalizations": ["en", "es"],
         "NSLocationWhenInUseUsageDescription": "PawPi uses your location to find nearby pet-friendly places, vets, walkers and meetups, to set a location on social walks, transport and events, and to share your live location while you drive a pet-taxi trip.",
         "NSCameraUsageDescription": "PawPi uses the camera so you can take photos of your pet for their profile, daily moments, health checks and vet records.",
         "NSPhotoLibraryUsageDescription": "PawPi accesses your photo library so you can choose photos and documents for your pet's profile, posts, health records and chats.",

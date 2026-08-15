@@ -1167,3 +1167,10 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   opens is a push, so pet-profile stacked on it and the photo sheet on that. Now one back stack, with
   a real back affordance; a source-level nav-contract test pins it. mobile jest 1887→1891.
   ⚠️ on-device feel check still owed. (2026-08-15.)
+- **PP2 — EN/ES parity: iOS permission prompts + ModerationMenu + Search** — ✅ mobile + app config,
+  no migration. `expo.locales` + `CFBundleLocalizations` so the **OS** renders camera/photos/location/
+  mic/calendar prompts in Spanish (guarded by `locales/locales.test.js`, since nothing at runtime
+  could catch drift); `ModerationMenu` fully through `t()` (`REPORT_REASONS.labelKey` — the wire
+  `key` unchanged); Search & Discover localized (10 new keys). `*.es.test.jsx` companions render the
+  real Spanish catalog. mobile jest 1891→1905. Residual debt logged: 158 hardcoded `Alert.alert`
+  literals, 83/255 files using `useTranslation` — its own ticket. (2026-08-15.)

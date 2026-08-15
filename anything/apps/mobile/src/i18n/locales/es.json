@@ -18,7 +18,29 @@
   "moderation": {
     "deleteCommentTitle": "¿Eliminar comentario?",
     "deleteCommentBody": "Esto eliminará tu comentario para todos. No se puede deshacer.",
-    "deleteCommentA11y": "Eliminar tu comentario"
+    "deleteCommentA11y": "Eliminar tu comentario",
+    "moreOptions": "Más opciones",
+    "dismissMenu": "Cerrar el menú",
+    "report": "Reportar",
+    "blockUser": "Bloquear usuario",
+    "reasonPrompt": "¿Por qué lo reportás?",
+    "reasonA11y": "Motivo del reporte: {{reason}}",
+    "reasonSpam": "Spam o estafa",
+    "reasonHarassment": "Acoso o bullying",
+    "reasonHate": "Discurso de odio",
+    "reasonSexual": "Desnudez o contenido sexual",
+    "reasonViolence": "Violencia o amenazas",
+    "reasonOther": "Otra cosa",
+    "reportedTitle": "Gracias por reportarlo",
+    "reportedBody": "Nuestro equipo lo va a revisar dentro de las próximas 24 horas.",
+    "reportFailedTitle": "No pudimos enviar el reporte",
+    "blockConfirmTitle": "¿Bloquear a esta persona?",
+    "blockConfirmBody": "No van a ver las publicaciones, comentarios, paseos ni mensajes del otro, y ninguno de los dos va a poder contactar al otro.",
+    "blockAction": "Bloquear",
+    "blockedTitle": "Usuario bloqueado",
+    "blockedBody": "Su contenido va a desaparecer de tu app.",
+    "blockFailedTitle": "No pudimos bloquear",
+    "pleaseTryAgain": "Intentá de nuevo."
   },
   "common": {
     "save": "Guardar",
@@ -104,7 +126,17 @@
   "search": {
     "title": "Buscar y descubrir",
     "noResults": "Sin resultados",
-    "nothingHere": "Todavía no hay nada por aquí"
+    "nothingHere": "Todavía no hay nada por aquí",
+    "placeholder": "Buscá mascotas, razas, dueños o negocios…",
+    "clearQuery": "Borrar la búsqueda",
+    "pets": "MASCOTAS",
+    "businesses": "NEGOCIOS",
+    "petParents": "DUEÑOS",
+    "popularProfiles": "PERFILES POPULARES",
+    "popularMoments": "MOMENTOS POPULARES",
+    "noResultsHint": "Probá con otra búsqueda",
+    "nothingHereHint": "Los perfiles y momentos populares van a aparecer a medida que crezca la comunidad",
+    "byOwner": "de {{name}}"
   },
   "messages": {
     "title": "Mensajes",

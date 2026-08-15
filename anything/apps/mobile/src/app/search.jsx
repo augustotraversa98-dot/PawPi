@@ -82,7 +82,7 @@ export default function SearchScreen() {
               letterSpacing: -0.3,
             }}
           >
-            Search & Discover
+            {t("search.title")}
           </Text>
           <View style={{ width: 22 }} />
         </View>
@@ -103,14 +103,18 @@ export default function SearchScreen() {
           <Search size={18} color={COLORS.mutedBrown} />
           <TextInput
             style={{ flex: 1, fontSize: 15, color: COLORS.warmBrown, padding: 0 }}
-            placeholder="Search pets, breeds, owners, or businesses…"
+            placeholder={t("search.placeholder")}
             placeholderTextColor={COLORS.mutedBrown}
             value={query}
             onChangeText={setQuery}
             autoFocus
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t("search.clearQuery")}
+              onPress={() => setQuery("")}
+            >
               <X size={16} color={COLORS.mutedBrown} />
             </TouchableOpacity>
           )}
@@ -124,6 +128,7 @@ export default function SearchScreen() {
       >
         {searching ? (
           <SearchResults
+            t={t}
             data={search.data}
             isLoading={search.isLoading}
             onOpenPet={openPet}
@@ -131,6 +136,7 @@ export default function SearchScreen() {
           />
         ) : (
           <Discover
+            t={t}
             data={discover.data}
             isLoading={discover.isLoading}
             onOpenPet={openPet}
@@ -199,7 +205,7 @@ function EmptyState({ emoji = "🔍", title, subtitle }) {
   );
 }
 
-function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
+function SearchResults({ t, data, isLoading, onOpenPet, onOpenProvider }) {
   if (isLoading) return <Loading />;
   const pets = data?.pets ?? [];
   const owners = data?.owners ?? [];
@@ -208,7 +214,10 @@ function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
 
   if (total === 0) {
     return (
-      <EmptyState title="No results" subtitle="Try a different search term" />
+      <EmptyState
+        title={t("search.noResults")}
+        subtitle={t("search.noResultsHint")}
+      />
     );
   }
 
@@ -216,7 +225,11 @@ function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
     <View>
       {pets.length > 0 && (
         <>
-          <SectionHeader Icon={PawPrint} color={COLORS.terracotta} label="PETS" />
+          <SectionHeader
+            Icon={PawPrint}
+            color={COLORS.terracotta}
+            label={t("search.pets")}
+          />
           {pets.map((p) => (
             <ResultRow
               key={`pet-${p.id}`}
@@ -234,7 +247,11 @@ function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
 
       {providers.length > 0 && (
         <>
-          <SectionHeader Icon={Store} color={COLORS.coral} label="BUSINESSES" />
+          <SectionHeader
+            Icon={Store}
+            color={COLORS.coral}
+            label={t("search.businesses")}
+          />
           {providers.map((pr) => (
             <ResultRow
               key={`prov-${pr.id}`}
@@ -251,7 +268,11 @@ function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
 
       {owners.length > 0 && (
         <>
-          <SectionHeader Icon={User} color={COLORS.sage} label="PET PARENTS" />
+          <SectionHeader
+            Icon={User}
+            color={COLORS.sage}
+            label={t("search.petParents")}
+          />
           {owners.map((o) => (
             <ResultRow
               key={`owner-${o.id}`}
@@ -268,7 +289,7 @@ function SearchResults({ data, isLoading, onOpenPet, onOpenProvider }) {
   );
 }
 
-function Discover({ data, isLoading, onOpenPet }) {
+function Discover({ t, data, isLoading, onOpenPet }) {
   if (isLoading) return <Loading />;
   const profiles = data?.profiles ?? [];
   const moments = data?.moments ?? [];
@@ -277,8 +298,8 @@ function Discover({ data, isLoading, onOpenPet }) {
     return (
       <EmptyState
         emoji="🐾"
-        title="Nothing here yet"
-        subtitle="Popular pets and moments will appear as the community grows"
+        title={t("search.nothingHere")}
+        subtitle={t("search.nothingHereHint")}
       />
     );
   }
@@ -290,7 +311,7 @@ function Discover({ data, isLoading, onOpenPet }) {
           <SectionHeader
             Icon={PawPrint}
             color={COLORS.terracotta}
-            label="POPULAR PROFILES"
+            label={t("search.popularProfiles")}
           />
           {profiles.map((p) => (
             <ResultRow
@@ -298,7 +319,10 @@ function Discover({ data, isLoading, onOpenPet }) {
               testID="discover-profile"
               avatar={p.avatar_url}
               title={p.name}
-              subtitle={[p.breed, p.owner_name ? `by ${p.owner_name}` : null]
+              subtitle={[
+                p.breed,
+                p.owner_name ? t("search.byOwner", { name: p.owner_name }) : null,
+              ]
                 .filter(Boolean)
                 .join(" • ")}
               stats={[
@@ -316,7 +340,7 @@ function Discover({ data, isLoading, onOpenPet }) {
           <SectionHeader
             Icon={Sparkles}
             color={COLORS.honey}
-            label="POPULAR PET MOMENTS"
+            label={t("search.popularMoments")}
           />
           <ScrollView
             horizontal
