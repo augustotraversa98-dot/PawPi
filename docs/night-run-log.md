@@ -889,3 +889,15 @@ day one; no fake data. One line per merge.
   increment is in the request tx, so a rolled-back 500 doesn't count (handled 4xx still do) —
   under-counts, never over-counts. Gates: web vitest 2023→**2048**, integration 1020→**1035**
   (+15 real-Postgres cases), mobile untouched (jest 1905).
+- **2026-08-15 (PP3 apply)** — **Migration 0113 APPLIED + VERIFIED on Supabase prod**
+  (`qaebbesldduvgwttqlnq`). All 9 structural checks PASS (table, PK, ENABLE+FORCE RLS, exactly ONE
+  SELECT-only policy, both DEFINER fns with pinned search_path, both granted to pawpi_app), and the
+  behaviour check passes on prod: 1:true → 2:true → 3:false at a limit of 2, collapsing to one live
+  window row. Probe rows deleted; `rate_limit_hits` left at 0 rows. **Fixed in verify_0113.sql:**
+  the first version called the function three times inside a SINGLE SQL statement (a lateral over
+  `values (1),(2),(3)`), where all three calls share one snapshot, each sees an empty counter and
+  returns hits=1 — a false FAIL against a limiter that was working correctly. The behaviour probe is
+  now a DO block (one call per plpgsql statement), which is also why the harness integration test
+  always read it right. Two `max(boolean)` aggregates in the same script were fixed to `bool_or`.
+  Railway needs no action beyond the normal deploy on merge — the limiter fails open, so the window
+  between deploy and apply was a no-op.
