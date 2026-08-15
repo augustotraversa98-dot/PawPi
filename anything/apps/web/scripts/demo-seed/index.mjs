@@ -66,13 +66,17 @@ async function getOrCreateAccount(sql, acct, passwordHash) {
   // user_profiles (RLS disabled)
   let [p] = await sql`SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1`;
   if (!p) {
+    // is_demo = true (0111): flags every seeded account so its content is excluded from the
+    // GLOBAL surfaces (Discover / Search / feed Suggested / provider+adoption discovery) and
+    // can never leak into real users' feeds. Owner/following-scoped views are unaffected, so
+    // the App-Review demo login still sees a fully-populated app.
     [p] = await sql`
-      INSERT INTO user_profiles (auth_user_id, full_name, username, role)
-      VALUES (${authUserId}, ${acct.name}, ${acct.username}, ${acct.role})
+      INSERT INTO user_profiles (auth_user_id, full_name, username, role, is_demo)
+      VALUES (${authUserId}, ${acct.name}, ${acct.username}, ${acct.role}, true)
       RETURNING id`;
   } else {
     await sql`
-      UPDATE user_profiles SET full_name = ${acct.name}, role = ${acct.role}, updated_at = now()
+      UPDATE user_profiles SET full_name = ${acct.name}, role = ${acct.role}, is_demo = true, updated_at = now()
       WHERE id = ${p.id}`;
   }
   return { authUserId, profileId: p.id };
@@ -87,8 +91,8 @@ async function getOrCreateFiller(sql, f) {
     INSERT INTO auth_users (name, email, "emailVerified", image)
     VALUES (${fullName}, null, null, null) RETURNING id`;
   [p] = await sql`
-    INSERT INTO user_profiles (auth_user_id, full_name, username, role)
-    VALUES (${u.id}, ${fullName}, ${username}, 'pet_owner') RETURNING id`;
+    INSERT INTO user_profiles (auth_user_id, full_name, username, role, is_demo)
+    VALUES (${u.id}, ${fullName}, ${username}, 'pet_owner', true) RETURNING id`;
   return p.id;
 }
 
@@ -179,13 +183,15 @@ async function seedProvider(sql, profile, pet, urls) {
       await tx`
         UPDATE providers SET name = ${P.name}, bio = ${P.bio}, provider_type = ${P.provider_type},
           logo_url = ${urls[P.logoAsset]}, cover_image_url = ${urls[P.coverAsset]},
-          website_url = ${P.website_url}, status = 'published', updated_at = now()
+          website_url = ${P.website_url}, status = 'published', is_demo = true, updated_at = now()
         WHERE id = ${prov.id}`;
     } else {
+      // is_demo = true (0111): a demo provider (mirrors the owner profile) so the seed clinic
+      // is excluded from provider + adoption discovery for real users.
       [prov] = await tx`
-        INSERT INTO providers (owner_user_profile_id, provider_type, name, slug, bio, logo_url, cover_image_url, website_url, status)
+        INSERT INTO providers (owner_user_profile_id, provider_type, name, slug, bio, logo_url, cover_image_url, website_url, status, is_demo)
         VALUES (${me}, ${P.provider_type}, ${P.name}, ${P.slug}, ${P.bio}, ${urls[P.logoAsset]},
-          ${urls[P.coverAsset]}, ${P.website_url}, 'published')
+          ${urls[P.coverAsset]}, ${P.website_url}, 'published', true)
         RETURNING id`;
     }
     // Ensure the owner staff row exists (bootstrap = membership-absence; safe to re-check).
@@ -544,6 +550,27 @@ async function main() {
   }
   const host = new URL(connectionString).hostname;
   console.log(`🎯 Target database host: ${host}`);
+
+  // Production guard (0111 / night-run A2a): seeding fake data into the live DB is how demo
+  // content leaked into real users' feeds in the first place. If DEMO_DATABASE_URL is unset we
+  // are pointed at the app's own DATABASE_URL (production), so refuse unless the operator opts
+  // in EXPLICITLY with ALLOW_PROD_SEED=1 (the sanctioned App-Review reseed path). Reset is
+  // always allowed — removing demo data from prod is exactly what we want to be easy.
+  if (wantSeed && !env.DEMO_DATABASE_URL && env.ALLOW_PROD_SEED !== "1") {
+    console.error(
+      [
+        "Refusing to SEED: no DEMO_DATABASE_URL set, so the target is the app's own",
+        `DATABASE_URL (host ${host}) — i.e. PRODUCTION.`,
+        "",
+        "  • Dev/staging seed:  DEMO_DATABASE_URL=<staging-url> SEED_DEMO=1 node scripts/demo-seed/index.mjs",
+        "  • Sanctioned prod reseed (App Review): ALLOW_PROD_SEED=1 SEED_DEMO=1 node scripts/demo-seed/index.mjs",
+        "",
+        "Seeded accounts are flagged is_demo=true (0111) so their content is excluded from all",
+        "global feeds/discovery — but seeding prod is still an explicit, deliberate act.",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
 
   const sql = createSql(connectionString, env);
   try {

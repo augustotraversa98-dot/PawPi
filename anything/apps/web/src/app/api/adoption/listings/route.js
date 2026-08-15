@@ -133,6 +133,8 @@ async function GET(request) {
           LIMIT 1
         ) loc ON true
         WHERE al.status = 'available'
+          -- Exclude demo/seed shelters' listings (0111) from real adoption browse.
+          AND p.is_demo IS NOT TRUE
           AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
           AND (${gender}::text IS NULL OR al.gender = ${gender})
           AND (${size}::text IS NULL OR al.size = ${size})
@@ -184,6 +186,8 @@ async function GET(request) {
           LIMIT 1
         ) loc ON true
         WHERE al.status = 'available'
+          -- Exclude demo/seed shelters' listings (0111) from real adoption browse.
+          AND p.is_demo IS NOT TRUE
           AND (${providerId}::int IS NULL OR al.provider_id = ${providerId})
           AND (${gender}::text IS NULL OR al.gender = ${gender})
           AND (${size}::text IS NULL OR al.size = ${size})

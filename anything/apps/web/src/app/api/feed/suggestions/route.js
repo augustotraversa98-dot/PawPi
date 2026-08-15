@@ -71,6 +71,7 @@ async function GET(request) {
           FROM providers p
           JOIN provider_capabilities pc ON pc.provider_id = p.id
           WHERE p.status = 'published' AND pc.capability = ${type}
+            AND p.is_demo IS NOT TRUE
           ORDER BY avg_rating DESC NULLS LAST, p.name ASC
           LIMIT ${providerLimit}
         `
@@ -81,6 +82,7 @@ async function GET(request) {
             (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
           FROM providers p
           WHERE p.status = 'published'
+            AND p.is_demo IS NOT TRUE
           ORDER BY avg_rating DESC NULLS LAST, p.name ASC
           LIMIT ${providerLimit}
         `;
@@ -96,6 +98,7 @@ async function GET(request) {
       FROM adoptable_listings l
       JOIN providers pr ON pr.id = l.provider_id
       WHERE l.status = 'available' AND pr.status = 'published'
+        AND pr.is_demo IS NOT TRUE
       ORDER BY l.created_at DESC, l.id DESC
       LIMIT ${adoptionLimit}
     `;

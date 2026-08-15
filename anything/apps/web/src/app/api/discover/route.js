@@ -48,6 +48,8 @@ async function GET(request) {
         (SELECT COUNT(*)::int FROM posts po WHERE po.pet_id = p.id) AS daily_posts
       FROM pets p
       LEFT JOIN user_profiles ow ON ow.id = p.owner_user_id
+      -- Exclude demo/seed content (0111) so App-Review seed pets never rank in real Discover.
+      WHERE ow.is_demo IS NOT TRUE
       ORDER BY followers DESC, paws DESC, p.created_at DESC, p.id DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
@@ -73,6 +75,8 @@ async function GET(request) {
       LEFT JOIN (
         SELECT post_id, COUNT(*) AS count FROM post_barks GROUP BY post_id
       ) bark ON bark.post_id = p.id
+      -- Exclude demo/seed moments (0111) so seed posts never surface in real Discover.
+      WHERE p.user_id NOT IN (SELECT id FROM user_profiles WHERE is_demo)
       ORDER BY p.created_at DESC, p.id DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
