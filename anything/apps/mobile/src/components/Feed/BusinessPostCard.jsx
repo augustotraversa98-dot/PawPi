@@ -103,7 +103,7 @@ export const BusinessPostCard = memo(function BusinessPostCard({ post, onPress }
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]} numberOfLines={1}>
             {handle ? `@${handle} · ` : ""}
-            {formatRelativeTime(post.created_at) || t("feed.justNow")}
+            {formatRelativeTime(post.created_at, { t })}
           </Text>
         </View>
       </TouchableOpacity>

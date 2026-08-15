@@ -766,3 +766,19 @@ day one; no fake data. One line per merge.
   on CareRingCard + VetSummaryReadinessCard on Health->Today (links to the Vet Record). Behavioral, not
   diagnostic; a no-shame grep test guards the copy. EN+ES. Gates: mobile jest 1805->1809 (+4), web
   integration 928->932 (+4), web vitest 1924. **Pet Owner engagement wave E5–E10 COMPLETE.**
+
+## Pre-launch night run (2026-08-16 plan) — see docs/night-run-2026-08-16-report.md
+
+- **2026-08-15 (A2a)** — Demo/seed content leak into real feeds/discovery FIXED — #410. Migration
+  **0111** (`user_profiles.is_demo` + denormalized `providers.is_demo`, additive, no RLS change)
+  **APPLIED + VERIFIED on Supabase prod**; safe backfill flagged **58 demo profiles + 1 demo provider**
+  (no deletes). Exclusion added to all 7 global surfaces (discover, search, feed/suggestions,
+  providers/discover, services/discover, adoption/listings, posts Suggested); owner/following-scoped
+  views untouched so the App-Review demo login still shows a populated app. Seed runner stamps
+  is_demo + refuses prod without ALLOW_PROD_SEED=1. New integration test demo-content-guard (5 cases).
+  Prod was 58/72 demo profiles at run start. Gates: web vitest 2027 / integration 1021.
+- **2026-08-15 (A2b)** — Honest + localized post timestamps FIXED. NO migration. Removed the hardcoded
+  `"just now"` fallback in PostCard + PostDetailModal (a fabricated time when created_at absent; the
+  `post.timestamp` fallback was dead mock code). `formatRelativeTime` now localizes via an optional
+  `{ now, t }` arg (back-compat with the positional `now`); added feed.minutesShort/hoursShort/
+  daysShort/yesterday to en+es. All 5 call sites pass `{ t }` + drop the lie. Gates: mobile jest 1885.

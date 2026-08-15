@@ -10,7 +10,8 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 ## Executive summary (updated as the run proceeds)
 
 **Shipped so far:**
-- (A2a) **Demo/seed content leak into real users' feeds — FIXED.** See below.
+- (A2a) **Demo/seed content leak into real users' feeds — FIXED & MERGED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod).
+- (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED** (PR pending).
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
@@ -63,7 +64,39 @@ pets opted in).
 **Why not delete the rows?** The demo account must stay for Apple review. Marking + filtering is the
 "soft-remove/guard" the plan calls for — reversible, no prod data destroyed, real users see nothing.
 
-**PR:** _fix/demo-content-leak-guard (pending push/CI/merge)._
+**PR:** [#410](https://github.com/augustotraversa98-dot/PawPi/pull/410) — **MERGED**. Migration 0111
+APPLIED + VERIFIED on prod; 58 demo profiles + 1 demo provider backfilled `is_demo=true`.
+
+### A2b — Stale / dishonest / English-only "just now" post timestamps — **P1 → FIXED**
+
+**Finding.** Post timestamps had two bugs:
+1. **The lie.** `PostCard` and `PostDetailModal` rendered
+   `formatRelativeTime(post.created_at) || post.timestamp || "just now"` — a hardcoded `"just now"`
+   fallback. Any post whose `created_at` was missing/unparseable (and the dead `post.timestamp` mock
+   field) displayed a **fabricated "just now"** regardless of real age. (`post.timestamp` came only
+   from `src/data/feedData.js`, a mock that is imported nowhere — dead code.)
+2. **EN/ES parity break.** `formatRelativeTime` returned English literals (`"just now"`, `"yesterday"`,
+   `"5m"`, `"3d"`) to **every** user — Spanish users saw English timestamps on every post. Only
+   `BusinessPostCard` localized its fallback.
+
+**Fix.**
+- `relativeTime.js` now takes an optional translator: 2nd arg is either a `now` epoch (back-compat) or
+  `{ now, t }`. With `t`, every bucket is localized via `feed.*` keys; without it, English literals
+  (keeps the pure unit tests + any untranslated caller working). A missing/invalid timestamp still
+  returns `""` (renders nothing — never a fabricated time).
+- Added `feed.minutesShort` / `hoursShort` / `daysShort` / `yesterday` to **en.json + es.json**
+  (`feed.justNow` already existed). ES: "hace {{count}} min/h/d", "ayer".
+- All 5 call sites (`PostCard`, `PostDetailModal`, `BusinessPostCard`, `provider-post` ×2) now pass
+  `{ t }` and **dropped the `"just now"` / `post.timestamp` fallbacks**.
+- Tests: extended `relativeTime.test.js` with the localized (`{ now, t }`) path + honesty cases;
+  wired the English-catalog i18n mock into `PostDetailModal.test.jsx`.
+
+Note: `posts.created_at` is `timestamptz` on prod (serializes with tz), so real feed posts always
+carried a parseable timestamp — the visible "Mango just now" symptom was compounded by the A2a leak
+(demo posts appearing at all). The formatter itself was already correct on valid input; this fix
+removes the dishonest fallback + closes the i18n gap.
+
+**PR:** _fix/honest-relative-timestamps (pending push/CI/merge)._
 
 ---
 

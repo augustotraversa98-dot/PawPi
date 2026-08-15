@@ -44,7 +44,11 @@
     "dailyPrompt": "Share today's daily",
     "empty": "Nothing here yet",
     "businessEyebrow": "BUSINESS YOU FOLLOW",
-    "justNow": "just now"
+    "justNow": "just now",
+    "minutesShort": "{{count}}m",
+    "hoursShort": "{{count}}h",
+    "daysShort": "{{count}}d",
+    "yesterday": "yesterday"
   },
   "health": {
     "title": "Health",
