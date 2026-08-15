@@ -12,7 +12,8 @@ is its own PR (CI-green → merge → deploy/verify → log). Severity: **P0** b
 **Shipped so far:**
 - (A2a) **Demo/seed content leak into real users' feeds — FIXED & MERGED** ([#410](https://github.com/augustotraversa98-dot/PawPi/pull/410); migration 0111 applied+verified on prod).
 - (A2b) **Stale/dishonest + English-only "just now" post timestamps — FIXED & MERGED** ([#411](https://github.com/augustotraversa98-dot/PawPi/pull/411)).
-- (A3) **Comment moderation gap — feed comments (barks) lacked Block + Delete-own — FIXED** (PR pending).
+- (A3) **Comment moderation gap — feed comments (barks) lacked Block + Delete-own — FIXED & MERGED** ([#412](https://github.com/augustotraversa98-dot/PawPi/pull/412)).
+- (A3-follow-up) **Business-post (provider-post) comments lacked Report + Block — FIXED** (migration 0112 applied+verified on prod; PR pending).
 
 **On-device punch list (for Tats):** _accumulating — see the Punch List section._
 
@@ -109,7 +110,7 @@ removes the dishonest fallback + closes the i18n gap.
 | Feed post (PostCard) | ✓ via detail | ✓ via detail | ✓ via detail | moderation reachable by opening the post; a card-level ··· is a nice-to-have (punch list) |
 | Feed **comment (bark)** | ✓ | **added** | **added** | **FIXED this PR** — was Report-only |
 | Business **post** (provider-post) | ✓ | ✓ | ✓ | complete |
-| Business **comment** (provider-post) | **✗ missing** | **✗ missing** | ✓ | delete-own present; Report+Block absent → **A3-follow-up PR** (needs `content_reports.target_type` CHECK widened for `provider_post_comment` + ModerationMenu wiring) |
+| Business **comment** (provider-post) | **added** | **added** | ✓ | **FIXED (follow-up PR)** — migration 0112 widened `content_reports.target_type` for `provider_post_comment`; ModerationMenu (report+block via `c.author_user_id`) now on non-own business-post comments |
 | Forum thread/comment, DM, reviews, adoption, events, lost | ✓ | ✓ | — | ModerationMenu already present |
 
 **Fixed this PR (feed comments / barks):** added a DELETE endpoint
@@ -137,8 +138,8 @@ migration; doing it next.
 
 ## DEFERRED / BLOCKED
 
-- **A3-follow-up — Business-post (provider-post) comments need Report + Block.** Delete-own is
-  present; Report/Block are not. Fix: migration to widen `content_reports.target_type` CHECK with
-  `provider_post_comment`, add it to the reports route's allowed set, and render `ModerationMenu`
-  (report + block via the comment author's user id) on non-own business-post comments. **Being done
-  as the immediate next PR.**
+- **ModerationMenu labels are English-only (EN/ES parity).** The shared `ModerationMenu`
+  ("Report", "Block user", the report-reason labels) is hardcoded English — a pre-existing parity
+  gap on every moderation surface, not introduced here. Flagged for an i18n pass (localize the
+  `ModerationMenu` component + `REPORT_REASONS`). Not an Apple blocker (the actions work); tracked
+  for the A3 i18n sweep.

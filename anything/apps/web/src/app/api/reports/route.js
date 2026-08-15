@@ -14,7 +14,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 const TARGET_TYPES = new Set([
   "post", "bark", "forum_thread", "forum_comment", "dm_message", "provider_message",
   "review", "pet_profile", "user_profile", "adoption_listing", "event", "social_walk",
-  "lost_report", "provider_post",
+  "lost_report", "provider_post", "provider_post_comment",
 ]);
 const REASONS = new Set(["spam", "harassment", "hate", "sexual", "violence", "other"]);
 

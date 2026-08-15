@@ -469,7 +469,15 @@ export default function ProviderPostScreen() {
                           >
                             <Trash2 size={15} color={COLORS.mutedBrown} />
                           </TouchableOpacity>
-                        ) : null}
+                        ) : (
+                          // Someone else's comment: Report + Block the commenter (Apple 1.2, A3).
+                          <ModerationMenu
+                            targetType="provider_post_comment"
+                            targetId={c.id}
+                            authorUserId={c.author_user_id}
+                            iconSize={15}
+                          />
+                        )}
                       </View>
                     </View>
                     <Text style={{ fontSize: 14, color: COLORS.warmBrown, lineHeight: 20 }}>
