@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 
@@ -144,7 +145,9 @@ async function DELETE(request, { params }) {
   }
 }
 
+// PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
+// — a shared, DB-backed fixed-window counter. Reads are never limited.
 const wrappedGET = withRequestContext(GET);
-const wrappedPOST = withRequestContext(POST);
-const wrappedDELETE = withRequestContext(DELETE);
+const wrappedPOST = withRequestContext(withRateLimit("follow_toggle", POST));
+const wrappedDELETE = withRequestContext(withRateLimit("follow_toggle", DELETE));
 export { wrappedGET as GET, wrappedPOST as POST, wrappedDELETE as DELETE };

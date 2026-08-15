@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { safeNotify, bookingNotifyBody, bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import { ALLOWED_CAPABILITIES } from "@/app/api/utils/providerAuth";
@@ -646,5 +647,7 @@ async function POST(request, { params }) {
 
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
-const wrappedPOST = withRequestContext(POST);
+// PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
+// — a shared, DB-backed fixed-window counter. Reads are never limited.
+const wrappedPOST = withRequestContext(withRateLimit("booking_create", POST));
 export { wrappedPOST as POST };

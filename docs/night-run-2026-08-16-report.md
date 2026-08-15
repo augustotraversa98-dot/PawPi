@@ -364,10 +364,8 @@ Submit for Review.
   it is the wire value posted to `/api/reports` and must never be translated.
 - ~~**iOS permission usage strings are EN-only.**~~ ✅ **FIXED in PP2** — `expo.locales` +
   `CFBundleLocalizations: ["en","es"]`; see below.
-- **No application-level rate-limiting on writes (A4).** Auth + RLS + content-filter mitigate abuse,
-  but there is no per-identity write throttle. Recommend edge (Railway/Cloudflare) or a small
-  per-identity limiter on posts/barks/reports/messages/bookings. Needs a shared store + design; not
-  built here.
+- ~~**No application-level rate-limiting on writes (A4).**~~ ✅ **FIXED in PP3** — a DB-backed
+  fixed-window limiter (migration 0113) on the seven high-risk write handlers. See the PP3 section.
 - **Redundant duplicate indexes (Phase B).** Harmless but add write cost; a future cleanup migration
   can drop one of each pair (SCHEMA_NOTES lists them). Low benefit at current scale.
 - **`PawPi_instructions.md` snapshot refresh — left to Augusto.** The file has **uncommitted local
@@ -386,7 +384,7 @@ Three of the DEFERRED items above are being closed by the fix-pack driven from
 |---|---|---|
 | **PP1** — Search/Discovery card push | A2c "layers on layers" | ✅ **FIXED** — [#417](https://github.com/augustotraversa98-dot/PawPi/pull/417) · ⚠️ on-device feel check owed |
 | **PP2** — EN/ES parity | ModerationMenu labels + EN-only iOS permission strings | ✅ **FIXED** — see below |
-| **PP3** — Write rate-limiting | A4 rate-limiting gap | _queued_ |
+| **PP3** — Write rate-limiting | A4 rate-limiting gap | ✅ **FIXED** — see below (migration 0113) |
 
 ### PP2 — EN/ES parity
 
@@ -430,3 +428,63 @@ wants its own ticket and its own review, not a fix-pack rider. Highest-value nex
 traffic): the booking/service flows (`service/*.jsx`), `profile-edit`, the onboarding photo screens,
 and the walker/sitter workspaces. Not an Apple blocker — the ES store listing, the legal docs and
 now the permission prompts are all bilingual.
+
+### PP3 — Write rate-limiting
+
+**The gap.** The A4 audit found authorization strong (48 RLS integration files proving cross-tenant
+denial) but **no throttle on writes**: one account could post, comment, report, follow or book in a
+tight loop. Abuse and cost, not authorization.
+
+**Why the store is Postgres.** The web app runs as several Railway instances behind a load balancer,
+so an in-process `Map` is per-instance and a caller just spreads the burst across replicas. The
+counter has to live in the one thing every instance shares.
+
+**Migration 0113** (`rate_limit_hits` + two DEFINER functions; additive; `verify_0113.sql`):
+- `rate_limit_hits`, PK `(bucket, subject, window_start)`. `subject` is `'u:<user_profiles.id>'`, or
+  `'ip:<addr>'` when unauthenticated — prefixed so the two id spaces cannot collide. `bucket` is
+  free-form by design: the limits live in the app-side catalog, so adding a limited endpoint never
+  needs a migration.
+- **ENABLE + FORCE RLS, one SELECT-only own-row policy, and no write policy at all.** That is the
+  security property: `pawpi_app` cannot INSERT/UPDATE/DELETE the table on any code path, so a caller
+  cannot reset their own counter. The only writer is `app_rate_limit_hit()` (SECURITY DEFINER, pinned
+  search_path), which does the whole check in one atomic upsert.
+- **Self-cleaning.** The upsert detects it INSERTED (`xmax = 0` — the first hit of a new window) and
+  only then deletes that same `(bucket, subject)`'s older rows. Steady state is one row per active
+  subject, so the table tracks active users, not traffic. `app_rate_limit_gc()` sweeps the tail of
+  one-off visitors who never came back.
+
+**Limits (generous — abuse protection, not a quota).** `post_create` 12/5min · `bark_create` 30/5min
+· `report_create` 20/h · `booking_create` 15/h · `paw_toggle` 120/min · `follow_toggle` 60/5min.
+Applied to seven handlers: `POST /api/posts`, `POST /api/posts/[id]/barks`,
+`POST|DELETE /api/posts/[id]/paw`, `POST /api/reports`, `POST|DELETE /api/pets/[id]/follow`,
+`POST|DELETE /api/providers/[id]/follow`, `POST /api/providers/[id]/book`. **No GET is wrapped** —
+reads are never limited, and a test proves a read leaves the counter at zero.
+
+**The 429** carries `Retry-After`, a stable `code: "rate_limited"`, and **both** `message_en` and
+`message_es`. The `error` field (the one the mobile client surfaces via `new Error(err.error)`) is
+resolved server-side from the caller's stored `preferred_locale`, falling back to `Accept-Language`,
+falling back to English.
+
+**Three rules the implementation keeps, in priority order:**
+1. **Reads are never limited.**
+2. **It fails open.** Missing table, missing function, connection trouble — logged once, write
+   proceeds. A limiter that 500s the app it protects is worse than no limiter, and it means the code
+   could ship before the migration was applied.
+3. **It cannot poison the request.** The counter call runs inside a SAVEPOINT, so a failed query
+   rolls back to the savepoint instead of aborting the request transaction — which
+   `withRequestContext` would otherwise turn into a blanket 500 (the documented hazard on
+   `withSavepoint`).
+
+**Known, accepted limitation (logged, not hidden).** The increment lives in the request transaction,
+so a request that ends in a rollback (an unhandled 500) does not count; handled 4xx responses still
+commit and still count. Closing it would mean a second connection per limited write — not worth it
+at launch scale, and the failure mode is under-counting, never over-counting.
+
+**Tests.** `rateLimit.test.js` (25 cases) pins the JS decisions — subject derivation, the 429 shape,
+locale selection, and every fail-open path. `rate-limit.integration.test.ts` (15 cases, real
+Postgres as `pawpi_app` under FORCE RLS) proves the store counts and denies exactly at the limit,
+that subjects and buckets are independent, that a window rolls and collapses to one row, that a
+caller's own INSERT/UPDATE/DELETE against the counter are all denied and SELECT is own-row, and —
+through the **real** paw handler — that under-limit passes, over-limit 429s with EN+ES copy, one
+user's burst never spends another's allowance, and a GET never touches the counter. Gates: web
+vitest 2023 → **2048**, integration 1020 → **1035**.
