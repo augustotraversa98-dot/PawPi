@@ -16,7 +16,7 @@ cuenta o usar el Servicio, aceptás estos Términos y nuestra Política de Priva
 
 Debés tener al menos 16 años para usar PawPi. Sos responsable de la exactitud de la información que
 proporcionás, de mantener seguras tus credenciales y de toda la actividad de tu cuenta. Avisanos de
-inmediato a **augusto@pawpi.info** si sospechás de un uso no autorizado.
+inmediato a **support@pawpi.info** si sospechás de un uso no autorizado.
 
 ## 2. Qué es PawPi
 
@@ -168,4 +168,4 @@ que una ley local imperativa disponga lo contrario.
 
 ## 16. Contacto
 
-Consultas sobre estos Términos: **augusto@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.
+Consultas sobre estos Términos: **support@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.

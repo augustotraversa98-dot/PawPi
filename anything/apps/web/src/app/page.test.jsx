@@ -58,8 +58,8 @@ describe("/ homepage (session-aware, WEB1 PR2)", () => {
       expect(within(footer).getByRole("link", { name })).toBeInTheDocument();
     }
     expect(
-      within(footer).getByRole("link", { name: "augusto@pawpi.info" }),
-    ).toHaveAttribute("href", "mailto:augusto@pawpi.info");
+      within(footer).getByRole("link", { name: "support@pawpi.info" }),
+    ).toHaveAttribute("href", "mailto:support@pawpi.info");
   });
 
   it("logged out: business audiences link to account signup", () => {

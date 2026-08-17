@@ -9,7 +9,7 @@ community, adoption, and a marketplace of pet services and products.
 The fastest way to reach us is by email. We read every message and aim to reply within
 **2 business days**.
 
-- **Email:** **augusto@pawpi.info**
+- **Email:** **support@pawpi.info**
 - When you write in, it helps to include your account email, your device and iOS version,
   and a short description (or screenshot) of what you ran into.
 
@@ -59,7 +59,7 @@ content you enter is stored to help you organize records and notice patterns ove
 ## Reporting a problem or safety concern
 
 If something isn't working, or you want to report content, a user, or a safety concern,
-email **augusto@pawpi.info** with the details and we'll look into it.
+email **support@pawpi.info** with the details and we'll look into it.
 
 ## Legal
 
@@ -68,4 +68,4 @@ email **augusto@pawpi.info** with the details and we'll look into it.
 
 ---
 
-PawPi — Augusto Traversa, Matacos y Alborada S/N. Contact: **augusto@pawpi.info**
+PawPi — Augusto Traversa, Matacos y Alborada S/N. Contact: **support@pawpi.info**

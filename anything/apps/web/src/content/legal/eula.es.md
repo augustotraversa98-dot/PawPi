@@ -1,4 +1,4 @@
-> Última actualización: 16-08-2026. Contacto: augusto@pawpi.info.
+> Última actualización: 16-08-2026. Contacto: support@pawpi.info.
 > Ley aplicable: Argentina. Este EULA complementa los Términos del Servicio y la Política de Privacidad de
 > PawPi. Nota de Apple: si no se lo reemplaza, también aplica el "Licensed Application End User License
 > Agreement" estándar de Apple; donde este EULA guarde silencio, rige el EULA estándar de Apple.
@@ -77,4 +77,4 @@ limita la responsabilidad que no pueda limitarse conforme a la ley argentina.
 Este EULA se rige por las leyes de Argentina. Si alguna cláusula resultara inaplicable, el resto continúa
 vigente. Podemos actualizar este EULA; los cambios sustanciales se notificarán en la App o por correo
 electrónico, y el uso continuado tras una actualización implica su aceptación. Consultas o reportes:
-**augusto@pawpi.info**.
+**support@pawpi.info**.

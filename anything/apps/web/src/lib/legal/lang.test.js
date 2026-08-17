@@ -35,7 +35,7 @@ describe("buildPageMeta", () => {
     expect(m).toContainEqual({
       tagName: "link",
       rel: "canonical",
-      href: "https://pawpi.info/privacy",
+      href: "https://www.pawpi.info/privacy",
     });
   });
 
@@ -51,7 +51,7 @@ describe("buildPageMeta", () => {
     expect(m).toContainEqual({
       tagName: "link",
       rel: "canonical",
-      href: "https://pawpi.info/privacy?lang=en",
+      href: "https://www.pawpi.info/privacy?lang=en",
     });
   });
 
@@ -66,19 +66,19 @@ describe("buildPageMeta", () => {
       tagName: "link",
       rel: "alternate",
       hrefLang: "es-AR",
-      href: "https://pawpi.info/terms",
+      href: "https://www.pawpi.info/terms",
     });
     expect(m).toContainEqual({
       tagName: "link",
       rel: "alternate",
       hrefLang: "en",
-      href: "https://pawpi.info/terms?lang=en",
+      href: "https://www.pawpi.info/terms?lang=en",
     });
     expect(m).toContainEqual({
       tagName: "link",
       rel: "alternate",
       hrefLang: "x-default",
-      href: "https://pawpi.info/terms",
+      href: "https://www.pawpi.info/terms",
     });
   });
 });

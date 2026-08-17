@@ -15,7 +15,7 @@ the Service, you agree to these Terms and to our [Privacy Policy](https://august
 
 You must be at least 16 to use PawPi. You are responsible for the
 accuracy of the information you provide, for keeping your login credentials secure, and for all
-activity under your account. Notify us promptly at **augusto@pawpi.info** if you suspect unauthorized use.
+activity under your account. Notify us promptly at **support@pawpi.info** if you suspect unauthorized use.
 
 ## 2. What PawPi is
 
@@ -158,4 +158,4 @@ Disputes will be resolved in the courts of the City of Buenos Aires, Argentina, 
 
 ## 16. Contact
 
-Questions about these Terms: **augusto@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.
+Questions about these Terms: **support@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.

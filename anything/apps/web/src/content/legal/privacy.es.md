@@ -14,7 +14,7 @@ El responsable de los datos es:
 
 - **Augusto Traversa**
 - Matacos y Alborada S/N
-- Contacto: **augusto@pawpi.info**
+- Contacto: **support@pawpi.info**
 
 ## 2. Información que recopilamos
 
@@ -164,7 +164,7 @@ de forma periódica.
 
 Según dónde vivas, podés tener derechos de acceso, rectificación, exportación o eliminación de tu
 información personal, y a oponerte o restringir ciertos tratamientos, y a retirar el consentimiento.
-Para ejercerlos, escribinos a **augusto@pawpi.info**. Responderemos dentro del plazo que exija la ley
+Para ejercerlos, escribinos a **support@pawpi.info**. Responderemos dentro del plazo que exija la ley
 aplicable.
 
 También podés:
@@ -209,5 +209,5 @@ política que aceptaste.
 
 ## 15. Contacto
 
-Consultas sobre esta Política o tus datos: **augusto@pawpi.info**, Augusto Traversa,
+Consultas sobre esta Política o tus datos: **support@pawpi.info**, Augusto Traversa,
 Matacos y Alborada S/N.

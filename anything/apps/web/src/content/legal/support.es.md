@@ -7,7 +7,7 @@ historia clínica, entrenamiento, comunidad, adopción y un mercado de servicios
 La forma más rápida de escribirnos es por correo. Leemos todos los mensajes y respondemos
 dentro de **2 días hábiles**.
 
-- **Email:** **augusto@pawpi.info**
+- **Email:** **support@pawpi.info**
 - Cuando nos escribas, ayuda mucho que incluyas el email de tu cuenta, tu dispositivo y la
   versión de iOS, y una breve descripción (o captura) de lo que te pasó.
 
@@ -59,7 +59,7 @@ que cargás se guarda para ayudarte a organizar registros y notar patrones con e
 ## Reportar un problema o una preocupación de seguridad
 
 Si algo no funciona, o querés reportar contenido, a una persona o una preocupación de seguridad,
-escribí a **augusto@pawpi.info** con los detalles y lo revisamos.
+escribí a **support@pawpi.info** con los detalles y lo revisamos.
 
 ## Legal
 
@@ -68,4 +68,4 @@ escribí a **augusto@pawpi.info** con los detalles y lo revisamos.
 
 ---
 
-PawPi — Augusto Traversa, Matacos y Alborada S/N. Contacto: **augusto@pawpi.info**
+PawPi — Augusto Traversa, Matacos y Alborada S/N. Contacto: **support@pawpi.info**
