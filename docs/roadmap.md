@@ -1235,3 +1235,15 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   band when scrolling the transparent-body app. Live + verified on `pawpi-production.up.railway.app`.
   web vitest 2094→2099. **WEB1 done (2/2 PRs).** Remaining human task: point `pawpi.info` at Railway.
   (2026-08-17.)
+- **WEB2 — Canonical `www.pawpi.info` + one published contact `support@pawpi.info`** — ✅ PR #429, no
+  migration. The apex `pawpi.info` carries MX (email) so it can't point at Railway → **`www.pawpi.info`
+  is canonical**. Replaced `https://pawpi.info` → `https://www.pawpi.info` in the web `SITE_URL` token
+  (drives canonical/OG/hreflang), `public/sitemap.xml`, `robots.txt`; mobile `eas.json` legal URLs +
+  `constants/legal.js` (+ local `.env`/`.env.local`); and the App Store Marketing URL doc. Unified the
+  single public contact on **`support@pawpi.info`** (a verified alias landing in the `augusto@` inbox):
+  web `SUPPORT_EMAIL` token + rendered legal content (privacy/terms/support/**eula**, EN+ES), mobile
+  `SUPPORT_EMAIL` default, `docs/legal/*` source + App Store content/runbook. web vitest 2099 (steady),
+  mobile jest 1905. Content verified on `pawpi-production.up.railway.app`. ⚠️ **`www.pawpi.info` is
+  attached as a Railway custom domain (DNS CNAME live) but still served Railway's wildcard cert + 404
+  at cutover — cert issuance/propagation pending on Railway's side (human/ops wait, not code).**
+  (2026-08-17.)

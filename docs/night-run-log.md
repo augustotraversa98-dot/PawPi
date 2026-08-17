@@ -1126,3 +1126,36 @@ live: wire the custom domain** — add `pawpi.info`/`www` to the Railway `PawPi`
 one.com DNS to Railway's CNAME target (apex may need `www` + redirect). Until then everything is
 verifiable on `pawpi-production.up.railway.app`. Also owed: final on-screen visual polish pass; an
 `og:image` raster asset (homepage ships a clean `summary` card without one for now).
+
+---
+
+**WEB2 — canonical `www.pawpi.info` + one published contact `support@pawpi.info` (2026-08-17)** — ✅
+**shipped:** [#429](https://github.com/augustotraversa98-dot/PawPi/pull/429), one PR, no migration,
+CI-green (web vitest 2099, web integration, mobile jest 1905), merged (merge commit `b758dd9a`,
+branch deleted).
+- **Why:** the apex `pawpi.info` carries MX (email) so it can't point at Railway. `www.pawpi.info` is
+  the canonical web host (DNS CNAME live). Also: WEB1 shipped `augusto@pawpi.info` as the cautious
+  contact; `support@pawpi.info` is now a **verified working alias** landing in that same inbox, so we
+  unify every published surface on it.
+- **Change 1 — canonical www:** web `SITE_URL` token (feeds canonical/OG/hreflang via `buildPageMeta`/
+  `buildHomeMeta`), `public/sitemap.xml` (20 URLs), `robots.txt` `Sitemap:` line; mobile `eas.json`
+  legal URLs (privacy/terms/eula/support) + `constants/legal.js` comment (+ local `.env`/`.env.local`,
+  gitignored); `docs/app-store-connect-content.md` Marketing URL.
+- **Change 2 — one contact = support@:** web `SUPPORT_EMAIL` token (footer) + rendered legal content
+  (privacy/terms/support/**eula**, EN+ES), mobile `SUPPORT_EMAIL` default, `docs/legal/*` source
+  (privacy/terms/support `.md` + `support.html`), `app-store-connect-content.md` + `submission-runbook`.
+  **Deviation logged:** the ticket assumed EULA already used `support@`, but the shipped EULA content
+  rendered `augusto@`; updated it too so acceptance ("`/eula` shows `support@`") + the "one contact
+  everywhere" end-state hold.
+- **Left out of scope (logged):** `email/config.js` `EMAIL_REPLY_TO` default (backend reply-to, same
+  inbox), `shareLinks.js`/`geocoding.js` (internal, env-governed), API-test `APP_BASE_URL` fixtures,
+  and untracked WIP (`docs/legal/eula.{md,es.md}`, `docs/LAUNCH-CHECKLIST.md`) left for the author.
+  `docs/legal/LEGAL-REVIEW-CHECKLIST.md`'s `augusto@` is a legal-entity-naming note, not a contact.
+- **Verified:** content confirmed on the Railway origin `pawpi-production.up.railway.app` post-deploy.
+- ⚠️ **Remaining ops wait (not code):** `www.pawpi.info` **is** attached as a Railway custom domain
+  (both `pawpi.info` + `www` are on the `PawPi` service — the plan's 2-domain limit is reached) and its
+  one.com CNAME points at Railway, **but at cutover it still served Railway's `*.up.railway.app`
+  wildcard cert and 404'd** — Let's Encrypt issuance / edge propagation pending on Railway's side.
+  Nothing to change in the repo; recheck `https://www.pawpi.info/privacy` until it serves the app with
+  a valid `www.pawpi.info` cert. Until it resolves, the canonical URLs are verifiable on the Railway
+  origin.
