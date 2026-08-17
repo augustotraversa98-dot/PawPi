@@ -1,4 +1,20 @@
 import { useEffect } from "react";
+import { BRAND } from "@/lib/brand/tokens";
+
+// Paint the document background cream for the public pages. The app's <body> is
+// transparent (no global bg), so any viewport region the page's own root div
+// doesn't paint falls through to the browser's default canvas — which reads as a
+// dark band when scrolling a tall page. Setting it on <html>/<body> guarantees a
+// cream ground edge-to-edge. Restored on unmount so provider/account screens
+// (client-side nav) keep their own chrome.
+export function usePublicChrome() {
+  useEffect(() => {
+    const targets = [document.documentElement, document.body];
+    const prev = targets.map((el) => el.style.backgroundColor);
+    for (const el of targets) el.style.backgroundColor = BRAND.cream;
+    return () => targets.forEach((el, i) => (el.style.backgroundColor = prev[i]));
+  }, []);
+}
 
 // This create.xyz / React-Router-Hono app does not wire route-module `meta`/`links`
 // exports into <head> (no page in the app has a <title>; <Meta/>/<Links/> render
