@@ -35,10 +35,12 @@ describe("GET /api/admin/reports", () => {
   it("an admin gets the queue via the DEFINER helper → 200", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ is_admin: true }]);
-    sql.mockResolvedValueOnce([{ id: 1, target_type: "post", status: "open" }]);
+    sql.mockResolvedValueOnce([
+      { id: 1, target_type: "post", status: "open", author_handle: "baddog", preview_text: "hi" },
+    ]);
     const res = await GET(get());
     expect(res.status).toBe(200);
     expect((await res.json()).reports).toHaveLength(1);
-    expect(sql.mock.calls[1][0].join(" ")).toContain("app_admin_list_reports");
+    expect(sql.mock.calls[1][0].join(" ")).toContain("app_admin_list_reports_v2");
   });
 });
