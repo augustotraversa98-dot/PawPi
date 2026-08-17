@@ -824,7 +824,7 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
-## 🛡️ MOD2 — Rich, scannable moderation rows + discoverability — 🔨 IN PROGRESS (PR1 shipped)
+## 🛡️ MOD2 — Rich, scannable moderation rows + discoverability — ✅ SHIPPED (2/2 PRs; 1 human action owed)
 > On-device review of MOD1 surfaced three gaps: rows too thin (no content/author/reporter/exact
 > time), console undiscoverable (no nav link), and a fresh admin dumped into provider onboarding.
 > Ticket: [`docs/moderation-console-v2-ticket.md`](moderation-console-v2-ticket.md).
@@ -836,9 +836,15 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 >   clean NULL fallback. UI rebuilt as a scannable card (preview + thumbnail, absolute + relative
 >   time), **EN + ES** via a self-contained label map (extranet has no i18n runtime). vitest
 >   2065→2067 · integration 1043.
-> - ☐ **PR2 — Discoverability + admin routing.** Visible `/admin/moderation` nav link + open-count
->   badge whenever `app_is_admin()`; admin (esp. no provider) routed/offered the console instead of
->   the provider "type of business" flow; normal users unchanged.
+> - ✅ **PR2 — Discoverability + admin routing** (#426, **no migration**). `GET /api/admin/
+>   moderation-summary` capability probe → `{ is_admin, open_count }`; provider sidebar gains an
+>   admin-only **Moderation** nav link + open-count badge (hidden for non-admins); the
+>   no-provider admin gets a **prominent card** offering the console instead of being forced into
+>   "pick a type of business" (create form stays available; normal users unchanged). vitest
+>   2067→2075.
+> - ⚠️ **OWED (human, carried from MOD1):** still no prod admin account — the link + card stay
+>   hidden until `augustotraversa98@gmail.com` / support@pawpi.info is granted admin (`is_admin=true`
+>   or `role='admin'`, per 0114). Everything is correctly gated until then.
 
 ## 🛡️ MOD1 — Report routing + moderation console (Guideline 1.2 "act within 24h") — ✅ SHIPPED (1 human action owed)
 > The 1.2 *safeguards* (T1–T9 below) shipped, but reports went into a drawer nobody could open: prod had

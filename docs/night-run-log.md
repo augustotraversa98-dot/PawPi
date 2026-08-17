@@ -2,6 +2,44 @@
 
 ---
 
+## ✅ MOD2 PR2 — Discoverable console + admin landing — 2026-08-17 — **MERGED + LIVE**
+
+**PR #426** (`feat/mod2-pr2-discoverability`, merge `5cee6f9f`, branch deleted) · **no migration**
+· **Railway redeploy** on merge. Completes MOD2 (2/2 PRs).
+
+**Why.** MOD1's console was undiscoverable (no nav link — an admin had to type `/admin/moderation`)
+and a fresh admin (web signin `callbackUrl="/provider"`) got dumped into the provider "pick a type
+of business" flow with no path to the console.
+
+**What shipped.**
+- **`GET /api/admin/moderation-summary`** — a cheap capability probe → `{ is_admin, open_count }`.
+  Not a data endpoint: a non-admin gets `is_admin:false` at **200** (not 403) so the client can
+  quietly branch; an admin gets the open-report count from the admin-only DEFINER reader (0116).
+  401 for anon; DB error degrades to `is_admin:false` (link hidden, never a hard error). No
+  migration — reuses `app_admin_list_reports_v2('open')` for the count.
+- **`useAdminModerationSummary`** hook (react-query, staleTime 60s, retry:false).
+- **ProviderShell** — the sidebar gains an admin-only **"Moderation"** nav link (ShieldAlert) with
+  an **open-count badge**, shown ONLY when the probe confirms `app_is_admin()`; a non-admin never
+  sees it. `NoProviderState` (admin-with-no-provider) gains a **prominent card above** the
+  create-your-provider onboarding linking straight to the console — an admin is **offered** the
+  console and NOT forced through business-type setup; the create form stays below; normal users
+  unchanged. Cross-area `/admin` reached via the app's single React Router `<Link>`.
+
+**Decision logged.** Kept the admin routing as a **prominent offer + visible nav link**, not a
+forced redirect — the ticket says "route (or prominently offer)", and a hard redirect would stop an
+admin who legitimately also wants to create a provider. `callbackUrl="/provider"` left untouched
+(the mobile web-auth bridge relies on it) — the admin entry point lives inside the provider shell
+instead, so no normal-user routing changed.
+
+**Gates.** web vitest 2067→**2075** (+4 route, +4 shell) · integration re-confirmed green in CI
+(no migration) · mobile untouched. All 3 CI checks green before merge.
+
+**Owed by a human (unchanged from MOD1):** no prod admin account is seeded yet, so the new link +
+card stay hidden in prod until `augustotraversa98@gmail.com` / support@pawpi.info is granted admin
+(`is_admin=true` or `role='admin'`, per 0114). Everything is correctly gated until then.
+
+---
+
 ## ✅ MOD2 PR1 — Enriched moderation triage rows — 2026-08-17 — **MERGED + LIVE**
 
 **PR #425** (`feat/mod2-pr1-rich-report-rows`, merge `7c1d6251`, branch deleted) · **Migration

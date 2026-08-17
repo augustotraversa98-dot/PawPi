@@ -50,6 +50,18 @@ report return, in one call:
 
 ## PR2 — Discoverability + admin routing
 
+> **AS-BUILT — PR2 ✅ SHIPPED 2026-08-17** (PR #426, merge `5cee6f9f`, **no migration**). Completes
+> MOD2. Added `GET /api/admin/moderation-summary` (capability probe → `{ is_admin, open_count }`;
+> non-admin gets `is_admin:false` at 200, never 403; count via the 0116 DEFINER reader) + a
+> `useAdminModerationSummary` hook. ProviderShell sidebar shows an admin-only **Moderation** link
+> with the open-count badge; `NoProviderState` shows a **prominent card** offering the console above
+> the create-provider onboarding. Decision: kept a **prominent offer + visible link**, not a forced
+> redirect (ticket allows "route OR prominently offer"; a hard redirect would trap an admin who also
+> wants to create a provider) — `callbackUrl="/provider"` left untouched (mobile web-auth bridge
+> depends on it), so no normal-user routing changed. Tests: admin sees link+badge+lands, admin with
+> no provider offered console alongside onboarding, non-admin sees neither. vitest 2067→2075.
+> **Still owed (human):** grant a prod admin account, or the link/card stay hidden (correctly gated).
+
 - **Admin nav link:** surface a visible link to `/admin/moderation` whenever `app_is_admin()` is true
   (e.g. in the provider dashboard nav / a top bar), with the **open-count** badge. Non-admins never see it.
 - **Admin landing:** an admin account (esp. one with no provider) must reach the console without typing the
