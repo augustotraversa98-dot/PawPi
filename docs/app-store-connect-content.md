@@ -83,7 +83,7 @@ dog,puppy,pet care,vet records,dog health,reminders,walker,groomer,adoption,dog 
 | Field | Value |
 |---|---|
 | **Support URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/support |
-| **Marketing URL** (optional) | https://pawpi.info |
+| **Marketing URL** (optional) | https://www.pawpi.info |
 | **Privacy Policy URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/privacy |
 
 ## 7. "What's New in This Version" (v1.0)
@@ -167,7 +167,7 @@ HEALTH POSITIONING (Guideline 1.4.1)
 PawPi is a tracking/organization tool with non-diagnostic disclaimers throughout; it does not diagnose, prescribe, or replace veterinary care.
 
 USER-GENERATED CONTENT (Guideline 1.2)
-Every user-generated surface has a Report action; any user can be blocked. Objectionable content is reviewed and removed within 24h, and an on-submit content filter screens posts at creation time. Contact: augusto@pawpi.info.
+Every user-generated surface has a Report action; any user can be blocked. Objectionable content is reviewed and removed within 24h, and an on-submit content filter screens posts at creation time. Contact: support@pawpi.info.
 ```
 
 ## 11. Export compliance

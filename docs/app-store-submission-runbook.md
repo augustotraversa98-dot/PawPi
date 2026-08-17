@@ -120,7 +120,7 @@ In App Store Connect → the PawPi app → the **1.0** version:
 2. **App Review Information**: paste the reviewer notes from `app-store-connect-content.md` §10
    (demo login, external-payments rationale for **Guideline 3.1.3(e)**, account-deletion path
    **5.1.1(v)**, location usage, social-login env-gating, health positioning **1.4.1**, UGC
-   moderation **1.2** + contact `augusto@pawpi.info`).
+   moderation **1.2** + contact `support@pawpi.info`).
 3. **Export compliance**: confirm "No" (uses only exempt encryption).
 4. Click **Add for Review → Submit**.
 

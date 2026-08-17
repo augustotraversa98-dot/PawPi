@@ -13,7 +13,7 @@ The data controller is:
 
 - **Augusto Traversa**
 - Matacos y Alborada S/N
-- Contact: **augusto@pawpi.info**
+- Contact: **support@pawpi.info**
 
 ## 2. Information we collect
 
@@ -157,7 +157,7 @@ rotated on a routine schedule.
 
 Depending on where you live, you may have rights to access, correct, export, or delete your personal
 information, and to object to or restrict certain processing, and to withdraw consent. To exercise
-these rights, contact us at **augusto@pawpi.info**. We will respond within the time the applicable
+these rights, contact us at **support@pawpi.info**. We will respond within the time the applicable
 law requires.
 
 You can also:
@@ -199,5 +199,5 @@ changes, provide additional notice within the app. We record the policy version 
 
 ## 15. Contact us
 
-Questions about this Policy or your data: **augusto@pawpi.info**, Augusto Traversa,
+Questions about this Policy or your data: **support@pawpi.info**, Augusto Traversa,
 Matacos y Alborada S/N.

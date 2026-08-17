@@ -1,4 +1,4 @@
-> Last updated: 2026-08-16. Contact: augusto@pawpi.info.
+> Last updated: 2026-08-16. Contact: support@pawpi.info.
 > Governing law: Argentina. This EULA supplements the PawPi Terms of Service and Privacy Policy.
 > Apple note: if not superseded, Apple's standard Licensed Application End User License Agreement also
 > applies; where this EULA is silent, Apple's standard EULA governs the Apple-specific terms.
@@ -72,4 +72,4 @@ that cannot be limited under Argentine law.
 
 This EULA is governed by the laws of Argentina. If any provision is unenforceable, the rest remains in
 effect. We may update this EULA; material changes will be notified in-app or by email, and continued use
-after an update constitutes acceptance. Questions or reports: **augusto@pawpi.info**.
+after an update constitutes acceptance. Questions or reports: **support@pawpi.info**.

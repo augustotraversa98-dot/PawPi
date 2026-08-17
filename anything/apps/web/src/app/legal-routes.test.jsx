@@ -99,7 +99,7 @@ describe("public legal/support routes", () => {
     );
     // Contact email is the verified, monitored mailbox.
     expect(
-      within(footer).getByRole("link", { name: "augusto@pawpi.info" }),
-    ).toHaveAttribute("href", "mailto:augusto@pawpi.info");
+      within(footer).getByRole("link", { name: "support@pawpi.info" }),
+    ).toHaveAttribute("href", "mailto:support@pawpi.info");
   });
 });

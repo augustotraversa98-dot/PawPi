@@ -23,12 +23,13 @@ export const FONT_SANS =
 export const FONT_MONO =
   '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
-// The one verified, monitored mailbox (see src/constants/legal.js in mobile and
-// docs/legal/*). NOT support@pawpi.info — that address is not provisioned, so it
-// would be a dead App Store support contact.
-export const SUPPORT_EMAIL = "augusto@pawpi.info";
+// The one published public contact (see src/constants/legal.js in mobile and
+// docs/legal/*). support@pawpi.info is a verified working alias that lands in the
+// augusto@pawpi.info inbox — WEB2 unifies every surface on this single address.
+export const SUPPORT_EMAIL = "support@pawpi.info";
 
-// Canonical public origin (Railway custom domain). The brand Google Fonts
-// (Nunito + JetBrains Mono) are injected client-side by useBrandFonts()
-// (src/lib/legal/head.js) since this app doesn't wire route-module `links`.
-export const SITE_URL = "https://pawpi.info";
+// Canonical public origin (Railway custom domain). The apex pawpi.info carries MX
+// (email) so it can't point at Railway; www.pawpi.info is the canonical web host.
+// The brand Google Fonts (Nunito + JetBrains Mono) are injected client-side by
+// useBrandFonts() (src/lib/legal/head.js) since this app doesn't wire route `links`.
+export const SITE_URL = "https://www.pawpi.info";
