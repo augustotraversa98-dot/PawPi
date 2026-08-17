@@ -824,6 +824,22 @@ New go-live env keys (degrade clean until set): `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER
 
 ---
 
+## 🛡️ MOD2 — Rich, scannable moderation rows + discoverability — 🔨 IN PROGRESS (PR1 shipped)
+> On-device review of MOD1 surfaced three gaps: rows too thin (no content/author/reporter/exact
+> time), console undiscoverable (no nav link), and a fresh admin dumped into provider onboarding.
+> Ticket: [`docs/moderation-console-v2-ticket.md`](moderation-console-v2-ticket.md).
+> - ✅ **PR1 — Enriched triage rows** (#425, migration **0116 APPLIED + VERIFIED on prod**, 5/5).
+>   `app_admin_list_reports_v2(p_status)` — DEFINER + `app_is_admin()`-gated reader resolving each
+>   report to a triage card: content preview {text+image}, reported author {id, handle}, reporter
+>   handle + `reporters_count` (distinct reporters on the target), reason + note, and both the
+>   report's and the target's exact timestamps. Polymorphic over all 15 reportable types with a
+>   clean NULL fallback. UI rebuilt as a scannable card (preview + thumbnail, absolute + relative
+>   time), **EN + ES** via a self-contained label map (extranet has no i18n runtime). vitest
+>   2065→2067 · integration 1043.
+> - ☐ **PR2 — Discoverability + admin routing.** Visible `/admin/moderation` nav link + open-count
+>   badge whenever `app_is_admin()`; admin (esp. no provider) routed/offered the console instead of
+>   the provider "type of business" flow; normal users unchanged.
+
 ## 🛡️ MOD1 — Report routing + moderation console (Guideline 1.2 "act within 24h") — ✅ SHIPPED (1 human action owed)
 > The 1.2 *safeguards* (T1–T9 below) shipped, but reports went into a drawer nobody could open: prod had
 > **zero admins**, nothing alerted anyone, and there was no admin UI. MOD1 closed that in 2 PRs.

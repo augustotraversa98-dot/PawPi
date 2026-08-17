@@ -2,6 +2,44 @@
 
 ---
 
+## ✅ MOD2 PR1 — Enriched moderation triage rows — 2026-08-17 — **MERGED + LIVE**
+
+**PR #425** (`feat/mod2-pr1-rich-report-rows`, merge `7c1d6251`, branch deleted) · **Migration
+0116 APPLIED + VERIFIED on prod (5/5 PASS)** · prod DB now at **0116** · **Railway redeploy**
+building on merge.
+
+**Why.** On-device review of MOD1 found the console rows too thin: `app_admin_list_reports`
+returns `SETOF content_reports` (target_type/id, reason, status, created_at only), so a moderator
+couldn't see WHAT was reported, WHO, by WHOM, or an exact time.
+
+**What shipped.**
+- **Migration 0116 — `app_admin_list_reports_v2(p_status)`.** A second `SECURITY DEFINER`,
+  `app_is_admin()`-gated reader that resolves each report in one call to a triage card: report
+  (id/status/reason/details/created_at); reporter (id + handle) + **`reporters_count`** = DISTINCT
+  reporters on the same target (pile-on signal); target (type, id, **author** {id, handle}, content
+  **preview** {text snippet, image url}, and the target's own created_at). **Polymorphic over all 15
+  reportable types** (0112's CHECK list) — author/preview/image/created_at are each a `COALESCE` over
+  per-type PK lookups; a preview-less type → `NULL` (UI shows a type label), a hard-deleted target →
+  NULLs (never crashes, never blanks the row). Author-column map mirrors `app_admin_action_report`'s
+  ban resolution so "shown author" and "banned author" never disagree. Free text `left(…,280)`.
+  Additive, `CREATE OR REPLACE`, v1 left in place. `verify_0116.sql` (5/5 PASS on prod).
+- **Route.** `GET /api/admin/reports` now reads the v2 helper (same 401/403 admin gate).
+- **UI (ModerationConsole).** Each row is a scannable triage card: content preview + thumbnail,
+  reported author + reporter handle, reason + reporter's note, an **EXACT absolute timestamp**
+  ("16 Aug 2026, 21:45") alongside the relative age; Remove/Dismiss/Ban unchanged. Prefers the
+  server `reporters_count`, falls back to the loaded-set count. **EN + ES** via a self-contained
+  label map with a toggle — the sensible default, since the web extranet has **no shared i18n
+  runtime** (AdvancedSection.jsx: "the extranet has no i18n"); content previews stay as-authored.
+
+**Gates.** web vitest 2065→**2067** · integration **1043** (0116 applies clean in the real-PG
+harness) · mobile untouched. All 3 CI checks green before merge.
+
+**Owed by a human:** still no prod admin account seeded (carried over from MOD1 — the console is
+admin-gated and empty of actionable UI until `augustotraversa98@gmail.com` / support@pawpi.info is
+granted admin). PR2 (discoverability + admin routing) follows next.
+
+---
+
 ## ✅ MOD1 PR2 — Moderation console + provider_post_comment gap — 2026-08-15 — **MERGED + LIVE**
 
 **PR #424** (`feat/mod1-pr2-moderation-console`, merge `0b2f0514`, branch deleted) · **Migration
