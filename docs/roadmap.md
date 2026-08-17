@@ -1219,3 +1219,11 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   paw, reports, pet+provider follow, provider book); **no GET**. 429 with `Retry-After` + EN+ES copy.
   Fails open and runs in a SAVEPOINT, so it can neither block nor 500 the app. web vitest 2023→2048,
   integration 1020→1035. (2026-08-15.)
+- **WEB1 PR1 — Public legal/support pages on the web app** — ✅ PR #427, no migration. New no-auth
+  routes `/privacy /terms /eula /support` in `apps/web`, reachable logged-out, es-AR default + en
+  `?lang=` toggle, branded (paw SVG, Nunito, cream/brown/coral-buttons-only), content ported from
+  `docs/legal/*.md` (DRAFT stripped), client-side SEO head (title/desc/canonical/hreflang). Mobile
+  legal URLs repointed to `pawpi.info/{privacy,terms,support,eula}` (+ EULA slot). Live + verified on
+  `pawpi-production.up.railway.app`. ⚠️ **`pawpi.info` DNS still points at one.com, not Railway** —
+  add the custom domain on Railway + repoint one.com DNS before the `pawpi.info` URLs resolve (needs a
+  human; see night-run-log 2026-08-17). web vitest 2075→2094. (2026-08-17.)

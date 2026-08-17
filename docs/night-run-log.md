@@ -1065,3 +1065,38 @@ day one; no fake data. One line per merge.
   can't show it — `expo.locales` applies at prebuild), (3) the pre-existing legal-review + Apple
   submission path. New DEFERRED item raised and measured, not silently skipped: the wider
   hardcoded-English debt (158 `Alert.alert` literals; 83/255 non-test .jsx use `useTranslation`).
+
+- **2026-08-17 (WEB1 PR1)** — **Public legal/support pages live on the web app** (PR #427, merged
+  `9409b2e9`, CI green: mobile jest / web vitest / web integration all pass). New no-auth routes
+  `/privacy /terms /eula /support` inside `apps/web`, reachable **logged-out** (they import no
+  session helper, so the `/provider` redirect can't touch them). es-AR **primary** + en via a
+  `?lang=en` toggle; branded shell from `pawpi-brand-kit` (cream bg, warm-brown text, coral for
+  buttons only, links = underlined brown, Nunito + JetBrains Mono, the **real paw SVG** inlined —
+  never the emoji). Content ported from `docs/legal/*.md` with the internal **DRAFT/Cowork** lines
+  stripped and a clean "Last updated" kept; an **es-AR support page was authored** (no Spanish
+  source existed). Web vitest **2075→2094**. Decisions logged, not hidden:
+  - **Contact = `augusto@pawpi.info`** (the one verified, monitored mailbox per `constants/legal.js`
+    + privacy/terms/support docs), NOT the ticket's literal `support@pawpi.info`, which isn't
+    provisioned — an unprovisioned address is a dead App Store support contact. EULA's two `support@`
+    refs normalized to match.
+  - **Dropped `remark-gfm`**: v4 crashes `react-markdown@6`'s table tokenizer (micromark skew). Only
+    the privacy subprocessors GFM table needed it → converted to a CommonMark list in the generator.
+  - **Head tags client-side** (`lib/legal/head.js`): this create.xyz/RR-Hono app doesn't wire
+    route-module `meta`/`links` into `<head>` (no page in the app has a `<title>`) and the body is
+    client-only, so title/description/canonical/hreflang(es-AR/en/x-default) + brand fonts are set on
+    the client. Verified populated in a real browser.
+  - Mobile URL wiring: `eas.json` prod env + `.env`/`.env.local` (gitignored) repointed
+    PRIVACY/TERMS/HELP and **added EULA** → `https://pawpi.info/{privacy,terms,support,eula}`
+    (replacing the old `github.io/pawpi-legal`); `constants/legal.js` gains an `EULA_URL` slot.
+  - **Deploy verified on the Railway origin** — `https://pawpi-production.up.railway.app/{privacy,
+    terms,eula,support}` all render on-brand, correct title/canonical/footer, ES↔EN toggle works.
+  - ⚠️ **BLOCKER (needs a human, one.com DNS): `pawpi.info` is NOT pointed at Railway.**
+    `pawpi.info` resolves to `46.30.211.38` (one.com) and does not respond; the Railway PawPi service
+    has **zero custom domains**. So `pawpi.info/privacy` cannot load until: (1) add `pawpi.info` (and
+    `www`) as a custom domain on the Railway `PawPi` service → Railway issues a CNAME target; (2) at
+    one.com set DNS to that target. Apex caveat: Railway needs CNAME/ALIAS-flattening at the apex —
+    one.com may only support this on `www`, so a `www`→apex redirect (or using `www.pawpi.info`) may
+    be required. This is a prerequisite before the App Store metadata / in-app links that now point at
+    `pawpi.info` will resolve. Not done autonomously: repointing a production apex domain is
+    outward-facing, needs one.com access I don't have, and risks existing use of the domain.
+  - ⚠️ **NEEDS BROWSER CONFIRMATION** (visual polish): on-device/desktop look of all four pages.
