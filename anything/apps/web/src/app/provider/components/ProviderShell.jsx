@@ -23,11 +23,16 @@ import {
   CalendarClock,
   Pill,
   Shield,
+  ShieldAlert,
 } from "lucide-react";
 import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
 import { COLORS } from "../lib/colors";
-import { useProviders, useMyProviderInvites } from "../hooks/useProviders";
+import {
+  useProviders,
+  useMyProviderInvites,
+  useAdminModerationSummary,
+} from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 import { BOOKABLE_CAPS } from "../lib/storefrontTabs";
 import CreateProviderForm from "./CreateProviderForm";
@@ -325,6 +330,79 @@ function NavItem({ item, active }) {
   );
 }
 
+// Admin-only moderation entry point in the sidebar (MOD2 PR2). Renders NOTHING unless the
+// capability probe (GET /api/admin/moderation-summary) confirms app_is_admin() — a non-admin never
+// sees it, so no data or even the link leaks. Carries the open-report count as a badge. It is a
+// cross-area route (/admin has its own page), reached via the app's single React Router.
+function AdminModerationNav() {
+  const { data } = useAdminModerationSummary();
+  if (!data?.is_admin) return null;
+  const open = Number(data.open_count) || 0;
+  return (
+    <div className="border-t border-[#FFF1E2] px-3 py-4">
+      <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
+        Admin
+      </p>
+      <Link
+        to="/admin/moderation"
+        className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-[#3B241B] hover:bg-[#FFF7EF]"
+      >
+        <span className="flex items-center gap-3">
+          <ShieldAlert className="h-4 w-4" />
+          Moderation
+        </span>
+        {open > 0 && (
+          <span
+            aria-label={`${open} open reports`}
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
+            style={{ backgroundColor: COLORS.coral }}
+          >
+            {open}
+          </span>
+        )}
+      </Link>
+    </div>
+  );
+}
+
+// The same admin entry point for a no-provider admin (MOD2 PR2) — a prominent card ABOVE the
+// create-your-provider onboarding, so an admin who signs in (web callbackUrl=/provider) is NOT
+// forced through "pick a type of business" to reach the console. Non-admins never see it.
+function AdminModerationBanner() {
+  const { data } = useAdminModerationSummary();
+  if (!data?.is_admin) return null;
+  const open = Number(data.open_count) || 0;
+  return (
+    <div className="flex justify-center px-6 pt-6">
+      <Link
+        to="/admin/moderation"
+        className="flex w-full max-w-lg items-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-5 py-4 shadow-sm transition-colors hover:bg-[#FFFBF6]"
+      >
+        <div
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: COLORS.peach }}
+        >
+          <ShieldAlert className="h-5 w-5" style={{ color: COLORS.terracotta }} />
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold text-[#3B241B]">
+            You're an admin{open > 0 ? ` — ${open} open report${open === 1 ? "" : "s"}` : ""}
+          </p>
+          <p className="text-sm text-[#7A6254]">
+            Open the Moderation console — you don't need to set up a business.
+          </p>
+        </div>
+        <span
+          className="rounded-xl px-3 py-2 text-sm font-bold text-white"
+          style={{ backgroundColor: COLORS.coral }}
+        >
+          Open
+        </span>
+      </Link>
+    </div>
+  );
+}
+
 function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }) {
   // The left nav lists ONLY the sections this business offers: a capability-gated
   // section shows when its offering is selected on the Business Profile, structural
@@ -375,6 +453,9 @@ function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }
           );
         })}
       </nav>
+
+      {/* Admin-only moderation entry point (hidden for everyone else). */}
+      <AdminModerationNav />
     </aside>
   );
 }
@@ -390,6 +471,8 @@ function NoProviderState() {
 
   return (
     <div className="min-h-screen w-full" style={{ backgroundColor: COLORS.cream }}>
+      {/* Admin? Offer the console prominently — never force an admin through business setup. */}
+      <AdminModerationBanner />
       {count > 0 && (
         <div className="flex justify-center px-6 pt-6">
           <Link

@@ -1923,3 +1923,19 @@ export function useOpenAdoptionApplicantThread(providerId) {
     },
   });
 }
+
+// Admin moderation summary (MOD2 PR2) — a cheap capability probe used ONLY to decide whether to
+// surface the "/admin/moderation" entry point (nav link + open-count badge) in the provider shell.
+// GET /api/admin/moderation-summary returns { is_admin, open_count } (200 for everyone; a non-admin
+// gets is_admin:false, never a 403). Kept out of any provider-id scope — admin identity is global.
+export const adminModerationSummaryKey = () => ["admin-moderation-summary"];
+
+export function useAdminModerationSummary() {
+  return useQuery({
+    queryKey: adminModerationSummaryKey(),
+    queryFn: () => getJson("/api/admin/moderation-summary"),
+    // Identity rarely changes within a session; keep it quiet and non-blocking.
+    staleTime: 60_000,
+    retry: false,
+  });
+}
