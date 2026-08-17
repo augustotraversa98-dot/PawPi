@@ -303,3 +303,74 @@ describe("ProviderShell foundation", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+// MOD2 PR2 — the admin moderation entry point. URL-aware fetch so the moderation-summary probe
+// can answer independently of the providers/invites reads.
+function mockWith({ providers = [], summary = { is_admin: false, open_count: 0 } }) {
+  global.fetch = vi.fn().mockImplementation((url) => {
+    let body;
+    if (url.includes("/api/admin/moderation-summary")) body = summary;
+    else if (url.includes("/api/provider-invites")) body = { invites: [] };
+    else body = { providers };
+    return Promise.resolve({ ok: true, status: 200, json: async () => body });
+  });
+}
+
+describe("ProviderShell — admin moderation entry point (MOD2 PR2)", () => {
+  it("an admin with a provider sees a Moderation nav link with the open-count badge", async () => {
+    mockWith({
+      providers: [{ id: 1, name: "Happy Paws", provider_type: "vet", capabilities: ["vet"] }],
+      summary: { is_admin: true, open_count: 4 },
+    });
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Happy Paws");
+
+    const link = await screen.findByRole("link", { name: /moderation/i });
+    expect(link).toHaveAttribute("href", "/admin/moderation");
+    // open-count badge
+    expect(screen.getByLabelText("4 open reports")).toHaveTextContent("4");
+  });
+
+  it("a NON-admin sees no Moderation link", async () => {
+    mockWith({
+      providers: [{ id: 1, name: "Happy Paws", provider_type: "vet", capabilities: ["vet"] }],
+      summary: { is_admin: false, open_count: 0 },
+    });
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Happy Paws");
+    expect(screen.queryByRole("link", { name: /moderation/i })).not.toBeInTheDocument();
+  });
+
+  it("an admin with NO provider is offered the console instead of being forced into business setup", async () => {
+    mockWith({ providers: [], summary: { is_admin: true, open_count: 2 } });
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    // the prominent admin card links to the console...
+    const link = await screen.findByRole("link", { name: /you're an admin/i });
+    expect(link).toHaveAttribute("href", "/admin/moderation");
+    // ...and the create-provider onboarding is still available below (not forced, but not removed)
+    expect(screen.getByText("Create your provider")).toBeInTheDocument();
+  });
+
+  it("a non-admin with NO provider sees only the normal onboarding (no admin card)", async () => {
+    mockWith({ providers: [], summary: { is_admin: false, open_count: 0 } });
+    render(
+      <MemoryRouter>
+        <ProviderShell active="dashboard">{() => <div />}</ProviderShell>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Create your provider")).toBeInTheDocument();
+    expect(screen.queryByText(/you're an admin/i)).not.toBeInTheDocument();
+  });
+});
