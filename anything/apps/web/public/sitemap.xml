@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://pawpi.info/</loc>
+    <xhtml:link rel="alternate" hreflang="es-AR" href="https://pawpi.info/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pawpi.info/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pawpi.info/"/>
+  </url>
+  <url>
+    <loc>https://pawpi.info/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="es-AR" href="https://pawpi.info/privacy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pawpi.info/privacy?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pawpi.info/privacy"/>
+  </url>
+  <url>
+    <loc>https://pawpi.info/terms</loc>
+    <xhtml:link rel="alternate" hreflang="es-AR" href="https://pawpi.info/terms"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pawpi.info/terms?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pawpi.info/terms"/>
+  </url>
+  <url>
+    <loc>https://pawpi.info/eula</loc>
+    <xhtml:link rel="alternate" hreflang="es-AR" href="https://pawpi.info/eula"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pawpi.info/eula?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pawpi.info/eula"/>
+  </url>
+  <url>
+    <loc>https://pawpi.info/support</loc>
+    <xhtml:link rel="alternate" hreflang="es-AR" href="https://pawpi.info/support"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pawpi.info/support?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pawpi.info/support"/>
+  </url>
+</urlset>

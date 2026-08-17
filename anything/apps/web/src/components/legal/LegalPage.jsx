@@ -3,7 +3,7 @@ import SiteFooter from "@/components/brand/SiteFooter";
 import LegalArticle from "@/components/legal/LegalArticle";
 import { useLang } from "@/lib/legal/useLang";
 import { buildPageMeta } from "@/lib/legal/lang";
-import { useDocumentHead, useBrandFonts } from "@/lib/legal/head";
+import { useDocumentHead, useBrandFonts, usePublicChrome } from "@/lib/legal/head";
 import { BRAND, FONT_MONO, FONT_SANS } from "@/lib/brand/tokens";
 
 // Shared long-form page shell for /privacy /terms /eula /support. Branded header
@@ -15,6 +15,7 @@ export default function LegalPage({ eyebrows, titles, descriptions, path, conten
   const { lang } = useLang();
 
   useBrandFonts();
+  usePublicChrome();
   useDocumentHead(
     buildPageMeta({
       path,
