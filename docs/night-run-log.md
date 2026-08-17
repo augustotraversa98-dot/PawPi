@@ -1100,3 +1100,29 @@ day one; no fake data. One line per merge.
     `pawpi.info` will resolve. Not done autonomously: repointing a production apex domain is
     outward-facing, needs one.com access I don't have, and risks existing use of the domain.
   - ⚠️ **NEEDS BROWSER CONFIRMATION** (visual polish): on-device/desktop look of all four pages.
+
+- **2026-08-17 (WEB1 PR2)** — **Branded public homepage + SEO** (PR #428, merged `7273e7dd`, CI
+  green). Replaces the logged-out "PawPi for Business" landing at `/` with an on-brand consumer
+  homepage; the logged-in → `/provider` redirect (`resolveHomeView`) is unchanged. Hero positioning
+  line es/en ("Tu perro. Toda su vida, en un solo lugar." / "Your dog's whole life. In one place.") +
+  coral paw mark, a "what-PawPi-is" feature strip (Feed / Health / Community+adoption / Services), and
+  three audience entry points (owners / walkers+providers / vets+businesses). **Honest App Store CTA**:
+  a "Próximamente en el App Store / Coming soon" pill that is **NOT a link** — no dead link anywhere;
+  business cards link to `/account/signup`. Reuses the PR1 brand shell + client-side head, adding
+  **Open Graph + Twitter** card tags (`buildHomeMeta`). `public/robots.txt` + `public/sitemap.xml`
+  (`/` + the four legal routes, es-AR/en/x-default alternates) served at root. Incidental fix that also
+  covers the PR1 legal pages: `usePublicChrome()` paints `<html>`/`<body>` cream — the app body is
+  transparent, so scrolling a tall public page had shown the browser's dark canvas behind unpainted
+  regions (caught in-browser). web vitest 2094→**2099**; production build green (static assets copied
+  to `build/client/`). Verified live on `pawpi-production.up.railway.app/` (hero, cards, ES↔EN,
+  title/OG/canonical, `/robots.txt` + `/sitemap.xml` served as real files). ⚠️ Same `pawpi.info` DNS
+  caveat as PR1 (must point the domain at Railway before the `pawpi.info` URLs resolve). ⚠️ NEEDS
+  BROWSER CONFIRMATION: final desktop/mobile visual polish.
+
+**WEB1 CLOSEOUT (2026-08-17):** both PRs shipped, CI-green, merged, deployed. Public surface
+`/ /privacy /terms /eula /support` + `robots.txt`/`sitemap.xml` live on the web app; mobile legal
+URLs repointed to `pawpi.info/*` (+ EULA). **One human task remains before the `pawpi.info` URLs go
+live: wire the custom domain** — add `pawpi.info`/`www` to the Railway `PawPi` service, then repoint
+one.com DNS to Railway's CNAME target (apex may need `www` + redirect). Until then everything is
+verifiable on `pawpi-production.up.railway.app`. Also owed: final on-screen visual polish pass; an
+`og:image` raster asset (homepage ships a clean `summary` card without one for now).

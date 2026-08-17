@@ -116,6 +116,25 @@ ES↔EN, correct title/canonical/footer). ⚠️ **Prerequisite before the `pawp
 domain — add `pawpi.info`/`www` as a Railway custom domain, then repoint one.com DNS to the CNAME
 target (apex may require `www` + redirect on one.com). Human infra task.
 
+## As-built — PR2 (2026-08-17, PR #428, merged `7273e7dd`)
+
+Homepage: `src/app/page.jsx` now renders `src/components/home/HomePage.jsx` for logged-out visitors
+(logged-in → `/provider` unchanged). Hero positioning line es/en, "what PawPi is" feature strip, three
+audience entry points (owners / walkers+providers / vets+businesses), **honest App Store CTA**
+("Próximamente en el App Store / Coming soon" — a non-link pill), footer with legal cross-links.
+`src/lib/home/meta.js` (`buildHomeMeta`) adds Open Graph + Twitter tags on top of the shared
+title/description/canonical/hreflang. `public/robots.txt` + `public/sitemap.xml` served at root
+(`/`, `/privacy`, `/terms`, `/eula`, `/support` with es-AR/en/x-default). `usePublicChrome()` paints
+`<html>`/`<body>` cream (fixes a dark band when scrolling the transparent-body app) — applied to the
+homepage and the PR1 legal pages. Tests in `src/app/page.test.jsx`; web vitest 2094→**2099**.
+
+**Verified live** on `https://pawpi-production.up.railway.app/` (hero, cards, ES↔EN, title/OG/canonical,
+`/robots.txt` + `/sitemap.xml` as real files). No `og:image` yet (clean `summary` card) — add a raster
+brand asset later. Same `pawpi.info` domain-wiring prerequisite as PR1.
+
+**WEB1 status: COMPLETE (2/2 PRs).** The only thing standing between this and the App Store URLs going
+live at `pawpi.info` is the domain-pointing (Railway custom domain + one.com DNS) — a human infra task.
+
 ## Deferred (separate track, NOT this ticket)
 - The full marketing landing-page system (paseadores V5 scaled to many es-AR/en SEO URLs, hreflang at
   scale, real screenshots) — its own project per `pawpi-web-handoff` (the "move to reusable Next.js/RR

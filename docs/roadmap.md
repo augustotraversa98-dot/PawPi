@@ -1227,3 +1227,11 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   `pawpi-production.up.railway.app`. ⚠️ **`pawpi.info` DNS still points at one.com, not Railway** —
   add the custom domain on Railway + repoint one.com DNS before the `pawpi.info` URLs resolve (needs a
   human; see night-run-log 2026-08-17). web vitest 2075→2094. (2026-08-17.)
+- **WEB1 PR2 — Branded homepage + SEO** — ✅ PR #428, no migration. Replaces the logged-out `/`
+  landing with an on-brand homepage (hero es/en, feature strip, 3 audience entry points, **honest
+  "coming soon" App Store CTA — not a dead link**), keeps logged-in → `/provider`. Adds OG/Twitter +
+  `hreflang`/canonical (client-side head) and `public/robots.txt` + `public/sitemap.xml` (served at
+  root). Also paints `<html>`/`<body>` cream on all public pages (`usePublicChrome`) — fixes a dark
+  band when scrolling the transparent-body app. Live + verified on `pawpi-production.up.railway.app`.
+  web vitest 2094→2099. **WEB1 done (2/2 PRs).** Remaining human task: point `pawpi.info` at Railway.
+  (2026-08-17.)
