@@ -215,7 +215,16 @@
         "permissionTitle": "Permiso necesario",
         "permissionBody": "Permití el acceso a las fotos para adjuntar un documento.",
         "errorBody": "No se pudo guardar el documento.",
-        "comingSoon": "Muy pronto: PawPi leerá tus documentos y los archivará automáticamente."
+        "comingSoon": "Al guardar, PawPi lee tu documento y sugiere registros que podés revisar antes de agregar.",
+        "reading": "Leyendo tu documento…",
+        "readingHint": "PawPi busca vacunas, medicamentos, análisis y más.",
+        "dormantTitle": "Guardado en Documentos",
+        "dormant": "La lectura automática todavía no está activada. Tu archivo se guardó — podés agregar registros a mano.",
+        "emptyTitle": "Archivo guardado",
+        "empty": "No pudimos extraer datos estructurados de este. Igual podés agregar registros a mano.",
+        "readErrorTitle": "Archivo guardado",
+        "readError": "Guardamos tu archivo, pero no pudimos leerlo automáticamente. Podés agregar registros a mano.",
+        "done": "Listo"
       },
       "addForm": {
         "allergyTitle": "Agregar alergia",
@@ -245,6 +254,51 @@
         "stResolved": "Resuelta",
         "save": "Guardar registro",
         "error": "No se pudo guardar el registro. Intentá de nuevo."
+      },
+      "scanUpload": "Escaneá o subí un documento",
+      "review": {
+        "title": "PawPi leyó tu documento",
+        "subtitle": "Revisá lo que encontramos. No se agrega nada hasta que confirmes.",
+        "aiDisclosure": "La IA de PawPi leyó tu archivo para sugerir esto. Editá lo que no cuadre.",
+        "groupVaccinations": "Vacunas",
+        "groupMedications": "Medicamentos",
+        "groupSurgeries": "Cirugías",
+        "groupLabResults": "Análisis",
+        "groupAllergies": "Alergias",
+        "groupConditions": "Condiciones",
+        "groupVisitNotes": "Notas de visita",
+        "include": "Incluir",
+        "skip": "Omitir",
+        "addCount_one": "Agregar {{count}} registro",
+        "addCount_other": "Agregar {{count}} registros",
+        "addNone": "Nada seleccionado",
+        "notNow": "Ahora no",
+        "applying": "Agregando…",
+        "applyError": "Algunos registros no se pudieron agregar. Probá de nuevo.",
+        "sourceMarker": "Digitalizado desde documento subido",
+        "fName": "Nombre",
+        "fDose": "Dosis",
+        "fFrequency": "Frecuencia",
+        "fDate": "Fecha",
+        "fDateGiven": "Fecha de aplicación",
+        "fExpiresOn": "Vence",
+        "fClinic": "Clínica",
+        "fPrescribedBy": "Recetado por",
+        "fStartDate": "Fecha de inicio",
+        "fProcedure": "Procedimiento",
+        "fSurgeon": "Cirujano/a",
+        "fTestName": "Análisis",
+        "fResults": "Resultados",
+        "fOrderedBy": "Solicitado por",
+        "fAllergen": "Alérgeno",
+        "fSeverity": "Severidad",
+        "fReaction": "Reacción",
+        "fCondition": "Condición",
+        "fStatus": "Estado",
+        "fVetName": "Veterinario/a",
+        "fNote": "Nota",
+        "fNotes": "Notas",
+        "fDiagnosedDate": "Diagnosticado"
       }
     },
     "trackerSoon": "Pronto",
@@ -286,14 +340,38 @@
       "savedBodyOne": "1 zona con cambios registrada. Seguí observando y contactá a tu veterinario si es necesario.",
       "savedBodyMany": "{{count}} zonas con cambios registradas. Seguí observando y contactá a tu veterinario si es necesario.",
       "areas": {
-        "eyes": { "label": "Ojos", "description": "Revisá claridad, secreción, enrojecimiento" },
-        "ears": { "label": "Orejas", "description": "Revisá olor, secreción, enrojecimiento" },
-        "teeth_mouth": { "label": "Dientes y boca", "description": "Revisá encías, dientes, aliento" },
-        "skin_fur": { "label": "Piel y pelaje", "description": "Revisá bultos, irritación, pérdida de pelo" },
-        "paws": { "label": "Patas", "description": "Revisá almohadillas, uñas, entre los dedos" },
-        "face": { "label": "Cara", "description": "Aspecto general de la cara" },
-        "mood": { "label": "Ánimo", "description": "Comportamiento, respuesta, ganas de jugar" },
-        "energy": { "label": "Energía", "description": "Nivel de actividad, entusiasmo" }
+        "eyes": {
+          "label": "Ojos",
+          "description": "Revisá claridad, secreción, enrojecimiento"
+        },
+        "ears": {
+          "label": "Orejas",
+          "description": "Revisá olor, secreción, enrojecimiento"
+        },
+        "teeth_mouth": {
+          "label": "Dientes y boca",
+          "description": "Revisá encías, dientes, aliento"
+        },
+        "skin_fur": {
+          "label": "Piel y pelaje",
+          "description": "Revisá bultos, irritación, pérdida de pelo"
+        },
+        "paws": {
+          "label": "Patas",
+          "description": "Revisá almohadillas, uñas, entre los dedos"
+        },
+        "face": {
+          "label": "Cara",
+          "description": "Aspecto general de la cara"
+        },
+        "mood": {
+          "label": "Ánimo",
+          "description": "Comportamiento, respuesta, ganas de jugar"
+        },
+        "energy": {
+          "label": "Energía",
+          "description": "Nivel de actividad, entusiasmo"
+        }
       },
       "changes": {
         "redness": "Enrojecimiento",

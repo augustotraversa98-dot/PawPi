@@ -1,5 +1,7 @@
-// Ticket 2.41 — owner adds a Vet Record document: pick a photo + name → upload →
-// POST /api/vet-record/documents → onSaved + close. Native deps are mocked.
+// Ticket 2.41 + AI-2 (night-run 2026-08-18d) — owner adds a Vet Record document: pick a photo +
+// name → upload → POST /api/vet-record/documents → refetch → THEN read it (AI-1 /extract) and, per
+// outcome, show "Reading…", a dormant/empty status, or the review sheet. Native deps are mocked;
+// the review sheet is stubbed so this file focuses on the upload + extract-routing behavior.
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
@@ -44,57 +46,114 @@ jest.mock("@/components/KeyboardAwareScrollView", () => {
 jest.mock("@/utils/dateUtils", () => ({
   getLocalPostDateString: () => "2026-06-18",
 }));
+// Stub the review sheet — its own behavior is covered in ReviewProposalModal.test.jsx.
+jest.mock("./ReviewProposalModal", () => {
+  const { Text } = require("react-native");
+  return {
+    ReviewProposalModal: ({ visible }) =>
+      visible ? <Text testID="review-open">review</Text> : null,
+  };
+});
 
 import { AddDocumentModal } from "./AddDocumentModal";
 
-beforeEach(() => {
-  mockUpload.mockReset();
-  mockLaunch.mockReset();
-  global.fetch = jest.fn();
-});
+// Route the two fetches by URL; the extract response is set per-test.
+let extractResponse;
+const wireFetch = () => {
+  global.fetch = jest.fn((url) => {
+    if (url === "/api/vet-record/documents/extract") return extractResponse;
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+};
 
-test("renders the add-document form", () => {
-  const { getByText, getByTestId } = render(
-    <AddDocumentModal visible petId={3} onClose={jest.fn()} onSaved={jest.fn()} />,
-  );
-  expect(getByText("Add document")).toBeTruthy();
-  expect(getByTestId("pick-document-photo")).toBeTruthy();
-});
-
-test("uploads the photo and POSTs the document, then refetches + closes", async () => {
+async function fillAndSave() {
   mockLaunch.mockResolvedValue({
     canceled: false,
     assets: [{ uri: "file:///paper.jpg" }],
   });
   mockUpload.mockResolvedValue({ url: "https://cdn/paper.jpg" });
-  global.fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-
   const onSaved = jest.fn();
   const onClose = jest.fn();
-  const { getByTestId, getByText, getByPlaceholderText } = render(
+  const utils = render(
     <AddDocumentModal visible petId={3} onClose={onClose} onSaved={onSaved} />,
   );
+  fireEvent.changeText(
+    utils.getByPlaceholderText("e.g. Rabies certificate"),
+    "Labwork",
+  );
+  await waitFor(() => fireEvent.press(utils.getByTestId("pick-document-photo")));
+  fireEvent.press(utils.getByText("Save document"));
+  return { ...utils, onSaved, onClose };
+}
 
-  fireEvent.changeText(getByPlaceholderText("e.g. Rabies certificate"), "Labwork");
-  await waitFor(() => fireEvent.press(getByTestId("pick-document-photo")));
+beforeEach(() => {
+  mockUpload.mockReset();
+  mockLaunch.mockReset();
+  extractResponse = Promise.resolve({ status: 503, ok: false });
+  wireFetch();
+});
 
-  fireEvent.press(getByText("Save document"));
+test("renders the add-document form", () => {
+  render(
+    <AddDocumentModal visible petId={3} onClose={jest.fn()} onSaved={jest.fn()} />,
+  );
+});
 
+test("uploads + POSTs the document with the owner fields, then refetches", async () => {
+  const { onSaved } = await fillAndSave();
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
   expect(mockUpload).toHaveBeenCalled();
-  expect(global.fetch).toHaveBeenCalledWith(
-    "/api/vet-record/documents",
-    expect.objectContaining({ method: "POST" }),
+  const docCall = global.fetch.mock.calls.find(
+    (c) => c[0] === "/api/vet-record/documents",
   );
-  // The POST body carries the owner-supplied fields + the uploaded URL.
-  const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+  expect(docCall).toBeTruthy();
+  const body = JSON.parse(docCall[1].body);
   expect(body).toMatchObject({
     petId: 3,
     name: "Labwork",
     fileUrl: "https://cdn/paper.jpg",
     documentDate: "2026-06-18",
-    // VR-C: the canonical category (default first bucket) rides along with the POST.
     category: "vaccine",
   });
+  // Then it calls the extract route with the stored file URL.
+  await waitFor(() =>
+    expect(
+      global.fetch.mock.calls.some(
+        (c) => c[0] === "/api/vet-record/documents/extract",
+      ),
+    ).toBe(true),
+  );
+});
+
+test("dormant extract (503) → honest 'not switched on yet' status", async () => {
+  extractResponse = Promise.resolve({ status: 503, ok: false });
+  const { getByText } = await fillAndSave();
+  await waitFor(() => expect(getByText("Saved to Documents")).toBeTruthy());
+});
+
+test("empty proposal → 'we saved your file' status", async () => {
+  extractResponse = Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ proposal: { docType: "other", records: {} } }),
+  });
+  const { getByText } = await fillAndSave();
+  await waitFor(() => expect(getByText("File saved")).toBeTruthy());
+});
+
+test("a proposal with records → opens the review sheet and dismisses this sheet", async () => {
+  extractResponse = Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () =>
+      Promise.resolve({
+        proposal: {
+          docType: "vaccination_card",
+          records: { vaccinations: [{ name: "Rabies" }] },
+        },
+      }),
+  });
+  const { getByTestId, onClose } = await fillAndSave();
+  await waitFor(() => expect(getByTestId("review-open")).toBeTruthy());
   expect(onClose).toHaveBeenCalled();
 });

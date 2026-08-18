@@ -215,7 +215,16 @@
         "permissionTitle": "Permission needed",
         "permissionBody": "Allow photo access to attach a document.",
         "errorBody": "Could not save the document.",
-        "comingSoon": "Coming soon: PawPi will read your documents and file them for you automatically."
+        "comingSoon": "After saving, PawPi reads your document and suggests records you can review before adding.",
+        "reading": "Reading your document…",
+        "readingHint": "PawPi is looking for vaccines, meds, labs and more.",
+        "dormantTitle": "Saved to Documents",
+        "dormant": "Automatic reading isn't switched on yet. Your file is saved — you can add records by hand.",
+        "emptyTitle": "File saved",
+        "empty": "We couldn't pull structured details from this one. You can still add records by hand.",
+        "readErrorTitle": "File saved",
+        "readError": "We saved your file, but couldn't read it automatically. You can add records by hand.",
+        "done": "Done"
       },
       "addForm": {
         "allergyTitle": "Add allergy",
@@ -245,6 +254,51 @@
         "stResolved": "Resolved",
         "save": "Save record",
         "error": "Could not save the record. Please try again."
+      },
+      "scanUpload": "Scan or upload a document",
+      "review": {
+        "title": "PawPi read your document",
+        "subtitle": "Review what we found. Nothing is added until you confirm.",
+        "aiDisclosure": "PawPi's AI read your file to suggest these. Edit anything that's off.",
+        "groupVaccinations": "Vaccines",
+        "groupMedications": "Medications",
+        "groupSurgeries": "Surgeries",
+        "groupLabResults": "Lab results",
+        "groupAllergies": "Allergies",
+        "groupConditions": "Conditions",
+        "groupVisitNotes": "Visit notes",
+        "include": "Include",
+        "skip": "Skip",
+        "addCount_one": "Add {{count}} record",
+        "addCount_other": "Add {{count}} records",
+        "addNone": "Nothing selected",
+        "notNow": "Not now",
+        "applying": "Adding…",
+        "applyError": "Some records couldn't be added. Please try again.",
+        "sourceMarker": "Digitized from uploaded document",
+        "fName": "Name",
+        "fDose": "Dose",
+        "fFrequency": "Frequency",
+        "fDate": "Date",
+        "fDateGiven": "Date given",
+        "fExpiresOn": "Expires",
+        "fClinic": "Clinic",
+        "fPrescribedBy": "Prescribed by",
+        "fStartDate": "Start date",
+        "fProcedure": "Procedure",
+        "fSurgeon": "Surgeon",
+        "fTestName": "Test",
+        "fResults": "Results",
+        "fOrderedBy": "Ordered by",
+        "fAllergen": "Allergen",
+        "fSeverity": "Severity",
+        "fReaction": "Reaction",
+        "fCondition": "Condition",
+        "fStatus": "Status",
+        "fVetName": "Vet",
+        "fNote": "Note",
+        "fNotes": "Notes",
+        "fDiagnosedDate": "Diagnosed"
       }
     },
     "trackerSoon": "Soon",
@@ -286,14 +340,38 @@
       "savedBodyOne": "1 area with changes noted. Continue monitoring and contact your vet if needed.",
       "savedBodyMany": "{{count}} areas with changes noted. Continue monitoring and contact your vet if needed.",
       "areas": {
-        "eyes": { "label": "Eyes", "description": "Check for clarity, discharge, redness" },
-        "ears": { "label": "Ears", "description": "Check for odor, discharge, redness" },
-        "teeth_mouth": { "label": "Teeth & Mouth", "description": "Check gums, teeth, breath" },
-        "skin_fur": { "label": "Skin & Fur", "description": "Check for bumps, irritation, hair loss" },
-        "paws": { "label": "Paws", "description": "Check pads, nails, between toes" },
-        "face": { "label": "Face", "description": "Overall facial appearance" },
-        "mood": { "label": "Mood", "description": "Behavior, responsiveness, playfulness" },
-        "energy": { "label": "Energy", "description": "Activity level, enthusiasm" }
+        "eyes": {
+          "label": "Eyes",
+          "description": "Check for clarity, discharge, redness"
+        },
+        "ears": {
+          "label": "Ears",
+          "description": "Check for odor, discharge, redness"
+        },
+        "teeth_mouth": {
+          "label": "Teeth & Mouth",
+          "description": "Check gums, teeth, breath"
+        },
+        "skin_fur": {
+          "label": "Skin & Fur",
+          "description": "Check for bumps, irritation, hair loss"
+        },
+        "paws": {
+          "label": "Paws",
+          "description": "Check pads, nails, between toes"
+        },
+        "face": {
+          "label": "Face",
+          "description": "Overall facial appearance"
+        },
+        "mood": {
+          "label": "Mood",
+          "description": "Behavior, responsiveness, playfulness"
+        },
+        "energy": {
+          "label": "Energy",
+          "description": "Activity level, enthusiasm"
+        }
       },
       "changes": {
         "redness": "Redness",
