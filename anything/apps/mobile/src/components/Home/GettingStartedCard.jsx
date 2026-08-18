@@ -48,7 +48,7 @@ export function GettingStartedCard({ onSharePost }) {
     switch (key) {
       case "basics":
       case "history":
-        router.push("/more/profile-edit");
+        router.push("/(tabs)/more/profile-edit");
         break;
       case "reminder":
         router.push("/(tabs)/more/reminders");
