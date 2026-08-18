@@ -56,21 +56,34 @@ async function GET(request, { params }) {
     `;
 
     // Attach each program's per-session progress (owner-visible). RLS scopes to the owner.
-    const enriched = [];
-    for (const program of programs) {
-      const progress = await sql`
-        SELECT
-          pr.id, pr.session_id, pr.program_id, pr.pet_id, pr.attended,
-          pr.progress_note, pr.video_lesson_urls, pr.status, pr.created_at,
-          s.kind, s.title AS session_title, s.scheduled_at
-        FROM training_progress pr
-        LEFT JOIN training_sessions s ON s.id = pr.session_id
-        WHERE pr.program_id = ${program.id}
-          AND pr.owner_user_id = ${userId}
-        ORDER BY s.scheduled_at NULLS LAST, pr.id
-      `;
-      enriched.push({ ...program, progress });
+    // Batched in one query (same fix as api/shop/orders/route.js) instead of one
+    // round-trip per program.
+    const programIds = programs.map((p) => p.id);
+    const allProgress =
+      programIds.length > 0
+        ? await sql`
+            SELECT
+              pr.id, pr.session_id, pr.program_id, pr.pet_id, pr.attended,
+              pr.progress_note, pr.video_lesson_urls, pr.status, pr.created_at,
+              s.kind, s.title AS session_title, s.scheduled_at
+            FROM training_progress pr
+            LEFT JOIN training_sessions s ON s.id = pr.session_id
+            WHERE pr.program_id = ANY(${programIds})
+              AND pr.owner_user_id = ${userId}
+            ORDER BY pr.program_id, s.scheduled_at NULLS LAST, pr.id
+          `
+        : [];
+
+    const progressByProgramId = new Map();
+    for (const p of allProgress) {
+      if (!progressByProgramId.has(p.program_id)) progressByProgramId.set(p.program_id, []);
+      progressByProgramId.get(p.program_id).push(p);
     }
+
+    const enriched = programs.map((program) => ({
+      ...program,
+      progress: progressByProgramId.get(program.id) ?? [],
+    }));
 
     return Response.json({ programs: enriched });
   } catch (error) {
