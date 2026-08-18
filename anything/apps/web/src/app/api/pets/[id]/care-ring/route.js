@@ -129,6 +129,19 @@ async function deriveSegmentsOwnerScoped(petId, ownerUserId, tz, day) {
         OR EXISTS (SELECT 1 FROM health_photo_checks pc
           WHERE pc.pet_id = ${petId} AND pc.owner_user_id = ${ownerUserId}
             AND (pc.created_at AT TIME ZONE ${tz})::date = ${day}::date)
+        -- A completed Quick Check (general check) with >=1 observation is a care action
+        -- (QC-C / 0119). Guard: an all-empty completion (no status, no notes) must NOT
+        -- fill the ring. Kept in sync with app_pet_ring_segments (0119).
+        OR EXISTS (SELECT 1 FROM health_general_checks gc
+          WHERE gc.pet_id = ${petId} AND gc.owner_user_id = ${ownerUserId}
+            AND (gc.logged_at AT TIME ZONE ${tz})::date = ${day}::date
+            AND (
+              gc.eyes_status IS NOT NULL OR gc.ears_status IS NOT NULL
+              OR gc.teeth_status IS NOT NULL OR gc.skin_fur_status IS NOT NULL
+              OR gc.paws_status IS NOT NULL OR gc.face_status IS NOT NULL
+              OR gc.mood IS NOT NULL OR gc.energy IS NOT NULL
+              OR (gc.notes IS NOT NULL AND gc.notes <> '')
+            ))
       ) AS care_done
   `;
   const walkDone = !!d.walk_done;
