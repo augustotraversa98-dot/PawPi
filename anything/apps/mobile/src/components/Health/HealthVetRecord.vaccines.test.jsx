@@ -71,6 +71,21 @@ jest.mock("./VetRecord/AddVetNoteModal", () => {
       visible ? <Text>note-modal-open</Text> : null,
   };
 });
+jest.mock("./VetRecord/AddVetRecordModal", () => {
+  const { Text } = require("react-native");
+  return {
+    AddVetRecordModal: ({ visible, recordType }) =>
+      visible ? <Text>{`vetrecord-modal-open:${recordType}`}</Text> : null,
+  };
+});
+jest.mock("./Medication/MedicationModal", () => {
+  const { Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ visible, initialTab }) =>
+      visible ? <Text>{`medication-modal-open:${initialTab}`}</Text> : null,
+  };
+});
 jest.mock("./VetRecord/AddDocumentModal", () => {
   const { Text } = require("react-native");
   return {
@@ -277,27 +292,37 @@ describe("Vet Record — add / delete flows still work", () => {
 describe("Vet Record — Add Record picker (no dead-end primary CTA)", () => {
   const { Alert } = require("react-native");
 
-  test("an unbuilt record type gives honest coming-soon feedback", () => {
+  test("no record type is a dead-end 'Soon' stub anymore (VR-B)", () => {
     const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const screen = render(<HealthVetRecord />);
     fireEvent.press(screen.getByText("Add Record"));
-    expect(screen.getAllByText("Soon").length).toBeGreaterThanOrEqual(8);
+    expect(screen.queryAllByText("Soon").length).toBe(0);
+    // "Vet Visit" maps to the note flow — opens a real modal, no coming-soon alert.
     fireEvent.press(screen.getByText("Vet Visit"));
-    expect(spy).toHaveBeenCalledWith(
-      expect.stringContaining("Vet Visit"),
-      expect.stringContaining("Vet Visit"),
-    );
+    expect(spy).not.toHaveBeenCalled();
+    expect(screen.getByText("note-modal-open")).toBeTruthy();
     spy.mockRestore();
   });
 
-  test("the two built types route to their real flow, no coming-soon alert", () => {
+  test("built-in types route to their real flow, no coming-soon alert", () => {
     const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const screen = render(<HealthVetRecord />);
+
     fireEvent.press(screen.getByText("Add Record"));
     fireEvent.press(screen.getByText("Vet Note"));
-    expect(spy).not.toHaveBeenCalled();
-    // Routing opened the history group on the Notes tab → its modal is visible.
     expect(screen.getByText("note-modal-open")).toBeTruthy();
+
+    // Allergy opens the shared record form on the allergy type.
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByText("Allergy"));
+    expect(screen.getByText("vetrecord-modal-open:allergy")).toBeTruthy();
+
+    // Vaccination reuses the Medications & Care modal on its vaccines tab.
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByText("Vaccination"));
+    expect(screen.getByText("medication-modal-open:vaccines")).toBeTruthy();
+
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 });

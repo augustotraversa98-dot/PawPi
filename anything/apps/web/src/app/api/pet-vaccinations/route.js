@@ -30,11 +30,13 @@ async function GET(request) {
     }
 
     const vaccinations = await sql`
-      SELECT * FROM pet_vaccinations
-      WHERE pet_id = ${petId}
-        AND owner_user_id = ${ownerUserId}
-        AND deleted_at IS NULL
-      ORDER BY date_given DESC NULLS LAST, created_at DESC
+      SELECT v.*, coalesce(up.full_name, up.username) AS created_by_name
+      FROM pet_vaccinations v
+      LEFT JOIN user_profiles up ON up.id = v.created_by_user_id
+      WHERE v.pet_id = ${petId}
+        AND v.owner_user_id = ${ownerUserId}
+        AND v.deleted_at IS NULL
+      ORDER BY v.date_given DESC NULLS LAST, v.created_at DESC
     `;
 
     return Response.json({ vaccinations });
@@ -80,11 +82,13 @@ async function POST(request) {
 
     const rows = await sql`
       INSERT INTO pet_vaccinations
-        (pet_id, owner_user_id, name, date_given, expires_on, clinic_name, notes, reminder_enabled)
+        (pet_id, owner_user_id, name, date_given, expires_on, clinic_name, notes, reminder_enabled,
+         created_by_user_id, created_by_role)
       VALUES (
         ${petId}, ${ownerUserId}, ${name.trim()},
         ${dateGiven || null}, ${expiresOn || null},
-        ${clinicName || null}, ${notes || null}, ${reminderEnabled || false}
+        ${clinicName || null}, ${notes || null}, ${reminderEnabled || false},
+        ${ownerUserId}, 'owner'
       )
       RETURNING *
     `;

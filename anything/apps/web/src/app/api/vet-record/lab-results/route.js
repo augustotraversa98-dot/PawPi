@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+
+// VR-B: owner-OR-family(Editor) gated reads/writes with authorship attribution (0120).
+// See vet-record/allergies/route.js for the shared rationale.
 
 async function GET(request) {
   try {
@@ -11,28 +16,22 @@ async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const petId = searchParams.get("petId");
-
     if (!petId) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
-      return Response.json(
-        { error: "User profile not found" },
-        { status: 404 },
-      );
+    const callerId = await resolveUserId(session.user.id);
+    const gate = await resolvePetLogOwner(callerId, petId);
+    if (gate.error) {
+      return Response.json({ error: gate.error }, { status: gate.status });
     }
 
-    const ownerUserId = userProfile[0].id;
-
     const labResults = await sql`
-      SELECT * FROM pet_lab_results 
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
-      ORDER BY test_date DESC
+      SELECT l.*, coalesce(up.full_name, up.username) AS created_by_name
+      FROM pet_lab_results l
+      LEFT JOIN user_profiles up ON up.id = l.created_by_user_id
+      WHERE l.pet_id = ${petId} AND l.owner_user_id = ${gate.ownerUserId}
+      ORDER BY l.test_date DESC
     `;
 
     return Response.json({ labResults });
@@ -62,25 +61,20 @@ async function POST(request) {
       );
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
-      return Response.json(
-        { error: "User profile not found" },
-        { status: 404 },
-      );
+    const callerId = await resolveUserId(session.user.id);
+    const gate = await resolvePetLogOwner(callerId, petId);
+    if (gate.error) {
+      return Response.json({ error: gate.error }, { status: gate.status });
     }
-
-    const ownerUserId = userProfile[0].id;
 
     const result = await sql`
       INSERT INTO pet_lab_results (
-        pet_id, owner_user_id, test_name, test_date, results, ordered_by, notes
+        pet_id, owner_user_id, test_name, test_date, results, ordered_by, notes,
+        created_by_user_id, created_by_role
       ) VALUES (
-        ${petId}, ${ownerUserId}, ${testName}, ${testDate}, ${results || null}, 
-        ${orderedBy || null}, ${notes || null}
+        ${petId}, ${gate.ownerUserId}, ${testName}, ${testDate}, ${results || null},
+        ${orderedBy || null}, ${notes || null},
+        ${callerId}, ${gate.isOwner ? "owner" : "editor"}
       )
       RETURNING *
     `;
@@ -104,26 +98,20 @@ async function DELETE(request) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
     if (!id) {
       return Response.json({ error: "id is required" }, { status: 400 });
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
+    const ownerUserId = await resolveUserId(session.user.id);
+    if (ownerUserId === null) {
       return Response.json(
         { error: "User profile not found" },
         { status: 404 },
       );
     }
 
-    const ownerUserId = userProfile[0].id;
-
     await sql`
-      DELETE FROM pet_lab_results 
+      DELETE FROM pet_lab_results
       WHERE id = ${id} AND owner_user_id = ${ownerUserId}
     `;
 

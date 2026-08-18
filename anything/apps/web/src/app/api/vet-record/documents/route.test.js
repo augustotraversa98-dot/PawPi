@@ -35,12 +35,13 @@ describe('GET', () => {
   it('lists the owner-scoped documents', async () => {
     auth.mockResolvedValue({ user: { id: 'a' } });
     sql
-      .mockResolvedValueOnce([{ id: 7 }]) // user_profiles
+      .mockResolvedValueOnce([{ id: 7 }]) // resolveUserId → user_profiles
+      .mockResolvedValueOnce([{ owner_user_id: 7 }]) // resolvePetLogOwner owner fast-path
       .mockResolvedValueOnce([{ id: 1, name: 'Labwork' }]); // documents
     const res = await GET(req('?petId=3'));
     expect(res.status).toBe(200);
     expect((await res.json()).documents).toHaveLength(1);
-    expect(queryText(1).toLowerCase()).toContain('owner_user_id =');
+    expect(queryText(2).toLowerCase()).toContain('owner_user_id =');
   });
 });
 
@@ -53,7 +54,8 @@ describe('POST', () => {
   it('inserts an owner-scoped document', async () => {
     auth.mockResolvedValue({ user: { id: 'a' } });
     sql
-      .mockResolvedValueOnce([{ id: 7 }]) // user_profiles
+      .mockResolvedValueOnce([{ id: 7 }]) // resolveUserId → user_profiles
+      .mockResolvedValueOnce([{ owner_user_id: 7 }]) // resolvePetLogOwner owner fast-path
       .mockResolvedValueOnce([{ id: 11, name: 'Rabies cert' }]); // insert RETURNING
     const res = await POST(
       jsonReq({
@@ -66,7 +68,7 @@ describe('POST', () => {
     );
     expect(res.status).toBe(200);
     expect((await res.json()).document.id).toBe(11);
-    expect(queryText(1).toLowerCase()).toContain('insert into vet_documents');
+    expect(queryText(2).toLowerCase()).toContain('insert into vet_documents');
   });
 });
 
