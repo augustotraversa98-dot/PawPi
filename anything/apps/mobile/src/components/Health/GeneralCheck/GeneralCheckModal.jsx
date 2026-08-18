@@ -185,7 +185,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
             borderTopRightRadius: 24,
             paddingTop: 20,
             paddingBottom: insets.bottom + 20,
-            maxHeight: "90%",
+            // A DEFINITE height (not maxHeight-only) is required: the middle child is a
+            // KeyboardAwareScrollView with flex:1, and flex:1 resolves to 0 height when the
+            // parent is content-sized. Without this the entire scroll body (status options,
+            // change list, notes) collapses to zero height and "Next" can never enable.
+            height: "90%",
           }}
         >
           {/* Header */}
