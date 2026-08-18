@@ -58,6 +58,20 @@ const seedPost = (pet: number, owner: number, day = DAY) =>
   raw`insert into posts (user_id, pet_id, is_daily_update, post_date) values (${owner}, ${pet}, true, ${day})`;
 const seedFood = (pet: number, owner: number, ts = NOON) =>
   raw`insert into health_food_logs (pet_id, owner_user_id, logged_at) values (${pet}, ${owner}, ${ts})`;
+// QC-C: a general check (Quick Check). `cols` lets a test seed an all-empty completion
+// (no observation) vs one with a status/notes observation.
+const seedGeneralCheck = (
+  pet: number,
+  owner: number,
+  cols: { eyes_status?: string; notes?: string } = {},
+  ts = NOON,
+) =>
+  raw`insert into health_general_checks ${raw({
+    pet_id: pet,
+    owner_user_id: owner,
+    logged_at: ts,
+    ...cols,
+  })}`;
 
 describe("E1 — care ring derivation", () => {
   it("empty day => all segments false, ring not closed", async () => {
@@ -119,6 +133,32 @@ describe("E1 — care ring derivation", () => {
 
   it("a non-integer id => 404 before SQL", async () => {
     expect((await apiReq(`/pets/abc/care-ring`)).status).toBe(404);
+  });
+});
+
+describe("QC-C — a completed Quick Check fills the Care segment", () => {
+  it("a general check WITH an observation fills Care", async () => {
+    await seedGeneralCheck(OWNER.petId, OWNER.profileId, { eyes_status: "usual" });
+    const b = await (await ringOf(OWNER.petId)).json();
+    expect(b.care_done).toBe(true);
+  });
+
+  it("a notes-only general check (no status) also fills Care", async () => {
+    await seedGeneralCheck(OWNER.petId, OWNER.profileId, { notes: "looked a bit tired" });
+    const b = await (await ringOf(OWNER.petId)).json();
+    expect(b.care_done).toBe(true);
+  });
+
+  it("an all-empty general check (no status, no notes) does NOT fill Care", async () => {
+    await seedGeneralCheck(OWNER.petId, OWNER.profileId, {});
+    const b = await (await ringOf(OWNER.petId)).json();
+    expect(b.care_done).toBe(false);
+  });
+
+  it("another owner's general check never fills this pet's Care (scoping)", async () => {
+    await seedGeneralCheck(OTHER.petId, OTHER.profileId, { eyes_status: "usual" });
+    const b = await (await ringOf(OWNER.petId)).json();
+    expect(b.care_done).toBe(false);
   });
 });
 

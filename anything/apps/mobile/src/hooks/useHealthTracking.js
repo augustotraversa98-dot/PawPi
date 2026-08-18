@@ -187,6 +187,10 @@ export function useLogGeneralCheck() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "general-checks"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // A completed Quick Check is a Care action — fill the Care Ring's Care segment live
+      // (QC-C: the ring now counts a same-day general check with >=1 observation).
+      if (currentPet?.id)
+        queryClient.invalidateQueries({ queryKey: ["care-ring", currentPet.id] });
       console.log("[useLogGeneralCheck] General check logged successfully");
     },
     onError: (error) => {
