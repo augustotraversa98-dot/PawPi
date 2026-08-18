@@ -1572,6 +1572,32 @@ export default function HealthVetRecord() {
           </PressableScale>
         </View>
 
+        {/* AI-2 (night-run 2026-08-18d): prominent "scan or upload" entry — the whole point is easy
+            bulk digitizing, so it lives up top. Opens AddDocumentModal, which reads the file and
+            proposes records to review. */}
+        <PressableScale
+          testID="scan-upload-document"
+          onPress={() => setAddDocVisible(true)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: SPACING.sm,
+            backgroundColor: COLORS.coral + "15",
+            borderRadius: RADIUS.control,
+            paddingVertical: 14,
+            marginBottom: SPACING.lg,
+            borderWidth: 1.5,
+            borderColor: COLORS.coral,
+            borderStyle: "dashed",
+          }}
+        >
+          <Camera size={18} color={COLORS.coral} />
+          <Text style={[TYPE.callout, { fontWeight: "800", color: COLORS.coral }]}>
+            {t("health.vetRecord.scanUpload")}
+          </Text>
+        </PressableScale>
+
         {/* Emergency Card entry (ticket 2.51) */}
         <PressableScale
           testID="open-emergency-card"
