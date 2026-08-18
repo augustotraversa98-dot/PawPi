@@ -1,7 +1,6 @@
 import {
   computeActivation,
-  isHistoryComplete,
-  hasBasics,
+  isProfileComplete,
   ACTIVATION_ITEMS,
 } from "./gettingStarted";
 
@@ -14,41 +13,39 @@ const fullPet = {
   age_years: 3,
 };
 
-describe("hasBasics", () => {
-  test("true only with a name AND a breed", () => {
-    expect(hasBasics({ name: "Mango", breed: "Beagle" })).toBe(true);
-    expect(hasBasics({ name: "Mango" })).toBe(false);
-    expect(hasBasics({ breed: "Beagle" })).toBe(false);
-    expect(hasBasics({ name: "  ", breed: "Beagle" })).toBe(false);
-    expect(hasBasics(null)).toBe(false);
+describe("isProfileComplete", () => {
+  test("needs name + breed + an age + a real gender + a weight", () => {
+    expect(isProfileComplete(fullPet)).toBe(true);
   });
-});
-
-describe("isHistoryComplete", () => {
-  test("needs breed + an age + a real gender + a weight", () => {
-    expect(isHistoryComplete(fullPet)).toBe(true);
+  test("missing name fails", () => {
+    expect(isProfileComplete({ ...fullPet, name: null })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, name: "  " })).toBe(false);
+  });
+  test("missing breed fails", () => {
+    expect(isProfileComplete({ ...fullPet, breed: null })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, breed: "  " })).toBe(false);
   });
   test("age satisfied by birthday OR age_years", () => {
-    expect(isHistoryComplete({ ...fullPet, birthday: null, age_years: 2 })).toBe(true);
-    expect(isHistoryComplete({ ...fullPet, birthday: "2022-01-01", age_years: null })).toBe(true);
-    expect(isHistoryComplete({ ...fullPet, birthday: null, age_years: null })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, birthday: null, age_years: 2 })).toBe(true);
+    expect(isProfileComplete({ ...fullPet, birthday: "2022-01-01", age_years: null })).toBe(true);
+    expect(isProfileComplete({ ...fullPet, birthday: null, age_years: null })).toBe(false);
   });
   test("gender 'unknown' does not count", () => {
-    expect(isHistoryComplete({ ...fullPet, gender: "unknown" })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, gender: "unknown" })).toBe(false);
   });
   test("missing weight fails", () => {
-    expect(isHistoryComplete({ ...fullPet, weight: null })).toBe(false);
-    expect(isHistoryComplete({ ...fullPet, weight: "" })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, weight: null })).toBe(false);
+    expect(isProfileComplete({ ...fullPet, weight: "" })).toBe(false);
   });
   test("null pet is not complete", () => {
-    expect(isHistoryComplete(null)).toBe(false);
+    expect(isProfileComplete(null)).toBe(false);
   });
 });
 
 describe("computeActivation", () => {
   test("all-undone (no pet, nothing derived) → 0%", () => {
     const a = computeActivation({});
-    expect(a.total).toBe(6);
+    expect(a.total).toBe(5);
     expect(a.completed).toBe(0);
     expect(a.percent).toBe(0);
     expect(a.isComplete).toBe(false);
@@ -58,7 +55,7 @@ describe("computeActivation", () => {
 
   test("each item derives from its own signal", () => {
     const a = computeActivation({
-      pet: fullPet, // basics + history done
+      pet: fullPet, // profile done
       hasReminder: true,
       hasMeal: false,
       hasPost: false,
@@ -66,8 +63,7 @@ describe("computeActivation", () => {
     });
     const done = Object.fromEntries(a.items.map((i) => [i.key, i.done]));
     expect(done).toEqual({
-      basics: true,
-      history: true,
+      profile: true,
       reminder: true,
       meal: false,
       post: false,
@@ -75,11 +71,18 @@ describe("computeActivation", () => {
     });
   });
 
-  test("% math is completed ÷ total, rounded", () => {
-    // basics only (name+breed), nothing else → 1/6 → 17%.
+  test("profile item needs the full union — name+breed alone is not enough", () => {
     const a = computeActivation({ pet: { name: "Mango", breed: "Beagle" } });
+    expect(a.items.find((i) => i.key === "profile").done).toBe(false);
+    expect(a.completed).toBe(0);
+    expect(a.percent).toBe(0);
+  });
+
+  test("% math is completed ÷ total, rounded", () => {
+    // profile only (full bio), nothing else → 1/5 → 20%.
+    const a = computeActivation({ pet: fullPet });
     expect(a.completed).toBe(1);
-    expect(a.percent).toBe(17);
+    expect(a.percent).toBe(20);
   });
 
   test("the notifications item reflects the permission flag", () => {
@@ -101,7 +104,7 @@ describe("computeActivation", () => {
       hasPost: true,
       notificationsGranted: true,
     });
-    expect(a.completed).toBe(6);
+    expect(a.completed).toBe(5);
     expect(a.percent).toBe(100);
     expect(a.isComplete).toBe(true);
   });
