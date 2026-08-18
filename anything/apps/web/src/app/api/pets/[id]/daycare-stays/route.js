@@ -108,21 +108,41 @@ async function GET(request, { params }) {
       ORDER BY ds.start_date DESC, ds.id DESC
     `;
 
-    // Attach each stay's report cards (owner-visible) + the vaccine status.
+    // Attach each stay's report cards (owner-visible) + the vaccine status. Report cards are
+    // batched in one query (same fix as api/shop/orders/route.js) instead of one round-trip per
+    // stay; vaccine status is cached per distinct (provider, location) pair since it only
+    // depends on those two fields plus the constant petId, not on the stay itself.
+    const stayIds = stays.map((s) => s.id);
+    const allCards =
+      stayIds.length > 0
+        ? await sql`
+            SELECT id, stay_id, date, mood, meals, activities, notes, photo_urls, created_at
+            FROM report_cards
+            WHERE stay_id = ANY(${stayIds})
+            ORDER BY stay_id, date DESC, id DESC
+          `
+        : [];
+    const cardsByStayId = new Map();
+    for (const card of allCards) {
+      if (!cardsByStayId.has(card.stay_id)) cardsByStayId.set(card.stay_id, []);
+      cardsByStayId.get(card.stay_id).push(card);
+    }
+
+    const vaccineStatusCache = new Map();
     const enriched = [];
     for (const stay of stays) {
-      const cards = await sql`
-        SELECT id, stay_id, date, mood, meals, activities, notes, photo_urls, created_at
-        FROM report_cards
-        WHERE stay_id = ${stay.id}
-        ORDER BY date DESC, id DESC
-      `;
-      const vaccineStatus = await computeVaccineStatus(
-        petId,
-        stay.provider_id,
-        stay.location_id,
-      );
-      enriched.push({ ...stay, report_cards: cards, vaccine_status: vaccineStatus });
+      const cacheKey = `${stay.provider_id}:${stay.location_id ?? ""}`;
+      if (!vaccineStatusCache.has(cacheKey)) {
+        vaccineStatusCache.set(
+          cacheKey,
+          await computeVaccineStatus(petId, stay.provider_id, stay.location_id),
+        );
+      }
+      enriched.push({
+        ...stay,
+        report_cards: cardsByStayId.get(stay.id) ?? [],
+        vaccine_status: vaccineStatusCache.get(cacheKey),
+      });
     }
 
     return Response.json({ stays: enriched });
