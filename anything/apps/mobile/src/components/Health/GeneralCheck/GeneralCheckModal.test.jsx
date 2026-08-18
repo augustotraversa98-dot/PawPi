@@ -102,6 +102,29 @@ test("the area stepper jumps directly to any body area (EN)", () => {
   expect(getByText("Complete")).toBeTruthy();
 });
 
+test("progress tracks areas ASSESSED, not the current position (EN)", () => {
+  const { getByText, getAllByText, queryByText } = render(
+    <GeneralCheckModal visible onClose={jest.fn()} />,
+  );
+
+  // Nothing assessed yet — the assessed counter reads 0, regardless of position.
+  expect(getByText(`0 of ${CHECK_AREAS.length} checked`)).toBeTruthy();
+
+  // Jump to the LAST area (Energy) without choosing any status. Position is now
+  // "8 of 8", but the progress counter must NOT jump to "8 of 8 checked" (the old
+  // bug read this as 100% complete with nothing assessed).
+  fireEvent.press(getAllByText("Energy")[0]);
+  expect(getByText(`${CHECK_AREAS.length} of ${CHECK_AREAS.length}`)).toBeTruthy(); // position
+  expect(getByText(`0 of ${CHECK_AREAS.length} checked`)).toBeTruthy(); // still nothing assessed
+  expect(
+    queryByText(`${CHECK_AREAS.length} of ${CHECK_AREAS.length} checked`),
+  ).toBeNull();
+
+  // Assessing this area is what moves the progress counter.
+  fireEvent.press(getByText("Looks usual"));
+  expect(getByText(`1 of ${CHECK_AREAS.length} checked`)).toBeTruthy();
+});
+
 test("walking every area to the end saves once and closes", async () => {
   const onClose = jest.fn();
   const { getByText } = render(

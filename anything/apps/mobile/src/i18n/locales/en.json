@@ -94,6 +94,7 @@
       "title": "Quick Check",
       "progress": "{{current}} of {{total}}",
       "percentComplete": "{{percent}}% complete",
+      "assessedCount": "{{count}} of {{total}} checked",
       "howDoesThisLook": "How does this look?",
       "looksUsual": "Looks usual",
       "somethingChanged": "Something changed",

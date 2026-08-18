@@ -94,6 +94,7 @@
       "title": "Chequeo rápido",
       "progress": "{{current}} de {{total}}",
       "percentComplete": "{{percent}}% completado",
+      "assessedCount": "{{count}} de {{total}} revisadas",
       "howDoesThisLook": "¿Cómo se ve?",
       "looksUsual": "Se ve normal",
       "somethingChanged": "Algo cambió",

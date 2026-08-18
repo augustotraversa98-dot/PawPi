@@ -194,7 +194,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
   // is in flight on the final area.
   const isLastArea = currentAreaIndex === CHECK_AREAS.length - 1;
   const isSaving = logGeneralCheckMutation.isPending;
-  const progress = ((currentAreaIndex + 1) / CHECK_AREAS.length) * 100;
+  // Progress reflects what the owner has actually ASSESSED (areas with a chosen
+  // status), NOT which area they're currently viewing. Otherwise jumping to the
+  // last area would falsely read "100% complete" with nothing checked.
+  const assessedCount = Object.values(checkData).filter((a) => a?.status).length;
+  const progress = (assessedCount / CHECK_AREAS.length) * 100;
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -259,7 +263,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
                 })}
               </Text>
               <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-                {tc("percentComplete", { percent: Math.round(progress) })}
+                {tc("assessedCount", {
+                  count: assessedCount,
+                  total: CHECK_AREAS.length,
+                })}
               </Text>
             </View>
             <View
