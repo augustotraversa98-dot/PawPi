@@ -34,12 +34,13 @@ describe('GET', () => {
   it('lists the owner-scoped notes', async () => {
     auth.mockResolvedValue({ user: { id: 'a' } });
     sql
-      .mockResolvedValueOnce([{ id: 7 }])
-      .mockResolvedValueOnce([{ id: 1, note: 'Annual checkup' }]);
+      .mockResolvedValueOnce([{ id: 7 }]) // resolveUserId → user_profiles
+      .mockResolvedValueOnce([{ owner_user_id: 7 }]) // resolvePetLogOwner owner fast-path
+      .mockResolvedValueOnce([{ id: 1, note: 'Annual checkup' }]); // notes
     const res = await GET(req('?petId=3'));
     expect(res.status).toBe(200);
     expect((await res.json()).notes).toHaveLength(1);
-    expect(queryText(1).toLowerCase()).toContain('owner_user_id =');
+    expect(queryText(2).toLowerCase()).toContain('owner_user_id =');
   });
 });
 
@@ -51,14 +52,15 @@ describe('POST', () => {
   it('inserts an owner-authored entry (vetName omitted → "You")', async () => {
     auth.mockResolvedValue({ user: { id: 'a' } });
     sql
-      .mockResolvedValueOnce([{ id: 7 }])
-      .mockResolvedValueOnce([{ id: 9, note: 'Limping on left paw' }]);
+      .mockResolvedValueOnce([{ id: 7 }]) // resolveUserId
+      .mockResolvedValueOnce([{ owner_user_id: 7 }]) // resolvePetLogOwner owner fast-path
+      .mockResolvedValueOnce([{ id: 9, note: 'Limping on left paw' }]); // insert RETURNING
     const res = await POST(
       post({ petId: 3, noteDate: '2026-06-18', note: 'Limping on left paw' }),
     );
     expect(res.status).toBe(200);
     expect((await res.json()).note.id).toBe(9);
-    expect(queryText(1).toLowerCase()).toContain('insert into vet_notes');
+    expect(queryText(2).toLowerCase()).toContain('insert into vet_notes');
   });
 });
 

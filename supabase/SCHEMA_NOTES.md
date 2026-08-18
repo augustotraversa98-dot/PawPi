@@ -285,6 +285,30 @@ ACTION 1).
 > 2026-08-18** (empty→false, status-obs→true, notes-only→true; confirmed live on-device: completing a Quick
 > Check filled the Care Ring's ✓ Care segment).
 
+> **0120** is VR-B (docs/night-run-2026-08-18c.md) — record AUTHORSHIP on the Vet Record tables + the one
+> missing family write policy. The mobile "Add record" picker was wired to real per-type add flows this
+> ticket, and every record now shows "Added by {name} · {role} · {date}", so the tables need to record who
+> authored each row (owner vs a granted FAMILY/Editor — e.g. a vet the owner shared the pet with). TWO
+> additive changes, no existing policy loosened beyond the vet_notes family add:
+> - `created_by_user_id integer (→ user_profiles, ON DELETE SET NULL)` + `created_by_role text`
+>   (CHECK null|'owner'|'editor') on the SIX record tables the picker writes (`pet_allergies`,
+>   `pet_conditions`, `pet_surgeries`, `pet_lab_results`, `vet_notes`, `vet_documents`) PLUS
+>   `pet_vaccinations` + `pet_medications` for consistency (their owner CRUD stamps 'owner'). Purely
+>   additive — every table's existing RLS (0022 owner-private / 0023 R2d / 0049 family / 0117 own-row)
+>   rides unchanged. Backfill: every existing row is owner-authored → `created_by_user_id = owner_user_id`,
+>   `created_by_role = 'owner'`.
+> - `vet_notes_family_all` — the OTHER five record tables already carry `<t>_family_all` (0049 §6d), so a
+>   family Editor can already write them; vet_notes (R2d group, 0023) was the one left out. Add the
+>   identical additive FOR ALL family policy so an Editor can append a clinical note too. Owner
+>   (`vet_notes_owner_all`) + provider (`vet_notes_provider_*`) access is byte-for-byte unchanged.
+> - Routes `vet-record/{allergies,conditions,surgeries,lab-results,notes,documents}` now gate reads/writes
+>   with the shared owner-OR-family path (`resolvePetLogOwner`, FF2): `owner_user_id` anchors to the pet's
+>   OWNER, `created_by_user_id = caller`, `created_by_role = isOwner ? 'owner' : 'editor'`; a Viewer
+>   (caregiver) gets 403. GET joins `user_profiles` for `created_by_name`. Idempotent. Verify:
+> `supabase/verify_0120.sql`. Owner/editor attribution + Viewer-403 proven as pawpi_app in
+> `vet-record-attribution.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-18**
+> (verify_0120 all 7 PASS; add-allergy round-trip confirmed on the iOS Simulator).
+
 Still deferred: **no seed data.**
 
 ---

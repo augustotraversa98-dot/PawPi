@@ -1,6 +1,14 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+
+// VR-B: reads/writes are gated by the shared owner-OR-family(Editor) path
+// (resolvePetLogOwner). owner_user_id anchors to the pet's OWNER (shared storage/read
+// key); created_by_user_id + created_by_role ('owner'|'editor', 0120) record who authored
+// the row so the app can show "Added by {name} · {role} · {date}". A Viewer (non-family)
+// gets 403 — matching the tables' RLS (0022 owner-private + 0049 family).
 
 async function GET(request) {
   try {
@@ -11,28 +19,22 @@ async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const petId = searchParams.get("petId");
-
     if (!petId) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
-      return Response.json(
-        { error: "User profile not found" },
-        { status: 404 },
-      );
+    const callerId = await resolveUserId(session.user.id);
+    const gate = await resolvePetLogOwner(callerId, petId);
+    if (gate.error) {
+      return Response.json({ error: gate.error }, { status: gate.status });
     }
 
-    const ownerUserId = userProfile[0].id;
-
     const allergies = await sql`
-      SELECT * FROM pet_allergies 
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
-      ORDER BY created_at DESC
+      SELECT a.*, coalesce(up.full_name, up.username) AS created_by_name
+      FROM pet_allergies a
+      LEFT JOIN user_profiles up ON up.id = a.created_by_user_id
+      WHERE a.pet_id = ${petId} AND a.owner_user_id = ${gate.ownerUserId}
+      ORDER BY a.created_at DESC
     `;
 
     return Response.json({ allergies });
@@ -62,25 +64,20 @@ async function POST(request) {
       );
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
-      return Response.json(
-        { error: "User profile not found" },
-        { status: 404 },
-      );
+    const callerId = await resolveUserId(session.user.id);
+    const gate = await resolvePetLogOwner(callerId, petId);
+    if (gate.error) {
+      return Response.json({ error: gate.error }, { status: gate.status });
     }
-
-    const ownerUserId = userProfile[0].id;
 
     const result = await sql`
       INSERT INTO pet_allergies (
-        pet_id, owner_user_id, allergen, severity, reaction, diagnosed_date, notes
+        pet_id, owner_user_id, allergen, severity, reaction, diagnosed_date, notes,
+        created_by_user_id, created_by_role
       ) VALUES (
-        ${petId}, ${ownerUserId}, ${allergen}, ${severity || null}, 
-        ${reaction || null}, ${diagnosedDate || null}, ${notes || null}
+        ${petId}, ${gate.ownerUserId}, ${allergen}, ${severity || null},
+        ${reaction || null}, ${diagnosedDate || null}, ${notes || null},
+        ${callerId}, ${gate.isOwner ? "owner" : "editor"}
       )
       RETURNING *
     `;
@@ -104,26 +101,20 @@ async function DELETE(request) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
     if (!id) {
       return Response.json({ error: "id is required" }, { status: 400 });
     }
 
-    const userProfile = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
-    `;
-
-    if (!userProfile || userProfile.length === 0) {
+    const ownerUserId = await resolveUserId(session.user.id);
+    if (ownerUserId === null) {
       return Response.json(
         { error: "User profile not found" },
         { status: 404 },
       );
     }
 
-    const ownerUserId = userProfile[0].id;
-
     await sql`
-      DELETE FROM pet_allergies 
+      DELETE FROM pet_allergies
       WHERE id = ${id} AND owner_user_id = ${ownerUserId}
     `;
 

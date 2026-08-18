@@ -25,11 +25,13 @@ async function GET(request) {
     }
 
     const medications = await sql`
-      SELECT * FROM pet_medications
-      WHERE pet_id = ${parseInt(petId)}
-        AND owner_user_id = ${ownerUserId}
-        AND deleted_at IS NULL
-      ORDER BY (status = 'active') DESC, created_at DESC
+      SELECT m.*, coalesce(up.full_name, up.username) AS created_by_name
+      FROM pet_medications m
+      LEFT JOIN user_profiles up ON up.id = m.created_by_user_id
+      WHERE m.pet_id = ${parseInt(petId)}
+        AND m.owner_user_id = ${ownerUserId}
+        AND m.deleted_at IS NULL
+      ORDER BY (m.status = 'active') DESC, m.created_at DESC
     `;
     return Response.json({ medications });
   } catch (error) {
@@ -67,11 +69,13 @@ async function POST(request) {
 
     const rows = await sql`
       INSERT INTO pet_medications
-        (pet_id, owner_user_id, name, dose, frequency, prescribed_by, notes, start_date, reminder_enabled)
+        (pet_id, owner_user_id, name, dose, frequency, prescribed_by, notes, start_date, reminder_enabled,
+         created_by_user_id, created_by_role)
       VALUES (
         ${petId}, ${ownerUserId}, ${name.trim()},
         ${dose || null}, ${frequency || null}, ${prescribedBy || null},
-        ${notes || null}, ${startDate || null}, ${reminderEnabled || false}
+        ${notes || null}, ${startDate || null}, ${reminderEnabled || false},
+        ${ownerUserId}, 'owner'
       )
       RETURNING *
     `;
