@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Alert } from "react-native";
+import { View, Text, ScrollView, Modal, TouchableOpacity, Alert } from "react-native";
 import {
   Activity,
   Droplet,
   UtensilsCrossed,
   Pill,
   Weight,
-  ThermometerSun,
   Heart,
   Stethoscope,
   Syringe,
@@ -14,6 +13,7 @@ import {
   Camera,
   Salad,
   ClipboardCheck,
+  X,
 } from "lucide-react-native";
 import PhotoCheckModal from "./PhotoCheck/PhotoCheckModal";
 import FoodWaterTrackerModal from "./FoodWater/FoodWaterTrackerModal";
@@ -24,6 +24,7 @@ import WalkActivityModal from "./WalkActivity/WalkActivityModal";
 import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
+import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
 import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
@@ -36,107 +37,95 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 
-// Exported for the test that asserts the structural invariant below.
+// Track is two sections mapped to how owners think:
+//   • Everyday — quick daily logs (these fill the Care Ring / Today's Progress)
+//   • Health records — care / medical history for the vet
+// Labels + descriptions come from i18n (`health.trackScreen.<id>Label/Desc`) so the
+// whole screen is bilingual. Each tile carries an `id` (the i18n slug) and either an
+// `action` (a real logging surface) OR `comingSoon: true` (display-only). See the
+// structural invariant below — a coming-soon tile can NEVER carry an `action`.
+//
+// Exported for the test that asserts the structural invariant.
 export const TRACKERS = [
+  // ── Everyday ─────────────────────────────────────────────────────────────
   {
-    icon: Camera,
-    label: "Photo Check",
-    description: "Track visible changes by body area over time",
-    color: "#64B5F6",
-    action: "photoCheck",
-  },
-  {
-    icon: ClipboardCheck,
-    label: "General Check",
-    description:
-      "Quick visual check of eyes, ears, teeth, skin, paws, mood, and energy",
-    color: "#9575CD",
-    action: "generalCheck",
-  },
-  {
+    id: "foodWater",
+    section: "everyday",
     icon: UtensilsCrossed,
-    label: "Food & Treats",
-    description: "Meals, treats, appetite changes",
     color: COLORS.sage,
     action: "foodWater",
   },
   {
+    id: "bathroom",
+    section: "everyday",
     icon: Droplet,
-    label: "Water Intake",
-    description: "Daily water consumption",
-    color: "#64B5F6",
-    action: "foodWater",
-  },
-  {
-    icon: Droplet,
-    label: "Pee & Urination",
-    description: "Track frequency, color, and patterns",
     color: "#42A5F5",
-    action: "pee",
+    action: "bathroom",
   },
   {
+    id: "walk",
+    section: "everyday",
     icon: Activity,
-    label: "Poo & Digestion",
-    description: "Track consistency, color, and changes",
-    color: "#8D6E63",
-    action: "poo",
-  },
-  {
-    icon: Salad,
-    label: "Vomit / Digestive Events",
-    description: "Track vomiting, episodes, and related symptoms",
-    color: "#FFB74D",
-    action: "vomit",
-  },
-  {
-    icon: Activity,
-    label: "Exercise & Walks",
-    description: "Activity level, duration, intensity",
     color: COLORS.coral,
     action: "walkActivity",
   },
   {
+    id: "weight",
+    section: "everyday",
     icon: Weight,
-    label: "Weight",
-    description: "Track weight over time",
     color: "#9575CD",
     action: "weight",
   },
   {
+    id: "quickCheck",
+    section: "everyday",
+    icon: ClipboardCheck,
+    color: "#9575CD",
+    action: "generalCheck",
+  },
+  // ── Health records ───────────────────────────────────────────────────────
+  {
+    id: "medications",
+    section: "records",
     icon: Pill,
-    label: "Medications & Care",
-    description: "Medications, vaccines, flea/tick prevention, supplements",
     color: "#FFB74D",
     action: "medications",
   },
   {
-    icon: ThermometerSun,
-    label: "Symptoms & Behavior",
-    description: "Changes, observations, notes",
-    color: "#FF8A65",
-    comingSoon: true,
+    id: "vaccines",
+    section: "records",
+    icon: Syringe,
+    color: "#4DB6AC",
+    action: "vaccines",
   },
   {
+    id: "vetVisits",
+    section: "records",
+    icon: Stethoscope,
+    color: COLORS.terracotta,
+    action: "vetVisits",
+  },
+  {
+    id: "photoCheck",
+    section: "records",
+    icon: Camera,
+    color: "#64B5F6",
+    action: "photoCheck",
+  },
+  // The ONLY honest "Soon" left — Vital Signs has no real capture flow yet, so it is
+  // display-only: badge + Alert, no action, writes nothing.
+  {
+    id: "vitalSigns",
+    section: "records",
     icon: Heart,
-    label: "Vital Signs",
-    description: "Temperature, heart rate, breathing",
     color: "#E57373",
     comingSoon: true,
   },
-  {
-    icon: Stethoscope,
-    label: "Vet Visits",
-    description: "Appointments, exams, procedures",
-    color: COLORS.terracotta,
-    comingSoon: true,
-  },
-  {
-    icon: Syringe,
-    label: "Vaccinations",
-    description: "Vaccine history, upcoming shots",
-    color: "#4DB6AC",
-    comingSoon: true,
-  },
+];
+
+const SECTIONS = [
+  { key: "everyday", headerKey: "sectionEveryday", hintKey: "sectionEverydayHint" },
+  { key: "records", headerKey: "sectionRecords", hintKey: "sectionRecordsHint" },
 ];
 
 // Structural invariant (Care Ring / Track integrity): a coming-soon tile must be
@@ -156,9 +145,11 @@ export default function HealthTrack() {
   const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const petName = currentPet?.name || t("common.yourPet");
+
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
   const [foodWaterModalVisible, setFoodWaterModalVisible] = useState(false);
   const [foodWaterModalType, setFoodWaterModalType] = useState("food");
+  const [bathroomChooserVisible, setBathroomChooserVisible] = useState(false);
   const [pooModalVisible, setPooModalVisible] = useState(false);
   const [peeModalVisible, setPeeModalVisible] = useState(false);
   const [vomitModalVisible, setVomitModalVisible] = useState(false);
@@ -167,10 +158,19 @@ export default function HealthTrack() {
   const [generalCheckModalVisible, setGeneralCheckModalVisible] =
     useState(false);
   const [medicationModalVisible, setMedicationModalVisible] = useState(false);
+  const [medicationTab, setMedicationTab] = useState("medications");
+  const [vetVisitModalVisible, setVetVisitModalVisible] = useState(false);
   const [weightModalVisible, setWeightModalVisible] = useState(false);
 
+  const labelFor = (id) => t(`health.trackScreen.${id}Label`);
+  const descFor = (id) => t(`health.trackScreen.${id}Desc`);
+
   const handlePhotoCheckSave = (photoData) => {
-    console.log("Photo check saved:", photoData);
+    // Photo Check persistence needs the upload flow (PhotoCheckCaptureModal + useUpload)
+    // to turn the local capture into a hosted URL; PhotoCheckModal only yields a local
+    // file:// URI, so we deliberately DON'T POST it here (a device-local path would be
+    // unusable everywhere else). Left as a known follow-up rather than storing bad data.
+    console.log("Photo check captured:", photoData);
   };
 
   const handleTrackerPress = (tracker) => {
@@ -178,34 +178,123 @@ export default function HealthTrack() {
     // NOTHING — no modal, no log, no ["care-ring"] invalidation. Return before any
     // action dispatch so an unbuilt tracker can never fill a Care Ring segment.
     if (tracker.comingSoon) {
+      const label = labelFor(tracker.id);
       Alert.alert(
-        t("health.trackerSoonTitle", { label: tracker.label }),
-        t("health.trackerSoonBody", { label: tracker.label, pet: petName }),
+        t("health.trackerSoonTitle", { label }),
+        t("health.trackerSoonBody", { label, pet: petName }),
       );
       return;
     }
-    if (tracker.action === "photoCheck") {
-      setPhotoCheckModalVisible(true);
-    } else if (tracker.action === "generalCheck") {
-      setGeneralCheckModalVisible(true);
-    } else if (tracker.action === "medications") {
-      setMedicationModalVisible(true);
-    } else if (tracker.action === "foodWater") {
-      setFoodWaterModalType(
-        tracker.label === "Water Intake" ? "water" : "food",
-      );
-      setFoodWaterModalVisible(true);
-    } else if (tracker.action === "poo") {
-      setPooModalVisible(true);
-    } else if (tracker.action === "pee") {
-      setPeeModalVisible(true);
-    } else if (tracker.action === "vomit") {
-      setVomitModalVisible(true);
-    } else if (tracker.action === "walkActivity") {
-      setWalkActivityModalVisible(true);
-    } else if (tracker.action === "weight") {
-      setWeightModalVisible(true);
+    switch (tracker.action) {
+      case "photoCheck":
+        setPhotoCheckModalVisible(true);
+        break;
+      case "generalCheck":
+        setGeneralCheckModalVisible(true);
+        break;
+      case "medications":
+        setMedicationTab("medications");
+        setMedicationModalVisible(true);
+        break;
+      case "vaccines":
+        setMedicationTab("vaccines");
+        setMedicationModalVisible(true);
+        break;
+      case "vetVisits":
+        setVetVisitModalVisible(true);
+        break;
+      case "foodWater":
+        setFoodWaterModalType("food");
+        setFoodWaterModalVisible(true);
+        break;
+      case "bathroom":
+        setBathroomChooserVisible(true);
+        break;
+      case "walkActivity":
+        setWalkActivityModalVisible(true);
+        break;
+      case "weight":
+        setWeightModalVisible(true);
+        break;
+      default:
+        break;
     }
+  };
+
+  const openBathroom = (which) => {
+    setBathroomChooserVisible(false);
+    if (which === "pee") setPeeModalVisible(true);
+    else if (which === "poo") setPooModalVisible(true);
+    else if (which === "vomit") setVomitModalVisible(true);
+  };
+
+  const renderTile = (tracker) => {
+    const Icon = tracker.icon;
+    return (
+      <PressableScale
+        key={tracker.id}
+        onPress={() => handleTrackerPress(tracker)}
+        accessibilityRole="button"
+        style={{
+          backgroundColor: MATERIALS.surface,
+          borderRadius: RADIUS.card,
+          padding: SPACING.lg,
+          borderWidth: 1,
+          borderColor: MATERIALS.hairline,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.md,
+          ...ELEVATION.sm,
+        }}
+      >
+        <View
+          style={{
+            width: 50,
+            height: 50,
+            borderRadius: 25,
+            backgroundColor: tracker.color + "20",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Icon size={24} color={tracker.color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.xs,
+              marginBottom: 3,
+            }}
+          >
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+              {labelFor(tracker.id)}
+            </Text>
+            {tracker.comingSoon && (
+              <View
+                style={{
+                  backgroundColor: MATERIALS.surfaceSunken,
+                  borderRadius: RADIUS.chip,
+                  paddingHorizontal: SPACING.sm,
+                  paddingVertical: 2,
+                  borderWidth: 1,
+                  borderColor: MATERIALS.hairline,
+                }}
+              >
+                <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
+                  {t("health.trackerSoon")}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
+            {descFor(tracker.id)}
+          </Text>
+        </View>
+        <ArrowRight size={20} color={COLORS.mutedBrown} />
+      </PressableScale>
+    );
   };
 
   return (
@@ -214,84 +303,34 @@ export default function HealthTrack() {
         {/* Section Title */}
         <View style={{ marginBottom: SPACING.xl }}>
           <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
-            Track Health Data
+            {t("health.trackScreen.title")}
           </Text>
           <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
-            Choose what you'd like to track for {petName}
+            {t("health.trackScreen.subtitle", { pet: petName })}
           </Text>
         </View>
 
-        {/* Tracker Cards */}
-        <View style={{ gap: SPACING.md }}>
-          {TRACKERS.map((tracker, idx) => {
-            const Icon = tracker.icon;
-            return (
-              <PressableScale
-                key={idx}
-                onPress={() => handleTrackerPress(tracker)}
-                accessibilityRole="button"
-                style={{
-                  backgroundColor: MATERIALS.surface,
-                  borderRadius: RADIUS.card,
-                  padding: SPACING.lg,
-                  borderWidth: 1,
-                  borderColor: MATERIALS.hairline,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: SPACING.md,
-                  ...ELEVATION.sm,
-                }}
-              >
-                <View
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: 25,
-                    backgroundColor: tracker.color + "20",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Icon size={24} color={tracker.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: SPACING.xs,
-                      marginBottom: 3,
-                    }}
-                  >
-                    <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-                      {tracker.label}
-                    </Text>
-                    {tracker.comingSoon && (
-                      <View
-                        style={{
-                          backgroundColor: MATERIALS.surfaceSunken,
-                          borderRadius: RADIUS.chip,
-                          paddingHorizontal: SPACING.sm,
-                          paddingVertical: 2,
-                          borderWidth: 1,
-                          borderColor: MATERIALS.hairline,
-                        }}
-                      >
-                        <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
-                          {t("health.trackerSoon")}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
-                    {tracker.description}
-                  </Text>
-                </View>
-                <ArrowRight size={20} color={COLORS.mutedBrown} />
-              </PressableScale>
-            );
-          })}
-        </View>
+        {/* Two sections: Everyday · Health records */}
+        {SECTIONS.map((section) => (
+          <View key={section.key} style={{ marginBottom: SPACING.xl }}>
+            <Text
+              style={[
+                TYPE.overline,
+                { color: COLORS.terracotta, textTransform: "uppercase", marginBottom: 2 },
+              ]}
+            >
+              {t(`health.trackScreen.${section.headerKey}`)}
+            </Text>
+            <Text
+              style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}
+            >
+              {t(`health.trackScreen.${section.hintKey}`, { pet: petName })}
+            </Text>
+            <View style={{ gap: SPACING.md }}>
+              {TRACKERS.filter((tr) => tr.section === section.key).map(renderTile)}
+            </View>
+          </View>
+        ))}
 
         {/* Info Box */}
         <Card
@@ -299,14 +338,106 @@ export default function HealthTrack() {
           radius={RADIUS.card}
           color={MATERIALS.surfaceSunken}
           borderColor={MATERIALS.hairline}
-          style={{ marginTop: SPACING.xl, padding: SPACING.lg }}
+          style={{ marginTop: SPACING.xs, padding: SPACING.lg }}
         >
           <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, lineHeight: 19, textAlign: "center", fontWeight: "500" }]}>
-            Track changes over time to share meaningful data with your vet. The
-            more you track, the better prepared you'll be for appointments.
+            {t("health.trackScreen.infoBox")}
           </Text>
         </Card>
       </View>
+
+      {/* Bathroom & Digestion chooser — folds pee / poo / vomit behind one entry.
+          The three existing modals already persist to their own APIs. */}
+      <Modal
+        visible={bathroomChooserVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setBathroomChooserVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
+          <View
+            style={{
+              backgroundColor: MATERIALS.surface,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: SPACING.lg,
+              paddingBottom: SPACING.xxl,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: SPACING.xs,
+              }}
+            >
+              <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
+                {t("health.trackScreen.chooserTitle")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setBathroomChooserVisible(false)}
+                accessibilityLabel={t("common.close")}
+              >
+                <X size={22} color={COLORS.mutedBrown} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
+              {t("health.trackScreen.chooserSubtitle", { pet: petName })}
+            </Text>
+
+            <View style={{ gap: SPACING.md }}>
+              {[
+                { key: "pee", icon: Droplet, color: "#42A5F5" },
+                { key: "poo", icon: Activity, color: "#8D6E63" },
+                { key: "vomit", icon: Salad, color: "#FFB74D" },
+              ].map((opt) => {
+                const OptIcon = opt.icon;
+                const cap = opt.key.charAt(0).toUpperCase() + opt.key.slice(1);
+                return (
+                  <PressableScale
+                    key={opt.key}
+                    onPress={() => openBathroom(opt.key)}
+                    accessibilityRole="button"
+                    style={{
+                      backgroundColor: MATERIALS.surfaceSunken,
+                      borderRadius: RADIUS.card,
+                      padding: SPACING.lg,
+                      borderWidth: 1,
+                      borderColor: MATERIALS.hairline,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: SPACING.md,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: 23,
+                        backgroundColor: opt.color + "20",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <OptIcon size={22} color={opt.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+                        {t(`health.trackScreen.chooser${cap}`)}
+                      </Text>
+                      <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+                        {t(`health.trackScreen.chooser${cap}Desc`)}
+                      </Text>
+                    </View>
+                    <ArrowRight size={18} color={COLORS.mutedBrown} />
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Photo Check Modal */}
       <PhotoCheckModal
@@ -346,16 +477,26 @@ export default function HealthTrack() {
         onClose={() => setWalkActivityModalVisible(false)}
       />
 
-      {/* General Check Modal */}
+      {/* General Check Modal (Quick Check) */}
       <GeneralCheckModal
         visible={generalCheckModalVisible}
         onClose={() => setGeneralCheckModalVisible(false)}
       />
 
-      {/* Medication Modal */}
+      {/* Medication Modal — Medications & Care and Vaccines both open this, on the
+          matching tab. */}
       <MedicationModal
         visible={medicationModalVisible}
         onClose={() => setMedicationModalVisible(false)}
+        initialTab={medicationTab}
+      />
+
+      {/* Vet Visits — reuses the built append-only Vet Record note flow (persists to
+          /api/vet-record/notes: a dated entry for clinic, reason, and notes). */}
+      <AddVetNoteModal
+        visible={vetVisitModalVisible}
+        onClose={() => setVetVisitModalVisible(false)}
+        petId={currentPet?.id}
       />
 
       {/* Weight Modal */}

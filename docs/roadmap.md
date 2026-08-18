@@ -158,6 +158,30 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
   1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
+### 🩺 TRACK CONSOLIDATION — Health → Track: Everyday vs. Health records — ✅ BUILT 2026-08-17 (1 PR; mobile-only, no migration)
+
+Design of record: [`docs/track-consolidation-ticket.md`](track-consolidation-ticket.md). Collapses the
+14-tile, English-only Track grid into two owner-shaped sections (9 tiles, 1 honest "Soon"). Status
+mirror (☐ queued · 🔨 building · ✅ merged):
+- ✅ **Two-section grid** — **Everyday** (Food & Water · Bathroom & Digestion · Walk & Activity · Weight ·
+  Quick Check) + **Health records** (Medications & Care · Vaccines · Vet Visits · Photo Check). Merged the
+  Food+Water and Pee/Poo/Vomit duplicates (Bathroom & Digestion opens a chooser sheet over the three
+  already-persisting modals); folded Symptoms & Behavior into Quick Check (removed the standalone Soon tile).
+- ✅ **Made real** — **Vaccines** → `MedicationModal initialTab="vaccines"`; **Vet Visits** → reuse the
+  built append-only `AddVetNoteModal` (`POST /api/vet-record/notes`, scoped to the current pet). No net-new backend.
+- ✅ **Only Vital Signs stays "Soon"** — display-only (badge + honest EN+ES Alert, writes nothing).
+- ✅ **Full EN+ES localization** of the entire Track screen (title, subtitle, section headers/hints, all 9
+  tile labels+descriptions, chooser copy, info box) via new `health.trackScreen.*` keys — replaced the hardcoded English.
+- ✅ **Persistence audit** — `GeneralCheckModal` no longer writes to a local in-memory mock: it now POSTs to
+  `/api/health/general-checks` via `useLogGeneralCheck` (area keys remapped, per-area notes preserved, survives
+  reopen). `useLogFood` now invalidates `["care-ring", petId]` so a food log fills the Care ring's Care segment live.
+- ✅ **Care Ring invariant preserved** — coming-soon tiles carry no `action`; the structural guard + test still hold.
+- ⏳ **Known follow-up (out of scope):** Photo Check from Track still needs the upload flow
+  (`PhotoCheckCaptureModal` + `useUpload`) to persist a hosted URL; `PhotoCheckModal` only yields a local
+  `file://` URI, so it is deliberately NOT POSTed (no bad-data record). GeneralCheck dashboard still reads mock seed data.
+- Gates: mobile jest **1919** green (HealthTrack.test.jsx rewritten: 9-tile set, EN+ES render, Vaccines→vaccines
+  tab, Vet Visits→note flow w/ petId, Vital Signs Alert-only + no write, invariant). ⚠️ owed: on-device pass.
+
 ### 🔧 WAVE 2 FIX-PACK (BX1·BX2·FF1–FF3) — ✅ COMPLETE 2026-08-14
 
 Design of record: [`docs/wave2-finish-fixpack.md`](wave2-finish-fixpack.md). Closes the 3 deferred Wave 2

@@ -21,12 +21,8 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  CHECK_AREAS,
-  CHANGE_OPTIONS,
-  addGeneralCheck,
-  getRecommendation,
-} from "@/data/generalCheckData";
+import { CHECK_AREAS, CHANGE_OPTIONS } from "@/data/generalCheckData";
+import { useLogGeneralCheck } from "@/hooks/useHealthTracking";
 
 const C = {
   cream: "#FFF7EF",
@@ -43,6 +39,7 @@ const C = {
 export default function GeneralCheckModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
+  const logGeneralCheckMutation = useLogGeneralCheck();
 
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [checkData, setCheckData] = useState({});
@@ -107,23 +104,43 @@ export default function GeneralCheckModal({ visible, onClose }) {
     }
   };
 
-  const handleComplete = () => {
-    // Calculate overall status
-    const hasChanges = Object.values(checkData).some(
-      (area) => area.status === "changed",
-    );
-    const overallStatus = hasChanges ? "some_changes" : "all_usual";
+  const handleComplete = async () => {
+    if (logGeneralCheckMutation.isPending) return;
 
-    // Add the check
-    const savedCheck = addGeneralCheck({
-      overallStatus,
-      areas: checkData,
-    });
-
-    // Show completion message
     const changedCount = Object.values(checkData).filter(
       (area) => area.status === "changed",
     ).length;
+
+    // Preserve every per-area observation in the single API notes field so nothing
+    // the owner typed is silently dropped when we persist.
+    const notes = CHECK_AREAS.map((a) => {
+      const d = checkData[a.key];
+      return d?.notes ? `${a.label}: ${d.notes}` : null;
+    })
+      .filter(Boolean)
+      .join("\n");
+
+    // Persist the check to /api/health/general-checks so it lands on the pet's real
+    // health timeline (Today's Progress) and survives reopen. Area keys are remapped
+    // to the API's shape (teeth_mouth → teeth, skin_fur → skin).
+    try {
+      await logGeneralCheckMutation.mutateAsync({
+        areas: {
+          eyes: checkData.eyes,
+          ears: checkData.ears,
+          teeth: checkData.teeth_mouth,
+          skin: checkData.skin_fur,
+          paws: checkData.paws,
+          face: checkData.face,
+          mood: checkData.mood,
+          energy: checkData.energy,
+        },
+        notes,
+      });
+    } catch (error) {
+      // The mutation's onError already alerts; keep the modal open so the owner can retry.
+      return;
+    }
 
     if (changedCount > 0) {
       Alert.alert(
@@ -639,10 +656,13 @@ export default function GeneralCheckModal({ visible, onClose }) {
             )}
             <TouchableOpacity
               onPress={handleNext}
-              disabled={!canProceed}
+              disabled={!canProceed || logGeneralCheckMutation.isPending}
               style={{
                 flex: currentAreaIndex > 0 ? 2 : 1,
-                backgroundColor: canProceed ? C.coral : C.mutedBrown + "40",
+                backgroundColor:
+                  canProceed && !logGeneralCheckMutation.isPending
+                    ? C.coral
+                    : C.mutedBrown + "40",
                 borderRadius: 14,
                 padding: 16,
                 alignItems: "center",
@@ -658,7 +678,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   color: "#FFF",
                 }}
               >
-                {isLastArea ? "Complete" : "Next"}
+                {isLastArea
+                  ? logGeneralCheckMutation.isPending
+                    ? "Saving…"
+                    : "Complete"
+                  : "Next"}
               </Text>
               {!isLastArea && <ChevronRight size={20} color="#FFF" />}
             </TouchableOpacity>

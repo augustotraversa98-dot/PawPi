@@ -39,6 +39,8 @@ export function useLogFood() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "food-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // A food log is a Care action — fill the Care Ring's Care segment live.
+      if (currentPet?.id) queryClient.invalidateQueries({ queryKey: ["care-ring", currentPet.id] });
       console.log("[useLogFood] Food logged successfully");
     },
     onError: (error) => {
