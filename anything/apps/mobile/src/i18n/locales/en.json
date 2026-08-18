@@ -164,8 +164,14 @@
       "streakSafe": "{{name}}'s streak is safe — 🔥 {{count}}",
       "streakRepairCta": "Restore your streak",
       "streakRepairHint": "Missed a day? Bring your 🔥 {{count}} streak back — no harm done.",
-      "allGood": "All good today",
-      "allGoodHint": "One tap to close {{name}}'s care ring"
+      "allGoodAction": "Log a quick check-in",
+      "allGoodActionHint": "Saves a wellness note for {{name}} — everything looks good today.",
+      "allGoodConfirmTitle": "Log a quick check-in?",
+      "allGoodConfirmBody": "This saves a wellness note for {{name}} — everything looks good today.",
+      "allGoodConfirmCancel": "Cancel",
+      "allGoodConfirmLog": "Log",
+      "allGoodLogged": "Logged ✓",
+      "allGoodUndo": "Undo"
     },
     "trackScreen": {
       "title": "Track health data",
