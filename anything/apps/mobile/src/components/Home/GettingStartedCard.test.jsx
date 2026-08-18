@@ -34,7 +34,7 @@ const fullPet = {
 function stateWith(overrides = {}) {
   return {
     pet: { id: 1, name: "Mango" },
-    activation: computeActivation({ pet: { name: "Mango", breed: "Beagle" } }), // 1/6
+    activation: computeActivation({ pet: fullPet }), // profile done → 1/5
     enableNotifications: mockEnable,
     celebrated: false,
     markCelebrated: mockMarkCelebrated,
@@ -49,14 +49,14 @@ beforeEach(() => {
   mockState = stateWith();
 });
 
-test("renders the card with a percent badge and all six checklist rows", () => {
+test("renders the card with a percent badge and all five checklist rows", () => {
   const { getByTestId } = render(<GettingStartedCard />);
   expect(getByTestId("getting-started-card")).toBeTruthy();
-  for (const key of ["basics", "history", "reminder", "meal", "post", "notifications"]) {
+  for (const key of ["profile", "reminder", "meal", "post", "notifications"]) {
     expect(getByTestId(`gs-item-${key}`)).toBeTruthy();
   }
-  // basics done (name+breed) → its check is the done variant; meal not.
-  expect(getByTestId("gs-check-basics-done")).toBeTruthy();
+  // profile done (full bio) → its check is the done variant; meal not.
+  expect(getByTestId("gs-check-profile-done")).toBeTruthy();
   expect(getByTestId("gs-check-meal")).toBeTruthy();
 });
 
@@ -70,7 +70,7 @@ test("tapping items routes / enables / shares appropriately", () => {
   const onSharePost = jest.fn();
   const { getByTestId } = render(<GettingStartedCard onSharePost={onSharePost} />);
 
-  fireEvent.press(getByTestId("gs-item-basics"));
+  fireEvent.press(getByTestId("gs-item-profile"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/profile-edit");
 
   fireEvent.press(getByTestId("gs-item-reminder"));

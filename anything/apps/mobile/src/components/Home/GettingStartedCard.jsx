@@ -46,8 +46,7 @@ export function GettingStartedCard({ onSharePost }) {
 
   const onPressItem = (key) => {
     switch (key) {
-      case "basics":
-      case "history":
+      case "profile":
         router.push("/(tabs)/more/profile-edit");
         break;
       case "reminder":

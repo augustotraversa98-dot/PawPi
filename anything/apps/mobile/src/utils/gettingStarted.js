@@ -4,29 +4,25 @@
 
 // The item keys, in display order. Copy lives in i18n under gettingStarted.items.<key>.
 export const ACTIVATION_ITEMS = [
-  "basics",
-  "history",
+  "profile",
   "reminder",
   "meal",
   "post",
   "notifications",
 ];
 
-// "Complete your dog's history" — a small, sensible set of the medical/history profile fields
-// (all present on the pet row): breed + an age (birthday OR age_years) + a real gender + a weight.
-// `notes` is free-text and optional, so it doesn't gate completion.
-export function isHistoryComplete(pet) {
+// "Set up your dog's profile" — the "basics" and "history" checklist items were merged into one:
+// both routed to the same Dog Profile editor and both derived from the same pet-row bio fields, so
+// completion is now the UNION of the old two: a name + a breed + an age (birthday OR age_years) + a
+// real gender (≠ "unknown") + a weight. `notes` is free-text and optional, so it doesn't gate this.
+export function isProfileComplete(pet) {
   if (!pet) return false;
+  const hasName = !!(pet.name && String(pet.name).trim());
   const hasBreed = !!(pet.breed && String(pet.breed).trim());
   const hasAge = !!pet.birthday || pet.age_years != null;
   const hasGender = !!pet.gender && pet.gender !== "unknown";
   const hasWeight = pet.weight != null && pet.weight !== "";
-  return hasBreed && hasAge && hasGender && hasWeight;
-}
-
-// "Add your dog's basics" — the onboarding minimum: a name AND a breed.
-export function hasBasics(pet) {
-  return !!(pet?.name && String(pet.name).trim() && pet?.breed && String(pet.breed).trim());
+  return hasName && hasBreed && hasAge && hasGender && hasWeight;
 }
 
 // Derive the whole checklist from real signals. Every input is a boolean the caller computed from
@@ -40,8 +36,7 @@ export function computeActivation({
   notificationsGranted = false,
 } = {}) {
   const done = {
-    basics: hasBasics(pet),
-    history: isHistoryComplete(pet),
+    profile: isProfileComplete(pet),
     reminder: !!hasReminder,
     meal: !!hasMeal,
     post: !!hasPost,

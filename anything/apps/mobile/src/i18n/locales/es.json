@@ -651,8 +651,7 @@
     "celebrateTitle": "¡Todo listo! 🎉",
     "celebrateBody": "El perfil de {{petName}} ya está completo.",
     "items": {
-      "basics": "Agrega los datos de tu perro",
-      "history": "Completa el historial de tu perro",
+      "profile": "Completa el perfil de tu perro",
       "reminder": "Crea tu primer recordatorio",
       "meal": "Registra su primera comida",
       "post": "Comparte tu primera publicación",

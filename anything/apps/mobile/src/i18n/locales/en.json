@@ -651,8 +651,7 @@
     "celebrateTitle": "You're all set! 🎉",
     "celebrateBody": "{{petName}}'s profile is ready to go.",
     "items": {
-      "basics": "Add your dog's basics",
-      "history": "Complete your dog's history",
+      "profile": "Set up your dog's profile",
       "reminder": "Set your first reminder",
       "meal": "Log your first meal",
       "post": "Share your first post",
