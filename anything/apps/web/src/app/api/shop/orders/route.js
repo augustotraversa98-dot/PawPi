@@ -34,16 +34,27 @@ async function GET(request) {
       ORDER BY o.created_at DESC, o.id DESC
     `;
 
-    const enriched = [];
-    for (const order of orders) {
-      const items = await sql`
-        SELECT id, order_id, name, quantity, unit_cents, product_id
-        FROM order_items
-        WHERE order_id = ${order.id}
-        ORDER BY id
-      `;
-      enriched.push({ ...order, items });
+    const orderIds = orders.map((o) => o.id);
+    const allItems =
+      orderIds.length > 0
+        ? await sql`
+            SELECT id, order_id, name, quantity, unit_cents, product_id
+            FROM order_items
+            WHERE order_id = ANY(${orderIds})
+            ORDER BY order_id, id
+          `
+        : [];
+
+    const itemsByOrderId = new Map();
+    for (const item of allItems) {
+      if (!itemsByOrderId.has(item.order_id)) itemsByOrderId.set(item.order_id, []);
+      itemsByOrderId.get(item.order_id).push(item);
     }
+
+    const enriched = orders.map((order) => ({
+      ...order,
+      items: itemsByOrderId.get(order.id) ?? [],
+    }));
 
     return Response.json({ orders: enriched });
   } catch (error) {
