@@ -105,6 +105,29 @@ test("walking every area to the end saves once and closes", async () => {
   await waitFor(() => expect(onClose).toHaveBeenCalled());
 });
 
+test("bottom sheet has a definite height so the flex:1 scroll body can't collapse", () => {
+  // Regression guard for the zero-height bug: the sheet was sized with maxHeight only, so
+  // its flex:1 KeyboardAwareScrollView resolved to 0 height and the status options became
+  // invisible (Next permanently disabled). A DEFINITE height is what gives the scroll body
+  // room to fill. This is a structural proxy — the real collapse only reproduces under a
+  // measuring layout engine, so on-device/rendered verification is still required.
+  const { toJSON } = render(<GeneralCheckModal visible onClose={jest.fn()} />);
+
+  const flatten = (s) => (Array.isArray(s) ? Object.assign({}, ...s.filter(Boolean)) : s || {});
+  const styles = [];
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (node.props?.style) styles.push(flatten(node.props.style));
+    (node.children || []).forEach(walk);
+  };
+  walk(toJSON());
+
+  const sheet = styles.find((st) => st.height === "90%");
+  expect(sheet).toBeTruthy();
+  // And it must not be the old maxHeight-only sizing that caused the collapse.
+  expect(styles.some((st) => st.maxHeight === "90%" && st.height == null)).toBe(false);
+});
+
 test("renders fully localized in Spanish (es-AR)", () => {
   mockLocaleState.locale = "es";
   const { getByText } = render(
