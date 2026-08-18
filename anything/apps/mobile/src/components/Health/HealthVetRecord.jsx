@@ -43,6 +43,8 @@ import {
 } from "lucide-react-native";
 import { AddDocumentModal } from "./VetRecord/AddDocumentModal";
 import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
+import { AddVetRecordModal } from "./VetRecord/AddVetRecordModal";
+import MedicationModal from "./Medication/MedicationModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import { PrescriptionsSection } from "./VetRecord/PrescriptionsSection";
@@ -123,6 +125,38 @@ export default function HealthVetRecord() {
   const [showEditMedicalProfile, setShowEditMedicalProfile] = useState(false);
   const [selectedSurgery, setSelectedSurgery] = useState(null);
   const [selectedLab, setSelectedLab] = useState(null);
+  // VR-B: real add flows for the record types the picker used to stub as "Soon".
+  // vetRecordModalType drives the shared AddVetRecordModal (allergy/condition/surgery/lab);
+  // medicationModalTab drives the reused MedicationModal ("medications"|"vaccines").
+  const [vetRecordModalType, setVetRecordModalType] = useState(null);
+  const [medicationModalTab, setMedicationModalTab] = useState(null);
+
+  // Localized "Added by {name} · {role} · {date}" line for a record row (VR-B, 0120).
+  const renderAttribution = (row) => {
+    if (!row) return null;
+    const isEditor = row.created_by_role === "editor";
+    const name =
+      row.created_by_name ||
+      t(isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.you");
+    const roleLabel = t(
+      isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.roleOwner",
+    );
+    const when = row.created_at ? formatDisplayDate(row.created_at) : null;
+    return (
+      <Text
+        style={{
+          fontSize: 11,
+          color: COLORS.mutedBrown,
+          marginTop: 8,
+          fontWeight: "500",
+        }}
+      >
+        {when
+          ? t("health.vetRecord.addedBy", { name, role: roleLabel, date: when })
+          : t("health.vetRecord.addedByNoDate", { name, role: roleLabel })}
+      </Text>
+    );
+  };
 
   // Fetch summary counts
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -415,37 +449,68 @@ export default function HealthVetRecord() {
     router.push(`/emergency-card?petId=${currentPet.id}`);
   };
 
+  // VR-B: every record type now opens a real add flow. Each opens the Medical history
+  // group on the sub-tab where the new entry will appear, then launches the right modal:
+  //   note/visit/other → AddVetNoteModal · document → AddDocumentModal
+  //   vaccination/medication → MedicationModal (reused) · allergy/condition/surgery/lab
+  //   → the shared AddVetRecordModal.
+  const openHistoryTab = (tab) => {
+    setExpandedSections((prev) => ({ ...prev, history: true }));
+    setHistoryTab(tab);
+  };
+
   const handleRecordTypeSelect = (record) => {
     setShowAddRecordPicker(false);
-    const label = record?.label;
-    // STRUCTURAL guard first: a coming-soon record type is display-only — honest
-    // feedback, no add flow.
-    if (record?.comingSoon) {
-      Alert.alert(
-        t("health.recordSoonTitle", { type: label }),
-        t("health.recordSoonBody", { type: label }),
-      );
-      return;
+    switch (record?.key) {
+      case "vetNote":
+      case "vetVisit":
+      case "other":
+        openHistoryTab("notes");
+        setAddNoteVisible(true);
+        return;
+      case "document":
+        openHistoryTab("documents");
+        setAddDocVisible(true);
+        return;
+      case "vaccination":
+        openHistoryTab("vaccines");
+        setMedicationModalTab("vaccines");
+        return;
+      case "medication":
+        openHistoryTab("medications");
+        setMedicationModalTab("medications");
+        return;
+      case "allergy":
+        openHistoryTab("conditions");
+        setVetRecordModalType("allergy");
+        return;
+      case "condition":
+        openHistoryTab("conditions");
+        setVetRecordModalType("condition");
+        return;
+      case "surgery":
+        openHistoryTab("visits");
+        setVetRecordModalType("surgery");
+        return;
+      case "lab":
+        openHistoryTab("labs");
+        setVetRecordModalType("lab");
+        return;
+      default:
+        return;
     }
-    // The two record types with a real add flow open the Medical history group on
-    // their sub-tab so the new entry is visible.
-    if (record?.key === "vetNote") {
-      setExpandedSections((prev) => ({ ...prev, history: true }));
-      setHistoryTab("notes");
-      setAddNoteVisible(true);
-      return;
-    }
-    if (record?.key === "document") {
-      setExpandedSections((prev) => ({ ...prev, history: true }));
-      setHistoryTab("documents");
-      setAddDocVisible(true);
-      return;
-    }
-    Alert.alert(
-      t("health.recordSoonTitle", { type: label }),
-      t("health.recordSoonBody", { type: label }),
-    );
   };
+
+  // Invalidate the record queries touched by an add flow (+ the summary counts).
+  const invalidateRecordKeys = useCallback(
+    (keys) => {
+      if (currentPet?.id == null) return;
+      [...keys, "vet-record-summary"].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k, currentPet.id] }),
+      );
+    },
+    [queryClient, currentPet?.id],
+  );
 
   const SectionHeader = ({ title, icon: Icon, section, count }) => (
     <PressableScale
@@ -689,6 +754,7 @@ export default function HealthVetRecord() {
                       {t("health.vetRecord.lot", { lot: vaccine.lot })}
                     </Text>
                   )}
+                  {renderAttribution(vaccine)}
                 </View>
               ))
             )}
@@ -754,6 +820,7 @@ export default function HealthVetRecord() {
                       {surgery.surgeon} • {surgery.clinic}
                     </Text>
                   )}
+                  {renderAttribution(surgery)}
                 </TouchableOpacity>
               ))
             )}
@@ -824,6 +891,7 @@ export default function HealthVetRecord() {
                       {lab.results}
                     </Text>
                   )}
+                  {renderAttribution(lab)}
                 </TouchableOpacity>
               ))
             )}
@@ -931,6 +999,7 @@ export default function HealthVetRecord() {
                         })}
                       </Text>
                     )}
+                    {renderAttribution(allergy)}
                   </View>
                 ))}
               </>
@@ -1031,6 +1100,7 @@ export default function HealthVetRecord() {
                         {condition.notes}
                       </Text>
                     )}
+                    {renderAttribution(condition)}
                   </View>
                 ))}
               </>
@@ -1186,6 +1256,7 @@ export default function HealthVetRecord() {
                   >
                     {note.note}
                   </Text>
+                  {renderAttribution(note)}
                 </View>
               ))
             )}
@@ -1305,6 +1376,7 @@ export default function HealthVetRecord() {
                         </Text>
                       </View>
                     </View>
+                    {renderAttribution(doc)}
                   </View>
                   <TouchableOpacity
                     testID="delete-document"
@@ -2091,54 +2163,14 @@ export default function HealthVetRecord() {
               {[
                 { key: "vetNote", labelKey: "recordVetNote", icon: Edit },
                 { key: "document", labelKey: "recordDocument", icon: FileText },
-                {
-                  key: "vetVisit",
-                  labelKey: "recordVetVisit",
-                  icon: Stethoscope,
-                  comingSoon: true,
-                },
-                {
-                  key: "vaccination",
-                  labelKey: "recordVaccination",
-                  icon: Syringe,
-                  comingSoon: true,
-                },
-                {
-                  key: "medication",
-                  labelKey: "recordMedication",
-                  icon: Pill,
-                  comingSoon: true,
-                },
-                {
-                  key: "allergy",
-                  labelKey: "recordAllergy",
-                  icon: AlertTriangle,
-                  comingSoon: true,
-                },
-                {
-                  key: "condition",
-                  labelKey: "recordCondition",
-                  icon: Heart,
-                  comingSoon: true,
-                },
-                {
-                  key: "surgery",
-                  labelKey: "recordSurgery",
-                  icon: Scissors,
-                  comingSoon: true,
-                },
-                {
-                  key: "lab",
-                  labelKey: "recordLab",
-                  icon: FlaskConical,
-                  comingSoon: true,
-                },
-                {
-                  key: "other",
-                  labelKey: "recordOther",
-                  icon: Plus,
-                  comingSoon: true,
-                },
+                { key: "vetVisit", labelKey: "recordVetVisit", icon: Stethoscope },
+                { key: "vaccination", labelKey: "recordVaccination", icon: Syringe },
+                { key: "medication", labelKey: "recordMedication", icon: Pill },
+                { key: "allergy", labelKey: "recordAllergy", icon: AlertTriangle },
+                { key: "condition", labelKey: "recordCondition", icon: Heart },
+                { key: "surgery", labelKey: "recordSurgery", icon: Scissors },
+                { key: "lab", labelKey: "recordLab", icon: FlaskConical },
+                { key: "other", labelKey: "recordOther", icon: Plus },
               ].map((record, idx) => {
                 const Icon = record.icon;
                 const label = t(`health.vetRecord.${record.labelKey}`);
@@ -2534,6 +2566,35 @@ export default function HealthVetRecord() {
         petId={currentPet?.id}
         onSaved={refetchVetNotes}
       />
+
+      {/* VR-B: allergy / condition / surgery / lab add form (shared modal). */}
+      <AddVetRecordModal
+        visible={vetRecordModalType !== null}
+        recordType={vetRecordModalType}
+        petId={currentPet?.id}
+        onClose={() => setVetRecordModalType(null)}
+        onSaved={() =>
+          invalidateRecordKeys([
+            "vet-record-allergies",
+            "vet-record-conditions",
+            "vet-record-surgeries",
+            "vet-record-lab-results",
+          ])
+        }
+      />
+
+      {/* VR-B: vaccination / medication reuse the Medications & Care modal. */}
+      {medicationModalTab && (
+        <MedicationModal
+          visible={medicationModalTab !== null}
+          initialTab={medicationModalTab}
+          petId={currentPet?.id}
+          onClose={() => {
+            setMedicationModalTab(null);
+            invalidateRecordKeys(["pet-vaccinations"]);
+          }}
+        />
+      )}
     </RefreshableScrollView>
   );
 }
