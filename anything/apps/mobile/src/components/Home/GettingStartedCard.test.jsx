@@ -71,7 +71,7 @@ test("tapping items routes / enables / shares appropriately", () => {
   const { getByTestId } = render(<GettingStartedCard onSharePost={onSharePost} />);
 
   fireEvent.press(getByTestId("gs-item-basics"));
-  expect(mockPush).toHaveBeenCalledWith("/more/profile-edit");
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/profile-edit");
 
   fireEvent.press(getByTestId("gs-item-reminder"));
   expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/reminders");
