@@ -1,7 +1,10 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { jsonbWriteValue } from "@/app/api/utils/jsonb";
+
+const UNDEFINED_COLUMN = "42703"; // pre-0118 DB lacks health_general_checks.areas → degrade cleanly
 
 async function POST(request) {
   try {
@@ -35,7 +38,15 @@ async function POST(request) {
       mood,
       energy,
       notes,
+      areas,
     } = body;
+
+    // Per-area detail (status + changes[] + notes + photos[]) as a single jsonb blob,
+    // keyed by area. Only accept a plain object; anything else is ignored so a bad
+    // client payload can't poison the write. The flat *_status columns below are still
+    // written alongside, so existing GET consumers are unaffected.
+    const areasJson =
+      areas && typeof areas === "object" && !Array.isArray(areas) ? areas : null;
 
     if (!petId) {
       return Response.json({ error: "petId is required" }, { status: 400 });
@@ -48,34 +59,45 @@ async function POST(request) {
     }
     const ownerUserId = access.ownerUserId;
 
-    const result = await sql`
-      INSERT INTO health_general_checks (
-        pet_id,
-        owner_user_id,
-        eyes_status,
-        ears_status,
-        teeth_status,
-        skin_fur_status,
-        paws_status,
-        face_status,
-        mood,
-        energy,
-        notes
-      ) VALUES (
-        ${petId},
-        ${ownerUserId},
-        ${eyesStatus || null},
-        ${earsStatus || null},
-        ${teethStatus || null},
-        ${skinFurStatus || null},
-        ${pawsStatus || null},
-        ${faceStatus || null},
-        ${mood || null},
-        ${energy || null},
-        ${notes || null}
-      )
-      RETURNING *
-    `;
+    // Persist the full per-area detail into the additive `areas` jsonb column (0118),
+    // keeping the flat status columns populated too. On a pre-0118 DB the `areas`
+    // column doesn't exist — that 42703 is isolated in a SAVEPOINT and we retry the
+    // insert without it, so the check still saves (minus the richer per-area blob)
+    // rather than 500ing during the deploy → migrate window.
+    let result = null;
+    try {
+      await withSavepoint(async () => {
+        result = await sql`
+          INSERT INTO health_general_checks (
+            pet_id, owner_user_id, eyes_status, ears_status, teeth_status,
+            skin_fur_status, paws_status, face_status, mood, energy, notes, areas
+          ) VALUES (
+            ${petId}, ${ownerUserId}, ${eyesStatus || null}, ${earsStatus || null},
+            ${teethStatus || null}, ${skinFurStatus || null}, ${pawsStatus || null},
+            ${faceStatus || null}, ${mood || null}, ${energy || null}, ${notes || null},
+            ${areasJson ? sql.json(jsonbWriteValue(areasJson)) : null}
+          )
+          RETURNING *
+        `;
+      });
+    } catch (e) {
+      if (e?.code !== UNDEFINED_COLUMN) throw e;
+      result = null; // fall through to the areas-less insert below
+    }
+
+    if (!result) {
+      result = await sql`
+        INSERT INTO health_general_checks (
+          pet_id, owner_user_id, eyes_status, ears_status, teeth_status,
+          skin_fur_status, paws_status, face_status, mood, energy, notes
+        ) VALUES (
+          ${petId}, ${ownerUserId}, ${eyesStatus || null}, ${earsStatus || null},
+          ${teethStatus || null}, ${skinFurStatus || null}, ${pawsStatus || null},
+          ${faceStatus || null}, ${mood || null}, ${energy || null}, ${notes || null}
+        )
+        RETURNING *
+      `;
+    }
 
     return Response.json({ check: result[0] }, { status: 201 });
   } catch (error) {
