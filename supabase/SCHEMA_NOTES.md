@@ -241,6 +241,24 @@ ACTION 1).
 > - `app_rate_limit_gc(older_than_seconds)` — ops sweep for subjects that never came back (the
 >   self-clean only fires when a subject returns). Verify: `supabase/verify_0113.sql`.
 
+> **0117** is NR4 (docs/night-run-2026-08-18.md) — the REAL backend for "Medications & Care" (the
+> mobile modal was an in-memory mock seeded with fake meds). THREE additive changes, no existing
+> table's RLS is loosened; consumers degrade cleanly (42P01 → empty list / empty states):
+> - **pet_vaccinations (0016) += three ADDITIVE columns** so the owner-side Vaccines tab keeps a full
+>   form: `clinic_name text`, `notes text`, `reminder_enabled boolean not null default false`. Purely
+>   additive; the table's existing owner-private RLS (0022) is untouched and provider writes are
+>   unaffected. Owner create/edit/delete added to `/api/pet-vaccinations` (was GET-only).
+> - **pet_medications** — one row per medication; `status` CHECK (`active`|`completed`) with `end_date`
+>   stamped on completion; soft-delete via `deleted_at`. Own-row `FOR ALL` RLS
+>   (`owner_user_id = current_app_user_id()`), ENABLE+FORCE — the 0048/0050/0094 pattern.
+> - **pet_preventive_treatments** — flea/tick/heartworm/dewormer/supplement, `next_due`-driven status;
+>   soft-delete; same own-row RLS.
+> - Routes: `GET/POST/PATCH/DELETE /api/health/medications` + `.../preventive-treatments` (owner+pet
+>   scoped). Mobile hooks `usePetMedications` / `usePetPreventiveTreatments` / extended
+>   `usePetVaccinations`. Integer ids; owner_user_id = user_profiles.id; NO seed data.
+> - Idempotent. Verify: `supabase/verify_0117.sql`. Own-row RLS proven as pawpi_app in
+>   `pet-medications.integration.test.ts`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
+
 Still deferred: **no seed data.**
 
 ---

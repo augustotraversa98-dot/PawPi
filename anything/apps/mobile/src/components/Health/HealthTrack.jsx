@@ -460,6 +460,7 @@ export default function HealthTrack() {
         visible={medicationModalVisible}
         onClose={() => setMedicationModalVisible(false)}
         initialTab={medicationTab}
+        petId={currentPet?.id}
       />
 
       {/* Weight Modal */}

@@ -3,19 +3,19 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
-// GET /api/pet-vaccinations?petId=... — OWNER-side read of a pet's vaccinations.
-// Ticket 8 (docs/provider-design.md §4 item 8). This is the owner half that makes
-// provider-written vaccinations immediately visible to the owner (vet_notes
-// already has an owner GET; pet_vaccinations was missing one).
-//
-// OWNER-context route: authorization is pet ownership via the existing
-// `WHERE owner_user_id = me` pattern — NOT assertCareAccess (that gates the
-// provider side only). DB is porsager's tagged-template `sql`.
+// NR4 — owner-scoped CRUD for a pet's medications (pet_medications, 0117). Own-row RLS
+// (owner_user_id = current_app_user_id()) enforces isolation; every handler also filters
+// WHERE owner_user_id = the caller, so a user can never read/write another owner's meds.
+
 async function GET(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const ownerUserId = await resolveUserId(session.user.id);
+    if (ownerUserId === null) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -24,32 +24,20 @@ async function GET(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const ownerUserId = await resolveUserId(session.user.id);
-    if (ownerUserId === null) {
-      return Response.json({ error: "User profile not found" }, { status: 404 });
-    }
-
-    const vaccinations = await sql`
-      SELECT * FROM pet_vaccinations
-      WHERE pet_id = ${petId}
+    const medications = await sql`
+      SELECT * FROM pet_medications
+      WHERE pet_id = ${parseInt(petId)}
         AND owner_user_id = ${ownerUserId}
         AND deleted_at IS NULL
-      ORDER BY date_given DESC NULLS LAST, created_at DESC
+      ORDER BY (status = 'active') DESC, created_at DESC
     `;
-
-    return Response.json({ vaccinations });
+    return Response.json({ medications });
   } catch (error) {
-    console.error("[GET /api/pet-vaccinations] Error:", error?.message);
-    return Response.json(
-      { error: "Failed to fetch vaccinations" },
-      { status: 500 },
-    );
+    console.error("[GET /api/health/medications] Error:", error?.message);
+    return Response.json({ error: "Failed to fetch medications" }, { status: 500 });
   }
 }
 
-// Owner creates a vaccination for their own pet (NR4 — the Vaccines tab). Ownership is
-// the pet's owner_user_id = the caller; the row's own-row (0022 owner-private) RLS also
-// enforces it. clinic_name / notes / reminder_enabled are the 0117 additive columns.
 async function POST(request) {
   try {
     const session = await auth();
@@ -62,7 +50,7 @@ async function POST(request) {
     }
 
     const body = await request.json();
-    const { petId, name, dateGiven, expiresOn, clinicName, notes, reminderEnabled } = body;
+    const { petId, name, dose, frequency, prescribedBy, notes, startDate, reminderEnabled } = body;
     if (!petId) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
@@ -70,7 +58,6 @@ async function POST(request) {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
 
-    // Confirm the pet belongs to the caller before writing.
     const owned = await sql`
       SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
     `;
@@ -79,23 +66,22 @@ async function POST(request) {
     }
 
     const rows = await sql`
-      INSERT INTO pet_vaccinations
-        (pet_id, owner_user_id, name, date_given, expires_on, clinic_name, notes, reminder_enabled)
+      INSERT INTO pet_medications
+        (pet_id, owner_user_id, name, dose, frequency, prescribed_by, notes, start_date, reminder_enabled)
       VALUES (
         ${petId}, ${ownerUserId}, ${name.trim()},
-        ${dateGiven || null}, ${expiresOn || null},
-        ${clinicName || null}, ${notes || null}, ${reminderEnabled || false}
+        ${dose || null}, ${frequency || null}, ${prescribedBy || null},
+        ${notes || null}, ${startDate || null}, ${reminderEnabled || false}
       )
       RETURNING *
     `;
-    return Response.json({ vaccination: rows[0] }, { status: 201 });
+    return Response.json({ medication: rows[0] }, { status: 201 });
   } catch (error) {
-    console.error("[POST /api/pet-vaccinations] Error:", error?.message);
-    return Response.json({ error: "Failed to create vaccination" }, { status: 500 });
+    console.error("[POST /api/health/medications] Error:", error?.message);
+    return Response.json({ error: "Failed to create medication" }, { status: 500 });
   }
 }
 
-// Owner edits one of their own vaccinations (only provided fields change).
 async function PATCH(request) {
   try {
     const session = await auth();
@@ -108,34 +94,47 @@ async function PATCH(request) {
     }
 
     const body = await request.json();
-    const { id, name, dateGiven, expiresOn, clinicName, notes, reminderEnabled } = body;
+    const { id, name, dose, frequency, prescribedBy, notes, startDate, endDate, status, reminderEnabled } = body;
     if (!id) {
       return Response.json({ error: "id is required" }, { status: 400 });
     }
+    if (status !== undefined && !["active", "completed"].includes(status)) {
+      return Response.json({ error: "status must be active or completed" }, { status: 400 });
+    }
+
+    // Completing a med stamps its end_date (today) unless one was passed.
+    const resolvedEndDate =
+      endDate !== undefined
+        ? endDate || null
+        : status === "completed"
+          ? new Date().toISOString().slice(0, 10)
+          : undefined;
 
     const rows = await sql`
-      UPDATE pet_vaccinations SET
+      UPDATE pet_medications SET
         name             = COALESCE(${name ?? null}, name),
-        date_given       = ${dateGiven !== undefined ? dateGiven || null : sql`date_given`},
-        expires_on       = ${expiresOn !== undefined ? expiresOn || null : sql`expires_on`},
-        clinic_name      = ${clinicName !== undefined ? clinicName || null : sql`clinic_name`},
+        dose             = ${dose !== undefined ? dose || null : sql`dose`},
+        frequency        = ${frequency !== undefined ? frequency || null : sql`frequency`},
+        prescribed_by    = ${prescribedBy !== undefined ? prescribedBy || null : sql`prescribed_by`},
         notes            = ${notes !== undefined ? notes || null : sql`notes`},
+        start_date       = ${startDate !== undefined ? startDate || null : sql`start_date`},
+        end_date         = ${resolvedEndDate !== undefined ? resolvedEndDate : sql`end_date`},
+        status           = COALESCE(${status ?? null}, status),
         reminder_enabled = COALESCE(${reminderEnabled ?? null}, reminder_enabled),
         updated_at       = now()
       WHERE id = ${id} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
       RETURNING *
     `;
     if (rows.length === 0) {
-      return Response.json({ error: "Vaccination not found" }, { status: 404 });
+      return Response.json({ error: "Medication not found" }, { status: 404 });
     }
-    return Response.json({ vaccination: rows[0] });
+    return Response.json({ medication: rows[0] });
   } catch (error) {
-    console.error("[PATCH /api/pet-vaccinations] Error:", error?.message);
-    return Response.json({ error: "Failed to update vaccination" }, { status: 500 });
+    console.error("[PATCH /api/health/medications] Error:", error?.message);
+    return Response.json({ error: "Failed to update medication" }, { status: 500 });
   }
 }
 
-// Owner soft-deletes one of their own vaccinations.
 async function DELETE(request) {
   try {
     const session = await auth();
@@ -154,22 +153,20 @@ async function DELETE(request) {
     }
 
     const rows = await sql`
-      UPDATE pet_vaccinations SET deleted_at = now()
+      UPDATE pet_medications SET deleted_at = now()
       WHERE id = ${parseInt(id)} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
       RETURNING id
     `;
     if (rows.length === 0) {
-      return Response.json({ error: "Vaccination not found" }, { status: 404 });
+      return Response.json({ error: "Medication not found" }, { status: 404 });
     }
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("[DELETE /api/pet-vaccinations] Error:", error?.message);
-    return Response.json({ error: "Failed to delete vaccination" }, { status: 500 });
+    console.error("[DELETE /api/health/medications] Error:", error?.message);
+    return Response.json({ error: "Failed to delete medication" }, { status: 500 });
   }
 }
 
-// RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
-// bodies are unchanged — only their DB connection is now request-scoped.
 const wrappedGET = withRequestContext(GET);
 const wrappedPOST = withRequestContext(POST);
 const wrappedPATCH = withRequestContext(PATCH);
