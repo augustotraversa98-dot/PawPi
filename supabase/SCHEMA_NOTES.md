@@ -259,6 +259,32 @@ ACTION 1).
 > - Idempotent. Verify: `supabase/verify_0117.sql`. Own-row RLS proven as pawpi_app in
 >   `pet-medications.integration.test.ts`. HARNESS-ONLY this ticket — hand-applied to Supabase after merge.
 
+> **0118** is QC-B (docs/night-run-2026-08-18b.md) — Quick Check per-area detail. The Quick Check form
+> (GeneralCheckModal) collects, PER body area, a status + "what changed" selections + a note + photos, but
+> `health_general_checks` (0008) only had flat `*_status` + `mood` + `energy` + one `notes` field, so the
+> per-area `changes[]` and photos were DROPPED and per-area notes flattened. ONE additive column:
+> `areas jsonb` storing the full per-area object `{ eyes: { status, changes:[...], notes, photos:[...] },
+> ears: {...}, ... }`. The flat status columns are still written alongside (the route writes both), so
+> every current GET consumer is unaffected. The table's owner-private RLS (0022) is UNTOUCHED — the column
+> rides it. The `/api/health/general-checks` POST binds it via `sql.json`, isolated in a SAVEPOINT with a
+> 42703 fallback insert so a pre-0118 DB degrades (saves the flat check) instead of 500ing. Idempotent
+> (`add column if not exists`). Verify: `supabase/verify_0118.sql` (all PASS). Round-trip proven in
+> `general-checks-areas.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-18** (verify_0118
+> all PASS; areas jsonb round-trip also confirmed on prod pet 18 = ears `{status:changed, changes:[redness]}`).
+
+> **0119** is QC-C (docs/night-run-2026-08-18b.md) — a completed Quick Check fills the Care Ring's Care
+> segment. The ring's `care_done` (E1) was derived from food / medical-care / wellness / photo-check logs
+> only, so a general check never filled Care. `CREATE OR REPLACE app_pet_ring_segments` (extends the 0102
+> shared derivation, same signature/return) so `care_done` is ALSO true when a same-day
+> `health_general_checks` row has **≥1 observation** (any non-null status OR non-empty `notes`; photos-only
+> rows don't count). GUARD: an all-empty completion does not fill the ring. Counts by `pet_id` (shared ring
+> — owner or caregiver). The inline owner-scoped fallback in `pets/[id]/care-ring/route.js`
+> (`deriveSegmentsOwnerScoped`, pre-0102 only) gets the identical branch, kept in sync; `useLogGeneralCheck`
+> invalidates `["care-ring", petId]` so the ring fills live. Idempotent. Verify: `supabase/verify_0119.sql`.
+> Behaviour matrix proven in `care-ring.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase
+> 2026-08-18** (empty→false, status-obs→true, notes-only→true; confirmed live on-device: completing a Quick
+> Check filled the Care Ring's ✓ Care segment).
+
 Still deferred: **no seed data.**
 
 ---

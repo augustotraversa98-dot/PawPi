@@ -1100,6 +1100,16 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
 
 ## Done (recent)
 
+- **Quick Check completeness night-run (QC-A/B/C, 2026-08-18b)** — three on-device bugs in the Quick Check
+  (GeneralCheckModal) that passed jest but failed on device. **QC-A** (#443) progress bar/"% complete" was
+  driven by stepper position (`currentAreaIndex`) so jumping to Teeth showed 38% / Energy 100% with nothing
+  assessed; now progress = areas with a chosen status ÷ 8, right counter relabeled "N of 8 checked". **QC-B**
+  (#444, migration 0118) the Take/Choose photo buttons were dead and per-area detail was lost; wired the
+  buttons (expo-image-picker → useUpload) and added `areas jsonb` on `health_general_checks` storing the full
+  per-area `{status,changes[],notes,photos[]}` (flat status cols still written; route degrades pre-migration).
+  **QC-C** (#445, migration 0119) a completed Quick Check didn't fill the Care Ring; extended
+  `app_pet_ring_segments` (+ the inline fallback) so a same-day general check with ≥1 observation fills Care.
+  All three verified on the iOS Simulator; 0118 + 0119 applied + verified on Supabase. (2026-08-18.)
 - **Wave 10 night-run (2.88–2.92)** — Shop/Store + business-social finish. **2.88** provider-post open route
   fix (mobile): tapping a storefront post opened the `/service` dead-end because the full post (signed image
   URLs) was passed as a route param and corrupted the deep-link URL; now passes only `providerId`+`postId` and
