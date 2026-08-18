@@ -196,6 +196,27 @@
       "addedByNoDate": "Added by {{name}} · {{role}}",
       "roleOwner": "Owner",
       "roleEditor": "Editor",
+      "docFilterAll": "All",
+      "docCategory": {
+        "vaccine": "Vaccine",
+        "lab": "Lab result",
+        "visit": "Visit summary",
+        "invoice": "Invoice",
+        "other": "Other"
+      },
+      "addDoc": {
+        "title": "Add document",
+        "photoPrompt": "Choose a photo of the paperwork",
+        "name": "Name",
+        "namePlaceholder": "e.g. Rabies certificate",
+        "category": "Category",
+        "date": "Date",
+        "save": "Save document",
+        "permissionTitle": "Permission needed",
+        "permissionBody": "Allow photo access to attach a document.",
+        "errorBody": "Could not save the document.",
+        "comingSoon": "Coming soon: PawPi will read your documents and file them for you automatically."
+      },
       "addForm": {
         "allergyTitle": "Add allergy",
         "conditionTitle": "Add condition",

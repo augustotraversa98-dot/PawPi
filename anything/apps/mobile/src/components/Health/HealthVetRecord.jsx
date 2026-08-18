@@ -293,6 +293,9 @@ export default function HealthVetRecord() {
 
   // Owner document upload + management (ticket 2.41).
   const [addDocVisible, setAddDocVisible] = useState(false);
+  // VR-C: filter the Documents tab by canonical category (null = all).
+  const [docCategoryFilter, setDocCategoryFilter] = useState(null);
+  const DOC_CATEGORIES = ["vaccine", "lab", "visit", "invoice", "other"];
   const refetchDocuments = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ["vet-record-documents", currentPet?.id],
@@ -1292,14 +1295,69 @@ export default function HealthVetRecord() {
               </Text>
             </TouchableOpacity>
 
-            {(documentsData?.documents || []).length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title={t("health.vetRecord.documentsEmptyTitle")}
-                description={t("health.vetRecord.documentsEmptyDesc")}
-              />
-            ) : (
-              documentsData.documents.map((doc) => (
+            {(() => {
+              const allDocs = documentsData?.documents || [];
+              // VR-C: group/filter history by canonical category. Untagged rows fall
+              // under "other" so every document is reachable from some chip.
+              const catOf = (d) =>
+                DOC_CATEGORIES.includes(d.category) ? d.category : "other";
+              const docs = docCategoryFilter
+                ? allDocs.filter((d) => catOf(d) === docCategoryFilter)
+                : allDocs;
+              return (
+                <>
+                  {allDocs.length > 0 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+                      style={{ marginBottom: 12 }}
+                    >
+                      {[null, ...DOC_CATEGORIES].map((cat) => {
+                        const active = docCategoryFilter === cat;
+                        return (
+                          <Pressable
+                            key={cat ?? "all"}
+                            testID={`doc-filter-${cat ?? "all"}`}
+                            onPress={() => setDocCategoryFilter(cat)}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 7,
+                              borderRadius: 999,
+                              backgroundColor: active
+                                ? COLORS.coral
+                                : MATERIALS.surface,
+                              borderWidth: 1.5,
+                              borderColor: active
+                                ? COLORS.coral
+                                : MATERIALS.hairline,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                fontWeight: "700",
+                                color: active ? "#FFF" : COLORS.warmBrown,
+                              }}
+                            >
+                              {cat
+                                ? t(`health.vetRecord.docCategory.${cat}`)
+                                : t("health.vetRecord.docFilterAll")}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+
+                  {docs.length === 0 ? (
+                    <EmptyState
+                      icon={FileText}
+                      title={t("health.vetRecord.documentsEmptyTitle")}
+                      description={t("health.vetRecord.documentsEmptyDesc")}
+                    />
+                  ) : (
+                    docs.map((doc) => (
                 <TouchableOpacity
                   key={doc.id}
                   testID="vet-document-row"
@@ -1372,7 +1430,10 @@ export default function HealthVetRecord() {
                             color: COLORS.mutedBrown,
                           }}
                         >
-                          {doc.document_type}
+                          {doc.category
+                            ? t(`health.vetRecord.docCategory.${doc.category}`)
+                            : doc.document_type ||
+                              t("health.vetRecord.docCategory.other")}
                         </Text>
                       </View>
                     </View>
@@ -1386,8 +1447,11 @@ export default function HealthVetRecord() {
                     <Trash2 size={18} color={COLORS.mutedBrown} />
                   </TouchableOpacity>
                 </TouchableOpacity>
-              ))
-            )}
+                    ))
+                  )}
+                </>
+              );
+            })()}
           </View>
         );
 

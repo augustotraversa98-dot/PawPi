@@ -309,6 +309,21 @@ ACTION 1).
 > `vet-record-attribution.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-18**
 > (verify_0120 all 7 PASS; add-allergy round-trip confirmed on the iOS Simulator).
 
+> **0121** is VR-C (docs/night-run-2026-08-18c.md) — a tidy CATEGORY on each Vet Record document.
+> Documents phase 1 (upload → store → open/download → delete) already worked; this adds owner TAGGING so
+> a document lands tidily in history. `vet_documents` had a free-form `document_type` (0005) but nothing
+> constrained it to the small, filterable set the history view groups by. ONE purely additive column:
+> `category text` with a CHECK for the five canonical buckets (`vaccine`|`lab`|`visit`|`invoice`|`other`),
+> nullable (existing rows stay untagged → shown under "other"). Kept SEPARATE from the descriptive
+> `document_type` (which the summary counts read) to avoid overloading it. No RLS/policy change —
+> vet_documents is already ENABLE+FORCE RLS (0022 owner-private + 0049 family + 0120 attribution) and the
+> column rides it. The `/api/vet-record/documents` POST normalizes an unknown category to NULL (CHECK-safe);
+> the mobile AddDocumentModal offers the five localized category chips (EN+ES) and the Documents tab shows
+> the category + filters by it. AI auto-reading is phase 2 (an honest coming-soon hint in the modal).
+> Idempotent. Verify: `supabase/verify_0121.sql`. Category round-trip proven in
+> `vet-record-attribution.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-18**
+> (verify_0121 all 4 PASS).
+
 Still deferred: **no seed data.**
 
 ---

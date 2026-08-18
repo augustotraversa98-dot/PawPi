@@ -126,6 +126,33 @@ describe("family Editor adds records — attributed 'editor', anchored to owner"
   });
 });
 
+describe("documents — category tag persists (VR-C, 0121)", () => {
+  it("owner uploads a document with a canonical category; it round-trips", async () => {
+    const created = await apiReq("/vet-record/documents", "POST", {
+      petId: OWNER.petId, name: "Rabies cert", documentType: "Vaccine",
+      fileUrl: "https://cdn.example/rabies.jpg", category: "vaccine",
+      documentDate: "2026-03-01",
+    });
+    expect(created.status).toBe(200);
+    const { document } = await created.json();
+    expect(document.category).toBe("vaccine");
+    expect(document.created_by_role).toBe("owner");
+
+    const list = await (await apiReq(`/vet-record/documents?petId=${OWNER.petId}`)).json();
+    const row = list.documents.find((d: any) => d.name === "Rabies cert");
+    expect(row.category).toBe("vaccine");
+  });
+
+  it("a non-canonical category is normalized to null (CHECK-safe)", async () => {
+    const created = await apiReq("/vet-record/documents", "POST", {
+      petId: OWNER.petId, name: "Mystery", documentType: "Other",
+      fileUrl: "https://cdn.example/x.jpg", category: "bogus",
+    });
+    expect(created.status).toBe(200);
+    expect((await created.json()).document.category).toBeNull();
+  });
+});
+
 describe("read-only Viewer + outsider are denied writes", () => {
   it("caregiver (Viewer) cannot add an allergy or a note (403)", async () => {
     authState.session = sessionFor(VIEWER.authUserId);

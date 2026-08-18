@@ -10,6 +10,20 @@ const mockLaunch = jest.fn();
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+// Resolve dotted i18n keys against the real English resources so assertions read English.
+jest.mock("react-i18next", () => {
+  const en = require("@/i18n/locales/en.json");
+  const resolve = (key) =>
+    key.split(".").reduce((o, k) => (o == null ? o : o[k]), en);
+  return {
+    useTranslation: () => ({
+      t: (key) => {
+        const v = resolve(key);
+        return typeof v === "string" ? v : key;
+      },
+    }),
+  };
+});
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -79,6 +93,8 @@ test("uploads the photo and POSTs the document, then refetches + closes", async 
     name: "Labwork",
     fileUrl: "https://cdn/paper.jpg",
     documentDate: "2026-06-18",
+    // VR-C: the canonical category (default first bucket) rides along with the POST.
+    category: "vaccine",
   });
   expect(onClose).toHaveBeenCalled();
 });

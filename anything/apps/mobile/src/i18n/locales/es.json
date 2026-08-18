@@ -196,6 +196,27 @@
       "addedByNoDate": "Agregado por {{name}} · {{role}}",
       "roleOwner": "Dueño",
       "roleEditor": "Editor",
+      "docFilterAll": "Todos",
+      "docCategory": {
+        "vaccine": "Vacuna",
+        "lab": "Laboratorio",
+        "visit": "Resumen de visita",
+        "invoice": "Factura",
+        "other": "Otro"
+      },
+      "addDoc": {
+        "title": "Agregar documento",
+        "photoPrompt": "Elegí una foto del documento",
+        "name": "Nombre",
+        "namePlaceholder": "ej. Certificado de rabia",
+        "category": "Categoría",
+        "date": "Fecha",
+        "save": "Guardar documento",
+        "permissionTitle": "Permiso necesario",
+        "permissionBody": "Permití el acceso a las fotos para adjuntar un documento.",
+        "errorBody": "No se pudo guardar el documento.",
+        "comingSoon": "Muy pronto: PawPi leerá tus documentos y los archivará automáticamente."
+      },
       "addForm": {
         "allergyTitle": "Agregar alergia",
         "conditionTitle": "Agregar afección",
