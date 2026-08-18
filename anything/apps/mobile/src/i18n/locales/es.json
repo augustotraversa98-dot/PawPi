@@ -88,6 +88,8 @@
     "trackerSoonBody": "El registro de {{label}} para {{pet}} está en camino. Mientras tanto, puedes anotarlo en Comida y premios o en la Historia clínica.",
     "recordSoonTitle": "{{type}} — próximamente",
     "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento.",
+    "connectedTrackingSoonTitle": "{{name}} — próximamente",
+    "connectedTrackingSoonBody": "El seguimiento con {{name}} todavía no está disponible. Por ahora, el registro manual funciona muy bien.",
     "careRing": {
       "title": "El día de {{name}}",
       "titleGeneric": "El anillo de hoy",

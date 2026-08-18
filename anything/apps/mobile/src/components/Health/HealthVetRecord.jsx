@@ -354,11 +354,21 @@ export default function HealthVetRecord() {
     router.push(`/emergency-card?petId=${currentPet.id}`);
   };
 
-  const handleRecordTypeSelect = (type) => {
+  const handleRecordTypeSelect = (record) => {
     setShowAddRecordPicker(false);
+    const type = record?.type;
+    // STRUCTURAL guard first: a coming-soon record type is display-only — honest
+    // feedback, no add flow. Return before any real open so an unbuilt type can
+    // never open a logging modal.
+    if (record?.comingSoon) {
+      Alert.alert(
+        t("health.recordSoonTitle", { type }),
+        t("health.recordSoonBody", { type }),
+      );
+      return;
+    }
     // The two record types with a real add flow route straight to it (and expand
-    // the section so the new entry is visible). The rest aren't built yet — give
-    // honest "coming soon" feedback instead of a dead primary CTA.
+    // the section so the new entry is visible).
     if (type === "Vet Note") {
       setExpandedSections((prev) => ({ ...prev, vetNotes: true }));
       setAddNoteVisible(true);
@@ -369,6 +379,7 @@ export default function HealthVetRecord() {
       setAddDocVisible(true);
       return;
     }
+    // Any unknown non-coming-soon type: honest feedback rather than a dead CTA.
     Alert.alert(
       t("health.recordSoonTitle", { type }),
       t("health.recordSoonBody", { type }),
@@ -1900,7 +1911,7 @@ export default function HealthVetRecord() {
                 return (
                   <TouchableOpacity
                     key={idx}
-                    onPress={() => handleRecordTypeSelect(record.type)}
+                    onPress={() => handleRecordTypeSelect(record)}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",

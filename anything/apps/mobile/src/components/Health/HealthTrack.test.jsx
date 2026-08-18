@@ -48,12 +48,29 @@ jest.mock("./GeneralCheck/GeneralCheckModal", () => mockModal("general"));
 jest.mock("./Medication/MedicationModal", () => mockModal("medication"));
 jest.mock("./Weight/WeightModal", () => mockModal("weight"));
 
-import HealthTrack from "./HealthTrack";
+import HealthTrack, {
+  TRACKERS,
+  comingSoonTrackersHaveNoAction,
+} from "./HealthTrack";
+
+// Global fetch spy: proves a coming-soon tap POSTs nothing (no log, no care-ring write).
+let fetchSpy;
 
 beforeEach(() => {
   Object.keys(modalVisibility).forEach((k) => delete modalVisibility[k]);
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  fetchSpy = jest
+    .spyOn(global, "fetch")
+    .mockResolvedValue({ ok: true, json: async () => ({}) });
 });
+
+afterEach(() => {
+  fetchSpy.mockRestore();
+});
+
+const COMING_SOON_LABELS = TRACKERS.filter((t) => t.comingSoon).map(
+  (t) => t.label,
+);
 
 test("tapping Weight opens the Weight modal (regression: it was unreachable)", () => {
   const { getByText } = render(<HealthTrack />);
@@ -73,3 +90,44 @@ test("a not-yet-built tracker shows a Soon badge and gives feedback on tap", () 
     expect.stringContaining("Mango"),
   );
 });
+
+// STRUCTURAL invariant: the source of the Care Ring bug was a coming-soon tile that
+// could reach a write path. Assert none carry an `action` at all.
+test("no coming-soon tracker carries an action (compile-time-ish invariant)", () => {
+  expect(comingSoonTrackersHaveNoAction).toBe(true);
+  for (const t of TRACKERS) {
+    if (t.comingSoon) expect(t.action).toBeUndefined();
+  }
+  // There really are the four reported ones.
+  expect(COMING_SOON_LABELS).toEqual(
+    expect.arrayContaining([
+      "Symptoms & Behavior",
+      "Vital Signs",
+      "Vet Visits",
+      "Vaccinations",
+    ]),
+  );
+});
+
+// Every coming-soon tile: fires the Alert, opens NO modal, and triggers NO fetch
+// (so it can never POST a log or invalidate ["care-ring"] / fill a ring segment).
+test.each(COMING_SOON_LABELS)(
+  "coming-soon tile %s: Alert only, no modal, no network write",
+  (label) => {
+    const { getByText } = render(<HealthTrack />);
+    // Every logging modal starts closed.
+    Object.values(modalVisibility).forEach((v) => expect(v).toBe(false));
+
+    fireEvent.press(getByText(label));
+
+    // Honest coming-soon feedback fired.
+    expect(Alert.alert).toHaveBeenCalledWith(
+      expect.stringContaining(label),
+      expect.any(String),
+    );
+    // No logging modal ever opened.
+    Object.entries(modalVisibility).forEach(([, v]) => expect(v).toBe(false));
+    // Nothing was written to the network — no log POST, no care-ring touch.
+    expect(fetchSpy).not.toHaveBeenCalled();
+  },
+);
