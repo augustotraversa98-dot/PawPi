@@ -10,7 +10,11 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  Image,
+  ActivityIndicator,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import useUpload from "@/utils/useUpload";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
@@ -60,6 +64,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
   const logGeneralCheckMutation = useLogGeneralCheck();
+  const [upload, { loading: uploading }] = useUpload();
 
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [checkData, setCheckData] = useState({});
@@ -108,6 +113,87 @@ export default function GeneralCheckModal({ visible, onClose }) {
         notes: text,
       },
     });
+  };
+
+  // Append an uploaded photo URL to the CURRENT area's photos[]. Read the area fresh
+  // from state (not the closed-over currentAreaData) so back-to-back adds don't clobber.
+  const addPhotoToCurrentArea = (url) => {
+    setCheckData((prev) => {
+      const area = prev[currentArea.key] || {
+        status: null,
+        changes: [],
+        notes: "",
+        photos: [],
+      };
+      return {
+        ...prev,
+        [currentArea.key]: { ...area, photos: [...(area.photos || []), url] },
+      };
+    });
+  };
+
+  const removePhotoFromCurrentArea = (url) => {
+    setCheckData((prev) => {
+      const area = prev[currentArea.key];
+      if (!area) return prev;
+      return {
+        ...prev,
+        [currentArea.key]: {
+          ...area,
+          photos: (area.photos || []).filter((p) => p !== url),
+        },
+      };
+    });
+  };
+
+  // Shared capture flow: pick (camera or library) → upload via the app's chokepoint
+  // (@/utils/useUpload → POST /api/upload → hosted URL) → store the URL on the area.
+  // Permission denial and upload failure both degrade gracefully (the check still saves
+  // without a photo); nothing here can throw up to the render.
+  const capturePhoto = async (source) => {
+    if (uploading) return;
+    try {
+      const permission =
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission?.granted === false) {
+        Alert.alert(tc("photoPermissionTitle"), tc("photoPermissionBody"));
+        return;
+      }
+
+      const result =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync({
+              allowsEditing: false,
+              quality: 0.8,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: false,
+              quality: 0.8,
+            });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      const uploadResult = await upload({
+        reactNativeAsset: {
+          uri: asset.uri,
+          name: `general_check_${currentArea.key}_${asset.fileName || "photo"}.jpg`,
+          mimeType: asset.mimeType || "image/jpeg",
+        },
+      });
+
+      if (uploadResult?.error || !uploadResult?.url) {
+        Alert.alert(tc("photoError"));
+        return;
+      }
+      addPhotoToCurrentArea(uploadResult.url);
+    } catch (error) {
+      console.error("[GeneralCheck] photo capture error:", error);
+      Alert.alert(tc("photoError"));
+    }
   };
 
   const goToArea = (index) => {
@@ -593,6 +679,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
               </Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TouchableOpacity
+                  onPress={() => capturePhoto("camera")}
+                  disabled={uploading}
+                  accessibilityRole="button"
+                  accessibilityLabel={tc("takePhoto")}
                   style={{
                     flex: 1,
                     backgroundColor: C.card,
@@ -604,6 +694,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
+                    opacity: uploading ? 0.6 : 1,
                   }}
                 >
                   <Camera size={18} color={C.terracotta} />
@@ -618,6 +709,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  onPress={() => capturePhoto("library")}
+                  disabled={uploading}
+                  accessibilityRole="button"
+                  accessibilityLabel={tc("choosePhoto")}
                   style={{
                     flex: 1,
                     backgroundColor: C.card,
@@ -629,6 +724,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
+                    opacity: uploading ? 0.6 : 1,
                   }}
                 >
                   <ImageIcon size={18} color={C.terracotta} />
@@ -643,6 +739,73 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Uploading indicator */}
+              {uploading && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  <ActivityIndicator size="small" color={C.terracotta} />
+                  <Text
+                    style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}
+                  >
+                    {tc("uploadingPhoto")}
+                  </Text>
+                </View>
+              )}
+
+              {/* Thumbnails of photos added to THIS area, each with a remove control */}
+              {currentAreaData.photos?.length > 0 && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  {currentAreaData.photos.map((uri) => (
+                    <View key={uri} style={{ position: "relative" }}>
+                      <Image
+                        source={{ uri }}
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: 12,
+                          borderWidth: 1.5,
+                          borderColor: C.peach,
+                        }}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        onPress={() => removePhotoFromCurrentArea(uri)}
+                        accessibilityRole="button"
+                        accessibilityLabel={tc("removePhoto")}
+                        hitSlop={8}
+                        style={{
+                          position: "absolute",
+                          top: -8,
+                          right: -8,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: C.warmBrown,
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <X size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* AI Placeholder */}
               <View

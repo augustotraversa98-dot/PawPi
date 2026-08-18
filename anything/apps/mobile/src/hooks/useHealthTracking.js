@@ -170,6 +170,10 @@ export function useLogGeneralCheck() {
           mood: checkData.areas?.mood?.status,
           energy: checkData.areas?.energy?.status,
           notes: checkData.notes || "",
+          // Full per-area detail (status + changes[] + notes + photos[]) so nothing the
+          // owner recorded is dropped — persisted to health_general_checks.areas (jsonb).
+          // The flat *Status fields above stay for existing consumers.
+          areas: checkData.areas || null,
         }),
       });
 

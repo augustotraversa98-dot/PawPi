@@ -33,6 +33,24 @@ jest.mock("@/hooks/useHealthTracking", () => ({
   useLogGeneralCheck: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
 
+// QC-B: the photo buttons are wired to expo-image-picker + useUpload. Mock both so we
+// can prove the buttons are no longer dead and the uploaded URL lands on the area.
+const mockUpload = jest.fn().mockResolvedValue({ url: "https://cdn/photo.jpg" });
+jest.mock("@/utils/useUpload", () => ({
+  __esModule: true,
+  default: () => [mockUpload, { loading: false }],
+}));
+// Inline jest.fn()s (the mock factory is hoisted above const declarations, so it must
+// not close over an outer variable). Default resolutions are set in beforeEach via the
+// imported ImagePicker namespace.
+jest.mock("expo-image-picker", () => ({
+  requestCameraPermissionsAsync: jest.fn(),
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
+  MediaTypeOptions: { Images: "Images" },
+}));
+
 // Switchable locale — same shape as the HealthTrack suite — so the modal can be
 // asserted in EN and ES against the real dictionaries.
 const mockLocaleState = { locale: "en" };
@@ -59,10 +77,20 @@ jest.mock("react-i18next", () => {
 
 import GeneralCheckModal from "./GeneralCheckModal";
 import { CHECK_AREAS } from "@/data/generalCheckData";
+import * as ImagePicker from "expo-image-picker";
 
 beforeEach(() => {
   mockLocaleState.locale = "en";
   mockMutateAsync.mockClear();
+  mockUpload.mockClear();
+  ImagePicker.requestCameraPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
+  ImagePicker.requestMediaLibraryPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
+  ImagePicker.launchCameraAsync
+    .mockReset()
+    .mockResolvedValue({ canceled: false, assets: [{ uri: "file:///cam.jpg", mimeType: "image/jpeg" }] });
+  ImagePicker.launchImageLibraryAsync
+    .mockReset()
+    .mockResolvedValue({ canceled: false, assets: [{ uri: "file:///lib.jpg" }] });
 });
 
 test("Next always advances even with no per-area status picked (no trap) (EN)", () => {
@@ -123,6 +151,44 @@ test("progress tracks areas ASSESSED, not the current position (EN)", () => {
   // Assessing this area is what moves the progress counter.
   fireEvent.press(getByText("Looks usual"));
   expect(getByText(`1 of ${CHECK_AREAS.length} checked`)).toBeTruthy();
+});
+
+test("Take photo is wired (camera → upload → stored on the area's payload) (EN)", async () => {
+  const { getByText, getAllByText, findByLabelText } = render(
+    <GeneralCheckModal visible onClose={jest.fn()} />,
+  );
+
+  // Pressing "Take photo" (previously a dead button) now runs the capture flow.
+  fireEvent.press(getByText("Take photo"));
+  await waitFor(() =>
+    expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalled(),
+  );
+  await waitFor(() => expect(mockUpload).toHaveBeenCalled());
+
+  // A thumbnail with a remove control appears for the uploaded photo.
+  await findByLabelText("Remove photo");
+
+  // Complete the check and confirm the uploaded URL is carried in the per-area payload
+  // for the current area (Eyes) — the detail is no longer dropped.
+  fireEvent.press(getAllByText("Energy")[0]); // jump to last area to reach "Complete"
+  fireEvent.press(getByText("Complete"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled());
+  const payload = mockMutateAsync.mock.calls[0][0];
+  expect(payload.areas.eyes.photos).toEqual(["https://cdn/photo.jpg"]);
+});
+
+test("denied photo permission shows a graceful message and adds no photo (EN)", async () => {
+  ImagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ granted: false });
+  const { getByText, queryByLabelText } = render(
+    <GeneralCheckModal visible onClose={jest.fn()} />,
+  );
+  fireEvent.press(getByText("Take photo"));
+  await waitFor(() =>
+    expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalled(),
+  );
+  // No upload attempted, no thumbnail added.
+  expect(mockUpload).not.toHaveBeenCalled();
+  expect(queryByLabelText("Remove photo")).toBeNull();
 });
 
 test("walking every area to the end saves once and closes", async () => {
