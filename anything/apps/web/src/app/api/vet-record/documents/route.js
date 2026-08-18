@@ -52,7 +52,8 @@ async function POST(request) {
     }
 
     const body = await request.json();
-    const { petId, name, documentType, fileUrl, documentDate, notes } = body;
+    const { petId, name, documentType, fileUrl, documentDate, notes, category } =
+      body;
 
     if (!petId || !name || !documentType || !fileUrl) {
       return Response.json(
@@ -60,6 +61,13 @@ async function POST(request) {
         { status: 400 },
       );
     }
+
+    // VR-C: canonical tidy-history category (0121). Free-form document_type is kept for
+    // display/back-compat; category is the constrained bucket the history view filters by.
+    const ALLOWED_CATEGORIES = ["vaccine", "lab", "visit", "invoice", "other"];
+    const normalizedCategory = ALLOWED_CATEGORIES.includes(category)
+      ? category
+      : null;
 
     const callerId = await resolveUserId(session.user.id);
     const gate = await resolvePetLogOwner(callerId, petId);
@@ -70,10 +78,10 @@ async function POST(request) {
     const result = await sql`
       INSERT INTO vet_documents (
         pet_id, owner_user_id, name, document_type, file_url, document_date, notes,
-        created_by_user_id, created_by_role
+        category, created_by_user_id, created_by_role
       ) VALUES (
         ${petId}, ${gate.ownerUserId}, ${name}, ${documentType}, ${fileUrl},
-        ${documentDate || null}, ${notes || null},
+        ${documentDate || null}, ${notes || null}, ${normalizedCategory},
         ${callerId}, ${gate.isOwner ? "owner" : "editor"}
       )
       RETURNING *
