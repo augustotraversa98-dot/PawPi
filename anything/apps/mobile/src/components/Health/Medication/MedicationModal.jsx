@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  ActivityIndicator,
   KeyboardAvoidingView,
 } from "react-native";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -18,35 +19,40 @@ import {
   Shield,
   Plus,
   CheckCircle,
-  Calendar,
-  Clock,
-  FileText,
-  Camera,
-  Trash2,
   Info,
   Bell,
   BellOff,
+  Trash2,
+  Pencil,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import {
-  getCurrentMedications,
-  getPastMedications,
-  getVaccines,
-  getPreventiveTreatments,
-  addMedication,
-  addVaccine,
-  addPreventiveTreatment,
-  completeMedication,
-  FREQUENCIES,
   PREVENTIVE_TYPES,
   formatDate,
   getVaccineStatus,
   getPreventiveStatus,
-  getPreventiveTypeLabel,
   getPreventiveTypeEmoji,
 } from "@/data/medicationData";
+import {
+  usePetMedications,
+  useCreateMedication,
+  useUpdateMedication,
+  useDeleteMedication,
+} from "@/hooks/usePetMedications";
+import {
+  usePetVaccinations,
+  useCreateVaccination,
+  useUpdateVaccination,
+  useDeleteVaccination,
+} from "@/hooks/usePetVaccinations";
+import {
+  usePetPreventiveTreatments,
+  useCreatePreventiveTreatment,
+  useUpdatePreventiveTreatment,
+  useDeletePreventiveTreatment,
+} from "@/hooks/usePetPreventiveTreatments";
 import DateField from "@/components/DateField";
-import { parseDateValue } from "@/utils/canonicalDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -60,18 +66,161 @@ const C = {
   sand: "#F5EDE4",
 };
 
+const styles = {
+  label: { fontSize: 13, fontWeight: "700", color: C.warmBrown, marginBottom: 6 },
+  input: {
+    backgroundColor: C.sand,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    color: C.warmBrown,
+    borderWidth: 1,
+    borderColor: C.peach,
+  },
+  empty: {
+    fontSize: 14,
+    color: C.mutedBrown,
+    textAlign: "center",
+    paddingVertical: 40,
+  },
+  rowLine: { fontSize: 13, color: C.mutedBrown, marginBottom: 4 },
+  cardTitle: { fontSize: 15, fontWeight: "800", color: C.warmBrown, marginBottom: 6 },
+};
+
+// Module-scope presentational pieces — stable identity so TextInputs never lose focus.
+function Field({ label, children }) {
+  return (
+    <View>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+function Input({ multiline, style, ...props }) {
+  return (
+    <TextInput
+      placeholderTextColor={C.mutedBrown + "80"}
+      multiline={multiline}
+      numberOfLines={multiline ? 3 : undefined}
+      style={[styles.input, multiline && { minHeight: 80, textAlignVertical: "top" }, style]}
+      {...props}
+    />
+  );
+}
+
+function ReminderToggle({ enabled, onToggle, label }) {
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: enabled }}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        padding: 12,
+        backgroundColor: C.sand,
+        borderRadius: 10,
+      }}
+    >
+      {enabled ? <Bell size={18} color={C.sage} /> : <BellOff size={18} color={C.mutedBrown} />}
+      <Text style={{ fontSize: 14, fontWeight: "600", color: C.warmBrown, flex: 1 }}>{label}</Text>
+      {enabled && <CheckCircle size={18} color={C.sage} />}
+    </TouchableOpacity>
+  );
+}
+
+function StatusBadge({ color, label }) {
+  return (
+    <View style={{ backgroundColor: color + "20", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}>
+      <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label}</Text>
+    </View>
+  );
+}
+
+function RowActions({ onEdit, onDelete, editLabel, deleteLabel }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+      <TouchableOpacity
+        onPress={onEdit}
+        accessibilityRole="button"
+        accessibilityLabel={editLabel}
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          backgroundColor: C.sand,
+          borderRadius: 8,
+          padding: 10,
+        }}
+      >
+        <Pencil size={15} color={C.terracotta} />
+        <Text style={{ fontSize: 13, fontWeight: "700", color: C.terracotta }}>{editLabel}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={onDelete}
+        accessibilityRole="button"
+        accessibilityLabel={deleteLabel}
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          backgroundColor: "#FFEBEE",
+          borderRadius: 8,
+          padding: 10,
+        }}
+      >
+        <Trash2 size={15} color="#E57373" />
+        <Text style={{ fontSize: 13, fontWeight: "700", color: "#E57373" }}>{deleteLabel}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const canonical = (v) => (v ? String(v).slice(0, 10) : "");
+
 export default function MedicationModal({
   visible,
   onClose,
   initialTab = "medications",
+  petId,
 }) {
+  const { t } = useTranslation();
+  const tc = (k, vars) => t(`health.medications.${k}`, vars);
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  // Medication form state
+  // Data — real, per pet, owner-scoped (empty states until something is added; no seed).
+  const medsQuery = usePetMedications(petId);
+  const vaxQuery = usePetVaccinations(petId);
+  const prevQuery = usePetPreventiveTreatments(petId);
+  const medications = medsQuery.data || [];
+  const vaccines = vaxQuery.data || [];
+  const preventives = prevQuery.data || [];
+  const currentMeds = medications.filter((m) => m.status !== "completed");
+  const pastMeds = medications.filter((m) => m.status === "completed");
+
+  // Mutations
+  const createMed = useCreateMedication(petId);
+  const updateMed = useUpdateMedication(petId);
+  const deleteMed = useDeleteMedication(petId);
+  const createVax = useCreateVaccination(petId);
+  const updateVax = useUpdateVaccination(petId);
+  const deleteVax = useDeleteVaccination(petId);
+  const createPrev = useCreatePreventiveTreatment(petId);
+  const updatePrev = useUpdatePreventiveTreatment(petId);
+  const deletePrev = useDeletePreventiveTreatment(petId);
+
+  // Form state (shared per tab; also used for edit prefill)
   const [medName, setMedName] = useState("");
   const [medDose, setMedDose] = useState("");
   const [medFrequency, setMedFrequency] = useState("");
@@ -79,15 +228,13 @@ export default function MedicationModal({
   const [medNotes, setMedNotes] = useState("");
   const [medReminderEnabled, setMedReminderEnabled] = useState(false);
 
-  // Vaccine form state
   const [vaxName, setVaxName] = useState("");
   const [vaxDateGiven, setVaxDateGiven] = useState("");
   const [vaxDueDate, setVaxDueDate] = useState("");
-  const [vaxVetClinic, setVaxVetClinic] = useState("");
+  const [vaxClinic, setVaxClinic] = useState("");
   const [vaxNotes, setVaxNotes] = useState("");
   const [vaxReminderEnabled, setVaxReminderEnabled] = useState(false);
 
-  // Preventive form state
   const [prevProductName, setPrevProductName] = useState("");
   const [prevType, setPrevType] = useState("");
   const [prevFrequency, setPrevFrequency] = useState("");
@@ -96,127 +243,227 @@ export default function MedicationModal({
   const [prevNotes, setPrevNotes] = useState("");
   const [prevReminderEnabled, setPrevReminderEnabled] = useState(false);
 
-  const currentMeds = getCurrentMedications();
-  const pastMeds = getPastMedications();
-  const vaccines = getVaccines();
-  const preventives = getPreventiveTreatments();
+  const resetMedForm = () => {
+    setMedName(""); setMedDose(""); setMedFrequency(""); setMedPrescribedBy("");
+    setMedNotes(""); setMedReminderEnabled(false);
+  };
+  const resetVaxForm = () => {
+    setVaxName(""); setVaxDateGiven(""); setVaxDueDate(""); setVaxClinic("");
+    setVaxNotes(""); setVaxReminderEnabled(false);
+  };
+  const resetPrevForm = () => {
+    setPrevProductName(""); setPrevType(""); setPrevFrequency(""); setPrevLastGiven("");
+    setPrevNextDue(""); setPrevNotes(""); setPrevReminderEnabled(false);
+  };
+  const resetActiveForm = () => {
+    if (activeTab === "medications") resetMedForm();
+    else if (activeTab === "vaccines") resetVaxForm();
+    else resetPrevForm();
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingId(null);
+    resetActiveForm();
+  };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setShowAddForm(false);
+    closeForm();
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
-  const handleAddMedication = () => {
+  const openAdd = () => {
+    setEditingId(null);
+    resetActiveForm();
+    setShowAddForm(true);
+  };
+
+  // ── Medications ────────────────────────────────────────────────────────────────
+  const editMedication = (med) => {
+    setMedName(med.name || "");
+    setMedDose(med.dose || "");
+    setMedFrequency(med.frequency || "");
+    setMedPrescribedBy(med.prescribed_by || "");
+    setMedNotes(med.notes || "");
+    setMedReminderEnabled(!!med.reminder_enabled);
+    setEditingId(med.id);
+    setShowAddForm(true);
+  };
+
+  const saveMedication = async () => {
     if (!medName.trim()) {
-      Alert.alert("Required", "Please enter a medication name");
+      Alert.alert(tc("required"), tc("nameRequired"));
       return;
     }
-
-    addMedication({
-      name: medName,
+    const payload = {
+      name: medName.trim(),
       dose: medDose,
       frequency: medFrequency,
       prescribedBy: medPrescribedBy,
       notes: medNotes,
       reminderEnabled: medReminderEnabled,
-    });
-
-    // Reset form
-    setMedName("");
-    setMedDose("");
-    setMedFrequency("");
-    setMedPrescribedBy("");
-    setMedNotes("");
-    setMedReminderEnabled(false);
-    setShowAddForm(false);
-
-    Alert.alert("Added", "Medication added successfully");
+    };
+    try {
+      if (editingId) await updateMed.mutateAsync({ id: editingId, ...payload });
+      else await createMed.mutateAsync(payload);
+      closeForm();
+    } catch (e) {
+      Alert.alert(tc("required"), e?.message || "Error");
+    }
   };
 
-  const handleAddVaccine = () => {
+  const completeMedication = (med) => {
+    Alert.alert(tc("markCompletedTitle"), tc("markCompletedBody", { name: med.name }), [
+      { text: tc("cancel"), style: "cancel" },
+      {
+        text: tc("markCompleted"),
+        onPress: () => updateMed.mutate({ id: med.id, status: "completed" }),
+      },
+    ]);
+  };
+
+  // ── Vaccines ───────────────────────────────────────────────────────────────────
+  const editVaccine = (vax) => {
+    setVaxName(vax.name || "");
+    setVaxDateGiven(canonical(vax.date_given));
+    setVaxDueDate(canonical(vax.expires_on));
+    setVaxClinic(vax.clinic_name || "");
+    setVaxNotes(vax.notes || "");
+    setVaxReminderEnabled(!!vax.reminder_enabled);
+    setEditingId(vax.id);
+    setShowAddForm(true);
+  };
+
+  const saveVaccine = async () => {
     if (!vaxName.trim()) {
-      Alert.alert("Required", "Please enter a vaccine name");
+      Alert.alert(tc("required"), tc("nameRequired"));
       return;
     }
-
-    addVaccine({
-      name: vaxName,
-      dateGiven: vaxDateGiven
-        ? parseDateValue(vaxDateGiven).getTime()
-        : Date.now(),
-      dueDate: vaxDueDate ? parseDateValue(vaxDueDate).getTime() : null,
-      vetClinic: vaxVetClinic,
+    const payload = {
+      name: vaxName.trim(),
+      dateGiven: vaxDateGiven || null,
+      expiresOn: vaxDueDate || null,
+      clinicName: vaxClinic,
       notes: vaxNotes,
       reminderEnabled: vaxReminderEnabled,
-    });
-
-    // Reset form
-    setVaxName("");
-    setVaxDateGiven("");
-    setVaxDueDate("");
-    setVaxVetClinic("");
-    setVaxNotes("");
-    setVaxReminderEnabled(false);
-    setShowAddForm(false);
-
-    Alert.alert("Added", "Vaccine added successfully");
+    };
+    try {
+      if (editingId) await updateVax.mutateAsync({ id: editingId, ...payload });
+      else await createVax.mutateAsync(payload);
+      closeForm();
+    } catch (e) {
+      Alert.alert(tc("required"), e?.message || "Error");
+    }
   };
 
-  const handleAddPreventive = () => {
+  // ── Preventives ─────────────────────────────────────────────────────────────────
+  const editPreventive = (prev) => {
+    setPrevProductName(prev.product_name || "");
+    setPrevType(prev.treatment_type || "");
+    setPrevFrequency(prev.frequency || "");
+    setPrevLastGiven(canonical(prev.last_given));
+    setPrevNextDue(canonical(prev.next_due));
+    setPrevNotes(prev.notes || "");
+    setPrevReminderEnabled(!!prev.reminder_enabled);
+    setEditingId(prev.id);
+    setShowAddForm(true);
+  };
+
+  const savePreventive = async () => {
     if (!prevProductName.trim()) {
-      Alert.alert("Required", "Please enter a product name");
+      Alert.alert(tc("required"), tc("productRequired"));
       return;
     }
-
-    addPreventiveTreatment({
-      productName: prevProductName,
-      type: prevType || "other",
+    const payload = {
+      productName: prevProductName.trim(),
+      treatmentType: prevType || "other",
       frequency: prevFrequency,
-      lastGiven: prevLastGiven ? parseDateValue(prevLastGiven).getTime() : null,
-      nextDue: prevNextDue ? parseDateValue(prevNextDue).getTime() : null,
+      lastGiven: prevLastGiven || null,
+      nextDue: prevNextDue || null,
       notes: prevNotes,
       reminderEnabled: prevReminderEnabled,
-    });
-
-    // Reset form
-    setPrevProductName("");
-    setPrevType("");
-    setPrevFrequency("");
-    setPrevLastGiven("");
-    setPrevNextDue("");
-    setPrevNotes("");
-    setPrevReminderEnabled(false);
-    setShowAddForm(false);
-
-    Alert.alert("Added", "Preventive care added successfully");
+    };
+    try {
+      if (editingId) await updatePrev.mutateAsync({ id: editingId, ...payload });
+      else await createPrev.mutateAsync(payload);
+      closeForm();
+    } catch (e) {
+      Alert.alert(tc("required"), e?.message || "Error");
+    }
   };
 
-  const handleCompleteMedication = (medId, medName) => {
-    Alert.alert(
-      "Mark as completed",
-      `Mark ${medName} as completed? This will move it to past medications.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Mark completed",
-          onPress: () => {
-            completeMedication(medId);
-            Alert.alert("Completed", "Medication moved to past medications");
-          },
-        },
-      ],
-    );
+  const confirmDelete = (name, onConfirm) => {
+    Alert.alert(tc("deleteTitle", { name }), tc("deleteBody"), [
+      { text: tc("cancel"), style: "cancel" },
+      { text: tc("delete"), style: "destructive", onPress: onConfirm },
+    ]);
   };
+
+  const addButton = (label) => (
+    <TouchableOpacity
+      onPress={openAdd}
+      accessibilityRole="button"
+      style={{
+        backgroundColor: C.coral,
+        borderRadius: 14,
+        padding: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        marginBottom: 20,
+      }}
+    >
+      <Plus size={20} color="#FFF" />
+      <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const formActions = (onSave, pending) => (
+    <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+      <TouchableOpacity
+        onPress={closeForm}
+        style={{ flex: 1, backgroundColor: C.sand, borderRadius: 12, padding: 14, alignItems: "center" }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>{tc("cancel")}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={onSave}
+        disabled={pending}
+        style={{ flex: 1, backgroundColor: pending ? C.mutedBrown + "60" : C.coral, borderRadius: 12, padding: 14, alignItems: "center" }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}>{tc("save")}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const formCard = (title, children) => (
+    <View
+      style={{
+        backgroundColor: C.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1.5,
+        borderColor: C.coral,
+        marginBottom: 20,
+      }}
+    >
+      <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>{title}</Text>
+      <View style={{ gap: 12 }}>{children}</View>
+    </View>
+  );
+
+  const TABS = [
+    { key: "medications", label: tc("tabMedications"), Icon: Pill },
+    { key: "vaccines", label: tc("tabVaccines"), Icon: Syringe },
+    { key: "preventives", label: tc("tabPreventives"), Icon: Shield },
+  ];
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "flex-end",
-        }}
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View
@@ -226,7 +473,10 @@ export default function MedicationModal({
             borderTopRightRadius: 24,
             paddingTop: 20,
             paddingBottom: insets.bottom + 20,
-            maxHeight: "90%",
+            // DEFINITE height (not maxHeight-only): the middle child is a flex:1
+            // KeyboardAwareScrollView, which collapses to 0 height under a content-sized
+            // parent — the same zero-height sheet bug fixed for Quick Check (#436).
+            height: "90%",
           }}
         >
           {/* Header */}
@@ -239,108 +489,46 @@ export default function MedicationModal({
               marginBottom: 16,
             }}
           >
-            <Text
-              style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
-            >
-              Medications & Care
-            </Text>
-            <TouchableOpacity onPress={onClose}>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{tc("title")}</Text>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={tc("cancel")}>
               <X size={24} color={C.warmBrown} />
             </TouchableOpacity>
           </View>
 
           {/* Tabs */}
-          <View
-            style={{
-              flexDirection: "row",
-              paddingHorizontal: 20,
-              gap: 8,
-              marginBottom: 16,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => handleTabChange("medications")}
-              style={{
-                flex: 1,
-                backgroundColor: activeTab === "medications" ? C.coral : C.card,
-                borderRadius: 12,
-                padding: 12,
-                alignItems: "center",
-                borderWidth: 1.5,
-                borderColor: activeTab === "medications" ? C.coral : C.peach,
-              }}
-            >
-              <Pill
-                size={18}
-                color={activeTab === "medications" ? "#FFF" : C.warmBrown}
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  color: activeTab === "medications" ? "#FFF" : C.warmBrown,
-                  marginTop: 4,
-                }}
-              >
-                Medications
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleTabChange("vaccines")}
-              style={{
-                flex: 1,
-                backgroundColor: activeTab === "vaccines" ? C.coral : C.card,
-                borderRadius: 12,
-                padding: 12,
-                alignItems: "center",
-                borderWidth: 1.5,
-                borderColor: activeTab === "vaccines" ? C.coral : C.peach,
-              }}
-            >
-              <Syringe
-                size={18}
-                color={activeTab === "vaccines" ? "#FFF" : C.warmBrown}
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  color: activeTab === "vaccines" ? "#FFF" : C.warmBrown,
-                  marginTop: 4,
-                }}
-              >
-                Vaccines
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleTabChange("preventives")}
-              style={{
-                flex: 1,
-                backgroundColor: activeTab === "preventives" ? C.coral : C.card,
-                borderRadius: 12,
-                padding: 12,
-                alignItems: "center",
-                borderWidth: 1.5,
-                borderColor: activeTab === "preventives" ? C.coral : C.peach,
-              }}
-            >
-              <Shield
-                size={18}
-                color={activeTab === "preventives" ? "#FFF" : C.warmBrown}
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  color: activeTab === "preventives" ? "#FFF" : C.warmBrown,
-                  marginTop: 4,
-                }}
-              >
-                Preventive
-              </Text>
-            </TouchableOpacity>
+          <View style={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, marginBottom: 16 }}>
+            {TABS.map(({ key, label, Icon }) => {
+              const active = activeTab === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => handleTabChange(key)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: active ? C.coral : C.card,
+                    borderRadius: 12,
+                    padding: 12,
+                    alignItems: "center",
+                    borderWidth: 1.5,
+                    borderColor: active ? C.coral : C.peach,
+                  }}
+                >
+                  <Icon size={18} color={active ? "#FFF" : C.warmBrown} />
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: active ? "#FFF" : C.warmBrown,
+                      marginTop: 4,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <KeyboardAwareScrollView
@@ -352,7 +540,6 @@ export default function MedicationModal({
             {/* MEDICATIONS TAB */}
             {activeTab === "medications" && (
               <View>
-                {/* Safety Warning */}
                 <View
                   style={{
                     backgroundColor: "#FFF4E6",
@@ -367,717 +554,178 @@ export default function MedicationModal({
                   }}
                 >
                   <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: C.mutedBrown,
-                      lineHeight: 17,
-                      flex: 1,
-                    }}
-                  >
-                    Follow your veterinarian's instructions for medication dose
-                    and schedule.
+                  <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17, flex: 1 }}>
+                    {tc("medsSafety")}
                   </Text>
                 </View>
 
-                {/* Add Button */}
-                {!showAddForm && (
-                  <TouchableOpacity
-                    onPress={() => setShowAddForm(true)}
-                    style={{
-                      backgroundColor: C.coral,
-                      borderRadius: 14,
-                      padding: 16,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Plus size={20} color="#FFF" />
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "700",
-                        color: "#FFF",
-                      }}
-                    >
-                      Add medication
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {!showAddForm && addButton(tc("addMedication"))}
 
-                {/* Add Form */}
-                {showAddForm && (
-                  <View
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 16,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: C.coral,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: C.warmBrown,
-                        marginBottom: 14,
-                      }}
-                    >
-                      Add new medication
-                    </Text>
+                {showAddForm &&
+                  formCard(editingId ? tc("editMedication") : tc("newMedication"), (
+                    <>
+                      <Field label={`${tc("fieldName")} *`}>
+                        <Input value={medName} onChangeText={setMedName} placeholder={tc("phMedName")} />
+                      </Field>
+                      <Field label={tc("fieldDose")}>
+                        <Input value={medDose} onChangeText={setMedDose} placeholder={tc("phDose")} />
+                      </Field>
+                      <Field label={tc("fieldFrequency")}>
+                        <Input value={medFrequency} onChangeText={setMedFrequency} placeholder={tc("phFrequency")} />
+                      </Field>
+                      <Field label={tc("fieldPrescribedBy")}>
+                        <Input value={medPrescribedBy} onChangeText={setMedPrescribedBy} placeholder={tc("phPrescribedBy")} />
+                      </Field>
+                      <Field label={tc("fieldNotes")}>
+                        <Input value={medNotes} onChangeText={setMedNotes} placeholder={tc("phNotes")} multiline />
+                      </Field>
+                      <ReminderToggle
+                        enabled={medReminderEnabled}
+                        onToggle={() => setMedReminderEnabled((v) => !v)}
+                        label={tc("fieldEnableReminders")}
+                      />
+                      {formActions(saveMedication, createMed.isPending || updateMed.isPending)}
+                    </>
+                  ))}
 
-                    <View style={{ gap: 12 }}>
-                      <View>
-                        <Text style={styles.label}>Medication name *</Text>
-                        <TextInput
-                          value={medName}
-                          onChangeText={setMedName}
-                          placeholder="e.g., Carprofen"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Dose</Text>
-                        <TextInput
-                          value={medDose}
-                          onChangeText={setMedDose}
-                          placeholder="e.g., 25mg"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Frequency</Text>
-                        <TextInput
-                          value={medFrequency}
-                          onChangeText={setMedFrequency}
-                          placeholder="e.g., Twice daily"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Prescribed by</Text>
-                        <TextInput
-                          value={medPrescribedBy}
-                          onChangeText={setMedPrescribedBy}
-                          placeholder="e.g., Dr. Sarah Mitchell"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Notes</Text>
-                        <TextInput
-                          value={medNotes}
-                          onChangeText={setMedNotes}
-                          placeholder="Any additional notes..."
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          multiline
-                          numberOfLines={3}
-                          style={[
-                            styles.input,
-                            { minHeight: 80, textAlignVertical: "top" },
-                          ]}
-                        />
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          setMedReminderEnabled(!medReminderEnabled)
-                        }
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: 12,
-                          backgroundColor: C.sand,
-                          borderRadius: 10,
-                        }}
-                      >
-                        {medReminderEnabled ? (
-                          <Bell size={18} color={C.sage} />
-                        ) : (
-                          <BellOff size={18} color={C.mutedBrown} />
-                        )}
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.warmBrown,
-                            flex: 1,
-                          }}
-                        >
-                          Enable reminders
+                {medsQuery.isLoading ? (
+                  <ActivityIndicator color={C.coral} style={{ marginVertical: 24 }} />
+                ) : (
+                  <>
+                    {currentMeds.length > 0 && (
+                      <View style={{ marginBottom: 20 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: C.warmBrown, marginBottom: 12 }}>
+                          {tc("currentMedications")}
                         </Text>
-                        {medReminderEnabled && (
-                          <CheckCircle size={18} color={C.sage} />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: 10,
-                        marginTop: 16,
-                      }}
-                    >
-                      <TouchableOpacity
-                        onPress={() => setShowAddForm(false)}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.sand,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          Cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleAddMedication}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.coral,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
-                          Add
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Current Medications List */}
-                {currentMeds.length > 0 && (
-                  <View style={{ marginBottom: 20 }}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 12,
-                      }}
-                    >
-                      Current medications
-                    </Text>
-                    <View style={{ gap: 10 }}>
-                      {currentMeds.map((med) => (
-                        <View
-                          key={med.id}
-                          style={{
-                            backgroundColor: C.card,
-                            borderRadius: 12,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 15,
-                              fontWeight: "800",
-                              color: C.warmBrown,
-                              marginBottom: 6,
-                            }}
-                          >
-                            {med.name}
-                          </Text>
-                          {med.dose && (
-                            <Text
-                              style={{
-                                fontSize: 13,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
+                        <View style={{ gap: 10 }}>
+                          {currentMeds.map((med) => (
+                            <View
+                              key={med.id}
+                              style={{ backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.peach }}
                             >
-                              Dose: {med.dose}
-                            </Text>
-                          )}
-                          {med.frequency && (
-                            <Text
-                              style={{
-                                fontSize: 13,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Frequency: {med.frequency}
-                            </Text>
-                          )}
-                          {med.prescribedBy && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Prescribed by: {med.prescribedBy}
-                            </Text>
-                          )}
-                          {med.notes && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                fontStyle: "italic",
-                                marginTop: 6,
-                              }}
-                            >
-                              {med.notes}
-                            </Text>
-                          )}
-                          <TouchableOpacity
-                            onPress={() =>
-                              handleCompleteMedication(med.id, med.name)
-                            }
-                            style={{
-                              marginTop: 10,
-                              backgroundColor: C.sage + "20",
-                              borderRadius: 8,
-                              padding: 10,
-                              alignItems: "center",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 13,
-                                fontWeight: "700",
-                                color: C.sage,
-                              }}
-                            >
-                              Mark as completed
-                            </Text>
-                          </TouchableOpacity>
+                              <Text style={styles.cardTitle}>{med.name}</Text>
+                              {med.dose ? <Text style={styles.rowLine}>{tc("labelDose")}: {med.dose}</Text> : null}
+                              {med.frequency ? <Text style={styles.rowLine}>{tc("labelFrequency")}: {med.frequency}</Text> : null}
+                              {med.prescribed_by ? <Text style={styles.rowLine}>{tc("labelPrescribedBy")}: {med.prescribed_by}</Text> : null}
+                              {med.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{med.notes}</Text> : null}
+                              <TouchableOpacity
+                                onPress={() => completeMedication(med)}
+                                accessibilityRole="button"
+                                style={{ marginTop: 10, backgroundColor: C.sage + "20", borderRadius: 8, padding: 10, alignItems: "center" }}
+                              >
+                                <Text style={{ fontSize: 13, fontWeight: "700", color: C.sage }}>{tc("markCompleted")}</Text>
+                              </TouchableOpacity>
+                              <RowActions
+                                onEdit={() => editMedication(med)}
+                                onDelete={() => confirmDelete(med.name, () => deleteMed.mutate(med.id))}
+                                editLabel={tc("edit")}
+                                deleteLabel={tc("delete")}
+                              />
+                            </View>
+                          ))}
                         </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+                      </View>
+                    )}
 
-                {/* Past Medications */}
-                {pastMeds.length > 0 && (
-                  <View>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 12,
-                      }}
-                    >
-                      Past medications
-                    </Text>
-                    <View style={{ gap: 10 }}>
-                      {pastMeds.map((med) => (
-                        <View
-                          key={med.id}
-                          style={{
-                            backgroundColor: C.sand + "80",
-                            borderRadius: 12,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: C.peach + "60",
-                            opacity: 0.7,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 15,
-                              fontWeight: "800",
-                              color: C.warmBrown,
-                              marginBottom: 6,
-                            }}
-                          >
-                            {med.name}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: C.mutedBrown,
-                            }}
-                          >
-                            {formatDate(med.startDate)} -{" "}
-                            {formatDate(med.endDate)}
-                          </Text>
-                          {med.notes && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                fontStyle: "italic",
-                                marginTop: 6,
-                              }}
+                    {pastMeds.length > 0 && (
+                      <View>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: C.warmBrown, marginBottom: 12 }}>
+                          {tc("pastMedications")}
+                        </Text>
+                        <View style={{ gap: 10 }}>
+                          {pastMeds.map((med) => (
+                            <View
+                              key={med.id}
+                              style={{ backgroundColor: C.sand + "80", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.peach + "60", opacity: 0.8 }}
                             >
-                              {med.notes}
-                            </Text>
-                          )}
+                              <Text style={styles.cardTitle}>{med.name}</Text>
+                              {(med.start_date || med.end_date) ? (
+                                <Text style={styles.rowLine}>
+                                  {formatDate(med.start_date)}
+                                  {med.end_date ? ` – ${formatDate(med.end_date)}` : ""}
+                                </Text>
+                              ) : null}
+                              {med.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{med.notes}</Text> : null}
+                              <RowActions
+                                onEdit={() => editMedication(med)}
+                                onDelete={() => confirmDelete(med.name, () => deleteMed.mutate(med.id))}
+                                editLabel={tc("edit")}
+                                deleteLabel={tc("delete")}
+                              />
+                            </View>
+                          ))}
                         </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+                      </View>
+                    )}
 
-                {currentMeds.length === 0 &&
-                  pastMeds.length === 0 &&
-                  !showAddForm && (
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: C.mutedBrown,
-                        textAlign: "center",
-                        paddingVertical: 40,
-                      }}
-                    >
-                      No medications added yet
-                    </Text>
-                  )}
+                    {currentMeds.length === 0 && pastMeds.length === 0 && !showAddForm && (
+                      <Text style={styles.empty}>{tc("emptyMeds")}</Text>
+                    )}
+                  </>
+                )}
               </View>
             )}
 
             {/* VACCINES TAB */}
             {activeTab === "vaccines" && (
               <View>
-                {/* Add Button */}
-                {!showAddForm && (
-                  <TouchableOpacity
-                    onPress={() => setShowAddForm(true)}
-                    style={{
-                      backgroundColor: C.coral,
-                      borderRadius: 14,
-                      padding: 16,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Plus size={20} color="#FFF" />
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "700",
-                        color: "#FFF",
-                      }}
-                    >
-                      Add vaccine
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {!showAddForm && addButton(tc("addVaccine"))}
 
-                {/* Add Form */}
-                {showAddForm && (
-                  <View
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 16,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: C.coral,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: C.warmBrown,
-                        marginBottom: 14,
-                      }}
-                    >
-                      Add new vaccine
-                    </Text>
+                {showAddForm &&
+                  formCard(editingId ? tc("editVaccine") : tc("newVaccine"), (
+                    <>
+                      <Field label={`${tc("fieldVaxName")} *`}>
+                        <Input value={vaxName} onChangeText={setVaxName} placeholder={tc("phVaxName")} />
+                      </Field>
+                      <Field label={tc("fieldDateGiven")}>
+                        <DateField value={vaxDateGiven} onChange={setVaxDateGiven} fieldStyle={styles.input} />
+                      </Field>
+                      <Field label={tc("fieldExpiration")}>
+                        <DateField value={vaxDueDate} onChange={setVaxDueDate} fieldStyle={styles.input} />
+                      </Field>
+                      <Field label={tc("fieldClinic")}>
+                        <Input value={vaxClinic} onChangeText={setVaxClinic} placeholder={tc("phClinic")} />
+                      </Field>
+                      <Field label={tc("fieldNotes")}>
+                        <Input value={vaxNotes} onChangeText={setVaxNotes} placeholder={tc("phNotes")} multiline />
+                      </Field>
+                      <ReminderToggle
+                        enabled={vaxReminderEnabled}
+                        onToggle={() => setVaxReminderEnabled((v) => !v)}
+                        label={tc("fieldEnableReminders")}
+                      />
+                      {formActions(saveVaccine, createVax.isPending || updateVax.isPending)}
+                    </>
+                  ))}
 
-                    <View style={{ gap: 12 }}>
-                      <View>
-                        <Text style={styles.label}>Vaccine name *</Text>
-                        <TextInput
-                          value={vaxName}
-                          onChangeText={setVaxName}
-                          placeholder="e.g., Rabies, DHPP"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Date given</Text>
-                        <DateField
-                          value={vaxDateGiven}
-                          onChange={setVaxDateGiven}
-                          fieldStyle={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Due/expiration date</Text>
-                        <DateField
-                          value={vaxDueDate}
-                          onChange={setVaxDueDate}
-                          fieldStyle={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Vet clinic</Text>
-                        <TextInput
-                          value={vaxVetClinic}
-                          onChangeText={setVaxVetClinic}
-                          placeholder="e.g., Happy Paws Veterinary"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Notes</Text>
-                        <TextInput
-                          value={vaxNotes}
-                          onChangeText={setVaxNotes}
-                          placeholder="Any additional notes..."
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          multiline
-                          numberOfLines={3}
-                          style={[
-                            styles.input,
-                            { minHeight: 80, textAlignVertical: "top" },
-                          ]}
-                        />
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          setVaxReminderEnabled(!vaxReminderEnabled)
-                        }
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: 12,
-                          backgroundColor: C.sand,
-                          borderRadius: 10,
-                        }}
-                      >
-                        {vaxReminderEnabled ? (
-                          <Bell size={18} color={C.sage} />
-                        ) : (
-                          <BellOff size={18} color={C.mutedBrown} />
-                        )}
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.warmBrown,
-                            flex: 1,
-                          }}
-                        >
-                          Enable reminder
-                        </Text>
-                        {vaxReminderEnabled && (
-                          <CheckCircle size={18} color={C.sage} />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: 10,
-                        marginTop: 16,
-                      }}
-                    >
-                      <TouchableOpacity
-                        onPress={() => setShowAddForm(false)}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.sand,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          Cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleAddVaccine}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.coral,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
-                          Add
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Vaccines List */}
-                {vaccines.length > 0 ? (
+                {vaxQuery.isLoading ? (
+                  <ActivityIndicator color={C.coral} style={{ marginVertical: 24 }} />
+                ) : vaccines.length > 0 ? (
                   <View style={{ gap: 12 }}>
                     {vaccines.map((vax) => {
-                      const status = getVaccineStatus(vax);
+                      const status = getVaccineStatus(vax.expires_on);
                       return (
-                        <View
-                          key={vax.id}
-                          style={{
-                            backgroundColor: C.card,
-                            borderRadius: 12,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                          }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              marginBottom: 8,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 15,
-                                fontWeight: "800",
-                                color: C.warmBrown,
-                                flex: 1,
-                              }}
-                            >
-                              {vax.name}
-                            </Text>
-                            <View
-                              style={{
-                                backgroundColor: status.color + "20",
-                                borderRadius: 6,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: "700",
-                                  color: status.color,
-                                }}
-                              >
-                                {status.label}
-                              </Text>
-                            </View>
+                        <View key={vax.id} style={{ backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.peach }}>
+                          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                            <Text style={{ ...styles.cardTitle, flex: 1, marginBottom: 0 }}>{vax.name}</Text>
+                            <StatusBadge color={status.color} label={tc(`status${status.key.charAt(0).toUpperCase()}${status.key.slice(1)}`)} />
                           </View>
-
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: C.mutedBrown,
-                              marginBottom: 4,
-                            }}
-                          >
-                            Given: {formatDate(vax.dateGiven)}
-                          </Text>
-
-                          {vax.dueDate && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Due: {formatDate(vax.dueDate)}
-                            </Text>
-                          )}
-
-                          {vax.vetClinic && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              {vax.vetClinic}
-                            </Text>
-                          )}
-
-                          {vax.notes && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                fontStyle: "italic",
-                                marginTop: 6,
-                              }}
-                            >
-                              {vax.notes}
-                            </Text>
-                          )}
+                          {vax.date_given ? <Text style={styles.rowLine}>{tc("labelGiven")}: {formatDate(vax.date_given)}</Text> : null}
+                          {vax.expires_on ? <Text style={styles.rowLine}>{tc("labelDue")}: {formatDate(vax.expires_on)}</Text> : null}
+                          {vax.clinic_name ? <Text style={styles.rowLine}>{vax.clinic_name}</Text> : null}
+                          {vax.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{vax.notes}</Text> : null}
+                          <RowActions
+                            onEdit={() => editVaccine(vax)}
+                            onDelete={() => confirmDelete(vax.name, () => deleteVax.mutate(vax.id))}
+                            editLabel={tc("edit")}
+                            deleteLabel={tc("delete")}
+                          />
                         </View>
                       );
                     })}
                   </View>
                 ) : (
-                  !showAddForm && (
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: C.mutedBrown,
-                        textAlign: "center",
-                        paddingVertical: 40,
-                      }}
-                    >
-                      No vaccines added yet
-                    </Text>
-                  )
+                  !showAddForm && <Text style={styles.empty}>{tc("emptyVaccines")}</Text>
                 )}
               </View>
             )}
@@ -1085,71 +733,15 @@ export default function MedicationModal({
             {/* PREVENTIVES TAB */}
             {activeTab === "preventives" && (
               <View>
-                {/* Add Button */}
-                {!showAddForm && (
-                  <TouchableOpacity
-                    onPress={() => setShowAddForm(true)}
-                    style={{
-                      backgroundColor: C.coral,
-                      borderRadius: 14,
-                      padding: 16,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Plus size={20} color="#FFF" />
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "700",
-                        color: "#FFF",
-                      }}
-                    >
-                      Add preventive care
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {!showAddForm && addButton(tc("addPreventive"))}
 
-                {/* Add Form */}
-                {showAddForm && (
-                  <View
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 16,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: C.coral,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: C.warmBrown,
-                        marginBottom: 14,
-                      }}
-                    >
-                      Add preventive care
-                    </Text>
-
-                    <View style={{ gap: 12 }}>
-                      <View>
-                        <Text style={styles.label}>Product name *</Text>
-                        <TextInput
-                          value={prevProductName}
-                          onChangeText={setPrevProductName}
-                          placeholder="e.g., Simparica Trio"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Type</Text>
+                {showAddForm &&
+                  formCard(editingId ? tc("editPreventive") : tc("newPreventive"), (
+                    <>
+                      <Field label={`${tc("fieldProductName")} *`}>
+                        <Input value={prevProductName} onChangeText={setPrevProductName} placeholder={tc("phProductName")} />
+                      </Field>
+                      <Field label={tc("fieldType")}>
                         <ScrollView
                           horizontal
                           showsHorizontalScrollIndicator={false}
@@ -1157,309 +749,88 @@ export default function MedicationModal({
                           style={{ marginTop: 8 }}
                           contentContainerStyle={{ gap: 8 }}
                         >
-                          {PREVENTIVE_TYPES.map((type) => (
-                            <TouchableOpacity
-                              key={type.key}
-                              onPress={() => setPrevType(type.key)}
-                              style={{
-                                backgroundColor:
-                                  prevType === type.key ? C.coral : C.sand,
-                                borderRadius: 10,
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 6,
-                              }}
-                            >
-                              <Text style={{ fontSize: 14 }}>{type.emoji}</Text>
-                              <Text
+                          {PREVENTIVE_TYPES.map((type) => {
+                            const sel = prevType === type.key;
+                            return (
+                              <TouchableOpacity
+                                key={type.key}
+                                onPress={() => setPrevType(type.key)}
                                 style={{
-                                  fontSize: 12,
-                                  fontWeight: "600",
-                                  color:
-                                    prevType === type.key
-                                      ? "#FFF"
-                                      : C.warmBrown,
-                                }}
-                              >
-                                {type.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Frequency</Text>
-                        <TextInput
-                          value={prevFrequency}
-                          onChangeText={setPrevFrequency}
-                          placeholder="e.g., Monthly, Every 3 months"
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          style={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Last given</Text>
-                        <DateField
-                          value={prevLastGiven}
-                          onChange={setPrevLastGiven}
-                          fieldStyle={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Next due</Text>
-                        <DateField
-                          value={prevNextDue}
-                          onChange={setPrevNextDue}
-                          fieldStyle={styles.input}
-                        />
-                      </View>
-
-                      <View>
-                        <Text style={styles.label}>Notes</Text>
-                        <TextInput
-                          value={prevNotes}
-                          onChangeText={setPrevNotes}
-                          placeholder="Any additional notes..."
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          multiline
-                          numberOfLines={3}
-                          style={[
-                            styles.input,
-                            { minHeight: 80, textAlignVertical: "top" },
-                          ]}
-                        />
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          setPrevReminderEnabled(!prevReminderEnabled)
-                        }
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: 12,
-                          backgroundColor: C.sand,
-                          borderRadius: 10,
-                        }}
-                      >
-                        {prevReminderEnabled ? (
-                          <Bell size={18} color={C.sage} />
-                        ) : (
-                          <BellOff size={18} color={C.mutedBrown} />
-                        )}
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.warmBrown,
-                            flex: 1,
-                          }}
-                        >
-                          Enable reminder
-                        </Text>
-                        {prevReminderEnabled && (
-                          <CheckCircle size={18} color={C.sage} />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: 10,
-                        marginTop: 16,
-                      }}
-                    >
-                      <TouchableOpacity
-                        onPress={() => setShowAddForm(false)}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.sand,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          Cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleAddPreventive}
-                        style={{
-                          flex: 1,
-                          backgroundColor: C.coral,
-                          borderRadius: 12,
-                          padding: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
-                          Add
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Preventives List */}
-                {preventives.length > 0 ? (
-                  <View style={{ gap: 12 }}>
-                    {preventives.map((prev) => {
-                      const status = getPreventiveStatus(prev);
-                      return (
-                        <View
-                          key={prev.id}
-                          style={{
-                            backgroundColor: C.card,
-                            borderRadius: 12,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                          }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              marginBottom: 8,
-                            }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontSize: 15,
-                                  fontWeight: "800",
-                                  color: C.warmBrown,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                {prev.productName}
-                              </Text>
-                              <View
-                                style={{
+                                  backgroundColor: sel ? C.coral : C.sand,
+                                  borderRadius: 10,
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 8,
                                   flexDirection: "row",
                                   alignItems: "center",
                                   gap: 6,
                                 }}
                               >
-                                <Text style={{ fontSize: 14 }}>
-                                  {getPreventiveTypeEmoji(prev.type)}
+                                <Text style={{ fontSize: 14 }}>{type.emoji}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: "600", color: sel ? "#FFF" : C.warmBrown }}>
+                                  {tc(`prevTypes.${type.key}`)}
                                 </Text>
-                                <Text
-                                  style={{
-                                    fontSize: 12,
-                                    color: C.mutedBrown,
-                                  }}
-                                >
-                                  {getPreventiveTypeLabel(prev.type)}
-                                </Text>
-                              </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </Field>
+                      <Field label={tc("fieldFrequency")}>
+                        <Input value={prevFrequency} onChangeText={setPrevFrequency} placeholder={tc("phPrevFrequency")} />
+                      </Field>
+                      <Field label={tc("fieldLastGiven")}>
+                        <DateField value={prevLastGiven} onChange={setPrevLastGiven} fieldStyle={styles.input} />
+                      </Field>
+                      <Field label={tc("fieldNextDue")}>
+                        <DateField value={prevNextDue} onChange={setPrevNextDue} fieldStyle={styles.input} />
+                      </Field>
+                      <Field label={tc("fieldNotes")}>
+                        <Input value={prevNotes} onChangeText={setPrevNotes} placeholder={tc("phNotes")} multiline />
+                      </Field>
+                      <ReminderToggle
+                        enabled={prevReminderEnabled}
+                        onToggle={() => setPrevReminderEnabled((v) => !v)}
+                        label={tc("fieldEnableReminders")}
+                      />
+                      {formActions(savePreventive, createPrev.isPending || updatePrev.isPending)}
+                    </>
+                  ))}
+
+                {prevQuery.isLoading ? (
+                  <ActivityIndicator color={C.coral} style={{ marginVertical: 24 }} />
+                ) : preventives.length > 0 ? (
+                  <View style={{ gap: 12 }}>
+                    {preventives.map((prev) => {
+                      const status = getPreventiveStatus(prev.next_due);
+                      return (
+                        <View key={prev.id} style={{ backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.peach }}>
+                          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ ...styles.cardTitle, marginBottom: 4 }}>{prev.product_name}</Text>
+                              {prev.treatment_type ? (
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                  <Text style={{ fontSize: 14 }}>{getPreventiveTypeEmoji(prev.treatment_type)}</Text>
+                                  <Text style={{ fontSize: 12, color: C.mutedBrown }}>{tc(`prevTypes.${prev.treatment_type}`)}</Text>
+                                </View>
+                              ) : null}
                             </View>
-                            <View
-                              style={{
-                                backgroundColor: status.color + "20",
-                                borderRadius: 6,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: "700",
-                                  color: status.color,
-                                }}
-                              >
-                                {status.label}
-                              </Text>
-                            </View>
+                            <StatusBadge color={status.color} label={tc(`status${status.key.charAt(0).toUpperCase()}${status.key.slice(1)}`)} />
                           </View>
-
-                          {prev.frequency && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Frequency: {prev.frequency}
-                            </Text>
-                          )}
-
-                          {prev.lastGiven && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Last given: {formatDate(prev.lastGiven)}
-                            </Text>
-                          )}
-
-                          {prev.nextDue && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                marginBottom: 4,
-                              }}
-                            >
-                              Next due: {formatDate(prev.nextDue)}
-                            </Text>
-                          )}
-
-                          {prev.notes && (
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: C.mutedBrown,
-                                fontStyle: "italic",
-                                marginTop: 6,
-                              }}
-                            >
-                              {prev.notes}
-                            </Text>
-                          )}
+                          {prev.frequency ? <Text style={styles.rowLine}>{tc("labelFrequency")}: {prev.frequency}</Text> : null}
+                          {prev.last_given ? <Text style={styles.rowLine}>{tc("labelLastGiven")}: {formatDate(prev.last_given)}</Text> : null}
+                          {prev.next_due ? <Text style={styles.rowLine}>{tc("labelNextDue")}: {formatDate(prev.next_due)}</Text> : null}
+                          {prev.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{prev.notes}</Text> : null}
+                          <RowActions
+                            onEdit={() => editPreventive(prev)}
+                            onDelete={() => confirmDelete(prev.product_name, () => deletePrev.mutate(prev.id))}
+                            editLabel={tc("edit")}
+                            deleteLabel={tc("delete")}
+                          />
                         </View>
                       );
                     })}
                   </View>
                 ) : (
-                  !showAddForm && (
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: C.mutedBrown,
-                        textAlign: "center",
-                        paddingVertical: 40,
-                      }}
-                    >
-                      No preventive care added yet
-                    </Text>
-                  )
+                  !showAddForm && <Text style={styles.empty}>{tc("emptyPreventives")}</Text>
                 )}
               </View>
             )}
@@ -1469,21 +840,3 @@ export default function MedicationModal({
     </Modal>
   );
 }
-
-const styles = {
-  label: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.warmBrown,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: C.sand,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    color: C.warmBrown,
-    borderWidth: 1,
-    borderColor: C.peach,
-  },
-};
