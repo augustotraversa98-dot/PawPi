@@ -33,9 +33,6 @@ jest.mock("@/hooks/usePetProfile", () => ({
 jest.mock("@/hooks/useVetAppointmentReminders", () => ({
   useVetAppointmentReminders: () => ({ data: [] }),
 }));
-jest.mock("@/hooks/useTodayProgress", () => ({
-  useTodayProgress: () => ({ chips: [], isEmpty: true }),
-}));
 
 const mockStore = {
   reminders: [],

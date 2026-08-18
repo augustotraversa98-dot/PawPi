@@ -34,7 +34,7 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 
 // Track is two sections mapped to how owners think:
-//   • Everyday — quick daily logs (these fill the Care Ring / Today's Progress)
+//   • Everyday — quick daily logs (these fill the Care Ring)
 //   • Health records — care / medical history for the vet
 // Labels + descriptions come from i18n (`health.trackScreen.<id>Label/Desc`) so the
 // whole screen is bilingual. Each tile carries an `id` (the i18n slug) and either an
