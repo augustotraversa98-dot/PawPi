@@ -97,7 +97,7 @@
       "howDoesThisLook": "How does this look?",
       "looksUsual": "Looks usual",
       "somethingChanged": "Something changed",
-      "chooseHint": "Choose an option to continue",
+      "optionalHint": "Optional — skip if you didn't check this area",
       "whatChanged": "What changed? (select all that apply)",
       "addPhoto": "Add photo (optional)",
       "takePhoto": "Take photo",
@@ -114,7 +114,28 @@
       "ok": "OK",
       "savedTitle": "Quick check saved",
       "savedBodyOne": "1 area with changes noted. Continue monitoring and contact your vet if needed.",
-      "savedBodyMany": "{{count}} areas with changes noted. Continue monitoring and contact your vet if needed."
+      "savedBodyMany": "{{count}} areas with changes noted. Continue monitoring and contact your vet if needed.",
+      "areas": {
+        "eyes": { "label": "Eyes", "description": "Check for clarity, discharge, redness" },
+        "ears": { "label": "Ears", "description": "Check for odor, discharge, redness" },
+        "teeth_mouth": { "label": "Teeth & Mouth", "description": "Check gums, teeth, breath" },
+        "skin_fur": { "label": "Skin & Fur", "description": "Check for bumps, irritation, hair loss" },
+        "paws": { "label": "Paws", "description": "Check pads, nails, between toes" },
+        "face": { "label": "Face", "description": "Overall facial appearance" },
+        "mood": { "label": "Mood", "description": "Behavior, responsiveness, playfulness" },
+        "energy": { "label": "Energy", "description": "Activity level, enthusiasm" }
+      },
+      "changes": {
+        "redness": "Redness",
+        "swelling": "Swelling",
+        "discharge": "Discharge",
+        "bad_smell": "Bad smell",
+        "limping": "Limping",
+        "excessive_licking": "Excessive licking",
+        "hair_loss": "Hair loss",
+        "wound": "Wound",
+        "other": "Other"
+      }
     },
     "careRing": {
       "title": "{{name}}'s day",

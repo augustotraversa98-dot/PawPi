@@ -1,9 +1,11 @@
 // GeneralCheckModal (Quick Check) — the per-area health walkthrough. This suite pins
-// the on-device fix from the 2026-08-18 revision: the per-area status choice ("Looks
-// usual" / "Something changed") is the required first action, so "Next" stays disabled
-// (and shows a hint) until one is picked, then enables and advances. Also pins the full
-// EN+ES localization of the modal (previously hardcoded English). The logging hook and
-// native wrappers are mocked.
+// the on-device fix from the 2026-08-18 revision (NR1): the owner was TRAPPED on the
+// first area because "Next" was a hard gate that only enabled after a status was picked.
+// Now every area is OPTIONAL — "Next" always advances (an un-checked area is just "not
+// checked"), the status choice shows an optional hint instead of a required one, and any
+// of the 8 areas is directly reachable via the area stepper. Also pins the full EN+ES
+// localization of the modal (previously hardcoded English). The logging hook and native
+// wrappers are mocked.
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
@@ -63,24 +65,41 @@ beforeEach(() => {
   mockMutateAsync.mockClear();
 });
 
-test("Next is disabled until a status is picked, then enables and advances (EN)", () => {
+test("Next always advances even with no per-area status picked (no trap) (EN)", () => {
   const { getByText, queryByText } = render(
     <GeneralCheckModal visible onClose={jest.fn()} />,
   );
 
-  // First area, nothing chosen yet: the hint is shown and the flow is on step 1.
-  expect(getByText("Choose an option to continue")).toBeTruthy();
+  // First area, nothing chosen: the status is OPTIONAL, so an optional hint is shown
+  // (not a required "choose to continue" block) and the flow is on step 1.
+  expect(getByText("Optional — skip if you didn't check this area")).toBeTruthy();
   expect(getByText(`1 of ${CHECK_AREAS.length}`)).toBeTruthy();
 
-  // Pressing the (disabled) Next before choosing does nothing — still on step 1.
-  fireEvent.press(getByText("Next"));
-  expect(getByText(`1 of ${CHECK_AREAS.length}`)).toBeTruthy();
-
-  // Choosing a status enables Next: the hint disappears and Next now advances.
-  fireEvent.press(getByText("Looks usual"));
-  expect(queryByText("Choose an option to continue")).toBeNull();
+  // Pressing Next WITHOUT choosing a status advances anyway — the owner is no longer
+  // trapped on the first area.
   fireEvent.press(getByText("Next"));
   expect(getByText(`2 of ${CHECK_AREAS.length}`)).toBeTruthy();
+
+  // Choosing a status still works and clears the optional hint.
+  fireEvent.press(getByText("Looks usual"));
+  expect(queryByText("Optional — skip if you didn't check this area")).toBeNull();
+  fireEvent.press(getByText("Next"));
+  expect(getByText(`3 of ${CHECK_AREAS.length}`)).toBeTruthy();
+});
+
+test("the area stepper jumps directly to any body area (EN)", () => {
+  const { getByText, getAllByText } = render(
+    <GeneralCheckModal visible onClose={jest.fn()} />,
+  );
+
+  // Start on area 1 (Eyes). Tapping the "Energy" chip in the stepper jumps straight
+  // to the last area — its primary button becomes "Complete".
+  expect(getByText(`1 of ${CHECK_AREAS.length}`)).toBeTruthy();
+  // "Energy" appears both in the stepper chip and (after the jump) the area card; the
+  // stepper chip is the first occurrence and is what we press.
+  fireEvent.press(getAllByText("Energy")[0]);
+  expect(getByText(`${CHECK_AREAS.length} of ${CHECK_AREAS.length}`)).toBeTruthy();
+  expect(getByText("Complete")).toBeTruthy();
 });
 
 test("walking every area to the end saves once and closes", async () => {
@@ -138,6 +157,6 @@ test("renders fully localized in Spanish (es-AR)", () => {
   expect(getByText("¿Cómo se ve?")).toBeTruthy();
   expect(getByText("Se ve normal")).toBeTruthy();
   expect(getByText("Algo cambió")).toBeTruthy();
-  expect(getByText("Elegí una opción para continuar")).toBeTruthy();
+  expect(getByText("Opcional — saltealo si no revisaste esta zona")).toBeTruthy();
   expect(getByText("Siguiente")).toBeTruthy();
 });

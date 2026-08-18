@@ -97,7 +97,7 @@
       "howDoesThisLook": "¿Cómo se ve?",
       "looksUsual": "Se ve normal",
       "somethingChanged": "Algo cambió",
-      "chooseHint": "Elegí una opción para continuar",
+      "optionalHint": "Opcional — saltealo si no revisaste esta zona",
       "whatChanged": "¿Qué cambió? (elegí todo lo que corresponda)",
       "addPhoto": "Agregar foto (opcional)",
       "takePhoto": "Tomar foto",
@@ -114,7 +114,28 @@
       "ok": "OK",
       "savedTitle": "Chequeo guardado",
       "savedBodyOne": "1 zona con cambios registrada. Seguí observando y contactá a tu veterinario si es necesario.",
-      "savedBodyMany": "{{count}} zonas con cambios registradas. Seguí observando y contactá a tu veterinario si es necesario."
+      "savedBodyMany": "{{count}} zonas con cambios registradas. Seguí observando y contactá a tu veterinario si es necesario.",
+      "areas": {
+        "eyes": { "label": "Ojos", "description": "Revisá claridad, secreción, enrojecimiento" },
+        "ears": { "label": "Orejas", "description": "Revisá olor, secreción, enrojecimiento" },
+        "teeth_mouth": { "label": "Dientes y boca", "description": "Revisá encías, dientes, aliento" },
+        "skin_fur": { "label": "Piel y pelaje", "description": "Revisá bultos, irritación, pérdida de pelo" },
+        "paws": { "label": "Patas", "description": "Revisá almohadillas, uñas, entre los dedos" },
+        "face": { "label": "Cara", "description": "Aspecto general de la cara" },
+        "mood": { "label": "Ánimo", "description": "Comportamiento, respuesta, ganas de jugar" },
+        "energy": { "label": "Energía", "description": "Nivel de actividad, entusiasmo" }
+      },
+      "changes": {
+        "redness": "Enrojecimiento",
+        "swelling": "Hinchazón",
+        "discharge": "Secreción",
+        "bad_smell": "Mal olor",
+        "limping": "Cojera",
+        "excessive_licking": "Lamido excesivo",
+        "hair_loss": "Pérdida de pelo",
+        "wound": "Herida",
+        "other": "Otro"
+      }
     },
     "careRing": {
       "title": "El día de {{name}}",

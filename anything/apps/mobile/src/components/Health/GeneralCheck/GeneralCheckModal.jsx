@@ -3,7 +3,9 @@ import {
   View,
   Text,
   Modal,
+  Pressable,
   TouchableOpacity,
+  ScrollView,
   TextInput,
   Alert,
   Platform,
@@ -40,6 +42,21 @@ const C = {
 export default function GeneralCheckModal({ visible, onClose }) {
   const { t } = useTranslation();
   const tc = (k, vars) => t(`health.generalCheck.${k}`, vars);
+  // Localized area label/description + change-option label, falling back to the
+  // English constant in generalCheckData.js if a key is ever missing.
+  const areaLabel = (area) =>
+    tc(`areas.${area.key}.label`) === `areas.${area.key}.label`
+      ? area.label
+      : tc(`areas.${area.key}.label`);
+  const areaDesc = (area) =>
+    tc(`areas.${area.key}.description`) === `areas.${area.key}.description`
+      ? area.description
+      : tc(`areas.${area.key}.description`);
+  const changeLabel = (opt) =>
+    tc(`changes.${opt.key}`) === `changes.${opt.key}`
+      ? opt.label
+      : tc(`changes.${opt.key}`);
+
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
   const logGeneralCheckMutation = useLogGeneralCheck();
@@ -60,7 +77,9 @@ export default function GeneralCheckModal({ visible, onClose }) {
       ...checkData,
       [currentArea.key]: {
         ...currentAreaData,
-        status,
+        // Tapping the already-selected status clears it back to "not checked" —
+        // the check is optional per area, so the owner can un-answer freely.
+        status: currentAreaData.status === status ? null : status,
         changes: status === "usual" ? [] : currentAreaData.changes,
       },
     });
@@ -91,10 +110,15 @@ export default function GeneralCheckModal({ visible, onClose }) {
     });
   };
 
+  const goToArea = (index) => {
+    if (index < 0 || index > CHECK_AREAS.length - 1) return;
+    setCurrentAreaIndex(index);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+  };
+
   const handleNext = () => {
     if (currentAreaIndex < CHECK_AREAS.length - 1) {
-      setCurrentAreaIndex(currentAreaIndex + 1);
-      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      goToArea(currentAreaIndex + 1);
     } else {
       handleComplete();
     }
@@ -102,8 +126,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
 
   const handleBack = () => {
     if (currentAreaIndex > 0) {
-      setCurrentAreaIndex(currentAreaIndex - 1);
-      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      goToArea(currentAreaIndex - 1);
     }
   };
 
@@ -118,14 +141,16 @@ export default function GeneralCheckModal({ visible, onClose }) {
     // the owner typed is silently dropped when we persist.
     const notes = CHECK_AREAS.map((a) => {
       const d = checkData[a.key];
-      return d?.notes ? `${a.label}: ${d.notes}` : null;
+      return d?.notes ? `${areaLabel(a)}: ${d.notes}` : null;
     })
       .filter(Boolean)
       .join("\n");
 
     // Persist the check to /api/health/general-checks so it lands on the pet's real
     // health timeline (Today's Progress) and survives reopen. Area keys are remapped
-    // to the API's shape (teeth_mouth → teeth, skin_fur → skin).
+    // to the API's shape (teeth_mouth → teeth, skin_fur → skin). Un-checked areas
+    // simply carry an undefined status → the route stores NULL, so only areas the
+    // owner actually assessed are recorded — no invented data.
     try {
       await logGeneralCheckMutation.mutateAsync({
         areas: {
@@ -164,8 +189,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
     onClose();
   };
 
-  const canProceed = currentAreaData.status !== null;
+  // Every area is optional — "Next" always advances (an un-checked area is simply
+  // "not checked", never an error). The primary button is only blocked while a save
+  // is in flight on the final area.
   const isLastArea = currentAreaIndex === CHECK_AREAS.length - 1;
+  const isSaving = logGeneralCheckMutation.isPending;
   const progress = ((currentAreaIndex + 1) / CHECK_AREAS.length) * 100;
 
   return (
@@ -213,7 +241,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
           </View>
 
           {/* Progress Bar */}
-          <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <View
               style={{
                 flexDirection: "row",
@@ -253,6 +281,63 @@ export default function GeneralCheckModal({ visible, onClose }) {
             </View>
           </View>
 
+          {/* Area stepper — every one of the 8 body areas is directly reachable, so the
+              owner is never trapped on a single area. The current area is highlighted;
+              an area that already has a status shows a check. */}
+          <View style={{ marginBottom: 16 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+            >
+              {CHECK_AREAS.map((area, idx) => {
+                const assessed = checkData[area.key]?.status != null;
+                const isCurrent = idx === currentAreaIndex;
+                return (
+                  <Pressable
+                    key={area.key}
+                    onPress={() => goToArea(idx)}
+                    accessibilityRole="button"
+                    accessibilityLabel={areaLabel(area)}
+                    accessibilityState={{ selected: isCurrent }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      backgroundColor: isCurrent ? C.coral : C.card,
+                      borderWidth: 1.5,
+                      borderColor: isCurrent
+                        ? C.coral
+                        : assessed
+                          ? C.sage
+                          : C.peach,
+                    }}
+                  >
+                    <Text style={{ fontSize: 15 }}>{area.emoji}</Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: isCurrent ? "#FFF" : C.warmBrown,
+                      }}
+                    >
+                      {areaLabel(area)}
+                    </Text>
+                    {assessed && (
+                      <CheckCircle
+                        size={14}
+                        color={isCurrent ? "#FFF" : C.sage}
+                      />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           <KeyboardAwareScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
@@ -288,18 +373,17 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       marginBottom: 2,
                     }}
                   >
-                    {currentArea.label}
+                    {areaLabel(currentArea)}
                   </Text>
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    {currentArea.description}
+                    {areaDesc(currentArea)}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Status Selection — the required first action. Kept directly under the
-                compact area card (no scrolling needed) and visually flagged as the
-                starting choice so "Next" never reads as dead. */}
+            {/* Status Selection — optional per area. Every area can be left "not
+                checked"; a subtle hint says so, and "Next" advances regardless. */}
             <View style={{ marginBottom: 20 }}>
               <Text
                 style={{
@@ -316,16 +400,22 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   style={{
                     fontSize: 12,
                     fontWeight: "600",
-                    color: C.coral,
+                    color: C.mutedBrown,
                     marginBottom: 12,
                   }}
                 >
-                  {tc("chooseHint")}
+                  {tc("optionalHint")}
                 </Text>
               )}
               <View style={{ gap: 10 }}>
-                <TouchableOpacity
+                <Pressable
                   onPress={() => handleAreaStatus("usual")}
+                  accessibilityRole="radio"
+                  accessibilityLabel={tc("looksUsual")}
+                  accessibilityState={{
+                    selected: currentAreaData.status === "usual",
+                  }}
+                  hitSlop={8}
                   style={{
                     backgroundColor:
                       currentAreaData.status === "usual" ? C.sage : C.card,
@@ -367,10 +457,16 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   >
                     {tc("looksUsual")}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
 
-                <TouchableOpacity
+                <Pressable
                   onPress={() => handleAreaStatus("changed")}
+                  accessibilityRole="radio"
+                  accessibilityLabel={tc("somethingChanged")}
+                  accessibilityState={{
+                    selected: currentAreaData.status === "changed",
+                  }}
+                  hitSlop={8}
                   style={{
                     backgroundColor:
                       currentAreaData.status === "changed" ? "#FFB74D" : C.card,
@@ -414,7 +510,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   >
                     {tc("somethingChanged")}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
 
@@ -437,9 +533,13 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       option.key,
                     );
                     return (
-                      <TouchableOpacity
+                      <Pressable
                         key={option.key}
                         onPress={() => toggleChange(option.key)}
+                        accessibilityRole="checkbox"
+                        accessibilityLabel={changeLabel(option)}
+                        accessibilityState={{ checked: !!isSelected }}
+                        hitSlop={6}
                         style={{
                           backgroundColor: isSelected ? C.coral + "20" : C.card,
                           borderRadius: 12,
@@ -460,12 +560,12 @@ export default function GeneralCheckModal({ visible, onClose }) {
                             flex: 1,
                           }}
                         >
-                          {option.label}
+                          {changeLabel(option)}
                         </Text>
                         {isSelected && (
                           <CheckCircle size={18} color={C.coral} />
                         )}
-                      </TouchableOpacity>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -679,13 +779,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
             )}
             <TouchableOpacity
               onPress={handleNext}
-              disabled={!canProceed || logGeneralCheckMutation.isPending}
+              disabled={isSaving}
               style={{
                 flex: currentAreaIndex > 0 ? 2 : 1,
-                backgroundColor:
-                  canProceed && !logGeneralCheckMutation.isPending
-                    ? C.coral
-                    : C.mutedBrown + "40",
+                backgroundColor: isSaving ? C.mutedBrown + "40" : C.coral,
                 borderRadius: 14,
                 padding: 16,
                 alignItems: "center",
@@ -702,7 +799,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                 }}
               >
                 {isLastArea
-                  ? logGeneralCheckMutation.isPending
+                  ? isSaving
                     ? tc("saving")
                     : tc("complete")
                   : tc("next")}
