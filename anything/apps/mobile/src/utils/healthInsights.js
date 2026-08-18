@@ -7,6 +7,21 @@
 
 const SEVERITY = { INFO: "info", NOTABLE: "notable" };
 
+// Human labels for the Quick Check area keys stored in the `areas` jsonb (eyes, ears, teeth,
+// skin, paws, face, mood, energy). This surface is English-only (the whole Vet Summary feature
+// is), so these stay inline rather than in i18n; the modal itself localizes its own copy.
+export const QUICK_CHECK_AREA_LABELS = {
+  eyes: "Eyes",
+  ears: "Ears",
+  teeth: "Teeth & mouth",
+  skin: "Skin & fur",
+  paws: "Paws",
+  face: "Face",
+  mood: "Mood",
+  energy: "Energy",
+};
+export const quickCheckAreaLabel = (key) => QUICK_CHECK_AREA_LABELS[key] || key;
+
 // How much data counts as "enough" to bother surfacing trends at all.
 export function hasEnoughData(summary) {
   if (!summary) return false;
@@ -18,6 +33,7 @@ export function hasEnoughData(summary) {
     (summary.weight?.series?.length || 0) +
     (summary.walks?.count || 0) +
     (summary.wellness?.count || 0) +
+    (summary.generalChecks?.count || 0) +
     (summary.photoChecks?.count || 0);
   return n >= 5;
 }
@@ -36,9 +52,28 @@ export function weightChangePct(series) {
  * nothing crosses a threshold. Each flag: { key, severity, title, detail }.
  */
 export function detectHealthFlags(summary) {
-  if (!hasEnoughData(summary)) return [];
+  if (!summary) return [];
   const flags = [];
   const name = summary.pet?.name || "Your pet";
+
+  // Quick Check ("general check") changes are DIRECT owner-reported observations, not
+  // statistical trends — surface them even when there isn't otherwise much data yet.
+  const areasChanged = summary.generalChecks?.areasChanged || [];
+  if (areasChanged.length > 0) {
+    const labels = areasChanged.map(quickCheckAreaLabel);
+    flags.push({
+      key: "quick-check-changes",
+      severity: SEVERITY.NOTABLE,
+      title:
+        labels.length === 1
+          ? `Quick Check: ${labels[0].toLowerCase()} looked different`
+          : `Quick Check flagged ${labels.length} areas`,
+      detail: `${labels.join(", ")} ${labels.length > 1 ? "were" : "was"} marked "changed" during a Quick Check this period.`,
+    });
+  }
+
+  // The statistical/threshold trends below only make sense with enough data.
+  if (!hasEnoughData(summary)) return flags;
 
   // Weight trend — a >=5% loss or >=10% gain across the range is worth a mention.
   const pct = weightChangePct(summary.weight?.series);

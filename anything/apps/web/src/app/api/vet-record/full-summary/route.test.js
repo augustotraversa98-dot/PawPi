@@ -69,6 +69,25 @@ it("aggregates real data into the structured summary shape (owner-scoped)", asyn
       { start_time: "2026-06-10T08:00:00Z", duration_minutes: null, distance: 0.5 }, // counts, but omitted from items
     ]);
     if (q.includes("FROM health_wellness_logs")) return Promise.resolve([{ check_type: "general" }]);
+    if (q.includes("FROM health_general_checks")) return Promise.resolve([
+      {
+        logged_at: "2026-06-14T09:00:00Z",
+        areas: {
+          ears: { status: "changed", changes: ["redness"], notes: "right ear red" },
+          eyes: { status: "usual", changes: [], notes: "" },
+          paws: { status: "changed", changes: [], notes: null },
+        },
+        ears_status: "changed",
+        eyes_status: "usual",
+        notes: "ears: right ear red",
+      },
+      {
+        logged_at: "2026-06-12T09:00:00Z",
+        areas: null, // pre-0118 fallback row: read "changed" from flat *_status columns
+        skin_fur_status: "changed",
+        notes: null,
+      },
+    ]);
     if (q.includes("FROM pet_allergies")) return Promise.resolve([{ allergen: "Chicken" }]);
     if (q.includes("FROM pet_conditions")) return Promise.resolve([{ condition: "Arthritis", status: "active" }]);
     if (q.includes("FROM pet_vaccinations")) return Promise.resolve([{ name: "Rabies", date_given: "2026-01-01" }]);
@@ -88,6 +107,17 @@ it("aggregates real data into the structured summary shape (owner-scoped)", asyn
   // meds grouped with adherence
   expect(summary.meds[0]).toMatchObject({ name: "Apoquel", given: 1, missed: 1, total: 2 });
   expect(summary.photoChecks.byArea.paws).toBe(2);
+  // Quick Checks are counted (the "0 things logged" bug) and expose changed areas —
+  // from the `areas` jsonb AND the pre-0118 flat *_status fallback row.
+  expect(summary.generalChecks.count).toBe(2);
+  expect(summary.generalChecks.changedCount).toBe(3); // ears + paws (row 1) + skin (row 2, flat)
+  expect(summary.generalChecks.areasChanged).toEqual(
+    expect.arrayContaining(["ears", "paws", "skin"]),
+  );
+  expect(summary.generalChecks.areasChanged).not.toContain("eyes"); // "usual" is not flagged
+  expect(summary.generalChecks.items[0].changedAreas).toEqual(
+    expect.arrayContaining([expect.objectContaining({ area: "ears", changes: ["redness"] })]),
+  );
   // Walks enrichment (2.102): count/totalMinutes unchanged; items expose per-walk durations
   // (null-duration walk omitted) and perWeek is the window average (guarded > 0 here).
   expect(summary.walks.count).toBe(2);

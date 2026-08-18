@@ -164,6 +164,8 @@ export default function VetSummaryModal({ visible, onClose }) {
                 <Stat label="vomit episodes" value={summary.vomit?.episodes || 0} />
                 <Stat label="walks" value={summary.walks?.count || 0} />
                 <Stat label="photo checks" value={summary.photoChecks?.count || 0} />
+                <Stat label="quick checks" value={summary.generalChecks?.count || 0} />
+                <Stat label="weigh-ins" value={summary.weight?.series?.length || 0} />
               </View>
 
               {/* Walk pattern — frequency (per week) + recent per-walk durations, so a vet sees
