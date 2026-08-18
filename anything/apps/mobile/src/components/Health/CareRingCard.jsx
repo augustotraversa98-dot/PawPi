@@ -5,10 +5,10 @@
 // pause-until date). A rest/paused day keeps the ring and streak intact — the copy stays gentle.
 
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { maybeScheduleStreakSave } from "@/utils/engagementNotifications";
-import { useLogAllGood } from "@/hooks/useHealthReinforcement";
+import { useLogAllGood, useDeleteWellnessLog } from "@/hooks/useHealthReinforcement";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
 import { CareRing } from "@/components/Health/CareRing";
@@ -36,9 +36,49 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const setRest = useSetRestDay(petId);
   const setPause = useSetPause(petId);
   const repairStreak = useRepairStreak(petId);
-  const logAllGood = useLogAllGood(petId); // E10 one-tap care log
+  const logAllGood = useLogAllGood(petId); // E10 care log — NR3: now gated behind an explicit confirm
+  const deleteWellnessLog = useDeleteWellnessLog(petId); // NR3 undo
   const [showPause, setShowPause] = useState(false);
+  // NR3: holds the id of the wellness log we just created, so we can offer Undo even
+  // after the ring's Care segment flips to done (which would otherwise hide the block).
+  const [justLoggedId, setJustLoggedId] = useState(null);
   const count = streakCount(data);
+
+  // NR3 — the "all good" check-in must be DELIBERATE. A bare tap no longer writes; it
+  // opens a confirm dialog. We also drop a breadcrumb so any stray/accidental press is
+  // visible in logs (it never reaches the write without the explicit "Log" below).
+  const requestAllGood = () => {
+    console.log("[CareRingCard] all-good check-in requested", { petId });
+    Alert.alert(
+      t("health.careRing.allGoodConfirmTitle", { name }),
+      t("health.careRing.allGoodConfirmBody", { name }),
+      [
+        { text: t("health.careRing.allGoodConfirmCancel"), style: "cancel" },
+        { text: t("health.careRing.allGoodConfirmLog"), onPress: confirmAllGood },
+      ],
+    );
+  };
+
+  const confirmAllGood = async () => {
+    try {
+      const res = await logAllGood.mutateAsync();
+      const id = res?.log?.id;
+      if (id != null) setJustLoggedId(id);
+    } catch {
+      // Surfaced by the ring's own state; keep the card responsive.
+    }
+  };
+
+  const undoAllGood = async () => {
+    const id = justLoggedId;
+    setJustLoggedId(null);
+    if (id == null) return;
+    try {
+      await deleteWellnessLog.mutateAsync(id);
+    } catch {
+      // If the delete fails the ring stays closed; nothing destructive happened.
+    }
+  };
 
   // E5 streak-save: when today's ring is exactly one segment from closing and the streak is at
   // risk, book the single positive evening nudge (guarded by policy + prefs + daily cap inside
@@ -112,18 +152,40 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         })}
       </View>
 
-      {/* One-tap "all good" — closes the Care segment with a single tap (E10). Writes a real care log. */}
-      {!s.care_done && !s.rest_day && !s.paused ? (
-        <Pressable
-          style={styles.allGood}
-          onPress={() => logAllGood.mutate()}
-          disabled={logAllGood.isPending}
-          accessibilityRole="button"
-          accessibilityLabel={t("health.careRing.allGood")}
-        >
-          <Text style={styles.allGoodText}>✓ {t("health.careRing.allGood")}</Text>
-          <Text style={styles.allGoodHint}>{t("health.careRing.allGoodHint", { name })}</Text>
-        </Pressable>
+      {/* "All good" check-in (E10) — NR3: separated from the segment pills by a divider,
+          styled as a distinct outlined action (not a green segment look-alike), and it
+          NEVER writes on a bare tap — press opens a confirm dialog. After logging, an
+          Undo affordance can delete the just-created wellness log. */}
+      {justLoggedId != null ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.loggedRow}>
+            <Text style={styles.loggedText}>{t("health.careRing.allGoodLogged")}</Text>
+            <Pressable
+              onPress={undoAllGood}
+              disabled={deleteWellnessLog.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={t("health.careRing.allGoodUndo")}
+              hitSlop={8}
+            >
+              <Text style={styles.undoText}>{t("health.careRing.allGoodUndo")}</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : !s.care_done && !s.rest_day && !s.paused ? (
+        <>
+          <View style={styles.divider} />
+          <Pressable
+            style={styles.allGood}
+            onPress={requestAllGood}
+            disabled={logAllGood.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={t("health.careRing.allGoodAction")}
+          >
+            <Text style={styles.allGoodText}>＋ {t("health.careRing.allGoodAction")}</Text>
+            <Text style={styles.allGoodHint}>{t("health.careRing.allGoodActionHint", { name })}</Text>
+          </Pressable>
+        </>
       ) : null}
 
       {/* Rest / vacation mode — always visible, always gentle. */}
@@ -190,9 +252,21 @@ const styles = StyleSheet.create({
   pillDone: { backgroundColor: "#E7F1E4" },
   pillText: { fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown },
   pillTextDone: { color: COLORS.sageDark },
-  allGood: { marginTop: 14, backgroundColor: "#E7F1E4", borderRadius: 12, padding: 12, alignItems: "center" },
-  allGoodText: { fontSize: 14, fontWeight: "800", color: COLORS.sageDark },
-  allGoodHint: { marginTop: 2, fontSize: 12, color: COLORS.mutedBrown },
+  // NR3: the check-in action is deliberately NOT a green filled look-alike of a done
+  // segment — it's an outlined, cream action separated from the pills by a divider.
+  divider: { marginTop: 14, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.sand },
+  allGood: {
+    marginTop: 14, backgroundColor: COLORS.cream, borderRadius: 12, padding: 12,
+    alignItems: "center", borderWidth: 1, borderColor: COLORS.sand,
+  },
+  allGoodText: { fontSize: 14, fontWeight: "800", color: COLORS.terracotta },
+  allGoodHint: { marginTop: 2, fontSize: 12, color: COLORS.mutedBrown, textAlign: "center" },
+  loggedRow: {
+    marginTop: 14, flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between",
+  },
+  loggedText: { fontSize: 14, fontWeight: "800", color: COLORS.sageDark },
+  undoText: { fontSize: 14, fontWeight: "700", color: COLORS.coral },
   restRow: { flexDirection: "row", alignItems: "center", marginTop: 14 },
   restLink: { fontSize: 13, fontWeight: "600", color: COLORS.coral },
   dot: { marginHorizontal: 8, color: COLORS.mutedBrown },

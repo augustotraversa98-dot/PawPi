@@ -58,6 +58,46 @@ describe("E10 — one-tap 'all good' closes the Care segment", () => {
   });
 });
 
+describe("NR3 — the 'all good' check-in is reversible (undo deletes the log)", () => {
+  it("DELETE removes the just-created wellness log and re-opens the Care segment", async () => {
+    const created = await (await apiReq(`/health/wellness-logs`, "POST", {
+      petId: A.petId,
+      checkType: "general",
+      notes: "All good ✓",
+    })).json();
+    const id = created.log.id;
+    expect((await (await apiReq(`/pets/${A.petId}/care-ring`)).json()).care_done).toBe(true);
+
+    const del = await apiReq(`/health/wellness-logs?id=${id}`, "DELETE");
+    expect(del.status).toBe(200);
+
+    // The segment re-opens once the log is gone — a real, reversible write.
+    expect((await (await apiReq(`/pets/${A.petId}/care-ring`)).json()).care_done).toBe(false);
+  });
+
+  it("own-row RLS: another owner cannot delete this owner's wellness log (404, row survives)", async () => {
+    const created = await (await apiReq(`/health/wellness-logs`, "POST", {
+      petId: A.petId,
+      checkType: "general",
+      notes: "All good ✓",
+    })).json();
+    const id = created.log.id;
+
+    // A second, unrelated owner.
+    const B = { authUserId: 2, profileId: 2, username: "intruder", petId: 2, petName: "Bella" };
+    await seedOwnerWithPet(raw, B);
+    authState.session = sessionFor(B.authUserId);
+
+    const del = await apiReq(`/health/wellness-logs?id=${id}`, "DELETE");
+    expect(del.status).toBe(404); // not visible to B → nothing deleted
+
+    // The row still exists for the real owner.
+    authState.session = sessionFor(A.authUserId);
+    const rows = await raw`select id from health_wellness_logs where id = ${id}`;
+    expect(rows.length).toBe(1);
+  });
+});
+
 describe("E10 — Vet Summary readiness reflects real records", () => {
   it("0 records → an honest 'start' state (0%), no fake", async () => {
     const b = await (await apiReq(`/pets/${A.petId}/vet-summary-readiness`)).json();

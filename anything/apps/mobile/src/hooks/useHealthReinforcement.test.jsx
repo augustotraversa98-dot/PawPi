@@ -6,7 +6,11 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import en from "@/i18n/locales/en.json";
 import es from "@/i18n/locales/es.json";
-import { useLogAllGood, useVetSummaryReadiness } from "./useHealthReinforcement";
+import {
+  useLogAllGood,
+  useDeleteWellnessLog,
+  useVetSummaryReadiness,
+} from "./useHealthReinforcement";
 
 function makeWrapper(qc) {
   return function Wrapper({ children }) {
@@ -29,6 +33,17 @@ describe("useLogAllGood", () => {
     const [url, opts] = global.fetch.mock.calls[0];
     expect(url).toBe("/api/health/wellness-logs");
     expect(JSON.parse(opts.body)).toMatchObject({ petId: 7, checkType: "general" });
+  });
+});
+
+describe("useDeleteWellnessLog", () => {
+  it("DELETEs the wellness log by id (the undo path)", async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    const { result } = renderHook(() => useDeleteWellnessLog(7), { wrapper: makeWrapper(makeClient()) });
+    await result.current.mutateAsync(42);
+    const [url, opts] = global.fetch.mock.calls[0];
+    expect(url).toBe("/api/health/wellness-logs?id=42");
+    expect(opts.method).toBe("DELETE");
   });
 });
 
@@ -56,12 +71,17 @@ describe("E10 copy is positive (never shames gaps)", () => {
     else if (obj && typeof obj === "object") for (const v of Object.values(obj)) collect(v, acc);
     return acc;
   }
-  it("vetReadiness + careRing.allGood copy has no shaming language (EN + ES)", () => {
+  it("vetReadiness + careRing all-good check-in copy has no shaming language (EN + ES)", () => {
     for (const dict of [en, es]) {
+      const cr = dict.health.careRing;
       const strings = [
         ...collect(dict.vetReadiness),
-        dict.health.careRing.allGood,
-        dict.health.careRing.allGoodHint,
+        cr.allGoodAction,
+        cr.allGoodActionHint,
+        cr.allGoodConfirmTitle,
+        cr.allGoodConfirmBody,
+        cr.allGoodLogged,
+        cr.allGoodUndo,
         dict.share.recapSub,
         dict.share.deckRecapReady,
       ];

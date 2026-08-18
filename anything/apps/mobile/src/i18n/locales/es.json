@@ -164,8 +164,14 @@
       "streakSafe": "La racha de {{name}} está a salvo — 🔥 {{count}}",
       "streakRepairCta": "Recupera tu racha",
       "streakRepairHint": "¿Se te pasó un día? Recupera tu racha de 🔥 {{count}}: no pasa nada.",
-      "allGood": "Todo bien hoy",
-      "allGoodHint": "Un toque para cerrar el anillo de {{name}}"
+      "allGoodAction": "Registrar un chequeo rápido",
+      "allGoodActionHint": "Guarda una nota de bienestar para {{name}} — hoy está todo bien.",
+      "allGoodConfirmTitle": "¿Registrar un chequeo rápido?",
+      "allGoodConfirmBody": "Esto guarda una nota de bienestar para {{name}} — hoy está todo bien.",
+      "allGoodConfirmCancel": "Cancelar",
+      "allGoodConfirmLog": "Registrar",
+      "allGoodLogged": "Registrado ✓",
+      "allGoodUndo": "Deshacer"
     },
     "trackScreen": {
       "title": "Registrar datos de salud",
