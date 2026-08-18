@@ -158,6 +158,23 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
   1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
+### 🩺 VET RECORD CLEANUP (VR2) — Health → Vet Record: 13 sections → 3 groups + EN/ES — ✅ BUILT 2026-08-18 (own PR; mobile-only, no migration)
+
+Design of record: [`docs/vet-record-cleanup-ticket.md`](vet-record-cleanup-ticket.md) (VR2). The screen's
+13 hardcoded-English collapsible sections consolidate into **three groups**:
+**1. Medical profile** (unchanged, `EditMedicalProfileModal`) · **2. Next visit** — merges "Upcoming
+Appointments" + "Prepare for Next Visit" into one card: the soonest scheduled appointment from
+`/api/vet-appointments` (SAME source as Health → Today `VetAppointmentCountdownCard`, one source of
+truth) + the **Create Vet Summary** action (`VetSummaryDashboard`, reused) + a readiness hint ·
+**3. Medical history** — one parent section with a compact scrollable **chip sub-nav** (like the Quick
+Check area stepper): Vaccines · Visits & procedures · Medications · Labs · Conditions & allergies
+(merged) · Notes · Documents · Photos, each reusing its existing list/query/modal with a count badge +
+empty state; defaults to the first non-empty tab. Every string localized (new `health.vetRecord.*`
+namespace, EN + ES; the old `health.vetRecord` string became the `.title` key). No new record types or
+backend. Tests rewritten (`HealthVetRecord.vaccines.test.jsx`): 3 groups render EN **and** ES, sub-nav
+switches lists, add/delete flows + Add-Record no-dead-end behavior. **Full mobile jest gate green
+(251 suites / 1937 tests).**
+
 ### 🩺 TRACK CONSOLIDATION — Health → Track: Everyday vs. Health records — ✅ BUILT 2026-08-17 · 🔁 REVISED 2026-08-18 (on-device feedback; 1 PR #433; mobile-only, no migration)
 
 Design of record: [`docs/track-consolidation-ticket.md`](track-consolidation-ticket.md) (see the
