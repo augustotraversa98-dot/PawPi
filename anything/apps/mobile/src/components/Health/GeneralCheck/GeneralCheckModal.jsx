@@ -147,7 +147,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
       .join("\n");
 
     // Persist the check to /api/health/general-checks so it lands on the pet's real
-    // health timeline (Today's Progress) and survives reopen. Area keys are remapped
+    // health timeline and survives reopen. Area keys are remapped
     // to the API's shape (teeth_mouth → teeth, skin_fur → skin). Un-checked areas
     // simply carry an undefined status → the route stores NULL, so only areas the
     // owner actually assessed are recorded — no invented data.

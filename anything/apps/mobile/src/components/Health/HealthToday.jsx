@@ -17,7 +17,6 @@ import { ActivityInsightCard } from "@/components/Health/ActivityInsightCard";
 import { VetSummaryReadinessCard } from "@/components/Health/VetSummaryReadinessCard";
 import {
   Calendar,
-  TrendingUp,
   AlertCircle,
   Bell,
   Clock,
@@ -54,7 +53,6 @@ import { useVetAppointmentReminders } from "@/hooks/useVetAppointmentReminders";
 import { useTodayReminders } from "@/hooks/useTodayReminders";
 import { sectionTodayReminders } from "@/utils/reminderSections";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
-import { useTodayProgress } from "@/hooks/useTodayProgress";
 import {
   LOG_FLOWS,
   routeReminderLog,
@@ -90,10 +88,6 @@ export default function HealthToday() {
     refreshNow,
   } = useTodayReminders();
 
-  // "Today's Progress" on REAL data (ticket 2.66): real per-category counts for
-  // the active pet + local day (empty until something is logged — no fake numbers).
-  const todayProgress = useTodayProgress();
-
   // After a log/photo/wellness save, refetch the resolver sources so the acted-on
   // overdue instance drops out of the list immediately.
   const invalidateResolution = (keys) => {
@@ -122,9 +116,6 @@ export default function HealthToday() {
         "medical-care-logs",
         "photo-checks",
         "vet-appointment-reminders",
-        // Today's Progress sources (ticket 2.66).
-        "food-logs",
-        "walk-logs",
       ].map((key) =>
         queryClient.invalidateQueries({ queryKey: [key, currentPet.id] }),
       ),
@@ -1043,50 +1034,6 @@ export default function HealthToday() {
           </Card>
         </View>
       )}
-
-      {/* Quick Stats */}
-      <Card level="sm" radius={RADIUS.card} style={{ padding: SPACING.lg }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: SPACING.md,
-          }}
-        >
-          <TrendingUp size={18} color={COLORS.sage} style={{ marginRight: SPACING.sm }} />
-          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            Today's Progress
-          </Text>
-        </View>
-        {todayProgress.isEmpty ? (
-          <Text
-            testID="today-progress-empty"
-            style={[TYPE.subhead, { color: COLORS.mutedBrown, lineHeight: 19, fontWeight: "500" }]}
-          >
-            Nothing logged yet today — log a meal, walk, or check-in and it'll
-            show up here.
-          </Text>
-        ) : (
-          <View style={{ flexDirection: "row", gap: SPACING.md, flexWrap: "wrap" }}>
-            {todayProgress.chips.map((chip) => (
-              <View
-                key={chip.key}
-                testID={`progress-chip-${chip.key}`}
-                style={{
-                  backgroundColor: COLORS.sage + "20",
-                  borderRadius: RADIUS.control,
-                  paddingVertical: SPACING.sm,
-                  paddingHorizontal: SPACING.md,
-                }}
-              >
-                <Text style={[TYPE.footnote, { fontWeight: "600", color: COLORS.sage }]}>
-                  {chip.emoji} {chip.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </Card>
 
       {/* Snooze Modal */}
       <SnoozeModal

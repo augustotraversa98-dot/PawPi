@@ -13,9 +13,6 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 
-// Mutable so the Today's-Progress tests can vary it (ticket 2.66); defaults empty.
-let mockProgress = { chips: [], isEmpty: true };
-
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
 jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("@/components/Health/LeaderboardCard", () => ({ LeaderboardCard: () => null }));
@@ -33,9 +30,6 @@ jest.mock("@/hooks/usePetProfile", () => ({
 }));
 jest.mock("@/hooks/useVetAppointmentReminders", () => ({
   useVetAppointmentReminders: () => ({ data: [] }),
-}));
-jest.mock("@/hooks/useTodayProgress", () => ({
-  useTodayProgress: () => mockProgress,
 }));
 jest.mock("@/store/remindersStore", () => ({
   __esModule: true,
@@ -143,34 +137,5 @@ describe("HealthToday — Overdue section render contract", () => {
     mockToday.overdue = [];
     const { queryByText } = render(<HealthToday />);
     expect(queryByText(/Overdue/)).toBeNull();
-  });
-});
-
-describe("HealthToday — Today's Progress on real data (2.66)", () => {
-  afterEach(() => {
-    mockProgress = { chips: [], isEmpty: true };
-  });
-
-  it("shows an empty/encouraging state (no fake numbers) when nothing is logged", () => {
-    mockProgress = { chips: [], isEmpty: true };
-    const { getByTestId, queryByText } = render(<HealthToday />);
-    expect(getByTestId("today-progress-empty")).toBeTruthy();
-    // The old hardcoded chips must be gone.
-    expect(queryByText("🍽️ Fed 2 times")).toBeNull();
-    expect(queryByText("💊 Medication given")).toBeNull();
-  });
-
-  it("renders the REAL computed chips when there is logged activity", () => {
-    mockProgress = {
-      isEmpty: false,
-      chips: [
-        { key: "feeding", emoji: "🍽️", label: "1/3 meals" },
-        { key: "medication", emoji: "💊", label: "Medication given" },
-      ],
-    };
-    const { getByText, queryByTestId } = render(<HealthToday />);
-    expect(getByText("🍽️ 1/3 meals")).toBeTruthy();
-    expect(queryByTestId("progress-chip-feeding")).toBeTruthy();
-    expect(getByText("💊 Medication given")).toBeTruthy();
   });
 });
