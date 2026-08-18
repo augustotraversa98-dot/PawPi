@@ -158,6 +158,38 @@ mirror (☐ queued · 🔨 building · ✅ merged):
   auto-detect) — **awaits hand-apply**; degrades clean; behavioral not diagnostic. EN+ES. Gates: vitest
   1970, integration 989, jest 1847. **Wave 2 (E11–E15) COMPLETE.**
 
+### 🩺 TRACK CONSOLIDATION — Health → Track: Everyday vs. Health records — ✅ BUILT 2026-08-17 · 🔁 REVISED 2026-08-18 (on-device feedback; 1 PR #433; mobile-only, no migration)
+
+Design of record: [`docs/track-consolidation-ticket.md`](track-consolidation-ticket.md) (see the
+"Revision — 2026-08-18" section). Collapses the 14-tile, English-only Track grid into two owner-shaped
+sections; the 2026-08-18 device test trimmed Health records to **7 tiles, zero "Soon"**. Status
+mirror (☐ queued · 🔨 building · ✅ merged):
+- ✅ **Two-section grid (final)** — **Everyday** (Food & Water · Bathroom & Digestion · Walk & Activity ·
+  Weight · Quick Check) + **Health records** (Medications & Care · Photo Check). Merged the Food+Water and
+  Pee/Poo/Vomit duplicates (Bathroom & Digestion opens a chooser sheet over the three already-persisting
+  modals); folded Symptoms & Behavior into Quick Check.
+- 🔁 **Revision — removed three Health-records tiles** (on-device feedback): **Vaccines** folded into
+  Medications & Care (same modal; its desc now names vaccines & preventives); **Vet Visits** removed —
+  vet-authored medical history belongs in the read-only Vet Record, not an owner quick-log (dropped the
+  `AddVetNoteModal` wiring from Track); **Vital Signs** removed entirely (not just "Soon").
+- ✅ **No "Soon" tiles remain** — every tile opens a real logging surface. Care Ring integrity invariant
+  (`comingSoonTrackersHaveNoAction`) now holds vacuously and still guards future additions. The reported
+  "tapping Vital Signs filled a ring segment" could NOT be reproduced on this branch (the structural guard
+  returns before any dispatch); removing the tile closes it for good — pre-guard build / mis-attribution.
+- 🔁 **Quick Check flow fix** — `GeneralCheckModal`: the per-area status choice is now the obvious first
+  action (prominent prompt + a coral "Choose an option to continue" hint while Next is disabled, which
+  disappears on select), and the whole modal is localized EN+ES (`health.generalCheck.*`) — it was hardcoded English.
+- ✅ **Full EN+ES localization** of the Track screen + Quick Check modal; removed now-dead
+  `vaccines/vetVisits/vitalSigns` `Label/Desc` keys from both dictionaries (parity: 1063 = 1063 keys).
+- ✅ **Persistence audit (unchanged from build)** — `GeneralCheckModal` POSTs to `/api/health/general-checks`
+  via `useLogGeneralCheck`; `useLogFood` invalidates `["care-ring", petId]`.
+- ⏳ **Known follow-up (out of scope):** Photo Check from Track still needs the upload flow
+  (`PhotoCheckCaptureModal` + `useUpload`) to persist a hosted URL; `PhotoCheckModal` only yields a local
+  `file://` URI, so it is deliberately NOT POSTed (no bad-data record). GeneralCheck dashboard still reads mock seed data.
+- Gates: mobile jest **1920** (default) + **4** (tz-negative) green. HealthTrack.test.jsx rewritten to the
+  7-tile set (no Vaccines/Vet Visits/Vital Signs, no "Soon" badge, invariant = zero coming-soon); new
+  GeneralCheckModal.test.jsx (Next disabled→enabled + advance, full-flow save-once, EN+ES render). ⚠️ owed: on-device pass.
+
 ### 🔧 WAVE 2 FIX-PACK (BX1·BX2·FF1–FF3) — ✅ COMPLETE 2026-08-14
 
 Design of record: [`docs/wave2-finish-fixpack.md`](wave2-finish-fixpack.md). Closes the 3 deferred Wave 2
