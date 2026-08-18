@@ -33,7 +33,9 @@ export default function VetSummaryDashboard() {
       (summary.pee?.count || 0) +
       (summary.vomit?.events?.length || 0) +
       (summary.walks?.count || 0) +
-      (summary.wellness?.count || 0)
+      (summary.wellness?.count || 0) +
+      (summary.generalChecks?.count || 0) +
+      (summary.weight?.series?.length || 0)
     : 0;
   const photos = summary?.photoChecks?.count || 0;
   const meds = (summary?.meds || []).length;

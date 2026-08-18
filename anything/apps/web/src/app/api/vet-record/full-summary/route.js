@@ -13,6 +13,33 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 const lower = (s) => (s || "").toString().toLowerCase();
 const isLowAppetite = (a) => /low|poor|decreas|reduc|none|skip|refus/.test(lower(a));
 
+// Quick Check ("general check") body areas. The mobile modal stores the per-area detail in
+// the `areas` jsonb keyed by these canonical keys; the 6 physical areas also mirror into flat
+// *_status columns, so a "changed" mark can be read from either source (jsonb preferred).
+const GC_FLAT_STATUS_COL = {
+  eyes: "eyes_status",
+  ears: "ears_status",
+  teeth: "teeth_status",
+  skin: "skin_fur_status",
+  paws: "paws_status",
+  face: "face_status",
+};
+const GC_AREA_KEYS = ["eyes", "ears", "teeth", "skin", "paws", "face", "mood", "energy"];
+
+// jsonb comes back parsed from porsager; guard the pre-0118 (null) and legacy string cases.
+const asObject = (v) => {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v;
+  if (typeof v === "string") {
+    try {
+      const p = JSON.parse(v);
+      return p && typeof p === "object" && !Array.isArray(p) ? p : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+};
+
 async function GET(request) {
   try {
     const session = await auth();
@@ -44,7 +71,7 @@ async function GET(request) {
     const t = `${to}T23:59:59Z`;
 
     const [
-      food, poo, pee, vomit, weight, meds, photos, walks, wellness,
+      food, poo, pee, vomit, weight, meds, photos, walks, wellness, generalChecks,
       allergies, conditions, vaccinations, notes,
     ] = await Promise.all([
       sql`SELECT logged_at, amount, appetite, water_intake, notes FROM health_food_logs
@@ -71,6 +98,14 @@ async function GET(request) {
           ORDER BY start_time DESC`,
       sql`SELECT logged_at, check_type FROM health_wellness_logs
           WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND logged_at BETWEEN ${f} AND ${t}`,
+      // Quick Checks (health_general_checks): the missing source that made the summary read
+      // "0 things logged" when a pet had only Quick Checks in the window. `areas` (0118) carries
+      // the per-area status/changes/notes; the flat *_status columns are a pre-0118 fallback.
+      sql`SELECT logged_at, areas, eyes_status, ears_status, teeth_status,
+                 skin_fur_status, paws_status, face_status, notes
+          FROM health_general_checks
+          WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND logged_at BETWEEN ${f} AND ${t}
+          ORDER BY logged_at DESC`,
       sql`SELECT allergen, severity FROM pet_allergies WHERE pet_id = ${petId} AND owner_user_id = ${userId}`,
       sql`SELECT condition, status FROM pet_conditions WHERE pet_id = ${petId} AND owner_user_id = ${userId}`,
       sql`SELECT name, date_given FROM pet_vaccinations WHERE pet_id = ${petId} AND owner_user_id = ${userId} ORDER BY date_given DESC NULLS LAST`,
@@ -92,6 +127,33 @@ async function GET(request) {
 
     const byArea = {};
     for (const p of photos) byArea[p.body_area] = (byArea[p.body_area] || 0) + 1;
+
+    // Quick Check aggregation: per-check detail of the areas the owner marked "changed"
+    // (from the `areas` jsonb, falling back to the flat *_status columns), plus the distinct
+    // set of areas flagged across the whole window — used by the "worth discussing" insight.
+    const changedAreaSet = new Set();
+    const generalCheckItems = generalChecks.map((g) => {
+      const areasObj = asObject(g.areas);
+      const changedAreas = [];
+      for (const key of GC_AREA_KEYS) {
+        const status =
+          areasObj[key]?.status ??
+          (GC_FLAT_STATUS_COL[key] ? g[GC_FLAT_STATUS_COL[key]] : null);
+        if (status === "changed") {
+          changedAreaSet.add(key);
+          changedAreas.push({
+            area: key,
+            changes: Array.isArray(areasObj[key]?.changes) ? areasObj[key].changes : [],
+            notes: areasObj[key]?.notes || null,
+          });
+        }
+      }
+      return {
+        logged_at: g.logged_at,
+        changedAreas,
+        notes: g.notes || null,
+      };
+    });
 
     // Walk PATTERN a vet cares about (frequency + per-walk durations), additive to the
     // aggregate below. perWeek = walks averaged over the summary window (guard divide-by-zero);
@@ -147,6 +209,12 @@ async function GET(request) {
           })),
       },
       wellness: { count: wellness.length },
+      generalChecks: {
+        count: generalChecks.length,
+        changedCount: generalCheckItems.reduce((s, g) => s + g.changedAreas.length, 0),
+        areasChanged: [...changedAreaSet],
+        items: generalCheckItems.slice(0, 10),
+      },
       allergies,
       conditions,
       vaccinations,

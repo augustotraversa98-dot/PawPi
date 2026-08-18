@@ -74,6 +74,20 @@ describe("detectHealthFlags", () => {
     expect(med.detail).toMatch(/71% adherence/);
   });
 
+  it("surfaces Quick Check 'changed' areas even on otherwise-thin data", () => {
+    const s = base({ generalChecks: { count: 2, areasChanged: ["ears", "paws"] } });
+    const flag = detectHealthFlags(s).find((f) => f.key === "quick-check-changes");
+    expect(flag).toBeTruthy();
+    expect(flag.detail).toMatch(/Ears, Paws/);
+    expect(flag.detail).toMatch(/changed/);
+  });
+
+  it("uses singular phrasing for a single changed area", () => {
+    const s = base({ generalChecks: { count: 1, areasChanged: ["eyes"] } });
+    const flag = detectHealthFlags(s).find((f) => f.key === "quick-check-changes");
+    expect(flag.title).toMatch(/eyes looked different/);
+  });
+
   it("does not flag a stable pet with full logs", () => {
     const s = base({
       food: { count: 10, lowAppetiteCount: 0 },

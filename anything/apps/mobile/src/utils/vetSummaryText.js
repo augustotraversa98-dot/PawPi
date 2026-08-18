@@ -1,7 +1,7 @@
 // Pure text export of a Vet Summary (ticket 2.50). Produces a clean, shareable plain-text
 // block (the "Share with vet" / "Export" payload) from the real aggregation + flags +
 // owner's questions. Empty-safe. Non-diagnostic — it's a tracking summary, not a diagnosis.
-import { DISCLAIMER } from "./healthInsights";
+import { DISCLAIMER, quickCheckAreaLabel } from "./healthInsights";
 
 function fmtRange(range) {
   if (!range?.from || !range?.to) return "";
@@ -31,10 +31,16 @@ export function summaryToText(summary, flags = [], questions = []) {
   L.push(`• Vomiting episodes: ${summary.vomit?.episodes || 0}`);
   if (summary.weight?.series?.length) {
     const s = summary.weight.series;
-    L.push(`• Weight: ${s[0].weight}${s[0].unit} → ${s[s.length - 1].weight}${s[s.length - 1].unit}`);
+    L.push(`• Weight: ${s[0].weight}${s[0].unit} → ${s[s.length - 1].weight}${s[s.length - 1].unit} (${s.length} weigh-in${s.length > 1 ? "s" : ""})`);
   }
   L.push(`• Walks: ${summary.walks?.count || 0} (${summary.walks?.totalMinutes || 0} min)`);
   L.push(`• Photo checks: ${summary.photoChecks?.count || 0}`);
+  const gcAreas = summary.generalChecks?.areasChanged || [];
+  L.push(
+    `• Quick checks: ${summary.generalChecks?.count || 0}${
+      gcAreas.length ? ` (changed: ${gcAreas.map(quickCheckAreaLabel).join(", ")})` : ""
+    }`,
+  );
 
   if ((summary.meds || []).length) {
     L.push("");
