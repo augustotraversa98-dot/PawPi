@@ -1487,6 +1487,22 @@ export default function HealthVetRecord() {
         {/* Prescriptions (ticket 2.53) — owner read-only Rx a vet issued + request refill. */}
         <PrescriptionsSection petId={currentPet?.id} />
 
+        {/* Vet Summary — surfaced top-level (above the three groups) so "Create Vet
+            Summary" is always reachable, even with no upcoming appointment booked.
+            Reuses the dashboard card + its VetSummaryModal (unchanged). */}
+        <VetSummaryDashboard />
+        <Text
+          style={{
+            fontSize: 12,
+            color: COLORS.mutedBrown,
+            lineHeight: 18,
+            marginTop: 4,
+            marginBottom: SPACING.lg,
+          }}
+        >
+          {t("health.vetRecord.readinessHint", { pet: currentPet.name })}
+        </Text>
+
         {/* ============ GROUP 1 — Medical profile ============ */}
         <SectionHeader
           title={t("health.vetRecord.groupProfile")}
@@ -1899,20 +1915,6 @@ export default function HealthVetRecord() {
                 description={t("health.vetRecord.nextVisitEmptyDesc")}
               />
             )}
-
-            {/* Prep affordance: Create Vet Summary (reused) + a short readiness hint */}
-            <VetSummaryDashboard />
-            <Text
-              style={{
-                fontSize: 12,
-                color: COLORS.mutedBrown,
-                lineHeight: 18,
-                marginTop: 4,
-                marginBottom: 4,
-              }}
-            >
-              {t("health.vetRecord.readinessHint", { pet: currentPet.name })}
-            </Text>
           </View>
         )}
 
