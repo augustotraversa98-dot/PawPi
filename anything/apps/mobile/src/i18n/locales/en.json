@@ -88,6 +88,8 @@
     "trackerSoonBody": "{{label}} tracking for {{pet}} is on the way. In the meantime, you can note it under Food & Treats or your Vet Record.",
     "recordSoonTitle": "{{type}} — coming soon",
     "recordSoonBody": "Adding {{type}} records is on the way. For now, use Vet Note to log it in the history, or attach a Document.",
+    "connectedTrackingSoonTitle": "{{name}} — coming soon",
+    "connectedTrackingSoonBody": "{{name}} tracking isn't available yet. For now, manual tracking works great.",
     "careRing": {
       "title": "{{name}}'s day",
       "titleGeneric": "Today's ring",

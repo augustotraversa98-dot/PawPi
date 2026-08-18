@@ -36,7 +36,8 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 
-const TRACKERS = [
+// Exported for the test that asserts the structural invariant below.
+export const TRACKERS = [
   {
     icon: Camera,
     label: "Photo Check",
@@ -138,6 +139,19 @@ const TRACKERS = [
   },
 ];
 
+// Structural invariant (Care Ring / Track integrity): a coming-soon tile must be
+// display-only — it can NEVER carry an `action`, so it can never open a logging
+// modal, POST a health log, or invalidate ["care-ring"]. Only real logs fill the
+// ring. If this ever fails, a comingSoon tile has been wired to a write path.
+export const comingSoonTrackersHaveNoAction = TRACKERS.every(
+  (t) => !t.comingSoon || t.action == null,
+);
+if (__DEV__ && !comingSoonTrackersHaveNoAction) {
+  console.error(
+    "[HealthTrack] A coming-soon tracker carries an `action` — it could write a log/fill the Care Ring. Remove the action.",
+  );
+}
+
 export default function HealthTrack() {
   const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
@@ -160,6 +174,16 @@ export default function HealthTrack() {
   };
 
   const handleTrackerPress = (tracker) => {
+    // STRUCTURAL guard first: a coming-soon tile shows honest feedback and writes
+    // NOTHING — no modal, no log, no ["care-ring"] invalidation. Return before any
+    // action dispatch so an unbuilt tracker can never fill a Care Ring segment.
+    if (tracker.comingSoon) {
+      Alert.alert(
+        t("health.trackerSoonTitle", { label: tracker.label }),
+        t("health.trackerSoonBody", { label: tracker.label, pet: petName }),
+      );
+      return;
+    }
     if (tracker.action === "photoCheck") {
       setPhotoCheckModalVisible(true);
     } else if (tracker.action === "generalCheck") {
@@ -181,12 +205,6 @@ export default function HealthTrack() {
       setWalkActivityModalVisible(true);
     } else if (tracker.action === "weight") {
       setWeightModalVisible(true);
-    } else if (tracker.comingSoon) {
-      // Honest feedback instead of a silent dead tap for trackers not yet built.
-      Alert.alert(
-        t("health.trackerSoonTitle", { label: tracker.label }),
-        t("health.trackerSoonBody", { label: tracker.label, pet: petName }),
-      );
     }
   };
 

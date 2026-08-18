@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Check, Heart, Watch, Edit3, ChevronRight } from "lucide-react-native";
 import {
   isHealthKitAvailable,
@@ -21,6 +22,7 @@ const C = {
 };
 
 export default function WalkTrackingSettings() {
+  const { t } = useTranslation();
   const [selectedTracking, setSelectedTracking] = useState("manual");
   const [healthKitAvailable, setHealthKitAvailable] = useState(false);
   const [watchConnected, setWatchConnected] = useState(false);
@@ -43,18 +45,17 @@ export default function WalkTrackingSettings() {
   };
 
   const handleSelectTracking = async (option) => {
-    if (option === "apple_health" && !healthKitAvailable) {
-      // Show coming soon message
-      const success = await setTrackingPreference(option);
-      if (!success) {
-        return; // Permission denied or not available
-      }
-    }
-
-    if (option === "apple_watch" && !watchConnected) {
+    // STRUCTURAL guard first: an unavailable (coming-soon) integration is display-
+    // only — it must NOT be selected or persisted. Show honest feedback and return
+    // before any setSelectedTracking / setTrackingPreference write.
+    const unavailable =
+      (option === "apple_health" && !healthKitAvailable) ||
+      (option === "apple_watch" && !watchConnected);
+    if (unavailable) {
+      const name = option === "apple_watch" ? "Apple Watch" : "Apple Health";
       Alert.alert(
-        "Apple Watch Not Connected",
-        "Connect your Apple Watch to use Watch-based tracking.",
+        t("health.connectedTrackingSoonTitle", { name }),
+        t("health.connectedTrackingSoonBody", { name }),
       );
       return;
     }
