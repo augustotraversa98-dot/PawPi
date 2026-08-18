@@ -6,9 +6,6 @@ import {
   UtensilsCrossed,
   Pill,
   Weight,
-  Heart,
-  Stethoscope,
-  Syringe,
   ArrowRight,
   Camera,
   Salad,
@@ -24,7 +21,6 @@ import WalkActivityModal from "./WalkActivity/WalkActivityModal";
 import GeneralCheckModal from "./GeneralCheck/GeneralCheckModal";
 import MedicationModal from "./Medication/MedicationModal";
 import WeightModal from "./Weight/WeightModal";
-import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
 import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
@@ -84,6 +80,10 @@ export const TRACKERS = [
     action: "generalCheck",
   },
   // ── Health records ───────────────────────────────────────────────────────
+  // Medications & Care covers meds, vaccines, and preventives (its modal has all
+  // three tabs) — there is no separate Vaccines tile. Vet visits are vet-authored
+  // medical history surfaced read-only in the Vet Record, not an owner quick-log,
+  // so there is no Vet Visits tile here either.
   {
     id: "medications",
     section: "records",
@@ -92,35 +92,14 @@ export const TRACKERS = [
     action: "medications",
   },
   {
-    id: "vaccines",
-    section: "records",
-    icon: Syringe,
-    color: "#4DB6AC",
-    action: "vaccines",
-  },
-  {
-    id: "vetVisits",
-    section: "records",
-    icon: Stethoscope,
-    color: COLORS.terracotta,
-    action: "vetVisits",
-  },
-  {
     id: "photoCheck",
     section: "records",
     icon: Camera,
     color: "#64B5F6",
     action: "photoCheck",
   },
-  // The ONLY honest "Soon" left — Vital Signs has no real capture flow yet, so it is
-  // display-only: badge + Alert, no action, writes nothing.
-  {
-    id: "vitalSigns",
-    section: "records",
-    icon: Heart,
-    color: "#E57373",
-    comingSoon: true,
-  },
+  // No coming-soon tiles remain — every tile opens a real logging surface. The
+  // structural invariant below still holds vacuously (and guards future additions).
 ];
 
 const SECTIONS = [
@@ -159,7 +138,6 @@ export default function HealthTrack() {
     useState(false);
   const [medicationModalVisible, setMedicationModalVisible] = useState(false);
   const [medicationTab, setMedicationTab] = useState("medications");
-  const [vetVisitModalVisible, setVetVisitModalVisible] = useState(false);
   const [weightModalVisible, setWeightModalVisible] = useState(false);
 
   const labelFor = (id) => t(`health.trackScreen.${id}Label`);
@@ -195,13 +173,6 @@ export default function HealthTrack() {
       case "medications":
         setMedicationTab("medications");
         setMedicationModalVisible(true);
-        break;
-      case "vaccines":
-        setMedicationTab("vaccines");
-        setMedicationModalVisible(true);
-        break;
-      case "vetVisits":
-        setVetVisitModalVisible(true);
         break;
       case "foodWater":
         setFoodWaterModalType("food");
@@ -483,20 +454,12 @@ export default function HealthTrack() {
         onClose={() => setGeneralCheckModalVisible(false)}
       />
 
-      {/* Medication Modal — Medications & Care and Vaccines both open this, on the
-          matching tab. */}
+      {/* Medication Modal — Medications & Care opens this; its meds / vaccines /
+          preventives tabs cover the whole care surface. */}
       <MedicationModal
         visible={medicationModalVisible}
         onClose={() => setMedicationModalVisible(false)}
         initialTab={medicationTab}
-      />
-
-      {/* Vet Visits — reuses the built append-only Vet Record note flow (persists to
-          /api/vet-record/notes: a dated entry for clinic, reason, and notes). */}
-      <AddVetNoteModal
-        visible={vetVisitModalVisible}
-        onClose={() => setVetVisitModalVisible(false)}
-        petId={currentPet?.id}
       />
 
       {/* Weight Modal */}

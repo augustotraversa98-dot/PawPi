@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { CHECK_AREAS, CHANGE_OPTIONS } from "@/data/generalCheckData";
 import { useLogGeneralCheck } from "@/hooks/useHealthTracking";
 
@@ -37,6 +38,8 @@ const C = {
 };
 
 export default function GeneralCheckModal({ visible, onClose }) {
+  const { t } = useTranslation();
+  const tc = (k, vars) => t(`health.generalCheck.${k}`, vars);
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
   const logGeneralCheckMutation = useLogGeneralCheck();
@@ -144,9 +147,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
 
     if (changedCount > 0) {
       Alert.alert(
-        "General check saved",
-        `${changedCount} area${changedCount > 1 ? "s" : ""} with changes noted. Continue monitoring and contact your vet if needed.`,
-        [{ text: "OK", onPress: handleCloseModal }],
+        tc("savedTitle"),
+        changedCount === 1
+          ? tc("savedBodyOne")
+          : tc("savedBodyMany", { count: changedCount }),
+        [{ text: tc("ok"), onPress: handleCloseModal }],
       );
     } else {
       handleCloseModal();
@@ -196,7 +201,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
             <Text
               style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
             >
-              General Check
+              {tc("title")}
             </Text>
             <TouchableOpacity onPress={handleCloseModal}>
               <X size={24} color={C.warmBrown} />
@@ -216,10 +221,13 @@ export default function GeneralCheckModal({ visible, onClose }) {
               <Text
                 style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}
               >
-                {currentAreaIndex + 1} of {CHECK_AREAS.length}
+                {tc("progress", {
+                  current: currentAreaIndex + 1,
+                  total: CHECK_AREAS.length,
+                })}
               </Text>
               <Text style={{ fontSize: 12, fontWeight: "600", color: C.sage }}>
-                {Math.round(progress)}% complete
+                {tc("percentComplete", { percent: Math.round(progress) })}
               </Text>
             </View>
             <View
@@ -285,18 +293,32 @@ export default function GeneralCheckModal({ visible, onClose }) {
               </View>
             </View>
 
-            {/* Status Selection */}
+            {/* Status Selection — the required first action. Kept directly under the
+                compact area card (no scrolling needed) and visually flagged as the
+                starting choice so "Next" never reads as dead. */}
             <View style={{ marginBottom: 20 }}>
               <Text
                 style={{
-                  fontSize: 14,
-                  fontWeight: "700",
+                  fontSize: 15,
+                  fontWeight: "800",
                   color: C.warmBrown,
-                  marginBottom: 12,
+                  marginBottom: currentAreaData.status === null ? 4 : 12,
                 }}
               >
-                How does this look?
+                {tc("howDoesThisLook")}
               </Text>
+              {currentAreaData.status === null && (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.coral,
+                    marginBottom: 12,
+                  }}
+                >
+                  {tc("chooseHint")}
+                </Text>
+              )}
               <View style={{ gap: 10 }}>
                 <TouchableOpacity
                   onPress={() => handleAreaStatus("usual")}
@@ -339,7 +361,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       flex: 1,
                     }}
                   >
-                    Looks usual
+                    {tc("looksUsual")}
                   </Text>
                 </TouchableOpacity>
 
@@ -386,7 +408,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       flex: 1,
                     }}
                   >
-                    Something changed
+                    {tc("somethingChanged")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -403,7 +425,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                     marginBottom: 12,
                   }}
                 >
-                  What changed? (select all that apply)
+                  {tc("whatChanged")}
                 </Text>
                 <View style={{ gap: 8 }}>
                   {CHANGE_OPTIONS.map((option) => {
@@ -456,7 +478,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   marginBottom: 12,
                 }}
               >
-                Add photo (optional)
+                {tc("addPhoto")}
               </Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TouchableOpacity
@@ -481,7 +503,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       color: C.warmBrown,
                     }}
                   >
-                    Take photo
+                    {tc("takePhoto")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -506,7 +528,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       color: C.warmBrown,
                     }}
                   >
-                    Choose photo
+                    {tc("choosePhoto")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -540,7 +562,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                       flex: 1,
                     }}
                   >
-                    Ask AI about this photo
+                    {tc("askAi")}
                   </Text>
                   <Lock size={14} color="#9C27B0" />
                 </View>
@@ -551,8 +573,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                     lineHeight: 15,
                   }}
                 >
-                  Coming soon — AI can help summarize visible changes, but it
-                  does not diagnose.
+                  {tc("askAiSoon")}
                 </Text>
               </View>
             </View>
@@ -567,12 +588,12 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   marginBottom: 12,
                 }}
               >
-                Notes (optional)
+                {tc("notes")}
               </Text>
               <TextInput
                 value={currentAreaData.notes}
                 onChangeText={handleNotesChange}
-                placeholder="Any additional observations..."
+                placeholder={tc("notesPlaceholder")}
                 placeholderTextColor={C.mutedBrown + "80"}
                 multiline
                 numberOfLines={3}
@@ -612,9 +633,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                   flex: 1,
                 }}
               >
-                Photos can help track changes over time. For pain, swelling,
-                wounds, discharge, or symptoms that continue, contact your
-                veterinarian.
+                {tc("safetyWarning")}
               </Text>
             </View>
           </KeyboardAwareScrollView>
@@ -650,7 +669,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
                     color: C.warmBrown,
                   }}
                 >
-                  Back
+                  {tc("back")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -680,9 +699,9 @@ export default function GeneralCheckModal({ visible, onClose }) {
               >
                 {isLastArea
                   ? logGeneralCheckMutation.isPending
-                    ? "Saving…"
-                    : "Complete"
-                  : "Next"}
+                    ? tc("saving")
+                    : tc("complete")
+                  : tc("next")}
               </Text>
               {!isLastArea && <ChevronRight size={20} color="#FFF" />}
             </TouchableOpacity>
