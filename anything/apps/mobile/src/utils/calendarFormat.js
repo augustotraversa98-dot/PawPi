@@ -86,7 +86,7 @@ export function formatFrequency(walk) {
 // Matches the previous inline strings exactly so existing calendar events are unchanged.
 export function buildEventNotes(kind, data = {}) {
   if (kind === "walk") {
-    return "Dog walk scheduled in Social Pet";
+    return "Dog walk scheduled in PawPi";
   }
 
   if (kind === "vet") {
@@ -96,7 +96,7 @@ export function buildEventNotes(kind, data = {}) {
     if (data.reasonForVisit) notes += `Reason: ${data.reasonForVisit}\n`;
     if (data.veterinarian) notes += `Veterinarian: ${data.veterinarian}\n`;
     if (data.notes) notes += `\nNotes: ${data.notes}\n`;
-    notes += `\nManaged by Social Pet`;
+    notes += `\nManaged by PawPi`;
     return notes;
   }
 
@@ -141,7 +141,7 @@ export function buildBookingCalendarDetails(booking, petName = "Your pet") {
   const parts = [];
   if (booking.reason_for_visit) parts.push(booking.reason_for_visit);
   if (booking.notes) parts.push(booking.notes);
-  parts.push("Managed by Social Pet");
+  parts.push("Managed by PawPi");
   return { summary, startDate, endDate, location, notes: parts.join("\n") };
 }
 
@@ -151,7 +151,7 @@ export function buildTelehealthCalendarDetails(consult, petName = "Your pet") {
   const summary = consult.title || `Telehealth consult for ${petName}`;
   const parts = ["Video consult — no physical location."];
   if (consult.provider_name) parts.push(`Provider: ${consult.provider_name}`);
-  parts.push("Managed by Social Pet");
+  parts.push("Managed by PawPi");
   return { summary, startDate, endDate, location: "", notes: parts.join("\n") };
 }
 
@@ -165,7 +165,7 @@ export function buildTransportCalendarDetails(trip) {
   const parts = [];
   if (trip.pickup_address) parts.push(`Pickup: ${trip.pickup_address}`);
   if (trip.dropoff_address) parts.push(`Dropoff: ${trip.dropoff_address}`);
-  parts.push("Managed by Social Pet");
+  parts.push("Managed by PawPi");
   return { summary, startDate, endDate, location, notes: parts.join("\n") };
 }
 

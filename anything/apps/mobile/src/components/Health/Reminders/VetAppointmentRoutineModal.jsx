@@ -953,7 +953,7 @@ export default function VetAppointmentRoutineModal({
                           lineHeight: 20,
                         }}
                       >
-                        Add upcoming visits so Social Pet can remind you and
+                        Add upcoming visits so PawPi can remind you and
                         keep your dog's health history organized.
                       </Text>
                     </View>

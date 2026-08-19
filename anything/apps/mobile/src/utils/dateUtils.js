@@ -1,5 +1,5 @@
 /**
- * Shared date utilities for Social Pet app
+ * Shared date utilities for PawPi app
  *
  * These functions ensure consistent date handling across the app,
  * especially for daily update logic.

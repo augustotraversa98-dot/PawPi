@@ -16,12 +16,12 @@ jest.mock("expo-calendar", () => ({
   getCalendarsAsync: jest.fn(async () => [
     {
       id: "walk-cal",
-      title: "Social Pet - Walks",
+      title: "PawPi - Walks",
       source: { id: "src", name: "iCloud", type: "local" },
     },
     {
       id: "vet-cal",
-      title: "Social Pet - Vet Appointments",
+      title: "PawPi - Vet Appointments",
       source: { id: "src", name: "iCloud", type: "local" },
     },
   ]),
@@ -66,8 +66,8 @@ beforeEach(() => {
   Calendar.getCalendarPermissionsAsync.mockResolvedValue({ status: "granted" });
   Calendar.requestCalendarPermissionsAsync.mockResolvedValue({ status: "granted" });
   Calendar.getCalendarsAsync.mockResolvedValue([
-    { id: "walk-cal", title: "Social Pet - Walks", source: { id: "src", name: "iCloud", type: "local" } },
-    { id: "vet-cal", title: "Social Pet - Vet Appointments", source: { id: "src", name: "iCloud", type: "local" } },
+    { id: "walk-cal", title: "PawPi - Walks", source: { id: "src", name: "iCloud", type: "local" } },
+    { id: "vet-cal", title: "PawPi - Vet Appointments", source: { id: "src", name: "iCloud", type: "local" } },
   ]);
   Calendar.createCalendarAsync.mockResolvedValue("new-cal");
   Calendar.createEventAsync.mockResolvedValue("evt-created");
@@ -172,7 +172,7 @@ describe("generic primitives", () => {
   it("getOrCreatePawPiCalendar returns an existing calendar id by title", async () => {
     expect(
       await getOrCreatePawPiCalendar({
-        title: "Social Pet - Walks",
+        title: "PawPi - Walks",
         color: "#A7BFA3",
         name: "socialPetWalks",
       }),
@@ -182,7 +182,7 @@ describe("generic primitives", () => {
 
   it("getOrCreatePawPiCalendar creates one when missing", async () => {
     const id = await getOrCreatePawPiCalendar({
-      title: "Social Pet - Events",
+      title: "PawPi - Events",
       color: "#FF6F61",
       name: "socialPetEvents",
     });

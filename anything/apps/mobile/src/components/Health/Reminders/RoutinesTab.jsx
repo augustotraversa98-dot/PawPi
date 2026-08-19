@@ -254,7 +254,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
             {petName}'s Routines
           </Text>
           <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-            Set {petName}'s care schedule so Social Pet knows when to remind you
+            Set {petName}'s care schedule so PawPi knows when to remind you
           </Text>
         </View>
 
@@ -303,7 +303,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 marginBottom: 20,
               }}
             >
-              Set {petName}'s care schedule so Social Pet knows when to remind
+              Set {petName}'s care schedule so PawPi knows when to remind
               you
             </Text>
             <TouchableOpacity

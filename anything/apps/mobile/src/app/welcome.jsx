@@ -93,7 +93,7 @@ export default function WelcomeScreen() {
               },
             ]}
           >
-            Social Pet
+            PawPi
           </Text>
         </View>
 

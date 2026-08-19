@@ -63,7 +63,7 @@ export default function SettingsTab() {
     if (finalStatus === "granted") {
       Alert.alert(
         "✅ Notifications Enabled",
-        "Social Pet can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+        "PawPi can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
       );
     } else {
       Alert.alert(
@@ -302,7 +302,7 @@ export default function SettingsTab() {
           How reminders work
         </Text>
         <Text style={{ fontSize: 13, color: "#1976D2", lineHeight: 19 }}>
-          Social Pet can remind you about feeding, walks, medication, and photo
+          PawPi can remind you about feeding, walks, medication, and photo
           checks so your pet's care routine stays on track. Routines you create
           automatically generate reminders.
         </Text>

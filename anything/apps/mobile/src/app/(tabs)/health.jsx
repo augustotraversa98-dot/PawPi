@@ -117,7 +117,7 @@ export default function HealthScreen() {
           }}
         >
           <Text style={[TYPE.caption, { color: COLORS.mutedBrown, lineHeight: 16, textAlign: "center", letterSpacing: 0 }]}>
-            Social Pet helps you track changes and prepare better conversations
+            PawPi helps you track changes and prepare better conversations
             with your veterinarian. It does not diagnose or replace professional
             veterinary care.
           </Text>

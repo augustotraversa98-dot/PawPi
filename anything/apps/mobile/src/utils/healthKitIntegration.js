@@ -45,7 +45,7 @@ export async function requestHealthKitPermission() {
   return new Promise((resolve) => {
     Alert.alert(
       "Apple Health Access",
-      "Social Pet can use walk distance and activity data to help keep your pet's walk history accurate.",
+      "PawPi can use walk distance and activity data to help keep your pet's walk history accurate.",
       [
         {
           text: "Not now",

@@ -220,7 +220,7 @@ async function GET(request) {
       vaccinations,
       vetNotes: notes,
       disclaimer:
-        "Social Pet helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.",
+        "PawPi helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.",
     };
 
     return Response.json({ summary });

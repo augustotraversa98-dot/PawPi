@@ -175,7 +175,7 @@ export default function SignUpPage() {
             Create Account
           </h1>
           <p className="text-sm text-[#7A6254]">
-            Join the Social Pet community
+            Join the PawPi community
           </p>
         </div>
 

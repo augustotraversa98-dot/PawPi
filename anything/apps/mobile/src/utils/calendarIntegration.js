@@ -31,12 +31,12 @@ export { formatFrequency };
 
 // Per-feature calendar identities (title is the lookup key; color/name set on create).
 const WALK_CALENDAR = {
-  title: "Social Pet - Walks",
+  title: "PawPi - Walks",
   color: "#A7BFA3", // Sage green
   name: "socialPetWalks",
 };
 const VET_CALENDAR = {
-  title: "Social Pet - Vet Appointments",
+  title: "PawPi - Vet Appointments",
   color: "#4DB8E8", // Blue
   name: "socialPetVetAppointments",
 };
@@ -55,7 +55,7 @@ export async function requestCalendarPermission() {
     return new Promise((resolve) => {
       Alert.alert(
         "Calendar Access",
-        "Social Pet can add walk blocks to your calendar so your time stays protected.",
+        "PawPi can add walk blocks to your calendar so your time stays protected.",
         [
           {
             text: "Not now",
@@ -398,22 +398,22 @@ export async function deleteVetAppointmentFromCalendar(eventId) {
 // generic deleteCalendarEvent.
 
 const BOOKING_CALENDAR = {
-  title: "Social Pet - Bookings",
+  title: "PawPi - Bookings",
   color: "#FF6F61", // Coral
   name: "socialPetBookings",
 };
 const TRANSPORT_CALENDAR = {
-  title: "Social Pet - Transport",
+  title: "PawPi - Transport",
   color: "#B75D32", // Terracotta
   name: "socialPetTransport",
 };
 const TELEHEALTH_CALENDAR = {
-  title: "Social Pet - Telehealth",
+  title: "PawPi - Telehealth",
   color: "#4DB8E8", // Blue
   name: "socialPetTelehealth",
 };
 const EVENT_CALENDAR = {
-  title: "Social Pet - Events",
+  title: "PawPi - Events",
   color: "#A7BFA3", // Sage green
   name: "socialPetEvents",
 };
