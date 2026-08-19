@@ -215,9 +215,12 @@ export default function ProfileEditScreen() {
       const { pet } = await response.json();
       console.log("[Profile Edit] ✅ Pet updated successfully:", pet);
 
-      // Invalidate pets query to refetch updated data
+      // Invalidate + immediately refetch the pets query so anything derived from
+      // the pet row updates without an app restart — e.g. the Home "Getting
+      // started" card's isProfileComplete() flips to done the moment breed / age /
+      // gender / weight are filled in here. (usePetProfile keys off ["pets"].)
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
-      await queryClient.refetchQueries({ queryKey: ["pets", "current"] });
+      await queryClient.refetchQueries({ queryKey: ["pets"] });
 
       // A weight edit here can land in health_weight_logs now (petWeight.js
       // logCurrentWeight — once the pet has any weigh-in history), not just

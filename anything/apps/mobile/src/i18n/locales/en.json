@@ -1407,7 +1407,15 @@
   "onboarding": {
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",
     "welcomePaw": "🐾 PawPi Welcome sent {{name}} a first paw",
-    "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾"
+    "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾",
+    "ageApprox": "An approximate age is fine — you can update it later.",
+    "validation": {
+      "name": "Add your dog's name to continue",
+      "breed": "Add a breed to continue",
+      "age": "Add an age (years or months) to continue",
+      "gender": "Pick male or female to continue",
+      "weight": "Add a weight to continue"
+    }
   },
   "packStreaks": {
     "title": "Pack streaks 🐾",

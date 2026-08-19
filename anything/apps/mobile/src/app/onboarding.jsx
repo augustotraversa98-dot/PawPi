@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,7 +14,6 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
@@ -40,9 +40,42 @@ import { Card, PressableScale } from "@/components/ui";
 
 const TOTAL_STEPS = 9;
 
+// The first required onboarding step whose field is still missing/invalid, or
+// null when every required field (name, @handle, breed, age, gender, weight) is
+// filled. Kept pure + exported so the gating is unit-testable and so the review
+// step's "Create profile" guard and the per-step Next gate agree. Mirrors
+// isProfileComplete() in utils/gettingStarted.js.
+export function firstIncompleteRequiredStep(formData) {
+  if (!formData.name.trim()) return 0;
+  if (!isHandleAcceptable(formData.handle)) return 1;
+  if (!formData.breed.trim()) return 2;
+  // Approximate age is enough — years OR months OR a birthday.
+  if (
+    formData.ageYears.trim() === "" &&
+    formData.ageMonths.trim() === "" &&
+    !formData.birthday
+  ) {
+    return 3;
+  }
+  if (formData.gender !== "male" && formData.gender !== "female") return 4;
+  if (!(parseFloat(formData.weight) > 0)) return 5;
+  return null;
+}
+
+// age_years to persist. A months-only puppy (e.g. "6 months", no years entered)
+// still resolves to 0 — not null — so isProfileComplete()'s `age_years != null`
+// check passes and the profile checklist item completes. "" years + "" months
+// (birthday-only path) stays null and lets `birthday` satisfy the age signal.
+export function computeAgeYears(formData) {
+  if (formData.ageYears !== "") return parseInt(formData.ageYears, 10);
+  if (formData.ageMonths !== "") return 0;
+  return null;
+}
+
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: user } = useUser();
   const [upload, { loading: uploading }] = useUpload();
   const queryClient = useQueryClient();
@@ -137,16 +170,13 @@ export default function OnboardingScreen() {
   };
 
   const nextStep = () => {
-    // Validation for required fields
-    if (currentStep === 0 && !formData.name.trim()) {
-      return; // Name is required
-    }
-
-    if (currentStep === 1) {
-      // Handle is REQUIRED now — block until it's a valid, available @handle.
-      if (!checkHandleUniqueness(formData.handle)) {
-        return;
-      }
+    // Every required step is gated by canGoNext(); the Next button is disabled
+    // while invalid, and this guard blocks programmatic advances (e.g. Skip) too
+    // so we never silently create an incomplete profile.
+    if (!canGoNext()) {
+      // Surface the handle's specific inline error on the handle step.
+      if (currentStep === 1) checkHandleUniqueness(formData.handle);
+      return;
     }
 
     if (currentStep < TOTAL_STEPS - 1) {
@@ -165,7 +195,12 @@ export default function OnboardingScreen() {
   };
 
   const handleComplete = async () => {
-    if (!formData.name.trim()) {
+    // The review step lets the user jump back and edit any field, so re-check
+    // every required field here and route to the first gap instead of creating
+    // an incomplete profile.
+    const firstGap = firstIncompleteRequiredStep(formData);
+    if (firstGap != null) {
+      setCurrentStep(firstGap);
       return;
     }
 
@@ -224,7 +259,7 @@ export default function OnboardingScreen() {
         avatar_url: uploadedAvatarUrl,
         species: "dog",
         breed: formData.breed || null,
-        age_years: formData.ageYears ? parseInt(formData.ageYears) : null,
+        age_years: computeAgeYears(formData),
         age_months: formData.ageMonths ? parseInt(formData.ageMonths) : null,
         gender: formData.gender || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -468,14 +503,57 @@ export default function OnboardingScreen() {
     }
   };
 
+  // Required steps aligned with isProfileComplete() so a new dog completes the
+  // "Set up your dog's profile" checklist item at creation: name, @handle, breed,
+  // age (approx years OR a birthday), a real gender (male/female), and a weight.
   const canGoNext = () => {
-    // Required: pet name (step 0) and a valid, available @handle (step 1).
-    if (currentStep === 0) return formData.name.trim().length > 0;
-    if (currentStep === 1) return isHandleAcceptable(formData.handle);
-    return true;
+    switch (currentStep) {
+      case 0:
+        return formData.name.trim().length > 0;
+      case 1:
+        return isHandleAcceptable(formData.handle);
+      case 2:
+        return formData.breed.trim().length > 0;
+      case 3:
+        // Approximate age is enough — years OR months OR a birthday. This lets
+        // rescue/adopted dogs with an unknown exact birthday still complete it.
+        return (
+          formData.ageYears.trim() !== "" ||
+          formData.ageMonths.trim() !== "" ||
+          !!formData.birthday
+        );
+      case 4:
+        return formData.gender === "male" || formData.gender === "female";
+      case 5:
+        return parseFloat(formData.weight) > 0;
+      default:
+        return true;
+    }
   };
 
-  const isOptionalStep = currentStep > 1 && currentStep < 8;
+  // Inline validation copy for the current step (EN+ES) — shown above the CTA
+  // while the required field is missing/invalid. Empty string = nothing to show.
+  const validationMessage = () => {
+    if (canGoNext()) return "";
+    switch (currentStep) {
+      case 0:
+        return t("onboarding.validation.name");
+      case 2:
+        return t("onboarding.validation.breed");
+      case 3:
+        return t("onboarding.validation.age");
+      case 4:
+        return t("onboarding.validation.gender");
+      case 5:
+        return t("onboarding.validation.weight");
+      // Step 1 (handle) renders its own specific inline error inside StepHandle.
+      default:
+        return "";
+    }
+  };
+
+  // Only the birthday (6) and notes (7) steps are optional now.
+  const isOptionalStep = currentStep === 6 || currentStep === 7;
 
   if (currentStep === TOTAL_STEPS) {
     // Success screen - full screen, no navigation
@@ -483,7 +561,12 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <KeyboardAvoidingAnimatedView
+    // Full-screen route (not a pageSheet), so RN's standard KeyboardAvoidingView
+    // reliably shrinks the container to lift the footer's "Continue" above the
+    // keyboard. The inner KeyboardAwareScrollView then scrolls the focused field
+    // into view within that shortened viewport (it's built to cooperate with an
+    // ancestor keyboard-avoider).
+    <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.cream }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
@@ -547,7 +630,7 @@ export default function OnboardingScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: SPACING.xxl,
-            paddingBottom: insets.bottom + 180, // room for the pinned button + keyboard
+            paddingBottom: SPACING.xxl,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -555,13 +638,11 @@ export default function OnboardingScreen() {
           {renderStep()}
         </KeyboardAwareScrollView>
 
-        {/* Bottom buttons */}
+        {/* Bottom buttons — a normal flex-column child (NOT absolutely pinned) so
+            the outer KeyboardAvoidingView lifts the whole footer, keeping
+            "Continue" reachable above the keyboard while a field is focused. */}
         <View
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
             backgroundColor: COLORS.cream,
             paddingHorizontal: SPACING.xxl,
             paddingTop: SPACING.lg,
@@ -600,8 +681,27 @@ export default function OnboardingScreen() {
             </PressableScale>
           ) : (
             <>
+              {/* Inline validation — explains what's missing before the CTA. */}
+              {validationMessage() ? (
+                <Text
+                  testID="onboarding-validation"
+                  style={[
+                    TYPE.callout,
+                    {
+                      color: COLORS.coral,
+                      fontWeight: "700",
+                      textAlign: "center",
+                      marginBottom: SPACING.md,
+                    },
+                  ]}
+                >
+                  {validationMessage()}
+                </Text>
+              ) : null}
+
               {/* Next button */}
               <PressableScale
+                testID="onboarding-next"
                 onPress={nextStep}
                 disabled={!canGoNext()}
                 style={{
@@ -653,7 +753,7 @@ export default function OnboardingScreen() {
           )}
         </View>
       </View>
-    </KeyboardAvoidingAnimatedView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -664,12 +764,12 @@ const StepName = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
       <Text
         style={{
-          fontSize: 72,
+          fontSize: 44,
           textAlign: "center",
-          marginBottom: SPACING.xxxl,
+          marginBottom: SPACING.md,
         }}
       >
         🐕
@@ -677,7 +777,7 @@ const StepName = ({ formData, setFormData }) => {
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         What's your dog's name?
@@ -688,15 +788,16 @@ const StepName = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.huge,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
-        This is the only required field. Everything else is optional!
+        Let's set up the basics — name, breed, age, gender and weight.
       </Text>
       <TextInput
         ref={inputRef}
+        testID="onboarding-name"
         style={[
           TYPE.title,
           {
@@ -732,14 +833,14 @@ const StepHandle = ({
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         @
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         Choose {dogName}'s pet handle
@@ -750,8 +851,8 @@ const StepHandle = ({
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -854,14 +955,14 @@ const StepBreed = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         🐾
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         What breed is {dogName}?
@@ -872,8 +973,8 @@ const StepBreed = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -911,6 +1012,7 @@ const StepBreed = ({ formData, setFormData }) => {
 
       {/* Custom breed input */}
       <TextInput
+        testID="onboarding-breed"
         style={[
           TYPE.title2,
           {
@@ -943,19 +1045,20 @@ const StepBreed = ({ formData, setFormData }) => {
   );
 };
 
-// Step 4: Age (Optional)
+// Step 4: Age (Required — approximate years OR months OR a birthday).
 const StepAge = ({ formData, setFormData }) => {
+  const { t } = useTranslation();
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         🎂
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         How old is {dogName}?
@@ -966,8 +1069,8 @@ const StepAge = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -1007,6 +1110,7 @@ const StepAge = ({ formData, setFormData }) => {
               }))
             }
             keyboardType="number-pad"
+            testID="onboarding-age-years"
           />
         </View>
 
@@ -1042,26 +1146,19 @@ const StepAge = ({ formData, setFormData }) => {
               }))
             }
             keyboardType="number-pad"
+            testID="onboarding-age-months"
           />
         </View>
 
-        <PressableScale
-          onPress={() =>
-            setFormData((prev) => ({ ...prev, ageYears: "", ageMonths: "" }))
-          }
-          style={{
-            paddingVertical: 14,
-            alignItems: "center",
-            backgroundColor: MATERIALS.surfaceSunken,
-            borderRadius: RADIUS.control,
-          }}
+        {/* Rescue/adopted dogs: an approximate age is enough to continue. */}
+        <Text
+          style={[
+            TYPE.callout,
+            { color: COLORS.mutedBrown, textAlign: "center" },
+          ]}
         >
-          <Text
-            style={[TYPE.headline, { fontWeight: "700", color: COLORS.mutedBrown }]}
-          >
-            I don't know exactly
-          </Text>
-        </PressableScale>
+          {t("onboarding.ageApprox")}
+        </Text>
       </View>
     </View>
   );
@@ -1071,21 +1168,22 @@ const StepAge = ({ formData, setFormData }) => {
 const StepGender = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
+  // Gender must be a real value — the "Set up your dog's profile" checklist
+  // excludes "unknown", so onboarding offers only male/female.
   const genderOptions = [
     { value: "female", label: "Female", emoji: "♀️" },
     { value: "male", label: "Male", emoji: "♂️" },
-    { value: "unknown", label: "Unknown / Prefer not to say", emoji: "❓" },
   ];
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         💙
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         What's {dogName}'s gender?
@@ -1096,8 +1194,8 @@ const StepGender = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.huge,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -1110,6 +1208,7 @@ const StepGender = ({ formData, setFormData }) => {
           return (
             <PressableScale
               key={option.value}
+              testID={`onboarding-gender-${option.value}`}
               onPress={() =>
                 setFormData((prev) => ({ ...prev, gender: option.value }))
               }
@@ -1159,14 +1258,14 @@ const StepWeight = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         ⚖️
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         How much does {dogName} weigh?
@@ -1177,8 +1276,8 @@ const StepWeight = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -1187,6 +1286,7 @@ const StepWeight = ({ formData, setFormData }) => {
 
       <TextInput
         ref={inputRef}
+        testID="onboarding-weight"
         style={[
           TYPE.largeTitle,
           {
@@ -1267,14 +1367,14 @@ const StepBirthday = ({ formData, setFormData }) => {
   });
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         📅
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         When are {dogName}'s special days?
@@ -1285,8 +1385,8 @@ const StepBirthday = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
@@ -1341,14 +1441,14 @@ const StepNotes = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.huge }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         📝
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.md, lineHeight: 40 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
         Anything important we should remember about {dogName}?
@@ -1359,8 +1459,8 @@ const StepNotes = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: 30,
-            lineHeight: 24,
+            marginBottom: SPACING.lg,
+            lineHeight: 22,
           },
         ]}
       >
