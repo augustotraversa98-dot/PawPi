@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthModal } from "@/utils/auth/store";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
-import { Button, PressableScale } from "@/components/ui";
+import { Button, PressableScale, PawMark } from "@/components/ui";
 import {
   didForceStartupFallback,
   didLastBootStall,
@@ -82,7 +82,7 @@ export default function WelcomeScreen() {
 
         {/* Logo/Icon */}
         <View style={{ alignItems: "center", marginTop: 60, marginBottom: SPACING.huge }}>
-          <Text style={{ fontSize: 80, marginBottom: SPACING.xl }}>🐾</Text>
+          <PawMark size={112} color={COLORS.coral} style={{ marginBottom: SPACING.xl }} />
           <Text
             style={[
               TYPE.largeTitle,

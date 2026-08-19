@@ -6,3 +6,4 @@ export { Card } from "./Card";
 export { Sheet, Grabber } from "./Sheet";
 export { Button } from "./Button";
 export { PressableScale } from "./PressableScale";
+export { PawMark } from "./PawMark";

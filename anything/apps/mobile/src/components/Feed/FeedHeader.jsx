@@ -4,7 +4,7 @@ import { Bell, Search, MessageCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
-import { GlassSurface, PressableScale } from "@/components/ui";
+import { GlassSurface, PressableScale, PawMark } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
@@ -70,7 +70,7 @@ export function FeedHeader() {
           <Text style={[TYPE.largeTitle, { color: COLORS.coral }]}>
             PawPi
           </Text>
-          <Text style={{ fontSize: 22 }}>🐾</Text>
+          <PawMark size={24} color={COLORS.coral} />
           {/* Ring-close streak (E2) — renders nothing at 0 */}
           <StreakChip petId={currentPet?.id} />
         </View>
