@@ -294,7 +294,7 @@ export default function HealthInsights() {
         >
           <Info size={18} color="#FFB74D" style={{ marginTop: 2 }} />
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, flex: 1 }]}>
-            This is not a diagnosis. Social Pet helps identify patterns from
+            This is not a diagnosis. PawPi helps identify patterns from
             your logs so you can have better conversations with your
             veterinarian.
           </Text>

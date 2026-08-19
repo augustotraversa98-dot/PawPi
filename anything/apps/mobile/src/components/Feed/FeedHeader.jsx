@@ -68,7 +68,7 @@ export function FeedHeader() {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
           <Text style={[TYPE.largeTitle, { color: COLORS.coral }]}>
-            Social Pet
+            PawPi
           </Text>
           <Text style={{ fontSize: 22 }}>🐾</Text>
           {/* Ring-close streak (E2) — renders nothing at 0 */}

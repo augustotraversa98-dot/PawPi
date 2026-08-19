@@ -102,7 +102,7 @@ describe("formatFrequency", () => {
 
 describe("buildEventNotes", () => {
   it("walk → the fixed privacy-preserving note", () => {
-    expect(buildEventNotes("walk")).toBe("Dog walk scheduled in Social Pet");
+    expect(buildEventNotes("walk")).toBe("Dog walk scheduled in PawPi");
   });
 
   it("vet → multi-line summary with only the provided fields", () => {
@@ -118,7 +118,7 @@ describe("buildEventNotes", () => {
     expect(notes).toContain("Reason: Vaccines");
     expect(notes).toContain("Veterinarian: Dr. Smith");
     expect(notes).toContain("Notes: Bring records");
-    expect(notes).toContain("Managed by Social Pet");
+    expect(notes).toContain("Managed by PawPi");
   });
 
   it("vet → defaults the pet name and omits absent fields", () => {
@@ -126,7 +126,7 @@ describe("buildEventNotes", () => {
     expect(notes).toContain("Vet appointment for Your pet");
     expect(notes).not.toContain("Appointment:");
     expect(notes).not.toContain("Reason:");
-    expect(notes).toContain("Managed by Social Pet");
+    expect(notes).toContain("Managed by PawPi");
   });
 
   it("unknown kind → empty string", () => {
@@ -170,7 +170,7 @@ describe("buildBookingCalendarDetails", () => {
     expect(det.location).toBe("PawCare");
     expect(MINUTES(det.startDate, det.endDate)).toBe(30);
     expect(det.notes).toContain("Full groom");
-    expect(det.notes).toContain("Managed by Social Pet");
+    expect(det.notes).toContain("Managed by PawPi");
   });
 
   it("prefers an explicit start_at/end_at slot", () => {

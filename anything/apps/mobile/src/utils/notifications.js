@@ -1,5 +1,5 @@
 /**
- * Notification utilities for Social Pet
+ * Notification utilities for PawPi
  * Handles local notifications using expo-notifications
  */
 
@@ -80,7 +80,7 @@ export async function requestNotificationPermissions() {
       return new Promise((resolve) => {
         Alert.alert(
           "🔔 Enable Reminders",
-          "Social Pet can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+          "PawPi can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
           [
             {
               text: "Maybe later",

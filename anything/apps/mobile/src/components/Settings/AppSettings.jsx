@@ -699,7 +699,7 @@ export default function AppSettings({ mode = "petOwner" }) {
           <Text
             style={{ color: C.mutedBrown, fontSize: 12, fontWeight: "600" }}
           >
-            Social Pet v1.0.0
+            PawPi v1.0.0
           </Text>
           <Text style={{ color: C.peach, fontSize: 11 }}>
             Made with 🐾 for dog parents
