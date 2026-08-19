@@ -8,11 +8,22 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { X, ImagePlus, FileText, Sparkles, CheckCircle2 } from "lucide-react-native";
+import {
+  X,
+  ImagePlus,
+  Camera,
+  Paperclip,
+  FileText,
+  Sparkles,
+  CheckCircle2,
+} from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { useUpload } from "@/utils/useUpload";
 import DateField from "@/components/DateField";
@@ -21,8 +32,13 @@ import { getLocalPostDateString } from "@/utils/dateUtils";
 import { ReviewProposalModal } from "./ReviewProposalModal";
 
 // Owner adds a Vet Record document (ticket 2.41; VR-C tagging): name + a canonical CATEGORY
-// (vaccine/lab/visit/invoice/other) + a photo of the paperwork + a date → upload → POST
+// (vaccine/lab/visit/invoice/other) + the paperwork itself + a date → upload → POST
 // /api/vet-record/documents (owner-OR-editor scoped, 0120).
+//
+// The paperwork can be a real FILE, not just a photo: take a photo, choose a photo from the
+// library, or pick a file (PDF or image) via expo-document-picker. Whatever is picked keeps its
+// REAL name + mimeType so a PDF uploads as application/pdf and AI reading receives the true type
+// (the /api/upload and /extract routes are mime-agnostic).
 //
 // AI-2 (night-run 2026-08-18d): once the file is stored, PawPi automatically READS it (AI-1's
 // /extract route, Claude vision) and — if it finds records — opens a REVIEW SHEET the owner
@@ -45,17 +61,27 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState(DOC_CATEGORIES[0]);
   const [documentDate, setDocumentDate] = useState(getLocalPostDateString());
-  const [photoUri, setPhotoUri] = useState(null);
+  // The picked paperwork: its uri (for upload/preview) plus its REAL name + mimeType so a PDF
+  // travels through upload + AI reading as application/pdf, not a fake .jpg.
+  const [fileUri, setFileUri] = useState(null);
+  const [fileName, setFileName] = useState(null);
+  const [fileMimeType, setFileMimeType] = useState(null);
   const [saving, setSaving] = useState(false);
   // "form" | "reading" | "review" | "dormant" | "empty" | "readError"
   const [phase, setPhase] = useState("form");
   const [proposal, setProposal] = useState(null);
 
+  const isPdf =
+    fileMimeType === "application/pdf" ||
+    (!!fileName && fileName.toLowerCase().endsWith(".pdf"));
+
   const reset = () => {
     setName("");
     setCategory(DOC_CATEGORIES[0]);
     setDocumentDate(getLocalPostDateString());
-    setPhotoUri(null);
+    setFileUri(null);
+    setFileName(null);
+    setFileMimeType(null);
     setPhase("form");
     setProposal(null);
     setSaving(false);
@@ -66,7 +92,16 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     onClose?.();
   };
 
-  const pickPhoto = async () => {
+  // Every picker funnels the chosen paperwork through here so uri/name/mimeType stay in lockstep.
+  const applyPicked = (uri, pickedName, mimeType) => {
+    if (!uri) return;
+    setFileUri(uri);
+    setFileName(pickedName || null);
+    setFileMimeType(mimeType || null);
+  };
+
+  // Choose an existing photo from the library.
+  const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
@@ -80,21 +115,88 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       quality: 0.9,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      setPhotoUri(result.assets[0].uri);
+      const a = result.assets[0];
+      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg");
     }
   };
 
-  const canSave = name.trim().length > 0 && !!photoUri && !saving && !uploading;
+  // Snap a fresh photo of the paperwork with the camera.
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        t("health.vetRecord.addDoc.cameraPermissionTitle"),
+        t("health.vetRecord.addDoc.cameraPermissionBody"),
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const a = result.assets[0];
+      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg");
+    }
+  };
+
+  // Pick a real file — a PDF or an image — keeping its true name + mimeType.
+  const pickFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/*"],
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const a = result.assets[0];
+      const inferred = a.name?.toLowerCase().endsWith(".pdf")
+        ? "application/pdf"
+        : "application/octet-stream";
+      applyPicked(a.uri, a.name || null, a.mimeType || inferred);
+    }
+  };
+
+  // One entry point: a native chooser offering camera / library / file.
+  const openPicker = () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [
+            t("health.vetRecord.addDoc.pickCancel"),
+            t("health.vetRecord.addDoc.takePhoto"),
+            t("health.vetRecord.addDoc.choosePhoto"),
+            t("health.vetRecord.addDoc.chooseFile"),
+          ],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) takePhoto();
+          else if (idx === 2) pickFromLibrary();
+          else if (idx === 3) pickFile();
+        },
+      );
+    } else {
+      Alert.alert(
+        t("health.vetRecord.addDoc.pickTitle"),
+        t("health.vetRecord.addDoc.pickBody"),
+        [
+          { text: t("health.vetRecord.addDoc.takePhoto"), onPress: takePhoto },
+          { text: t("health.vetRecord.addDoc.choosePhoto"), onPress: pickFromLibrary },
+          { text: t("health.vetRecord.addDoc.chooseFile"), onPress: pickFile },
+          { text: t("health.vetRecord.addDoc.pickCancel"), style: "cancel" },
+        ],
+      );
+    }
+  };
+
+  const canSave = name.trim().length > 0 && !!fileUri && !saving && !uploading;
 
   // After the file is stored, read it with AI-1's /extract route. WRITES NOTHING — it returns a
   // proposal the owner reviews. Never throws to the caller: the file is already saved.
-  const runExtraction = async ({ url, filename }) => {
+  const runExtraction = async ({ url, filename, mimeType }) => {
     setPhase("reading");
     try {
       const res = await fetch("/api/vet-record/documents/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ petId, url, filename, mimeType: "image/jpeg" }),
+        // Pass the REAL mimeType so a PDF is read as application/pdf, not mis-labeled as an image.
+        body: JSON.stringify({ petId, url, filename, mimeType: mimeType || "image/jpeg" }),
       });
       if (res.status === 503) {
         setPhase("dormant");
@@ -124,9 +226,13 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     if (!canSave || !petId) return;
     setSaving(true);
     try {
-      const filename = `vet_doc_${Date.now()}.jpg`;
+      // Keep the real name + mimeType end-to-end. Fall back to a jpg name/type only when the
+      // picker didn't give one (older library assets), never overriding a PDF.
+      const mimeType = fileMimeType || "image/jpeg";
+      const ext = isPdf ? "pdf" : "jpg";
+      const filename = fileName || `vet_doc_${Date.now()}.${ext}`;
       const uploadResult = await upload({
-        reactNativeAsset: { uri: photoUri, name: filename, mimeType: "image/jpeg" },
+        reactNativeAsset: { uri: fileUri, name: filename, mimeType },
       });
       if (uploadResult.error || !uploadResult.url) {
         throw new Error(uploadResult.error || "Upload failed");
@@ -154,8 +260,8 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       // The file is stored — refresh Documents now so it appears regardless of what reading finds.
       onSaved?.();
       setSaving(false);
-      // Then read it (non-blocking bonus).
-      await runExtraction({ url: uploadResult.url, filename });
+      // Then read it (non-blocking bonus) — with the real mimeType so PDFs are read as PDFs.
+      await runExtraction({ url: uploadResult.url, filename, mimeType });
     } catch (error) {
       setSaving(false);
       Alert.alert(
@@ -255,10 +361,11 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       style={{ flex: 1 }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
     >
-      {/* Photo picker */}
+      {/* Paperwork preview — a photo thumbnail, a PDF chip, or the empty prompt. Tapping it
+          re-opens the same chooser used by the buttons below. */}
       <TouchableOpacity
         testID="pick-document-photo"
-        onPress={pickPhoto}
+        onPress={openPicker}
         activeOpacity={0.9}
         style={{
           height: 180,
@@ -269,16 +376,26 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
           backgroundColor: MATERIALS.surface,
           justifyContent: "center",
           alignItems: "center",
-          marginBottom: SPACING.xl,
+          marginBottom: SPACING.md,
           overflow: "hidden",
         }}
       >
-        {photoUri ? (
+        {fileUri && !isPdf ? (
           <Image
-            source={{ uri: photoUri }}
+            source={{ uri: fileUri }}
             style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
+        ) : fileUri && isPdf ? (
+          <>
+            <FileText size={40} color={COLORS.coral} />
+            <Text
+              numberOfLines={1}
+              style={[TYPE.body, { color: COLORS.warmBrown, marginTop: SPACING.sm, fontWeight: "700", paddingHorizontal: 16 }]}
+            >
+              {fileName || t("health.vetRecord.addDoc.pdfSelected")}
+            </Text>
+          </>
         ) : (
           <>
             <ImagePlus size={32} color={COLORS.coral} />
@@ -288,6 +405,40 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
           </>
         )}
       </TouchableOpacity>
+
+      {/* Three explicit source buttons — discoverable, and each drives one picker directly. */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: SPACING.xl }}>
+        {[
+          { key: "take-photo", labelKey: "takePhoto", icon: Camera, onPress: takePhoto },
+          { key: "choose-photo", labelKey: "choosePhoto", icon: ImagePlus, onPress: pickFromLibrary },
+          { key: "choose-file", labelKey: "chooseFile", icon: Paperclip, onPress: pickFile },
+        ].map(({ key, labelKey, icon: Icon, onPress }) => (
+          <TouchableOpacity
+            key={key}
+            testID={`doc-${key}`}
+            onPress={onPress}
+            activeOpacity={0.85}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: RADIUS.control,
+              backgroundColor: MATERIALS.surfaceSunken,
+              borderWidth: 1,
+              borderColor: MATERIALS.hairline,
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Icon size={20} color={COLORS.coral} />
+            <Text
+              numberOfLines={2}
+              style={{ fontSize: 11, fontWeight: "700", color: COLORS.mutedBrown, textAlign: "center" }}
+            >
+              {t(`health.vetRecord.addDoc.${labelKey}`)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 6 }}>
         {t("health.vetRecord.addDoc.name")}
