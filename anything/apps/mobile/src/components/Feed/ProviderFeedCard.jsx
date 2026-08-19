@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { Store, Star, ChevronRight } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 
 // Phase 2 ticket 2.13 — a provider "discover this business" suggestion card, rendered INLINE in
@@ -9,6 +10,7 @@ import { COLORS } from "@/constants/colors";
 // "DISCOVER A BUSINESS" eyebrow, a compact horizontal layout (logo + name + rating), and a clear
 // call-to-action chevron — it can never be mistaken for a pet's daily moment. Public fields only.
 export const ProviderFeedCard = memo(function ProviderFeedCard({ provider, onPress }) {
+  const { t } = useTranslation();
   const rating =
     provider.avg_rating != null ? Number(provider.avg_rating) : null;
   const reviewCount = provider.review_count ?? 0;
@@ -48,7 +50,7 @@ export const ProviderFeedCard = memo(function ProviderFeedCard({ provider, onPre
             letterSpacing: 0.8,
           }}
         >
-          DISCOVER A BUSINESS
+          {t("feed.providerEyebrow")}
         </Text>
       </View>
 
@@ -119,7 +121,7 @@ export const ProviderFeedCard = memo(function ProviderFeedCard({ provider, onPre
                 </Text>
               </>
             ) : (
-              <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>New</Text>
+              <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>{t("feed.providerNew")}</Text>
             )}
           </View>
         </View>

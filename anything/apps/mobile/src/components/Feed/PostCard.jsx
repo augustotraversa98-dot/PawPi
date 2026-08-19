@@ -58,7 +58,7 @@ export const PostCard = memo(function PostCard({
       // Success - mutation handles optimistic update
     } catch (error) {
       console.error("Error toggling paw:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("feed.errorSaveTitle"), t("feed.errorSaveBody"));
     }
   };
 

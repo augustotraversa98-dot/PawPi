@@ -85,7 +85,7 @@ export const BarkModal = memo(function BarkModal({
       if (onBarkAdded) onBarkAdded(post.id, barks.length + 1);
     } catch (error) {
       console.error("Error creating bark:", error);
-      Alert.alert("Error", error?.message || "Could not save. Please try again.");
+      Alert.alert(t("feed.errorSaveTitle"), error?.message || t("feed.errorSaveBody"));
     }
   }, [text, post, createBarkMutation, barks.length, onBarkAdded]);
 

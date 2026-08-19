@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { Heart, ChevronRight, Dog } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 
 function ageLabel(years, months) {
@@ -14,9 +15,9 @@ function ageLabel(years, months) {
   return parts.join(" ");
 }
 
-function money(cents, currency = "ARS") {
+function money(cents, currency = "ARS", freeLabel = "Free to adopt") {
   if (cents == null) return null;
-  if (cents === 0) return "Free to adopt";
+  if (cents === 0) return freeLabel;
   return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
@@ -25,6 +26,7 @@ function money(cents, currency = "ARS") {
 // heart, a shorter hero photo, and a call-to-action chevron — clearly an adoptable listing, not a
 // friend's pet post. Public dog-profile fields only (no applicant / shelter-owner / medical data).
 export const AdoptionFeedCard = memo(function AdoptionFeedCard({ listing, onPress }) {
+  const { t } = useTranslation();
   const photo = Array.isArray(listing.photo_urls) ? listing.photo_urls[0] : null;
   const meta = [
     listing.breed,
@@ -34,7 +36,7 @@ export const AdoptionFeedCard = memo(function AdoptionFeedCard({ listing, onPres
   ]
     .filter(Boolean)
     .join(" · ");
-  const fee = money(listing.adoption_fee_cents, listing.currency);
+  const fee = money(listing.adoption_fee_cents, listing.currency, t("feed.adoptionFree"));
 
   return (
     <TouchableOpacity
@@ -72,7 +74,7 @@ export const AdoptionFeedCard = memo(function AdoptionFeedCard({ listing, onPres
             letterSpacing: 0.8,
           }}
         >
-          ADOPT ME
+          {t("feed.adoptionEyebrow")}
         </Text>
       </View>
 
@@ -116,7 +118,7 @@ export const AdoptionFeedCard = memo(function AdoptionFeedCard({ listing, onPres
             style={{ fontSize: 11, color: COLORS.mutedBrown, marginTop: 4 }}
             numberOfLines={1}
           >
-            {listing.provider_name ? `at ${listing.provider_name}` : ""}
+            {listing.provider_name ? t("feed.adoptionAtProvider", { name: listing.provider_name }) : ""}
             {fee ? `${listing.provider_name ? " · " : ""}${fee}` : ""}
           </Text>
         </View>

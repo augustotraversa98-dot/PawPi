@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Camera, Sparkles, PawPrint } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import {
   COLORS,
   TYPE,
@@ -18,6 +19,7 @@ export function DailyPromptCard({
   onPostPress,
   onViewTodayPost,
 }) {
+  const { t } = useTranslation();
   return (
     <Card
       level="md"
@@ -50,10 +52,10 @@ export function DailyPromptCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            Today's pet moment
+            {t("feed.promptTitle")}
           </Text>
           <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: 2 }]}>
-            What is {petName} up to right now? 🐶
+            {t("feed.promptSubtitle", { petName })}
           </Text>
         </View>
       </View>
@@ -77,7 +79,7 @@ export function DailyPromptCard({
           >
             <Camera size={20} color="#FFF" />
             <Text style={[TYPE.headline, { color: "#FFF" }]}>
-              Post today's photo
+              {t("feed.promptPostToday")}
             </Text>
           </PressableScale>
           <View
@@ -94,7 +96,7 @@ export function DailyPromptCard({
           >
             <PawPrint size={13} color={COLORS.terracotta} />
             <Text style={[TYPE.footnote, { color: COLORS.terracotta, fontWeight: "600" }]}>
-              Don't forget {petName}'s daily update!
+              {t("feed.promptReminder", { petName })}
             </Text>
           </View>
         </>
@@ -112,7 +114,7 @@ export function DailyPromptCard({
         >
           <Text style={{ fontSize: 22 }}>✨</Text>
           <Text style={[TYPE.body, { color: "#2E7D32", fontWeight: "800" }]}>
-            Today's update posted
+            {t("feed.promptPostedTitle")}
           </Text>
           <Text
             style={[
@@ -120,7 +122,7 @@ export function DailyPromptCard({
               { color: "#388E3C", textAlign: "center", marginBottom: SPACING.sm },
             ]}
           >
-            Come back tomorrow for {petName}'s next daily moment.
+            {t("feed.promptPostedBody", { petName })}
           </Text>
           {todayPostId && onViewTodayPost && (
             <PressableScale
@@ -134,7 +136,7 @@ export function DailyPromptCard({
               }}
             >
               <Text style={[TYPE.subhead, { color: "#FFF" }]}>
-                View today's post
+                {t("feed.promptViewToday")}
               </Text>
             </PressableScale>
           )}

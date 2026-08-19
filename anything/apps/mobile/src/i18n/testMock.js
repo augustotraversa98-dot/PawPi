@@ -20,6 +20,12 @@ function makeReactI18nextMock(lang = "en") {
     useTranslation: () => ({
       t: (key, vars) => {
         let s = resolve(key);
+        // i18next-style plural resolution: when vars.count is provided and the
+        // base key isn't a string, try `${key}_one` / `${key}_other`.
+        if (typeof s !== "string" && vars && typeof vars.count === "number") {
+          const suffix = vars.count === 1 ? "_one" : "_other";
+          s = resolve(key + suffix);
+        }
         if (typeof s !== "string") return key;
         if (vars)
           for (const [name, val] of Object.entries(vars))

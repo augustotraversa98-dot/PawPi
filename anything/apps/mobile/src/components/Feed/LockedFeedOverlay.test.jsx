@@ -10,6 +10,11 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { LockedFeedOverlay, LockedFloatingCard } from "./LockedFeedOverlay";
 
+// Resolve t() against the real EN catalog so assertions match rendered copy.
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 // PostCard pulls in react-query via useTogglePaw; stub it so the preview cards
 // render without a QueryClient.
 jest.mock("@/hooks/useFeedPosts", () => ({
