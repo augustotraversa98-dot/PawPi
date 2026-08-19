@@ -66,17 +66,6 @@
     "english": "English",
     "spanish": "Español"
   },
-  "feed": {
-    "title": "Inicio",
-    "dailyPrompt": "Compartí el momento de hoy",
-    "empty": "Todavía no hay nada por aquí",
-    "businessEyebrow": "NEGOCIO QUE SEGUÍS",
-    "justNow": "ahora mismo",
-    "minutesShort": "hace {{count}} min",
-    "hoursShort": "hace {{count}} h",
-    "daysShort": "hace {{count}} d",
-    "yesterday": "ayer"
-  },
   "health": {
     "title": "Salud",
     "today": "Hoy",
@@ -1065,21 +1054,6 @@
       "declined": "Solicitud rechazada"
     }
   },
-  "gettingStarted": {
-    "title": "Primeros pasos",
-    "progress": "{{completed}} de {{total}} listo",
-    "yourPet": "tu mascota",
-    "dailyReminderBody": "A {{petName}} le encantaría verte hoy 🐾",
-    "celebrateTitle": "¡Todo listo! 🎉",
-    "celebrateBody": "El perfil de {{petName}} ya está completo.",
-    "items": {
-      "profile": "Completa el perfil de tu perro",
-      "reminder": "Crea tu primer recordatorio",
-      "meal": "Registra su primera comida",
-      "post": "Comparte tu primera publicación",
-      "notifications": "Activa las notificaciones"
-    }
-  },
   "business": {
     "home": {
       "fallbackName": "Tu negocio",
@@ -1695,5 +1669,46 @@
     "biz_post_engagementMessage": "Alguien reaccionó a tu publicación",
     "biz_follow": "Nuevo seguidor",
     "biz_followMessage": "Alguien siguió a tu negocio"
+  },
+  "feed": {
+    "title": "Inicio",
+    "dailyPrompt": "Compartí el momento de hoy",
+    "empty": "Todavía no hay nada por aquí",
+    "businessEyebrow": "NEGOCIO QUE SEGUÍS",
+    "justNow": "ahora mismo",
+    "minutesShort": "hace {{count}} min",
+    "hoursShort": "hace {{count}} h",
+    "daysShort": "hace {{count}} d",
+    "yesterday": "ayer"
+  },
+  "forum": {
+    "title": "Discusión",
+    "threadNotAvailable": "Esta discusión ya no está disponible.",
+    "comment_one": "COMENTARIO",
+    "comment_other": "COMENTARIOS",
+    "noComments": "Sin comentarios todavía — iniciá la conversación.",
+    "addCommentPlaceholder": "Agregá un comentario...",
+    "composeTitle": "Nueva discusión",
+    "categoryLabel": "Categoría",
+    "titleLabel": "Título",
+    "questionPlaceholder": "¿Cuál es tu pregunta?",
+    "detailsLabel": "Detalles (opcional)",
+    "contextPlaceholder": "Agregá más contexto...",
+    "postButton": "Publicar"
+  },
+  "gettingStarted": {
+    "title": "Primeros pasos",
+    "progress": "{{completed}} de {{total}} listo",
+    "yourPet": "tu mascota",
+    "dailyReminderBody": "A {{petName}} le encantaría verte hoy 🐾",
+    "celebrateTitle": "¡Todo listo! 🎉",
+    "celebrateBody": "El perfil de {{petName}} ya está completo.",
+    "items": {
+      "profile": "Completa el perfil de tu perro",
+      "reminder": "Crea tu primer recordatorio",
+      "meal": "Registra su primera comida",
+      "post": "Comparte tu primera publicación",
+      "notifications": "Activa las notificaciones"
+    }
   }
 }

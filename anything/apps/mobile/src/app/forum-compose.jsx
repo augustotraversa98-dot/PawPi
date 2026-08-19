@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react-native";
 import { useCreateThread, FORUM_CATEGORIES } from "@/hooks/useForum";
 import {
@@ -24,6 +25,7 @@ import { GlassSurface, PressableScale } from "@/components/ui";
 const CATEGORIES = FORUM_CATEGORIES.filter((c) => c !== "All");
 
 export default function ForumComposeScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const createThread = useCreateThread();
@@ -66,7 +68,7 @@ export default function ForumComposeScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-          New Discussion
+          {t("forum.composeTitle")}
         </Text>
       </GlassSurface>
 
@@ -75,7 +77,7 @@ export default function ForumComposeScreen() {
         contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>{t("forum.categoryLabel")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, marginBottom: 18 }}>
           {CATEGORIES.map((cat) => (
             <PressableScale
@@ -104,22 +106,22 @@ export default function ForumComposeScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>Title</Text>
+        <Text style={styles.label}>{t("forum.titleLabel")}</Text>
         <TextInput
           testID="compose-title"
           value={title}
           onChangeText={setTitle}
-          placeholder="What's your question?"
+          placeholder={t("forum.questionPlaceholder")}
           placeholderTextColor={COLORS.mutedBrown + "90"}
           style={styles.input}
         />
 
-        <Text style={[styles.label, { marginTop: SPACING.lg }]}>Details (optional)</Text>
+        <Text style={[styles.label, { marginTop: SPACING.lg }]}>{t("forum.detailsLabel")}</Text>
         <TextInput
           testID="compose-body"
           value={body}
           onChangeText={setBody}
-          placeholder="Add more context..."
+          placeholder={t("forum.contextPlaceholder")}
           placeholderTextColor={COLORS.mutedBrown + "90"}
           multiline
           style={[styles.input, { minHeight: 120, textAlignVertical: "top" }]}
@@ -150,7 +152,7 @@ export default function ForumComposeScreen() {
                 },
               ]}
             >
-              Post
+              {t("forum.postButton")}
             </Text>
           )}
         </PressableScale>
