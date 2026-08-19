@@ -20,6 +20,7 @@ import { useCreatePet, useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
+import BreedPicker from "@/components/BreedPicker";
 
 const EMPTY = {
   photo: null,
@@ -242,13 +243,14 @@ export function AddDogModal({ visible, onClose }) {
             placeholder="e.g. Buddy"
           />
 
-          {/* Breed */}
-          <Field
-            label="Breed"
-            value={form.breed}
-            onChangeText={(t) => setField("breed", t)}
-            placeholder="e.g. Golden Retriever"
-          />
+          {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
+          <View style={{ marginBottom: 20 }}>
+            <Label>Breed</Label>
+            <BreedPicker
+              value={form.breed}
+              onChange={(value) => setField("breed", value)}
+            />
+          </View>
 
           {/* Gender */}
           <Label>Gender</Label>

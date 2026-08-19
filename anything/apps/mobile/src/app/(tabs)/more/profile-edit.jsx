@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
+import BreedPicker from "@/components/BreedPicker";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import {
   COLORS,
@@ -385,15 +386,18 @@ export default function ProfileEditScreen() {
             autoCapitalize="none"
           />
 
-          {/* Breed */}
-          <FormField
-            label="Breed"
-            value={formData.breed}
-            onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, breed: text }))
-            }
-            placeholder="e.g. Golden Retriever"
-          />
+          {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
+          <View style={{ marginBottom: SPACING.xl }}>
+            <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
+              Breed
+            </Text>
+            <BreedPicker
+              value={formData.breed}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, breed: value }))
+              }
+            />
+          </View>
 
           {/* Gender */}
           <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>

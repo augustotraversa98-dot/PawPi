@@ -1505,6 +1505,13 @@
       "weight": "Agregá un peso para continuar"
     }
   },
+  "breedPicker": {
+    "searchPlaceholder": "Buscar razas…",
+    "mixed": "Mestizo",
+    "useCustom": "Usar “{{query}}”",
+    "empty": "Ninguna raza coincide — igual podés usar lo que escribiste.",
+    "keepTyping": "Seguí escribiendo para acotar la lista…"
+  },
   "packStreaks": {
     "title": "Rachas en manada 🐾",
     "subtitle": "Mantené la llama con un amigo perruno",

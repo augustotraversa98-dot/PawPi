@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
+import BreedPicker from "@/components/BreedPicker";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
@@ -970,14 +971,6 @@ const StepBreed = ({ formData, setFormData }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
 
-  // Canonical breed values persist to the backend in English (comparisons rely on
-  // them); only the button label is localized.
-  const quickBreeds = [
-    { value: "Mixed Breed", label: t("onboarding.breedMixed") },
-    { value: "I'm not sure", label: t("onboarding.breedNotSure") },
-  ];
-  const quickBreedValues = quickBreeds.map((b) => b.value);
-
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
       <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
@@ -1005,60 +998,14 @@ const StepBreed = ({ formData, setFormData }) => {
         {t("onboarding.breedSubtitle")}
       </Text>
 
-      {/* Quick options */}
-      <View style={{ gap: SPACING.sm, marginBottom: SPACING.xl }}>
-        {quickBreeds.map(({ value, label }) => (
-          <PressableScale
-            key={value}
-            onPress={() => setFormData((prev) => ({ ...prev, breed: value }))}
-            style={{
-              backgroundColor:
-                formData.breed === value ? COLORS.coral : MATERIALS.surfaceSunken,
-              paddingVertical: 14,
-              paddingHorizontal: SPACING.lg,
-              borderRadius: RADIUS.control,
-              borderWidth: 2,
-              borderColor:
-                formData.breed === value ? COLORS.coral : MATERIALS.hairline,
-            }}
-          >
-            <Text
-              style={[
-                TYPE.headline,
-                { color: formData.breed === value ? "#FFF" : COLORS.warmBrown },
-              ]}
-            >
-              {label}
-            </Text>
-          </PressableScale>
-        ))}
-      </View>
-
-      {/* Custom breed input */}
-      <TextInput
-        testID="onboarding-breed"
-        style={[
-          TYPE.title2,
-          {
-            backgroundColor: MATERIALS.surfaceSunken,
-            borderRadius: RADIUS.control,
-            padding: SPACING.lg,
-            fontWeight: "600",
-            color: COLORS.warmBrown,
-            borderWidth: 2,
-            borderColor:
-              formData.breed && !quickBreedValues.includes(formData.breed)
-                ? COLORS.coral
-                : MATERIALS.hairline,
-          },
-        ]}
-        placeholder={t("onboarding.breedPlaceholder")}
-        placeholderTextColor={COLORS.mutedBrown}
-        value={quickBreedValues.includes(formData.breed) ? "" : formData.breed}
-        onChangeText={(text) =>
-          setFormData((prev) => ({ ...prev, breed: text }))
+      {/* Searchable breed picker (canonical list + Mixed breed + type-your-own).
+          Constrains breed to consistent values while still allowing a rare
+          breed/cross to be saved deliberately. Breed stays required to continue. */}
+      <BreedPicker
+        value={formData.breed}
+        onChange={(value) =>
+          setFormData((prev) => ({ ...prev, breed: value }))
         }
-        autoCapitalize="words"
       />
     </View>
   );
