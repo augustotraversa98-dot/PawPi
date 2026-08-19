@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Camera, Lock } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS, SPACING } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
@@ -59,6 +60,7 @@ const WARM_BUTTON = {
 // the daily-prompt card. The post count is folded into the subtext for a bit of
 // social proof (no new data exposure — it comes straight from the fetched feed).
 export function LockedFloatingCard({ count = 0, petName, onPostPress, top = 0 }) {
+  const { t } = useTranslation();
   return (
     <View
       pointerEvents="box-none"
@@ -97,7 +99,7 @@ export function LockedFloatingCard({ count = 0, petName, onPostPress, top = 0 })
             marginBottom: 8,
           }}
         >
-          Share today's pet moment to unlock the feed
+          {t("feed.lockedTitle")}
         </Text>
         <Text
           style={{
@@ -109,8 +111,8 @@ export function LockedFloatingCard({ count = 0, petName, onPostPress, top = 0 })
           }}
         >
           {count > 0
-            ? `${count} pet ${count === 1 ? "friend" : "friends"} shared today — post ${petName}'s moment to see their day.`
-            : `Post ${petName}'s daily moment to see what your pet friends are up to.`}
+            ? t("feed.lockedBodyFriends", { count, petName })
+            : t("feed.lockedBodyEmpty", { petName })}
         </Text>
         <UnlockCTA onPostPress={onPostPress} centered />
       </View>
@@ -122,6 +124,7 @@ export function LockedFloatingCard({ count = 0, petName, onPostPress, top = 0 })
 // posted yet today. Friendly message + CTA, no scrim, never crashes with zero
 // posts. There's nothing behind it, so no floating overlay is used here.
 function EmptyLockedState({ petName, onPostPress }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -143,7 +146,7 @@ function EmptyLockedState({ petName, onPostPress }) {
           marginBottom: 8,
         }}
       >
-        No pet friends have posted yet
+        {t("feed.lockedEmptyTitle")}
       </Text>
       <Text
         style={{
@@ -154,7 +157,7 @@ function EmptyLockedState({ petName, onPostPress }) {
           marginBottom: 20,
         }}
       >
-        Be the first! Post {petName}'s daily moment to start today's feed.
+        {t("feed.lockedEmptyBody", { petName })}
       </Text>
       <UnlockCTA onPostPress={onPostPress} centered />
     </View>
@@ -162,6 +165,7 @@ function EmptyLockedState({ petName, onPostPress }) {
 }
 
 function UnlockCTA({ onPostPress, centered }) {
+  const { t } = useTranslation();
   return (
     <PressableScale
       onPress={onPostPress}
@@ -170,7 +174,7 @@ function UnlockCTA({ onPostPress, centered }) {
     >
       <Camera size={18} color="#FFF" />
       <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
-        Post today's photo
+        {t("feed.lockedPostToday")}
       </Text>
     </PressableScale>
   );

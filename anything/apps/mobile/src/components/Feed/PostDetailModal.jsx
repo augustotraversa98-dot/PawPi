@@ -115,7 +115,7 @@ export const PostDetailModal = memo(function PostDetailModal({
       setLocalCaption(next);
       setEditing(false);
     } catch (e) {
-      Alert.alert("Couldn't save", "Please try again.");
+      Alert.alert(t("feed.saveFailedTitle"), t("feed.saveFailedBody"));
     } finally {
       setSavingCaption(false);
     }
@@ -257,7 +257,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                   onChangeText={setDraft}
                   multiline
                   maxLength={2000}
-                  placeholder="Write a caption…"
+                  placeholder={t("feed.captionPlaceholder")}
                   placeholderTextColor={COLORS.mutedBrown}
                   style={[
                     TYPE.body,
