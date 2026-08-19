@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
 import {
   ArrowLeft,
@@ -52,15 +53,17 @@ import {
 // distance label, "See more", the rich detail page). No behavior, data, hooks, test hooks, or
 // copy changed.
 
-const TABS = [
-  { key: "browse", label: "Browse" },
-  { key: "favorites", label: "Favorites" },
-  { key: "applications", label: "Applications" },
-];
+const TAB_KEYS = ["browse", "favorites", "applications"];
 
 export default function AdoptionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
+  const TAB_LABELS = {
+    browse: t("adoption.tabBrowse"),
+    favorites: t("adoption.tabFavorites"),
+    applications: t("adoption.tabApplications"),
+  };
   const params = useLocalSearchParams();
   // Deep-link into a specific tab (e.g. an adoption notification → "applications"). Defaults to
   // "browse" for any unknown/absent value.
@@ -101,8 +104,8 @@ export default function AdoptionScreen() {
       setOpenListing({ listing: deepListing, place });
     } else {
       Alert.alert(
-        "No longer available",
-        "This dog has found a home or the listing was removed.",
+        t("adoption.noLongerAvailableTitle"),
+        t("adoption.noLongerAvailableBody"),
       );
     }
     setDeepHandled(true);
@@ -134,21 +137,21 @@ export default function AdoptionScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Adoption 🐶
+            {t("adoption.title")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Find a dog to bring home
+            {t("adoption.subtitle")}
           </Text>
         </View>
       </GlassSurface>
 
       <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.lg, paddingBottom: SPACING.xs }}>
-        {TABS.map((t) => {
-          const selected = tab === t.key;
+        {TAB_KEYS.map((key) => {
+          const selected = tab === key;
           return (
             <PressableScale
-              key={t.key}
-              onPress={() => setTab(t.key)}
+              key={key}
+              onPress={() => setTab(key)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               style={{
@@ -166,7 +169,7 @@ export default function AdoptionScreen() {
                   { color: selected ? COLORS.coral : COLORS.warmBrown },
                 ]}
               >
-                {t.label}
+                {TAB_LABELS[key]}
               </Text>
             </PressableScale>
           );
@@ -212,6 +215,7 @@ function activeFilterCount(f) {
 // device location vs each shelter's primary lat/lng (2.81), with composable filters. Permission
 // denied / no coords → the server falls back to most-recent (no crash, no empty grid).
 function BrowseTab({ onOpenListing }) {
+  const { t } = useTranslation();
   const [coords, setCoords] = useState(null); // { lat, lng } | null
   const [located, setLocated] = useState(false); // attempted location yet?
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -269,7 +273,7 @@ function BrowseTab({ onOpenListing }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <MapPin size={14} color={COLORS.mutedBrown} />
           <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown }]}>
-            {nearest ? "NEAREST FIRST" : "RECENTLY ADDED"}
+            {nearest ? t("adoption.nearestFirst") : t("adoption.recentlyAdded")}
           </Text>
         </View>
         <PressableScale
@@ -289,7 +293,7 @@ function BrowseTab({ onOpenListing }) {
         >
           <SlidersHorizontal size={15} color={count > 0 ? COLORS.coral : COLORS.warmBrown} />
           <Text style={[TYPE.subhead, { color: count > 0 ? COLORS.coral : COLORS.warmBrown }]}>
-            Filters{count > 0 ? ` (${count})` : ""}
+            {count > 0 ? t("adoption.filtersCount", { count }) : t("adoption.filters")}
           </Text>
         </PressableScale>
       </View>
@@ -297,14 +301,14 @@ function BrowseTab({ onOpenListing }) {
       {isLoading || !located ? (
         <Loading />
       ) : isError ? (
-        <EmptyState title="Couldn't load dogs" body="Something went wrong. Pull down to try again." />
+        <EmptyState title={t("adoption.couldNotLoadDogs")} body={t("adoption.pullDownRetry")} />
       ) : listings.length === 0 ? (
         <EmptyState
-          title={count > 0 ? "No matches" : "No dogs near you yet"}
+          title={count > 0 ? t("adoption.noMatches") : t("adoption.noDogsNearYet")}
           body={
             count > 0
-              ? "Try widening or clearing your filters."
-              : "Check back soon — shelters and rescues are joining PawPi."
+              ? t("adoption.noMatchesBody")
+              : t("adoption.noDogsNearBody")
           }
         />
       ) : (
@@ -359,6 +363,7 @@ const ENERGY = ["low", "medium", "high"];
 const VACC = ["up_to_date", "partial", "unknown"];
 
 function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(filters);
   useEffect(() => {
     if (visible) setDraft(filters);
@@ -385,39 +390,39 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
           <PressableScale onPress={onClose} testID="filters-close">
             <X size={22} color={COLORS.warmBrown} />
           </PressableScale>
-          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>Filters</Text>
+          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>{t("adoption.filters")}</Text>
           <PressableScale onPress={onClear} testID="filters-clear">
-            <Text style={[TYPE.body, { fontWeight: "700", color: COLORS.coral }]}>Clear all</Text>
+            <Text style={[TYPE.body, { fontWeight: "700", color: COLORS.coral }]}>{t("adoption.clearAll")}</Text>
           </PressableScale>
         </GlassSurface>
 
         <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
-          <FilterGroup label="Gender">
+          <FilterGroup label={t("adoption.filter.gender")}>
             {GENDERS.map((g) => (
               <FilterPill key={g} label={g} active={draft.gender === g} onPress={() => toggle("gender", g)} />
             ))}
           </FilterGroup>
-          <FilterGroup label="Size">
+          <FilterGroup label={t("adoption.filter.size")}>
             {SIZES.map((s) => (
               <FilterPill key={s} label={s} active={draft.size === s} onPress={() => toggle("size", s)} />
             ))}
           </FilterGroup>
-          <FilterGroup label="Age">
-            <FilterPill label="Puppy (≤1y)" active={draft.age_max === 1} onPress={() => setDraft((d) => ({ ...d, age_min: null, age_max: d.age_max === 1 ? null : 1 }))} />
-            <FilterPill label="Young (1–3y)" active={draft.age_min === 1 && draft.age_max === 3} onPress={() => setDraft((d) => (d.age_min === 1 && d.age_max === 3 ? { ...d, age_min: null, age_max: null } : { ...d, age_min: 1, age_max: 3 }))} />
-            <FilterPill label="Adult (3y+)" active={draft.age_min === 3 && draft.age_max == null} onPress={() => setDraft((d) => (d.age_min === 3 && d.age_max == null ? { ...d, age_min: null } : { ...d, age_min: 3, age_max: null }))} />
+          <FilterGroup label={t("adoption.filter.age")}>
+            <FilterPill label={t("adoption.age.puppy")} active={draft.age_max === 1} onPress={() => setDraft((d) => ({ ...d, age_min: null, age_max: d.age_max === 1 ? null : 1 }))} />
+            <FilterPill label={t("adoption.age.young")} active={draft.age_min === 1 && draft.age_max === 3} onPress={() => setDraft((d) => (d.age_min === 1 && d.age_max === 3 ? { ...d, age_min: null, age_max: null } : { ...d, age_min: 1, age_max: 3 }))} />
+            <FilterPill label={t("adoption.age.adult")} active={draft.age_min === 3 && draft.age_max == null} onPress={() => setDraft((d) => (d.age_min === 3 && d.age_max == null ? { ...d, age_min: null } : { ...d, age_min: 3, age_max: null }))} />
           </FilterGroup>
-          <FilterGroup label="Energy">
+          <FilterGroup label={t("adoption.filter.energy")}>
             {ENERGY.map((e) => (
               <FilterPill key={e} label={`${e} energy`} active={draft.energy_level === e} onPress={() => toggle("energy_level", e)} />
             ))}
           </FilterGroup>
-          <FilterGroup label="Good with">
-            <FilterPill label="Kids" active={draft.good_with_kids === true} onPress={() => toggleBool("good_with_kids")} />
-            <FilterPill label="Cats" active={draft.good_with_cats === true} onPress={() => toggleBool("good_with_cats")} />
-            <FilterPill label="Dogs" active={draft.good_with_dogs === true} onPress={() => toggleBool("good_with_dogs")} />
+          <FilterGroup label={t("adoption.filter.goodWith")}>
+            <FilterPill label={t("adoption.goodWith.kids")} active={draft.good_with_kids === true} onPress={() => toggleBool("good_with_kids")} />
+            <FilterPill label={t("adoption.goodWith.cats")} active={draft.good_with_cats === true} onPress={() => toggleBool("good_with_cats")} />
+            <FilterPill label={t("adoption.goodWith.dogs")} active={draft.good_with_dogs === true} onPress={() => toggleBool("good_with_dogs")} />
           </FilterGroup>
-          <FilterGroup label="Vaccination">
+          <FilterGroup label={t("adoption.filter.vaccination")}>
             {VACC.map((v) => (
               <FilterPill key={v} label={v.replace(/_/g, " ")} active={draft.vaccination_status === v} onPress={() => toggle("vaccination_status", v)} />
             ))}
@@ -430,7 +435,7 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
             onPress={() => onApply(draft)}
             style={{ backgroundColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 16, alignItems: "center" }}
           >
-            <Text style={[TYPE.headline, { color: "#fff" }]}>Show dogs</Text>
+            <Text style={[TYPE.headline, { color: "#fff" }]}>{t("adoption.showDogs")}</Text>
           </PressableScale>
         </View>
       </View>
@@ -472,18 +477,19 @@ function FilterPill({ label, active, onPress }) {
 }
 
 function FavoritesTab({ onOpenListing }) {
+  const { t } = useTranslation();
   const { data: favorites, isLoading, isError, refetch } = useAdoptionFavorites();
   return (
     <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}>
-      <SectionLabel>SAVED DOGS</SectionLabel>
+      <SectionLabel>{t("adoption.savedDogs")}</SectionLabel>
       {isLoading ? (
         <Loading />
       ) : isError ? (
-        <EmptyState title="Couldn't load favorites" body="Pull down to try again." />
+        <EmptyState title={t("adoption.couldNotLoadFavorites")} body={t("adoption.pullDownRetry")} />
       ) : !favorites || favorites.length === 0 ? (
         <EmptyState
-          title="No favorites yet"
-          body="Tap the heart on a dog you love to save it here."
+          title={t("adoption.noFavoritesYet")}
+          body={t("adoption.noFavoritesBody")}
         />
       ) : (
         favorites.map((fav) => (
@@ -547,18 +553,19 @@ function FavoriteRow({ fav, onPress }) {
 }
 
 function ApplicationsTab() {
+  const { t } = useTranslation();
   const { data: apps, isLoading, isError, refetch } = useMyAdoptionApplications();
   return (
     <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}>
-      <SectionLabel>YOUR APPLICATIONS</SectionLabel>
+      <SectionLabel>{t("adoption.yourApplications")}</SectionLabel>
       {isLoading ? (
         <Loading />
       ) : isError ? (
-        <EmptyState title="Couldn't load applications" body="Pull down to try again." />
+        <EmptyState title={t("adoption.couldNotLoadApplications")} body={t("adoption.pullDownRetry")} />
       ) : !apps || apps.length === 0 ? (
         <EmptyState
-          title="No applications yet"
-          body="Apply to adopt a dog and track your application here."
+          title={t("adoption.noApplicationsYet")}
+          body={t("adoption.noApplicationsBody")}
         />
       ) : (
         apps.map((a) => <ApplicationCard key={a.id} app={a} />)
@@ -568,6 +575,7 @@ function ApplicationsTab() {
 }
 
 function ApplicationCard({ app }) {
+  const { t } = useTranslation();
   const approved = app.status === "approved";
   return (
     <Card
@@ -578,7 +586,7 @@ function ApplicationCard({ app }) {
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]} numberOfLines={1}>
-          {app.listing_name || "Dog"}
+          {app.listing_name || t("adoption.dogFallback")}
         </Text>
         <StatusPill status={app.status} />
       </View>
@@ -589,7 +597,7 @@ function ApplicationCard({ app }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm + 2 }}>
           <Check size={16} color="#3FA34D" />
           <Text style={[TYPE.footnote, { color: "#3FA34D", fontWeight: "700" }]}>
-            Approved — this dog is now your pet! Find it under My Pets.
+            {t("adoption.approvedNote")}
           </Text>
         </View>
       ) : null}
@@ -598,11 +606,12 @@ function ApplicationCard({ app }) {
 }
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
-    submitted: { label: "Submitted", color: COLORS.mutedBrown },
-    under_review: { label: "Under review", color: COLORS.coral },
-    approved: { label: "Approved", color: "#3FA34D" },
-    declined: { label: "Declined", color: COLORS.terracotta },
+    submitted: { label: t("adoption.status.submitted"), color: COLORS.mutedBrown },
+    under_review: { label: t("adoption.status.underReview"), color: COLORS.coral },
+    approved: { label: t("adoption.status.approved"), color: "#3FA34D" },
+    declined: { label: t("adoption.status.declined"), color: COLORS.terracotta },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (

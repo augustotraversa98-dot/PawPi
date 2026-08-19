@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ShoppingBag,
@@ -37,11 +38,7 @@ import { formatMoney } from "@/utils/money";
 // 2.1). An Rx product is blocked at checkout unless the pet has a vet relationship (the Rx
 // gate, server-enforced). RLS (0037) is the real guard. Empty → empty states; no fake data.
 
-const TABS = [
-  { key: "browse", label: "Browse" },
-  { key: "orders", label: "Orders" },
-  { key: "subs", label: "Auto-reorder" },
-];
+const TAB_KEYS = ["browse", "orders", "subs"];
 
 // Delegates to the shared formatter (src/utils/money.js) so shop and provider
 // screens always render the same price identically. Returns "" (not null) so
@@ -53,6 +50,12 @@ function money(cents, currency = "ARS") {
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
+  const TAB_LABELS = {
+    browse: t("shop.tabBrowse"),
+    orders: t("shop.tabOrders"),
+    subs: t("shop.tabAutoReorder"),
+  };
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
 
@@ -77,22 +80,22 @@ export default function ShopScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Shop 🛍️
+            {t("shop.title")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Food, toys, and supplies — delivered
+            {t("shop.subtitle")}
           </Text>
         </View>
       </GlassSurface>
 
       {/* Tab switcher */}
       <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.lg, paddingBottom: SPACING.xs }}>
-        {TABS.map((t) => {
-          const selected = tab === t.key;
+        {TAB_KEYS.map((key) => {
+          const selected = tab === key;
           return (
             <PressableScale
-              key={t.key}
-              onPress={() => setTab(t.key)}
+              key={key}
+              onPress={() => setTab(key)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               style={{
@@ -110,7 +113,7 @@ export default function ShopScreen() {
                   { color: selected ? COLORS.coral : COLORS.warmBrown },
                 ]}
               >
-                {t.label}
+                {TAB_LABELS[key]}
               </Text>
             </PressableScale>
           );
@@ -135,6 +138,7 @@ export default function ShopScreen() {
 }
 
 function BrowseTab({ onOpenShop }) {
+  const { t } = useTranslation();
   const { data: shops, isLoading, isError, refetch } = useDiscoverProviders("shop");
 
   return (
@@ -142,20 +146,20 @@ function BrowseTab({ onOpenShop }) {
       refetch={refetch}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
     >
-      <SectionLabel>SHOPS NEAR YOU</SectionLabel>
+      <SectionLabel>{t("shop.shopsNearYou")}</SectionLabel>
       {isLoading ? (
         <View style={{ paddingVertical: 48, alignItems: "center" }}>
           <ActivityIndicator color={COLORS.coral} />
         </View>
       ) : isError ? (
         <EmptyState
-          title="Couldn't load shops"
-          body="Something went wrong. Pull down to try again."
+          title={t("shop.couldNotLoadShops")}
+          body={t("shop.pullDownRetry")}
         />
       ) : !shops || shops.length === 0 ? (
         <EmptyState
-          title="No shops available yet"
-          body="Check back soon — pet shops are joining PawPi."
+          title={t("shop.noShopsYet")}
+          body={t("shop.shopsComingSoon")}
         />
       ) : (
         shops.map((s) => (
@@ -224,23 +228,24 @@ function ShopCard({ shop, onPress }) {
 }
 
 function OrdersTab() {
+  const { t } = useTranslation();
   const { data: orders, isLoading, isError, refetch } = useShopOrders();
   return (
     <RefreshableScrollView
       refetch={refetch}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
     >
-      <SectionLabel>YOUR ORDERS</SectionLabel>
+      <SectionLabel>{t("shop.yourOrders")}</SectionLabel>
       {isLoading ? (
         <View style={{ paddingVertical: 48, alignItems: "center" }}>
           <ActivityIndicator color={COLORS.coral} />
         </View>
       ) : isError ? (
-        <EmptyState title="Couldn't load orders" body="Pull down to try again." />
+        <EmptyState title={t("shop.couldNotLoadOrders")} body={t("shop.pullDownRetry")} />
       ) : !orders || orders.length === 0 ? (
         <EmptyState
-          title="No orders yet"
-          body="Your purchases will show up here."
+          title={t("shop.noOrdersYet")}
+          body={t("shop.ordersEmptyBody")}
         />
       ) : (
         orders.map((o) => <OrderCard key={o.id} order={o} />)
@@ -250,6 +255,7 @@ function OrdersTab() {
 }
 
 function OrderCard({ order }) {
+  const { t } = useTranslation();
   const items = Array.isArray(order.items) ? order.items : [];
   return (
     <Card
@@ -266,7 +272,7 @@ function OrderCard({ order }) {
         }}
       >
         <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
-          {order.provider_name || "Shop"}
+          {order.provider_name || t("shop.shopFallback")}
         </Text>
         <StatusPill status={order.fulfillment_status || order.status} />
       </View>
@@ -279,21 +285,22 @@ function OrderCard({ order }) {
         </Text>
       ))}
       <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm }]}>
-        Payment: {order.status}
+        {t("shop.paymentLabel", { status: order.status })}
       </Text>
     </Card>
   );
 }
 
 function SubscriptionsTab() {
+  const { t } = useTranslation();
   const { data: subs, isLoading, isError, refetch } = useShopSubscriptions();
   const update = useUpdateShopSubscription();
 
   const cancel = (id) => {
-    Alert.alert("Cancel auto-reorder?", "You can resubscribe anytime.", [
-      { text: "Keep", style: "cancel" },
+    Alert.alert(t("shop.cancelConfirmTitle"), t("shop.cancelConfirmBody"), [
+      { text: t("shop.keep"), style: "cancel" },
       {
-        text: "Cancel plan",
+        text: t("shop.cancelPlan"),
         style: "destructive",
         onPress: () => update.mutate({ id, status: "cancelled" }),
       },
@@ -305,17 +312,17 @@ function SubscriptionsTab() {
       refetch={refetch}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
     >
-      <SectionLabel>AUTO-REORDER</SectionLabel>
+      <SectionLabel>{t("shop.autoReorder")}</SectionLabel>
       {isLoading ? (
         <View style={{ paddingVertical: 48, alignItems: "center" }}>
           <ActivityIndicator color={COLORS.coral} />
         </View>
       ) : isError ? (
-        <EmptyState title="Couldn't load plans" body="Pull down to try again." />
+        <EmptyState title={t("shop.couldNotLoadPlans")} body={t("shop.pullDownRetry")} />
       ) : !subs || subs.length === 0 ? (
         <EmptyState
-          title="No auto-reorder plans"
-          body="Subscribe to a product to have it delivered on a schedule."
+          title={t("shop.noAutoReorder")}
+          body={t("shop.autoReorderEmptyBody")}
         />
       ) : (
         subs.map((s) => (
@@ -327,6 +334,7 @@ function SubscriptionsTab() {
 }
 
 function SubscriptionCard({ sub, onCancel }) {
+  const { t } = useTranslation();
   return (
     <Card
       level="sm"
@@ -347,7 +355,7 @@ function SubscriptionCard({ sub, onCancel }) {
             style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}
             numberOfLines={1}
           >
-            {sub.product_name || "Product"}
+            {sub.product_name || t("shop.productFallback")}
           </Text>
         </View>
         <StatusPill status={sub.status} />
@@ -361,7 +369,7 @@ function SubscriptionCard({ sub, onCancel }) {
           style={{ marginTop: SPACING.md, alignSelf: "flex-start" }}
         >
           <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.terracotta }]}>
-            Cancel auto-reorder
+            {t("shop.cancelAutoReorder")}
           </Text>
         </PressableScale>
       ) : null}
@@ -370,16 +378,17 @@ function SubscriptionCard({ sub, onCancel }) {
 }
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
-    placed: { label: "Placed", color: COLORS.mutedBrown },
-    paid: { label: "Paid", color: COLORS.coral },
-    shipped: { label: "Shipped", color: "#3FA34D" },
-    delivered: { label: "Delivered", color: "#3FA34D" },
-    cancelled: { label: "Cancelled", color: COLORS.mutedBrown },
-    pending: { label: "Pending", color: COLORS.mutedBrown },
-    active: { label: "Active", color: COLORS.coral },
-    paused: { label: "Paused", color: COLORS.mutedBrown },
-    refunded: { label: "Refunded", color: COLORS.mutedBrown },
+    placed: { label: t("shop.status.placed"), color: COLORS.mutedBrown },
+    paid: { label: t("shop.status.paid"), color: COLORS.coral },
+    shipped: { label: t("shop.status.shipped"), color: "#3FA34D" },
+    delivered: { label: t("shop.status.delivered"), color: "#3FA34D" },
+    cancelled: { label: t("shop.status.cancelled"), color: COLORS.mutedBrown },
+    pending: { label: t("shop.status.pending"), color: COLORS.mutedBrown },
+    active: { label: t("shop.status.active"), color: COLORS.coral },
+    paused: { label: t("shop.status.paused"), color: COLORS.mutedBrown },
+    refunded: { label: t("shop.status.refunded"), color: COLORS.mutedBrown },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (

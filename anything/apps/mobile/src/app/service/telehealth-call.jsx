@@ -3,6 +3,7 @@ import { View, ActivityIndicator, Text } from "react-native";
 import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { TYPE, SPACING, RADIUS } from "@/constants/theme";
@@ -15,6 +16,7 @@ import { PressableScale } from "@/components/ui";
 export default function TelehealthCallScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { joinUrl } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -37,7 +39,7 @@ export default function TelehealthCallScreen() {
           }}
         >
           <Text style={[TYPE.headline, { color: "#FFF", textAlign: "center" }]}>
-            Couldn't load the video consult
+            {t("telehealth.couldNotLoadCall")}
           </Text>
         </View>
       ) : (
@@ -72,7 +74,7 @@ export default function TelehealthCallScreen() {
       <PressableScale
         onPress={leave}
         accessibilityRole="button"
-        accessibilityLabel="Leave call"
+        accessibilityLabel={t("telehealth.leaveCall")}
         style={{
           position: "absolute",
           top: insets.top + SPACING.sm,
