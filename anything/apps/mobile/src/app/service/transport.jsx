@@ -35,13 +35,14 @@ import {
   removeSurfaceEventFromCalendar,
 } from "@/utils/calendarIntegration";
 
-const STATUS_LABEL = {
-  requested: "Requested",
-  confirmed: "Confirmed",
-  en_route: "On the way",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
+const statusLabel = (tr, status) =>
+  ({
+    requested: tr("transport.statusRequested"),
+    confirmed: tr("transport.statusConfirmed"),
+    en_route: tr("transport.statusEnRoute"),
+    completed: tr("transport.statusCompleted"),
+    cancelled: tr("transport.statusCancelled"),
+  })[status] || status;
 
 function Chip({ selected, label, onPress, testID }) {
   return (
@@ -67,6 +68,8 @@ function Chip({ selected, label, onPress, testID }) {
 export default function TransportScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // aliased to `tr` — this screen uses `t` as the trip variable in trips.map/messageProvider
+  const { t: tr } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const { data: providers = [], isLoading, isError, refetch } = useDiscoverProviders("transport");
   const { data: trips = [] } = useTransportTrips(currentPet?.id ?? null);
@@ -81,7 +84,7 @@ export default function TransportScreen() {
   const payTrip = async (t) => {
     const cents = Math.round(Number(t.fare_amount) * 100);
     if (!Number.isFinite(cents) || cents <= 0) {
-      Alert.alert("No fare yet", "The provider hasn't set a fare for this trip.");
+      Alert.alert(tr("transport.noFareTitle"), tr("transport.noFareBody"));
       return;
     }
     setPayingId(t.id);
@@ -94,15 +97,13 @@ export default function TransportScreen() {
       const url = res.checkoutUrl || res.deeplink;
       if (url) Linking.openURL(url).catch(() => {});
     } catch (e) {
-      Alert.alert("Couldn't start payment", e.message || "Please try again.");
+      Alert.alert(tr("transport.couldNotStartPayment"), e.message || tr("common.pleaseTryAgain"));
     } finally {
       setPayingId(null);
     }
   };
   const setTripCal = useSetTripCalendarEvent();
   const startThread = useStartThread();
-  // aliased to `tr` — this screen already uses `t` as the trip variable in trips.map/messageProvider
-  const { t: tr } = useTranslation();
 
   const [provider, setProvider] = useState(null);
   const [date, setDate] = useState("");
@@ -137,13 +138,13 @@ export default function TransportScreen() {
         carrier_needed: carrier,
         notes: notes.trim() || null,
       });
-      Alert.alert("Trip requested", "The transport provider will confirm and assign a driver.");
+      Alert.alert(tr("transport.tripRequestedTitle"), tr("transport.tripRequestedBody"));
       setProvider(null);
       setPickupAddr("");
       setDropoffAddr("");
       setNotes("");
     } catch (e) {
-      Alert.alert("Couldn't book", e.message || "Please try again.");
+      Alert.alert(tr("transport.couldNotBook"), e.message || tr("common.pleaseTryAgain"));
     }
   };
 
@@ -217,9 +218,9 @@ export default function TransportScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>Transport 🚕</Text>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>{tr("transport.headerTitle")}</Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Book a pet-taxi: pickup and dropoff
+            {tr("transport.headerSubtitle")}
           </Text>
         </View>
       </GlassSurface>
@@ -230,15 +231,15 @@ export default function TransportScreen() {
       >
         {/* Provider picker */}
         <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.sm }]}>
-          TRANSPORT PROVIDERS NEAR YOU
+          {tr("transport.providersNearYou")}
         </Text>
         {isLoading ? (
-          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Loading…</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>{tr("common.loading")}</Text>
         ) : isError ? (
-          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Couldn't load providers.</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>{tr("transport.couldNotLoadProviders")}</Text>
         ) : providers.length === 0 ? (
           <Text testID="providers-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
-            No transport providers available yet.
+            {tr("transport.noProvidersYet")}
           </Text>
         ) : (
           providers.map((p) => (
@@ -279,28 +280,28 @@ export default function TransportScreen() {
             style={{ padding: SPACING.lg, marginTop: SPACING.md }}
           >
             <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>
-              Book {provider.name}
+              {tr("transport.bookProvider", { name: provider.name })}
             </Text>
 
             <View style={{ flexDirection: "row", gap: SPACING.md }}>
               <View style={{ flex: 1 }}>
-                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>Date</Text>
+                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>{tr("transport.date")}</Text>
                 <DateField value={date} onChange={setDate} testID="trip-date" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>Time</Text>
+                <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>{tr("transport.time")}</Text>
                 <TimeField value={time} onChange={setTime} testID="trip-time" />
               </View>
             </View>
 
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: SPACING.xs }]}>
-              <MapPin size={13} color={COLORS.mutedBrown} /> Pickup
+              <MapPin size={13} color={COLORS.mutedBrown} /> {tr("transport.pickup")}
             </Text>
             <TextInput
               testID="pickup-address"
               value={pickupAddr}
               onChangeText={setPickupAddr}
-              placeholder="Pickup address"
+              placeholder={tr("transport.pickupPlaceholder")}
               placeholderTextColor={COLORS.mutedBrown}
               style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
@@ -309,13 +310,13 @@ export default function TransportScreen() {
             </View>
 
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: SPACING.xs }]}>
-              <MapPin size={13} color={COLORS.mutedBrown} /> Dropoff
+              <MapPin size={13} color={COLORS.mutedBrown} /> {tr("transport.dropoff")}
             </Text>
             <TextInput
               testID="dropoff-address"
               value={dropoffAddr}
               onChangeText={setDropoffAddr}
-              placeholder="Dropoff address"
+              placeholder={tr("transport.dropoffPlaceholder")}
               placeholderTextColor={COLORS.mutedBrown}
               style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
@@ -323,23 +324,23 @@ export default function TransportScreen() {
               <MapLocationPicker value={dropoffCoord} onChange={setDropoffCoord} testID="dropoff-map" />
             </View>
 
-            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: 6 }]}>Trip</Text>
+            <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginTop: SPACING.md, marginBottom: 6 }]}>{tr("transport.trip")}</Text>
             <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-              <Chip testID="type-one_way" label="One-way" selected={tripType === "one_way"} onPress={() => setTripType("one_way")} />
-              <Chip testID="type-round_trip" label="Round-trip" selected={tripType === "round_trip"} onPress={() => setTripType("round_trip")} />
+              <Chip testID="type-one_way" label={tr("transport.oneWay")} selected={tripType === "one_way"} onPress={() => setTripType("one_way")} />
+              <Chip testID="type-round_trip" label={tr("transport.roundTrip")} selected={tripType === "round_trip"} onPress={() => setTripType("round_trip")} />
             </View>
 
             <TextInput
               testID="pet-size"
               value={petSize}
               onChangeText={setPetSize}
-              placeholder="Pet size (e.g. small / medium / large)"
+              placeholder={tr("transport.petSizePlaceholder")}
               placeholderTextColor={COLORS.mutedBrown}
               style={{ marginTop: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.md }}>
-              <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700" }]}>Carrier needed</Text>
+              <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700" }]}>{tr("transport.carrierNeeded")}</Text>
               <Switch testID="carrier" value={carrier} onValueChange={setCarrier} />
             </View>
 
@@ -347,7 +348,7 @@ export default function TransportScreen() {
               testID="notes"
               value={notes}
               onChangeText={setNotes}
-              placeholder="Notes (gate code, temperament…)"
+              placeholder={tr("transport.notesPlaceholder")}
               placeholderTextColor={COLORS.mutedBrown}
               multiline
               style={{ marginTop: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, minHeight: 60, color: COLORS.warmBrown }}
@@ -366,23 +367,22 @@ export default function TransportScreen() {
               }}
             >
               <Text style={[TYPE.headline, { color: "#fff", fontWeight: "800" }]}>
-                {book.isPending ? "Requesting…" : "Request pet-taxi"}
+                {book.isPending ? tr("transport.requesting") : tr("transport.requestPetTaxi")}
               </Text>
             </PressableScale>
             <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm, textAlign: "center" }]}>
-              The provider sets the fare and confirms. You can pay once it's confirmed (payments may
-              not be set up yet).
+              {tr("transport.fareHint")}
             </Text>
           </Card>
         )}
 
         {/* My trips */}
         <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "800", marginTop: SPACING.xl, marginBottom: SPACING.sm }]}>
-          MY TRIPS
+          {tr("transport.myTrips")}
         </Text>
         {trips.length === 0 ? (
           <Text testID="trips-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
-            No trips yet.
+            {tr("transport.noTripsYet")}
           </Text>
         ) : (
           trips.map((t) => (
@@ -395,10 +395,10 @@ export default function TransportScreen() {
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-                  {t.provider_name || "Provider"}
+                  {t.provider_name || tr("transport.provider")}
                 </Text>
                 <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.coral }]}>
-                  {STATUS_LABEL[t.status] || t.status}
+                  {statusLabel(tr, t.status)}
                 </Text>
               </View>
               <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
@@ -406,7 +406,7 @@ export default function TransportScreen() {
               </Text>
               {t.fare_amount != null && (
                 <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.xs }]}>
-                  Fare: {t.fare_amount}
+                  {tr("transport.fare")}: {t.fare_amount}
                 </Text>
               )}
               {t.paid ? (
@@ -414,7 +414,7 @@ export default function TransportScreen() {
                   testID={`paid-${t.id}`}
                   style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "800", marginTop: SPACING.xs }]}
                 >
-                  ✓ Paid
+                  {tr("transport.paid")}
                 </Text>
               ) : (t.status === "confirmed" || t.status === "en_route") &&
                 t.fare_amount != null ? (
@@ -430,7 +430,7 @@ export default function TransportScreen() {
                   }}
                 >
                   <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
-                    {payingId === t.id ? "Opening…" : "Pay fare"}
+                    {payingId === t.id ? tr("transport.opening") : tr("transport.payFare")}
                   </Text>
                 </PressableScale>
               ) : null}
@@ -441,7 +441,7 @@ export default function TransportScreen() {
                   style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                 >
                   <MessageCircle size={16} color={COLORS.sageDark} />
-                  <Text style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "700" }]}>Message</Text>
+                  <Text style={[TYPE.body, { color: COLORS.sageDark, fontWeight: "700" }]}>{tr("transport.message")}</Text>
                 </PressableScale>
                 {(t.status === "requested" || t.status === "confirmed" || t.status === "en_route") && (
                   <PressableScale
@@ -462,20 +462,20 @@ export default function TransportScreen() {
                     style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                   >
                     <Navigation size={16} color={COLORS.coral} />
-                    <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>Track live</Text>
+                    <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>{tr("transport.trackLive")}</Text>
                   </PressableScale>
                 )}
                 {(t.status === "requested" || t.status === "confirmed") && (
                   <PressableScale
                     testID={`cancel-${t.id}`}
                     onPress={() =>
-                      Alert.alert("Cancel trip?", "", [
-                        { text: "Keep", style: "cancel" },
-                        { text: "Cancel trip", style: "destructive", onPress: () => cancelTrip(t) },
+                      Alert.alert(tr("transport.cancelTripTitle"), "", [
+                        { text: tr("transport.keep"), style: "cancel" },
+                        { text: tr("transport.cancelTrip"), style: "destructive", onPress: () => cancelTrip(t) },
                       ])
                     }
                   >
-                    <Text style={[TYPE.body, { color: "#C2410C", fontWeight: "700" }]}>Cancel</Text>
+                    <Text style={[TYPE.body, { color: "#C2410C", fontWeight: "700" }]}>{tr("common.cancel")}</Text>
                   </PressableScale>
                 )}
               </View>

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { ArrowLeft, MapPin, AlertTriangle, X, Send, CheckCircle2, Bell } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import WalkMapPicker from "@/components/SocialWalks/WalkMapPicker";
 import { isValidCoord } from "@/utils/walkBuddies";
@@ -41,6 +42,7 @@ const C = {
 export default function LostFoundScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
 
   const [tab, setTab] = useState("near"); // 'near' | 'mine'
@@ -80,14 +82,14 @@ export default function LostFoundScreen() {
         <TouchableOpacity testID="lost-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>Lost & Found</Text>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("lostFound.title")}</Text>
       </View>
 
       {/* Tabs */}
       <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, paddingTop: 14 }}>
         {[
-          { key: "near", label: "Alerts near me" },
-          { key: "mine", label: "My pet" },
+          { key: "near", label: t("lostFound.tabNear") },
+          { key: "mine", label: t("lostFound.tabMine") },
         ].map(({ key, label }) => (
           <TouchableOpacity
             key={key}
@@ -113,10 +115,10 @@ export default function LostFoundScreen() {
               <View style={{ alignItems: "center", padding: 40 }}>
                 <PawMark size={34} color={C.warmBrown} />
                 <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown, marginTop: 10 }}>
-                  No lost pets nearby
+                  {t("lostFound.noneNearby")}
                 </Text>
                 <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 4 }}>
-                  Hopefully it stays that way.
+                  {t("lostFound.noneNearbyHint")}
                 </Text>
               </View>
             )}
@@ -125,7 +127,7 @@ export default function LostFoundScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                   <View style={styles.lostBadge}>
                     <AlertTriangle size={13} color="#FFF" />
-                    <Text style={{ fontSize: 11, fontWeight: "800", color: "#FFF" }}>LOST</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: "#FFF" }}>{t("lostFound.badgeLost")}</Text>
                   </View>
                   <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown, marginLeft: 10 }}>
                     {r.pet_name}
@@ -137,7 +139,7 @@ export default function LostFoundScreen() {
                 {r.last_seen_area ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
                     <MapPin size={13} color={C.red} />
-                    <Text style={{ fontSize: 13, color: C.warmBrown }}>Last seen: {r.last_seen_area}</Text>
+                    <Text style={{ fontSize: 13, color: C.warmBrown }}>{t("lostFound.lastSeen", { area: r.last_seen_area })}</Text>
                   </View>
                 ) : null}
                 {r.notes ? (
@@ -145,7 +147,7 @@ export default function LostFoundScreen() {
                 ) : null}
                 {r.reward ? (
                   <Text style={{ fontSize: 13, fontWeight: "700", color: C.sageDark, marginBottom: 10 }}>
-                    Reward: {r.reward}
+                    {t("lostFound.reward")}: {r.reward}
                   </Text>
                 ) : null}
                 <TouchableOpacity
@@ -153,7 +155,7 @@ export default function LostFoundScreen() {
                   onPress={() => setSightingFor(r)}
                   style={styles.sightingBtn}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>I've seen this pet</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t("lostFound.seenThis")}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -166,10 +168,10 @@ export default function LostFoundScreen() {
               <View style={{ alignItems: "center", padding: 20 }}>
                 <Text style={{ fontSize: 40 }}>🐕</Text>
                 <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown, marginTop: 12 }}>
-                  {currentPet?.name || "Your pet"} is safe
+                  {t("lostFound.petIsSafe", { name: currentPet?.name || t("lostFound.yourPet") })}
                 </Text>
                 <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 4, textAlign: "center" }}>
-                  If they ever go missing, mark them lost to alert nearby users and followers.
+                  {t("lostFound.ifMissingHint")}
                 </Text>
                 <TouchableOpacity
                   testID="mark-lost-open"
@@ -178,7 +180,7 @@ export default function LostFoundScreen() {
                   style={[styles.markLostBtn, !currentPet?.id && { opacity: 0.5 }]}
                 >
                   <AlertTriangle size={18} color="#FFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Mark as lost</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("lostFound.markAsLost")}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -202,6 +204,7 @@ export default function LostFoundScreen() {
 }
 
 function MyActiveReport({ report, onResolve, resolving }) {
+  const { t } = useTranslation();
   const { data } = useLostReport(report.id);
   const sightings = data?.sightings || [];
   return (
@@ -209,14 +212,14 @@ function MyActiveReport({ report, onResolve, resolving }) {
       <View style={[styles.alertCard, { borderColor: C.red }]}>
         <View style={styles.lostBadge}>
           <AlertTriangle size={13} color="#FFF" />
-          <Text style={{ fontSize: 11, fontWeight: "800", color: "#FFF" }}>LOST MODE ON</Text>
+          <Text style={{ fontSize: 11, fontWeight: "800", color: "#FFF" }}>{t("lostFound.lostModeOn")}</Text>
         </View>
         <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginTop: 8 }}>
           {report.pet_name}
         </Text>
         {report.last_seen_area ? (
           <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 4 }}>
-            Last seen: {report.last_seen_area}
+            {t("lostFound.lastSeen", { area: report.last_seen_area })}
           </Text>
         ) : null}
         <TouchableOpacity testID="resolve-lost" onPress={onResolve} disabled={resolving} style={styles.resolveBtn}>
@@ -225,23 +228,23 @@ function MyActiveReport({ report, onResolve, resolving }) {
           ) : (
             <>
               <CheckCircle2 size={18} color="#FFF" />
-              <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>Found — resolve</Text>
+              <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>{t("lostFound.foundResolve")}</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionLabel}>SIGHTINGS ({sightings.length})</Text>
+      <Text style={styles.sectionLabel}>{t("lostFound.sightingsHeader", { count: sightings.length })}</Text>
       {sightings.length === 0 && (
-        <Text style={{ fontSize: 13, color: C.mutedBrown }}>No sightings reported yet.</Text>
+        <Text style={{ fontSize: 13, color: C.mutedBrown }}>{t("lostFound.noSightings")}</Text>
       )}
       {sightings.map((s) => (
         <View key={s.id} testID={`sighting-${s.id}`} style={styles.sightingRow}>
           <Bell size={16} color={C.coral} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, color: C.warmBrown }}>{s.note || "Spotted"}</Text>
+            <Text style={{ fontSize: 14, color: C.warmBrown }}>{s.note || t("lostFound.spotted")}</Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              by @{s.reporter_username || "someone"}
+              {t("lostFound.byUser", { user: s.reporter_username || t("lostFound.someone") })}
             </Text>
           </View>
         </View>
@@ -251,6 +254,7 @@ function MyActiveReport({ report, onResolve, resolving }) {
 }
 
 function SightingModal({ report, onClose, insets }) {
+  const { t } = useTranslation();
   const reportSighting = useReportSighting(report?.id);
   const [note, setNote] = useState("");
   const submit = () => {
@@ -262,7 +266,7 @@ function SightingModal({ report, onClose, insets }) {
       <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
         <View style={styles.header}>
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
-            Report a sighting
+            {t("lostFound.reportSightingTitle")}
           </Text>
           <TouchableOpacity testID="sighting-close" onPress={onClose}>
             <X size={20} color={C.warmBrown} />
@@ -270,13 +274,13 @@ function SightingModal({ report, onClose, insets }) {
         </View>
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14 }}>
-            Where and when did you see {report?.pet_name}? Any detail helps the owner.
+            {t("lostFound.sightingHint", { name: report?.pet_name || "" })}
           </Text>
           <TextInput
             testID="sighting-note"
             value={note}
             onChangeText={setNote}
-            placeholder="Saw them near the dog park, heading north..."
+            placeholder={t("lostFound.notePlaceholder")}
             placeholderTextColor={C.mutedBrown + "90"}
             multiline
             style={styles.input}
@@ -292,7 +296,7 @@ function SightingModal({ report, onClose, insets }) {
             ) : (
               <>
                 <Send size={18} color="#FFF" />
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Send sighting</Text>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("lostFound.sendSighting")}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -303,6 +307,7 @@ function SightingModal({ report, onClose, insets }) {
 }
 
 function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
+  const { t } = useTranslation();
   const [coord, setCoord] = useState(null);
   const [area, setArea] = useState("");
   const [notes, setNotes] = useState("");
@@ -328,39 +333,39 @@ function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
       <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
         <View style={styles.header}>
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
-            Mark {pet?.name || "pet"} as lost
+            {t("lostFound.markTitle", { name: pet?.name || t("lostFound.pet") })}
           </Text>
           <TouchableOpacity testID="mark-close" onPress={onClose}>
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
-          <Text style={styles.label}>Last-seen location</Text>
+          <Text style={styles.label}>{t("lostFound.lastSeenLocation")}</Text>
           <WalkMapPicker coord={coord} onPick={setCoord} testID="lost-map-picker" />
           <TextInput
             testID="lost-area"
             value={area}
             onChangeText={setArea}
-            placeholder="Area / cross streets"
+            placeholder={t("lostFound.areaPlaceholder")}
             placeholderTextColor={C.mutedBrown + "90"}
             style={[styles.input, { marginTop: 10 }]}
           />
-          <Text style={[styles.label, { marginTop: 16 }]}>Notes</Text>
+          <Text style={[styles.label, { marginTop: 16 }]}>{t("lostFound.notesLabel")}</Text>
           <TextInput
             testID="lost-notes"
             value={notes}
             onChangeText={setNotes}
-            placeholder="Collar color, temperament, anything that helps..."
+            placeholder={t("lostFound.notesPlaceholder")}
             placeholderTextColor={C.mutedBrown + "90"}
             multiline
             style={[styles.input, { minHeight: 70, textAlignVertical: "top" }]}
           />
-          <Text style={[styles.label, { marginTop: 16 }]}>Reward (optional)</Text>
+          <Text style={[styles.label, { marginTop: 16 }]}>{t("lostFound.rewardLabel")}</Text>
           <TextInput
             testID="lost-reward"
             value={reward}
             onChangeText={setReward}
-            placeholder="e.g. $100"
+            placeholder={t("lostFound.rewardPlaceholder")}
             placeholderTextColor={C.mutedBrown + "90"}
             style={styles.input}
           />
@@ -375,7 +380,7 @@ function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
             ) : (
               <>
                 <AlertTriangle size={18} color="#FFF" />
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Activate lost mode</Text>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("lostFound.activateLostMode")}</Text>
               </>
             )}
           </TouchableOpacity>

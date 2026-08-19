@@ -18,7 +18,7 @@ const mockRemoveSurfaceEvent = jest.fn();
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
-jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("@/utils/calendarIntegration", () => ({
   addTransportToCalendar: (...a) => mockAddTransportToCalendar(...a),
   removeSurfaceEventFromCalendar: (...a) => mockRemoveSurfaceEvent(...a),

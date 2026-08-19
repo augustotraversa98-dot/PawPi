@@ -98,15 +98,15 @@ export default function DaycareScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Daycare & Boarding 🏠
+            {t("daycare.headerTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Book a stay, get daily report cards
+            {t("daycare.headerSubtitle")}
           </Text>
         </View>
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("daycare.messages")}
           style={{
             width: 40,
             height: 40,
@@ -127,7 +127,7 @@ export default function DaycareScreen() {
         {/* Active stays — booked / checked-in, with vaccine status + report cards. */}
         {activeStays.length > 0 ? (
           <>
-            <SectionLabel>YOUR STAYS</SectionLabel>
+            <SectionLabel>{t("daycare.yourStays")}</SectionLabel>
             {activeStays.map((s) => (
               <StayCard key={s.id} stay={s} petName={currentPet?.name} />
             ))}
@@ -135,7 +135,7 @@ export default function DaycareScreen() {
         ) : null}
 
         <SectionLabel style={{ marginTop: activeStays.length ? SPACING.xxl : 0 }}>
-          DAYCARE NEAR YOU
+          {t("daycare.nearYou")}
         </SectionLabel>
 
         {hasProviders ? (
@@ -153,13 +153,13 @@ export default function DaycareScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load facilities"
-            body="Something went wrong. Pull down to try again."
+            title={t("daycare.couldNotLoadTitle")}
+            body={t("daycare.couldNotLoadBody")}
           />
         ) : !hasProviders ? (
           <EmptyState
-            title="No facilities available yet"
-            body="Check back soon — daycares are joining PawPi."
+            title={t("daycare.emptyTitle")}
+            body={t("daycare.emptyBody")}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -184,7 +184,7 @@ export default function DaycareScreen() {
 
         {pastStays.length > 0 ? (
           <>
-            <SectionLabel style={{ marginTop: SPACING.xxl }}>PAST STAYS</SectionLabel>
+            <SectionLabel style={{ marginTop: SPACING.xxl }}>{t("daycare.pastStays")}</SectionLabel>
             {pastStays.map((s) => (
               <StayCard key={s.id} stay={s} petName={currentPet?.name} />
             ))}
@@ -202,6 +202,7 @@ export default function DaycareScreen() {
 }
 
 function StayCard({ stay, petName }) {
+  const { t } = useTranslation();
   const status = stay.status;
   const vax = stay.vaccine_status;
   const cards = stay.report_cards ?? [];
@@ -219,7 +220,7 @@ function StayCard({ stay, petName }) {
         }}
       >
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-          {stay.provider_name || "Stay"}
+          {stay.provider_name || t("daycare.stay")}
         </Text>
         <StatusPill status={status} />
       </View>
@@ -259,7 +260,7 @@ function StayCard({ stay, petName }) {
               },
             ]}
           >
-            REPORT CARDS
+            {t("daycare.reportCards")}
           </Text>
           {cards.map((c) => (
             <ReportCard key={c.id} card={c} petName={petName} />
@@ -271,6 +272,7 @@ function StayCard({ stay, petName }) {
 }
 
 function ReportCard({ card, petName }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -287,17 +289,17 @@ function ReportCard({ card, petName }) {
       </Text>
       {card.mood ? (
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
-          Mood: {card.mood}
+          {t("daycare.mood")}: {card.mood}
         </Text>
       ) : null}
       {card.meals ? (
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
-          Meals: {card.meals}
+          {t("daycare.meals")}: {card.meals}
         </Text>
       ) : null}
       {card.activities ? (
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
-          Activities: {card.activities}
+          {t("daycare.activities")}: {card.activities}
         </Text>
       ) : null}
       {card.notes ? (
@@ -321,13 +323,14 @@ function ReportCard({ card, petName }) {
 }
 
 function VaccineStatus({ vax }) {
+  const { t } = useTranslation();
   if (!vax.required || vax.required.length === 0) return null;
   if (vax.passed) {
     return (
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: SPACING.sm }}>
         <CheckCircle2 size={16} color="#3FA34D" />
         <Text style={[TYPE.footnote, { color: "#3FA34D", fontWeight: "700" }]}>
-          Vaccinations up to date
+          {t("daycare.vaccinesUpToDate")}
         </Text>
       </View>
     );
@@ -337,7 +340,7 @@ function VaccineStatus({ vax }) {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <AlertTriangle size={16} color={COLORS.coral} />
         <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
-          Missing required vaccines
+          {t("daycare.missingVaccines")}
         </Text>
       </View>
       <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
@@ -348,11 +351,12 @@ function VaccineStatus({ vax }) {
 }
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
-    booked: { label: "Booked", color: COLORS.coral },
-    checked_in: { label: "Checked in", color: "#3FA34D" },
-    checked_out: { label: "Checked out", color: COLORS.mutedBrown },
-    cancelled: { label: "Cancelled", color: COLORS.mutedBrown },
+    booked: { label: t("daycare.statusBooked"), color: COLORS.coral },
+    checked_in: { label: t("daycare.statusCheckedIn"), color: "#3FA34D" },
+    checked_out: { label: t("daycare.statusCheckedOut"), color: COLORS.mutedBrown },
+    cancelled: { label: t("daycare.statusCancelled"), color: COLORS.mutedBrown },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (
@@ -372,6 +376,7 @@ function StatusPill({ status }) {
 }
 
 function ProviderCard({ provider, onOpen, onBook }) {
+  const { t } = useTranslation();
   return (
     <Card
       level="md"
@@ -437,7 +442,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
         }}
       >
         <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
-          Book a stay
+          {t("daycare.bookAStay")}
         </Text>
       </PressableScale>
     </Card>
@@ -447,6 +452,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
 // Book a stay: dates + feeding/med instructions. Calls useBookDaycareStay, which the
 // backend gates for capacity/overbook (the "fully booked" message surfaces here).
 function BookStayModal({ provider, petId, onClose }) {
+  const { t } = useTranslation();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [feeding, setFeeding] = useState("");
@@ -462,7 +468,7 @@ function BookStayModal({ provider, petId, onClose }) {
 
   const submit = async () => {
     if (!startDate || !endDate) {
-      Alert.alert("Pick dates", "Choose a start and end date for the stay.");
+      Alert.alert(t("daycare.pickDatesTitle"), t("daycare.pickDatesBody"));
       return;
     }
     try {
@@ -483,20 +489,20 @@ function BookStayModal({ provider, petId, onClose }) {
       // open MercadoPago. If it's a free / pay-in-person facility, checkoutUrl is null.
       if (res?.checkoutUrl) {
         Alert.alert(
-          "Stay booked — complete payment",
-          "Opening MercadoPago to pay for the stay. The facility confirms once your payment goes through.",
+          t("daycare.bookedPayTitle"),
+          t("daycare.bookedPayBody"),
         );
         Linking.openURL(res.checkoutUrl).catch(() => {});
       } else if (needsVax) {
         Alert.alert(
-          "Stay booked — vaccines needed",
-          `Missing: ${vax.missing.join(", ")}. The facility may ask you to share proof.`,
+          t("daycare.bookedVaxTitle"),
+          t("daycare.bookedVaxBody", { missing: vax.missing.join(", ") }),
         );
       } else {
-        Alert.alert("Stay booked", "Your stay is booked. You'll get daily report cards.");
+        Alert.alert(t("daycare.bookedTitle"), t("daycare.bookedBody"));
       }
     } catch (e) {
-      Alert.alert("Couldn't book", e.message || "Please try again.");
+      Alert.alert(t("daycare.couldNotBook"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -520,7 +526,7 @@ function BookStayModal({ provider, petId, onClose }) {
           }}
         >
           <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
-            Book a stay
+            {t("daycare.bookAStay")}
           </Text>
           <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
@@ -534,32 +540,32 @@ function BookStayModal({ provider, petId, onClose }) {
             </Text>
           ) : null}
 
-          <FieldLabel>Start date</FieldLabel>
-          <DateField value={startDate} onChange={setStartDate} placeholder="Select start" />
+          <FieldLabel>{t("daycare.startDate")}</FieldLabel>
+          <DateField value={startDate} onChange={setStartDate} placeholder={t("daycare.selectStart")} />
 
-          <FieldLabel style={{ marginTop: SPACING.lg }}>End date</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>{t("daycare.endDate")}</FieldLabel>
           <DateField
             value={endDate}
             onChange={setEndDate}
-            placeholder="Select end"
+            placeholder={t("daycare.selectEnd")}
             minimumDate={startDate ? new Date(startDate) : undefined}
           />
 
-          <FieldLabel style={{ marginTop: SPACING.lg }}>Feeding instructions</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>{t("daycare.feedingInstructions")}</FieldLabel>
           <TextInput
             value={feeding}
             onChangeText={setFeeding}
-            placeholder="e.g. Two cups, morning and evening"
+            placeholder={t("daycare.feedingPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={inputStyle}
           />
 
-          <FieldLabel style={{ marginTop: SPACING.lg }}>Medication instructions</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>{t("daycare.medInstructions")}</FieldLabel>
           <TextInput
             value={meds}
             onChangeText={setMeds}
-            placeholder="e.g. 1 tablet with breakfast"
+            placeholder={t("daycare.medPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={inputStyle}
@@ -578,7 +584,7 @@ function BookStayModal({ provider, petId, onClose }) {
             }}
           >
             <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-              {book.isPending ? "Booking…" : "Confirm stay"}
+              {book.isPending ? t("daycare.booking") : t("daycare.confirmStay")}
             </Text>
           </PressableScale>
         </KeyboardAwareScrollView>

@@ -130,7 +130,7 @@ export default function WalkerWalksScreen() {
       setActive({ sessionId, booking });
       startTracking(sessionId);
     } catch (e) {
-      Alert.alert("Couldn't start walk", e?.message || "Please try again.");
+      Alert.alert(t("walkerWalks.couldNotStart"), e?.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -190,12 +190,12 @@ export default function WalkerWalksScreen() {
         notes: walkData?.notes || null,
       });
       Alert.alert(
-        "Walk finished",
-        "The report was saved and added to the pet's health timeline.",
+        t("walkerWalks.finishedTitle"),
+        t("walkerWalks.finishedBody"),
       );
       refetch();
     } catch (e) {
-      Alert.alert("Couldn't finish walk", e?.message || "Please try again.");
+      Alert.alert(t("walkerWalks.couldNotFinish"), e?.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -259,10 +259,10 @@ export default function WalkerWalksScreen() {
           <Text
             style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}
           >
-            Walks 🐾
+            {t("walkerWalks.headerTitle")}
           </Text>
           <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
-            {provider ? provider.name : "Your assigned walks"}
+            {provider ? provider.name : t("walkerWalks.headerSubtitle")}
           </Text>
         </View>
         {/* Scan a credit-walk pickup QR (ticket B3) — starts the walk + spends a credit. */}
@@ -379,13 +379,13 @@ export default function WalkerWalksScreen() {
           </View>
         ) : !provider ? (
           <EmptyState
-            title="No walker workspace"
-            body="You're not active staff of a walking provider yet."
+            title={t("walkerWalks.noWorkspaceTitle")}
+            body={t("walkerWalks.noWorkspaceBody")}
           />
         ) : walkerBookings.length === 0 ? (
           <EmptyState
-            title="No walks booked"
-            body="Booked walks from owners will appear here to check in."
+            title={t("walkerWalks.noWalksTitle")}
+            body={t("walkerWalks.noWalksBody")}
           />
         ) : (
           walkerBookings.map((b) => (
@@ -406,11 +406,11 @@ export default function WalkerWalksScreen() {
         visible={!!active}
         onClose={handleCancel}
         walk={{
-          name: active?.booking?.title || "Walk",
+          name: active?.booking?.title || t("walkerWalks.walkLabel"),
           durationMinutes: 30,
           pace: "normal",
         }}
-        petName={active?.booking?.pet_name || "the dog"}
+        petName={active?.booking?.pet_name || t("walkerWalks.theDog")}
         onWalkComplete={handleComplete}
         topContent={
           <WalkerLiveMap
@@ -456,7 +456,7 @@ function BookingCard({ booking, onStart, busy, t }) {
             <Text
               style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}
             >
-              {booking.pet_name || "Dog"}
+              {booking.pet_name || t("walkerWalks.dog")}
             </Text>
             {/* "Uses a walk" badge (ticket B4) — a scheduled pay-with-credit walk. */}
             {booking.pay_with_credit ? (
@@ -501,7 +501,7 @@ function BookingCard({ booking, onStart, busy, t }) {
         >
           <Play size={16} color="#FFF" />
           <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFF" }}>
-            Start
+            {t("walkerWalks.start")}
           </Text>
         </TouchableOpacity>
       </View>

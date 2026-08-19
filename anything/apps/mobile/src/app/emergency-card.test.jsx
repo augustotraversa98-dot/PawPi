@@ -2,6 +2,7 @@
 // "Not recorded"), shows the LOST banner, persists the tag medical toggle + contact mode, and
 // creates / revokes vet links. All hooks + native modules mocked (no real QR/share/capture).
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { Alert } from "react-native";

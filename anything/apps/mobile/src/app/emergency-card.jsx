@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Share2, Trash2, ShieldAlert } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import QRCode from "react-native-qrcode-svg";
@@ -27,19 +28,20 @@ import {
   cardUrl,
 } from "@/hooks/useEmergencyCard";
 
-const CONTACT_MODES = [
-  { key: "relay", label: "Relay (private)" },
-  { key: "phone", label: "Phone" },
-  { key: "email", label: "Email" },
-  { key: "none", label: "None" },
+const contactModes = (t) => [
+  { key: "relay", label: t("emergencyCard.contactRelay") },
+  { key: "phone", label: t("emergencyCard.contactPhone") },
+  { key: "email", label: t("emergencyCard.contactEmail") },
+  { key: "none", label: t("emergencyCard.contactNone") },
 ];
-const EXPIRY = [
-  { key: 24, label: "24 hours" },
-  { key: 168, label: "7 days" },
-  { key: null, label: "No expiry" },
+const expiryOptions = (t) => [
+  { key: 24, label: t("emergencyCard.expiry24h") },
+  { key: 168, label: t("emergencyCard.expiry7d") },
+  { key: null, label: t("emergencyCard.expiryNone") },
 ];
 
 function Row({ label, value }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -52,7 +54,7 @@ function Row({ label, value }) {
     >
       <Text style={{ color: COLORS.mutedBrown, fontWeight: "600" }}>{label}</Text>
       <Text style={{ color: COLORS.warmBrown, fontWeight: "700", flexShrink: 1, textAlign: "right" }}>
-        {value == null || value === "" ? "Not recorded" : String(value)}
+        {value == null || value === "" ? t("emergencyCard.notRecorded") : String(value)}
       </Text>
     </View>
   );
@@ -83,6 +85,7 @@ function Chip({ selected, label, onPress, testID }) {
 export default function EmergencyCardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const { data: currentPet } = useCurrentPet();
   const petId = params.petId || (currentPet?.id != null ? String(currentPet.id) : "");
@@ -111,7 +114,7 @@ export default function EmergencyCardScreen() {
       if (available && uri) {
         await Sharing.shareAsync(uri, {
           mimeType: "image/png",
-          dialogTitle: `${pet?.name || "My pet"} — Emergency Card`,
+          dialogTitle: `${pet?.name || t("emergencyCard.myPet")} — ${t("emergencyCard.title")}`,
           UTI: "public.png",
         });
       }
@@ -131,7 +134,7 @@ export default function EmergencyCardScreen() {
   if (!petId) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.cream, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: COLORS.mutedBrown }}>No pet selected</Text>
+        <Text style={{ color: COLORS.mutedBrown }}>{t("emergencyCard.noPetSelected")}</Text>
       </View>
     );
   }
@@ -152,16 +155,16 @@ export default function EmergencyCardScreen() {
       >
         <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: "row", alignItems: "center", padding: 6 }}>
           <ChevronLeft size={22} color={COLORS.coral} />
-          <Text style={{ color: COLORS.coral, fontWeight: "700" }}>Back</Text>
+          <Text style={{ color: COLORS.coral, fontWeight: "700" }}>{t("common.back")}</Text>
         </TouchableOpacity>
         <Text style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: "800", color: COLORS.warmBrown, marginRight: 60 }}>
-          Emergency Card
+          {t("emergencyCard.title")}
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
         {isLoading ? (
-          <Text style={{ color: COLORS.mutedBrown, textAlign: "center", marginTop: 24 }}>Loading…</Text>
+          <Text style={{ color: COLORS.mutedBrown, textAlign: "center", marginTop: 24 }}>{t("common.loading")}</Text>
         ) : (
           <>
             {lost && (
@@ -171,7 +174,7 @@ export default function EmergencyCardScreen() {
               >
                 <ShieldAlert size={18} color="#fff" />
                 <Text style={{ color: "#fff", fontWeight: "700", flex: 1 }}>
-                  This pet is marked LOST{lost.reward ? ` · Reward: ${lost.reward}` : ""}
+                  {t("emergencyCard.lostBanner")}{lost.reward ? ` · ${t("emergencyCard.reward")}: ${lost.reward}` : ""}
                 </Text>
               </View>
             )}
@@ -185,25 +188,25 @@ export default function EmergencyCardScreen() {
               <View style={{ alignItems: "center" }}>
                 <PetAvatar uri={pet?.avatar_url || undefined} name={pet?.name} size={84} />
                 <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown, marginTop: 8 }}>
-                  {pet?.name || "My pet"}
+                  {pet?.name || t("emergencyCard.myPet")}
                 </Text>
-                <Text style={{ color: COLORS.coral, fontWeight: "700" }}>This dog has a home 💛</Text>
+                <Text style={{ color: COLORS.coral, fontWeight: "700" }}>{t("emergencyCard.hasHome")}</Text>
               </View>
               <View style={{ marginTop: 12 }}>
-                <Row label="Species" value={pet?.species} />
-                <Row label="Breed" value={pet?.breed} />
-                <Row label="Microchip" value={medical?.microchip_id} />
-                <Row label="Blood type" value={card?.blood_type} />
-                <Row label="Spay/neuter" value={medical?.spayed_neutered_status} />
-                <Row label="Allergies" value={allergies.map((a) => a.allergen).join(", ")} />
-                <Row label="Conditions" value={conditions.map((c) => c.condition).join(", ")} />
-                <Row label="Primary vet" value={medical?.primary_vet_name} />
-                <Row label="Vet phone" value={medical?.vet_phone} />
-                <Row label="Emergency contact" value={medical?.emergency_contact_name} />
-                <Row label="Emergency phone" value={medical?.emergency_contact_phone} />
+                <Row label={t("emergencyCard.species")} value={pet?.species} />
+                <Row label={t("emergencyCard.breed")} value={pet?.breed} />
+                <Row label={t("emergencyCard.microchip")} value={medical?.microchip_id} />
+                <Row label={t("emergencyCard.bloodType")} value={card?.blood_type} />
+                <Row label={t("emergencyCard.spayNeuter")} value={medical?.spayed_neutered_status} />
+                <Row label={t("emergencyCard.allergies")} value={allergies.map((a) => a.allergen).join(", ")} />
+                <Row label={t("emergencyCard.conditions")} value={conditions.map((c) => c.condition).join(", ")} />
+                <Row label={t("emergencyCard.primaryVet")} value={medical?.primary_vet_name} />
+                <Row label={t("emergencyCard.vetPhone")} value={medical?.vet_phone} />
+                <Row label={t("emergencyCard.emergencyContact")} value={medical?.emergency_contact_name} />
+                <Row label={t("emergencyCard.emergencyPhone")} value={medical?.emergency_contact_phone} />
               </View>
               <Text style={{ color: COLORS.mutedBrown, fontSize: 11, marginTop: 10, textAlign: "center" }}>
-                Organized for a real vet. PawPi does not diagnose.
+                {t("emergencyCard.footerHint")}
               </Text>
             </View>
 
@@ -214,14 +217,14 @@ export default function EmergencyCardScreen() {
               style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, backgroundColor: COLORS.coral, borderRadius: 14, paddingVertical: 12 }}
             >
               <Share2 size={18} color="#fff" />
-              <Text style={{ color: "#fff", fontWeight: "800" }}>Share card (image)</Text>
+              <Text style={{ color: "#fff", fontWeight: "800" }}>{t("emergencyCard.shareCardImage")}</Text>
             </TouchableOpacity>
 
             {/* Tag QR */}
             <View style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginTop: 18, borderWidth: 1, borderColor: COLORS.peach }}>
-              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>Printable tag QR</Text>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>{t("emergencyCard.tagQrTitle")}</Text>
               <Text style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 2 }}>
-                Print this on your dog’s tag. Anyone who finds them scans it — no app needed.
+                {t("emergencyCard.tagQrHint")}
               </Text>
               {card?.tag_token ? (
                 <View testID="tag-qr" style={{ alignItems: "center", marginTop: 12 }}>
@@ -234,7 +237,7 @@ export default function EmergencyCardScreen() {
 
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
                 <Text style={{ color: COLORS.warmBrown, fontWeight: "700", flex: 1 }}>
-                  Show medical info on the public tag
+                  {t("emergencyCard.showMedicalOnTag")}
                 </Text>
                 <Switch
                   testID="toggle-medical"
@@ -244,10 +247,10 @@ export default function EmergencyCardScreen() {
               </View>
 
               <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 14, marginBottom: 8 }}>
-                How can a finder reach you?
+                {t("emergencyCard.finderReach")}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {CONTACT_MODES.map((m) => (
+                {contactModes(t).map((m) => (
                   <Chip
                     key={m.key}
                     testID={`contact-${m.key}`}
@@ -262,7 +265,7 @@ export default function EmergencyCardScreen() {
                   testID="contact-value"
                   defaultValue={card?.contact_value || ""}
                   onEndEditing={(e) => update.mutate({ contact_value: e.nativeEvent.text })}
-                  placeholder={card?.contact_mode === "phone" ? "Phone number" : "Email address"}
+                  placeholder={card?.contact_mode === "phone" ? t("emergencyCard.phoneNumberPlaceholder") : t("emergencyCard.emailPlaceholder")}
                   placeholderTextColor={COLORS.mutedBrown}
                   style={{ marginTop: 10, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
                 />
@@ -271,20 +274,20 @@ export default function EmergencyCardScreen() {
 
             {/* Vet links */}
             <View style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginTop: 18, borderWidth: 1, borderColor: COLORS.peach }}>
-              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>Share with a vet</Text>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>{t("emergencyCard.shareWithVetTitle")}</Text>
               <Text style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 2 }}>
-                A private link to the full card. Set an expiry and revoke anytime.
+                {t("emergencyCard.shareWithVetHint")}
               </Text>
 
-              <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>Scope</Text>
+              <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>{t("emergencyCard.scope")}</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
-                <Chip testID="scope-full" label="Full" selected={linkScope === "full"} onPress={() => setLinkScope("full")} />
-                <Chip testID="scope-basic" label="Basic" selected={linkScope === "basic"} onPress={() => setLinkScope("basic")} />
+                <Chip testID="scope-full" label={t("emergencyCard.scopeFull")} selected={linkScope === "full"} onPress={() => setLinkScope("full")} />
+                <Chip testID="scope-basic" label={t("emergencyCard.scopeBasic")} selected={linkScope === "basic"} onPress={() => setLinkScope("basic")} />
               </View>
 
-              <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>Expires</Text>
+              <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>{t("emergencyCard.expires")}</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
-                {EXPIRY.map((e) => (
+                {expiryOptions(t).map((e) => (
                   <Chip
                     key={String(e.key)}
                     testID={`ttl-${e.key}`}
@@ -301,12 +304,12 @@ export default function EmergencyCardScreen() {
                 activeOpacity={0.85}
                 style={{ marginTop: 14, backgroundColor: COLORS.sageDark, borderRadius: 14, paddingVertical: 12, alignItems: "center" }}
               >
-                <Text style={{ color: "#fff", fontWeight: "800" }}>Create vet link</Text>
+                <Text style={{ color: "#fff", fontWeight: "800" }}>{t("emergencyCard.createVetLink")}</Text>
               </TouchableOpacity>
 
               {links.length === 0 ? (
                 <Text testID="links-empty" style={{ color: COLORS.mutedBrown, marginTop: 12, fontSize: 13 }}>
-                  No active links.
+                  {t("emergencyCard.noActiveLinks")}
                 </Text>
               ) : (
                 links.map((l) => (
@@ -316,8 +319,8 @@ export default function EmergencyCardScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.warmBrown, fontWeight: "700" }}>
-                        {l.scope === "basic" ? "Basic" : "Full"} ·{" "}
-                        {l.expires_at ? "expires " + new Date(l.expires_at).toLocaleDateString() : "no expiry"}
+                        {l.scope === "basic" ? t("emergencyCard.scopeBasic") : t("emergencyCard.scopeFull")} ·{" "}
+                        {l.expires_at ? t("emergencyCard.expiresOn", { date: new Date(l.expires_at).toLocaleDateString() }) : t("emergencyCard.expiryNoneShort")}
                       </Text>
                       <TouchableOpacity testID={`share-link-${l.id}`} onPress={() => shareVetLink(l.token)}>
                         <Text style={{ color: COLORS.coral, fontSize: 12 }} numberOfLines={1}>
@@ -328,9 +331,9 @@ export default function EmergencyCardScreen() {
                     <TouchableOpacity
                       testID={`revoke-link-${l.id}`}
                       onPress={() =>
-                        Alert.alert("Revoke link?", "This link will stop working immediately.", [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Revoke", style: "destructive", onPress: () => revokeLink.mutate(l.id) },
+                        Alert.alert(t("emergencyCard.revokeTitle"), t("emergencyCard.revokeBody"), [
+                          { text: t("common.cancel"), style: "cancel" },
+                          { text: t("emergencyCard.revoke"), style: "destructive", onPress: () => revokeLink.mutate(l.id) },
                         ])
                       }
                     >

@@ -31,9 +31,7 @@ jest.mock("lucide-react-native", () =>
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (_k, fb) => fb }),
-}));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: (...a) => mockRequestPerm(...a),
   watchPositionAsync: (...a) => mockWatch(...a),

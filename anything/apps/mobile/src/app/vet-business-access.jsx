@@ -18,6 +18,7 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/legal";
 import * as DocumentPicker from "expo-document-picker";
@@ -44,16 +45,16 @@ import { toServiceRows, rowToServiceBody } from "@/utils/enrichmentDraft";
 // owner-facing service module (project rule: only feature live capabilities) — NOT
 // transport/pharmacy (those modules aren't built yet). telehealth was added by ticket 2.18.
 // Mirrors apps/web/src/app/api/utils/providerAuth.js ALLOWED_CAPABILITIES and the web labels.
-const CAPABILITIES = [
-  { value: "vet", label: "Veterinary clinic", icon: "🩺" },
-  { value: "telehealth", label: "Telehealth (video vet)", icon: "📹" },
-  { value: "groomer", label: "Groomer", icon: "✂️" },
-  { value: "walker", label: "Dog walker", icon: "🦮" },
-  { value: "daycare", label: "Daycare / boarding", icon: "🏠" },
-  { value: "sitter", label: "Pet sitter", icon: "🏡" },
-  { value: "trainer", label: "Trainer", icon: "🎓" },
-  { value: "shop", label: "Pet shop", icon: "🛍️" },
-  { value: "adoption", label: "Adoption / shelter", icon: "🐶" },
+const capabilities = (t) => [
+  { value: "vet", label: t("vetBusinessAccess.capVet"), icon: "🩺" },
+  { value: "telehealth", label: t("vetBusinessAccess.capTelehealth"), icon: "📹" },
+  { value: "groomer", label: t("vetBusinessAccess.capGroomer"), icon: "✂️" },
+  { value: "walker", label: t("vetBusinessAccess.capWalker"), icon: "🦮" },
+  { value: "daycare", label: t("vetBusinessAccess.capDaycare"), icon: "🏠" },
+  { value: "sitter", label: t("vetBusinessAccess.capSitter"), icon: "🏡" },
+  { value: "trainer", label: t("vetBusinessAccess.capTrainer"), icon: "🎓" },
+  { value: "shop", label: t("vetBusinessAccess.capShop"), icon: "🛍️" },
+  { value: "adoption", label: t("vetBusinessAccess.capAdoption"), icon: "🐶" },
 ];
 
 // Where to finish setup. Provider management/publishing is web-primary for now, so
@@ -128,13 +129,14 @@ export default function VetBusinessAccessScreen() {
 // checkbox + copy + "One more step" alert mirror welcome.jsx so both entry points match.
 // "Log in" stays ungated.
 function SignedOutGate({ signIn, signUp }) {
+  const { t } = useTranslation();
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleCreateAccount = () => {
     if (!agreedToTerms) {
       Alert.alert(
-        "One more step",
-        "Please agree to the Terms of Service and Privacy Policy to create an account.",
+        t("vetBusinessAccess.oneMoreStepTitle"),
+        t("vetBusinessAccess.oneMoreStepBody"),
       );
       return;
     }
@@ -144,8 +146,8 @@ function SignedOutGate({ signIn, signUp }) {
   return (
     <View>
       <Header
-        title="List your business on PawPi"
-        subtitle="Vets, walkers, daycares, shops, and groomers can create a business profile to reach pet owners. Log in or create an account to get started."
+        title={t("vetBusinessAccess.gateTitle")}
+        subtitle={t("vetBusinessAccess.gateSubtitle")}
       />
 
       {/* Terms acceptance gate (Guideline 1.2) — required, unchecked by default. */}
@@ -153,7 +155,7 @@ function SignedOutGate({ signIn, signUp }) {
         onPress={() => setAgreedToTerms((v) => !v)}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: agreedToTerms }}
-        accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+        accessibilityLabel={t("vetBusinessAccess.agreeAccessibility")}
         activeOpacity={0.8}
         style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 24 }}
       >
@@ -172,32 +174,32 @@ function SignedOutGate({ signIn, signUp }) {
           {agreedToTerms ? <Check size={16} color="#FFF" /> : null}
         </View>
         <Text style={{ flex: 1, fontSize: 13, color: COLORS.mutedBrown, lineHeight: 19 }}>
-          I agree to the{" "}
+          {t("vetBusinessAccess.agreePrefix")}{" "}
           <Text
             style={{ fontWeight: "800", color: COLORS.coral }}
             onPress={
               TERMS_OF_SERVICE_URL ? () => Linking.openURL(TERMS_OF_SERVICE_URL) : undefined
             }
           >
-            Terms of Service
+            {t("vetBusinessAccess.termsOfService")}
           </Text>{" "}
-          and{" "}
+          {t("vetBusinessAccess.and")}{" "}
           <Text
             style={{ fontWeight: "800", color: COLORS.coral }}
             onPress={
               PRIVACY_POLICY_URL ? () => Linking.openURL(PRIVACY_POLICY_URL) : undefined
             }
           >
-            Privacy Policy
+            {t("vetBusinessAccess.privacyPolicy")}
           </Text>
-          , including PawPi's zero-tolerance policy for objectionable content and abusive behavior.
+          {t("vetBusinessAccess.zeroToleranceSuffix")}
         </Text>
       </TouchableOpacity>
 
       {/* Create account — gated on the Terms box (mirrors welcome.jsx). */}
       <TouchableOpacity
         onPress={handleCreateAccount}
-        accessibilityLabel="Create account"
+        accessibilityLabel={t("vetBusinessAccess.createAccount")}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -215,12 +217,12 @@ function SignedOutGate({ signIn, signUp }) {
         }}
       >
         <Text style={{ fontSize: 17, fontWeight: "800", color: "#FFF" }}>
-          Create account
+          {t("vetBusinessAccess.createAccount")}
         </Text>
       </TouchableOpacity>
 
       <View style={{ height: 16 }} />
-      <SecondaryButton label="Log in" onPress={signIn} />
+      <SecondaryButton label={t("vetBusinessAccess.logIn")} onPress={signIn} />
     </View>
   );
 }
@@ -232,6 +234,8 @@ function SignedOutGate({ signIn, signUp }) {
 // Degrades fully: with no enrichment keys, "Build my profile" returns an empty draft and onboarding
 // is exactly the manual flow.
 function ProviderOnboarding() {
+  const { t } = useTranslation();
+  const CAPABILITIES = capabilities(t);
   const { data: myProviders = [], isLoading } = useMyProviders();
   const createProvider = useCreateProvider();
   const createLocation = useCreateProviderLocation();
@@ -287,12 +291,12 @@ function ProviderOnboarding() {
       if (!asset) return;
       const up = await upload({ reactNativeAsset: asset });
       if (up?.error || !up?.url) {
-        setErrorMessage(up?.error || "Couldn't upload that document.");
+        setErrorMessage(up?.error || t("vetBusinessAccess.uploadFailed"));
         return;
       }
       setDoc({ url: up.url, filename: asset.name, mimeType: asset.mimeType });
     } catch (err) {
-      setErrorMessage(err?.message || "Couldn't pick that document.");
+      setErrorMessage(err?.message || t("vetBusinessAccess.pickFailed"));
     }
   };
 
@@ -300,11 +304,11 @@ function ProviderOnboarding() {
     setErrorMessage(null);
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setErrorMessage("Please enter your business name.");
+      setErrorMessage(t("vetBusinessAccess.pleaseEnterName"));
       return;
     }
     if (selectedCapabilities.length === 0) {
-      setErrorMessage("Please choose at least one service.");
+      setErrorMessage(t("vetBusinessAccess.pleaseChooseService"));
       return;
     }
     setBuilding(true);
@@ -378,7 +382,7 @@ function ProviderOnboarding() {
         setCreatedProvider(provider);
       }
     } catch (err) {
-      setErrorMessage(err?.message || "Something went wrong. Please try again.");
+      setErrorMessage(err?.message || t("common.somethingWrong"));
     } finally {
       setBuilding(false);
     }
@@ -440,8 +444,8 @@ function ProviderOnboarding() {
     return (
       <SuccessState
         providerName={createdProvider.name}
-        heading="Your business is created!"
-        body={`"${createdProvider.name}" is set up as a draft. Finish setup — publish, add your services, and invite staff — from the PawPi web dashboard.`}
+        heading={t("vetBusinessAccess.createdHeading")}
+        body={t("vetBusinessAccess.createdBody", { name: createdProvider.name })}
       />
     );
   }
@@ -467,11 +471,11 @@ function ProviderOnboarding() {
     return (
       <SuccessState
         providerName={primary?.name}
-        heading="You're all set up"
+        heading={t("vetBusinessAccess.allSetHeading")}
         body={
           myProviders.length === 1
-            ? `You already manage "${primary?.name}" on PawPi. Manage bookings, services, and staff from the web dashboard.`
-            : `You manage ${myProviders.length} businesses on PawPi. Head to the web dashboard to manage bookings, services, and staff.`
+            ? t("vetBusinessAccess.allSetSingle", { name: primary?.name })
+            : t("vetBusinessAccess.allSetMultiple", { count: myProviders.length })
         }
       />
     );
@@ -481,23 +485,23 @@ function ProviderOnboarding() {
   return (
     <View>
       <Header
-        title="Create your business"
-        subtitle="Set up your business profile to reach pet owners and manage bookings. You can edit everything and publish later on the web dashboard."
+        title={t("vetBusinessAccess.createTitle")}
+        subtitle={t("vetBusinessAccess.createSubtitle")}
       />
 
       {/* Business name */}
-      <FieldLabel label="Business name" required />
+      <FieldLabel label={t("vetBusinessAccess.businessName")} required />
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="Happy Paws Veterinary"
+        placeholder={t("vetBusinessAccess.businessNamePlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         style={inputStyle}
       />
 
       {/* Services offered (multi-select) — a business can offer several at once */}
       <View style={{ height: 24 }} />
-      <FieldLabel label="Services you offer" required hint="Choose one or more" />
+      <FieldLabel label={t("vetBusinessAccess.servicesLabel")} required hint={t("vetBusinessAccess.servicesHint")} />
       <View style={{ gap: 12 }}>
         {CAPABILITIES.map((cap) => {
           const selected = selectedCapabilities.includes(cap.value);
@@ -543,7 +547,7 @@ function ProviderOnboarding() {
             color: COLORS.mutedBrown,
           }}
         >
-          Selected:{" "}
+          {t("vetBusinessAccess.selected")}:{" "}
           {selectedCapabilities
             .map((v) => CAPABILITIES.find((c) => c.value === v)?.label)
             .filter(Boolean)
@@ -553,11 +557,11 @@ function ProviderOnboarding() {
 
       {/* Bio (optional) */}
       <View style={{ height: 24 }} />
-      <FieldLabel label="Short bio" hint="Optional" />
+      <FieldLabel label={t("vetBusinessAccess.bioLabel")} hint={t("vetBusinessAccess.optional")} />
       <TextInput
         value={bio}
         onChangeText={setBio}
-        placeholder="Tell pet owners about your business…"
+        placeholder={t("vetBusinessAccess.bioPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         multiline
         style={[inputStyle, { minHeight: 96, textAlignVertical: "top" }]}
@@ -568,18 +572,18 @@ function ProviderOnboarding() {
       <View style={{ height: 24 }} />
       <LocationField
         testID="business-location"
-        label="Business location"
+        label={t("vetBusinessAccess.businessLocation")}
         value={location}
         onChange={setLocation}
       />
 
       {/* Public links (optional, ticket 2.20) — owners can add or edit these later. */}
       <View style={{ height: 24 }} />
-      <FieldLabel label="Links" hint="Optional" />
+      <FieldLabel label={t("vetBusinessAccess.linksLabel")} hint={t("vetBusinessAccess.optional")} />
       <TextInput
         value={websiteUrl}
         onChangeText={setWebsiteUrl}
-        placeholder="Website (https://…)"
+        placeholder={t("vetBusinessAccess.websitePlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         autoCapitalize="none"
         autoCorrect={false}
@@ -590,7 +594,7 @@ function ProviderOnboarding() {
       <TextInput
         value={instagramUrl}
         onChangeText={setInstagramUrl}
-        placeholder="Instagram URL"
+        placeholder={t("vetBusinessAccess.instagramPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         autoCapitalize="none"
         autoCorrect={false}
@@ -601,7 +605,7 @@ function ProviderOnboarding() {
       <TextInput
         value={facebookUrl}
         onChangeText={setFacebookUrl}
-        placeholder="Facebook URL"
+        placeholder={t("vetBusinessAccess.facebookPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         autoCapitalize="none"
         autoCorrect={false}
@@ -612,7 +616,7 @@ function ProviderOnboarding() {
       <TextInput
         value={googleMapsUrl}
         onChangeText={setGoogleMapsUrl}
-        placeholder="Google Maps URL"
+        placeholder={t("vetBusinessAccess.googleMapsPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         autoCapitalize="none"
         autoCorrect={false}
@@ -622,7 +626,7 @@ function ProviderOnboarding() {
 
       {/* Optional price-list / menu document (ticket 2.82) — we propose a catalog you review. */}
       <View style={{ height: 24 }} />
-      <FieldLabel label="Price list or menu" hint="Optional — PDF, Excel or CSV" />
+      <FieldLabel label={t("vetBusinessAccess.priceListLabel")} hint={t("vetBusinessAccess.priceListHint")} />
       <TouchableOpacity
         onPress={pickDocument}
         disabled={uploading}
@@ -648,11 +652,11 @@ function ProviderOnboarding() {
           numberOfLines={1}
           style={{ flex: 1, fontSize: 14, color: doc ? COLORS.warmBrown : COLORS.mutedBrown }}
         >
-          {doc ? doc.filename : "Upload a price list to pre-fill your services"}
+          {doc ? doc.filename : t("vetBusinessAccess.uploadPriceHint")}
         </Text>
         {doc && (
           <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.coral }}>
-            Change
+            {t("vetBusinessAccess.change")}
           </Text>
         )}
       </TouchableOpacity>
@@ -672,7 +676,7 @@ function ProviderOnboarding() {
 
       <View style={{ height: 28 }} />
       <PrimaryButton
-        label={building ? "Building your profile…" : "Build my profile"}
+        label={building ? t("vetBusinessAccess.buildingProfile") : t("vetBusinessAccess.buildMyProfile")}
         onPress={handleBuildProfile}
         loading={building}
         icon={<Sparkles size={18} color="#FFF" />}
@@ -686,8 +690,7 @@ function ProviderOnboarding() {
           lineHeight: 19,
         }}
       >
-        We’ll pre-fill what we can from your links and document — you review and edit before anything
-        goes live.
+        {t("vetBusinessAccess.buildHint")}
       </Text>
     </View>
   );
@@ -695,19 +698,20 @@ function ProviderOnboarding() {
 
 // The confirm-first review screen (ticket 2.83): the proposed profile, fully editable, before save.
 function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
+  const { t } = useTranslation();
   const { description, serviceRows, photos } = review;
   return (
     <View>
       <Header
-        title="Review your profile"
-        subtitle="We pre-filled this from your links and document. Edit anything, then save — nothing is published until you do."
+        title={t("vetBusinessAccess.reviewTitle")}
+        subtitle={t("vetBusinessAccess.reviewSubtitle")}
       />
 
-      <FieldLabel label="About your business" hint="Optional" />
+      <FieldLabel label={t("vetBusinessAccess.aboutBusiness")} hint={t("vetBusinessAccess.optional")} />
       <TextInput
         value={description}
         onChangeText={setDescription}
-        placeholder="Tell pet owners about your business…"
+        placeholder={t("vetBusinessAccess.bioPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         multiline
         style={[inputStyle, { minHeight: 96, textAlignVertical: "top" }]}
@@ -716,7 +720,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
       {serviceRows.length > 0 && (
         <>
           <View style={{ height: 24 }} />
-          <FieldLabel label="Proposed services" hint="Toggle off any you don't want" />
+          <FieldLabel label={t("vetBusinessAccess.proposedServices")} hint={t("vetBusinessAccess.toggleOffHint")} />
           <View style={{ gap: 12 }}>
             {serviceRows.map((row) => (
               <View
@@ -750,7 +754,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
                   <TextInput
                     value={row.name}
                     onChangeText={(t) => setRow(row.key, { name: t })}
-                    placeholder="Service name"
+                    placeholder={t("vetBusinessAccess.serviceNamePlaceholder")}
                     placeholderTextColor={COLORS.mutedBrown}
                     style={[inputStyle, { flex: 1, paddingVertical: 10 }]}
                   />
@@ -759,7 +763,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
                   <TextInput
                     value={row.price}
                     onChangeText={(t) => setRow(row.key, { price: t })}
-                    placeholder="Price"
+                    placeholder={t("vetBusinessAccess.pricePlaceholder")}
                     placeholderTextColor={COLORS.mutedBrown}
                     keyboardType="decimal-pad"
                     style={[inputStyle, { flex: 1, paddingVertical: 10 }]}
@@ -767,7 +771,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
                   <TextInput
                     value={row.duration}
                     onChangeText={(t) => setRow(row.key, { duration: t })}
-                    placeholder="Mins"
+                    placeholder={t("vetBusinessAccess.minsPlaceholder")}
                     placeholderTextColor={COLORS.mutedBrown}
                     keyboardType="number-pad"
                     style={[inputStyle, { width: 96, paddingVertical: 10 }]}
@@ -781,14 +785,13 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
 
       {photos?.length > 0 && (
         <Text style={{ marginTop: 16, fontSize: 13, color: COLORS.mutedBrown }}>
-          {photos.length} candidate photo{photos.length === 1 ? "" : "s"} found — add them later from
-          the web dashboard.
+          {t("vetBusinessAccess.candidatePhotos", { count: photos.length })}
         </Text>
       )}
 
       <View style={{ height: 28 }} />
       <PrimaryButton
-        label={saving ? "Saving…" : "Save & finish"}
+        label={saving ? t("vetBusinessAccess.saving") : t("vetBusinessAccess.saveAndFinish")}
         onPress={onSave}
         loading={saving}
         icon={<Check size={18} color="#FFF" />}
@@ -799,6 +802,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
 
 // Shared success / already-onboarded panel with the web dashboard hand-off.
 function SuccessState({ heading, body, providerName }) {
+  const { t } = useTranslation();
   return (
     <View>
       <View
@@ -854,7 +858,7 @@ function SuccessState({ heading, body, providerName }) {
         }}
       >
         <Text style={{ fontSize: 17, fontWeight: "800", color: "#FFF" }}>
-          Open web dashboard
+          {t("vetBusinessAccess.openWebDashboard")}
         </Text>
         <ExternalLink size={18} color="#FFF" />
       </TouchableOpacity>

@@ -11,6 +11,7 @@ import { Alert } from "react-native";
 const mockSignIn = jest.fn();
 const mockSignUp = jest.fn();
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("@/utils/auth/useAuth", () => ({
   useAuth: () => ({
     isReady: true,
