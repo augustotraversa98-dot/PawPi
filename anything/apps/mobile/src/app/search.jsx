@@ -22,6 +22,7 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
+import { PawMark } from "@/components/ui";
 import { useDiscover } from "@/hooks/useDiscover";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 
@@ -182,10 +183,14 @@ function Loading() {
   );
 }
 
-function EmptyState({ emoji = "🔍", title, subtitle }) {
+function EmptyState({ emoji = "🔍", mark = false, title, subtitle }) {
   return (
     <View style={{ alignItems: "center", paddingVertical: 50 }}>
-      <Text style={{ fontSize: 40 }}>{emoji}</Text>
+      {mark ? (
+        <PawMark size={40} color={COLORS.warmBrown} />
+      ) : (
+        <Text style={{ fontSize: 40 }}>{emoji}</Text>
+      )}
       <Text
         style={{
           fontSize: 15,
@@ -297,7 +302,7 @@ function Discover({ t, data, isLoading, onOpenPet }) {
   if (profiles.length === 0 && moments.length === 0) {
     return (
       <EmptyState
-        emoji="🐾"
+        mark
         title={t("search.nothingHere")}
         subtitle={t("search.nothingHereHint")}
       />

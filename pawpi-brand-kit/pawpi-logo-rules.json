@@ -1,0 +1,145 @@
+{
+  "asset": "PawPi paw mark",
+  "version": "1.0",
+  "files": {
+    "primary_brown": "logo/pawpi-paws-brown.svg",
+    "primary_coral": "logo/pawpi-paws-coral.svg",
+    "reversed_cream": "logo/pawpi-paws-cream.svg",
+    "tintable": "logo/pawpi-paws-currentcolor.svg",
+    "app_icon": "logo/pawpi-app-icon.svg",
+    "lockup_mark": "logo/pawpi-lockup-mark.svg"
+  },
+  "geometry": {
+    "viewBox": "0 0 190 180",
+    "aspect_ratio_w_h": 1.056,
+    "height_equals": "0.947 * width",
+    "unit_X": "0.25 * mark width"
+  },
+  "clear_space": {
+    "all_sides": "1X",
+    "against_page_edge_or_fold": "2X",
+    "rule": "no text, image, rule or container edge may enter the clear-space box"
+  },
+  "sizing": {
+    "min_width_screen_px": 20,
+    "min_width_print_mm": 8,
+    "recommended_steps_px": [
+      20,
+      24,
+      32,
+      48,
+      72,
+      120,
+      240
+    ],
+    "usage": {
+      "inline_with_text": 20,
+      "tab_bar_and_nav": 24,
+      "favicon": 32,
+      "badge_or_button": 48,
+      "card_header": 72,
+      "splash_and_empty_state": "34% of container width, min 120px",
+      "hero_and_print": ">=240"
+    },
+    "scaling": "scale proportionally only; never set width and height independently"
+  },
+  "color": {
+    "palette": {
+      "coral": "#FF6F61",
+      "warmBrown": "#3B241B",
+      "cream": "#FFF7EF",
+      "sand": "#F8EBDD",
+      "peach": "#FFD9B3",
+      "card": "#FFFCF8"
+    },
+    "allowed_pairings": [
+      {
+        "mark": "#3B241B",
+        "on": [
+          "#FFF7EF",
+          "#FFFCF8",
+          "#F8EBDD",
+          "#FFD9B3"
+        ],
+        "min_size_px": 20
+      },
+      {
+        "mark": "#FF6F61",
+        "on": [
+          "#FFF7EF",
+          "#FFFCF8",
+          "#F8EBDD"
+        ],
+        "min_size_px": 48,
+        "note": "display only — contrast is ~2.5:1, below the 3:1 floor for small sizes"
+      },
+      {
+        "mark": "#FFF7EF",
+        "on": [
+          "#FF6F61",
+          "#3B241B"
+        ],
+        "min_size_px": 20
+      }
+    ],
+    "single_fill_only": true,
+    "on_photography": "cream mark over a #3B241B scrim at 40% opacity",
+    "contrast_rule": "at 32px and below the mark must clear 3:1 against its background; above 48px the coral-on-light pairing is permitted as display treatment"
+  },
+  "lockup": {
+    "wordmark": "PawPi",
+    "typeface": "Nunito ExtraBold 800, letter-spacing -0.02em",
+    "gap_between_mark_and_wordmark": "0.35 * mark width",
+    "wordmark_cap_height": "0.55 * mark height",
+    "alignment": "wordmark optical center aligns to the vertical center of the mark's bounding box",
+    "stacked_variant": "mark above wordmark, gap 0.4 * mark width, both centered",
+    "build": "compose in the host environment: place the coral mark, then typeset 'PawPi' beside it in Nunito ExtraBold. No SVG ships with the wordmark baked in — outline the text yourself if you need a font-independent file."
+  },
+  "app_icon": {
+    "canvas": "512 square, corner radius 114 (22.3%)",
+    "background": "#FF6F61",
+    "mark": "#FFF7EF at 62% of canvas width, optically centered",
+    "export": [
+      1024,
+      512,
+      192,
+      180,
+      120,
+      60
+    ]
+  },
+  "small_size_behaviour": {
+    "below_32px": "solid single colour only, no lockup, no wordmark",
+    "below_20px": "do not use the mark; use the wordmark or a coral dot"
+  },
+  "never": [
+    "rotate, mirror, skew or re-angle either paw",
+    "change the distance or offset between the two paws",
+    "recolour the two paws differently from each other",
+    "add outline, stroke, drop shadow, gradient, glow or bevel",
+    "place the mark inside a shape that crops the clear-space box",
+    "redraw, retrace or substitute the system emoji for the mark",
+    "stretch, condense or set width and height independently",
+    "use the mark as a repeating pattern at under 48px"
+  ],
+  "typography": {
+    "family": "Nunito",
+    "weights": {
+      "regular": 400,
+      "semibold": 600,
+      "extrabold": 800
+    },
+    "wordmark": "Nunito ExtraBold 800, letter-spacing -0.02em",
+    "headings": "Nunito ExtraBold 800, letter-spacing -0.02em",
+    "body": "Nunito 400/600, line-height 1.55",
+    "mono_labels": "JetBrains Mono 400/500, 10-12px, letter-spacing 0.18em, uppercase",
+    "google_fonts": "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+  },
+  "radius": {
+    "chip": 8,
+    "card": 14,
+    "panel": 20,
+    "button": 999,
+    "app_icon": "22.3% of canvas"
+  }
+}

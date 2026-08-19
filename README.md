@@ -7,6 +7,10 @@ Monorepo-style layout (not a true monorepo — two independent apps):
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for a full inventory and [supabase/SCHEMA_NOTES.md](supabase/SCHEMA_NOTES.md) for the database.
 
+## Branding
+
+PawPi's visual identity (logo, colours, type, app icon) is governed by [pawpi-brand-kit/BRAND-GUIDELINES.md](pawpi-brand-kit/BRAND-GUIDELINES.md) — read it before any visual work. In the mobile app the paw mark is rendered via the `PawMark` component ([anything/apps/mobile/src/components/ui/PawMark.jsx](anything/apps/mobile/src/components/ui/PawMark.jsx)); never substitute the 🐾 emoji or redraw the mark.
+
 ## Documentation
 
 See [docs/README.md](docs/README.md) for the documentation index (observability runbook + planning history).

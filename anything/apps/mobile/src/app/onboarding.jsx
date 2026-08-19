@@ -37,7 +37,7 @@ import {
   MATERIALS,
   ELEVATION,
 } from "@/constants/theme";
-import { Card, PressableScale } from "@/components/ui";
+import { Card, PressableScale, PawMark } from "@/components/ui";
 
 const TOTAL_STEPS = 9;
 
@@ -973,9 +973,7 @@ const StepBreed = ({ formData, setFormData }) => {
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
-        🐾
-      </Text>
+      <PawMark size={44} color={COLORS.warmBrown} style={{ alignSelf: "center", marginBottom: SPACING.md }} />
       <Text
         style={[
           TYPE.largeTitle,
