@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { RefreshCw, Image as ImageIcon } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
@@ -31,6 +32,7 @@ async function toPersistentPhotoUri(uri) {
 export default function OnboardingPhotoPreviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const [photoUri, setPhotoUri] = useState(params.photoUri);
   const isPickingImage = useRef(false);
@@ -55,7 +57,10 @@ export default function OnboardingPhotoPreviewScreen() {
       router.push("/onboarding");
     } catch (error) {
       console.error("[PhotoPreview] Error saving photo:", error);
-      Alert.alert("Error", "Could not save photo. Please try again.");
+      Alert.alert(
+        t("onboarding.previewSaveErrorTitle"),
+        t("onboarding.previewSaveErrorBody"),
+      );
     }
   };
 
@@ -82,8 +87,8 @@ export default function OnboardingPhotoPreviewScreen() {
 
         if (status !== "granted") {
           Alert.alert(
-            "Camera Permission Required",
-            "Please enable camera access to take photos.",
+            t("onboarding.previewCameraPermTitle"),
+            t("onboarding.previewCameraPermBody"),
           );
           return;
         }
@@ -109,7 +114,10 @@ export default function OnboardingPhotoPreviewScreen() {
     } catch (error) {
       isPickingImage.current = false;
       console.error("[PhotoPreview] Camera error:", error);
-      Alert.alert("Camera Error", "Could not open camera. Please try again.");
+      Alert.alert(
+        t("onboarding.photoCameraErrorTitle"),
+        t("onboarding.photoCameraErrorBody"),
+      );
     }
   };
 
@@ -136,8 +144,8 @@ export default function OnboardingPhotoPreviewScreen() {
 
         if (status !== "granted" && status !== "limited") {
           Alert.alert(
-            "Photo Library Permission Required",
-            "Please enable photo library access to choose photos.",
+            t("onboarding.previewLibraryPermTitle"),
+            t("onboarding.previewLibraryPermBody"),
           );
           return;
         }
@@ -163,7 +171,10 @@ export default function OnboardingPhotoPreviewScreen() {
     } catch (error) {
       isPickingImage.current = false;
       console.error("[PhotoPreview] Gallery error:", error);
-      Alert.alert("Gallery Error", "Could not open gallery. Please try again.");
+      Alert.alert(
+        t("onboarding.photoGalleryErrorTitle"),
+        t("onboarding.photoGalleryErrorBody"),
+      );
     }
   };
 
@@ -197,7 +208,7 @@ export default function OnboardingPhotoPreviewScreen() {
             },
           ]}
         >
-          Cute! Use this photo?
+          {t("onboarding.previewTitle")}
         </Text>
 
         <Text
@@ -210,7 +221,7 @@ export default function OnboardingPhotoPreviewScreen() {
             },
           ]}
         >
-          Choose how you'd like to use it
+          {t("onboarding.previewSubtitle")}
         </Text>
 
         {/* Photo */}
@@ -263,7 +274,7 @@ export default function OnboardingPhotoPreviewScreen() {
               },
             ]}
           >
-            Post as daily + use as profile photo
+            {t("onboarding.previewPostDaily")}
           </Text>
           <Text
             style={[
@@ -274,7 +285,7 @@ export default function OnboardingPhotoPreviewScreen() {
               },
             ]}
           >
-            Share this moment with friends
+            {t("onboarding.previewPostDailyHint")}
           </Text>
         </PressableScale>
 
@@ -300,7 +311,7 @@ export default function OnboardingPhotoPreviewScreen() {
               },
             ]}
           >
-            Only use as profile photo
+            {t("onboarding.previewProfileOnly")}
           </Text>
           <Text
             style={[
@@ -310,7 +321,7 @@ export default function OnboardingPhotoPreviewScreen() {
               },
             ]}
           >
-            Don't post to feed
+            {t("onboarding.previewProfileOnlyHint")}
           </Text>
         </PressableScale>
 
@@ -345,7 +356,7 @@ export default function OnboardingPhotoPreviewScreen() {
                 },
               ]}
             >
-              Retake
+              {t("onboarding.previewRetake")}
             </Text>
           </PressableScale>
 
@@ -378,7 +389,7 @@ export default function OnboardingPhotoPreviewScreen() {
                 },
               ]}
             >
-              Choose
+              {t("onboarding.previewChoose")}
             </Text>
           </PressableScale>
         </View>
@@ -401,7 +412,7 @@ export default function OnboardingPhotoPreviewScreen() {
               },
             ]}
           >
-            Skip photo
+            {t("onboarding.previewSkipPhoto")}
           </Text>
         </PressableScale>
       </View>
@@ -418,7 +429,7 @@ export default function OnboardingPhotoPreviewScreen() {
           },
         ]}
       >
-        Don't worry, you can change this later.
+        {t("onboarding.photoChangeLater")}
       </Text>
     </View>
   );

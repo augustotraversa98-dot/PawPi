@@ -119,6 +119,34 @@ test("audit-added keys resolve in BOTH languages (no half-translated strings)", 
   }
 });
 
+test("onboarding.* has full key + placeholder parity across en/es (localized wizard)", () => {
+  const en = require("./locales/en.json").onboarding;
+  const es = require("./locales/es.json").onboarding;
+
+  // Flatten one level (onboarding is flat apart from the nested `validation`).
+  const flatten = (obj, prefix = "") =>
+    Object.entries(obj).flatMap(([k, v]) =>
+      v && typeof v === "object"
+        ? flatten(v, `${prefix}${k}.`)
+        : [[`${prefix}${k}`, v]],
+    );
+  const enFlat = Object.fromEntries(flatten(en));
+  const esFlat = Object.fromEntries(flatten(es));
+
+  // Same set of keys in both languages (no half-translated wizard).
+  expect(Object.keys(esFlat).sort()).toEqual(Object.keys(enFlat).sort());
+
+  // Every value is a non-empty string and shares the same {{vars}}.
+  const vars = (s) => (s.match(/{{\s*\w+\s*}}/g) || []).sort();
+  for (const [key, enVal] of Object.entries(enFlat)) {
+    expect(typeof enVal).toBe("string");
+    expect(enVal.length).toBeGreaterThan(0);
+    expect(typeof esFlat[key]).toBe("string");
+    expect(esFlat[key].length).toBeGreaterThan(0);
+    expect(vars(esFlat[key])).toEqual(vars(enVal));
+  }
+});
+
 test("deviceLanguage maps a Spanish phone to es, anything else to en", () => {
   mockGetLocales.mockReturnValueOnce([{ languageCode: "es" }]);
   expect(deviceLanguage()).toBe("es");

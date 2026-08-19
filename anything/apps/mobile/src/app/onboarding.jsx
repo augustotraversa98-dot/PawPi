@@ -427,7 +427,7 @@ export default function OnboardingScreen() {
       console.error("[Onboarding] Error message:", error.message);
       console.error("[Onboarding] Error stack:", error.stack);
       console.error("[Onboarding] ========================================");
-      alert(error.message || "Could not save profile. Please try again.");
+      alert(error.message || t("onboarding.saveProfileError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -601,7 +601,10 @@ export default function OnboardingScreen() {
             </PressableScale>
 
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
-              Step {currentStep + 1} of {TOTAL_STEPS}
+              {t("onboarding.stepOf", {
+                current: currentStep + 1,
+                total: TOTAL_STEPS,
+              })}
             </Text>
           </View>
 
@@ -673,7 +676,9 @@ export default function OnboardingScreen() {
               ) : (
                 <>
                   <Text style={[TYPE.headline, { color: "#FFF" }]}>
-                    Create {formData.name || "your dog"}'s profile
+                    {t("onboarding.createProfile", {
+                      name: formData.name || t("onboarding.yourDog"),
+                    })}
                   </Text>
                   <Check size={22} color="#FFF" />
                 </>
@@ -723,7 +728,7 @@ export default function OnboardingScreen() {
                     { color: canGoNext() ? "#FFF" : COLORS.mutedBrown },
                   ]}
                 >
-                  Next
+                  {t("onboarding.next")}
                 </Text>
               </PressableScale>
 
@@ -745,7 +750,7 @@ export default function OnboardingScreen() {
                       },
                     ]}
                   >
-                    Skip
+                    {t("onboarding.skip")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -759,6 +764,7 @@ export default function OnboardingScreen() {
 
 // Step 1: Dog Name (Required)
 const StepName = ({ formData, setFormData }) => {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
 
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
@@ -780,7 +786,7 @@ const StepName = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        What's your dog's name?
+        {t("onboarding.nameTitle")}
       </Text>
       <Text
         style={[
@@ -793,7 +799,7 @@ const StepName = ({ formData, setFormData }) => {
           },
         ]}
       >
-        Let's set up the basics — name, breed, age, gender and weight.
+        {t("onboarding.nameSubtitle")}
       </Text>
       <TextInput
         ref={inputRef}
@@ -810,7 +816,7 @@ const StepName = ({ formData, setFormData }) => {
             borderColor: formData.name ? COLORS.coral : MATERIALS.hairline,
           },
         ]}
-        placeholder="e.g. Buddy"
+        placeholder={t("onboarding.namePlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         value={formData.name}
         onChangeText={(text) =>
@@ -830,7 +836,8 @@ const StepHandle = ({
   handleError,
   checkHandleUniqueness,
 }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
@@ -843,7 +850,7 @@ const StepHandle = ({
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        Choose {dogName}'s pet handle
+        {t("onboarding.handleTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -856,7 +863,7 @@ const StepHandle = ({
           },
         ]}
       >
-        This is how other pets will find {dogName}
+        {t("onboarding.handleSubtitle", { name: dogName })}
       </Text>
 
       {/* Suggested handles — compact rows so all suggestions AND the
@@ -869,7 +876,7 @@ const StepHandle = ({
               { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.sm },
             ]}
           >
-            Suggested handles:
+            {t("onboarding.handleSuggested")}
           </Text>
           <View style={{ gap: SPACING.xs }}>
             {suggestedHandles.map((handle, index) => {
@@ -920,7 +927,7 @@ const StepHandle = ({
           { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.sm },
         ]}
       >
-        Or create your own:
+        {t("onboarding.handleCreateOwn")}
       </Text>
       <TextInput
         style={[
@@ -939,7 +946,7 @@ const StepHandle = ({
                 : MATERIALS.hairline,
           },
         ]}
-        placeholder="custom_handle"
+        placeholder={t("onboarding.handlePlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         value={formData.handle}
         onChangeText={(text) => {
@@ -960,7 +967,16 @@ const StepHandle = ({
 
 // Step 3: Breed (Optional)
 const StepBreed = ({ formData, setFormData }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
+
+  // Canonical breed values persist to the backend in English (comparisons rely on
+  // them); only the button label is localized.
+  const quickBreeds = [
+    { value: "Mixed Breed", label: t("onboarding.breedMixed") },
+    { value: "I'm not sure", label: t("onboarding.breedNotSure") },
+  ];
+  const quickBreedValues = quickBreeds.map((b) => b.value);
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
@@ -973,7 +989,7 @@ const StepBreed = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        What breed is {dogName}?
+        {t("onboarding.breedTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -986,33 +1002,33 @@ const StepBreed = ({ formData, setFormData }) => {
           },
         ]}
       >
-        This helps us personalize care recommendations
+        {t("onboarding.breedSubtitle")}
       </Text>
 
       {/* Quick options */}
       <View style={{ gap: SPACING.sm, marginBottom: SPACING.xl }}>
-        {["Mixed Breed", "I'm not sure"].map((option) => (
+        {quickBreeds.map(({ value, label }) => (
           <PressableScale
-            key={option}
-            onPress={() => setFormData((prev) => ({ ...prev, breed: option }))}
+            key={value}
+            onPress={() => setFormData((prev) => ({ ...prev, breed: value }))}
             style={{
               backgroundColor:
-                formData.breed === option ? COLORS.coral : MATERIALS.surfaceSunken,
+                formData.breed === value ? COLORS.coral : MATERIALS.surfaceSunken,
               paddingVertical: 14,
               paddingHorizontal: SPACING.lg,
               borderRadius: RADIUS.control,
               borderWidth: 2,
               borderColor:
-                formData.breed === option ? COLORS.coral : MATERIALS.hairline,
+                formData.breed === value ? COLORS.coral : MATERIALS.hairline,
             }}
           >
             <Text
               style={[
                 TYPE.headline,
-                { color: formData.breed === option ? "#FFF" : COLORS.warmBrown },
+                { color: formData.breed === value ? "#FFF" : COLORS.warmBrown },
               ]}
             >
-              {option}
+              {label}
             </Text>
           </PressableScale>
         ))}
@@ -1031,19 +1047,14 @@ const StepBreed = ({ formData, setFormData }) => {
             color: COLORS.warmBrown,
             borderWidth: 2,
             borderColor:
-              formData.breed &&
-              !["Mixed Breed", "I'm not sure"].includes(formData.breed)
+              formData.breed && !quickBreedValues.includes(formData.breed)
                 ? COLORS.coral
                 : MATERIALS.hairline,
           },
         ]}
-        placeholder="e.g. Golden Retriever"
+        placeholder={t("onboarding.breedPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
-        value={
-          ["Mixed Breed", "I'm not sure"].includes(formData.breed)
-            ? ""
-            : formData.breed
-        }
+        value={quickBreedValues.includes(formData.breed) ? "" : formData.breed}
         onChangeText={(text) =>
           setFormData((prev) => ({ ...prev, breed: text }))
         }
@@ -1056,7 +1067,7 @@ const StepBreed = ({ formData, setFormData }) => {
 // Step 4: Age (Required — approximate years OR months OR a birthday).
 const StepAge = ({ formData, setFormData }) => {
   const { t } = useTranslation();
-  const dogName = formData.name || "your dog";
+  const dogName = formData.name || t("onboarding.yourDog");
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
@@ -1069,7 +1080,7 @@ const StepAge = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        How old is {dogName}?
+        {t("onboarding.ageTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1082,7 +1093,7 @@ const StepAge = ({ formData, setFormData }) => {
           },
         ]}
       >
-        Age helps us suggest the right activities and health checks
+        {t("onboarding.ageSubtitle")}
       </Text>
 
       <View style={{ gap: SPACING.lg }}>
@@ -1093,7 +1104,7 @@ const StepAge = ({ formData, setFormData }) => {
               { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
             ]}
           >
-            Years
+            {t("onboarding.ageYearsLabel")}
           </Text>
           <TextInput
             style={[
@@ -1129,7 +1140,7 @@ const StepAge = ({ formData, setFormData }) => {
               { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
             ]}
           >
-            Months
+            {t("onboarding.ageMonthsLabel")}
           </Text>
           <TextInput
             style={[
@@ -1174,13 +1185,14 @@ const StepAge = ({ formData, setFormData }) => {
 
 // Step 5: Gender (Optional)
 const StepGender = ({ formData, setFormData }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
 
   // Gender must be a real value — the "Set up your dog's profile" checklist
   // excludes "unknown", so onboarding offers only male/female.
   const genderOptions = [
-    { value: "female", label: "Female", emoji: "♀️" },
-    { value: "male", label: "Male", emoji: "♂️" },
+    { value: "female", label: t("onboarding.genderFemale"), emoji: "♀️" },
+    { value: "male", label: t("onboarding.genderMale"), emoji: "♂️" },
   ];
 
   return (
@@ -1194,7 +1206,7 @@ const StepGender = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        What's {dogName}'s gender?
+        {t("onboarding.genderTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1207,7 +1219,7 @@ const StepGender = ({ formData, setFormData }) => {
           },
         ]}
       >
-        Select one option below
+        {t("onboarding.genderSubtitle")}
       </Text>
 
       <View style={{ gap: SPACING.md }}>
@@ -1260,7 +1272,8 @@ const StepGender = ({ formData, setFormData }) => {
 
 // Step 6: Weight (Optional)
 const StepWeight = ({ formData, setFormData }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
   const inputRef = useRef(null);
 
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
@@ -1276,7 +1289,7 @@ const StepWeight = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        How much does {dogName} weigh?
+        {t("onboarding.weightTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1289,7 +1302,7 @@ const StepWeight = ({ formData, setFormData }) => {
           },
         ]}
       >
-        This helps track their health over time
+        {t("onboarding.weightSubtitle")}
       </Text>
 
       <TextInput
@@ -1364,7 +1377,8 @@ const StepWeight = ({ formData, setFormData }) => {
 // E6: we capture BOTH dates inline (not one-or-the-other) so E3 milestone moments can celebrate a
 // birthday AND a gotcha day later. Both are optional — nothing is required to finish onboarding.
 const StepBirthday = ({ formData, setFormData }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
 
   // Only one inline calendar may be open at a time — opening Gotcha collapses
   // Birthday and vice-versa, so the two pickers never overlap/sprawl.
@@ -1389,7 +1403,7 @@ const StepBirthday = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        When are {dogName}'s special days?
+        {t("onboarding.birthdayTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1402,7 +1416,7 @@ const StepBirthday = ({ formData, setFormData }) => {
           },
         ]}
       >
-        We'll help you celebrate — add either or both, or skip for now.
+        {t("onboarding.birthdaySubtitle")}
       </Text>
 
       <View style={{ gap: SPACING.lg }}>
@@ -1413,11 +1427,11 @@ const StepBirthday = ({ formData, setFormData }) => {
               { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
             ]}
           >
-            🎂 Birthday (optional)
+            {t("onboarding.birthdayLabel")}
           </Text>
           <DateField
             value={formData.birthday}
-            placeholder="Add a birthday"
+            placeholder={t("onboarding.birthdayPlaceholder")}
             onChange={(birthday) => setFormData((prev) => ({ ...prev, birthday }))}
             maximumDate={new Date()}
             fieldStyle={dateFieldStyle(!!formData.birthday)}
@@ -1434,11 +1448,11 @@ const StepBirthday = ({ formData, setFormData }) => {
               { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
             ]}
           >
-            💝 Gotcha day (optional)
+            {t("onboarding.gotchaLabel")}
           </Text>
           <DateField
             value={formData.adoptionDate}
-            placeholder="Add an adoption / gotcha day"
+            placeholder={t("onboarding.gotchaPlaceholder")}
             onChange={(adoptionDate) => setFormData((prev) => ({ ...prev, adoptionDate }))}
             maximumDate={new Date()}
             fieldStyle={dateFieldStyle(!!formData.adoptionDate)}
@@ -1459,7 +1473,8 @@ const StepBirthday = ({ formData, setFormData }) => {
 
 // Step 8: Notes (Optional)
 const StepNotes = ({ formData, setFormData }) => {
-  const dogName = formData.name || "your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDog");
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
@@ -1472,7 +1487,7 @@ const StepNotes = ({ formData, setFormData }) => {
           { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
         ]}
       >
-        Anything important we should remember about {dogName}?
+        {t("onboarding.notesTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1485,8 +1500,7 @@ const StepNotes = ({ formData, setFormData }) => {
           },
         ]}
       >
-        This can include allergies, food preferences, medical conditions,
-        behavior notes, or anything useful
+        {t("onboarding.notesSubtitle")}
       </Text>
 
       <TextInput
@@ -1503,7 +1517,7 @@ const StepNotes = ({ formData, setFormData }) => {
             textAlignVertical: "top",
           },
         ]}
-        placeholder="e.g. Allergic to chicken, loves long walks, nervous around loud noises..."
+        placeholder={t("onboarding.notesPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         value={formData.notes}
         onChangeText={(text) =>
@@ -1517,7 +1531,24 @@ const StepNotes = ({ formData, setFormData }) => {
 
 // Step 9: Review
 const StepReview = ({ formData, goToStep }) => {
-  const dogName = formData.name || "Your dog";
+  const { t } = useTranslation();
+  const dogName = formData.name || t("onboarding.yourDogCap");
+
+  const ageValue =
+    formData.ageYears || formData.ageMonths
+      ? `${formData.ageYears || 0} ${t("onboarding.reviewYearsUnit")}${
+          formData.ageMonths
+            ? `, ${formData.ageMonths} ${t("onboarding.reviewMonthsUnit")}`
+            : ""
+        }`
+      : t("onboarding.reviewNotSpecified");
+
+  const genderValue =
+    formData.gender === "male"
+      ? t("onboarding.genderMale")
+      : formData.gender === "female"
+        ? t("onboarding.genderFemale")
+        : t("onboarding.reviewNotSpecified");
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.xl }}>
@@ -1535,7 +1566,7 @@ const StepReview = ({ formData, goToStep }) => {
           },
         ]}
       >
-        {dogName}'s profile
+        {t("onboarding.reviewTitle", { name: dogName })}
       </Text>
       <Text
         style={[
@@ -1549,7 +1580,7 @@ const StepReview = ({ formData, goToStep }) => {
           },
         ]}
       >
-        Review and edit before creating the profile
+        {t("onboarding.reviewSubtitle")}
       </Text>
 
       {/* Profile card */}
@@ -1587,65 +1618,56 @@ const StepReview = ({ formData, goToStep }) => {
 
         {/* Profile details */}
         <ReviewRow
-          label="Name"
+          label={t("onboarding.reviewName")}
           value={formData.name}
           onEdit={() => goToStep(0)}
         />
         <ReviewRow
-          label="Handle"
-          value={formData.handle ? `@${formData.handle}` : "Not set"}
+          label={t("onboarding.reviewHandle")}
+          value={
+            formData.handle ? `@${formData.handle}` : t("onboarding.reviewNotSet")
+          }
           onEdit={() => goToStep(1)}
         />
         <ReviewRow
-          label="Breed"
-          value={formData.breed || "Not specified"}
+          label={t("onboarding.reviewBreed")}
+          value={formData.breed || t("onboarding.reviewNotSpecified")}
           onEdit={() => goToStep(2)}
         />
         <ReviewRow
-          label="Age"
-          value={
-            formData.ageYears || formData.ageMonths
-              ? `${formData.ageYears || 0} years${
-                  formData.ageMonths ? `, ${formData.ageMonths} months` : ""
-                }`
-              : "Not specified"
-          }
+          label={t("onboarding.reviewAge")}
+          value={ageValue}
           onEdit={() => goToStep(3)}
         />
         <ReviewRow
-          label="Gender"
-          value={
-            formData.gender
-              ? formData.gender.charAt(0).toUpperCase() +
-                formData.gender.slice(1)
-              : "Not specified"
-          }
+          label={t("onboarding.reviewGender")}
+          value={genderValue}
           onEdit={() => goToStep(4)}
         />
         <ReviewRow
-          label="Weight"
+          label={t("onboarding.reviewWeight")}
           value={
             formData.weight
               ? `${formData.weight} ${formData.weightUnit}`
-              : "Not specified"
+              : t("onboarding.reviewNotSpecified")
           }
           onEdit={() => goToStep(5)}
         />
         <ReviewRow
-          label="Special days"
+          label={t("onboarding.reviewSpecialDays")}
           value={
             [
               formData.birthday ? `🎂 ${formatDisplayDate(formData.birthday)}` : null,
               formData.adoptionDate ? `💝 ${formatDisplayDate(formData.adoptionDate)}` : null,
             ]
               .filter(Boolean)
-              .join("   ") || "Not specified"
+              .join("   ") || t("onboarding.reviewNotSpecified")
           }
           onEdit={() => goToStep(6)}
         />
         <ReviewRow
-          label="Notes"
-          value={formData.notes || "None"}
+          label={t("onboarding.reviewNotes")}
+          value={formData.notes || t("onboarding.reviewNone")}
           onEdit={() => goToStep(7)}
           multiline
         />
@@ -1654,7 +1676,9 @@ const StepReview = ({ formData, goToStep }) => {
   );
 };
 
-const ReviewRow = ({ label, value, onEdit, multiline }) => (
+const ReviewRow = ({ label, value, onEdit, multiline }) => {
+  const { t } = useTranslation();
+  return (
   <View
     style={{
       borderBottomWidth: 1,
@@ -1684,7 +1708,7 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
       </Text>
       <TouchableOpacity onPress={onEdit}>
         <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
-          Edit
+          {t("onboarding.reviewEdit")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -1702,7 +1726,8 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
       {value}
     </Text>
   </View>
-);
+  );
+};
 
 // Success Screen — E6: the first session ends with the Care Ring STARTED. If the first moment was
 // posted, we show the day-1 streak + the labelled "PawPi Welcome" paw; otherwise a gentle nudge to
@@ -1710,7 +1735,7 @@ const ReviewRow = ({ label, value, onEdit, multiline }) => (
 const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const dogName = formData.name || "Your dog";
+  const dogName = formData.name || t("onboarding.yourDogCap");
   const started = !!welcome?.streak;
 
   return (
@@ -1739,7 +1764,7 @@ const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
             },
           ]}
         >
-          {dogName} is ready!
+          {t("onboarding.successReady", { name: dogName })}
         </Text>
 
         {started ? (
@@ -1796,8 +1821,7 @@ const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
             },
           ]}
         >
-          Now you can start tracking care, sharing moments, and meeting pet
-          friends.
+          {t("onboarding.successSubtitle")}
         </Text>
       </View>
 
@@ -1813,7 +1837,9 @@ const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
             ...ELEVATION.sm,
           }}
         >
-          <Text style={[TYPE.headline, { color: "#FFF" }]}>Set care routine</Text>
+          <Text style={[TYPE.headline, { color: "#FFF" }]}>
+            {t("onboarding.successSetRoutine")}
+          </Text>
         </PressableScale>
 
         <PressableScale
@@ -1827,7 +1853,9 @@ const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
             borderColor: MATERIALS.hairline,
           }}
         >
-          <Text style={[TYPE.headline, { color: COLORS.coral }]}>Go to Feed</Text>
+          <Text style={[TYPE.headline, { color: COLORS.coral }]}>
+            {t("onboarding.successGoToFeed")}
+          </Text>
         </PressableScale>
       </View>
     </View>
