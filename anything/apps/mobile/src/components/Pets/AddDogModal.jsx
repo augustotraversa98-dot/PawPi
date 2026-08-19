@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { X, Check, Camera } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useCreatePet, useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
@@ -37,6 +38,7 @@ const EMPTY = {
 // POST /api/pets (owner_user_id resolved server-side), makes the new dog active
 // via setCurrentPet, then closes. Does NOT touch auth/session or onboarding.
 export function AddDogModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const createPet = useCreatePet();
   const { setCurrentPet } = useCurrentPet();
@@ -66,8 +68,8 @@ export function AddDogModal({ visible, onClose }) {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(
-        "Camera access needed",
-        "Please allow camera access in settings.",
+        t("addDog.cameraPermTitle"),
+        t("addDog.cameraPermBody"),
       );
       return;
     }
@@ -83,7 +85,7 @@ export function AddDogModal({ visible, onClose }) {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Cancel", "📷  Take a photo", "🖼️  Choose from gallery"],
+          options: [t("common.cancel"), t("addDog.takePhotoIcon"), t("addDog.chooseFromGalleryIcon")],
           cancelButtonIndex: 0,
         },
         (idx) => {
@@ -92,17 +94,17 @@ export function AddDogModal({ visible, onClose }) {
         },
       );
     } else {
-      Alert.alert("Add a photo", "How would you like to add a photo?", [
-        { text: "Take a photo", onPress: takePhoto },
-        { text: "Choose from gallery", onPress: pickFromGallery },
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t("addDog.addPhotoTitle"), t("addDog.addPhotoBody"), [
+        { text: t("addDog.takePhoto"), onPress: takePhoto },
+        { text: t("addDog.chooseFromGallery"), onPress: pickFromGallery },
+        { text: t("common.cancel"), style: "cancel" },
       ]);
     }
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      Alert.alert("Name needed", "Please enter your dog's name.");
+      Alert.alert(t("addDog.nameNeededTitle"), t("addDog.nameNeededBody"));
       return;
     }
 
@@ -137,10 +139,10 @@ export function AddDogModal({ visible, onClose }) {
       const newPetId = result?.pet?.id;
       if (newPetId) setCurrentPet(newPetId);
 
-      Alert.alert("Saved", `${form.name.trim()} is ready to go!`);
+      Alert.alert(t("addDog.savedTitle"), t("addDog.savedBody", { name: form.name.trim() }));
       close();
     } catch (error) {
-      Alert.alert("Could not save", "Could not save. Please try again.");
+      Alert.alert(t("addDog.errorTitle"), t("addDog.errorBody"));
     } finally {
       setSubmitting(false);
     }
@@ -175,7 +177,7 @@ export function AddDogModal({ visible, onClose }) {
           <Text
             style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}
           >
-            Add a dog
+            {t("addDog.title")}
           </Text>
           <View style={{ width: 22 }} />
         </View>
@@ -229,23 +231,23 @@ export function AddDogModal({ visible, onClose }) {
               <Text
                 style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}
               >
-                {form.photo ? "Change photo" : "Add photo"}
+                {form.photo ? t("addDog.changePhoto") : t("addDog.addPhoto")}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Name */}
           <Field
-            label="Name"
+            label={t("addDog.fieldName")}
             required
             value={form.name}
-            onChangeText={(t) => setField("name", t)}
-            placeholder="e.g. Buddy"
+            onChangeText={(v) => setField("name", v)}
+            placeholder={t("addDog.namePlaceholder")}
           />
 
           {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
           <View style={{ marginBottom: 20 }}>
-            <Label>Breed</Label>
+            <Label>{t("addDog.fieldBreed")}</Label>
             <BreedPicker
               value={form.breed}
               onChange={(value) => setField("breed", value)}
@@ -253,9 +255,13 @@ export function AddDogModal({ visible, onClose }) {
           </View>
 
           {/* Gender */}
-          <Label>Gender</Label>
+          <Label>{t("addDog.fieldGender")}</Label>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-            {["male", "female", "unknown"].map((option) => {
+            {[
+              { key: "male", label: t("addDog.genderMale") },
+              { key: "female", label: t("addDog.genderFemale") },
+              { key: "unknown", label: t("addDog.genderUnknown") },
+            ].map(({ key: option, label }) => {
               const selected = form.gender === option;
               return (
                 <TouchableOpacity
@@ -278,7 +284,7 @@ export function AddDogModal({ visible, onClose }) {
                       color: selected ? "#FFF" : COLORS.warmBrown,
                     }}
                   >
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -286,7 +292,7 @@ export function AddDogModal({ visible, onClose }) {
           </View>
 
           {/* Weight */}
-          <Label>Weight</Label>
+          <Label>{t("addDog.fieldWeight")}</Label>
           <View
             style={{
               flexDirection: "row",
@@ -301,8 +307,8 @@ export function AddDogModal({ visible, onClose }) {
                 placeholder="0"
                 placeholderTextColor={COLORS.mutedBrown}
                 value={form.weight}
-                onChangeText={(t) =>
-                  setField("weight", t.replace(/[^0-9.]/g, ""))
+                onChangeText={(v) =>
+                  setField("weight", v.replace(/[^0-9.]/g, ""))
                 }
                 keyboardType="decimal-pad"
               />
@@ -340,7 +346,7 @@ export function AddDogModal({ visible, onClose }) {
 
           {/* Birthday */}
           <View style={{ marginBottom: 20 }}>
-            <Label>Birthday</Label>
+            <Label>{t("addDog.fieldBirthday")}</Label>
             <DateField
               value={form.birthday}
               onChange={(date) => setField("birthday", date)}
@@ -355,13 +361,13 @@ export function AddDogModal({ visible, onClose }) {
           </View>
 
           {/* Notes */}
-          <Label>Notes</Label>
+          <Label>{t("addDog.fieldNotes")}</Label>
           <TextInput
             style={[inputStyle, { minHeight: 110, textAlignVertical: "top" }]}
-            placeholder="Allergies, food preferences, medical conditions..."
+            placeholder={t("addDog.notesPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             value={form.notes}
-            onChangeText={(t) => setField("notes", t)}
+            onChangeText={(v) => setField("notes", v)}
             multiline
           />
         </ScrollView>
@@ -401,7 +407,7 @@ export function AddDogModal({ visible, onClose }) {
                 <Text
                   style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
                 >
-                  Save
+                  {t("common.save")}
                 </Text>
                 <Check size={20} color="#FFF" />
               </>

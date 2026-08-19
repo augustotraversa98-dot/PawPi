@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { ChevronDown, ChevronRight } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "./PetAvatar";
@@ -12,6 +13,7 @@ import { AddDogModal } from "./AddDogModal";
 // (Feed/Health); `row` is the "My Dogs" list item (More tab). Both open the
 // same picker, which is the only selection mechanism (setCurrentPet).
 export function PetSwitcher({ variant = "pill" }) {
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
@@ -46,13 +48,13 @@ export function PetSwitcher({ variant = "pill" }) {
         <PetAvatar uri={currentPet?.avatar_url} size={44} />
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.warmBrown }}>
-            My Dogs
+            {t("pets.myDogs")}
           </Text>
           <Text
             style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 2 }}
             numberOfLines={1}
           >
-            {currentPet ? `Active: ${currentPet.name}` : "Add your first dog"}
+            {currentPet ? t("pets.activePrefix", { name: currentPet.name }) : t("pets.addYourFirstDog")}
           </Text>
         </View>
         <ChevronRight size={18} color={COLORS.peach} />
@@ -84,7 +86,7 @@ export function PetSwitcher({ variant = "pill" }) {
           }}
           numberOfLines={1}
         >
-          {currentPet?.name || "Add your dog"}
+          {currentPet?.name || t("pets.addYourDog")}
         </Text>
         <ChevronDown size={16} color={COLORS.terracotta} />
       </TouchableOpacity>

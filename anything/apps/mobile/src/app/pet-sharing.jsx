@@ -45,15 +45,19 @@ const C = {
   mutedBrown: "#7A6254",
 };
 
-const ROLE_LABEL = {
-  family: "Family · co-manage",
-  caregiver: "Caregiver · scoped view",
+const useRoleLabel = () => {
+  const { t } = useTranslation();
+  return {
+    family: t("petSharing.roleFamilyLabel"),
+    caregiver: t("petSharing.roleCaregiverLabel"),
+  };
 };
 
 export default function PetSharingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
+  const ROLE_LABEL = useRoleLabel();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
 
@@ -95,15 +99,15 @@ export default function PetSharingScreen() {
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-          Family & caregivers
+          {t("petSharing.screenTitle")}
         </Text>
       </View>
 
       {/* Tabs */}
       <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, paddingTop: 14 }}>
         {[
-          { key: "manage", label: "People with access" },
-          { key: "shared", label: "Shared with me" },
+          { key: "manage", label: t("petSharing.tabManage") },
+          { key: "shared", label: t("petSharing.tabShared") },
         ].map(({ key, label }) => (
           <TouchableOpacity
             key={key}
@@ -131,8 +135,7 @@ export default function PetSharingScreen() {
         {tab === "manage" ? (
           <>
             <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14, lineHeight: 20 }}>
-              Share {currentPet?.name || "your pet"} with someone you trust. Family co-manage
-              everything; caregivers get a scoped, optionally expiring view.
+              {t("petSharing.intro", { name: currentPet?.name || t("common.yourPet") })}
             </Text>
 
             {/* Role selector */}
@@ -143,7 +146,7 @@ export default function PetSharingScreen() {
                 style={[styles.roleBtn, role === "family" && styles.roleActive]}
               >
                 <Heart size={15} color={role === "family" ? "#FFF" : C.warmBrown} />
-                <Text style={[styles.roleText, role === "family" && styles.roleTextActive]}>Family</Text>
+                <Text style={[styles.roleText, role === "family" && styles.roleTextActive]}>{t("petSharing.roleFamily")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 testID="role-caregiver"
@@ -152,7 +155,7 @@ export default function PetSharingScreen() {
               >
                 <ShieldCheck size={15} color={role === "caregiver" ? "#FFF" : C.warmBrown} />
                 <Text style={[styles.roleText, role === "caregiver" && styles.roleTextActive]}>
-                  Caregiver
+                  {t("petSharing.roleCaregiver")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -164,7 +167,7 @@ export default function PetSharingScreen() {
                 testID="invite-search"
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search people by name or @handle"
+                placeholder={t("petSharing.searchPlaceholder")}
                 placeholderTextColor={C.mutedBrown + "90"}
                 style={{ flex: 1, fontSize: 15, color: C.warmBrown }}
               />
@@ -181,16 +184,16 @@ export default function PetSharingScreen() {
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
                   @{owner.username}
                 </Text>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: C.coral }}>Invite</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: C.coral }}>{t("petSharing.invite")}</Text>
               </TouchableOpacity>
             ))}
 
             {/* Existing grants */}
-            <Text style={styles.sectionLabel}>WHO HAS ACCESS</Text>
+            <Text style={styles.sectionLabel}>{t("petSharing.whoHasAccess")}</Text>
             {grantsLoading && <ActivityIndicator color={C.sage} />}
             {!grantsLoading && grants && grants.length === 0 && (
               <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                No one else has access yet.
+                {t("petSharing.noAccessYet")}
               </Text>
             )}
             {grants?.map((g) => (
@@ -220,11 +223,11 @@ export default function PetSharingScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.sectionLabel}>PETS SHARED WITH ME</Text>
+            <Text style={styles.sectionLabel}>{t("petSharing.petsSharedWithMe")}</Text>
             {sharedLoading && <ActivityIndicator color={C.sage} />}
             {!sharedLoading && shared && shared.length === 0 && (
               <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                No pets have been shared with you yet.
+                {t("petSharing.noSharedYet")}
               </Text>
             )}
             {shared?.map((g) => (
@@ -234,7 +237,7 @@ export default function PetSharingScreen() {
                     {g.pet_name}
                   </Text>
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                    from @{g.owner_username} · {ROLE_LABEL[g.role]} · {g.status}
+                    {t("petSharing.sharedFrom", { username: g.owner_username, roleLabel: ROLE_LABEL[g.role], status: g.status })}
                   </Text>
                   {/* FF2: a FAMILY caregiver on an ACTIVE grant can log day-to-day care (a Viewer
                       cannot — the server rejects a health write, and 0049 keeps it read-only). */}
@@ -279,7 +282,7 @@ export default function PetSharingScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: C.sageDark }}>active</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: C.sageDark }}>{t("petSharing.activeChip")}</Text>
                 )}
               </View>
             ))}
