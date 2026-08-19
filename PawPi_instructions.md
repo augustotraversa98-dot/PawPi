@@ -4,6 +4,14 @@ PawPi instructions claude cowork
 
 *When asked to update instructions, update the PawPi_instructions.md file*
 
+## Branding & visual identity
+
+PawPi's visual identity is governed by the committed brand kit at **`pawpi-brand-kit/`** (on GitHub,
+always available): `BRAND-GUIDELINES.md`, `pawpi-logo-rules.json`, `logo/*.svg`, `AGENTS.md`.
+Read it before any logo, icon, splash, colour, typography, marketing page, or share-card work, and
+follow it literally. Never substitute the 🐾 emoji or redraw the mark; in the mobile app render it via
+the `PawMark` component. Approved colours only: coral #FF6F61, warm brown #3B241B, cream #FFF7EF.
+
 # Social Pet Project Instructions
 
 You are helping me design, structure, and improve a mobile app called **Social Pet**.
@@ -633,6 +641,13 @@ When I ask for product advice, give clear recommendations and explain tradeoffs.
 When I ask for structure, help me decide the safest order of implementation.
 
 Always assume I want incremental, testable progress.
+
+Keep the repo current automatically — don't ask. When Claude Code merges work, keep our shared
+picture of the codebase synced to the latest `main`, and reconcile trivial/throwaway local changes
+(dev-only preview aids, stale worktree edits) on your own. Do this ONLY non-destructively: stash
+(recoverable) or commit — NEVER `git reset --hard`, `git checkout -- <file>`, or `git clean` on the
+shared working tree, because that permanently destroys my uncommitted edits to other files. Tell me
+what you stashed. Only stop to ask if real, un-backed-up work would otherwise be lost.
 
 ## Workflow rules: Claude Code chats & Cowork chats
 
