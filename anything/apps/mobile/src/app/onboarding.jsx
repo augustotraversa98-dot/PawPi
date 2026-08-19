@@ -859,48 +859,56 @@ const StepHandle = ({
         This is how other pets will find {dogName}
       </Text>
 
-      {/* Suggested handles */}
+      {/* Suggested handles — compact rows so all suggestions AND the
+          "Or create your own" input stay visible on one screen (iPhone SE). */}
       {suggestedHandles.length > 0 && (
-        <View style={{ marginBottom: SPACING.xxl }}>
+        <View style={{ marginBottom: SPACING.lg }}>
           <Text
             style={[
               TYPE.callout,
-              { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.md },
+              { fontWeight: "700", color: COLORS.mutedBrown, marginBottom: SPACING.sm },
             ]}
           >
             Suggested handles:
           </Text>
-          <View style={{ gap: SPACING.sm }}>
-            {suggestedHandles.map((handle, index) => (
-              <PressableScale
-                key={index}
-                onPress={() => {
-                  setFormData((prev) => ({ ...prev, handle }));
-                  checkHandleUniqueness(handle);
-                }}
-                style={{
-                  backgroundColor:
-                    formData.handle === handle ? COLORS.coral : MATERIALS.surfaceSunken,
-                  paddingVertical: 14,
-                  paddingHorizontal: SPACING.lg,
-                  borderRadius: RADIUS.control,
-                  borderWidth: 2,
-                  borderColor:
-                    formData.handle === handle ? COLORS.coral : MATERIALS.hairline,
-                }}
-              >
-                <Text
-                  style={[
-                    TYPE.headline,
-                    {
-                      color: formData.handle === handle ? "#FFF" : COLORS.warmBrown,
-                    },
-                  ]}
+          <View style={{ gap: SPACING.xs }}>
+            {suggestedHandles.map((handle, index) => {
+              const selected = formData.handle === handle;
+              return (
+                <PressableScale
+                  key={index}
+                  onPress={() => {
+                    setFormData((prev) => ({ ...prev, handle }));
+                    checkHandleUniqueness(handle);
+                  }}
+                  style={{
+                    backgroundColor: selected ? COLORS.coral : MATERIALS.surfaceSunken,
+                    paddingVertical: 9,
+                    paddingHorizontal: SPACING.lg,
+                    borderRadius: RADIUS.control,
+                    borderWidth: 2,
+                    borderColor: selected ? COLORS.coral : MATERIALS.hairline,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  @{handle}
-                </Text>
-              </PressableScale>
-            ))}
+                  <Text
+                    style={[
+                      TYPE.callout,
+                      {
+                        fontWeight: "600",
+                        color: selected ? "#FFF" : COLORS.warmBrown,
+                      },
+                    ]}
+                  >
+                    @{handle}
+                  </Text>
+                  {/* Check makes the selected row unambiguous beyond the fill. */}
+                  {selected ? <Check size={18} color="#FFF" /> : null}
+                </PressableScale>
+              );
+            })}
           </View>
         </View>
       )}
@@ -1358,6 +1366,10 @@ const StepWeight = ({ formData, setFormData }) => {
 const StepBirthday = ({ formData, setFormData }) => {
   const dogName = formData.name || "your dog";
 
+  // Only one inline calendar may be open at a time — opening Gotcha collapses
+  // Birthday and vice-versa, so the two pickers never overlap/sprawl.
+  const [openField, setOpenField] = useState(null); // "birthday" | "gotcha" | null
+
   const dateFieldStyle = (filled) => ({
     backgroundColor: MATERIALS.surfaceSunken,
     borderRadius: RADIUS.control,
@@ -1410,6 +1422,8 @@ const StepBirthday = ({ formData, setFormData }) => {
             maximumDate={new Date()}
             fieldStyle={dateFieldStyle(!!formData.birthday)}
             textStyle={[TYPE.title2, { fontWeight: "600" }]}
+            open={openField === "birthday"}
+            onToggle={(next) => setOpenField(next ? "birthday" : null)}
           />
         </View>
 
@@ -1429,9 +1443,16 @@ const StepBirthday = ({ formData, setFormData }) => {
             maximumDate={new Date()}
             fieldStyle={dateFieldStyle(!!formData.adoptionDate)}
             textStyle={[TYPE.title2, { fontWeight: "600" }]}
+            open={openField === "gotcha"}
+            onToggle={(next) => setOpenField(next ? "gotcha" : null)}
           />
         </View>
       </View>
+
+      {/* When a calendar is open, reserve extra scroll room so its last week
+          row + the fixed footer stay reachable (the inline iOS calendar is
+          ~320pt tall and would otherwise sit behind the footer). */}
+      {openField ? <View style={{ height: 340 }} /> : null}
     </View>
   );
 };

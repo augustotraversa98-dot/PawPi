@@ -41,8 +41,19 @@ export default function DateField({
   maximumDate,
   accentColor = C.coral,
   testID,
+  // Optional controlled open state. When `open`/`onToggle` are provided the
+  // host owns visibility (used to keep sibling pickers mutually exclusive);
+  // otherwise the field manages its own inline calendar.
+  open,
+  onToggle,
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
+  const setOpen = (next) => {
+    if (isControlled) onToggle?.(next);
+    else setInternalOpen(next);
+  };
   const display = formatDisplayDate(value);
 
   const handleChange = (event, selected) => {
@@ -57,7 +68,7 @@ export default function DateField({
     <View>
       <Pressable
         testID={testID}
-        onPress={() => setOpen((o) => !o)}
+        onPress={() => setOpen(!isOpen)}
         style={[
           {
             backgroundColor: C.card,
@@ -85,7 +96,7 @@ export default function DateField({
         </Text>
         <Calendar size={16} color={C.mutedBrown} />
       </Pressable>
-      {open && (
+      {isOpen && (
         <DateTimePicker
           testID={testID ? `${testID}-picker` : undefined}
           value={initialPickerDate(value)}
