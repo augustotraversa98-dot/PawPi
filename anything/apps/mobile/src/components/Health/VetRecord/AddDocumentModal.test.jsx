@@ -8,6 +8,8 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 const mockUpload = jest.fn();
 const mockLaunch = jest.fn();
+const mockCamera = jest.fn();
+const mockPickFile = jest.fn();
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -33,7 +35,12 @@ jest.mock("expo-image-picker", () => ({
   MediaTypeOptions: { Images: "Images" },
   requestMediaLibraryPermissionsAsync: () =>
     Promise.resolve({ granted: true }),
+  requestCameraPermissionsAsync: () => Promise.resolve({ granted: true }),
   launchImageLibraryAsync: (...args) => mockLaunch(...args),
+  launchCameraAsync: (...args) => mockCamera(...args),
+}));
+jest.mock("expo-document-picker", () => ({
+  getDocumentAsync: (...args) => mockPickFile(...args),
 }));
 jest.mock("@/utils/useUpload", () => ({
   useUpload: () => [mockUpload, { loading: false }],
@@ -66,11 +73,14 @@ const wireFetch = () => {
   });
 };
 
-async function fillAndSave() {
-  mockLaunch.mockResolvedValue({
-    canceled: false,
-    assets: [{ uri: "file:///paper.jpg" }],
-  });
+// Fill the form and save, picking the paperwork via the given source button (default: library
+// photo). `pickResult` overrides what that picker resolves with.
+async function fillAndSave({
+  source = "doc-choose-photo",
+  mock = mockLaunch,
+  pickResult = { canceled: false, assets: [{ uri: "file:///paper.jpg" }] },
+} = {}) {
+  mock.mockResolvedValue(pickResult);
   mockUpload.mockResolvedValue({ url: "https://cdn/paper.jpg" });
   const onSaved = jest.fn();
   const onClose = jest.fn();
@@ -81,7 +91,7 @@ async function fillAndSave() {
     utils.getByPlaceholderText("e.g. Rabies certificate"),
     "Labwork",
   );
-  await waitFor(() => fireEvent.press(utils.getByTestId("pick-document-photo")));
+  await waitFor(() => fireEvent.press(utils.getByTestId(source)));
   fireEvent.press(utils.getByText("Save document"));
   return { ...utils, onSaved, onClose };
 }
@@ -89,6 +99,8 @@ async function fillAndSave() {
 beforeEach(() => {
   mockUpload.mockReset();
   mockLaunch.mockReset();
+  mockCamera.mockReset();
+  mockPickFile.mockReset();
   extractResponse = Promise.resolve({ status: 503, ok: false });
   wireFetch();
 });
@@ -156,4 +168,56 @@ test("a proposal with records → opens the review sheet and dismisses this shee
   const { getByTestId, onClose } = await fillAndSave();
   await waitFor(() => expect(getByTestId("review-open")).toBeTruthy());
   expect(onClose).toHaveBeenCalled();
+});
+
+test("picking a PDF uploads + reads it as application/pdf (not a fake jpg)", async () => {
+  const { onSaved } = await fillAndSave({
+    source: "doc-choose-file",
+    mock: mockPickFile,
+    pickResult: {
+      canceled: false,
+      assets: [
+        { uri: "file:///rabies.pdf", name: "rabies.pdf", mimeType: "application/pdf" },
+      ],
+    },
+  });
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+  // The upload keeps the real PDF name + mimeType.
+  const asset = mockUpload.mock.calls[0][0].reactNativeAsset;
+  expect(asset).toMatchObject({
+    uri: "file:///rabies.pdf",
+    name: "rabies.pdf",
+    mimeType: "application/pdf",
+  });
+
+  // The extract call receives mimeType application/pdf so the AI reads it as a PDF.
+  await waitFor(() =>
+    expect(
+      global.fetch.mock.calls.some(
+        (c) => c[0] === "/api/vet-record/documents/extract",
+      ),
+    ).toBe(true),
+  );
+  const extractCall = global.fetch.mock.calls.find(
+    (c) => c[0] === "/api/vet-record/documents/extract",
+  );
+  expect(JSON.parse(extractCall[1].body)).toMatchObject({
+    mimeType: "application/pdf",
+    filename: "rabies.pdf",
+  });
+});
+
+test("taking a photo with the camera fills the paperwork", async () => {
+  const { onSaved } = await fillAndSave({
+    source: "doc-take-photo",
+    mock: mockCamera,
+    pickResult: {
+      canceled: false,
+      assets: [{ uri: "file:///snap.jpg", mimeType: "image/jpeg" }],
+    },
+  });
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  expect(mockCamera).toHaveBeenCalled();
+  expect(mockUpload.mock.calls[0][0].reactNativeAsset.uri).toBe("file:///snap.jpg");
 });
