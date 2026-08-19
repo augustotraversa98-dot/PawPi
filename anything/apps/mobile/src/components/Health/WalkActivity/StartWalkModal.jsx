@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -29,13 +30,14 @@ export default function StartWalkModal({
   visible,
   onClose,
   walk,
-  petName = "your dog",
+  petName,
   onWalkComplete,
   // ADDITIVE (ticket 2.102): optional node rendered at the top of the scroll, above the
   // countdown — the walker workspace passes its live route map here so the walker sees the
   // track being recorded alongside the timer. Owner self-tracking call-sites omit it → unchanged.
   topContent = null,
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -46,7 +48,8 @@ export default function StartWalkModal({
 
   const scheduledDurationMinutes = walk?.durationMinutes || 30;
   const scheduledDurationSeconds = scheduledDurationMinutes * 60;
-  const walkName = walk?.name || "Walk";
+  const walkName = walk?.name || t("trackers.walk.start.walkFallback");
+  const petLabel = petName || t("common.yourPet");
   const pace = walk?.pace || "normal";
 
   useEffect(() => {
@@ -134,12 +137,12 @@ export default function StartWalkModal({
   const handleClose = () => {
     if (elapsedSeconds > 0) {
       Alert.alert(
-        "Walk in Progress",
-        "Are you sure you want to cancel this walk? Progress will be lost.",
+        t("trackers.walk.start.walkInProgressTitle"),
+        t("trackers.walk.start.walkInProgressBody"),
         [
-          { text: "Keep Walking", style: "cancel" },
+          { text: t("trackers.walk.start.keepWalking"), style: "cancel" },
           {
-            text: "Cancel Walk",
+            text: t("trackers.walk.start.cancelWalk"),
             style: "destructive",
             onPress: () => onClose(),
           },
@@ -178,7 +181,7 @@ export default function StartWalkModal({
             >
               🚶 {walkName}
             </Text>
-            <Text style={{ fontSize: 13, color: C.mutedBrown }}>{petName}</Text>
+            <Text style={{ fontSize: 13, color: C.mutedBrown }}>{petLabel}</Text>
           </View>
           <TouchableOpacity
             onPress={handleClose}
@@ -237,7 +240,7 @@ export default function StartWalkModal({
                     color: C.mutedBrown,
                   }}
                 >
-                  {remainingSeconds === 0 ? "Time's up!" : "remaining"}
+                  {remainingSeconds === 0 ? t("trackers.walk.start.timeUp") : t("trackers.walk.start.remaining")}
                 </Text>
               </View>
 
@@ -261,7 +264,7 @@ export default function StartWalkModal({
                   }}
                 >
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    Scheduled duration
+                    {t("trackers.walk.start.scheduledDuration")}
                   </Text>
                   <Text
                     style={{
@@ -270,7 +273,7 @@ export default function StartWalkModal({
                       color: C.warmBrown,
                     }}
                   >
-                    {scheduledDurationMinutes} min
+                    {t("trackers.walk.start.scheduledMinutes", { count: scheduledDurationMinutes })}
                   </Text>
                 </View>
                 <View
@@ -281,7 +284,7 @@ export default function StartWalkModal({
                   }}
                 >
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    Elapsed time
+                    {t("trackers.walk.start.elapsedTime")}
                   </Text>
                   <Text
                     style={{
@@ -290,7 +293,7 @@ export default function StartWalkModal({
                       color: C.warmBrown,
                     }}
                   >
-                    {Math.floor(elapsedSeconds / 60)} min
+                    {t("trackers.walk.start.elapsedMinutes", { count: Math.floor(elapsedSeconds / 60) })}
                   </Text>
                 </View>
                 <View
@@ -300,7 +303,7 @@ export default function StartWalkModal({
                   }}
                 >
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    Pace
+                    {t("trackers.walk.start.pace")}
                   </Text>
                   <Text
                     style={{
@@ -340,7 +343,7 @@ export default function StartWalkModal({
                       color: C.mutedBrown,
                     }}
                   >
-                    Pause
+                    {t("trackers.walk.start.pause")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -363,7 +366,7 @@ export default function StartWalkModal({
                   <Text
                     style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}
                   >
-                    Resume
+                    {t("trackers.walk.start.resume")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -393,7 +396,7 @@ export default function StartWalkModal({
                     marginBottom: 6,
                   }}
                 >
-                  Walk time is up
+                  {t("trackers.walk.start.walkTimeUpTitle")}
                 </Text>
                 <Text
                   style={{
@@ -402,7 +405,7 @@ export default function StartWalkModal({
                     textAlign: "center",
                   }}
                 >
-                  Did {petName} finish the walk?
+                  {t("trackers.walk.start.didFinish", { pet: petLabel })}
                 </Text>
               </View>
 
@@ -414,7 +417,7 @@ export default function StartWalkModal({
                   marginBottom: 12,
                 }}
               >
-                Extend walk?
+                {t("trackers.walk.start.extendWalk")}
               </Text>
 
               <View style={{ gap: 10, marginBottom: 20 }}>
@@ -440,7 +443,7 @@ export default function StartWalkModal({
                         color: "#FFF",
                       }}
                     >
-                      Extend {mins} min
+                      {t("trackers.walk.start.extendMin", { count: mins })}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -469,13 +472,13 @@ export default function StartWalkModal({
                   color: C.warmBrown,
                 }}
               >
-                Notes (optional)
+                {t("trackers.walk.start.notesLabel")}
               </Text>
             </View>
             <TextInput
               value={walkNotes}
               onChangeText={setWalkNotes}
-              placeholder="Route, observations..."
+              placeholder={t("trackers.walk.start.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown + "80"}
               multiline
               numberOfLines={3}
@@ -513,7 +516,7 @@ export default function StartWalkModal({
           >
             <StopCircle size={20} color="#FFF" />
             <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>
-              Finish Walk
+              {t("trackers.walk.start.finishWalk")}
             </Text>
           </TouchableOpacity>
         </KeyboardAwareScrollView>

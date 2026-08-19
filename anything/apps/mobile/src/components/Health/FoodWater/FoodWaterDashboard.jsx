@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import {
   UtensilsCrossed,
@@ -32,6 +33,7 @@ const C = {
 };
 
 export default function FoodWaterDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("food");
 
@@ -106,10 +108,10 @@ export default function FoodWaterDashboard() {
                 marginBottom: 2,
               }}
             >
-              Food & Water
+              {t("trackers.foodWater.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Today's nutrition tracking
+              {t("trackers.foodWater.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -138,7 +140,7 @@ export default function FoodWaterDashboard() {
                 marginBottom: 8,
               }}
             >
-              Last meal
+              {t("trackers.foodWater.lastMeal")}
             </Text>
             <View
               style={{
@@ -178,7 +180,7 @@ export default function FoodWaterDashboard() {
                 </Text>
                 <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                   {formatTime(lastMeal.timestamp)} •{" "}
-                  {lastMeal.foodName || "Meal"}
+                  {lastMeal.foodName || t("trackers.foodWater.mealFallback")}
                 </Text>
               </View>
               <View
@@ -250,7 +252,7 @@ export default function FoodWaterDashboard() {
                   color: C.mutedBrown,
                 }}
               >
-                Meals
+                {t("trackers.foodWater.mealsLabel")}
               </Text>
             </View>
             <Text
@@ -263,7 +265,7 @@ export default function FoodWaterDashboard() {
               {mealsToday.length}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              logged today
+              {t("trackers.foodWater.loggedToday")}
             </Text>
           </TouchableOpacity>
 
@@ -295,7 +297,7 @@ export default function FoodWaterDashboard() {
                   color: C.mutedBrown,
                 }}
               >
-                Snacks
+                {t("trackers.foodWater.snacksLabel")}
               </Text>
             </View>
             <Text
@@ -308,7 +310,7 @@ export default function FoodWaterDashboard() {
               {snacksToday.length}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              logged today
+              {t("trackers.foodWater.loggedToday")}
             </Text>
           </TouchableOpacity>
 
@@ -340,7 +342,7 @@ export default function FoodWaterDashboard() {
                   color: C.mutedBrown,
                 }}
               >
-                Water
+                {t("trackers.foodWater.waterLabel")}
               </Text>
             </View>
             <Text
@@ -353,7 +355,7 @@ export default function FoodWaterDashboard() {
               {waterLogsToday.length}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              logged today
+              {t("trackers.foodWater.loggedToday")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -390,12 +392,12 @@ export default function FoodWaterDashboard() {
                 marginBottom: 2,
               }}
             >
-              Next feeding reminder
+              {t("trackers.foodWater.nextFeedingReminder")}
             </Text>
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.warmBrown }}
             >
-              {nextFeeding.label} at {nextFeeding.time}
+              {t("trackers.foodWater.nextFeedingAt", { label: nextFeeding.label, time: nextFeeding.time })}
             </Text>
           </View>
         </View>
@@ -438,7 +440,7 @@ export default function FoodWaterDashboard() {
                 marginBottom: 6,
               }}
             >
-              Reduced appetite pattern
+              {t("trackers.foodWater.reducedAppetiteTitle")}
             </Text>
             <Text
               style={{
@@ -447,9 +449,7 @@ export default function FoodWaterDashboard() {
                 lineHeight: 17,
               }}
             >
-              Your pet's appetite has been lower than usual in recent meals. This
-              may be worth monitoring. Contact your vet if it continues or comes
-              with other symptoms.
+              {t("trackers.foodWater.reducedAppetiteBody")}
             </Text>
           </View>
         </View>
@@ -479,8 +479,7 @@ export default function FoodWaterDashboard() {
               flex: 1,
             }}
           >
-            Appetite dip noted in recent meals. Keep tracking to see if this
-            continues.
+            {t("trackers.foodWater.appetiteDipNote")}
           </Text>
         </View>
       )}
