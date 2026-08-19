@@ -3,6 +3,11 @@ import { AccessibilityInfo } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import { UnlockedFeed } from "./UnlockedFeed";
 
+// Resolve t() against the real EN catalog so assertions match rendered copy.
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 // Phase 2 ticket 2.13 — the UNLOCKED feed interleaves provider/adoption suggestion cards (a
 // SEPARATE card type) between pet posts at a capped cadence. PostCard pulls in react-query via
 // useTogglePaw; stub it so cards render without a QueryClient.
