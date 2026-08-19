@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import {
   Scale,
@@ -40,6 +41,7 @@ const C = {
 };
 
 export default function WeightDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -104,10 +106,10 @@ export default function WeightDashboard() {
                 marginBottom: 2,
               }}
             >
-              Weight & Body Condition
+              {t("trackers.weight.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Track changes over time
+              {t("trackers.weight.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -161,7 +163,7 @@ export default function WeightDashboard() {
                       color: C.mutedBrown,
                     }}
                   >
-                    Current weight
+                    {t("trackers.weight.currentWeight")}
                   </Text>
                 </View>
                 <View
@@ -323,7 +325,7 @@ export default function WeightDashboard() {
                           marginBottom: 2,
                         }}
                       >
-                        Vet target weight
+                        {t("trackers.weight.vetTarget")}
                       </Text>
                       <Text
                         style={{
@@ -387,7 +389,7 @@ export default function WeightDashboard() {
                       marginBottom: 6,
                     }}
                   >
-                    Previous
+                    {t("trackers.weight.previous")}
                   </Text>
                   <Text
                     style={{
@@ -432,7 +434,7 @@ export default function WeightDashboard() {
                     marginBottom: 6,
                   }}
                 >
-                  3-month trend
+                  {t("trackers.weight.threeMonthTrend")}
                 </Text>
                 <View
                   style={{
@@ -482,7 +484,7 @@ export default function WeightDashboard() {
                       color: C.mutedBrown,
                     }}
                   >
-                    Body Condition Score (Vet)
+                    {t("trackers.weight.bcsTitle")}
                   </Text>
                   <View
                     style={{
@@ -546,7 +548,7 @@ export default function WeightDashboard() {
                     color: C.warmBrown,
                   }}
                 >
-                  Weight history
+                  {t("trackers.weight.weightHistory")}
                 </Text>
                 <ChevronRight size={18} color={C.mutedBrown} />
               </View>
@@ -570,7 +572,7 @@ export default function WeightDashboard() {
                     fontStyle: "italic",
                   }}
                 >
-                  Tap to view full weight history
+                  {t("trackers.weight.tapToView")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -595,7 +597,7 @@ export default function WeightDashboard() {
                   flex: 1,
                 }}
               >
-                Weight changes over time can be useful to discuss with your vet.
+                {t("trackers.weight.footerInfo")}
               </Text>
             </View>
           </>
@@ -624,7 +626,7 @@ export default function WeightDashboard() {
                 marginBottom: 8,
               }}
             >
-              No weight entries yet
+              {t("trackers.weight.emptyTitle")}
             </Text>
             <Text
               style={{
@@ -635,7 +637,7 @@ export default function WeightDashboard() {
                 marginBottom: 16,
               }}
             >
-              Track your dog's weight to monitor changes over time
+              {t("trackers.weight.emptyBody")}
             </Text>
             <TouchableOpacity
               onPress={handleOpenModal}
@@ -657,7 +659,7 @@ export default function WeightDashboard() {
                   color: "#FFF",
                 }}
               >
-                Add first entry
+                {t("trackers.weight.addFirst")}
               </Text>
             </TouchableOpacity>
           </View>

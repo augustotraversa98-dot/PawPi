@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Plus, AlertCircle, AlertTriangle } from "lucide-react-native";
 import {
@@ -28,6 +29,7 @@ const C = {
 };
 
 export default function PeeDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
 
   const countToday = getPeeCountToday();
@@ -86,10 +88,10 @@ export default function PeeDashboard() {
                 marginBottom: 2,
               }}
             >
-              Pee Tracking
+              {t("trackers.pee.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Monitor urination patterns
+              {t("trackers.pee.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -118,7 +120,7 @@ export default function PeeDashboard() {
                 marginBottom: 8,
               }}
             >
-              Last logged
+              {t("trackers.pee.lastLogged")}
             </Text>
             <View
               style={{
@@ -175,7 +177,7 @@ export default function PeeDashboard() {
                       color: "#FFB74D",
                     }}
                   >
-                    Accident
+                    {t("trackers.pee.accidentTag")}
                   </Text>
                 </View>
               )}
@@ -209,7 +211,7 @@ export default function PeeDashboard() {
                 marginBottom: 6,
               }}
             >
-              Today's count
+              {t("trackers.pee.todayCount")}
             </Text>
             <Text
               style={{
@@ -221,7 +223,7 @@ export default function PeeDashboard() {
               {countToday}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              logged today
+              {t("trackers.pee.loggedToday")}
             </Text>
           </View>
 
@@ -244,7 +246,7 @@ export default function PeeDashboard() {
                 marginBottom: 6,
               }}
             >
-              Accidents
+              {t("trackers.pee.accidents")}
             </Text>
             <Text
               style={{
@@ -256,7 +258,7 @@ export default function PeeDashboard() {
               {accidentsToday}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              {accidentsToday === 0 ? "none today" : "today"}
+              {accidentsToday === 0 ? t("trackers.pee.noneToday") : t("trackers.pee.today")}
             </Text>
           </View>
         </View>
@@ -305,8 +307,8 @@ export default function PeeDashboard() {
               }}
             >
               {concernMessage.urgent
-                ? "Worth veterinary attention"
-                : "Recent changes noted"}
+                ? t("trackers.pee.concernUrgentTitle")
+                : t("trackers.pee.concernNotedTitle")}
             </Text>
             <Text
               style={{

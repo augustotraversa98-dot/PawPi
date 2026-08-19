@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Plus, MapPin, Clock, Users, AlertCircle } from "lucide-react-native";
 import {
@@ -35,6 +36,7 @@ const C = {
 };
 
 export default function WalkActivityDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
 
   const walksToday = getWalkCountToday();
@@ -62,9 +64,9 @@ export default function WalkActivityDashboard() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Today";
+      return t("trackers.walk.dateToday");
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
+      return t("trackers.walk.dateYesterday");
     } else {
       return date.toLocaleDateString("en-US", {
         month: "short",
@@ -112,10 +114,10 @@ export default function WalkActivityDashboard() {
                 marginBottom: 2,
               }}
             >
-              Walk & Activity
+              {t("trackers.walk.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Track walks, mobility, and social outings
+              {t("trackers.walk.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -160,7 +162,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 6,
               }}
             >
-              Walks today
+              {t("trackers.walk.walksToday")}
             </Text>
             <Text
               style={{
@@ -193,7 +195,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 6,
               }}
             >
-              Duration
+              {t("trackers.walk.duration")}
             </Text>
             <Text
               style={{
@@ -226,7 +228,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 6,
               }}
             >
-              Distance
+              {t("trackers.walk.distance")}
             </Text>
             <Text
               style={{
@@ -251,7 +253,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 8,
               }}
             >
-              Last walk
+              {t("trackers.walk.lastWalk")}
             </Text>
             <View
               style={{
@@ -325,7 +327,7 @@ export default function WalkActivityDashboard() {
                 >
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                     {getEnergyEmoji(lastWalk.energyAfter)}{" "}
-                    {lastWalk.energyAfter} energy after
+                    {t("trackers.walk.energyAfter", { level: lastWalk.energyAfter })}
                   </Text>
                   {walkHasPottyEvents(lastWalk) && (
                     <Text style={{ fontSize: 12, color: C.mutedBrown }}>
@@ -372,7 +374,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 8,
               }}
             >
-              Recent mobility
+              {t("trackers.walk.recentMobility")}
             </Text>
             <View
               style={{
@@ -415,7 +417,7 @@ export default function WalkActivityDashboard() {
                   </Text>
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                     {getMobilityIssueSummary(lastMobility) ||
-                      "All movement normal"}
+                      t("trackers.walk.allMovementNormal")}
                   </Text>
                 </View>
               </View>
@@ -483,7 +485,7 @@ export default function WalkActivityDashboard() {
                 marginBottom: 6,
               }}
             >
-              Mobility change noted
+              {t("trackers.walk.mobilityChangeTitle")}
             </Text>
             <Text
               style={{
@@ -538,7 +540,7 @@ export default function WalkActivityDashboard() {
                   marginBottom: 3,
                 }}
               >
-                Upcoming social walk
+                {t("trackers.walk.upcomingSocial")}
               </Text>
               <Text
                 style={{
@@ -546,7 +548,7 @@ export default function WalkActivityDashboard() {
                   color: C.mutedBrown,
                 }}
               >
-                {formatSocialWalkDate(nextSocial.date)} at {nextSocial.time}
+                {t("trackers.walk.socialWalkAt", { date: formatSocialWalkDate(nextSocial.date), time: nextSocial.time })}
               </Text>
             </View>
           </View>
@@ -583,8 +585,7 @@ export default function WalkActivityDashboard() {
               >
                 <Users size={14} color="#64B5F6" />
                 <Text style={{ fontSize: 12, color: C.warmBrown }}>
-                  {nextSocial.attendees.length}{" "}
-                  {nextSocial.attendees.length === 1 ? "pet" : "pets"} joining
+                  {t("trackers.walk.pet", { count: nextSocial.attendees.length })}
                 </Text>
               </View>
             )}

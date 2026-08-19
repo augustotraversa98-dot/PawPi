@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Plus, AlertCircle, AlertTriangle } from "lucide-react-native";
 import {
@@ -28,6 +29,7 @@ const C = {
 };
 
 export default function VomitDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
 
   const countToday = getVomitCountToday();
@@ -53,9 +55,9 @@ export default function VomitDashboard() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Today";
+      return t("trackers.walk.dateToday");
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
+      return t("trackers.walk.dateYesterday");
     } else {
       return date.toLocaleDateString("en-US", {
         month: "short",
@@ -103,10 +105,10 @@ export default function VomitDashboard() {
                 marginBottom: 2,
               }}
             >
-              Vomit / Digestive Events
+              {t("trackers.vomit.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Track vomiting and related symptoms
+              {t("trackers.vomit.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -135,7 +137,7 @@ export default function VomitDashboard() {
                 marginBottom: 8,
               }}
             >
-              Last event
+              {t("trackers.vomit.lastEvent")}
             </Text>
             <View
               style={{
@@ -177,8 +179,7 @@ export default function VomitDashboard() {
                     {formatTime(lastLog.timestamp)}
                   </Text>
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                    {lastLog.episodes}{" "}
-                    {lastLog.episodes === 1 ? "episode" : "episodes"} •{" "}
+                    {t("trackers.vomit.episode", { count: lastLog.episodes })} •{" "}
                     {getAppearanceIndicator(lastLog.appearance)}{" "}
                     {lastLog.appearance}
                   </Text>
@@ -235,7 +236,7 @@ export default function VomitDashboard() {
                 marginBottom: 6,
               }}
             >
-              Events today
+              {t("trackers.vomit.eventsToday")}
             </Text>
             <Text
               style={{
@@ -247,8 +248,7 @@ export default function VomitDashboard() {
               {countToday}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              {totalEpisodesToday} total{" "}
-              {totalEpisodesToday === 1 ? "episode" : "episodes"}
+              {t("trackers.vomit.totalEpisodes", { count: totalEpisodesToday })}
             </Text>
           </View>
 
@@ -277,23 +277,23 @@ export default function VomitDashboard() {
                 marginBottom: 6,
               }}
             >
-              Related symptoms
+              {t("trackers.vomit.relatedSymptoms")}
             </Text>
             {symptoms.lowEnergy || symptoms.diarrhea || symptoms.refusedFood ? (
               <View style={{ gap: 3 }}>
                 {symptoms.lowEnergy && (
                   <Text style={{ fontSize: 11, color: C.warmBrown }}>
-                    • Low energy
+                    • {t("trackers.vomit.lowEnergy")}
                   </Text>
                 )}
                 {symptoms.diarrhea && (
                   <Text style={{ fontSize: 11, color: C.warmBrown }}>
-                    • Diarrhea
+                    • {t("trackers.vomit.diarrhea")}
                   </Text>
                 )}
                 {symptoms.refusedFood && (
                   <Text style={{ fontSize: 11, color: C.warmBrown }}>
-                    • Refused food
+                    • {t("trackers.vomit.refusedFood")}
                   </Text>
                 )}
               </View>
@@ -306,7 +306,7 @@ export default function VomitDashboard() {
                   marginTop: 4,
                 }}
               >
-                None noted
+                {t("trackers.vomit.noneNoted")}
               </Text>
             )}
           </View>
@@ -356,8 +356,8 @@ export default function VomitDashboard() {
               }}
             >
               {concernMessage.urgent
-                ? "May need veterinary attention"
-                : "Worth monitoring"}
+                ? t("trackers.vomit.concernUrgentTitle")
+                : t("trackers.vomit.concernNotedTitle")}
             </Text>
             <Text
               style={{

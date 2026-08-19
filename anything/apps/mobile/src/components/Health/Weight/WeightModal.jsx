@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -39,41 +40,11 @@ const C = {
 
 // Body shape constants
 const BODY_SHAPES = [
-  {
-    key: "very_thin",
-    label: "Very Thin",
-    emoji: "🦴",
-    color: "#FF5733",
-    description: "Ribs, spine, and hip bones very visible; no body fat",
-  },
-  {
-    key: "thin",
-    label: "Thin",
-    emoji: "🐕",
-    color: "#FFB74D",
-    description: "Ribs easily felt; minimal fat cover",
-  },
-  {
-    key: "ideal",
-    label: "Ideal",
-    emoji: "✅",
-    color: "#66BB6A",
-    description: "Ribs felt with slight pressure; visible waist",
-  },
-  {
-    key: "overweight",
-    label: "Overweight",
-    emoji: "🍖",
-    color: "#FFB74D",
-    description: "Ribs hard to feel; waist barely visible",
-  },
-  {
-    key: "obese",
-    label: "Obese",
-    emoji: "🎈",
-    color: "#FF5733",
-    description: "Ribs not felt; heavy fat deposits; no waist",
-  },
+  { key: "very_thin", emoji: "🦴", color: "#FF5733" },
+  { key: "thin", emoji: "🐕", color: "#FFB74D" },
+  { key: "ideal", emoji: "✅", color: "#66BB6A" },
+  { key: "overweight", emoji: "🍖", color: "#FFB74D" },
+  { key: "obese", emoji: "🎈", color: "#FF5733" },
 ];
 
 const formatDate = (timestamp) => {
@@ -90,12 +61,13 @@ const getBodyShapeEmoji = (key) => {
   return shape?.emoji || "✅";
 };
 
-const getBodyShapeLabel = (key) => {
+const getBodyShapeLabel = (key, t) => {
   const shape = BODY_SHAPES.find((s) => s.key === key);
-  return shape?.label || "Unknown";
+  return shape ? t(`trackers.weight.shape.${shape.key}`) : t("trackers.weight.shape.unknown");
 };
 
 export default function WeightModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
   const queryClient = useQueryClient();
@@ -133,13 +105,13 @@ export default function WeightModal({ visible, onClose }) {
 
   const saveWeightLog = async () => {
     if (!weight) {
-      alert("Please enter a weight");
+      alert(t("trackers.weight.modal.enterWeight"));
       return;
     }
 
     if (!currentPet?.id) {
       console.error("[WeightTracker] No current pet found");
-      alert("Could not save. Please select a pet first.");
+      alert(t("trackers.weight.modal.selectPetError"));
       return;
     }
 
@@ -185,7 +157,7 @@ export default function WeightModal({ visible, onClose }) {
       setActiveTab("history");
     } catch (error) {
       console.error("[WeightTracker] Error saving weight log:", error);
-      alert("Could not save. Please try again.");
+      alert(t("trackers.weight.modal.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -203,10 +175,10 @@ export default function WeightModal({ visible, onClose }) {
   };
 
   const handleDelete = (entryId) => {
-    Alert.alert("Delete this entry?", "This weight entry will be removed.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("trackers.weight.modal.deleteTitle"), t("trackers.weight.modal.deleteBody"), [
+      { text: t("trackers.weight.modal.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("trackers.weight.modal.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -220,7 +192,7 @@ export default function WeightModal({ visible, onClose }) {
               queryKey: ["health", "weight-logs"],
             });
           } catch (e) {
-            Alert.alert("Couldn't delete", e.message || "Please try again.");
+            Alert.alert(t("trackers.weight.modal.deleteError"), e.message || t("trackers.weight.modal.pleaseTryAgain"));
           }
         },
       },
@@ -272,7 +244,7 @@ export default function WeightModal({ visible, onClose }) {
                   color: C.warmBrown,
                 }}
               >
-                Weight & Body Condition
+                {t("trackers.weight.title")}
               </Text>
               <TouchableOpacity
                 onPress={onClose}
@@ -320,7 +292,7 @@ export default function WeightModal({ visible, onClose }) {
                   color: activeTab === "add" ? "#FFF" : C.warmBrown,
                 }}
               >
-                Add entry
+                {t("trackers.weight.modal.addEntry")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -347,7 +319,7 @@ export default function WeightModal({ visible, onClose }) {
                   color: activeTab === "history" ? "#FFF" : C.warmBrown,
                 }}
               >
-                History
+                {t("trackers.weight.modal.history")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -371,7 +343,7 @@ export default function WeightModal({ visible, onClose }) {
                         marginTop: 16,
                       }}
                     >
-                      Saving...
+                      {t("trackers.weight.modal.saving")}
                     </Text>
                   </View>
                 )}
@@ -397,7 +369,7 @@ export default function WeightModal({ visible, onClose }) {
                           marginBottom: 14,
                         }}
                       >
-                        Weight information
+                        {t("trackers.weight.modal.weightInfo")}
                       </Text>
 
                       {/* Weight Input */}
@@ -410,12 +382,12 @@ export default function WeightModal({ visible, onClose }) {
                             marginBottom: 8,
                           }}
                         >
-                          Current weight (lbs) *
+                          {t("trackers.weight.modal.currentLbs")}
                         </Text>
                         <TextInput
                           value={weight}
                           onChangeText={setWeight}
-                          placeholder="e.g., 48.5"
+                          placeholder={t("trackers.weight.modal.weightPlaceholder")}
                           keyboardType="decimal-pad"
                           style={{
                             backgroundColor: C.sand,
@@ -440,7 +412,7 @@ export default function WeightModal({ visible, onClose }) {
                             marginBottom: 8,
                           }}
                         >
-                          Body shape visual estimate
+                          {t("trackers.weight.modal.bodyShapeLabel")}
                         </Text>
                         <ScrollView
                           horizontal
@@ -479,7 +451,7 @@ export default function WeightModal({ visible, onClose }) {
                                   textAlign: "center",
                                 }}
                               >
-                                {shape.label}
+                                {t(`trackers.weight.shape.${shape.key}`)}
                               </Text>
                             </TouchableOpacity>
                           ))}
@@ -492,10 +464,7 @@ export default function WeightModal({ visible, onClose }) {
                             fontStyle: "italic",
                           }}
                         >
-                          {
-                            BODY_SHAPES.find((s) => s.key === bodyShape)
-                              ?.description
-                          }
+                          {t(`trackers.weight.shape.desc_${bodyShape}`)}
                         </Text>
                       </View>
 
@@ -509,12 +478,12 @@ export default function WeightModal({ visible, onClose }) {
                             marginBottom: 8,
                           }}
                         >
-                          Notes (optional)
+                          {t("trackers.weight.modal.notes")}
                         </Text>
                         <TextInput
                           value={notes}
                           onChangeText={setNotes}
-                          placeholder="Any observations or context..."
+                          placeholder={t("trackers.weight.modal.notesPlaceholder")}
                           multiline
                           numberOfLines={3}
                           style={{
@@ -555,7 +524,7 @@ export default function WeightModal({ visible, onClose }) {
                             color: C.mutedBrown,
                           }}
                         >
-                          Add photo (coming soon)
+                          {t("trackers.weight.modal.addPhotoSoon")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -587,8 +556,7 @@ export default function WeightModal({ visible, onClose }) {
                           flex: 1,
                         }}
                       >
-                        Weight changes over time can be useful to discuss with
-                        your vet.
+                        {t("trackers.weight.footerInfo")}
                       </Text>
                     </View>
 
@@ -617,7 +585,7 @@ export default function WeightModal({ visible, onClose }) {
                           color: "#FFF",
                         }}
                       >
-                        Save entry
+                        {t("trackers.weight.modal.saveEntry")}
                       </Text>
                     </TouchableOpacity>
                   </>
@@ -716,7 +684,7 @@ export default function WeightModal({ visible, onClose }) {
                                 color: C.mutedBrown,
                               }}
                             >
-                              {getBodyShapeLabel(entry.body_shape_estimate)}
+                              {getBodyShapeLabel(entry.body_shape_estimate, t)}
                             </Text>
                           </View>
                         )}
@@ -765,7 +733,7 @@ export default function WeightModal({ visible, onClose }) {
                         marginTop: 14,
                       }}
                     >
-                      No weight entries yet
+                      {t("trackers.weight.modal.emptyNoEntries")}
                     </Text>
                   </View>
                 )}

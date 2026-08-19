@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Plus, AlertCircle, Camera } from "lucide-react-native";
 import {
@@ -25,6 +26,7 @@ const C = {
 };
 
 export default function PooDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
 
   const countToday = getPooCountToday();
@@ -81,10 +83,10 @@ export default function PooDashboard() {
                 marginBottom: 2,
               }}
             >
-              Poo Tracking
+              {t("trackers.poo.title")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Monitor digestive health
+              {t("trackers.poo.subtitle")}
             </Text>
           </View>
           <TouchableOpacity
@@ -113,7 +115,7 @@ export default function PooDashboard() {
                 marginBottom: 8,
               }}
             >
-              Last logged
+              {t("trackers.poo.lastLogged")}
             </Text>
             <View
               style={{
@@ -188,7 +190,7 @@ export default function PooDashboard() {
                 marginBottom: 6,
               }}
             >
-              Today's count
+              {t("trackers.poo.todayCount")}
             </Text>
             <Text
               style={{
@@ -200,7 +202,7 @@ export default function PooDashboard() {
               {countToday}
             </Text>
             <Text style={{ fontSize: 10, color: C.mutedBrown, marginTop: 2 }}>
-              logged today
+              {t("trackers.poo.loggedToday")}
             </Text>
           </View>
 
@@ -224,7 +226,7 @@ export default function PooDashboard() {
                   marginBottom: 6,
                 }}
               >
-                Most recent
+                {t("trackers.poo.mostRecent")}
               </Text>
               <Text
                 style={{
@@ -237,7 +239,7 @@ export default function PooDashboard() {
                 {getShapeLabel(recentConsistency)}
               </Text>
               <Text style={{ fontSize: 10, color: C.mutedBrown }}>
-                consistency
+                {t("trackers.poo.consistency")}
               </Text>
             </View>
           )}
@@ -280,7 +282,7 @@ export default function PooDashboard() {
                 marginBottom: 6,
               }}
             >
-              Recent changes noted
+              {t("trackers.poo.concernNotedTitle")}
             </Text>
             <Text
               style={{
