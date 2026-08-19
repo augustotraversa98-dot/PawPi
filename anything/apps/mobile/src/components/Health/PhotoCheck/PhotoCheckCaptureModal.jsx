@@ -24,6 +24,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import useUpload from "@/utils/useUpload";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -123,6 +124,7 @@ export default function PhotoCheckCaptureModal({
   reminderId,
   onComplete,
 }) {
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const [upload, { loading: uploading }] = useUpload();
 
@@ -150,8 +152,8 @@ export default function PhotoCheckCaptureModal({
 
       if (permissionResult.granted === false) {
         Alert.alert(
-          "Camera Permission Required",
-          "Photo access is needed to add a photo. You can still save a note.",
+          t("health.photoCheck.cameraPermissionTitle"),
+          t("health.photoCheck.cameraPermissionBody"),
         );
         return;
       }
@@ -167,7 +169,7 @@ export default function PhotoCheckCaptureModal({
       }
     } catch (error) {
       console.error("[PhotoCheckCapture] Camera error:", error);
-      Alert.alert("Error", "Could not open camera. Please try again.");
+      Alert.alert(t("health.photoCheck.errorTitle"), t("health.photoCheck.cameraError"));
     }
   };
 
@@ -178,8 +180,8 @@ export default function PhotoCheckCaptureModal({
 
       if (permissionResult.granted === false) {
         Alert.alert(
-          "Photo Library Permission Required",
-          "Photo access is needed to add a photo. You can still save a note.",
+          t("health.photoCheck.libraryPermissionTitle"),
+          t("health.photoCheck.cameraPermissionBody"),
         );
         return;
       }
@@ -196,7 +198,7 @@ export default function PhotoCheckCaptureModal({
       }
     } catch (error) {
       console.error("[PhotoCheckCapture] Gallery error:", error);
-      Alert.alert("Error", "Could not open gallery. Please try again.");
+      Alert.alert(t("health.photoCheck.errorTitle"), t("health.photoCheck.galleryError"));
     }
   };
 
@@ -220,7 +222,7 @@ export default function PhotoCheckCaptureModal({
 
   const handleSave = async () => {
     if (!currentPet?.id) {
-      Alert.alert("Error", "No pet selected");
+      Alert.alert(t("health.photoCheck.errorTitle"), t("health.photoCheck.noPetSelected"));
       return;
     }
 
@@ -279,15 +281,15 @@ export default function PhotoCheckCaptureModal({
       }
 
       // Success feedback
-      Alert.alert("✅ Saved", "Photo check saved successfully");
+      Alert.alert(t("health.photoCheck.savedTitle"), t("health.photoCheck.savedBody"));
 
       // Close modal
       handleClose();
     } catch (error) {
       console.error("[PhotoCheckCapture] Save error:", error);
       Alert.alert(
-        "Error",
-        error.message || "Could not save photo check. Please try again.",
+        t("health.photoCheck.errorTitle"),
+        error.message || t("health.photoCheck.saveError"),
       );
     } finally {
       setSaving(false);
@@ -734,7 +736,7 @@ export default function PhotoCheckCaptureModal({
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Redness, swelling, discharge, smell, sensitivity, no change…"
+              placeholder={t("health.photoCheck.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={4}

@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import {
   getPhotoHistoryGrouped,
   BODY_AREA_LABELS,
@@ -53,6 +54,7 @@ function formatTime(dateString) {
 }
 
 export default function PhotoHistory() {
+  const { t } = useTranslation();
   const photoHistory = getPhotoHistoryGrouped();
   const [expandedAreas, setExpandedAreas] = useState([]);
 
@@ -77,10 +79,10 @@ export default function PhotoHistory() {
               marginBottom: 4,
             }}
           >
-            Photo History
+            {t("health.photoCheck.historyTitle")}
           </Text>
           <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-            Track visible changes over time by body area
+            {t("health.photoCheck.historySubtitle")}
           </Text>
         </View>
 
@@ -110,7 +112,7 @@ export default function PhotoHistory() {
                 textAlign: "center",
               }}
             >
-              No photo checks yet
+              {t("health.photoCheck.noPhotosTitle")}
             </Text>
             <Text
               style={{
@@ -120,7 +122,7 @@ export default function PhotoHistory() {
                 lineHeight: 19,
               }}
             >
-              Start tracking visible changes by taking your first photo check
+              {t("health.photoCheck.noPhotosBody")}
             </Text>
           </View>
         ) : (
@@ -187,8 +189,7 @@ export default function PhotoHistory() {
                             color: C.mutedBrown,
                           }}
                         >
-                          {photos.length}{" "}
-                          {photos.length === 1 ? "photo" : "photos"}
+                          {t("health.photoCheck.photoCount", { count: photos.length })}
                         </Text>
                         <Text
                           style={{
@@ -212,7 +213,7 @@ export default function PhotoHistory() {
                               color: C.mutedBrown,
                             }}
                           >
-                            Last: {formatDate(photos[0].createdAt)}
+                            {t("health.photoCheck.last", { date: formatDate(photos[0].createdAt) })}
                           </Text>
                         </View>
                       </View>
@@ -311,7 +312,7 @@ export default function PhotoHistory() {
                                     color: C.sage,
                                   }}
                                 >
-                                  In Vet Summary
+                                  {t("health.photoCheck.inVetSummary")}
                                 </Text>
                               </View>
                             )}
@@ -352,7 +353,7 @@ export default function PhotoHistory() {
                 marginBottom: 6,
               }}
             >
-              Compare over time
+              {t("health.photoCheck.compareTitle")}
             </Text>
             <Text
               style={{
@@ -362,7 +363,7 @@ export default function PhotoHistory() {
                 lineHeight: 18,
               }}
             >
-              Coming soon: compare visible changes across photos side-by-side
+              {t("health.photoCheck.compareBody")}
             </Text>
           </View>
         )}
@@ -386,8 +387,7 @@ export default function PhotoHistory() {
               textAlign: "center",
             }}
           >
-            Use Photo Check to track visible changes over time. Share photos
-            with your vet to provide visual context during appointments.
+            {t("health.photoCheck.historyInfo")}
           </Text>
         </View>
       </View>

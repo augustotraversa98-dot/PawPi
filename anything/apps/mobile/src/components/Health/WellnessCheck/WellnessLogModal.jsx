@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { X, History, Calendar, ClipboardCheck } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -48,6 +49,7 @@ const formatDate = (timestamp) => {
 // from WELLNESS_FIELD_SCHEMA via the reminder's checkType; save routes through
 // buildWellnessLogPayload (weight → weight-logs, everything else → wellness-logs).
 export default function WellnessLogModal({ visible, reminder, onClose, onSaved }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
   const queryClient = useQueryClient();
@@ -96,12 +98,12 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
 
   const handleSave = async () => {
     if (!reminder || !petId) {
-      Alert.alert("Could not save", "Please select a pet first.");
+      Alert.alert(t("health.wellness.saveTitleNoPet"), t("health.wellness.saveBodyNoPet"));
       return;
     }
     const error = validateWellnessForm(checkType, form);
     if (error) {
-      Alert.alert("Almost there", error);
+      Alert.alert(t("health.wellness.almostThere"), error);
       return;
     }
 
@@ -129,13 +131,13 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
       setActiveTab("history");
     } catch (err) {
       console.error("[WellnessLogModal] save failed", err);
-      Alert.alert("Could not save", "We couldn't save this entry. Please try again.");
+      Alert.alert(t("health.wellness.saveErrorTitle"), t("health.wellness.saveErrorBody"));
     } finally {
       setIsSaving(false);
     }
   };
 
-  const title = reminder?.title || schema.label || "Wellness check";
+  const title = reminder?.title || schema.label || t("health.wellness.fallbackTitle");
 
   return (
     <Modal
@@ -217,7 +219,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                   color: activeTab === "add" ? "#FFF" : C.warmBrown,
                 }}
               >
-                Add entry
+                {t("health.wellness.addEntry")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -241,7 +243,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                   color: activeTab === "history" ? "#FFF" : C.warmBrown,
                 }}
               >
-                History
+                {t("health.wellness.history")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -258,7 +260,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                 <View style={{ alignItems: "center", paddingVertical: 40 }}>
                   <ActivityIndicator size="large" color={C.coral} />
                   <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 16 }}>
-                    Saving...
+                    {t("health.wellness.saving")}
                   </Text>
                 </View>
               ) : (
@@ -273,7 +275,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                       borderColor: C.peach,
                     }}
                   >
-                    {renderFields({ schema, form, setValue, setUnit })}
+                    {renderFields({ schema, form, setValue, setUnit, t })}
                   </View>
 
                   {/* Note */}
@@ -296,13 +298,13 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                       }}
                     >
                       {schema.kind === "general" && form.value === "noticed_something"
-                        ? "Note *"
-                        : "Notes (optional)"}
+                        ? t("health.wellness.noteRequired")
+                        : t("health.wellness.notesOptional")}
                     </Text>
                     <TextInput
                       value={form.note}
                       onChangeText={setNote}
-                      placeholder="Any observations or context..."
+                      placeholder={t("health.wellness.notePlaceholder")}
                       placeholderTextColor={C.mutedBrown}
                       multiline
                       numberOfLines={3}
@@ -338,7 +340,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                     }}
                   >
                     <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>
-                      Save entry
+                      {t("health.wellness.saveEntry")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -349,6 +351,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                 schema={schema}
                 entries={entries}
                 isLoading={isLoadingHistory}
+                t={t}
               />
             )}
           </ScrollView>
@@ -360,16 +363,16 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
 
 // --- Field renderers (config-driven) -------------------------------------------
 
-function renderFields({ schema, form, setValue, setUnit }) {
+function renderFields({ schema, form, setValue, setUnit, t }) {
   if (schema.kind === "weight") {
     return (
       <View>
-        <Text style={fieldLabel}>Weight *</Text>
+        <Text style={fieldLabel}>{t("health.wellness.weightLabel")}</Text>
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
           <TextInput
             value={form.value ?? ""}
             onChangeText={setValue}
-            placeholder="e.g., 12.4"
+            placeholder={t("health.wellness.weightPlaceholder")}
             placeholderTextColor={C.mutedBrown}
             keyboardType="decimal-pad"
             style={{
@@ -418,11 +421,11 @@ function renderFields({ schema, form, setValue, setUnit }) {
   if (schema.kind === "text") {
     return (
       <View>
-        <Text style={fieldLabel}>{schema.label} *</Text>
+        <Text style={fieldLabel}>{t("health.wellness.requiredField", { label: schema.label })}</Text>
         <TextInput
           value={form.value ?? ""}
           onChangeText={setValue}
-          placeholder="Enter a value..."
+          placeholder={t("health.wellness.textPlaceholder")}
           placeholderTextColor={C.mutedBrown}
           style={{
             backgroundColor: C.sand,
@@ -442,7 +445,7 @@ function renderFields({ schema, form, setValue, setUnit }) {
   // options + general: single-select chips.
   return (
     <View>
-      <Text style={fieldLabel}>{schema.label} *</Text>
+      <Text style={fieldLabel}>{t("health.wellness.requiredField", { label: schema.label })}</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {schema.options.map((opt) => {
           const selected = form.value === opt.key;
@@ -476,7 +479,7 @@ function renderFields({ schema, form, setValue, setUnit }) {
   );
 }
 
-function HistoryList({ isWeight, schema, entries, isLoading }) {
+function HistoryList({ isWeight, schema, entries, isLoading, t }) {
   if (isLoading) {
     return (
       <View style={{ alignItems: "center", paddingVertical: 60 }}>
@@ -500,7 +503,7 @@ function HistoryList({ isWeight, schema, entries, isLoading }) {
         <Text
           style={{ fontSize: 14, color: C.mutedBrown, textAlign: "center", marginTop: 14 }}
         >
-          No entries yet
+          {t("health.wellness.noEntries")}
         </Text>
       </View>
     );
