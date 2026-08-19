@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import DateField from "@/components/DateField";
 
@@ -32,6 +33,7 @@ export default function VaccineRoutineModal({
   onSave,
   editingRoutine,
 }) {
+  const { t } = useTranslation();
   const [vaccineName, setVaccineName] = useState("");
   const [lastGiven, setLastGiven] = useState("");
   const [nextDue, setNextDue] = useState("");
@@ -149,7 +151,7 @@ export default function VaccineRoutineModal({
             <TextInput
               value={vaccineName}
               onChangeText={setVaccineName}
-              placeholder="e.g., Rabies"
+              placeholder={t("health.reminders.vaccine.namePlaceholder")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -206,7 +208,7 @@ export default function VaccineRoutineModal({
             <TextInput
               value={vetClinic}
               onChangeText={setVetClinic}
-              placeholder="Clinic name"
+              placeholder={t("health.reminders.vaccine.clinicPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -292,7 +294,7 @@ export default function VaccineRoutineModal({
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Additional notes..."
+              placeholder={t("health.reminders.vaccine.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={3}

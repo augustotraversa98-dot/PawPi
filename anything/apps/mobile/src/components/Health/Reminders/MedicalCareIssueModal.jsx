@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -29,6 +30,7 @@ export default function MedicalCareIssueModal({
   onClose,
   onSubmit,
 }) {
+  const { t } = useTranslation();
   const [givenAnswer, setGivenAnswer] = useState("yes");
   const [reactionAnswer, setReactionAnswer] = useState("no");
   const [notes, setNotes] = useState("");
@@ -136,7 +138,7 @@ export default function MedicalCareIssueModal({
                 </Text>
               </View>
 
-              <Label>Was it given?</Label>
+              <Label>{t("health.reminders.medicalCareIssue.givenLabel")}</Label>
               <ChoiceGroup
                 options={[
                   { value: "yes", label: "Yes" },
@@ -147,7 +149,7 @@ export default function MedicalCareIssueModal({
                 onChange={setGivenAnswer}
               />
 
-              <Label>Any reaction?</Label>
+              <Label>{t("health.reminders.medicalCareIssue.reactionLabel")}</Label>
               <ChoiceGroup
                 options={[
                   { value: "no", label: "No" },
@@ -157,11 +159,11 @@ export default function MedicalCareIssueModal({
                 onChange={setReactionAnswer}
               />
 
-              <Label>Notes</Label>
+              <Label>{t("health.reminders.medicalCareIssue.notesLabel")}</Label>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="What happened? (optional)"
+                placeholder={t("health.reminders.medicalCareIssue.notesPlaceholder")}
                 placeholderTextColor={C.mutedBrown}
                 multiline
                 style={{

@@ -57,7 +57,8 @@
     "share": "Share",
     "send": "Send",
     "yourPet": "your pet",
-    "pleaseTryAgain": "Please try again."
+    "pleaseTryAgain": "Please try again.",
+    "error": "Error"
   },
   "settings": {
     "title": "Settings",
@@ -781,7 +782,95 @@
       "savedBody": "Photo check saved successfully",
       "saveError": "Could not save photo check. Please try again.",
       "notesPlaceholder": "Redness, swelling, discharge, smell, sensitivity, no change…",
-      "notesModalPlaceholder": "Any observations or changes you noticed?"
+      "notesModalPlaceholder": "Any observations or changes you noticed?",
+      "selectAtLeastOne": "Select at least one photo check area.",
+      "whatToLookForPlaceholder": "What to look for..."
+    },
+    "reminders": {
+      "schedule": {
+        "date": "Date",
+        "time": "Time",
+        "frequency": "Frequency",
+        "every": "Every",
+        "hoursN": "{{count}} hours",
+        "days": "Days",
+        "onTheseDays": "On these days",
+        "biweeklyHint": "Repeats every other week, starting the week of the date above.",
+        "onceHint": "Fires once on the date and time above.",
+        "monthlyHint": "Repeats on that day of the month, starting from the date above.",
+        "earlyReminder": "Early reminder",
+        "earlyAtTime": "At time",
+        "earlyMinBefore": "{{n}} min before",
+        "earlyHourBefore": "{{n}} hour before",
+        "earlyDayBefore": "{{n}} day before",
+        "earlyWeekBefore": "{{n}} week before"
+      },
+      "vetAppt": {
+        "calendarPermTitle": "Calendar Permission",
+        "calendarPermBody": "Calendar access is needed to add this appointment. You can still save the reminder.",
+        "calendarUnavailableTitle": "Calendar Unavailable",
+        "calendarUnavailableBody": "Could not add to calendar, but the appointment will still be saved.",
+        "calendarUpdateFailedTitle": "Calendar Update Failed",
+        "calendarUpdateFailedBody": "Appointment saved, but calendar could not be updated.",
+        "successTitle": "Success",
+        "createdBody": "Appointment created",
+        "createErrorBody": "Could not create appointment",
+        "updatedBody": "Appointment updated",
+        "updateErrorBody": "Could not update appointment",
+        "deletedTitle": "Deleted",
+        "deletedBody": "Appointment removed",
+        "deleteErrorBody": "Could not delete appointment",
+        "validationTitle": "Validation Error",
+        "titleRequired": "Appointment title is required",
+        "dateRequired": "Date is required",
+        "dateInvalid": "Please select a valid date",
+        "timeRequired": "Please select a time",
+        "deleteTitle": "Delete appointment?",
+        "deleteAlsoCalendarBody": "Also remove this from your phone calendar?",
+        "deleteApptOnly": "Delete appointment only",
+        "deleteApptAndCalendar": "Delete appointment and calendar event",
+        "deleteBody": "This will remove the appointment reminder. Past vet history will stay saved.",
+        "deleteAppt": "Delete appointment",
+        "clinicPlaceholder": "Clinic name",
+        "vetPlaceholder": "Dr. name",
+        "notesPlaceholder": "Additional notes...",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "timing": {
+          "atTime": "At time of appointment",
+          "hourBefore": "1 hour before",
+          "dayBefore": "1 day before",
+          "twoDaysBefore": "2 days before",
+          "weekBefore": "1 week before",
+          "custom": "Custom"
+        }
+      },
+      "creation": {
+        "missingTypeTitle": "Missing Type",
+        "missingTypeBody": "Please select a reminder type",
+        "missingTitleTitle": "Missing Title",
+        "missingTitleBody": "Please enter a reminder title",
+        "createdTitle": "✅ Reminder Created",
+        "createdBody": "{{title}} has been added to your reminders",
+        "titlePlaceholder": "e.g., Dinner time",
+        "descriptionPlaceholder": "Add more details...",
+        "notesPlaceholder": "Optional notes..."
+      },
+      "vaccine": {
+        "clinicPlaceholder": "Clinic name",
+        "notesPlaceholder": "Additional notes...",
+        "namePlaceholder": "e.g., Rabies"
+      },
+      "medication": {
+        "vetPlaceholder": "Veterinarian name",
+        "notesPlaceholder": "Additional notes..."
+      },
+      "medicalCareIssue": {
+        "givenLabel": "Was it given?",
+        "reactionLabel": "Any reaction?",
+        "notesLabel": "Notes",
+        "notesPlaceholder": "What happened? (optional)"
+      }
     }
   },
   "services": {
@@ -2322,7 +2411,8 @@
       "nextFeedingAt": "{{label}} at {{time}}",
       "reducedAppetiteTitle": "Reduced appetite pattern",
       "reducedAppetiteBody": "Your pet's appetite has been lower than usual in recent meals. This may be worth monitoring. Contact your vet if it continues or comes with other symptoms.",
-      "appetiteDipNote": "Appetite dip noted in recent meals. Keep tracking to see if this continues."
+      "appetiteDipNote": "Appetite dip noted in recent meals. Keep tracking to see if this continues.",
+      "notesPlaceholder": "Any additional observations..."
     },
     "pee": {
       "title": "Pee Tracking",

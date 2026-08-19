@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { X, Plus, ChevronDown, ChevronUp, Calendar } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
@@ -50,8 +51,17 @@ export default function VetAppointmentRoutineModal({
   onSave,
   editingRoutine, // Not used - kept for backward compatibility
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const REMINDER_TIMING_LABELS = {
+    at_time: t("health.reminders.vetAppt.timing.atTime"),
+    "1_hour_before": t("health.reminders.vetAppt.timing.hourBefore"),
+    "1_day_before": t("health.reminders.vetAppt.timing.dayBefore"),
+    "2_days_before": t("health.reminders.vetAppt.timing.twoDaysBefore"),
+    "1_week_before": t("health.reminders.vetAppt.timing.weekBefore"),
+    custom: t("health.reminders.vetAppt.timing.custom"),
+  };
 
   const [appointments, setAppointments] = useState([]);
   const [expandedAppointmentId, setExpandedAppointmentId] = useState(null);
@@ -109,13 +119,13 @@ export default function VetAppointmentRoutineModal({
           calendarEventId = calendarResult.eventId;
         } else if (calendarResult.error === "permission_denied") {
           Alert.alert(
-            "Calendar Permission",
-            "Calendar access is needed to add this appointment. You can still save the reminder.",
+            t("health.reminders.vetAppt.calendarPermTitle"),
+            t("health.reminders.vetAppt.calendarPermBody"),
           );
         } else {
           Alert.alert(
-            "Calendar Unavailable",
-            "Could not add to calendar, but the appointment will still be saved.",
+            t("health.reminders.vetAppt.calendarUnavailableTitle"),
+            t("health.reminders.vetAppt.calendarUnavailableBody"),
           );
         }
       }
@@ -139,12 +149,12 @@ export default function VetAppointmentRoutineModal({
       queryClient.invalidateQueries({
         queryKey: ["vet-appointment-reminders"],
       });
-      Alert.alert("Success", "Appointment created");
+      Alert.alert(t("health.reminders.vetAppt.successTitle"), t("health.reminders.vetAppt.createdBody"));
       resetForm();
     },
     onError: (error) => {
       console.error("[VetAppt] Create error:", error);
-      Alert.alert("Error", error.message || "Could not create appointment");
+      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.createErrorBody"));
     },
   });
 
@@ -168,8 +178,8 @@ export default function VetAppointmentRoutineModal({
 
           if (!updateResult.success) {
             Alert.alert(
-              "Calendar Update Failed",
-              "Appointment saved, but calendar could not be updated.",
+              t("health.reminders.vetAppt.calendarUpdateFailedTitle"),
+              t("health.reminders.vetAppt.calendarUpdateFailedBody"),
             );
           }
         } else {
@@ -183,8 +193,8 @@ export default function VetAppointmentRoutineModal({
             calendarEventId = createResult.eventId;
           } else if (createResult.error !== "permission_denied") {
             Alert.alert(
-              "Calendar Unavailable",
-              "Could not add to calendar, but the appointment will still be saved.",
+              t("health.reminders.vetAppt.calendarUnavailableTitle"),
+              t("health.reminders.vetAppt.calendarUnavailableBody"),
             );
           }
         }
@@ -210,13 +220,13 @@ export default function VetAppointmentRoutineModal({
       queryClient.invalidateQueries({
         queryKey: ["vet-appointment-reminders"],
       });
-      Alert.alert("Success", "Appointment updated");
+      Alert.alert(t("health.reminders.vetAppt.successTitle"), t("health.reminders.vetAppt.updatedBody"));
       resetForm();
       setEditingAppointmentId(null);
     },
     onError: (error) => {
       console.error("[VetAppt] Update error:", error);
-      Alert.alert("Error", error.message || "Could not update appointment");
+      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.updateErrorBody"));
     },
   });
 
@@ -247,11 +257,11 @@ export default function VetAppointmentRoutineModal({
       queryClient.invalidateQueries({
         queryKey: ["vet-appointment-reminders"],
       });
-      Alert.alert("Deleted", "Appointment removed");
+      Alert.alert(t("health.reminders.vetAppt.deletedTitle"), t("health.reminders.vetAppt.deletedBody"));
     },
     onError: (error) => {
       console.error("[VetAppt] Delete error:", error);
-      Alert.alert("Error", error.message || "Could not delete appointment");
+      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.deleteErrorBody"));
     },
   });
 
@@ -312,19 +322,19 @@ export default function VetAppointmentRoutineModal({
   const handleSaveAppointment = () => {
     // Validate required fields
     if (!formData.title.trim()) {
-      Alert.alert("Validation Error", "Appointment title is required");
+      Alert.alert(t("health.reminders.vetAppt.validationTitle"), t("health.reminders.vetAppt.titleRequired"));
       return;
     }
     if (!formData.appointmentDate.trim()) {
-      Alert.alert("Validation Error", "Date is required");
+      Alert.alert(t("health.reminders.vetAppt.validationTitle"), t("health.reminders.vetAppt.dateRequired"));
       return;
     }
     if (!validateDate(formData.appointmentDate)) {
-      Alert.alert("Validation Error", "Please select a valid date");
+      Alert.alert(t("health.reminders.vetAppt.validationTitle"), t("health.reminders.vetAppt.dateInvalid"));
       return;
     }
     if (!validateTime(formData.appointmentTime)) {
-      Alert.alert("Validation Error", "Please select a time");
+      Alert.alert(t("health.reminders.vetAppt.validationTitle"), t("health.reminders.vetAppt.timeRequired"));
       return;
     }
 
@@ -358,12 +368,12 @@ export default function VetAppointmentRoutineModal({
     if (appointment?.calendar_event_id) {
       // Show options if appointment has calendar event
       Alert.alert(
-        "Delete appointment?",
-        "Also remove this from your phone calendar?",
+        t("health.reminders.vetAppt.deleteTitle"),
+        t("health.reminders.vetAppt.deleteAlsoCalendarBody"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Delete appointment only",
+            text: t("health.reminders.vetAppt.deleteApptOnly"),
             onPress: () =>
               deleteMutation.mutate({
                 appointmentId,
@@ -371,7 +381,7 @@ export default function VetAppointmentRoutineModal({
               }),
           },
           {
-            text: "Delete appointment and calendar event",
+            text: t("health.reminders.vetAppt.deleteApptAndCalendar"),
             style: "destructive",
             onPress: () =>
               deleteMutation.mutate({
@@ -384,12 +394,12 @@ export default function VetAppointmentRoutineModal({
     } else {
       // No calendar event, simple delete
       Alert.alert(
-        "Delete appointment?",
-        "This will remove the appointment reminder. Past vet history will stay saved.",
+        t("health.reminders.vetAppt.deleteTitle"),
+        t("health.reminders.vetAppt.deleteBody"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Delete appointment",
+            text: t("health.reminders.vetAppt.deleteAppt"),
             style: "destructive",
             onPress: () =>
               deleteMutation.mutate({
@@ -604,7 +614,7 @@ export default function VetAppointmentRoutineModal({
                     onChangeText={(text) =>
                       setFormData((prev) => ({ ...prev, clinic: text }))
                     }
-                    placeholder="Clinic name"
+                    placeholder={t("health.reminders.vetAppt.clinicPlaceholder")}
                     placeholderTextColor={C.mutedBrown}
                     style={{
                       backgroundColor: C.sand,
@@ -632,7 +642,7 @@ export default function VetAppointmentRoutineModal({
                     onChangeText={(text) =>
                       setFormData((prev) => ({ ...prev, veterinarian: text }))
                     }
-                    placeholder="Dr. name"
+                    placeholder={t("health.reminders.vetAppt.vetPlaceholder")}
                     placeholderTextColor={C.mutedBrown}
                     style={{
                       backgroundColor: C.sand,
@@ -692,7 +702,7 @@ export default function VetAppointmentRoutineModal({
                     onChangeText={(text) =>
                       setFormData((prev) => ({ ...prev, notes: text }))
                     }
-                    placeholder="Additional notes..."
+                    placeholder={t("health.reminders.vetAppt.notesPlaceholder")}
                     placeholderTextColor={C.mutedBrown}
                     multiline
                     numberOfLines={3}
@@ -756,7 +766,7 @@ export default function VetAppointmentRoutineModal({
                                 : C.warmBrown,
                           }}
                         >
-                          {option.label}
+                          {REMINDER_TIMING_LABELS[option.value] || option.label}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -1159,11 +1169,8 @@ export default function VetAppointmentRoutineModal({
                                     }}
                                   >
                                     {appt.reminder_enabled
-                                      ? REMINDER_TIMING_OPTIONS.find(
-                                          (o) =>
-                                            o.value === appt.reminder_timing,
-                                        )?.label || "Enabled"
-                                      : "Disabled"}
+                                      ? REMINDER_TIMING_LABELS[appt.reminder_timing] || t("health.reminders.vetAppt.enabled")
+                                      : t("health.reminders.vetAppt.disabled")}
                                   </Text>
                                 </View>
 

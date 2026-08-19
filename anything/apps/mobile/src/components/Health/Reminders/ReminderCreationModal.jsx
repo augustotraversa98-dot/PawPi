@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
 import { Check } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import TimeField from "@/components/TimeField";
 import useRemindersStore from "@/store/remindersStore";
@@ -44,6 +45,7 @@ const BODY_AREA_LABELS = {
 };
 
 export default function ReminderCreationModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const { addReminder } = useRemindersStore();
 
   const [selectedType, setSelectedType] = useState(null);
@@ -60,12 +62,12 @@ export default function ReminderCreationModal({ visible, onClose }) {
 
   const handleCreate = () => {
     if (!selectedType) {
-      Alert.alert("Missing Type", "Please select a reminder type");
+      Alert.alert(t("health.reminders.creation.missingTypeTitle"), t("health.reminders.creation.missingTypeBody"));
       return;
     }
 
     if (!title.trim()) {
-      Alert.alert("Missing Title", "Please enter a reminder title");
+      Alert.alert(t("health.reminders.creation.missingTitleTitle"), t("health.reminders.creation.missingTitleBody"));
       return;
     }
 
@@ -98,8 +100,8 @@ export default function ReminderCreationModal({ visible, onClose }) {
 
     addReminder(newReminder);
     Alert.alert(
-      "✅ Reminder Created",
-      `${title} has been added to your reminders`,
+      t("health.reminders.creation.createdTitle"),
+      t("health.reminders.creation.createdBody", { title }),
     );
     handleClose();
   };
@@ -266,7 +268,7 @@ export default function ReminderCreationModal({ visible, onClose }) {
       <TextInput
         value={title}
         onChangeText={setTitle}
-        placeholder="e.g., Dinner time"
+        placeholder={t("health.reminders.creation.titlePlaceholder")}
         placeholderTextColor={C.mutedBrown}
         style={{
           backgroundColor: C.card,
@@ -294,7 +296,7 @@ export default function ReminderCreationModal({ visible, onClose }) {
       <TextInput
         value={description}
         onChangeText={setDescription}
-        placeholder="Add more details..."
+        placeholder={t("health.reminders.creation.descriptionPlaceholder")}
         placeholderTextColor={C.mutedBrown}
         multiline
         numberOfLines={3}
@@ -434,7 +436,7 @@ export default function ReminderCreationModal({ visible, onClose }) {
       <TextInput
         value={notes}
         onChangeText={setNotes}
-        placeholder="Optional notes..."
+        placeholder={t("health.reminders.creation.notesPlaceholder")}
         placeholderTextColor={C.mutedBrown}
         multiline
         numberOfLines={2}
