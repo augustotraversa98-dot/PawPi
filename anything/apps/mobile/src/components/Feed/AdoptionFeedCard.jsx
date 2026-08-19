@@ -1,4 +1,5 @@
 import React, { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { Heart, ChevronRight, Dog } from "lucide-react-native";

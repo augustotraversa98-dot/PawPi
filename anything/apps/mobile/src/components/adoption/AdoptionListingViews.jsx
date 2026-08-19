@@ -38,16 +38,16 @@ import { isValidCoord } from "@/utils/walkBuddies";
 // SAME design + apply flow renders in BOTH the standalone browse AND the business storefront's
 // Adoption tab. No parallel design — one implementation, imported by both surfaces.
 
-export function money(cents, currency = "ARS") {
+export function money(cents, currency = "ARS", t) {
   if (cents == null) return "";
-  if (cents === 0) return "Free";
+  if (cents === 0) return t ? t("adoption.listing.free") : "Free";
   return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
-export function ageLabel(years, months) {
+export function ageLabel(years, months, t) {
   const y = years || 0;
   const m = months || 0;
-  if (!y && !m) return "Age unknown";
+  if (!y && !m) return t ? t("adoption.listing.ageUnknown") : "Age unknown";
   const parts = [];
   if (y) parts.push(`${y}y`);
   if (m) parts.push(`${m}m`);
@@ -73,9 +73,10 @@ export function Chip({ label }) {
 // visible (NOT overlaid) — the name, a basic-info row (age · size · gender), the distance, and a
 // "See more" affordance. `grid` renders the compact half-width variant for the browse grid.
 export function DogProfileCard({ listing, onPress, grid = false }) {
+  const { t } = useTranslation();
   const photo = Array.isArray(listing.photo_urls) ? listing.photo_urls[0] : null;
   const photoH = grid ? 140 : 180;
-  const info = [ageLabel(listing.age_years, listing.age_months), listing.size, listing.gender]
+  const info = [ageLabel(listing.age_years, listing.age_months, t), listing.size, listing.gender]
     .filter(Boolean)
     .join(" · ");
   const km = listing.distance_km;
@@ -116,7 +117,7 @@ export function DogProfileCard({ listing, onPress, grid = false }) {
                 paddingVertical: 4,
               }}
             >
-              <Text style={[TYPE.caption, { color: "#fff", fontWeight: "800", letterSpacing: 0 }]}>URGENT</Text>
+              <Text style={[TYPE.caption, { color: "#fff", fontWeight: "800", letterSpacing: 0 }]}>{t("adoption.listing.urgent")}</Text>
             </View>
           ) : null}
         </View>
@@ -129,30 +130,30 @@ export function DogProfileCard({ listing, onPress, grid = false }) {
             {listing.name}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]} numberOfLines={1}>
-            {info || "Details inside"}
+            {info || t("adoption.listing.detailsInside")}
           </Text>
           {km != null ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: SPACING.sm }}>
               <MapPin size={12} color={COLORS.mutedBrown} />
               <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                {km < 1 ? "Less than 1 km away" : `${Math.round(km)} km away`}
+                {km < 1 ? t("adoption.listing.lessThan1km") : t("adoption.listing.kmAway", { km: Math.round(km) })}
               </Text>
             </View>
           ) : null}
           {!grid ? (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.sm + 2 }}>
-              {listing.placement_type === "foster" ? <Chip label="Foster" /> : null}
-              {listing.placement_type === "both" ? <Chip label="Adopt or foster" /> : null}
-              {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
-              {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
+              {listing.placement_type === "foster" ? <Chip label={t("adoption.listing.chipFoster")} /> : null}
+              {listing.placement_type === "both" ? <Chip label={t("adoption.listing.chipAdoptOrFoster")} /> : null}
+              {listing.energy_level ? <Chip label={t("adoption.listing.chipEnergy", { level: listing.energy_level })} /> : null}
+              {listing.good_with_kids === true ? <Chip label={t("adoption.listing.chipGoodWithKids")} /> : null}
             </View>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.sm + 2 }}>
             <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]} numberOfLines={1}>
-              {money(listing.adoption_fee_cents, listing.currency)}
+              {money(listing.adoption_fee_cents, listing.currency, t)}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-              <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.warmBrown }]}>See more</Text>
+              <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.warmBrown }]}>{t("adoption.listing.seeMore")}</Text>
               <ChevronRight size={16} color={COLORS.warmBrown} />
             </View>
           </View>
@@ -231,11 +232,11 @@ export function ListingDetailModal({ data, onClose, router }) {
       });
       setSubmitted(true);
       Alert.alert(
-        "Application sent",
-        `The shelter will review your application for ${listing.name}. Track it under Applications, and you can chat with them anytime.`,
+        t("adoption.listing.applicationSentTitle"),
+        t("adoption.listing.applicationSentBody", { name: listing.name }),
       );
     } catch (e) {
-      Alert.alert("Couldn't apply", e.message || "Please try again.");
+      Alert.alert(t("adoption.listing.applyErrorTitle"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -252,12 +253,12 @@ export function ListingDetailModal({ data, onClose, router }) {
             pathname: "/provider-chat",
             params: {
               threadId: String(thread.id),
-              providerName: place.name || "Shelter",
+              providerName: place.name || t("adoption.listing.shelter"),
               ownerUserId: String(thread.owner_user_id),
             },
           });
         },
-        onError: (e) => Alert.alert("Couldn't open chat", e.message || "Please try again."),
+        onError: (e) => Alert.alert(t("adoption.listing.chatErrorTitle"), e.message || t("adoption.listing.pleaseTryAgain")),
       },
     );
   };
@@ -272,13 +273,13 @@ export function ListingDetailModal({ data, onClose, router }) {
       });
       if (res.checkoutUrl) {
         Linking.openURL(res.checkoutUrl).catch(() => {});
-        Alert.alert("Payment started", "Complete it in the checkout window.");
+        Alert.alert(t("adoption.listing.paymentStartedTitle"), t("adoption.listing.paymentStartedBody"));
       } else {
-        Alert.alert("Thank you", "Your payment is being processed.");
+        Alert.alert(t("adoption.listing.thankYouTitle"), t("adoption.listing.paymentProcessingBody"));
       }
     } catch (e) {
       // Surfaces the backend's 503 "payments not configured" message verbatim.
-      Alert.alert("Payments not available", e.message || "Please try again later.");
+      Alert.alert(t("adoption.listing.paymentsUnavailableTitle"), e.message || t("adoption.listing.pleaseTryAgainLater"));
     }
   };
 
@@ -317,7 +318,7 @@ export function ListingDetailModal({ data, onClose, router }) {
             {listing.is_urgent ? (
               <View testID="detail-urgent" style={{ margin: SPACING.lg, marginBottom: 0, backgroundColor: "#C2410C", borderRadius: RADIUS.md - 4, padding: SPACING.md }}>
                 <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
-                  Urgent{listing.urgent_reason ? `: ${listing.urgent_reason}` : ""}
+                  {t("adoption.listing.urgentLabel")}{listing.urgent_reason ? `: ${listing.urgent_reason}` : ""}
                 </Text>
               </View>
             ) : null}
@@ -329,7 +330,7 @@ export function ListingDetailModal({ data, onClose, router }) {
               {listing.placement_type === "both" ? (
                 <View>
                   <Text style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.sm - 2 }]}>
-                    I'd like to:
+                    {t("adoption.listing.idLikeTo")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: SPACING.sm }}>
                     <PressableScale
@@ -337,20 +338,20 @@ export function ListingDetailModal({ data, onClose, router }) {
                       onPress={() => setPlacement("adopt")}
                       style={{ paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.chip, borderWidth: 1, borderColor: placement === "adopt" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "adopt" ? COLORS.coral + "18" : COLORS.card }}
                     >
-                      <Text style={[TYPE.body, { color: placement === "adopt" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>Adopt</Text>
+                      <Text style={[TYPE.body, { color: placement === "adopt" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>{t("adoption.listing.adopt")}</Text>
                     </PressableScale>
                     <PressableScale
                       testID="placement-foster"
                       onPress={() => setPlacement("foster")}
                       style={{ paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.chip, borderWidth: 1, borderColor: placement === "foster" ? COLORS.coral : COLORS.peach, backgroundColor: placement === "foster" ? COLORS.coral + "18" : COLORS.card }}
                     >
-                      <Text style={[TYPE.body, { color: placement === "foster" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>Foster</Text>
+                      <Text style={[TYPE.body, { color: placement === "foster" ? COLORS.coral : COLORS.warmBrown, fontWeight: "700" }]}>{t("adoption.listing.foster")}</Text>
                     </PressableScale>
                   </View>
                 </View>
               ) : listing.placement_type === "foster" ? (
                 <Text testID="placement-foster-only" style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
-                  This dog is available to foster.
+                  {t("adoption.listing.fosterOnly")}
                 </Text>
               ) : null}
 
@@ -359,7 +360,7 @@ export function ListingDetailModal({ data, onClose, router }) {
               {questions.length > 0 && canApply ? (
                 <View testID="application-questions" style={{ gap: SPACING.sm }}>
                   <Text style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "700" }]}>
-                    A few questions from the shelter
+                    {t("adoption.listing.questionsHeading")}
                   </Text>
                   {questions.map((q, i) => (
                     <View key={i} style={{ gap: 4 }}>
@@ -370,7 +371,7 @@ export function ListingDetailModal({ data, onClose, router }) {
                         testID={`answer-${i}`}
                         value={responses[i] ?? ""}
                         onChangeText={(v) => setResponses((r) => ({ ...r, [i]: v }))}
-                        placeholder="Your answer"
+                        placeholder={t("adoption.listing.answerPlaceholder")}
                         placeholderTextColor={COLORS.mutedBrown}
                         multiline
                         style={{
@@ -432,7 +433,7 @@ export function ListingDetailModal({ data, onClose, router }) {
                 />
               )}
               <SecondaryButton
-                label={startingThread ? "Opening…" : "Chat with shelter"}
+                label={startingThread ? t("adoption.listing.opening") : t("adoption.listing.chatWithShelter")}
                 icon={MessageSquare}
                 onPress={doChat}
                 disabled={startingThread}
@@ -440,8 +441,8 @@ export function ListingDetailModal({ data, onClose, router }) {
               <SecondaryButton
                 label={
                   listing.adoption_fee_cents > 0
-                    ? `Pay adoption fee · ${money(listing.adoption_fee_cents, listing.currency)}`
-                    : "No adoption fee"
+                    ? t("adoption.listing.payFee", { amount: money(listing.adoption_fee_cents, listing.currency, t) })
+                    : t("adoption.listing.noFee")
                 }
                 onPress={() =>
                   listing.adoption_fee_cents > 0 &&
@@ -450,12 +451,12 @@ export function ListingDetailModal({ data, onClose, router }) {
                 disabled={checkout.isPending || listing.adoption_fee_cents <= 0}
               />
               <SecondaryButton
-                label="Donate to this place"
+                label={t("adoption.listing.donate")}
                 onPress={() =>
                   Alert.prompt
                     ? Alert.prompt(
-                        "Donate",
-                        "Amount in ARS",
+                        t("adoption.listing.donateTitle"),
+                        t("adoption.listing.donateBody"),
                         (val) => {
                           const cents = Math.round(parseFloat(val) * 100);
                           if (Number.isFinite(cents) && cents > 0) doPay("donation", cents);
@@ -566,6 +567,7 @@ function Fact({ label, value }) {
 // compatibility chips → story → shelter card with a map. Only real fields render; unknowns are
 // omitted gracefully (never shown as fake).
 function DogProfileDetail({ listing, place }) {
+  const { t } = useTranslation();
   const hasCoord = isValidCoord(listing.provider_lat, listing.provider_lng);
   const shelterAddr = listing.provider_address;
   return (
@@ -574,33 +576,33 @@ function DogProfileDetail({ listing, place }) {
       <View style={{ padding: SPACING.lg }}>
         <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>{listing.name}</Text>
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
-          Listed by {listing.provider_name || place?.name}
+          {t("adoption.listing.listedBy", { name: listing.provider_name || place?.name || "" })}
         </Text>
 
         {/* Key facts — only the ones we actually know. */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: SPACING.md + 2 }}>
-          <Fact label="Age" value={ageLabel(listing.age_years, listing.age_months) !== "Age unknown" ? ageLabel(listing.age_years, listing.age_months) : null} />
-          <Fact label="Gender" value={listing.gender} />
-          <Fact label="Size" value={listing.size} />
-          <Fact label="Breed" value={listing.breed} />
-          <Fact label="Vaccination" value={listing.vaccination_status ? listing.vaccination_status.replace(/_/g, " ") : null} />
-          <Fact label="Adoption fee" value={money(listing.adoption_fee_cents, listing.currency)} />
+          <Fact label={t("adoption.listing.factAge")} value={ageLabel(listing.age_years, listing.age_months, t) !== t("adoption.listing.ageUnknown") ? ageLabel(listing.age_years, listing.age_months, t) : null} />
+          <Fact label={t("adoption.listing.factGender")} value={listing.gender} />
+          <Fact label={t("adoption.listing.factSize")} value={listing.size} />
+          <Fact label={t("adoption.listing.factBreed")} value={listing.breed} />
+          <Fact label={t("adoption.listing.factVaccination")} value={listing.vaccination_status ? listing.vaccination_status.replace(/_/g, " ") : null} />
+          <Fact label={t("adoption.listing.factFee")} value={money(listing.adoption_fee_cents, listing.currency, t)} />
         </View>
 
         {/* Compatibility chips. */}
         {(listing.energy_level || listing.good_with_kids === true || listing.good_with_cats === true || listing.good_with_dogs === true) ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.md }}>
-            {listing.energy_level ? <Chip label={`${listing.energy_level} energy`} /> : null}
-            {listing.good_with_kids === true ? <Chip label="Good with kids" /> : null}
-            {listing.good_with_cats === true ? <Chip label="Good with cats" /> : null}
-            {listing.good_with_dogs === true ? <Chip label="Good with dogs" /> : null}
+            {listing.energy_level ? <Chip label={t("adoption.listing.chipEnergy", { level: listing.energy_level })} /> : null}
+            {listing.good_with_kids === true ? <Chip label={t("adoption.listing.chipGoodWithKids")} /> : null}
+            {listing.good_with_cats === true ? <Chip label={t("adoption.listing.chipGoodWithCats")} /> : null}
+            {listing.good_with_dogs === true ? <Chip label={t("adoption.listing.chipGoodWithDogs")} /> : null}
           </View>
         ) : null}
 
         {listing.story ? (
           <>
             <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.xl, marginBottom: SPACING.sm - 2 }]}>
-              {listing.name}'s story
+              {t("adoption.listing.storyHeading", { name: listing.name })}
             </Text>
             <Text style={[TYPE.body, { color: COLORS.warmBrown, lineHeight: 22 }]}>
               {listing.story}
@@ -610,7 +612,7 @@ function DogProfileDetail({ listing, place }) {
 
         {/* Shelter card — name + a map of its location (ticket 2.68 MapLocationView) when known. */}
         <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.xl, marginBottom: SPACING.sm }]}>
-          Shelter
+          {t("adoption.listing.shelter")}
         </Text>
         <Card level="sm" radius={RADIUS.card} borderColor={COLORS.peach} style={{ padding: SPACING.md + 2 }}>
           <Text style={[TYPE.body, { fontWeight: "700", color: COLORS.warmBrown }]}>
