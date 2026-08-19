@@ -15,6 +15,7 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 
 const mockPush = jest.fn();
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("@/components/Health/CareRingCard", () => ({ CareRingCard: () => null }));
 jest.mock("@/components/Health/PackStreaksCard", () => ({ PackStreaksCard: () => null }));
 jest.mock("@/components/Health/LeaderboardCard", () => ({ LeaderboardCard: () => null }));

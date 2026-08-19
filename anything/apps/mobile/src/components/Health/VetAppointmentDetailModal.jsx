@@ -9,6 +9,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, CheckCircle, Edit, Trash2, FileText, Star } from "lucide-react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ export default function VetAppointmentDetailModal({
   appointment,
   onComplete,
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [visitNotes, setVisitNotes] = useState("");
   const [showNotesInput, setShowNotesInput] = useState(false);
@@ -61,8 +63,8 @@ export default function VetAppointmentDetailModal({
         queryKey: ["vet-appointment-reminders"],
       });
       Alert.alert(
-        "✅ Completed",
-        "Appointment marked as completed and added to vet record",
+        `✅ ${t("health.vetAppt.completedTitle")}`,
+        t("health.vetAppt.completedBody"),
       );
       setVisitNotes("");
       setShowNotesInput(false);
@@ -71,7 +73,7 @@ export default function VetAppointmentDetailModal({
     },
     onError: (error) => {
       console.error("[VetApptDetail] Complete error:", error);
-      Alert.alert("Error", error.message || "Could not complete appointment");
+      Alert.alert(t("health.vetAppt.errorTitle"), error.message || t("health.vetAppt.couldNotComplete"));
     },
   });
 
@@ -95,13 +97,13 @@ export default function VetAppointmentDetailModal({
       queryClient.invalidateQueries({
         queryKey: ["vet-appointment-reminders"],
       });
-      Alert.alert("Deleted", "Appointment has been removed");
+      Alert.alert(t("health.vetAppt.deletedTitle"), t("health.vetAppt.deletedBody"));
       onComplete?.();
       onClose();
     },
     onError: (error) => {
       console.error("[VetApptDetail] Delete error:", error);
-      Alert.alert("Error", error.message || "Could not delete appointment");
+      Alert.alert(t("health.vetAppt.errorTitle"), error.message || t("health.vetAppt.couldNotDelete"));
     },
   });
 
@@ -115,12 +117,12 @@ export default function VetAppointmentDetailModal({
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete appointment?",
-      "This will remove the appointment reminder. Past vet history will stay saved.",
+      t("health.vetAppt.deleteConfirmTitle"),
+      t("health.vetAppt.deleteConfirmBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("health.vetAppt.cancel"), style: "cancel" },
         {
-          text: "Delete appointment",
+          text: t("health.vetAppt.deleteAction"),
           style: "destructive",
           onPress: () => deleteMutation.mutate(),
         },
@@ -171,10 +173,10 @@ export default function VetAppointmentDetailModal({
             <Text
               style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}
             >
-              🩺 Vet Appointment
+              🩺 {t("health.vetAppt.detailTitle")}
             </Text>
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
-              Appointment details
+              {t("health.vetAppt.detailSubtitle")}
             </Text>
           </View>
           <PressableScale
@@ -232,16 +234,16 @@ export default function VetAppointmentDetailModal({
           {/* Appointment Info */}
           <Card level="sm" style={{ padding: SPACING.lg, marginBottom: SPACING.lg }}>
             {appointment.clinic && (
-              <InfoRow label="Clinic" value={appointment.clinic} />
+              <InfoRow label={t("health.vetAppt.clinic")} value={appointment.clinic} />
             )}
             {appointment.veterinarian && (
-              <InfoRow label="Veterinarian" value={appointment.veterinarian} />
+              <InfoRow label={t("health.vetAppt.veterinarian")} value={appointment.veterinarian} />
             )}
             {appointment.reason_for_visit && (
-              <InfoRow label="Reason" value={appointment.reason_for_visit} />
+              <InfoRow label={t("health.vetAppt.reason")} value={appointment.reason_for_visit} />
             )}
             {appointment.notes && (
-              <InfoRow label="Notes" value={appointment.notes} multiline />
+              <InfoRow label={t("health.vetAppt.notes")} value={appointment.notes} multiline />
             )}
           </Card>
 
@@ -273,13 +275,13 @@ export default function VetAppointmentDetailModal({
                     marginLeft: 8,
                   }}
                 >
-                  Add visit notes (optional)
+                  {t("health.vetAppt.addNotes")}
                 </Text>
               </View>
               <TextInput
                 value={visitNotes}
                 onChangeText={setVisitNotes}
-                placeholder="e.g., Rabies vaccine administered, next visit in 1 year..."
+                placeholder={t("health.vetAppt.notesPlaceholder")}
                 placeholderTextColor={COLORS.mutedBrown}
                 multiline
                 numberOfLines={4}
@@ -329,7 +331,7 @@ export default function VetAppointmentDetailModal({
             >
               <Star size={18} color="#FFF" fill="#FFF" />
               <Text style={[TYPE.headline, { fontWeight: "700", color: "#FFF" }]}>
-                Write a review
+                {t("health.vetAppt.writeReview")}
               </Text>
             </PressableScale>
           )}
@@ -357,8 +359,8 @@ export default function VetAppointmentDetailModal({
                   <CheckCircle size={18} color="#FFF" />
                   <Text style={[TYPE.headline, { fontWeight: "700", color: "#FFF" }]}>
                     {showNotesInput
-                      ? "Confirm & mark completed"
-                      : "Mark as completed"}
+                      ? t("health.vetAppt.confirmMarkCompleted")
+                      : t("health.vetAppt.markCompleted")}
                   </Text>
                 </>
               )}
@@ -388,7 +390,7 @@ export default function VetAppointmentDetailModal({
                 <>
                   <Trash2 size={16} color={COLORS.coral} />
                   <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
-                    Delete appointment
+                    {t("health.vetAppt.deleteAction")}
                   </Text>
                 </>
               )}
@@ -413,7 +415,7 @@ export default function VetAppointmentDetailModal({
               }}
             >
               <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
-                Cancel
+                {t("health.vetAppt.cancel")}
               </Text>
             </PressableScale>
           )}

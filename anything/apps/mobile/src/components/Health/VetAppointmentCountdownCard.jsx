@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Calendar, Clock, Zap, Eye } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
@@ -23,6 +24,7 @@ export default function VetAppointmentCountdownCard({
   onComplete,
   onSnooze,
 }) {
+  const { t } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
@@ -54,11 +56,11 @@ export default function VetAppointmentCountdownCard({
 
       // Check if today
       if (date.toDateString() === now.toDateString()) {
-        return `Today at ${timeStr}`;
+        return t("health.vetAppt.todayAt", { time: timeStr });
       }
       // Check if tomorrow
       else if (date.toDateString() === tomorrow.toDateString()) {
-        return `Tomorrow at ${timeStr}`;
+        return t("health.vetAppt.tomorrowAt", { time: timeStr });
       }
       // Otherwise show date
       else {
@@ -66,7 +68,7 @@ export default function VetAppointmentCountdownCard({
           month: "short",
           day: "numeric",
         });
-        return `${dateStr} at ${timeStr}`;
+        return t("health.vetAppt.dateAt", { date: dateStr, time: timeStr });
       }
     } catch {
       return isoString;
@@ -117,7 +119,7 @@ export default function VetAppointmentCountdownCard({
           >
             <Zap size={12} color="#FFF" />
             <Text style={{ fontSize: 10, fontWeight: "800", color: "#FFF" }}>
-              TIME-SENSITIVE
+              {t("health.vetAppt.timeSensitive")}
             </Text>
           </View>
         )}
@@ -230,7 +232,7 @@ export default function VetAppointmentCountdownCard({
           >
             <Eye size={18} color="#FFF" />
             <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>
-              View appointment
+              {t("health.vetAppt.viewAppointment")}
             </Text>
           </TouchableOpacity>
 
@@ -253,7 +255,7 @@ export default function VetAppointmentCountdownCard({
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
             >
-              Snooze
+              {t("health.vetAppt.snooze")}
             </Text>
           </TouchableOpacity>
         </View>
