@@ -164,16 +164,14 @@
       "documentsEmptyDesc": "Subí análisis, recetas, facturas, papeles del seguro o informes veterinarios.",
       "photosEmpty": "Todavía no hay chequeos con foto. Los chequeos de patas, ojos, orejas, piel y más aparecerán acá.",
       "addRecordTitle": "Agregar registro",
-      "recordVetNote": "Nota veterinaria",
-      "recordDocument": "Documento",
-      "recordVetVisit": "Visita veterinaria",
-      "recordVaccination": "Vacunación",
-      "recordMedication": "Medicamento",
-      "recordAllergy": "Alergia",
-      "recordCondition": "Condición conocida",
+      "recordMedVaccine": "Medicamento, vacuna o preventivo",
+      "recordAllergyCondition": "Alergia o condición",
+      "recordVetVisitNote": "Visita o nota veterinaria",
       "recordSurgery": "Cirugía",
       "recordLab": "Resultado de análisis",
-      "recordOther": "Otro",
+      "recordAllergy": "Alergia",
+      "recordCondition": "Condición",
+      "chooseAllergyOrConditionTitle": "Alergia o condición",
       "detailDate": "Fecha",
       "detailSurgeon": "Cirujano",
       "detailClinic": "Clínica",
@@ -224,7 +222,8 @@
         "empty": "No pudimos extraer datos estructurados de este. Igual podés agregar registros a mano.",
         "readErrorTitle": "Archivo guardado",
         "readError": "Guardamos tu archivo, pero no pudimos leerlo automáticamente. Podés agregar registros a mano.",
-        "done": "Listo"
+        "done": "Listo",
+        "loadSampleDev": "Cargar ejemplo (dev)"
       },
       "addForm": {
         "allergyTitle": "Agregar alergia",
@@ -298,7 +297,8 @@
         "fVetName": "Veterinario/a",
         "fNote": "Nota",
         "fNotes": "Notas",
-        "fDiagnosedDate": "Diagnosticado"
+        "fDiagnosedDate": "Diagnosticado",
+        "sampleBannerDev": "EJEMPLO — vista previa dev. Son registros de muestra, no leídos de un archivo real."
       }
     },
     "trackerSoon": "Pronto",

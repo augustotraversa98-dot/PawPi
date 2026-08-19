@@ -289,40 +289,72 @@ describe("Vet Record — add / delete flows still work", () => {
   });
 });
 
-describe("Vet Record — Add Record picker (no dead-end primary CTA)", () => {
+describe("Vet Record — Add Record picker (consolidated to 6 entries)", () => {
   const { Alert } = require("react-native");
 
-  test("no record type is a dead-end 'Soon' stub anymore (VR-B)", () => {
-    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  test("shows exactly the six consolidated entries, no 'Soon' stubs", () => {
     const screen = render(<HealthVetRecord />);
     fireEvent.press(screen.getByText("Add Record"));
     expect(screen.queryAllByText("Soon").length).toBe(0);
-    // "Vet Visit" maps to the note flow — opens a real modal, no coming-soon alert.
-    fireEvent.press(screen.getByText("Vet Visit"));
+    // Six rows, keyed by testID (the document label duplicates the top-of-screen CTA).
+    expect(screen.getByTestId("add-record-medVaccine")).toBeTruthy();
+    expect(screen.getByTestId("add-record-allergyCondition")).toBeTruthy();
+    expect(screen.getByTestId("add-record-vetVisitNote")).toBeTruthy();
+    expect(screen.getByTestId("add-record-surgery")).toBeTruthy();
+    expect(screen.getByTestId("add-record-lab")).toBeTruthy();
+    expect(screen.getByTestId("add-record-document")).toBeTruthy();
+    // Localized labels are present.
+    expect(screen.getByText("Medication, vaccine or preventive")).toBeTruthy();
+    expect(screen.getByText("Allergy or condition")).toBeTruthy();
+    expect(screen.getByText("Vet visit or note")).toBeTruthy();
+    // The old standalone entries are gone (folded into the six above).
+    expect(screen.queryByText("Vaccination")).toBeNull();
+    expect(screen.queryByText("Vet Note")).toBeNull();
+    expect(screen.queryByText("Other")).toBeNull();
+  });
+
+  test('"Medication, vaccine or preventive" opens the 3-tab Medications modal', () => {
+    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const screen = render(<HealthVetRecord />);
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByTestId("add-record-medVaccine"));
+    // Opens on the Medications tab; its own chooser switches to Vaccines/Preventive.
+    expect(screen.getByText("medication-modal-open:medications")).toBeTruthy();
     expect(spy).not.toHaveBeenCalled();
-    expect(screen.getByText("note-modal-open")).toBeTruthy();
     spy.mockRestore();
   });
 
-  test("built-in types route to their real flow, no coming-soon alert", () => {
-    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  test('"Allergy or condition" asks which, then opens the shared record form', () => {
     const screen = render(<HealthVetRecord />);
-
     fireEvent.press(screen.getByText("Add Record"));
-    fireEvent.press(screen.getByText("Vet Note"));
+    fireEvent.press(screen.getByTestId("add-record-allergyCondition"));
+    // Step 2: pick a concrete type.
+    fireEvent.press(screen.getByText("Condition"));
+    expect(screen.getByText("vetrecord-modal-open:condition")).toBeTruthy();
+  });
+
+  test('"Vet visit or note" opens the note modal', () => {
+    const screen = render(<HealthVetRecord />);
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByTestId("add-record-vetVisitNote"));
     expect(screen.getByText("note-modal-open")).toBeTruthy();
+  });
 
-    // Allergy opens the shared record form on the allergy type.
+  test('"Surgery" and "Lab result" open the shared record form on their type', () => {
+    const screen = render(<HealthVetRecord />);
     fireEvent.press(screen.getByText("Add Record"));
-    fireEvent.press(screen.getByText("Allergy"));
-    expect(screen.getByText("vetrecord-modal-open:allergy")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("add-record-surgery"));
+    expect(screen.getByText("vetrecord-modal-open:surgery")).toBeTruthy();
 
-    // Vaccination reuses the Medications & Care modal on its vaccines tab.
     fireEvent.press(screen.getByText("Add Record"));
-    fireEvent.press(screen.getByText("Vaccination"));
-    expect(screen.getByText("medication-modal-open:vaccines")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("add-record-lab"));
+    expect(screen.getByText("vetrecord-modal-open:lab")).toBeTruthy();
+  });
 
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
+  test('"Scan or upload a document" opens the document modal', () => {
+    const screen = render(<HealthVetRecord />);
+    fireEvent.press(screen.getByText("Add Record"));
+    fireEvent.press(screen.getByTestId("add-record-document"));
+    expect(screen.getByText("doc-modal-open")).toBeTruthy();
   });
 });

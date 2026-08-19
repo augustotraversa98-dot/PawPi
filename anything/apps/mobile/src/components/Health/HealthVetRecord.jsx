@@ -122,6 +122,9 @@ export default function HealthVetRecord() {
   const [historyTab, setHistoryTab] = useState(null);
 
   const [showAddRecordPicker, setShowAddRecordPicker] = useState(false);
+  // Two-step "Allergy or condition" picker: the add-record sheet closes, this one opens.
+  const [showAllergyConditionChooser, setShowAllergyConditionChooser] =
+    useState(false);
   const [showEditMedicalProfile, setShowEditMedicalProfile] = useState(false);
   const [selectedSurgery, setSelectedSurgery] = useState(null);
   const [selectedLab, setSelectedLab] = useState(null);
@@ -465,9 +468,7 @@ export default function HealthVetRecord() {
   const handleRecordTypeSelect = (record) => {
     setShowAddRecordPicker(false);
     switch (record?.key) {
-      case "vetNote":
-      case "vetVisit":
-      case "other":
+      case "vetVisitNote":
         openHistoryTab("notes");
         setAddNoteVisible(true);
         return;
@@ -475,21 +476,17 @@ export default function HealthVetRecord() {
         openHistoryTab("documents");
         setAddDocVisible(true);
         return;
-      case "vaccination":
-        openHistoryTab("vaccines");
-        setMedicationModalTab("vaccines");
-        return;
-      case "medication":
+      // "Medication, vaccine or preventive" opens the shared Medications & Care
+      // modal on its Medications tab; its own tab chooser lets the owner switch
+      // to Vaccines or Preventive.
+      case "medVaccine":
         openHistoryTab("medications");
         setMedicationModalTab("medications");
         return;
-      case "allergy":
-        openHistoryTab("conditions");
-        setVetRecordModalType("allergy");
-        return;
-      case "condition":
-        openHistoryTab("conditions");
-        setVetRecordModalType("condition");
+      // "Allergy or condition" first asks which one, then opens the shared record
+      // form on that type (both surface on the Conditions tab).
+      case "allergyCondition":
+        setShowAllergyConditionChooser(true);
         return;
       case "surgery":
         openHistoryTab("visits");
@@ -502,6 +499,14 @@ export default function HealthVetRecord() {
       default:
         return;
     }
+  };
+
+  // Second step of "Allergy or condition": pick the concrete type, then open the
+  // shared AddVetRecordModal on the Conditions tab.
+  const handleAllergyConditionChoice = (type) => {
+    setShowAllergyConditionChooser(false);
+    openHistoryTab("conditions");
+    setVetRecordModalType(type);
   };
 
   // Invalidate the record queries touched by an add flow (+ the summary counts).
@@ -833,11 +838,16 @@ export default function HealthVetRecord() {
 
       case "medications":
         return (
-          <EmptyState
-            icon={Pill}
-            title={t("health.vetRecord.medsEmptyTitle")}
-            description={t("health.vetRecord.medsEmptyDesc")}
-          />
+          <View style={{ marginBottom: 16 }}>
+            <EmptyState
+              icon={Pill}
+              title={t("health.vetRecord.medsEmptyTitle")}
+              description={t("health.vetRecord.medsEmptyDesc")}
+            />
+            {/* Prescriptions (ticket 2.53) — owner read-only Rx a vet issued +
+                request refill. Lives under Medications now (VR cleanup). */}
+            <PrescriptionsSection petId={currentPet?.id} />
+          </View>
         );
 
       case "labs":
@@ -1646,9 +1656,6 @@ export default function HealthVetRecord() {
           </Text>
         </View>
 
-        {/* Prescriptions (ticket 2.53) — owner read-only Rx a vet issued + request refill. */}
-        <PrescriptionsSection petId={currentPet?.id} />
-
         {/* Vet Summary — surfaced top-level (above the three groups) so "Create Vet
             Summary" is always reachable, even with no upcoming appointment booked.
             Reuses the dashboard card + its VetSummaryModal (unchanged). */}
@@ -2251,22 +2258,27 @@ export default function HealthVetRecord() {
               showsVerticalScrollIndicator={false}
             >
               {[
-                { key: "vetNote", labelKey: "recordVetNote", icon: Edit },
-                { key: "document", labelKey: "recordDocument", icon: FileText },
-                { key: "vetVisit", labelKey: "recordVetVisit", icon: Stethoscope },
-                { key: "vaccination", labelKey: "recordVaccination", icon: Syringe },
-                { key: "medication", labelKey: "recordMedication", icon: Pill },
-                { key: "allergy", labelKey: "recordAllergy", icon: AlertTriangle },
-                { key: "condition", labelKey: "recordCondition", icon: Heart },
+                { key: "medVaccine", labelKey: "recordMedVaccine", icon: Pill },
+                {
+                  key: "allergyCondition",
+                  labelKey: "recordAllergyCondition",
+                  icon: AlertTriangle,
+                },
+                {
+                  key: "vetVisitNote",
+                  labelKey: "recordVetVisitNote",
+                  icon: Stethoscope,
+                },
                 { key: "surgery", labelKey: "recordSurgery", icon: Scissors },
                 { key: "lab", labelKey: "recordLab", icon: FlaskConical },
-                { key: "other", labelKey: "recordOther", icon: Plus },
+                { key: "document", labelKey: "scanUpload", icon: Camera },
               ].map((record, idx) => {
                 const Icon = record.icon;
                 const label = t(`health.vetRecord.${record.labelKey}`);
                 return (
                   <TouchableOpacity
                     key={idx}
+                    testID={`add-record-${record.key}`}
                     onPress={() =>
                       handleRecordTypeSelect({ ...record, label })
                     }
@@ -2330,6 +2342,111 @@ export default function HealthVetRecord() {
                 );
               })}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Allergy-or-condition chooser (step 2 of the "Allergy or condition" entry). */}
+      <Modal
+        visible={showAllergyConditionChooser}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAllergyConditionChooser(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: COLORS.cream,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              paddingBottom: insets.bottom + 24,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "800",
+                  color: COLORS.warmBrown,
+                }}
+              >
+                {t("health.vetRecord.chooseAllergyOrConditionTitle")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowAllergyConditionChooser(false)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: MATERIALS.surfaceSunken,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <X size={20} color={COLORS.warmBrown} />
+              </TouchableOpacity>
+            </View>
+
+            {[
+              { type: "allergy", labelKey: "recordAllergy", icon: AlertTriangle },
+              { type: "condition", labelKey: "recordCondition", icon: Heart },
+            ].map((choice) => {
+              const Icon = choice.icon;
+              return (
+                <TouchableOpacity
+                  key={choice.type}
+                  onPress={() => handleAllergyConditionChoice(choice.type)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 16,
+                    backgroundColor: MATERIALS.surface,
+                    borderRadius: 12,
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: MATERIALS.hairline,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: COLORS.coral + "20",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
+                    }}
+                  >
+                    <Icon size={20} color={COLORS.coral} />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "600",
+                      color: COLORS.warmBrown,
+                      flex: 1,
+                    }}
+                  >
+                    {t(`health.vetRecord.${choice.labelKey}`)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>
