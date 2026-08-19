@@ -19,6 +19,22 @@ jest.mock("@/hooks/useForum", () => ({
   FORUM_CATEGORIES: ["All", "Health", "Food", "Training", "Behavior", "General"],
   useCreateThread: () => mockCreate,
 }));
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key, opts) => {
+      const translations = {
+        "forum.composeTitle": "New Discussion",
+        "forum.categoryLabel": "Category",
+        "forum.titleLabel": "Title",
+        "forum.questionPlaceholder": "What's your question?",
+        "forum.detailsLabel": "Details (optional)",
+        "forum.contextPlaceholder": "Add more context...",
+        "forum.postButton": "Post",
+      };
+      return translations[key] || key;
+    },
+  }),
+}));
 
 import ForumComposeScreen from "./forum-compose";
 

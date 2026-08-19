@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Send } from "lucide-react-native";
 import {
   useForumThread,
@@ -27,6 +28,7 @@ import {
 import { Card, GlassSurface, PressableScale, PawMark } from "@/components/ui";
 
 export default function ForumThreadScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -76,7 +78,7 @@ export default function ForumThreadScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-          Discussion
+          {t("forum.title")}
         </Text>
       </GlassSurface>
 
@@ -95,7 +97,7 @@ export default function ForumThreadScreen() {
           <View style={{ alignItems: "center", padding: 50 }}>
             <PawMark size={32} color={COLORS.warmBrown} />
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.sm, fontWeight: "700" }]}>
-              This discussion is no longer available.
+              {t("forum.threadNotAvailable")}
             </Text>
           </View>
         )}
@@ -159,12 +161,12 @@ export default function ForumThreadScreen() {
                 },
               ]}
             >
-              {comments.length} {comments.length === 1 ? "COMMENT" : "COMMENTS"}
+              {comments.length} {t(comments.length === 1 ? "forum.comment_one" : "forum.comment_other")}
             </Text>
 
             {comments.length === 0 && (
               <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginBottom: SPACING.md }]}>
-                No comments yet — start the conversation.
+                {t("forum.noComments")}
               </Text>
             )}
 
@@ -233,7 +235,7 @@ export default function ForumThreadScreen() {
             testID="comment-input"
             value={commentText}
             onChangeText={setCommentText}
-            placeholder="Add a comment..."
+            placeholder={t("forum.addCommentPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown + "90"}
             style={{
               flex: 1,

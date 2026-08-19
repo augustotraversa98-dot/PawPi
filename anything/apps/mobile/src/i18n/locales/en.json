@@ -66,17 +66,6 @@
     "english": "English",
     "spanish": "Español"
   },
-  "feed": {
-    "title": "Feed",
-    "dailyPrompt": "Share today's daily",
-    "empty": "Nothing here yet",
-    "businessEyebrow": "BUSINESS YOU FOLLOW",
-    "justNow": "just now",
-    "minutesShort": "{{count}}m",
-    "hoursShort": "{{count}}h",
-    "daysShort": "{{count}}d",
-    "yesterday": "yesterday"
-  },
   "health": {
     "title": "Health",
     "today": "Today",
@@ -1065,21 +1054,6 @@
       "declined": "Application declined"
     }
   },
-  "gettingStarted": {
-    "title": "Getting started",
-    "progress": "{{completed}} of {{total}} done",
-    "yourPet": "your pet",
-    "dailyReminderBody": "{{petName}} would love to see you today 🐾",
-    "celebrateTitle": "You're all set! 🎉",
-    "celebrateBody": "{{petName}}'s profile is ready to go.",
-    "items": {
-      "profile": "Set up your dog's profile",
-      "reminder": "Set your first reminder",
-      "meal": "Log your first meal",
-      "post": "Share your first post",
-      "notifications": "Turn on notifications"
-    }
-  },
   "business": {
     "home": {
       "fallbackName": "Your business",
@@ -1695,5 +1669,46 @@
     "biz_post_engagementMessage": "Someone reacted to your post",
     "biz_follow": "New follower",
     "biz_followMessage": "Someone followed your business"
+  },
+  "feed": {
+    "title": "Feed",
+    "dailyPrompt": "Share today's daily",
+    "empty": "Nothing here yet",
+    "businessEyebrow": "BUSINESS YOU FOLLOW",
+    "justNow": "just now",
+    "minutesShort": "{{count}}m",
+    "hoursShort": "{{count}}h",
+    "daysShort": "{{count}}d",
+    "yesterday": "yesterday"
+  },
+  "forum": {
+    "title": "Discussion",
+    "threadNotAvailable": "This discussion is no longer available.",
+    "comment_one": "COMMENT",
+    "comment_other": "COMMENTS",
+    "noComments": "No comments yet — start the conversation.",
+    "addCommentPlaceholder": "Add a comment...",
+    "composeTitle": "New Discussion",
+    "categoryLabel": "Category",
+    "titleLabel": "Title",
+    "questionPlaceholder": "What's your question?",
+    "detailsLabel": "Details (optional)",
+    "contextPlaceholder": "Add more context...",
+    "postButton": "Post"
+  },
+  "gettingStarted": {
+    "title": "Getting started",
+    "progress": "{{completed}} of {{total}} done",
+    "yourPet": "your pet",
+    "dailyReminderBody": "{{petName}} would love to see you today 🐾",
+    "celebrateTitle": "You're all set! 🎉",
+    "celebrateBody": "{{petName}}'s profile is ready to go.",
+    "items": {
+      "profile": "Set up your dog's profile",
+      "reminder": "Set your first reminder",
+      "meal": "Log your first meal",
+      "post": "Share your first post",
+      "notifications": "Turn on notifications"
+    }
   }
 }

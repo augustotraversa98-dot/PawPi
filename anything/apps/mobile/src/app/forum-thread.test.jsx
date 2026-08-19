@@ -27,6 +27,21 @@ jest.mock("@/hooks/useForum", () => ({
   useCreateComment: () => mockComment,
   useForumVote: () => mockVote,
 }));
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key, opts) => {
+      const translations = {
+        "forum.title": "Discussion",
+        "forum.threadNotAvailable": "This discussion is no longer available.",
+        "forum.comment_one": "COMMENT",
+        "forum.comment_other": "COMMENTS",
+        "forum.noComments": "No comments yet — start the conversation.",
+        "forum.addCommentPlaceholder": "Add a comment...",
+      };
+      return translations[key] || key;
+    },
+  }),
+}));
 
 import ForumThreadScreen from "./forum-thread";
 
