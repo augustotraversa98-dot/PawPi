@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { X, Camera } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,6 +34,7 @@ export default function FeedingIssueModal({
   reminder,
   petName,
 }) {
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const queryClient = useQueryClient();
 
@@ -75,19 +77,18 @@ export default function FeedingIssueModal({
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
 
       // Show feedback based on what was logged
-      let message = `${reminder.title} logged with notes`;
+      let message = t("health.feeding.loggedWithNotes", { title: reminder.title });
       if (appetite === "low" || vomiting) {
-        message +=
-          ". Based on your logs, this may be worth monitoring if it continues.";
+        message += t("health.feeding.watchAppend");
       }
 
-      Alert.alert("✅ Logged", message);
+      Alert.alert(`✅ ${t("health.feeding.loggedTitle")}`, message);
       resetForm();
       onSaved();
     },
     onError: (error) => {
       console.error("[FeedingIssueModal] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("health.feeding.errorTitle"), t("health.feeding.errorBody"));
     },
   });
 
@@ -107,7 +108,7 @@ export default function FeedingIssueModal({
     logIssueMutation.mutate();
   };
 
-  const mealName = reminder?.title || "this meal";
+  const mealName = reminder?.title || t("health.feeding.thisMeal");
   const scheduledTime = reminder?.scheduledAt
     ? new Date(reminder.scheduledAt).toLocaleTimeString("en-US", {
         hour: "numeric",
@@ -142,10 +143,10 @@ export default function FeedingIssueModal({
                 marginBottom: 4,
               }}
             >
-              What was different with this meal?
+              {t("health.feeding.issueTitle")}
             </Text>
             <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {mealName} • {scheduledTime} • {petName}
+              {t("health.feeding.issueSubtitle", { meal: mealName, time: scheduledTime, pet: petName })}
             </Text>
           </View>
           <TouchableOpacity
@@ -178,10 +179,14 @@ export default function FeedingIssueModal({
                 marginBottom: 10,
               }}
             >
-              Appetite
+              {t("health.feeding.appetite")}
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              {["low", "normal", "high"].map((level) => (
+              {[
+                { value: "low", label: t("health.feeding.appetiteLow") },
+                { value: "normal", label: t("health.feeding.appetiteNormal") },
+                { value: "high", label: t("health.feeding.appetiteHigh") },
+              ].map(({ value: level, label }) => (
                 <TouchableOpacity
                   key={level}
                   onPress={() => setAppetite(level)}
@@ -201,10 +206,9 @@ export default function FeedingIssueModal({
                       fontSize: 14,
                       fontWeight: appetite === level ? "700" : "600",
                       color: appetite === level ? C.sage : C.warmBrown,
-                      textTransform: "capitalize",
                     }}
                   >
-                    {level}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -221,10 +225,14 @@ export default function FeedingIssueModal({
                 marginBottom: 10,
               }}
             >
-              Finished meal
+              {t("health.feeding.finishedMeal")}
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              {["yes", "partially", "no"].map((option) => (
+              {[
+                { value: "yes", label: t("health.feeding.finishedYes") },
+                { value: "partially", label: t("health.feeding.finishedPartially") },
+                { value: "no", label: t("health.feeding.finishedNo") },
+              ].map(({ value: option, label }) => (
                 <TouchableOpacity
                   key={option}
                   onPress={() => setFinishedMeal(option)}
@@ -244,10 +252,9 @@ export default function FeedingIssueModal({
                       fontSize: 14,
                       fontWeight: finishedMeal === option ? "700" : "600",
                       color: finishedMeal === option ? C.sage : C.warmBrown,
-                      textTransform: "capitalize",
                     }}
                   >
-                    {option}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -264,12 +271,12 @@ export default function FeedingIssueModal({
                 marginBottom: 10,
               }}
             >
-              Vomiting or reaction
+              {t("health.feeding.vomiting")}
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               {[
-                { value: false, label: "No" },
-                { value: true, label: "Yes" },
+                { value: false, label: t("health.feeding.no") },
+                { value: true, label: t("health.feeding.yes") },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.label}
@@ -323,12 +330,12 @@ export default function FeedingIssueModal({
                 marginBottom: 10,
               }}
             >
-              Anything worth noting?
+              {t("health.feeding.notes")}
             </Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="e.g., Only ate half, seemed uninterested, ate slowly..."
+              placeholder={t("health.feeding.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={4}
@@ -365,8 +372,7 @@ export default function FeedingIssueModal({
                   lineHeight: 18,
                 }}
               >
-                Based on your logs, this may be worth monitoring if it
-                continues. Contact your vet if you notice other symptoms.
+                {t("health.feeding.watchNote")}
               </Text>
             </View>
           )}
@@ -397,7 +403,7 @@ export default function FeedingIssueModal({
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {logIssueMutation.isPending ? "Saving..." : "Save"}
+              {logIssueMutation.isPending ? t("health.feeding.saving") : t("health.feeding.save")}
             </Text>
           </TouchableOpacity>
         </View>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   COLORS,
@@ -65,6 +66,7 @@ import {
 const OVERDUE_COLLAPSE_THRESHOLD = 5;
 
 export default function HealthToday() {
+  const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
@@ -210,7 +212,7 @@ export default function HealthToday() {
       case LOG_FLOWS.VET_APPOINTMENT:
         // Vet appointment completion is handled in VetAppointmentDetailModal
         // Just acknowledge here
-        Alert.alert("✅ Done!", "Vet appointment marked as completed");
+        Alert.alert(`✅ ${t("health.todayView.alertDoneTitle")}`, t("health.todayView.alertVetCompleted"));
         return;
 
       case LOG_FLOWS.PHOTO_CAPTURE:
@@ -230,12 +232,12 @@ export default function HealthToday() {
       // completes nothing, so the item stays in place.
       case LOG_FLOWS.MEDICAL_CHOICE:
       case LOG_FLOWS.FEEDING_CHOICE:
-        Alert.alert(reminder.title, "How did it go?", [
+        Alert.alert(reminder.title, t("health.todayView.alertHowGo"), [
           ...route.options.map((option) => ({
             text: option.label,
             onPress: () => handleComplete(reminder, { action: option.action }),
           })),
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
         ]);
         return;
 
@@ -253,8 +255,8 @@ export default function HealthToday() {
         } catch (err) {
           console.error("[HealthToday] medical care log save failed", err);
           Alert.alert(
-            "Could not save",
-            "We couldn't save this entry. Please try again.",
+            t("health.todayView.alertCouldNotSaveTitle"),
+            t("health.todayView.alertCouldNotSaveBody"),
           );
           return;
         }
@@ -262,10 +264,10 @@ export default function HealthToday() {
         completeReminder(reminder.id);
         invalidateResolution(["medical-care-logs"]);
         Alert.alert(
-          "✅ Saved",
+          `✅ ${t("health.todayView.alertSavedTitle")}`,
           route.savedToVetRecord
-            ? `${reminder.title} saved to vet record`
-            : `${reminder.title} logged`,
+            ? t("health.todayView.alertSavedVetRecord", { title: reminder.title })
+            : t("health.todayView.alertLoggedBody", { title: reminder.title }),
         );
         return;
       }
@@ -288,8 +290,8 @@ export default function HealthToday() {
         } catch (err) {
           console.error("[HealthToday] food log save failed", err);
           Alert.alert(
-            "Could not save",
-            "We couldn't save this entry. Please try again.",
+            t("health.todayView.alertCouldNotSaveTitle"),
+            t("health.todayView.alertCouldNotSaveBody"),
           );
           return;
         }
@@ -297,14 +299,14 @@ export default function HealthToday() {
         queryClient.invalidateQueries({ queryKey: ["health", "food-logs"] });
         queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
         completeReminder(reminder.id);
-        Alert.alert("✅ Logged", `${reminder.title} logged`);
+        Alert.alert(`✅ ${t("health.todayView.alertLoggedTitle")}`, t("health.todayView.alertLoggedBody", { title: reminder.title }));
         return;
       }
 
       // For other types, mark as complete immediately
       default:
         completeReminder(reminder.id);
-        Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
+        Alert.alert(`✅ ${t("health.todayView.alertDoneTitle")}`, t("health.todayView.alertMarkedComplete", { title: reminder.title }));
     }
   };
 
@@ -314,7 +316,7 @@ export default function HealthToday() {
   const handleWellnessSaved = (reminderId) => {
     completeReminder(reminderId);
     invalidateResolution(["wellness-logs", "weight-logs"]);
-    Alert.alert("✅ Saved", `${wellnessReminder?.title || "Entry"} logged`);
+    Alert.alert(`✅ ${t("health.todayView.alertSavedTitle")}`, t("health.todayView.alertLoggedBody", { title: wellnessReminder?.title || t("health.todayView.actionComplete") }));
   };
 
   const handleSomethingOff = (reminder) => {
@@ -334,7 +336,7 @@ export default function HealthToday() {
       invalidateResolution(["medical-care-logs"]);
       setIssueModalVisible(false);
       setIssueReminder(null);
-      Alert.alert("Saved", "Issue saved to medical care history");
+      Alert.alert(t("health.todayView.alertSavedTitle"), t("health.todayView.alertIssueSaved"));
     } catch (err) {
       console.error("[HealthToday] medical care issue save failed", err);
       Alert.alert(
@@ -382,8 +384,8 @@ export default function HealthToday() {
     } catch (err) {
       console.error("[HealthToday] dismiss failed", err);
       Alert.alert(
-        "Could not skip",
-        "We couldn't skip this reminder. Please try again.",
+        t("health.todayView.alertCouldNotSkipTitle"),
+        t("health.todayView.alertCouldNotSkipBody"),
       );
     }
   };
@@ -397,8 +399,8 @@ export default function HealthToday() {
     } catch (err) {
       console.error("[HealthToday] heads-up close failed", err);
       Alert.alert(
-        "Could not dismiss",
-        "We couldn't dismiss this heads-up. Please try again.",
+        t("health.todayView.alertCouldNotDismissTitle"),
+        t("health.todayView.alertCouldNotDismissBody"),
       );
     }
   };
@@ -426,10 +428,11 @@ export default function HealthToday() {
     if (selectedReminder) {
       snoozeReminder(selectedReminder.id, option);
       Alert.alert(
-        "⏰ Snoozed",
-        `${
-          selectedReminder.title
-        } has been snoozed for ${option.label.toLowerCase()}`,
+        `⏰ ${t("health.todayView.alertSnoozedTitle")}`,
+        t("health.todayView.alertSnoozedBody", {
+          title: selectedReminder.title,
+          duration: option.label.toLowerCase(),
+        }),
       );
     }
     setSnoozeModalVisible(false);
@@ -441,27 +444,27 @@ export default function HealthToday() {
     const type = reminder.type;
     switch (type) {
       case REMINDER_TYPES.FEEDING:
-        return { icon: CheckCircle, label: "Log food" };
+        return { icon: CheckCircle, label: t("health.todayView.actionLogFood") };
       case REMINDER_TYPES.WALK:
-        return { icon: Play, label: "Start walk" };
+        return { icon: Play, label: t("health.todayView.actionStartWalk") };
       case REMINDER_TYPES.MEDICATION:
-        return { icon: CheckCircle, label: "Mark given" };
+        return { icon: CheckCircle, label: t("health.todayView.actionMarkGiven") };
       case REMINDER_TYPES.PHOTO_CHECK:
-        return { icon: Camera, label: "Take photo" };
+        return { icon: Camera, label: t("health.todayView.actionTakePhoto") };
       case REMINDER_TYPES.GENERAL_CHECK:
-        return { icon: CheckCircle, label: "Start check" };
+        return { icon: CheckCircle, label: t("health.todayView.actionStartCheck") };
       case REMINDER_TYPES.WEIGHT_CHECK:
-        return { icon: Scale, label: "Log weight" };
+        return { icon: Scale, label: t("health.todayView.actionLogWeight") };
       case REMINDER_TYPES.WELLNESS_CHECK:
         // Use primary action from reminder metadata
         return {
           icon: CheckCircle,
-          label: reminder.primaryAction || "Start check",
+          label: reminder.primaryAction || t("health.todayView.actionStartCheck"),
         };
       case "vet_appointment":
-        return { icon: Eye, label: "View appointment" };
+        return { icon: Eye, label: t("health.todayView.actionViewAppointment") };
       default:
-        return { icon: CheckCircle, label: "Complete" };
+        return { icon: CheckCircle, label: t("health.todayView.actionComplete") };
     }
   };
 
@@ -516,7 +519,7 @@ export default function HealthToday() {
       {/* Section Title */}
       <View style={{ marginBottom: SPACING.xl }}>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
-          Health Today
+          {t("health.todayView.title")}
         </Text>
         <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
           {new Date().toLocaleDateString("en-US", {
@@ -576,7 +579,7 @@ export default function HealthToday() {
                 style={{ marginRight: SPACING.sm }}
               />
               <Text style={[TYPE.headline, { color: COLORS.coral }]}>
-                Overdue ({overdueReminders.length})
+                {t("health.todayView.overdue", { count: overdueReminders.length })}
               </Text>
             </View>
             {isOverdueExpanded ? (
@@ -660,7 +663,7 @@ export default function HealthToday() {
                     >
                       <X size={15} color={COLORS.mutedBrown} strokeWidth={2.5} />
                       <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
-                        Skip
+                        {t("health.todayView.skip")}
                       </Text>
                     </PressableScale>
                   </View>
@@ -693,7 +696,7 @@ export default function HealthToday() {
                 style={{ marginRight: SPACING.sm }}
               />
               <Text style={[TYPE.headline, { color: COLORS.terracotta }]}>
-                Snoozed ({snoozedReminders.length})
+                {t("health.todayView.snoozed", { count: snoozedReminders.length })}
               </Text>
             </View>
             {isSnoozedExpanded ? (
@@ -733,15 +736,16 @@ export default function HealthToday() {
                           {reminder.title}
                         </Text>
                         <Text style={[TYPE.footnote, { color: COLORS.terracotta, fontWeight: "700" }]}>
-                          {formatScheduledTime(
-                            reminder.scheduledAt ?? reminder.nextTriggerAt,
-                            reminderNowMs,
-                          )}
-                          {" · snoozed until "}
-                          {formatScheduledTime(
-                            reminder.snoozedUntil,
-                            reminderNowMs,
-                          )}
+                          {t("health.todayView.snoozedUntil", {
+                            scheduled: formatScheduledTime(
+                              reminder.scheduledAt ?? reminder.nextTriggerAt,
+                              reminderNowMs,
+                            ),
+                            until: formatScheduledTime(
+                              reminder.snoozedUntil,
+                              reminderNowMs,
+                            ),
+                          })}
                         </Text>
                       </View>
                     </View>
@@ -806,7 +810,7 @@ export default function HealthToday() {
           >
             <AlertCircle size={18} color={COLORS.coral} style={{ marginRight: SPACING.sm }} />
             <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-              Due Soon
+              {t("health.todayView.dueSoon")}
             </Text>
             <View
               style={{
@@ -839,7 +843,7 @@ export default function HealthToday() {
           >
             <Bell size={18} color={COLORS.terracotta} style={{ marginRight: SPACING.sm }} />
             <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-              Upcoming
+              {t("health.todayView.upcoming")}
             </Text>
             <View
               style={{
@@ -888,7 +892,7 @@ export default function HealthToday() {
                 style={{ marginRight: SPACING.sm }}
               />
               <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-                Next Up
+                {t("health.todayView.nextUp")}
               </Text>
             </View>
             <PressableScale
@@ -901,7 +905,7 @@ export default function HealthToday() {
               }}
             >
               <Text style={[TYPE.subhead, { color: COLORS.terracotta }]}>
-                Manage routines
+                {t("health.todayView.manageRoutines")}
               </Text>
               <ChevronRight size={14} color={COLORS.terracotta} />
             </PressableScale>
@@ -998,7 +1002,7 @@ export default function HealthToday() {
                 style={{ marginRight: SPACING.sm }}
               />
               <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-                Next Up
+                {t("health.todayView.nextUp")}
               </Text>
             </View>
             <PressableScale
@@ -1011,7 +1015,7 @@ export default function HealthToday() {
               }}
             >
               <Text style={[TYPE.subhead, { color: COLORS.terracotta }]}>
-                Manage routines
+                {t("health.todayView.manageRoutines")}
               </Text>
               <ChevronRight size={14} color={COLORS.terracotta} />
             </PressableScale>
@@ -1026,10 +1030,10 @@ export default function HealthToday() {
           >
             <Text style={{ fontSize: 40, marginBottom: SPACING.sm }}>📅</Text>
             <Text style={[TYPE.callout, { fontWeight: "600", color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
-              All clear for now
+              {t("health.todayView.allClear")}
             </Text>
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, textAlign: "center", fontWeight: "500" }]}>
-              No reminders scheduled in the next few hours
+              {t("health.todayView.allClearHint")}
             </Text>
           </Card>
         </View>

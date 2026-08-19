@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Calendar, Repeat, Settings } from "lucide-react-native";
 import UpcomingTab from "./Reminders/UpcomingTab";
 import RoutinesTab from "./Reminders/RoutinesTab";
@@ -24,6 +25,7 @@ const TABS = {
 };
 
 export default function HealthReminders() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(TABS.UPCOMING);
 
   const TabButton = ({ tab, label, icon: Icon }) => {
@@ -69,9 +71,9 @@ export default function HealthReminders() {
           flexDirection: "row",
         }}
       >
-        <TabButton tab={TABS.UPCOMING} label="Upcoming" icon={Calendar} />
-        <TabButton tab={TABS.ROUTINES} label="Routines" icon={Repeat} />
-        <TabButton tab={TABS.SETTINGS} label="Settings" icon={Settings} />
+        <TabButton tab={TABS.UPCOMING} label={t("health.remindersTabs.upcoming")} icon={Calendar} />
+        <TabButton tab={TABS.ROUTINES} label={t("health.remindersTabs.routines")} icon={Repeat} />
+        <TabButton tab={TABS.SETTINGS} label={t("health.remindersTabs.settings")} icon={Settings} />
       </View>
 
       {/* Tab Content */}

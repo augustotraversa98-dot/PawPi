@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Clock, CheckCircle, Zap, AlertCircle } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
@@ -23,6 +24,7 @@ export default function FeedingCountdownCard({
   onComplete,
   onSnooze,
 }) {
+  const { t } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [issueModalVisible, setIssueModalVisible] = useState(false);
   const { data: currentPet } = useCurrentPet();
@@ -63,11 +65,11 @@ export default function FeedingCountdownCard({
       queryClient.invalidateQueries({ queryKey: ["health", "food-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       onComplete(reminder);
-      Alert.alert("✅ Logged", `${reminder.title} logged`);
+      Alert.alert(`✅ ${t("health.feeding.loggedTitle")}`, t("health.feeding.loggedBody", { title: reminder.title }));
     },
     onError: (error) => {
       console.error("[FeedingCountdownCard] Quick log error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("health.feeding.errorTitle"), t("health.feeding.errorBody"));
     },
   });
 
@@ -84,7 +86,7 @@ export default function FeedingCountdownCard({
     onComplete(reminder);
   };
 
-  const petName = currentPet?.name || "Your pet";
+  const petName = currentPet?.name || t("health.feeding.yourPet");
 
   return (
     <>
@@ -121,7 +123,7 @@ export default function FeedingCountdownCard({
           >
             <Zap size={12} color="#FFF" />
             <Text style={{ fontSize: 10, fontWeight: "800", color: "#FFF" }}>
-              TIME-SENSITIVE
+              {t("health.feeding.timeSensitive")}
             </Text>
           </View>
         )}
@@ -213,7 +215,7 @@ export default function FeedingCountdownCard({
           >
             <CheckCircle size={18} color="#FFF" />
             <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>
-              {quickLogMutation.isPending ? "Logging..." : "Log as usual"}
+              {quickLogMutation.isPending ? t("health.feeding.logging") : t("health.feeding.logAsUsual")}
             </Text>
           </TouchableOpacity>
 
@@ -236,7 +238,7 @@ export default function FeedingCountdownCard({
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.warmBrown }}
             >
-              Something was off
+              {t("health.feeding.somethingOff")}
             </Text>
           </TouchableOpacity>
 
@@ -259,7 +261,7 @@ export default function FeedingCountdownCard({
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
             >
-              Snooze
+              {t("health.feeding.snooze")}
             </Text>
           </TouchableOpacity>
         </View>

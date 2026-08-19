@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Modal } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   TrendingUp,
   TrendingDown,
@@ -26,14 +27,14 @@ import {
 } from "@/constants/theme";
 import { Card, Sheet, PressableScale } from "@/components/ui";
 
-const TIME_RANGES = [
-  { id: "7days", label: "7 Days" },
-  { id: "30days", label: "30 Days" },
-  { id: "3months", label: "3 Months" },
-  { id: "1year", label: "1 Year" },
-];
-
 export default function HealthInsights() {
+  const { t } = useTranslation();
+  const TIME_RANGES = [
+    { id: "7days", label: t("health.insightsView.range7Days") },
+    { id: "30days", label: t("health.insightsView.range30Days") },
+    { id: "3months", label: t("health.insightsView.range3Months") },
+    { id: "1year", label: t("health.insightsView.range1Year") },
+  ];
   const [selectedRange, setSelectedRange] = useState("30days");
   const [expandedInsight, setExpandedInsight] = useState(null);
 
@@ -272,10 +273,10 @@ export default function HealthInsights() {
         {/* Header */}
         <View style={{ marginBottom: SPACING.xxl }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown, marginBottom: 6 }]}>
-            Health Insights
+            {t("health.insightsView.title")}
           </Text>
           <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontStyle: "italic" }]}>
-            Patterns from your logs to help conversations with your vet.
+            {t("health.insightsView.subtitle")}
           </Text>
         </View>
 
@@ -294,16 +295,14 @@ export default function HealthInsights() {
         >
           <Info size={18} color="#FFB74D" style={{ marginTop: 2 }} />
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, flex: 1 }]}>
-            This is not a diagnosis. PawPi helps identify patterns from
-            your logs so you can have better conversations with your
-            veterinarian.
+            {t("health.insightsView.disclaimer")}
           </Text>
         </View>
 
         {/* Time Range Selector - MOVED TO TOP */}
         <View style={{ marginBottom: SPACING.xxl }}>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.md }]}>
-            View Period
+            {t("health.insightsView.viewPeriod")}
           </Text>
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             {TIME_RANGES.map((range) => {
@@ -344,7 +343,7 @@ export default function HealthInsights() {
         {/* Insights & Patterns - GRID LAYOUT */}
         <View style={{ marginBottom: SPACING.xxl }}>
           <Text style={[TYPE.title2, { color: COLORS.warmBrown, marginBottom: SPACING.md + 2 }]}>
-            Insights & Patterns
+            {t("health.insightsView.insightsAndPatterns")}
           </Text>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm + 2 }}>
@@ -382,7 +381,7 @@ export default function HealthInsights() {
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs }}>
                       <Text style={[TYPE.caption, { color: COLORS.coral, fontWeight: "600", letterSpacing: 0 }]}>
-                        View details
+                        {t("health.insightsView.viewDetails")}
                       </Text>
                       <ChevronRight size={10} color={COLORS.coral} />
                     </View>
@@ -405,12 +404,12 @@ export default function HealthInsights() {
           >
             <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
               {selectedRange === "7days"
-                ? "Weekly Summary"
+                ? t("health.insightsView.weeklySummary")
                 : selectedRange === "30days"
-                  ? "Monthly Summary"
+                  ? t("health.insightsView.monthlySummary")
                   : selectedRange === "3months"
-                    ? "Quarterly Summary"
-                    : "Annual Summary"}
+                    ? t("health.insightsView.quarterlySummary")
+                    : t("health.insightsView.annualSummary")}
             </Text>
             <View
               style={{
@@ -421,7 +420,7 @@ export default function HealthInsights() {
               }}
             >
               <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.sage }]}>
-                {completionRate}% logged
+                {t("health.insightsView.percentLogged", { percent: completionRate })}
               </Text>
             </View>
           </View>
@@ -526,13 +525,13 @@ export default function HealthInsights() {
           >
             <MessageCircle size={20} color={COLORS.coral} />
             <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-              Suggested Vet Questions
+              {t("health.insightsView.suggestedVetQuestions")}
             </Text>
           </View>
 
           <Card level="sm" radius={RADIUS.lg} style={{ padding: 18 }}>
             <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.lg, lineHeight: 18 }]}>
-              Based on recent patterns, consider asking your vet:
+              {t("health.insightsView.suggestedIntro")}
             </Text>
             <View style={{ gap: SPACING.md + 2 }}>
               {vetQuestions.map((question, idx) => (
@@ -577,7 +576,7 @@ export default function HealthInsights() {
             >
               <FileText size={16} color="#FFF" />
               <Text style={[TYPE.callout, { fontWeight: "800", color: "#FFF" }]}>
-                Prepare Vet Visit Report
+                {t("health.insightsView.prepareReport")}
               </Text>
             </PressableScale>
           </Card>
@@ -595,7 +594,7 @@ export default function HealthInsights() {
           >
             <BarChart3 size={20} color={COLORS.sage} />
             <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-              Data Completeness
+              {t("health.insightsView.dataCompleteness")}
             </Text>
           </View>
 
@@ -620,7 +619,7 @@ export default function HealthInsights() {
                       {item.label}
                     </Text>
                     <Text style={[TYPE.footnote, { fontWeight: "700", color: COLORS.mutedBrown }]}>
-                      {item.logged}/{item.total} days
+                      {t("health.insightsView.daysLabel", { logged: item.logged, total: item.total })}
                     </Text>
                   </View>
                   <View
@@ -658,8 +657,7 @@ export default function HealthInsights() {
               }}
             >
               <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, textAlign: "center" }]}>
-                More consistent logging helps identify meaningful patterns over
-                time.
+                {t("health.insightsView.completenessHint")}
               </Text>
             </View>
           </Card>
@@ -677,7 +675,7 @@ export default function HealthInsights() {
           >
             <Camera size={20} color="#64B5F6" />
             <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-              Photo Check Highlights
+              {t("health.insightsView.photoHighlights")}
             </Text>
           </View>
 
@@ -718,10 +716,10 @@ export default function HealthInsights() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[TYPE.headline, { color: COLORS.warmBrown, marginBottom: SPACING.xs }]}>
-                  {photoCheckStreak} weeks in a row! 🎉
+                  {t("health.insightsView.weeksInRow", { count: photoCheckStreak })}
                 </Text>
                 <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 17 }]}>
-                  Paws photo check completed consistently
+                  {t("health.insightsView.pawsConsistent")}
                 </Text>
               </View>
             </View>
@@ -733,8 +731,7 @@ export default function HealthInsights() {
               }}
             >
               <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18 }]}>
-                Regular photo checks help you spot subtle changes in skin, coat,
-                eyes, paws, and more. Keep up the great work!
+                {t("health.insightsView.photoNote")}
               </Text>
             </View>
           </View>
@@ -761,7 +758,7 @@ export default function HealthInsights() {
           >
             <FileText size={20} color={COLORS.terracotta} />
             <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-              Export All Insights for Vet
+              {t("health.insightsView.exportAll")}
             </Text>
           </Card>
         </PressableScale>
@@ -777,9 +774,7 @@ export default function HealthInsights() {
           }}
         >
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18, textAlign: "center" }]}>
-            These insights help you notice patterns. Share them with your vet to
-            provide meaningful context during appointments. This does not
-            replace professional veterinary diagnosis or care.
+            {t("health.insightsView.bottomDisclaimer")}
           </Text>
         </View>
       </View>
@@ -828,7 +823,7 @@ export default function HealthInsights() {
                   <PressableScale
                     onPress={() => setExpandedInsight(null)}
                     accessibilityRole="button"
-                    accessibilityLabel="Close"
+                    accessibilityLabel={t("health.insightsView.close")}
                     style={{
                       width: 36,
                       height: 36,
@@ -868,7 +863,7 @@ export default function HealthInsights() {
                   }}
                 >
                   <Text style={[TYPE.headline, { fontWeight: "800", color: "#FFF" }]}>
-                    Got it
+                    {t("health.insightsView.gotIt")}
                   </Text>
                 </PressableScale>
               </>
