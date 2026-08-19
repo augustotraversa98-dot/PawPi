@@ -164,16 +164,14 @@
       "documentsEmptyDesc": "Upload lab results, prescriptions, invoices, insurance papers, or vet reports.",
       "photosEmpty": "No photo checks yet. Photo checks from paws, eyes, ears, skin, and more will appear here.",
       "addRecordTitle": "Add Record",
-      "recordVetNote": "Vet Note",
-      "recordDocument": "Document",
-      "recordVetVisit": "Vet Visit",
-      "recordVaccination": "Vaccination",
-      "recordMedication": "Medication",
-      "recordAllergy": "Allergy",
-      "recordCondition": "Known Condition",
+      "recordMedVaccine": "Medication, vaccine or preventive",
+      "recordAllergyCondition": "Allergy or condition",
+      "recordVetVisitNote": "Vet visit or note",
       "recordSurgery": "Surgery",
-      "recordLab": "Lab Result",
-      "recordOther": "Other",
+      "recordLab": "Lab result",
+      "recordAllergy": "Allergy",
+      "recordCondition": "Condition",
+      "chooseAllergyOrConditionTitle": "Allergy or condition",
       "detailDate": "Date",
       "detailSurgeon": "Surgeon",
       "detailClinic": "Clinic",
@@ -224,7 +222,8 @@
         "empty": "We couldn't pull structured details from this one. You can still add records by hand.",
         "readErrorTitle": "File saved",
         "readError": "We saved your file, but couldn't read it automatically. You can add records by hand.",
-        "done": "Done"
+        "done": "Done",
+        "loadSampleDev": "Load sample (dev)"
       },
       "addForm": {
         "allergyTitle": "Add allergy",
@@ -298,7 +297,8 @@
         "fVetName": "Vet",
         "fNote": "Note",
         "fNotes": "Notes",
-        "fDiagnosedDate": "Diagnosed"
+        "fDiagnosedDate": "Diagnosed",
+        "sampleBannerDev": "SAMPLE — dev preview. These are canned records, not read from a real file."
       }
     },
     "trackerSoon": "Soon",
