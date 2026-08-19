@@ -98,15 +98,15 @@ export default function TrainingServiceScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Training 🎓
+            {t("training.headerTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Hire a trainer — 1:1, group classes, and programs
+            {t("training.headerSubtitle")}
           </Text>
         </View>
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("training.messages")}
           style={{
             width: 40,
             height: 40,
@@ -127,7 +127,7 @@ export default function TrainingServiceScreen() {
         {/* The pet's enrollments — progress + video lessons, owner-readable. */}
         {activePrograms.length > 0 ? (
           <>
-            <SectionLabel>YOUR TRAINING</SectionLabel>
+            <SectionLabel>{t("training.yourTraining")}</SectionLabel>
             {activePrograms.map((p) => (
               <ProgramCard key={p.id} program={p} />
             ))}
@@ -135,7 +135,7 @@ export default function TrainingServiceScreen() {
         ) : null}
 
         <SectionLabel style={{ marginTop: activePrograms.length ? SPACING.xxl : 0 }}>
-          TRAINERS NEAR YOU
+          {t("training.trainersNearYou")}
         </SectionLabel>
 
         {hasProviders ? (
@@ -153,13 +153,13 @@ export default function TrainingServiceScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load trainers"
-            body="Something went wrong. Pull down to try again."
+            title={t("training.couldNotLoadTitle")}
+            body={t("training.couldNotLoadBody")}
           />
         ) : !hasProviders ? (
           <EmptyState
-            title="No trainers available yet"
-            body="Check back soon — dog trainers are joining PawPi."
+            title={t("training.emptyTitle")}
+            body={t("training.emptyBody")}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -193,6 +193,7 @@ export default function TrainingServiceScreen() {
 }
 
 function ProgramCard({ program }) {
+  const { t } = useTranslation();
   const progress = Array.isArray(program.progress) ? program.progress : [];
   const completed = progress.filter((p) => p.status === "completed").length;
   const programVideos = Array.isArray(program.video_lesson_urls)
@@ -213,7 +214,7 @@ function ProgramCard({ program }) {
         }}
       >
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-          {program.title || "Program"}
+          {program.title || t("training.program")}
         </Text>
         <StatusPill status={program.status} />
       </View>
@@ -224,7 +225,7 @@ function ProgramCard({ program }) {
       ) : null}
 
       <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: SPACING.sm }]}>
-        {completed} of {program.total_sessions} sessions completed
+        {t("training.progressLine", { completed, total: program.total_sessions })}
       </Text>
 
       {/* Per-session progress notes the trainer logged. */}
@@ -240,7 +241,7 @@ function ProgramCard({ program }) {
           )}
           <View style={{ flex: 1 }}>
             <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.warmBrown }]}>
-              {s.session_title || "Session"}
+              {s.session_title || t("training.session")}
             </Text>
             {s.progress_note ? (
               <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
@@ -258,7 +259,7 @@ function ProgramCard({ program }) {
       {programVideos.length > 0 ? (
         <View style={{ marginTop: SPACING.md }}>
           <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.mutedBrown }]}>
-            VIDEO LESSONS
+            {t("training.videoLessonsHeader")}
           </Text>
           <VideoLink count={programVideos.length} />
         </View>
@@ -268,21 +269,23 @@ function ProgramCard({ program }) {
 }
 
 function VideoLink({ count }) {
+  const { t } = useTranslation();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
       <PlayCircle size={14} color={COLORS.coral} />
       <Text style={[TYPE.footnote, { color: COLORS.coral, fontWeight: "700" }]}>
-        Watch {count} video lesson{count > 1 ? "s" : ""}
+        {t("training.watchVideos", { count })}
       </Text>
     </View>
   );
 }
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
-    active: { label: "Active", color: COLORS.coral },
-    completed: { label: "Completed", color: "#3FA34D" },
-    cancelled: { label: "Cancelled", color: COLORS.mutedBrown },
+    active: { label: t("training.statusActive"), color: COLORS.coral },
+    completed: { label: t("training.statusCompleted"), color: "#3FA34D" },
+    cancelled: { label: t("training.statusCancelled"), color: COLORS.mutedBrown },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (
@@ -300,6 +303,7 @@ function StatusPill({ status }) {
 }
 
 function ProviderCard({ provider, onOpen, onBook }) {
+  const { t } = useTranslation();
   return (
     <Card
       level="md"
@@ -365,17 +369,17 @@ function ProviderCard({ provider, onOpen, onBook }) {
         }}
       >
         <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
-          Book training
+          {t("training.bookTraining")}
         </Text>
       </PressableScale>
     </Card>
   );
 }
 
-const SERVICE_TYPES = [
-  { key: "one_on_one", label: "1:1 session" },
-  { key: "group_class", label: "Group class" },
-  { key: "program", label: "Program" },
+const serviceTypes = (t) => [
+  { key: "one_on_one", label: t("training.oneOnOne") },
+  { key: "group_class", label: t("training.groupClass") },
+  { key: "program", label: t("training.programLabel") },
 ];
 
 // Book a training service: type (1:1 / group class / program). For a GROUP CLASS the owner
@@ -384,6 +388,8 @@ const SERVICE_TYPES = [
 // itself reuses the provider chat for coordination; the enrollment + class roster are the
 // new training records.
 function BookTrainingModal({ provider, petId, onClose }) {
+  const { t } = useTranslation();
+  const SERVICE_TYPES = serviceTypes(t);
   const [serviceType, setServiceType] = useState("one_on_one");
   const [title, setTitle] = useState("");
   const [totalSessions, setTotalSessions] = useState("6");
@@ -404,14 +410,14 @@ function BookTrainingModal({ provider, petId, onClose }) {
     try {
       if (serviceType === "group_class") {
         if (!selectedClassId) {
-          Alert.alert("Pick a class", "Choose a group class to join.");
+          Alert.alert(t("training.pickClassTitle"), t("training.pickClassBody"));
           return;
         }
         await join.mutateAsync({
           petId,
           session_id: selectedClassId,
         });
-        Alert.alert("Class booked", "You're enrolled. You'll see progress here.");
+        Alert.alert(t("training.classBookedTitle"), t("training.classBookedBody"));
       } else {
         const n =
           serviceType === "program"
@@ -422,18 +428,18 @@ function BookTrainingModal({ provider, petId, onClose }) {
           provider_id: provider.id,
           title:
             title ||
-            (serviceType === "program" ? "Training program" : "1:1 training"),
+            (serviceType === "program" ? t("training.defaultProgramTitle") : t("training.defaultOneOnOneTitle")),
           total_sessions: n,
         });
         Alert.alert(
-          "Training booked",
-          "You're enrolled. Your trainer will log progress here.",
+          t("training.trainingBookedTitle"),
+          t("training.trainingBookedBody"),
         );
       }
       reset();
       onClose();
     } catch (e) {
-      Alert.alert("Couldn't book", e.message || "Please try again.");
+      Alert.alert(t("training.couldNotBook"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -459,7 +465,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
           }}
         >
           <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
-            Book training
+            {t("training.bookTraining")}
           </Text>
           <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
@@ -473,14 +479,14 @@ function BookTrainingModal({ provider, petId, onClose }) {
             </Text>
           ) : null}
 
-          <FieldLabel>Service</FieldLabel>
+          <FieldLabel>{t("training.service")}</FieldLabel>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
-            {SERVICE_TYPES.map((t) => {
-              const selected = serviceType === t.key;
+            {SERVICE_TYPES.map((row) => {
+              const selected = serviceType === row.key;
               return (
                 <PressableScale
-                  key={t.key}
-                  onPress={() => setServiceType(t.key)}
+                  key={row.key}
+                  onPress={() => setServiceType(row.key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   style={{
@@ -501,7 +507,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
                       },
                     ]}
                   >
-                    {t.label}
+                    {row.label}
                   </Text>
                 </PressableScale>
               );
@@ -510,10 +516,10 @@ function BookTrainingModal({ provider, petId, onClose }) {
 
           {serviceType === "group_class" ? (
             <>
-              <FieldLabel style={{ marginTop: SPACING.lg }}>Pick a class</FieldLabel>
+              <FieldLabel style={{ marginTop: SPACING.lg }}>{t("training.pickAClass")}</FieldLabel>
               {!classes || classes.length === 0 ? (
                 <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
-                  This trainer has no group classes yet.
+                  {t("training.noGroupClasses")}
                 </Text>
               ) : (
                 classes.map((c) => {
@@ -538,12 +544,12 @@ function BookTrainingModal({ provider, petId, onClose }) {
                       <Text
                         style={[TYPE.callout, { fontWeight: "700", color: COLORS.warmBrown }]}
                       >
-                        {c.title || "Group class"}
+                        {c.title || t("training.groupClass")}
                       </Text>
                       <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
                         {c.capacity != null
-                          ? `${c.attendee_count ?? 0} / ${c.capacity} seats${full ? " · Full" : ""}`
-                          : `${c.attendee_count ?? 0} enrolled`}
+                          ? t("training.seats", { attendee: c.attendee_count ?? 0, capacity: c.capacity, suffix: full ? ` · ${t("training.full")}` : "" })
+                          : t("training.enrolledCount", { count: c.attendee_count ?? 0 })}
                       </Text>
                     </PressableScale>
                   );
@@ -552,21 +558,21 @@ function BookTrainingModal({ provider, petId, onClose }) {
             </>
           ) : (
             <>
-              <FieldLabel style={{ marginTop: SPACING.lg }}>Title</FieldLabel>
+              <FieldLabel style={{ marginTop: SPACING.lg }}>{t("training.titleLabel")}</FieldLabel>
               <TextInput
                 value={title}
                 onChangeText={setTitle}
                 placeholder={
                   serviceType === "program"
-                    ? "e.g. Puppy Foundations"
-                    : "e.g. Leash manners"
+                    ? t("training.programTitlePlaceholder")
+                    : t("training.oneOnOnePlaceholder")
                 }
                 placeholderTextColor={COLORS.mutedBrown}
                 style={inputStyle}
               />
               {serviceType === "program" ? (
                 <>
-                  <FieldLabel style={{ marginTop: SPACING.lg }}>Number of sessions</FieldLabel>
+                  <FieldLabel style={{ marginTop: SPACING.lg }}>{t("training.numberOfSessions")}</FieldLabel>
                   <TextInput
                     value={totalSessions}
                     onChangeText={setTotalSessions}
@@ -593,7 +599,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
             }}
           >
             <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-              {pending ? "Booking…" : "Confirm booking"}
+              {pending ? t("training.booking") : t("training.confirmBooking")}
             </Text>
           </PressableScale>
         </KeyboardAwareScrollView>

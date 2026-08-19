@@ -220,16 +220,16 @@ export default function WalkingScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Dog Walking 🐾
+            {t("walking.headerTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Book a walker, watch the walk live
+            {t("walking.headerSubtitle")}
           </Text>
         </View>
         {/* Owner ↔ provider Messages inbox (ticket 2.5). */}
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("walking.messages")}
           style={{
             width: 40,
             height: 40,
@@ -280,11 +280,10 @@ export default function WalkingScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                Walk in progress
+                {t("walking.walkInProgress")}
               </Text>
               <Text style={[TYPE.subhead, { color: "#FFFFFFCC", fontWeight: "500", marginTop: 2 }]}>
-                {liveSession.walker_name || "Your walker"} is out with{" "}
-                {currentPet?.name || "your dog"} — tap to watch live
+                {t("walking.walkerIsOutWith", { walker: liveSession.walker_name || t("walking.yourWalker"), pet: currentPet?.name || t("walking.yourDog") })}
               </Text>
             </View>
             <ChevronRight size={20} color="#FFF" />
@@ -348,7 +347,7 @@ export default function WalkingScreen() {
             { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.md + 2, letterSpacing: 0.6 },
           ]}
         >
-          WALKERS NEAR YOU
+          {t("walking.walkersNearYou")}
         </Text>
 
         {hasProviders ? (
@@ -366,13 +365,13 @@ export default function WalkingScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load walkers"
-            body="Something went wrong. Pull down to try again."
+            title={t("walking.couldNotLoadTitle")}
+            body={t("walking.couldNotLoadBody")}
           />
         ) : !hasProviders ? (
           <EmptyState
-            title="No walkers available yet"
-            body="Check back soon — walkers are joining PawPi."
+            title={t("walking.emptyTitle")}
+            body={t("walking.emptyBody")}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -406,7 +405,7 @@ export default function WalkingScreen() {
                 },
               ]}
             >
-              RECENT WALKS
+              {t("walking.recentWalks")}
             </Text>
             {recent.map((s) => (
               <WalkReportCard
@@ -707,6 +706,7 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
 }
 
 function WalkReportCard({ session, onPress }) {
+  const { t } = useTranslation();
   const miles = metresToMiles(session.distance_m);
   const mins =
     session.duration_s != null ? Math.round(session.duration_s / 60) : null;
@@ -722,14 +722,14 @@ function WalkReportCard({ session, onPress }) {
           }}
         >
           <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
-            {session.provider_name || "Walk"}
+            {session.provider_name || t("walking.walk")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
             {date ? new Date(date).toLocaleDateString() : ""}
           </Text>
         </View>
         <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2 }]}>
-          {mins != null ? `${mins} min` : "Walk"}
+          {mins != null ? t("walking.minutes", { count: mins }) : t("walking.walk")}
           {miles != null ? ` · ${miles} mi` : ""}
           {session.potty_pee ? " · 💦" : ""}
           {session.potty_poo ? " · 💩" : ""}

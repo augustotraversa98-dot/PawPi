@@ -14,6 +14,7 @@ let mockMark;
 let mockSighting;
 let mockResolve;
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({

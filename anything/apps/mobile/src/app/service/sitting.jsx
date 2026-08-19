@@ -50,10 +50,10 @@ import ProviderListControls, {
 // Discovery is the SHARED /api/providers/discover?type=sitter (capability match, ticket
 // 2.1) via the SAME useDiscoverProviders hook the vet/grooming/walking/daycare screens use.
 // Coordination (incl. the meet-and-greet conversation) reuses the provider chat (2.5).
-const SERVICE_TYPES = [
-  { key: "drop_in", label: "Drop-in visit" },
-  { key: "overnight", label: "Overnight" },
-  { key: "house_sit", label: "House-sit" },
+const serviceTypes = (t) => [
+  { key: "drop_in", label: t("sitting.serviceDropIn") },
+  { key: "overnight", label: t("sitting.serviceOvernight") },
+  { key: "house_sit", label: t("sitting.serviceHouseSit") },
 ];
 
 export default function SittingScreen() {
@@ -99,15 +99,15 @@ export default function SittingScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Pet Sitting 💛
+            {t("sitting.headerTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            In-home visits, overnights, and house-sits
+            {t("sitting.headerSubtitle")}
           </Text>
         </View>
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("sitting.messages")}
           style={{
             width: 40,
             height: 40,
@@ -128,7 +128,7 @@ export default function SittingScreen() {
         {/* Visit updates the sitter posted, owner-readable. */}
         {activeVisits.length > 0 ? (
           <>
-            <SectionLabel>VISIT UPDATES</SectionLabel>
+            <SectionLabel>{t("sitting.visitUpdates")}</SectionLabel>
             {activeVisits.map((v) => (
               <VisitCard key={v.id} visit={v} />
             ))}
@@ -136,7 +136,7 @@ export default function SittingScreen() {
         ) : null}
 
         <SectionLabel style={{ marginTop: activeVisits.length ? SPACING.xxl : 0 }}>
-          SITTERS NEAR YOU
+          {t("sitting.sittersNearYou")}
         </SectionLabel>
 
         {hasProviders ? (
@@ -154,13 +154,13 @@ export default function SittingScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load sitters"
-            body="Something went wrong. Pull down to try again."
+            title={t("sitting.couldNotLoadTitle")}
+            body={t("sitting.couldNotLoadBody")}
           />
         ) : !hasProviders ? (
           <EmptyState
-            title="No sitters available yet"
-            body="Check back soon — pet sitters are joining PawPi."
+            title={t("sitting.emptyTitle")}
+            body={t("sitting.emptyBody")}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
@@ -194,6 +194,7 @@ export default function SittingScreen() {
 }
 
 function VisitCard({ visit }) {
+  const { t } = useTranslation();
   const hasLocation =
     visit.check_in_lat != null && visit.check_in_lng != null;
   return (
@@ -210,7 +211,7 @@ function VisitCard({ visit }) {
         }}
       >
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-          {visit.provider_name || "Visit"}
+          {visit.provider_name || t("sitting.visit")}
         </Text>
         <StatusPill status={visit.status} />
       </View>
@@ -231,8 +232,7 @@ function VisitCard({ visit }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: SPACING.sm }}>
           <MapPin size={14} color={COLORS.coral} />
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-            Checked in at {Number(visit.check_in_lat).toFixed(4)},{" "}
-            {Number(visit.check_in_lng).toFixed(4)}
+            {t("sitting.checkedInAt", { lat: Number(visit.check_in_lat).toFixed(4), lng: Number(visit.check_in_lng).toFixed(4) })}
           </Text>
         </View>
       ) : null}
@@ -250,8 +250,7 @@ function VisitCard({ visit }) {
       ) : null}
       {Array.isArray(visit.video_urls) && visit.video_urls.length > 0 ? (
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 6 }]}>
-          🎥 {visit.video_urls.length} video
-          {visit.video_urls.length > 1 ? "s" : ""}
+          {t("sitting.videos", { count: visit.video_urls.length })}
         </Text>
       ) : null}
     </Card>
@@ -259,10 +258,11 @@ function VisitCard({ visit }) {
 }
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
-    scheduled: { label: "Scheduled", color: COLORS.coral },
-    completed: { label: "Done", color: "#3FA34D" },
-    cancelled: { label: "Cancelled", color: COLORS.mutedBrown },
+    scheduled: { label: t("sitting.statusScheduled"), color: COLORS.coral },
+    completed: { label: t("sitting.statusDone"), color: "#3FA34D" },
+    cancelled: { label: t("sitting.statusCancelled"), color: COLORS.mutedBrown },
   };
   const s = map[status] || { label: status, color: COLORS.mutedBrown };
   return (
@@ -282,6 +282,7 @@ function StatusPill({ status }) {
 }
 
 function ProviderCard({ provider, onOpen, onBook }) {
+  const { t } = useTranslation();
   return (
     <Card
       level="md"
@@ -347,7 +348,7 @@ function ProviderCard({ provider, onOpen, onBook }) {
         }}
       >
         <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "800" }]}>
-          Book a sitter
+          {t("sitting.bookASitter")}
         </Text>
       </PressableScale>
     </Card>
@@ -359,6 +360,8 @@ function ProviderCard({ provider, onOpen, onBook }) {
 // + a recurring-drop-ins toggle (a weekly pack via recurrence_rule). Reuses useBookProvider
 // with capability='sitter'; the backend stores meet_and_greet + recurrence_rule.
 function BookSittingModal({ provider, petId, onClose }) {
+  const { t } = useTranslation();
+  const SERVICE_TYPES = serviceTypes(t);
   const [serviceType, setServiceType] = useState("drop_in");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
@@ -378,11 +381,11 @@ function BookSittingModal({ provider, petId, onClose }) {
 
   const submit = async () => {
     if (!date) {
-      Alert.alert("Pick a date", "Choose a date for the visit.");
+      Alert.alert(t("sitting.pickDateTitle"), t("sitting.pickDateBody"));
       return;
     }
     const typeLabel =
-      SERVICE_TYPES.find((t) => t.key === serviceType)?.label || "Visit";
+      SERVICE_TYPES.find((row) => row.key === serviceType)?.label || t("sitting.visit");
     try {
       await book.mutateAsync({
         providerId: provider.id,
@@ -390,7 +393,7 @@ function BookSittingModal({ provider, petId, onClose }) {
         capability: "sitter",
         appointment_date: date,
         appointment_time: time || "09:00",
-        title: meetAndGreet ? `Meet & greet — ${typeLabel}` : typeLabel,
+        title: meetAndGreet ? t("sitting.meetGreetTitle", { type: typeLabel }) : typeLabel,
         notes: notes || null,
         meet_and_greet: meetAndGreet,
         // A recurring drop-in pack is one booking carrying a weekly RRULE (2.4).
@@ -400,15 +403,13 @@ function BookSittingModal({ provider, petId, onClose }) {
             : null,
       });
       Alert.alert(
-        meetAndGreet ? "Meet & greet requested" : "Sitter booked",
-        meetAndGreet
-          ? "Message your sitter to arrange the intro. You'll align before the engagement."
-          : "Your sitter is booked. You'll see visit updates here.",
+        meetAndGreet ? t("sitting.meetGreetRequested") : t("sitting.sitterBooked"),
+        meetAndGreet ? t("sitting.meetGreetBody") : t("sitting.sitterBookedBody"),
       );
       reset();
       onClose();
     } catch (e) {
-      Alert.alert("Couldn't book", e.message || "Please try again.");
+      Alert.alert(t("sitting.couldNotBook"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -432,7 +433,7 @@ function BookSittingModal({ provider, petId, onClose }) {
           }}
         >
           <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
-            Book a sitter
+            {t("sitting.bookASitter")}
           </Text>
           <PressableScale onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
@@ -446,14 +447,14 @@ function BookSittingModal({ provider, petId, onClose }) {
             </Text>
           ) : null}
 
-          <FieldLabel>Service</FieldLabel>
+          <FieldLabel>{t("sitting.service")}</FieldLabel>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
-            {SERVICE_TYPES.map((t) => {
-              const selected = serviceType === t.key;
+            {SERVICE_TYPES.map((row) => {
+              const selected = serviceType === row.key;
               return (
                 <PressableScale
-                  key={t.key}
-                  onPress={() => setServiceType(t.key)}
+                  key={row.key}
+                  onPress={() => setServiceType(row.key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   style={{
@@ -474,37 +475,37 @@ function BookSittingModal({ provider, petId, onClose }) {
                       },
                     ]}
                   >
-                    {t.label}
+                    {row.label}
                   </Text>
                 </PressableScale>
               );
             })}
           </View>
 
-          <FieldLabel style={{ marginTop: SPACING.lg }}>Date</FieldLabel>
-          <DateField value={date} onChange={setDate} placeholder="Select date" />
+          <FieldLabel style={{ marginTop: SPACING.lg }}>{t("sitting.date")}</FieldLabel>
+          <DateField value={date} onChange={setDate} placeholder={t("sitting.selectDate")} />
 
-          <FieldLabel style={{ marginTop: SPACING.lg }}>Notes for the sitter</FieldLabel>
+          <FieldLabel style={{ marginTop: SPACING.lg }}>{t("sitting.notesForSitter")}</FieldLabel>
           <TextInput
             value={notes}
             onChangeText={setNotes}
-            placeholder="e.g. Keys under the mat, feed at 8am"
+            placeholder={t("sitting.notesPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={inputStyle}
           />
 
           <ToggleRow
-            label="Meet & greet first"
-            help="A quick intro so you and the sitter align before the engagement."
+            label={t("sitting.meetGreetLabel")}
+            help={t("sitting.meetGreetHelp")}
             value={meetAndGreet}
             onValueChange={setMeetAndGreet}
           />
 
           {serviceType === "drop_in" ? (
             <ToggleRow
-              label="Recurring drop-ins"
-              help="A weekly pack (Mon / Wed / Fri) instead of a single visit."
+              label={t("sitting.recurringLabel")}
+              help={t("sitting.recurringHelp")}
               value={recurring}
               onValueChange={setRecurring}
             />
@@ -524,10 +525,10 @@ function BookSittingModal({ provider, petId, onClose }) {
           >
             <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
               {book.isPending
-                ? "Booking…"
+                ? t("sitting.booking")
                 : meetAndGreet
-                  ? "Request meet & greet"
-                  : "Confirm booking"}
+                  ? t("sitting.requestMeetGreet")
+                  : t("sitting.confirmBooking")}
             </Text>
           </PressableScale>
         </KeyboardAwareScrollView>
