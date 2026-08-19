@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Globe, Lock, Check, X, Search } from "lucide-react-native";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
@@ -40,6 +41,7 @@ function combineDateTime(dateStr, timeStr) {
 }
 
 export default function CreateWalkPage() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -127,7 +129,7 @@ export default function CreateWalkPage() {
           <ArrowLeft size={18} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-          New Walk
+          {t("createWalk.title")}
         </Text>
       </View>
 
@@ -137,12 +139,12 @@ export default function CreateWalkPage() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Walk name */}
-        <Text style={styles.label}>Walk name</Text>
+        <Text style={styles.label}>{t("createWalk.walkNameLabel")}</Text>
         <TextInput
           testID="walk-name-input"
           value={walkName}
           onChangeText={setWalkName}
-          placeholder="Morning park loop"
+          placeholder={t("createWalk.walkNamePlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           style={styles.input}
         />
@@ -150,17 +152,17 @@ export default function CreateWalkPage() {
         {/* Date + time */}
         <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Date</Text>
+            <Text style={styles.label}>{t("createWalk.dateLabel")}</Text>
             <DateField value={date} onChange={setDate} testID="walk-date" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Time</Text>
+            <Text style={styles.label}>{t("createWalk.timeLabel")}</Text>
             <TimeField value={time} onChange={setTime} testID="walk-time" />
           </View>
         </View>
 
         {/* Public / Private toggle */}
-        <Text style={[styles.label, { marginTop: 20 }]}>Who can join?</Text>
+        <Text style={[styles.label, { marginTop: 20 }]}>{t("createWalk.whoCanJoinLabel")}</Text>
         <View style={{ flexDirection: "row", gap: 12 }}>
           <TouchableOpacity
             testID="toggle-public"
@@ -169,7 +171,7 @@ export default function CreateWalkPage() {
           >
             <Globe size={16} color={isPublic ? "#FFF" : C.warmBrown} />
             <Text style={[styles.toggleText, isPublic && styles.toggleTextActive]}>
-              Public
+              {t("createWalk.publicLabel")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -179,24 +181,24 @@ export default function CreateWalkPage() {
           >
             <Lock size={16} color={!isPublic ? "#FFF" : C.warmBrown} />
             <Text style={[styles.toggleText, !isPublic && styles.toggleTextActive]}>
-              Private
+              {t("createWalk.privateLabel")}
             </Text>
           </TouchableOpacity>
         </View>
         <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 6 }}>
           {isPublic
-            ? "Anyone searching for walks nearby can find this."
-            : "Only people you invite can see this walk."}
+            ? t("createWalk.publicHint")
+            : t("createWalk.privateHint")}
         </Text>
 
         {/* Map picker */}
-        <Text style={[styles.label, { marginTop: 20 }]}>Meeting point</Text>
+        <Text style={[styles.label, { marginTop: 20 }]}>{t("createWalk.meetingPointLabel")}</Text>
         <WalkMapPicker coord={coord} onPick={setCoord} />
         <TextInput
           testID="location-name-input"
           value={locationName}
           onChangeText={setLocationName}
-          placeholder="Place label (e.g. Dog run, east gate)"
+          placeholder={t("createWalk.meetingPointPlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           style={[styles.input, { marginTop: 10 }]}
         />
@@ -204,14 +206,14 @@ export default function CreateWalkPage() {
         {/* Invitees (private only) */}
         {!isPublic && (
           <View style={{ marginTop: 20 }}>
-            <Text style={styles.label}>Invite people</Text>
+            <Text style={styles.label}>{t("createWalk.invitePeopleLabel")}</Text>
             <View style={styles.searchRow}>
               <Search size={16} color={C.mutedBrown} />
               <TextInput
                 testID="invite-search-input"
                 value={inviteQuery}
                 onChangeText={setInviteQuery}
-                placeholder="Search by name or @handle"
+                placeholder={t("createWalk.searchPlaceholder")}
                 placeholderTextColor={C.mutedBrown + "80"}
                 style={{ flex: 1, fontSize: 15, color: C.warmBrown }}
               />
@@ -261,12 +263,12 @@ export default function CreateWalkPage() {
         )}
 
         {/* Notes */}
-        <Text style={[styles.label, { marginTop: 20 }]}>Notes for guests (optional)</Text>
+        <Text style={[styles.label, { marginTop: 20 }]}>{t("createWalk.notesLabel")}</Text>
         <TextInput
           testID="walk-notes-input"
           value={notes}
           onChangeText={setNotes}
-          placeholder="Bring water, friendly dogs only..."
+          placeholder={t("createWalk.notesPlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           multiline
           style={[styles.input, { minHeight: 70, textAlignVertical: "top" }]}
@@ -296,7 +298,7 @@ export default function CreateWalkPage() {
                 color: canSubmit ? "#FFF" : C.mutedBrown,
               }}
             >
-              Create walk
+              {t("createWalk.createButton")}
             </Text>
           )}
         </TouchableOpacity>

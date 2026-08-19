@@ -1710,5 +1710,24 @@
       "post": "Comparte tu primera publicación",
       "notifications": "Activa las notificaciones"
     }
+  },
+  "createWalk": {
+    "title": "Nuevo paseo",
+    "walkNameLabel": "Nombre del paseo",
+    "walkNamePlaceholder": "Paseo mañanero por el parque",
+    "dateLabel": "Fecha",
+    "timeLabel": "Hora",
+    "whoCanJoinLabel": "¿Quién puede unirse?",
+    "publicLabel": "Público",
+    "privateLabel": "Privado",
+    "publicHint": "Cualquier persona que busque paseos cerca puede encontrar este.",
+    "privateHint": "Solo las personas que invites pueden ver este paseo.",
+    "meetingPointLabel": "Punto de encuentro",
+    "meetingPointPlaceholder": "Nombre del lugar (ej. Cancha de perros, lado este)",
+    "invitePeopleLabel": "Invitar gente",
+    "searchPlaceholder": "Buscá por nombre o @usuario",
+    "notesLabel": "Notas para los invitados (opcional)",
+    "notesPlaceholder": "Traé agua, solo perros amigables...",
+    "createButton": "Crear paseo"
   }
 }
