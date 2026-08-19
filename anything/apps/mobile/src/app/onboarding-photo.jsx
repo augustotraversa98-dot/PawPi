@@ -3,6 +3,7 @@ import { View, Text, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Camera as CameraIcon, Image as ImageIcon } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
@@ -11,6 +12,7 @@ import { Button, PressableScale } from "@/components/ui";
 export default function OnboardingPhotoScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const [cameraPermission, setCameraPermission] = useState(null);
   const [galleryPermission, setGalleryPermission] = useState(null);
   const isPickingImage = useRef(false);
@@ -34,17 +36,17 @@ export default function OnboardingPhotoScreen() {
   const showPermissionDeniedAlert = (type) => {
     const isCamera = type === "camera";
     Alert.alert(
-      isCamera ? "Camera Access Required" : "Photo Library Access Required",
       isCamera
-        ? "Photo access is turned off. You can enable it in Settings or skip for now."
-        : "Photo access is turned off. You can enable it in Settings or skip for now.",
+        ? t("onboarding.photoCameraDeniedTitle")
+        : t("onboarding.photoLibraryDeniedTitle"),
+      t("onboarding.photoAccessDeniedBody"),
       [
         {
-          text: "Skip for now",
+          text: t("onboarding.photoSkipForNow"),
           style: "cancel",
         },
         {
-          text: "Open Settings",
+          text: t("onboarding.photoOpenSettings"),
           onPress: () => {
             Linking.openSettings();
           },
@@ -110,7 +112,10 @@ export default function OnboardingPhotoScreen() {
     } catch (error) {
       isPickingImage.current = false;
       console.error("[OnboardingPhoto] Camera error:", error);
-      Alert.alert("Camera Error", "Could not open camera. Please try again.");
+      Alert.alert(
+        t("onboarding.photoCameraErrorTitle"),
+        t("onboarding.photoCameraErrorBody"),
+      );
     }
   };
 
@@ -171,7 +176,10 @@ export default function OnboardingPhotoScreen() {
     } catch (error) {
       isPickingImage.current = false;
       console.error("[OnboardingPhoto] Gallery error:", error);
-      Alert.alert("Gallery Error", "Could not open gallery. Please try again.");
+      Alert.alert(
+        t("onboarding.photoGalleryErrorTitle"),
+        t("onboarding.photoGalleryErrorBody"),
+      );
     }
   };
 
@@ -209,7 +217,7 @@ export default function OnboardingPhotoScreen() {
               },
             ]}
           >
-            Let's meet your dog
+            {t("onboarding.photoTitle")}
           </Text>
 
           {/* Subtitle */}
@@ -225,7 +233,7 @@ export default function OnboardingPhotoScreen() {
               },
             ]}
           >
-            Start with a photo. You can use it as your dog's first pet moment.
+            {t("onboarding.photoSubtitle")}
           </Text>
         </View>
 
@@ -240,7 +248,7 @@ export default function OnboardingPhotoScreen() {
             icon={<CameraIcon size={24} color="#FFF" />}
           >
             <Text style={[TYPE.headline, { fontSize: 17, color: "#FFF" }]}>
-              Open camera
+              {t("onboarding.photoOpenCamera")}
             </Text>
           </Button>
 
@@ -253,7 +261,7 @@ export default function OnboardingPhotoScreen() {
             icon={<ImageIcon size={24} color={COLORS.coral} />}
           >
             <Text style={[TYPE.headline, { fontSize: 17, color: COLORS.coral }]}>
-              Choose from gallery
+              {t("onboarding.photoChooseGallery")}
             </Text>
           </Button>
 
@@ -274,7 +282,7 @@ export default function OnboardingPhotoScreen() {
                 },
               ]}
             >
-              Skip for now
+              {t("onboarding.photoSkipForNow")}
             </Text>
           </PressableScale>
         </View>
@@ -292,7 +300,7 @@ export default function OnboardingPhotoScreen() {
           },
         ]}
       >
-        Don't worry, you can change this later.
+        {t("onboarding.photoChangeLater")}
       </Text>
     </View>
   );

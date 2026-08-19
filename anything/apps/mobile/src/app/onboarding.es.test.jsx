@@ -48,3 +48,16 @@ test("required-field validation renders in Spanish", () => {
     screen.getByText("Agregá el nombre de tu perro para continuar"),
   ).toBeTruthy();
 });
+
+test("wizard body copy (step title, subtitle, nav) renders in Spanish", () => {
+  const screen = render(<OnboardingScreen />);
+  // The name step's localized title + subtitle + the footer nav button.
+  expect(screen.getByText("¿Cómo se llama tu perro?")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "Configuremos lo básico: nombre, raza, edad, sexo y peso.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Siguiente")).toBeTruthy();
+  expect(screen.getByText("Paso 1 de 9")).toBeTruthy();
+});
