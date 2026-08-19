@@ -16,6 +16,7 @@ import {
   Droplet,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useLogFood } from "@/hooks/useHealthTracking";
 
 const C = {
@@ -60,6 +61,7 @@ export default function FoodWaterTrackerModal({
   onClose,
   initialType = "food",
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const logFoodMutation = useLogFood();
   const [step, setStep] = useState("type"); // type, quickChoice, foodForm, waterForm, confirmation
@@ -754,7 +756,7 @@ export default function FoodWaterTrackerModal({
                 <TextInput
                   value={foodNotes}
                   onChangeText={setFoodNotes}
-                  placeholder="Any additional observations..."
+                  placeholder={t("trackers.foodWater.notesPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   multiline
                   numberOfLines={3}
@@ -1012,7 +1014,7 @@ export default function FoodWaterTrackerModal({
                 <TextInput
                   value={waterNotes}
                   onChangeText={setWaterNotes}
-                  placeholder="Any additional observations..."
+                  placeholder={t("trackers.foodWater.notesPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   multiline
                   numberOfLines={3}

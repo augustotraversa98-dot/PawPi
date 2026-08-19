@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
@@ -195,8 +196,22 @@ export default function ScheduleBlock({
   cadenceOptions = CADENCE_OPTIONS_FULL,
   testID = "schedule-block",
 }) {
+  const { t } = useTranslation();
   const schedule = value || defaultSchedule();
   const { frequency } = schedule;
+
+  const earlyReminderLabel = (v) => {
+    switch (v) {
+      case "on_time": return t("health.reminders.schedule.earlyAtTime");
+      case "5m": return t("health.reminders.schedule.earlyMinBefore", { n: 5 });
+      case "15m": return t("health.reminders.schedule.earlyMinBefore", { n: 15 });
+      case "30m": return t("health.reminders.schedule.earlyMinBefore", { n: 30 });
+      case "1h": return t("health.reminders.schedule.earlyHourBefore", { n: 1 });
+      case "1d": return t("health.reminders.schedule.earlyDayBefore", { n: 1 });
+      case "1w": return t("health.reminders.schedule.earlyWeekBefore", { n: 1 });
+      default: return v;
+    }
+  };
 
   // Local UI-only state: the Frequency list starts collapsed (a value is always
   // set) and shows just the header + current label, iOS-Reminders style. This
@@ -213,7 +228,7 @@ export default function ScheduleBlock({
   return (
     <View style={style}>
       {/* Date */}
-      <SectionLabel>Date</SectionLabel>
+      <SectionLabel>{t("health.reminders.schedule.date")}</SectionLabel>
       <View style={{ marginBottom: 16 }}>
         <DateField
           value={schedule.startDate}
@@ -227,7 +242,7 @@ export default function ScheduleBlock({
           (e.g. MedicalCare keeps dose times in its own multi-add Time(s) field). */}
       {!hideTime && (
         <>
-          <SectionLabel>Time</SectionLabel>
+          <SectionLabel>{t("health.reminders.schedule.time")}</SectionLabel>
           <View style={{ marginBottom: 16 }}>
             <TimeField
               value={schedule.preferredTime}
@@ -258,7 +273,7 @@ export default function ScheduleBlock({
         }}
       >
         <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>
-          Frequency
+          {t("health.reminders.schedule.frequency")}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
@@ -286,7 +301,7 @@ export default function ScheduleBlock({
       {/* Hourly → interval presets */}
       {frequency === ROUTINE_FREQUENCY.HOURLY && (
         <>
-          <SectionLabel>Every</SectionLabel>
+          <SectionLabel>{t("health.reminders.schedule.every")}</SectionLabel>
           <View
             style={{
               flexDirection: "row",
@@ -299,7 +314,7 @@ export default function ScheduleBlock({
               <Pill
                 key={h}
                 testID={`${testID}-interval-${h}`}
-                label={`${h} hours`}
+                label={t("health.reminders.schedule.hoursN", { count: h })}
                 selected={schedule.intervalHours === h}
                 onPress={() => set({ intervalHours: h })}
                 color={color}
@@ -313,7 +328,9 @@ export default function ScheduleBlock({
       {usesDayChips(frequency) && (
         <>
           <SectionLabel>
-            {frequency === ROUTINE_FREQUENCY.CUSTOM ? "Days" : "On these days"}
+            {frequency === ROUTINE_FREQUENCY.CUSTOM
+              ? t("health.reminders.schedule.days")
+              : t("health.reminders.schedule.onTheseDays")}
           </SectionLabel>
           <DayChips
             value={schedule.days}
@@ -324,7 +341,7 @@ export default function ScheduleBlock({
             testID={`${testID}-days`}
           />
           {frequency === ROUTINE_FREQUENCY.BIWEEKLY && (
-            <Hint>Repeats every other week, starting the week of the date above.</Hint>
+            <Hint>{t("health.reminders.schedule.biweeklyHint")}</Hint>
           )}
           {frequency !== ROUTINE_FREQUENCY.BIWEEKLY && <View style={{ marginBottom: 8 }} />}
         </>
@@ -334,19 +351,19 @@ export default function ScheduleBlock({
       {isDateAnchored(frequency) && (
         <Hint>
           {frequency === ROUTINE_FREQUENCY.ONCE
-            ? "Fires once on the date and time above."
-            : "Repeats on that day of the month, starting from the date above."}
+            ? t("health.reminders.schedule.onceHint")
+            : t("health.reminders.schedule.monthlyHint")}
         </Hint>
       )}
 
       {/* Early reminder (lead-time) */}
-      <SectionLabel>Early reminder</SectionLabel>
+      <SectionLabel>{t("health.reminders.schedule.earlyReminder")}</SectionLabel>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {EARLY_REMINDER_OPTIONS.map((opt) => (
           <Pill
             key={opt.value}
             testID={`${testID}-early-${opt.value}`}
-            label={opt.label}
+            label={earlyReminderLabel(opt.value)}
             selected={schedule.reminderTiming === opt.value}
             onPress={() => set({ reminderTiming: opt.value })}
             color={color}

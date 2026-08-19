@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import { CADENCE_LABELS } from "./CadenceFrequencySelector";
 import { DAY_CHIP_LABELS } from "./DayChips";
@@ -152,6 +153,7 @@ export default function PhotoCheckRoutineModal({
   onSave,
   editingRoutine,
 }) {
+  const { t } = useTranslation();
   // Multi-select body areas
   const [selectedBodyAreas, setSelectedBodyAreas] = useState(["paws"]);
 
@@ -299,7 +301,7 @@ export default function PhotoCheckRoutineModal({
   const handleSave = () => {
     // Validate at least one body area selected
     if (selectedBodyAreas.length === 0) {
-      Alert.alert("Select at least one photo check area.");
+      Alert.alert(t("health.photoCheck.selectAtLeastOne"));
       return;
     }
 
@@ -610,7 +612,7 @@ export default function PhotoCheckRoutineModal({
             onChangeText={(value) =>
               setSharedSchedule((prev) => ({ ...prev, notes: value }))
             }
-            placeholder="What to look for..."
+            placeholder={t("health.photoCheck.whatToLookForPlaceholder")}
             placeholderTextColor={C.mutedBrown}
             multiline
             numberOfLines={3}
@@ -807,7 +809,7 @@ export default function PhotoCheckRoutineModal({
                       onChangeText={(val) =>
                         updateCustomScheduleField(areaValue, "notes", val)
                       }
-                      placeholder="What to look for..."
+                      placeholder={t("health.photoCheck.whatToLookForPlaceholder")}
                       placeholderTextColor={C.mutedBrown}
                       multiline
                       numberOfLines={2}

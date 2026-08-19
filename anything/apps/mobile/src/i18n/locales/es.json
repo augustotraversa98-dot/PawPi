@@ -57,7 +57,8 @@
     "share": "Compartir",
     "send": "Enviar",
     "yourPet": "tu mascota",
-    "pleaseTryAgain": "Probá de nuevo."
+    "pleaseTryAgain": "Probá de nuevo.",
+    "error": "Error"
   },
   "settings": {
     "title": "Ajustes",
@@ -781,7 +782,95 @@
       "savedBody": "Chequeo con foto guardado",
       "saveError": "No se pudo guardar el chequeo con foto. Probá de nuevo.",
       "notesPlaceholder": "Enrojecimiento, hinchazón, secreción, olor, sensibilidad, sin cambios…",
-      "notesModalPlaceholder": "¿Alguna observación o cambio que hayas notado?"
+      "notesModalPlaceholder": "¿Alguna observación o cambio que hayas notado?",
+      "selectAtLeastOne": "Elegí al menos una zona para el chequeo con foto.",
+      "whatToLookForPlaceholder": "Qué observar..."
+    },
+    "reminders": {
+      "schedule": {
+        "date": "Fecha",
+        "time": "Hora",
+        "frequency": "Frecuencia",
+        "every": "Cada",
+        "hoursN": "{{count}} horas",
+        "days": "Días",
+        "onTheseDays": "En estos días",
+        "biweeklyHint": "Se repite cada dos semanas, empezando la semana de la fecha de arriba.",
+        "onceHint": "Suena una sola vez en la fecha y hora de arriba.",
+        "monthlyHint": "Se repite ese día del mes, empezando desde la fecha de arriba.",
+        "earlyReminder": "Aviso anticipado",
+        "earlyAtTime": "A la hora",
+        "earlyMinBefore": "{{n}} min antes",
+        "earlyHourBefore": "{{n}} hora antes",
+        "earlyDayBefore": "{{n}} día antes",
+        "earlyWeekBefore": "{{n}} semana antes"
+      },
+      "vetAppt": {
+        "calendarPermTitle": "Permiso del calendario",
+        "calendarPermBody": "Se necesita acceso al calendario para agregar el turno. Igual podés guardar el recordatorio.",
+        "calendarUnavailableTitle": "Calendario no disponible",
+        "calendarUnavailableBody": "No se pudo agregar al calendario, pero el turno se va a guardar igual.",
+        "calendarUpdateFailedTitle": "No se pudo actualizar el calendario",
+        "calendarUpdateFailedBody": "Se guardó el turno, pero no se pudo actualizar el calendario.",
+        "successTitle": "Listo",
+        "createdBody": "Turno creado",
+        "createErrorBody": "No se pudo crear el turno",
+        "updatedBody": "Turno actualizado",
+        "updateErrorBody": "No se pudo actualizar el turno",
+        "deletedTitle": "Eliminado",
+        "deletedBody": "Turno eliminado",
+        "deleteErrorBody": "No se pudo eliminar el turno",
+        "validationTitle": "Faltan datos",
+        "titleRequired": "El título del turno es obligatorio",
+        "dateRequired": "La fecha es obligatoria",
+        "dateInvalid": "Elegí una fecha válida",
+        "timeRequired": "Elegí una hora",
+        "deleteTitle": "¿Eliminar turno?",
+        "deleteAlsoCalendarBody": "¿También lo eliminamos del calendario del teléfono?",
+        "deleteApptOnly": "Eliminar solo el turno",
+        "deleteApptAndCalendar": "Eliminar turno y evento del calendario",
+        "deleteBody": "Se va a eliminar el recordatorio del turno. La historia clínica anterior se mantiene guardada.",
+        "deleteAppt": "Eliminar turno",
+        "clinicPlaceholder": "Nombre de la clínica",
+        "vetPlaceholder": "Nombre del veterinario",
+        "notesPlaceholder": "Notas adicionales...",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "timing": {
+          "atTime": "A la hora del turno",
+          "hourBefore": "1 hora antes",
+          "dayBefore": "1 día antes",
+          "twoDaysBefore": "2 días antes",
+          "weekBefore": "1 semana antes",
+          "custom": "Personalizado"
+        }
+      },
+      "creation": {
+        "missingTypeTitle": "Falta el tipo",
+        "missingTypeBody": "Elegí un tipo de recordatorio",
+        "missingTitleTitle": "Falta el título",
+        "missingTitleBody": "Escribí un título para el recordatorio",
+        "createdTitle": "✅ Recordatorio creado",
+        "createdBody": "{{title}} se agregó a tus recordatorios",
+        "titlePlaceholder": "ej., Hora de la cena",
+        "descriptionPlaceholder": "Agregá más detalles...",
+        "notesPlaceholder": "Notas opcionales..."
+      },
+      "vaccine": {
+        "clinicPlaceholder": "Nombre de la clínica",
+        "notesPlaceholder": "Notas adicionales...",
+        "namePlaceholder": "ej., Antirrábica"
+      },
+      "medication": {
+        "vetPlaceholder": "Nombre del veterinario",
+        "notesPlaceholder": "Notas adicionales..."
+      },
+      "medicalCareIssue": {
+        "givenLabel": "¿Se lo diste?",
+        "reactionLabel": "¿Hubo alguna reacción?",
+        "notesLabel": "Notas",
+        "notesPlaceholder": "¿Qué pasó? (opcional)"
+      }
     }
   },
   "services": {
@@ -2322,7 +2411,8 @@
       "nextFeedingAt": "{{label}} a las {{time}}",
       "reducedAppetiteTitle": "Patrón de apetito reducido",
       "reducedAppetiteBody": "El apetito de tu mascota estuvo más bajo de lo usual en las últimas comidas. Puede valer la pena hacer seguimiento. Contactá al vet si continúa o aparece con otros síntomas.",
-      "appetiteDipNote": "Bajón de apetito en comidas recientes. Seguí registrando para ver si continúa."
+      "appetiteDipNote": "Bajón de apetito en comidas recientes. Seguí registrando para ver si continúa.",
+      "notesPlaceholder": "Cualquier observación adicional..."
     },
     "pee": {
       "title": "Registro de pis",

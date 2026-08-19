@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
@@ -34,6 +35,7 @@ export default function MedicationRoutineModal({
   editingRoutine,
   petName = "your pet",
 }) {
+  const { t } = useTranslation();
   const [medicationName, setMedicationName] = useState("");
   const [dose, setDose] = useState("");
   const [frequency, setFrequency] = useState(ROUTINE_FREQUENCY.DAILY);
@@ -343,7 +345,7 @@ export default function MedicationRoutineModal({
             <TextInput
               value={prescribedBy}
               onChangeText={setPrescribedBy}
-              placeholder="Veterinarian name"
+              placeholder={t("health.reminders.medication.vetPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -459,7 +461,7 @@ export default function MedicationRoutineModal({
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Additional notes..."
+              placeholder={t("health.reminders.medication.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={3}
