@@ -33,7 +33,7 @@ import {
   MATERIALS,
   ELEVATION,
 } from "@/constants/theme";
-import { Card, PressableScale } from "@/components/ui";
+import { Card, PressableScale, PawMark } from "@/components/ui";
 
 export default function PetProfileScreen({ embedded = false }) {
   const insets = useSafeAreaInsets();
@@ -506,7 +506,7 @@ export default function PetProfileScreen({ embedded = false }) {
                   borderStyle: "dashed",
                 }}
               >
-                <Text style={{ fontSize: 36 }}>🐾</Text>
+                <PawMark size={36} color={COLORS.warmBrown} />
                 <Text
                   style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
                 >

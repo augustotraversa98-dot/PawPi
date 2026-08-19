@@ -15,6 +15,7 @@ import { ArrowLeft, MapPin, AlertTriangle, X, Send, CheckCircle2, Bell } from "l
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import WalkMapPicker from "@/components/SocialWalks/WalkMapPicker";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { PawMark } from "@/components/ui";
 import {
   useLostReports,
   useMyLostReports,
@@ -110,7 +111,7 @@ export default function LostFoundScreen() {
             {nearbyLoading && <ActivityIndicator color={C.red} />}
             {!nearbyLoading && nearby && nearby.length === 0 && (
               <View style={{ alignItems: "center", padding: 40 }}>
-                <Text style={{ fontSize: 34 }}>🐾</Text>
+                <PawMark size={34} color={C.warmBrown} />
                 <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown, marginTop: 10 }}>
                   No lost pets nearby
                 </Text>

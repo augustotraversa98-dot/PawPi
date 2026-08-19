@@ -24,7 +24,7 @@ import {
   MATERIALS,
   BLUR,
 } from "@/constants/theme";
-import { Card, GlassSurface, PressableScale } from "@/components/ui";
+import { Card, GlassSurface, PressableScale, PawMark } from "@/components/ui";
 
 export default function ForumThreadScreen() {
   const insets = useSafeAreaInsets();
@@ -93,7 +93,7 @@ export default function ForumThreadScreen() {
 
         {!isLoading && !thread && (
           <View style={{ alignItems: "center", padding: 50 }}>
-            <Text style={{ fontSize: 32 }}>🐾</Text>
+            <PawMark size={32} color={COLORS.warmBrown} />
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.sm, fontWeight: "700" }]}>
               This discussion is no longer available.
             </Text>

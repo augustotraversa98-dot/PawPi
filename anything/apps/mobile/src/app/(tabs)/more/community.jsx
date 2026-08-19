@@ -24,7 +24,7 @@ import {
   MATERIALS,
   BLUR,
 } from "@/constants/theme";
-import { Card, GlassSurface, PressableScale } from "@/components/ui";
+import { Card, GlassSurface, PressableScale, PawMark } from "@/components/ui";
 
 const CATEGORY_COLORS = {
   Health: { bg: "#EEF4FF", text: "#3B5CC4" },
@@ -305,7 +305,7 @@ export default function CommunityScreen() {
             with a Retry so an outage never masquerades as an empty community. */}
         {!isLoading && isError && (
           <View style={{ alignItems: "center", padding: 50 }}>
-            <Text style={{ fontSize: 36 }}>🐾</Text>
+            <PawMark size={36} color={COLORS.warmBrown} />
             <Text
               style={[
                 TYPE.headline,
@@ -343,7 +343,7 @@ export default function CommunityScreen() {
 
         {!isLoading && threads && threads.length === 0 && (
           <View style={{ alignItems: "center", padding: 50 }}>
-            <Text style={{ fontSize: 36 }}>🐾</Text>
+            <PawMark size={36} color={COLORS.warmBrown} />
             <Text
               style={[
                 TYPE.headline,

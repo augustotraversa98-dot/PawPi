@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useUser from "@/utils/auth/useUser";
 import { useAuth } from "@/utils/auth/useAuth";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
+import { PawMark } from "@/components/ui";
 
 /**
  * Auth redirect handler
@@ -137,7 +138,7 @@ export default function AuthSuccessRedirect() {
       }}
     >
       <View style={{ alignItems: "center", gap: SPACING.xl }}>
-        <Text style={{ fontSize: 72 }}>🐾</Text>
+        <PawMark size={72} color={COLORS.coral} />
         <ActivityIndicator size="large" color={COLORS.coral} />
         <Text
           style={[

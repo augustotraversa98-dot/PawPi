@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
-import { PressableScale } from "@/components/ui";
+import { PressableScale, PawMark } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
@@ -220,7 +220,7 @@ export default function FeedScreen() {
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: SPACING.huge }}
         >
-          <Text style={{ fontSize: 40 }}>🐾</Text>
+          <PawMark size={40} color={COLORS.warmBrown} />
           <Text
             style={[
               TYPE.headline,

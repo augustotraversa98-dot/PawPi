@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
-import { Card, PressableScale, GlassSurface } from "@/components/ui";
+import { Card, PressableScale, GlassSurface, PawMark } from "@/components/ui";
 import useSocialPetStore from "@/store/socialPetStore";
 import {
   handleNotificationTap,
@@ -670,7 +670,7 @@ export default function NotificationsScreen() {
       >
         {filteredNotifications.length === 0 ? (
           <View style={{ alignItems: "center", paddingVertical: 80 }}>
-            <Text style={{ fontSize: 48 }}>🐾</Text>
+            <PawMark size={48} color={COLORS.coral} />
             <Text
               style={[
                 TYPE.headline,

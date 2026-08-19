@@ -5,6 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
+import { PawMark } from "@/components/ui";
+import { COLORS } from "@/constants/theme";
 
 export default function EntryPoint() {
   markBootStep("entrypoint:render");
@@ -110,7 +112,7 @@ export default function EntryPoint() {
           paddingHorizontal: 32,
         }}
       >
-        <Text style={{ fontSize: 72, marginBottom: 20 }}>🐾</Text>
+        <PawMark size={72} color={COLORS.coral} style={{ marginBottom: 20 }} />
         <Text
           style={{
             fontSize: 16,
@@ -150,7 +152,7 @@ export default function EntryPoint() {
           backgroundColor: "#FFF7EF",
         }}
       >
-        <Text style={{ fontSize: 72, marginBottom: 20 }}>🐾</Text>
+        <PawMark size={72} color={COLORS.coral} style={{ marginBottom: 20 }} />
         <ActivityIndicator size="large" color="#FF6F61" />
         <Text
           style={{
