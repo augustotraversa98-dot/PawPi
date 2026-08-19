@@ -1710,5 +1710,24 @@
       "post": "Share your first post",
       "notifications": "Turn on notifications"
     }
+  },
+  "createWalk": {
+    "title": "New Walk",
+    "walkNameLabel": "Walk name",
+    "walkNamePlaceholder": "Morning park loop",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "whoCanJoinLabel": "Who can join?",
+    "publicLabel": "Public",
+    "privateLabel": "Private",
+    "publicHint": "Anyone searching for walks nearby can find this.",
+    "privateHint": "Only people you invite can see this walk.",
+    "meetingPointLabel": "Meeting point",
+    "meetingPointPlaceholder": "Place label (e.g. Dog run, east gate)",
+    "invitePeopleLabel": "Invite people",
+    "searchPlaceholder": "Search by name or @handle",
+    "notesLabel": "Notes for guests (optional)",
+    "notesPlaceholder": "Bring water, friendly dogs only...",
+    "createButton": "Create walk"
   }
 }
