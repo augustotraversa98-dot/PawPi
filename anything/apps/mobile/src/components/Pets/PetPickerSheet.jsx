@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Plus } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { usePetProfile, useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "./PetAvatar";
@@ -17,6 +18,7 @@ import { PetAvatar } from "./PetAvatar";
 // by owner_user_id = user_profiles.id). Marks the active dog, lets the user
 // switch via setCurrentPet, and exposes an "Add a dog" action at the bottom.
 export function PetPickerSheet({ visible, onClose, onAddDog }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: pets, isLoading } = usePetProfile();
   const { data: currentPet, setCurrentPet } = useCurrentPet();
@@ -78,7 +80,7 @@ export function PetPickerSheet({ visible, onClose, onAddDog }) {
               paddingVertical: 12,
             }}
           >
-            My Dogs
+            {t("pets.myDogs")}
           </Text>
 
           <ScrollView
@@ -159,7 +161,7 @@ export function PetPickerSheet({ visible, onClose, onAddDog }) {
             >
               <Plus size={18} color={COLORS.coral} />
               <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.coral }}>
-                Add a dog
+                {t("pets.addADog")}
               </Text>
             </TouchableOpacity>
           </ScrollView>
