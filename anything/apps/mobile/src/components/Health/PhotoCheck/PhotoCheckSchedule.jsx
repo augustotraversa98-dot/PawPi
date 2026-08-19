@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Camera, Check, Info } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import {
   PHOTO_CHECK_SCHEDULES,
   FREQUENCY_OPTIONS,
@@ -42,6 +43,7 @@ const DEFAULT_FREQUENCIES = {
 };
 
 export default function PhotoCheckSchedule() {
+  const { t } = useTranslation();
   const [schedules, setSchedules] = useState(PHOTO_CHECK_SCHEDULES);
 
   const handleFrequencyChange = (area, frequency) => {
@@ -69,10 +71,10 @@ export default function PhotoCheckSchedule() {
               marginBottom: 4,
             }}
           >
-            Photo Check Schedule
+            {t("health.photoCheck.scheduleTitle")}
           </Text>
           <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-            Set how often you want to photograph each body area
+            {t("health.photoCheck.scheduleSubtitle")}
           </Text>
         </View>
 
@@ -133,12 +135,12 @@ export default function PhotoCheckSchedule() {
                         color: C.mutedBrown,
                       }}
                     >
-                      Suggested:{" "}
-                      {
-                        FREQUENCY_OPTIONS.find(
-                          (opt) => opt.value === defaultFrequency,
-                        )?.label
-                      }
+                      {t("health.photoCheck.suggested", {
+                        label:
+                          FREQUENCY_OPTIONS.find(
+                            (opt) => opt.value === defaultFrequency,
+                          )?.label || "",
+                      })}
                     </Text>
                   </View>
                 </View>
@@ -211,8 +213,7 @@ export default function PhotoCheckSchedule() {
               flex: 1,
             }}
           >
-            Regular photo checks help you track visible changes over time.
-            You'll receive reminders when it's time to photograph each area.
+            {t("health.photoCheck.scheduleInfo")}
           </Text>
         </View>
 
@@ -235,8 +236,7 @@ export default function PhotoCheckSchedule() {
               textAlign: "center",
             }}
           >
-            Photo Check helps you track visible changes over time. It does not
-            diagnose or replace veterinary care.
+            {t("health.photoCheck.safetyNote")}
           </Text>
         </View>
       </View>

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Pill, Truck } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
@@ -11,8 +12,6 @@ import { usePrescriptions, useRequestRefill } from "@/hooks/usePrescriptions";
 // owner-entered Current Medications. The owner can REQUEST A REFILL on an active Rx with refills
 // remaining; there is NO create/edit/delete affordance on the prescription itself. Empty → a clean
 // empty state (no fake data). The app records what a licensed vet issued; it does not prescribe.
-
-const STATUS_LABEL = { active: "Active", completed: "Completed", cancelled: "Cancelled" };
 
 function Field({ label, value }) {
   if (value == null || value === "") return null;
@@ -25,6 +24,7 @@ function Field({ label, value }) {
 }
 
 export function PrescriptionsSection({ petId }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data, isLoading } = usePrescriptions(petId ?? null);
   const requestRefill = useRequestRefill(petId);
@@ -32,32 +32,51 @@ export function PrescriptionsSection({ petId }) {
   const prescriptions = data?.prescriptions || [];
   const refillRequests = data?.refillRequests || [];
 
+  const STATUS_LABEL = {
+    active: t("health.prescriptions.statusActive"),
+    completed: t("health.prescriptions.statusCompleted"),
+    cancelled: t("health.prescriptions.statusCancelled"),
+  };
+
   const pendingFor = (rxId) =>
     refillRequests.find((r) => r.prescription_id === rxId && r.status === "requested");
 
   const onRequestRefill = (rx) => {
-    Alert.alert("Request a refill?", `Ask ${rx.clinic_name || "the clinic"} to refill ${rx.drug_name}.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Request",
-        onPress: () =>
-          requestRefill.mutate(rx.id, {
-            onError: (e) => Alert.alert("Couldn't request", e.message || "Try again."),
-          }),
-      },
-    ]);
+    Alert.alert(
+      t("health.prescriptions.confirmTitle"),
+      t("health.prescriptions.confirmBody", {
+        clinic: rx.clinic_name || t("health.prescriptions.clinicInline"),
+        drug: rx.drug_name,
+      }),
+      [
+        { text: t("health.prescriptions.cancel"), style: "cancel" },
+        {
+          text: t("health.prescriptions.confirmRequest"),
+          onPress: () =>
+            requestRefill.mutate(rx.id, {
+              onError: (e) =>
+                Alert.alert(
+                  t("health.prescriptions.errorTitle"),
+                  e.message || t("health.prescriptions.errorRetry"),
+                ),
+            }),
+        },
+      ],
+    );
   };
 
   return (
     <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginBottom: SPACING.sm }}>
         <Pill size={18} color={COLORS.coral} />
-        <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>Prescriptions</Text>
+        <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
+          {t("health.prescriptions.title")}
+        </Text>
       </View>
 
       {isLoading ? null : prescriptions.length === 0 ? (
         <Text testID="rx-empty" style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown }]}>
-          No prescriptions yet.
+          {t("health.prescriptions.empty")}
         </Text>
       ) : (
         prescriptions.map((rx) => {
@@ -83,19 +102,19 @@ export function PrescriptionsSection({ petId }) {
                 </Text>
               </View>
               <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, fontStyle: "italic", marginTop: 2 }]}>
-                Prescribed by {rx.clinic_name || "a clinic"}
+                {t("health.prescriptions.prescribedBy", { clinic: rx.clinic_name || t("health.prescriptions.clinicFallback") })}
               </Text>
-              <Field label="Dose" value={rx.dose} />
-              <Field label="Frequency" value={rx.frequency} />
-              <Field label="Route" value={rx.route} />
-              <Field label="Duration" value={rx.duration} />
-              <Field label="Quantity" value={rx.quantity} />
-              <Field label="Refills remaining" value={rx.refills_remaining} />
-              <Field label="Instructions" value={rx.instructions} />
+              <Field label={t("health.prescriptions.fDose")} value={rx.dose} />
+              <Field label={t("health.prescriptions.fFrequency")} value={rx.frequency} />
+              <Field label={t("health.prescriptions.fRoute")} value={rx.route} />
+              <Field label={t("health.prescriptions.fDuration")} value={rx.duration} />
+              <Field label={t("health.prescriptions.fQuantity")} value={rx.quantity} />
+              <Field label={t("health.prescriptions.fRefillsRemaining")} value={rx.refills_remaining} />
+              <Field label={t("health.prescriptions.fInstructions")} value={rx.instructions} />
 
               {pending && (
                 <Text testID={`rx-pending-${rx.id}`} style={[TYPE.subhead, { marginTop: SPACING.sm, color: COLORS.sageDark, fontWeight: "700" }]}>
-                  Refill requested — awaiting the vet
+                  {t("health.prescriptions.pending")}
                 </Text>
               )}
               {canRefill && (
@@ -104,7 +123,7 @@ export function PrescriptionsSection({ petId }) {
                   onPress={() => onRequestRefill(rx)}
                   style={{ marginTop: SPACING.md - 2, backgroundColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 9, alignItems: "center" }}
                 >
-                  <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>Request refill</Text>
+                  <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>{t("health.prescriptions.requestRefill")}</Text>
                 </PressableScale>
               )}
               {rx.status === "active" && rx.refills_remaining > 0 && (
@@ -118,7 +137,7 @@ export function PrescriptionsSection({ petId }) {
                   style={{ marginTop: SPACING.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: SPACING.xs + 2, backgroundColor: MATERIALS.surface, borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: RADIUS.control, paddingVertical: 9 }}
                 >
                   <Truck size={15} color={COLORS.coral} />
-                  <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>Request fulfillment</Text>
+                  <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>{t("health.prescriptions.requestFulfillment")}</Text>
                 </PressableScale>
               )}
             </Card>

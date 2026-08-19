@@ -9,6 +9,7 @@ import {
   Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Share2,
@@ -40,9 +41,9 @@ const C = {
 };
 
 const RANGES = [
-  { key: "7days", label: "7 days", days: 7 },
-  { key: "30days", label: "30 days", days: 30 },
-  { key: "90days", label: "90 days", days: 90 },
+  { key: "7days", labelKey: "health.vetSummary.range7d", days: 7 },
+  { key: "30days", labelKey: "health.vetSummary.range30d", days: 30 },
+  { key: "90days", labelKey: "health.vetSummary.range90d", days: 90 },
 ];
 
 // Subtract N days from a YYYY-MM-DD (UTC math on a date-only value is exact).
@@ -63,6 +64,7 @@ function Stat({ label, value }) {
 }
 
 export default function VetSummaryModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
@@ -98,7 +100,7 @@ export default function VetSummaryModal({ visible, onClose }) {
         <View style={styles.header}>
           <Stethoscope size={20} color={C.coral} />
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown, marginLeft: 8 }}>
-            Vet Summary{currentPet?.name ? ` · ${currentPet.name}` : ""}
+            {t("health.vetSummary.title")}{currentPet?.name ? ` · ${currentPet.name}` : ""}
           </Text>
           <PressableScale testID="vetsummary-close" onPress={onClose}>
             <X size={22} color={C.warmBrown} />
@@ -118,7 +120,7 @@ export default function VetSummaryModal({ visible, onClose }) {
               }}
             >
               <Text style={{ fontSize: 13, fontWeight: "700", color: rangeKey === r.key ? "#FFF" : C.warmBrown }}>
-                {r.label}
+                {t(r.labelKey)}
               </Text>
             </PressableScale>
           ))}
@@ -128,7 +130,7 @@ export default function VetSummaryModal({ visible, onClose }) {
           {isLoading && <ActivityIndicator color={C.coral} style={{ marginTop: 30 }} />}
           {error && (
             <Text testID="vetsummary-error" style={{ color: C.mutedBrown, marginTop: 20 }}>
-              Couldn't load the summary. Pull the latest logs and try again.
+              {t("health.vetSummary.loadError")}
             </Text>
           )}
 
@@ -142,7 +144,7 @@ export default function VetSummaryModal({ visible, onClose }) {
               {/* Flags */}
               {flags.length > 0 && (
                 <>
-                  <Text style={styles.sectionLabel}>WORTH DISCUSSING WITH YOUR VET</Text>
+                  <Text style={styles.sectionLabel}>{t("health.vetSummary.worthDiscussing")}</Text>
                   {flags.map((f) => (
                     <View key={f.key} testID={`flag-${f.key}`} style={styles.flagCard}>
                       <AlertCircle size={18} color={f.severity === "notable" ? C.coral : C.amber} />
@@ -156,30 +158,32 @@ export default function VetSummaryModal({ visible, onClose }) {
               )}
 
               {/* Stats */}
-              <Text style={styles.sectionLabel}>LOGS IN THIS PERIOD</Text>
+              <Text style={styles.sectionLabel}>{t("health.vetSummary.logsInPeriod")}</Text>
               <View style={[styles.recapCard, { flexDirection: "row", flexWrap: "wrap" }]}>
-                <Stat label="food logs" value={summary.food?.count || 0} />
-                <Stat label="stool" value={summary.poo?.count || 0} />
-                <Stat label="urination" value={summary.pee?.count || 0} />
-                <Stat label="vomit episodes" value={summary.vomit?.episodes || 0} />
-                <Stat label="walks" value={summary.walks?.count || 0} />
-                <Stat label="photo checks" value={summary.photoChecks?.count || 0} />
-                <Stat label="quick checks" value={summary.generalChecks?.count || 0} />
-                <Stat label="weigh-ins" value={summary.weight?.series?.length || 0} />
+                <Stat label={t("health.vetSummary.stFood")} value={summary.food?.count || 0} />
+                <Stat label={t("health.vetSummary.stStool")} value={summary.poo?.count || 0} />
+                <Stat label={t("health.vetSummary.stUrination")} value={summary.pee?.count || 0} />
+                <Stat label={t("health.vetSummary.stVomit")} value={summary.vomit?.episodes || 0} />
+                <Stat label={t("health.vetSummary.stWalks")} value={summary.walks?.count || 0} />
+                <Stat label={t("health.vetSummary.stPhotoChecks")} value={summary.photoChecks?.count || 0} />
+                <Stat label={t("health.vetSummary.stQuickChecks")} value={summary.generalChecks?.count || 0} />
+                <Stat label={t("health.vetSummary.stWeighIns")} value={summary.weight?.series?.length || 0} />
               </View>
 
               {/* Walk pattern — frequency (per week) + recent per-walk durations, so a vet sees
                   the cadence, not just a total (ticket 2.102). Degrades if items/perWeek absent. */}
               {summary.walks?.count > 0 && (
                 <View style={styles.recapCard} testID="walk-pattern">
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>Walk pattern</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.walkPattern")}</Text>
                   <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
-                    {`≈${summary.walks.perWeek ?? 0} walks/week`}
+                    {t("health.vetSummary.walkPatternSummary", { perWeek: summary.walks.perWeek ?? 0 })}
                     {summary.walks.items?.length
-                      ? ` · recent: ${summary.walks.items
-                          .slice(0, 4)
-                          .map((w) => w.duration_minutes)
-                          .join(", ")} min`
+                      ? t("health.vetSummary.walkPatternRecent", {
+                          list: summary.walks.items
+                            .slice(0, 4)
+                            .map((w) => w.duration_minutes)
+                            .join(", "),
+                        })
                       : ""}
                   </Text>
                 </View>
@@ -188,12 +192,15 @@ export default function VetSummaryModal({ visible, onClose }) {
               {/* Weight */}
               {summary.weight?.series?.length > 0 && (
                 <View style={styles.recapCard}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>Weight</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.weight")}</Text>
                   <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
-                    {summary.weight.series[0].weight}
-                    {summary.weight.series[0].unit} →{" "}
-                    {summary.weight.series[summary.weight.series.length - 1].weight}
-                    {summary.weight.series[summary.weight.series.length - 1].unit} over {summary.weight.series.length} weigh-ins
+                    {t("health.vetSummary.weightSummary", {
+                      first: summary.weight.series[0].weight,
+                      firstUnit: summary.weight.series[0].unit,
+                      last: summary.weight.series[summary.weight.series.length - 1].weight,
+                      lastUnit: summary.weight.series[summary.weight.series.length - 1].unit,
+                      count: summary.weight.series.length,
+                    })}
                   </Text>
                 </View>
               )}
@@ -201,14 +208,14 @@ export default function VetSummaryModal({ visible, onClose }) {
               {/* Medications */}
               {(summary.meds || []).length > 0 && (
                 <>
-                  <Text style={styles.sectionLabel}>MEDICATIONS</Text>
+                  <Text style={styles.sectionLabel}>{t("health.vetSummary.medications")}</Text>
                   {summary.meds.map((m) => (
                     <View key={m.name} style={styles.flagCard}>
                       <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
                         {m.name}{m.dose ? ` · ${m.dose}` : ""}
                       </Text>
                       <Text style={{ fontSize: 13, color: m.missed ? C.coral : C.green, fontWeight: "700" }}>
-                        {m.given}/{m.total} given
+                        {t("health.vetSummary.medGiven", { given: m.given, total: m.total })}
                       </Text>
                     </View>
                   ))}
@@ -218,7 +225,7 @@ export default function VetSummaryModal({ visible, onClose }) {
               {/* Conditions / allergies */}
               {((summary.conditions || []).length > 0 || (summary.allergies || []).length > 0) && (
                 <>
-                  <Text style={styles.sectionLabel}>CONDITIONS & ALLERGIES</Text>
+                  <Text style={styles.sectionLabel}>{t("health.vetSummary.conditionsAllergies")}</Text>
                   <View style={styles.recapCard}>
                     {summary.conditions?.map((c, i) => (
                       <Text key={`c${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
@@ -227,7 +234,7 @@ export default function VetSummaryModal({ visible, onClose }) {
                     ))}
                     {summary.allergies?.map((a, i) => (
                       <Text key={`a${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
-                        • Allergy: {a.allergen}{a.severity ? ` (${a.severity})` : ""}
+                        • {t("health.vetSummary.allergyLine", { allergen: a.allergen })}{a.severity ? ` (${a.severity})` : ""}
                       </Text>
                     ))}
                   </View>
@@ -235,14 +242,14 @@ export default function VetSummaryModal({ visible, onClose }) {
               )}
 
               {/* Questions for the vet */}
-              <Text style={styles.sectionLabel}>QUESTIONS FOR THE VET</Text>
+              <Text style={styles.sectionLabel}>{t("health.vetSummary.questionsForVet")}</Text>
               {questions.map((q, i) => (
                 <TextInput
                   key={i}
                   testID={`question-${i}`}
                   value={q}
                   onChangeText={(v) => setQuestion(i, v)}
-                  placeholder={`Question ${i + 1}`}
+                  placeholder={t("health.vetSummary.questionPlaceholder", { n: i + 1 })}
                   placeholderTextColor={C.mutedBrown + "90"}
                   style={styles.input}
                 />
@@ -256,7 +263,7 @@ export default function VetSummaryModal({ visible, onClose }) {
               {/* Share */}
               <PressableScale testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
                 <Share2 size={18} color="#FFF" />
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>Share with vet</Text>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("health.vetSummary.shareWithVet")}</Text>
               </PressableScale>
             </>
           )}

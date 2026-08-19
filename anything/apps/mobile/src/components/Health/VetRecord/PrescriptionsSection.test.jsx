@@ -8,6 +8,7 @@ import { Alert } from "react-native";
 let mockData;
 const mockRefill = jest.fn();
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("@/hooks/usePrescriptions", () => ({
   usePrescriptions: () => ({ data: mockData, isLoading: false }),

@@ -9,6 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { X, Plus } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
@@ -20,6 +21,7 @@ import { getLocalPostDateString } from "@/utils/dateUtils";
 // Owner-authored entries omit vetName → labelled "You". Vets append their own via
 // the provider clinical route; neither side can edit/delete older entries (RLS).
 export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [noteDate, setNoteDate] = useState(getLocalPostDateString());
   const [note, setNote] = useState("");
@@ -52,7 +54,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
       onSaved?.();
       close();
     } catch (error) {
-      Alert.alert("Error", error.message || "Could not save the entry.");
+      Alert.alert(t("health.addNote.errorTitle"), error.message || t("health.addNote.errorBody"));
     } finally {
       setSaving(false);
     }
@@ -79,11 +81,11 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
             borderBottomColor: MATERIALS.hairline,
           }}
         >
-          <TouchableOpacity onPress={close} accessibilityLabel="Close">
+          <TouchableOpacity onPress={close} accessibilityLabel={t("health.addNote.close")}>
             <X size={22} color={COLORS.mutedBrown} />
           </TouchableOpacity>
           <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-            Add to history
+            {t("health.addNote.title")}
           </Text>
           <View style={{ width: 22 }} />
         </View>
@@ -93,7 +95,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
           contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginBottom: 8 }}>
-            Date
+            {t("health.addNote.date")}
           </Text>
           <DateField
             value={noteDate}
@@ -109,12 +111,12 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
           />
 
           <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.mutedBrown, marginTop: 20, marginBottom: 8 }}>
-            Note
+            {t("health.addNote.note")}
           </Text>
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="What happened? (symptoms, visit summary, questions for the vet…)"
+            placeholder={t("health.addNote.notePlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={{
@@ -131,8 +133,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
           />
 
           <Text style={[TYPE.caption, { fontWeight: "500", letterSpacing: 0, color: COLORS.mutedBrown, marginTop: SPACING.md, lineHeight: 16 }]}>
-            History is append-only: entries are kept with their date. Vets can add
-            entries but can't edit or delete them — only you can.
+            {t("health.addNote.footer")}
           </Text>
 
           <PressableScale
@@ -155,7 +156,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
               <>
                 <Plus size={18} color={canSave ? "#FFF" : COLORS.mutedBrown} />
                 <Text style={[TYPE.headline, { color: canSave ? "#FFF" : COLORS.mutedBrown, fontWeight: "800" }]}>
-                  Add entry
+                  {t("health.addNote.addEntry")}
                 </Text>
               </>
             )}

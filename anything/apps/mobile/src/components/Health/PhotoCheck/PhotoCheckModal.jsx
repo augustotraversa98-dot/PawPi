@@ -17,6 +17,7 @@ import {
   ChevronLeft,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -83,6 +84,7 @@ const BODY_AREAS = [
 ];
 
 export default function PhotoCheckModal({ visible, onClose, onSave }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState("select"); // 'select', 'capture', 'preview'
   const [selectedArea, setSelectedArea] = useState(null);
   const [imageUri, setImageUri] = useState(null);
@@ -472,7 +474,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Any observations or changes you noticed?"
+                placeholder={t("health.photoCheck.notesModalPlaceholder")}
                 placeholderTextColor={C.mutedBrown}
                 multiline
                 numberOfLines={4}
