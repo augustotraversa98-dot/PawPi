@@ -1505,6 +1505,13 @@
       "weight": "Add a weight to continue"
     }
   },
+  "breedPicker": {
+    "searchPlaceholder": "Search breeds…",
+    "mixed": "Mixed breed",
+    "useCustom": "Use “{{query}}”",
+    "empty": "No breeds match — you can still use what you typed.",
+    "keepTyping": "Keep typing to narrow the list…"
+  },
   "packStreaks": {
     "title": "Pack streaks 🐾",
     "subtitle": "Keep the flame going with a dog friend",
