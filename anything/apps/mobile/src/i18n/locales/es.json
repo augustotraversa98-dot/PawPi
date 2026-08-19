@@ -1407,7 +1407,15 @@
   "onboarding": {
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",
     "welcomePaw": "🐾 PawPi Welcome le dio a {{name}} su primera patita",
-    "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾"
+    "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾",
+    "ageApprox": "Una edad aproximada alcanza — podés actualizarla después.",
+    "validation": {
+      "name": "Agregá el nombre de tu perro para continuar",
+      "breed": "Agregá una raza para continuar",
+      "age": "Agregá una edad (años o meses) para continuar",
+      "gender": "Elegí macho o hembra para continuar",
+      "weight": "Agregá un peso para continuar"
+    }
   },
   "packStreaks": {
     "title": "Rachas en manada 🐾",
