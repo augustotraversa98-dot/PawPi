@@ -56,7 +56,8 @@
     "close": "Cerrar",
     "share": "Compartir",
     "send": "Enviar",
-    "yourPet": "tu mascota"
+    "yourPet": "tu mascota",
+    "pleaseTryAgain": "Probá de nuevo."
   },
   "settings": {
     "title": "Ajustes",
@@ -1034,7 +1035,9 @@
     "statusScheduled": "Programada",
     "statusInProgress": "En curso",
     "statusEnded": "Consulta finalizada",
-    "statusCancelled": "Cancelada"
+    "statusCancelled": "Cancelada",
+    "couldNotLoadCall": "No se pudo cargar la consulta por video",
+    "leaveCall": "Salir de la llamada"
   },
   "bookingStatus": {
     "requested": "Pendiente",
@@ -1052,6 +1055,79 @@
       "reviewing": "El centro está revisando tu solicitud",
       "approved": "Solicitud aprobada",
       "declined": "Solicitud rechazada"
+    },
+    "title": "Adopción 🐶",
+    "subtitle": "Encontrá un perro para llevar a casa",
+    "tabBrowse": "Explorar",
+    "tabFavorites": "Favoritos",
+    "tabApplications": "Postulaciones",
+    "nearestFirst": "MÁS CERCANOS",
+    "recentlyAdded": "AGREGADOS RECIENTEMENTE",
+    "filters": "Filtros",
+    "filtersCount": "Filtros ({{count}})",
+    "clearAll": "Limpiar todo",
+    "showDogs": "Ver perros",
+    "couldNotLoadDogs": "No se pudieron cargar los perros",
+    "pullDownRetry": "Algo salió mal. Deslizá hacia abajo para reintentar.",
+    "noMatches": "Sin resultados",
+    "noMatchesBody": "Probá ampliando o borrando los filtros.",
+    "noDogsNearYet": "Todavía no hay perros cerca tuyo",
+    "noDogsNearBody": "Volvé pronto — los refugios y rescates se están sumando a PawPi.",
+    "noLongerAvailableTitle": "Ya no está disponible",
+    "noLongerAvailableBody": "Este perro encontró un hogar o la publicación fue eliminada.",
+    "savedDogs": "PERROS GUARDADOS",
+    "couldNotLoadFavorites": "No se pudieron cargar los favoritos",
+    "noFavoritesYet": "Todavía no tenés favoritos",
+    "noFavoritesBody": "Tocá el corazón de un perro que te guste para guardarlo acá.",
+    "yourApplications": "TUS POSTULACIONES",
+    "couldNotLoadApplications": "No se pudieron cargar las postulaciones",
+    "noApplicationsYet": "Todavía no tenés postulaciones",
+    "noApplicationsBody": "Postulate para adoptar un perro y seguí el estado acá.",
+    "dogFallback": "Perro",
+    "approvedNote": "¡Aprobado — este perro ya es tuyo! Buscalo en Mis mascotas.",
+    "filter": {
+      "gender": "Género",
+      "size": "Tamaño",
+      "age": "Edad",
+      "energy": "Energía",
+      "goodWith": "Se lleva bien con",
+      "vaccination": "Vacunación"
+    },
+    "gender": {
+      "male": "Macho",
+      "female": "Hembra"
+    },
+    "size": {
+      "small": "Pequeño",
+      "medium": "Mediano",
+      "large": "Grande",
+      "xlarge": "Extra grande"
+    },
+    "age": {
+      "puppy": "Cachorro (≤1a)",
+      "young": "Joven (1–3a)",
+      "adult": "Adulto (3a+)"
+    },
+    "energy": {
+      "low": "Poca energía",
+      "medium": "Energía media",
+      "high": "Mucha energía"
+    },
+    "goodWith": {
+      "kids": "Chicos",
+      "cats": "Gatos",
+      "dogs": "Perros"
+    },
+    "vaccination": {
+      "up_to_date": "Al día",
+      "partial": "Parcial",
+      "unknown": "Desconocido"
+    },
+    "status": {
+      "submitted": "Enviada",
+      "underReview": "En revisión",
+      "approved": "Aprobada",
+      "declined": "Rechazada"
     }
   },
   "business": {
@@ -1808,5 +1884,70 @@
     "noSharedYet": "Todavía no te compartieron ninguna mascota.",
     "sharedFrom": "de @{{username}} · {{roleLabel}} · {{status}}",
     "activeChip": "activo"
+  },
+  "insurance": {
+    "title": "Seguros 🛡️",
+    "subtitle": "Compará planes y pedí una cotización",
+    "insurers": "ASEGURADORAS",
+    "couldNotLoadInsurers": "No se pudieron cargar las aseguradoras.",
+    "noInsurersYet": "Todavía no hay aseguradoras disponibles.",
+    "plans": "PLANES",
+    "noPlansYet": "Todavía no hay planes.",
+    "deductibleLabel": "Deducible: {{value}}",
+    "reimbursementLabel": "Reintegro: {{value}}",
+    "compare": "Comparar",
+    "compareRow": "{{price}} · Deducible {{deductible}} · Reint. {{reimb}}",
+    "getQuote": "Pedir cotización",
+    "applyBuy": "Aplicar / Comprar",
+    "getQuoteFor": "Cotizar: {{name}}",
+    "forPet": "Para {{name}}",
+    "contactEmail": "Email de contacto",
+    "contactPhoneOptional": "Teléfono de contacto (opcional)",
+    "noteOptional": "¿Algo que la aseguradora tenga que saber? (opcional)",
+    "sending": "Enviando…",
+    "requestQuote": "Pedir cotización",
+    "privacyNote": "Solo compartimos lo que escribís acá — nunca tu Ficha veterinaria.",
+    "requestSentTitle": "Pedido enviado",
+    "requestSentBody": "{{insurer}} se va a comunicar con vos con una cotización.",
+    "couldNotSend": "No se pudo enviar"
+  },
+  "shop": {
+    "title": "Tienda 🛍️",
+    "subtitle": "Comida, juguetes y accesorios — con envío",
+    "tabBrowse": "Explorar",
+    "tabOrders": "Pedidos",
+    "tabAutoReorder": "Recompra automática",
+    "shopsNearYou": "TIENDAS CERCA TUYO",
+    "couldNotLoadShops": "No se pudieron cargar las tiendas",
+    "pullDownRetry": "Deslizá hacia abajo para reintentar.",
+    "noShopsYet": "Todavía no hay tiendas disponibles",
+    "shopsComingSoon": "Volvé pronto — las tiendas para mascotas se están sumando a PawPi.",
+    "yourOrders": "TUS PEDIDOS",
+    "couldNotLoadOrders": "No se pudieron cargar los pedidos",
+    "noOrdersYet": "Todavía no tenés pedidos",
+    "ordersEmptyBody": "Tus compras van a aparecer acá.",
+    "shopFallback": "Tienda",
+    "paymentLabel": "Pago: {{status}}",
+    "autoReorder": "RECOMPRA AUTOMÁTICA",
+    "couldNotLoadPlans": "No se pudieron cargar los planes",
+    "noAutoReorder": "No tenés recompras automáticas",
+    "autoReorderEmptyBody": "Suscribite a un producto para recibirlo con una frecuencia.",
+    "productFallback": "Producto",
+    "cancelAutoReorder": "Cancelar recompra automática",
+    "cancelConfirmTitle": "¿Cancelar la recompra automática?",
+    "cancelConfirmBody": "Podés volver a suscribirte cuando quieras.",
+    "keep": "Mantener",
+    "cancelPlan": "Cancelar plan",
+    "status": {
+      "placed": "Realizado",
+      "paid": "Pagado",
+      "shipped": "Enviado",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado",
+      "pending": "Pendiente",
+      "active": "Activo",
+      "paused": "Pausado",
+      "refunded": "Reembolsado"
+    }
   }
 }

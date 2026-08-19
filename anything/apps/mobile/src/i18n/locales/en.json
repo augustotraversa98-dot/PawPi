@@ -56,7 +56,8 @@
     "close": "Close",
     "share": "Share",
     "send": "Send",
-    "yourPet": "your pet"
+    "yourPet": "your pet",
+    "pleaseTryAgain": "Please try again."
   },
   "settings": {
     "title": "Settings",
@@ -1034,7 +1035,9 @@
     "statusScheduled": "Scheduled",
     "statusInProgress": "In progress",
     "statusEnded": "Consult ended",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "couldNotLoadCall": "Couldn't load the video consult",
+    "leaveCall": "Leave call"
   },
   "bookingStatus": {
     "requested": "Pending",
@@ -1052,6 +1055,79 @@
       "reviewing": "The center is reviewing your application",
       "approved": "Application approved",
       "declined": "Application declined"
+    },
+    "title": "Adoption 🐶",
+    "subtitle": "Find a dog to bring home",
+    "tabBrowse": "Browse",
+    "tabFavorites": "Favorites",
+    "tabApplications": "Applications",
+    "nearestFirst": "NEAREST FIRST",
+    "recentlyAdded": "RECENTLY ADDED",
+    "filters": "Filters",
+    "filtersCount": "Filters ({{count}})",
+    "clearAll": "Clear all",
+    "showDogs": "Show dogs",
+    "couldNotLoadDogs": "Couldn't load dogs",
+    "pullDownRetry": "Something went wrong. Pull down to try again.",
+    "noMatches": "No matches",
+    "noMatchesBody": "Try widening or clearing your filters.",
+    "noDogsNearYet": "No dogs near you yet",
+    "noDogsNearBody": "Check back soon — shelters and rescues are joining PawPi.",
+    "noLongerAvailableTitle": "No longer available",
+    "noLongerAvailableBody": "This dog has found a home or the listing was removed.",
+    "savedDogs": "SAVED DOGS",
+    "couldNotLoadFavorites": "Couldn't load favorites",
+    "noFavoritesYet": "No favorites yet",
+    "noFavoritesBody": "Tap the heart on a dog you love to save it here.",
+    "yourApplications": "YOUR APPLICATIONS",
+    "couldNotLoadApplications": "Couldn't load applications",
+    "noApplicationsYet": "No applications yet",
+    "noApplicationsBody": "Apply to adopt a dog and track your application here.",
+    "dogFallback": "Dog",
+    "approvedNote": "Approved — this dog is now your pet! Find it under My Pets.",
+    "filter": {
+      "gender": "Gender",
+      "size": "Size",
+      "age": "Age",
+      "energy": "Energy",
+      "goodWith": "Good with",
+      "vaccination": "Vaccination"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "size": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "xlarge": "Extra large"
+    },
+    "age": {
+      "puppy": "Puppy (≤1y)",
+      "young": "Young (1–3y)",
+      "adult": "Adult (3y+)"
+    },
+    "energy": {
+      "low": "Low energy",
+      "medium": "Medium energy",
+      "high": "High energy"
+    },
+    "goodWith": {
+      "kids": "Kids",
+      "cats": "Cats",
+      "dogs": "Dogs"
+    },
+    "vaccination": {
+      "up_to_date": "Up to date",
+      "partial": "Partial",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "submitted": "Submitted",
+      "underReview": "Under review",
+      "approved": "Approved",
+      "declined": "Declined"
     }
   },
   "business": {
@@ -1808,5 +1884,70 @@
     "noSharedYet": "No pets have been shared with you yet.",
     "sharedFrom": "from @{{username}} · {{roleLabel}} · {{status}}",
     "activeChip": "active"
+  },
+  "insurance": {
+    "title": "Insurance 🛡️",
+    "subtitle": "Compare plans and get a quote",
+    "insurers": "INSURERS",
+    "couldNotLoadInsurers": "Couldn't load insurers.",
+    "noInsurersYet": "No insurers available yet.",
+    "plans": "PLANS",
+    "noPlansYet": "No plans yet.",
+    "deductibleLabel": "Deductible: {{value}}",
+    "reimbursementLabel": "Reimbursement: {{value}}",
+    "compare": "Compare",
+    "compareRow": "{{price}} · Deductible {{deductible}} · Reimb. {{reimb}}",
+    "getQuote": "Get a quote",
+    "applyBuy": "Apply / Buy",
+    "getQuoteFor": "Get a quote: {{name}}",
+    "forPet": "For {{name}}",
+    "contactEmail": "Contact email",
+    "contactPhoneOptional": "Contact phone (optional)",
+    "noteOptional": "Anything the insurer should know? (optional)",
+    "sending": "Sending…",
+    "requestQuote": "Request quote",
+    "privacyNote": "We only share what you enter here — never your Vet Record.",
+    "requestSentTitle": "Request sent",
+    "requestSentBody": "{{insurer}} will follow up with a quote.",
+    "couldNotSend": "Couldn't send"
+  },
+  "shop": {
+    "title": "Shop 🛍️",
+    "subtitle": "Food, toys, and supplies — delivered",
+    "tabBrowse": "Browse",
+    "tabOrders": "Orders",
+    "tabAutoReorder": "Auto-reorder",
+    "shopsNearYou": "SHOPS NEAR YOU",
+    "couldNotLoadShops": "Couldn't load shops",
+    "pullDownRetry": "Pull down to try again.",
+    "noShopsYet": "No shops available yet",
+    "shopsComingSoon": "Check back soon — pet shops are joining PawPi.",
+    "yourOrders": "YOUR ORDERS",
+    "couldNotLoadOrders": "Couldn't load orders",
+    "noOrdersYet": "No orders yet",
+    "ordersEmptyBody": "Your purchases will show up here.",
+    "shopFallback": "Shop",
+    "paymentLabel": "Payment: {{status}}",
+    "autoReorder": "AUTO-REORDER",
+    "couldNotLoadPlans": "Couldn't load plans",
+    "noAutoReorder": "No auto-reorder plans",
+    "autoReorderEmptyBody": "Subscribe to a product to have it delivered on a schedule.",
+    "productFallback": "Product",
+    "cancelAutoReorder": "Cancel auto-reorder",
+    "cancelConfirmTitle": "Cancel auto-reorder?",
+    "cancelConfirmBody": "You can resubscribe anytime.",
+    "keep": "Keep",
+    "cancelPlan": "Cancel plan",
+    "status": {
+      "placed": "Placed",
+      "paid": "Paid",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "active": "Active",
+      "paused": "Paused",
+      "refunded": "Refunded"
+    }
   }
 }

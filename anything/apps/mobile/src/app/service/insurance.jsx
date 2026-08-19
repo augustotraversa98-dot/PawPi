@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ShieldCheck, CheckSquare, Square } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import {
@@ -34,6 +35,7 @@ function priceRange(p) {
 export default function InsuranceScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
   const { data: insurers = [], isLoading, isError, refetch } = useDiscoverProviders("insurance");
   const [insurer, setInsurer] = useState(null);
@@ -63,13 +65,16 @@ export default function InsuranceScreen() {
         contact_phone: phone.trim() || null,
         note: note.trim() || null,
       });
-      Alert.alert("Request sent", `${insurer.name} will follow up with a quote.`);
+      Alert.alert(
+        t("insurance.requestSentTitle"),
+        t("insurance.requestSentBody", { insurer: insurer.name }),
+      );
       setQuotePlan(null);
       setEmail("");
       setPhone("");
       setNote("");
     } catch (e) {
-      Alert.alert("Couldn't send", e.message || "Please try again.");
+      Alert.alert(t("insurance.couldNotSend"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -93,24 +98,24 @@ export default function InsuranceScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <View style={{ flex: 1 }}>
-          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>Insurance 🛡️</Text>
+          <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>{t("insurance.title")}</Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Compare plans and get a quote
+            {t("insurance.subtitle")}
           </Text>
         </View>
       </GlassSurface>
 
       <RefreshableScrollView refetch={refetch} contentContainerStyle={{ padding: SPACING.lg, paddingBottom: insets.bottom + 60 }}>
         <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown, marginBottom: SPACING.sm }]}>
-          INSURERS
+          {t("insurance.insurers")}
         </Text>
         {isLoading ? (
-          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Loading…</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>{t("common.loading")}</Text>
         ) : isError ? (
-          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>Couldn't load insurers.</Text>
+          <Text style={[TYPE.body, { color: COLORS.mutedBrown }]}>{t("insurance.couldNotLoadInsurers")}</Text>
         ) : insurers.length === 0 ? (
           <Text testID="insurers-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
-            No insurers available yet.
+            {t("insurance.noInsurersYet")}
           </Text>
         ) : (
           insurers.map((p) => (
@@ -140,11 +145,11 @@ export default function InsuranceScreen() {
         {insurer && (
           <>
             <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.mutedBrown, marginTop: SPACING.lg, marginBottom: SPACING.sm }]}>
-              PLANS
+              {t("insurance.plans")}
             </Text>
             {plans.length === 0 ? (
               <Text testID="plans-empty" style={[TYPE.body, { color: COLORS.mutedBrown }]}>
-                No plans yet.
+                {t("insurance.noPlansYet")}
               </Text>
             ) : (
               plans.map((plan) => (
@@ -163,10 +168,10 @@ export default function InsuranceScreen() {
                     <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.coral }]}>{priceRange(plan)}</Text>
                   </View>
                   {!!plan.deductible && (
-                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>Deductible: {plan.deductible}</Text>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>{t("insurance.deductibleLabel", { value: plan.deductible })}</Text>
                   )}
                   {!!plan.reimbursement && (
-                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>Reimbursement: {plan.reimbursement}</Text>
+                    <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>{t("insurance.reimbursementLabel", { value: plan.reimbursement })}</Text>
                   )}
                   {(plan.coverage_highlights || []).map((h, i) => (
                     <Text key={i} style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", marginTop: 2 }]}>• {h}</Text>
@@ -178,14 +183,14 @@ export default function InsuranceScreen() {
                       style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                     >
                       {compare[plan.id] ? <CheckSquare size={18} color={COLORS.coral} /> : <Square size={18} color={COLORS.mutedBrown} />}
-                      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "700" }]}>Compare</Text>
+                      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "700" }]}>{t("insurance.compare")}</Text>
                     </PressableScale>
                     <PressableScale
                       testID={`quote-${plan.id}`}
                       onPress={() => setQuotePlan(plan)}
                       style={{ borderWidth: 1.5, borderColor: COLORS.coral, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm }}
                     >
-                      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>Get a quote</Text>
+                      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>{t("insurance.getQuote")}</Text>
                     </PressableScale>
                     <PressableScale
                       testID={`apply-${plan.id}`}
@@ -196,7 +201,7 @@ export default function InsuranceScreen() {
                       }
                       style={{ backgroundColor: COLORS.coral, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm }}
                     >
-                      <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>Apply / Buy</Text>
+                      <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>{t("insurance.applyBuy")}</Text>
                     </PressableScale>
                   </View>
                 </Card>
@@ -205,12 +210,12 @@ export default function InsuranceScreen() {
 
             {selected.length >= 2 && (
               <View testID="compare-view" style={{ backgroundColor: COLORS.sand, borderRadius: RADIUS.control - 2, padding: SPACING.md + 2, marginTop: 6 }}>
-                <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>Compare</Text>
+                <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.sm }]}>{t("insurance.compare")}</Text>
                 {selected.map((p) => (
                   <View key={p.id} style={{ marginBottom: SPACING.sm }}>
                     <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>{p.name}</Text>
                     <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
-                      {priceRange(p)} · Deductible {p.deductible || "—"} · Reimb. {p.reimbursement || "—"}
+                      {t("insurance.compareRow", { price: priceRange(p), deductible: p.deductible || "—", reimb: p.reimbursement || "—" })}
                     </Text>
                   </View>
                 ))}
@@ -223,10 +228,10 @@ export default function InsuranceScreen() {
         {quotePlan && (
           <Card testID="quote-form" level="none" radius={RADIUS.control} borderColor={COLORS.peach} style={{ padding: SPACING.lg, marginTop: SPACING.lg }}>
             <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-              Get a quote: {quotePlan.name}
+              {t("insurance.getQuoteFor", { name: quotePlan.name })}
             </Text>
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
-              For {currentPet?.name || "your pet"}
+              {t("insurance.forPet", { name: currentPet?.name || t("common.yourPet") })}
               {currentPet?.species ? ` · ${currentPet.species}` : ""}
               {currentPet?.breed ? ` · ${currentPet.breed}` : ""}
             </Text>
@@ -234,7 +239,7 @@ export default function InsuranceScreen() {
               testID="quote-email"
               value={email}
               onChangeText={setEmail}
-              placeholder="Contact email"
+              placeholder={t("insurance.contactEmail")}
               placeholderTextColor={COLORS.mutedBrown}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -244,7 +249,7 @@ export default function InsuranceScreen() {
               testID="quote-phone"
               value={phone}
               onChangeText={setPhone}
-              placeholder="Contact phone (optional)"
+              placeholder={t("insurance.contactPhoneOptional")}
               placeholderTextColor={COLORS.mutedBrown}
               style={{ marginTop: SPACING.sm, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, color: COLORS.warmBrown }}
             />
@@ -252,7 +257,7 @@ export default function InsuranceScreen() {
               testID="quote-note"
               value={note}
               onChangeText={setNote}
-              placeholder="Anything the insurer should know? (optional)"
+              placeholder={t("insurance.noteOptional")}
               placeholderTextColor={COLORS.mutedBrown}
               multiline
               style={{ marginTop: SPACING.sm, backgroundColor: COLORS.sand, borderRadius: RADIUS.sm, padding: SPACING.sm + 2, minHeight: 56, color: COLORS.warmBrown }}
@@ -264,11 +269,11 @@ export default function InsuranceScreen() {
               style={{ marginTop: SPACING.md, backgroundColor: COLORS.coral, borderRadius: RADIUS.control - 2, paddingVertical: SPACING.md, alignItems: "center" }}
             >
               <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>
-                {submit.isPending ? "Sending…" : "Request quote"}
+                {submit.isPending ? t("insurance.sending") : t("insurance.requestQuote")}
               </Text>
             </PressableScale>
             <Text style={[TYPE.caption, { color: COLORS.mutedBrown, fontWeight: "500", letterSpacing: 0, marginTop: SPACING.sm, textAlign: "center" }]}>
-              We only share what you enter here — never your Vet Record.
+              {t("insurance.privacyNote")}
             </Text>
           </Card>
         )}
