@@ -18,6 +18,20 @@
     "before": "Before",
     "after": "After"
   },
+  "petProfile": {
+    "petProfile": "Pet profile",
+    "withOwner": "with {{name}}",
+    "dailyPosts": "Daily posts",
+    "dailyMoments": "Daily moments",
+    "noDailyPosts": "No daily posts yet",
+    "momentsEmpty": "{{name}}'s daily moments will appear here.",
+    "momentsEmptyGeneric": "These daily moments will appear here.",
+    "ageYear": "year",
+    "ageYears": "years",
+    "ageMonth": "month",
+    "ageMonths": "months",
+    "ageUnderMonth": "Under 1 month"
+  },
   "care": {
     "segLearn": "Learn",
     "segHire": "Hire",

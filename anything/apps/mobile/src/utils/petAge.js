@@ -57,3 +57,27 @@ export function getDisplayAge(pet, now = new Date()) {
 
   return null;
 }
+
+/**
+ * Same age model as getDisplayAge, but returns the structured parts so callers
+ * can localize the units themselves ({years, months, approximate}) instead of
+ * the English string. Returns null when nothing is known. Kept separate so
+ * getDisplayAge (and its tests) stay byte-for-byte unchanged.
+ */
+export function getDisplayAgeParts(pet, now = new Date()) {
+  if (!pet) return null;
+
+  const birthDate = parseDateValue(pet.birthday);
+  if (birthDate) {
+    const { years, months } = ageFromBirthDate(birthDate, now);
+    return { years, months, approximate: false };
+  }
+
+  const years = pet.age_years != null ? Number(pet.age_years) : 0;
+  const months = pet.age_months != null ? Number(pet.age_months) : 0;
+  if (years > 0 || months > 0) {
+    return { years, months, approximate: true };
+  }
+
+  return null;
+}
