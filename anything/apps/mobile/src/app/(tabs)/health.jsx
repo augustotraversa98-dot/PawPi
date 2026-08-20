@@ -19,6 +19,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { GlassSurface, PressableScale } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 const SECTIONS = [
   { id: "today", label: "Today", icon: Heart },
@@ -28,6 +29,7 @@ const SECTIONS = [
 ];
 
 export default function HealthScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState("today");
@@ -74,7 +76,7 @@ export default function HealthScreen() {
           }}
         >
           <Text style={[TYPE.largeTitle, { color: COLORS.coral }]}>
-            Health Hub
+            {t("health.hubTitle")}
           </Text>
           <Text style={{ fontSize: 22 }}>🩺</Text>
           <View style={{ flex: 1 }} />
@@ -96,7 +98,7 @@ export default function HealthScreen() {
           >
             <Utensils size={15} color={COLORS.coral} />
             <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
-              Nutrition
+              {t("health.nutritionButton")}
             </Text>
           </PressableScale>
         </View>

@@ -22,7 +22,7 @@ beforeEach(() => {
 describe("WelcomeScreen", () => {
   it("opens the signup flow directly when Create account is pressed", () => {
     const { getByLabelText } = render(<WelcomeScreen />);
-    fireEvent.press(getByLabelText("Create account"));
+    fireEvent.press(getByLabelText("welcome.createAccount"));
     expect(mockOpen).toHaveBeenCalledWith({ mode: "signup" });
   });
 
@@ -31,7 +31,7 @@ describe("WelcomeScreen", () => {
   // if it drifts, the WebView 404s instead of showing the reset screen.
   it("opens the forgot-password screen when Forgot password? is pressed", () => {
     const { getByLabelText } = render(<WelcomeScreen />);
-    fireEvent.press(getByLabelText("Forgot password?"));
+    fireEvent.press(getByLabelText("welcome.forgotPassword"));
     expect(mockOpen).toHaveBeenCalledWith({ mode: "forgot-password" });
   });
 });

@@ -95,7 +95,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
   const saveVomitLog = async (logData) => {
     if (!currentPet?.id) {
       console.error("[VomitTracker] No current pet found");
-      alert("Could not save. Please select a pet first.");
+      alert(t("trackers.vomit.couldNotSaveNoPet"));
       return false;
     }
 
@@ -142,7 +142,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
       return true;
     } catch (error) {
       console.error("[VomitTracker] Error saving vomit log:", error);
-      alert("Could not save. Please try again.");
+      alert(t("trackers.vomit.couldNotSave"));
       return false;
     } finally {
       setIsSaving(false);
@@ -180,8 +180,8 @@ export default function VomitTrackerModal({ visible, onClose }) {
       if (!permission.granted) {
         alert(
           fromCamera
-            ? "Camera permission is required to take photos."
-            : "Photo library permission is required.",
+            ? t("trackers.vomit.cameraPermRequired")
+            : t("trackers.vomit.libraryPermRequired"),
         );
         return;
       }
@@ -210,7 +210,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
       });
 
       if (uploadResult.error) {
-        alert("Photo upload failed. You can still save without a photo.");
+        alert(t("trackers.vomit.photoUploadFailed"));
         return;
       }
 
@@ -218,7 +218,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
       console.log("[VomitTracker] Photo uploaded:", uploadResult.url);
     } catch (error) {
       console.error("[VomitTracker] Photo upload failed:", error);
-      alert("Photo upload failed. You can still save without a photo.");
+      alert(t("trackers.vomit.photoUploadFailed"));
     }
   };
 
@@ -301,7 +301,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
           }}
         >
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            Log Vomit / Digestive Event
+            {t("trackers.vomit.title")}
           </Text>
           <TouchableOpacity
             onPress={handleClose}
@@ -337,7 +337,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   marginTop: 16,
                 }}
               >
-                Saving...
+                {t("trackers.vomit.saving")}
               </Text>
             </View>
           )}
@@ -366,7 +366,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   marginBottom: 8,
                 }}
               >
-                Logged!
+                {t("trackers.vomit.logged")}
               </Text>
               <Text
                 style={{
@@ -375,7 +375,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   textAlign: "center",
                 }}
               >
-                Digestive event added to today's timeline
+                {t("trackers.vomit.confirmedBody")}
               </Text>
             </View>
           )}
@@ -418,8 +418,8 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   }}
                 >
                   {warningIsUrgent
-                    ? "May need veterinary attention"
-                    : "Worth monitoring"}
+                    ? t("trackers.vomit.needsVetAttention")
+                    : t("trackers.vomit.worthMonitoring")}
                 </Text>
               </View>
 
@@ -441,9 +441,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     textAlign: "center",
                   }}
                 >
-                  This may need veterinary attention, especially if repeated,
-                  severe, or combined with low energy, diarrhea, pain, or
-                  refusal to eat.
+                  {t("trackers.vomit.warningBody")}
                 </Text>
               </View>
 
@@ -464,7 +462,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 <Text
                   style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                 >
-                  Got it, thanks
+                  {t("trackers.vomit.gotItThanks")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -481,12 +479,12 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   marginBottom: 4,
                 }}
               >
-                What happened?
+                {t("trackers.vomit.quickPrompt")}
               </Text>
               <Text
                 style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 12 }}
               >
-                Quick log to save time, or add details for better tracking.
+                {t("trackers.vomit.quickHint")}
               </Text>
 
               <TouchableOpacity
@@ -511,7 +509,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 6,
                   }}
                 >
-                  Vomited once
+                  {t("trackers.vomit.onceCta")}
                 </Text>
                 <Text
                   style={{
@@ -521,7 +519,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     textAlign: "center",
                   }}
                 >
-                  Normal energy, no other symptoms
+                  {t("trackers.vomit.onceDesc")}
                 </Text>
               </TouchableOpacity>
 
@@ -544,7 +542,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 6,
                   }}
                 >
-                  Something changed / add details
+                  {t("trackers.vomit.somethingChanged")}
                 </Text>
                 <Text
                   style={{
@@ -553,7 +551,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     textAlign: "center",
                   }}
                 >
-                  Multiple episodes, blood, low energy, or other observations
+                  {t("trackers.vomit.somethingChangedDesc")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -570,7 +568,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                   marginBottom: -8,
                 }}
               >
-                Vomit details
+                {t("trackers.vomit.details")}
               </Text>
 
               {/* Number of episodes */}
@@ -583,7 +581,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Number of episodes
+                  {t("trackers.vomit.episodesLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {[1, 2, 3, "4+"].map((num) => {
@@ -628,7 +626,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Appearance
+                  {t("trackers.vomit.appearanceLabel")}
                 </Text>
                 <View
                   style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
@@ -688,7 +686,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Relation to food
+                  {t("trackers.vomit.relationLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["before meal", "after meal", "unknown"].map((r) => (
@@ -731,7 +729,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Appetite after vomiting
+                  {t("trackers.vomit.appetiteLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["normal", "reduced", "refused food"].map((a) => (
@@ -783,7 +781,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Energy level
+                  {t("trackers.vomit.energyLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["normal", "low", "very low"].map((e) => (
@@ -839,7 +837,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 10,
                   }}
                 >
-                  Diarrhea also present?
+                  {t("trackers.vomit.diarrheaLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
@@ -861,7 +859,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                         color: !diarrheaPresent ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      No
+                      {t("trackers.shared.noLabel")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -883,7 +881,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                         color: diarrheaPresent ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      Yes
+                      {t("trackers.shared.yesLabel")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -899,7 +897,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 8,
                   }}
                 >
-                  Photo (optional)
+                  {t("trackers.vomit.photoLabel")}
                 </Text>
                 {photoUrl ? (
                   <View style={{ position: "relative" }}>
@@ -952,7 +950,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                         marginTop: 8,
                       }}
                     >
-                      {uploading ? "Uploading..." : "Add photo"}
+                      {uploading ? t("trackers.vomit.uploadingPhoto") : t("trackers.vomit.addPhoto")}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -968,7 +966,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                     marginBottom: 8,
                   }}
                 >
-                  Notes (optional)
+                  {t("trackers.vomit.notesLabel")}
                 </Text>
                 <TextInput
                   value={notes}
@@ -1010,7 +1008,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 <Text
                   style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                 >
-                  Log Digestive Event
+                  {t("trackers.vomit.submit")}
                 </Text>
               </TouchableOpacity>
 
@@ -1019,7 +1017,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 style={{ alignItems: "center", paddingVertical: 8 }}
               >
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  ← Back
+                  {t("trackers.vomit.back")}
                 </Text>
               </TouchableOpacity>
             </View>

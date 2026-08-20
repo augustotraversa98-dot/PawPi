@@ -12,6 +12,7 @@ import { X, Check, Play, Edit3, Users, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLogWalk } from "@/hooks/useHealthTracking";
 import WalkTrackingSettings from "./WalkTrackingSettings";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -30,6 +31,7 @@ export default function WalkActivityModal({
   onClose,
   initialMode = "quickChoice",
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const logWalkMutation = useLogWalk();
 
@@ -64,7 +66,7 @@ export default function WalkActivityModal({
   };
 
   const handleStartWalk = () => {
-    setConfirmationMessage("Walk started! Have fun!");
+    setConfirmationMessage(t("trackers.walk.startedMsg"));
     setShowConfirmation(true);
     setTimeout(() => {
       resetForm();
@@ -88,7 +90,7 @@ export default function WalkActivityModal({
         notes: walkNotes,
       });
 
-      setConfirmationMessage("Walk logged!");
+      setConfirmationMessage(t("trackers.walk.loggedMsg"));
       setShowConfirmation(true);
       setTimeout(() => {
         resetForm();
@@ -127,8 +129,8 @@ export default function WalkActivityModal({
           }}
         >
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            {step === "walkLog" && "Log Walk"}
-            {step === "quickChoice" && "Walk & Activity"}
+            {step === "walkLog" && t("trackers.walk.titleLog")}
+            {step === "quickChoice" && t("trackers.walk.titleActivity")}
           </Text>
           <TouchableOpacity
             onPress={handleClose}
@@ -192,7 +194,7 @@ export default function WalkActivityModal({
                   marginBottom: 4,
                 }}
               >
-                What would you like to do?
+                {t("trackers.walk.choosePrompt")}
               </Text>
 
               <TouchableOpacity
@@ -232,7 +234,7 @@ export default function WalkActivityModal({
                       marginBottom: 4,
                     }}
                   >
-                    Start walk
+                    {t("trackers.walk.startWalk")}
                   </Text>
                   <Text
                     style={{
@@ -241,7 +243,7 @@ export default function WalkActivityModal({
                       opacity: 0.9,
                     }}
                   >
-                    Begin tracking a walk now
+                    {t("trackers.walk.startWalkDesc")}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -280,7 +282,7 @@ export default function WalkActivityModal({
                       marginBottom: 4,
                     }}
                   >
-                    Log walk manually
+                    {t("trackers.walk.logManually")}
                   </Text>
                   <Text
                     style={{
@@ -288,7 +290,7 @@ export default function WalkActivityModal({
                       color: C.mutedBrown,
                     }}
                   >
-                    Enter walk details manually
+                    {t("trackers.walk.logManuallyDesc")}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -306,7 +308,7 @@ export default function WalkActivityModal({
                   marginBottom: -8,
                 }}
               >
-                Walk details
+                {t("trackers.walk.details")}
               </Text>
 
               {/* Duration */}
@@ -319,7 +321,7 @@ export default function WalkActivityModal({
                     marginBottom: 8,
                   }}
                 >
-                  Duration (minutes)
+                  {t("trackers.walk.durationLabel")}
                 </Text>
                 <TextInput
                   value={duration.toString()}
@@ -347,7 +349,7 @@ export default function WalkActivityModal({
                     marginBottom: 8,
                   }}
                 >
-                  Distance (miles)
+                  {t("trackers.walk.distanceLabel")}
                 </Text>
                 <TextInput
                   value={distance.toString()}
@@ -375,7 +377,7 @@ export default function WalkActivityModal({
                     marginBottom: 10,
                   }}
                 >
-                  Pace
+                  {t("trackers.walk.pace")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["relaxed", "normal", "active"].map((p) => (
@@ -417,7 +419,7 @@ export default function WalkActivityModal({
                     marginBottom: 10,
                   }}
                 >
-                  Energy after walk
+                  {t("trackers.walk.energyLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["low", "normal", "high"].map((e) => (
@@ -459,7 +461,7 @@ export default function WalkActivityModal({
                     marginBottom: 10,
                   }}
                 >
-                  Potty events
+                  {t("trackers.walk.pottyLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
@@ -555,12 +557,12 @@ export default function WalkActivityModal({
                     marginBottom: 8,
                   }}
                 >
-                  Route (optional)
+                  {t("trackers.walk.routeLabel")}
                 </Text>
                 <TextInput
                   value={route}
                   onChangeText={setRoute}
-                  placeholder="e.g., Park loop, Trail run"
+                  placeholder={t("trackers.walk.routePlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   style={{
                     backgroundColor: C.card,
@@ -584,12 +586,12 @@ export default function WalkActivityModal({
                     marginBottom: 8,
                   }}
                 >
-                  Notes (optional)
+                  {t("trackers.walk.notesLabel")}
                 </Text>
                 <TextInput
                   value={walkNotes}
                   onChangeText={setWalkNotes}
-                  placeholder="Any observations?"
+                  placeholder={t("trackers.walk.notesPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   multiline
                   numberOfLines={3}
@@ -624,7 +626,7 @@ export default function WalkActivityModal({
                     marginBottom: 16,
                   }}
                 >
-                  Tracking settings
+                  {t("trackers.walk.trackingSettings")}
                 </Text>
                 <WalkTrackingSettings />
               </View>
@@ -654,7 +656,7 @@ export default function WalkActivityModal({
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Log Walk
+                    {t("trackers.walk.submit")}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -664,7 +666,7 @@ export default function WalkActivityModal({
                 style={{ alignItems: "center", paddingVertical: 8 }}
               >
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  ← Back
+                  {t("trackers.walk.back")}
                 </Text>
               </TouchableOpacity>
             </View>

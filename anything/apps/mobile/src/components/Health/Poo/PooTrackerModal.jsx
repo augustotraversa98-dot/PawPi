@@ -121,7 +121,7 @@ export default function PooTrackerModal({ visible, onClose }) {
           },
         });
         if (uploadResult.error) {
-          alert("Photo upload failed. Saving without a photo.");
+          alert(t("trackers.poo.photoUploadFailed"));
         } else {
           uploadedPhotoUrl = uploadResult.url;
         }
@@ -169,7 +169,7 @@ export default function PooTrackerModal({ visible, onClose }) {
   const handleTakePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      alert("Camera permission is required to take photos.");
+      alert(t("trackers.poo.cameraPermRequired"));
       return;
     }
 
@@ -186,7 +186,7 @@ export default function PooTrackerModal({ visible, onClose }) {
   const handleChoosePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      alert("Photo library permission is required.");
+      alert(t("trackers.poo.libraryPermRequired"));
       return;
     }
 
@@ -238,7 +238,7 @@ export default function PooTrackerModal({ visible, onClose }) {
             <Text
               style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
             >
-              Log Poo
+              {t("trackers.poo.title")}
             </Text>
             <TouchableOpacity
               onPress={handleClose}
@@ -285,7 +285,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                     marginBottom: 8,
                   }}
                 >
-                  Logged!
+                  {t("trackers.poo.logged")}
                 </Text>
               </View>
             )}
@@ -321,7 +321,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    Worth noting
+                    {t("trackers.poo.worthNoting")}
                   </Text>
                 </View>
 
@@ -343,9 +343,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    This may be worth discussing with a veterinarian, especially
-                    if it continues, worsens, or comes with vomiting, pain, or
-                    low energy.
+                    {t("trackers.poo.warningBody")}
                   </Text>
                 </View>
 
@@ -366,7 +364,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Got it, thanks
+                    {t("trackers.poo.gotItThanks")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -383,7 +381,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                     marginBottom: 4,
                   }}
                 >
-                  How was the poo?
+                  {t("trackers.poo.quickPrompt")}
                 </Text>
                 <Text
                   style={{
@@ -392,7 +390,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                     marginBottom: 12,
                   }}
                 >
-                  Quick log to save time, or add details to track patterns.
+                  {t("trackers.poo.quickHint")}
                 </Text>
 
                 <TouchableOpacity
@@ -422,7 +420,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           marginBottom: 6,
                         }}
                       >
-                        Same as usual
+                        {t("trackers.poo.sameAsUsual")}
                       </Text>
                       <Text
                         style={{
@@ -432,7 +430,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           textAlign: "center",
                         }}
                       >
-                        Normal consistency, color, and amount
+                        {t("trackers.poo.sameAsUsualDesc")}
                       </Text>
                     </>
                   )}
@@ -457,7 +455,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 6,
                     }}
                   >
-                    Something changed
+                    {t("trackers.poo.somethingChanged")}
                   </Text>
                   <Text
                     style={{
@@ -466,7 +464,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    Different color, shape, or other observations
+                    {t("trackers.poo.somethingChangedDesc")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -483,7 +481,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                     marginBottom: -8,
                   }}
                 >
-                  Poo details
+                  {t("trackers.poo.details")}
                 </Text>
 
                 {/* Amount */}
@@ -496,7 +494,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Amount
+                    {t("trackers.poo.amount")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {["small", "medium", "large"].map((size) => (
@@ -538,7 +536,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Shape / Consistency
+                    {t("trackers.poo.shapeLabel")}
                   </Text>
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
@@ -581,7 +579,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Color
+                    {t("trackers.poo.colorLabel")}
                   </Text>
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
@@ -626,7 +624,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Blood visible?
+                    {t("trackers.poo.bloodLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -648,7 +646,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: !blood ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -670,7 +668,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: blood ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -686,7 +684,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Mucus visible?
+                    {t("trackers.poo.mucusLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -708,7 +706,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: !mucus ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -730,7 +728,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: mucus ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -746,7 +744,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Effort / Straining
+                    {t("trackers.poo.effortLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {["none", "mild", "strong"].map((e) => (
@@ -788,7 +786,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Accident in house?
+                    {t("trackers.poo.accidentLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -810,7 +808,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: !accident ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -832,7 +830,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                           color: accident ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -848,7 +846,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 8,
                     }}
                   >
-                    Photo (optional)
+                    {t("trackers.poo.photoLabel")}
                   </Text>
                   <Text
                     style={{
@@ -857,7 +855,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 12,
                     }}
                   >
-                    Add a photo if you want to compare changes over time
+                    {t("trackers.poo.photoHint")}
                   </Text>
 
                   {localPhotoUri ? (
@@ -912,7 +910,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                             color: C.warmBrown,
                           }}
                         >
-                          Take Photo
+                          {t("trackers.poo.takePhoto")}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -936,7 +934,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                             color: C.warmBrown,
                           }}
                         >
-                          Choose Photo
+                          {t("trackers.poo.choosePhoto")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -953,7 +951,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                       marginBottom: 8,
                     }}
                   >
-                    Notes (optional)
+                    {t("trackers.poo.notesLabel")}
                   </Text>
                   <TextInput
                     value={notes}
@@ -999,7 +997,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                     <Text
                       style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                     >
-                      Log Poo Entry
+                      {t("trackers.poo.submit")}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1009,7 +1007,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                   style={{ alignItems: "center", paddingVertical: 8 }}
                 >
                   <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                    ← Back
+                    {t("trackers.poo.back")}
                   </Text>
                 </TouchableOpacity>
               </View>
