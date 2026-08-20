@@ -808,7 +808,8 @@
       "notesPlaceholder": "Redness, swelling, discharge, smell, sensitivity, no change…",
       "notesModalPlaceholder": "Any observations or changes you noticed?",
       "selectAtLeastOne": "Select at least one photo check area.",
-      "whatToLookForPlaceholder": "What to look for..."
+      "whatToLookForPlaceholder": "What to look for...",
+      "subtitle": "Visual health monitoring"
     },
     "reminders": {
       "schedule": {
@@ -903,7 +904,12 @@
         "deleteTitle": "Delete Reminder",
         "deleteBody": "Are you sure you want to delete \"{{title}}\"?",
         "deletedTitle": "🗑️ Deleted",
-        "deletedBody": "{{title}} has been removed"
+        "deletedBody": "{{title}} has been removed",
+        "groupNow": "Now",
+        "groupToday": "Today",
+        "groupTomorrow": "Tomorrow",
+        "groupThisWeek": "This Week",
+        "groupLater": "Later"
       },
       "settings": {
         "title": "Reminder Settings",
@@ -1269,7 +1275,14 @@
     "generalChip": "General",
     "notesPlaceholder": "Describe symptoms or special needs…",
     "depositRequired": "A deposit of {{amount}} is required to request this {{noun}}. You'll be sent to MercadoPago to pay — if it's declined, you're refunded automatically.",
-    "paymentRequired": "Payment of {{amount}} is required to request this {{noun}}. You'll be sent to MercadoPago to pay — if it's declined, you're refunded automatically."
+    "paymentRequired": "Payment of {{amount}} is required to request this {{noun}}. You'll be sent to MercadoPago to pay — if it's declined, you're refunded automatically.",
+    "completePaymentTitle": "Almost done — complete payment",
+    "completePaymentBody": "Opening MercadoPago to pay for your {{noun}}. {{provider}} will confirm once your payment goes through.",
+    "paymentFailedTitle": "Payment couldn't start",
+    "paymentFailedBody": "We couldn't open the payment window for your {{noun}}, so nothing was charged. Please try again.",
+    "requestSentTitle": "Request sent!",
+    "requestSentBody": "{{provider}} will confirm your {{noun}} soon.",
+    "couldntBook": "Couldn't book"
   },
   "providers": {
     "searchPlaceholder": "Search by name",
@@ -3195,5 +3208,32 @@
     "previewPhoto": "📷 Photo",
     "previewSayHi": "Say hi 👋"
   },
-  "batch15Placeholder": {}
+  "batch15Placeholder": {},
+  "ownerMenu": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "sectionCommunity": "COMMUNITY",
+    "sectionYourAccount": "YOUR ACCOUNT",
+    "community": "Community",
+    "myHub": "My Hub",
+    "dogProfile": "Dog Profile",
+    "family": "Family & Caregivers",
+    "lostFound": "Lost & Found",
+    "memoriesWrapped": "Memories & Wrapped",
+    "remindersRoutines": "Reminders & Routines",
+    "resetAppData": "Reset App Data"
+  },
+  "medicalCare": {
+    "deleteItemTitle": "Delete care item?",
+    "deleteItemBody": "This will remove this item from the Medical Care routine.",
+    "noItemsTitle": "No care items",
+    "noItemsBody": "Add at least one care item before saving.",
+    "nameRequiredTitle": "Name required",
+    "nameRequiredBody": "Please enter a name for this care item."
+  },
+  "feeding": {
+    "minMealsTitle": "Minimum meals",
+    "minMealsBody": "You need at least one meal per day."
+  },
+  "batch17Placeholder": {}
 }

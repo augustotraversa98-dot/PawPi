@@ -354,19 +354,19 @@ export default function UpcomingTab() {
         )}
 
         {/* Grouped Reminders */}
-        <ReminderGroup title="Now" reminders={grouped.now} emoji="🔔" />
-        <ReminderGroup title="Today" reminders={grouped.today} emoji="📅" />
+        <ReminderGroup title={t("reminders.upcoming.groupNow")} reminders={grouped.now} emoji="🔔" />
+        <ReminderGroup title={t("reminders.upcoming.groupToday")} reminders={grouped.today} emoji="📅" />
         <ReminderGroup
-          title="Tomorrow"
+          title={t("reminders.upcoming.groupTomorrow")}
           reminders={grouped.tomorrow}
           emoji="🌅"
         />
         <ReminderGroup
-          title="This Week"
+          title={t("reminders.upcoming.groupThisWeek")}
           reminders={grouped.thisWeek}
           emoji="📆"
         />
-        <ReminderGroup title="Later" reminders={grouped.later} emoji="🗓️" />
+        <ReminderGroup title={t("reminders.upcoming.groupLater")} reminders={grouped.later} emoji="🗓️" />
 
         {/* Empty State */}
         {activeReminders.length === 0 && (

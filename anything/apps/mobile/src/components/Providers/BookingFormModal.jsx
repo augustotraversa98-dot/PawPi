@@ -332,8 +332,8 @@ export default function BookingFormModal({
         );
       } else if (takePayment && checkoutUrl) {
         Alert.alert(
-          "Almost done — complete payment",
-          `Opening MercadoPago to pay for your ${copy.noun}. ${provider.name} will confirm once your payment goes through.`,
+          t("booking.completePaymentTitle"),
+          t("booking.completePaymentBody", { noun: copy.noun, provider: provider.name }),
         );
         Linking.openURL(checkoutUrl).catch(() => {});
       } else if (takePayment) {
@@ -341,18 +341,18 @@ export default function BookingFormModal({
         // started. The booking exists but is unpaid; never imply it's a normal free
         // request. Be honest so the owner knows nothing was charged.
         Alert.alert(
-          "Payment couldn't start",
-          `We couldn't open the payment window for your ${copy.noun}, so nothing was charged. Please try again.`,
+          t("booking.paymentFailedTitle"),
+          t("booking.paymentFailedBody", { noun: copy.noun }),
         );
       } else {
         Alert.alert(
-          "Request sent!",
-          `${provider.name} will confirm your ${copy.noun} soon.`,
+          t("booking.requestSentTitle"),
+          t("booking.requestSentBody", { noun: copy.noun, provider: provider.name }),
         );
       }
     } catch (err) {
       // Surface backend 400/403/404 messages instead of swallowing them.
-      Alert.alert("Couldn't book", err?.message || "Please try again.");
+      Alert.alert(t("booking.couldntBook"), err?.message || t("common.pleaseTryAgain"));
     }
   };
 
