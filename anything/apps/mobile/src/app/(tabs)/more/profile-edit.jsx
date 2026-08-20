@@ -13,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Camera } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,6 +49,7 @@ export default function ProfileEditScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
   const [upload, { loading: uploading }] = useUpload();
@@ -80,8 +82,8 @@ export default function ProfileEditScreen() {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
-          "Photo access needed",
-          "Allow photo library access to change your pet's photo.",
+          t("profileEdit.photoPermTitle"),
+          t("profileEdit.photoPermBody"),
         );
         return;
       }
@@ -95,7 +97,7 @@ export default function ProfileEditScreen() {
         setFormData((prev) => ({ ...prev, photo: result.assets[0].uri }));
       }
     } catch (e) {
-      Alert.alert("Couldn't pick a photo", e?.message || "Please try again.");
+      Alert.alert(t("profileEdit.couldNotPickPhoto"), e?.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -124,12 +126,12 @@ export default function ProfileEditScreen() {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert("Error", "Pet name is required");
+      Alert.alert(t("common.error"), t("profileEdit.nameRequired"));
       return;
     }
 
     if (!currentPet?.id) {
-      Alert.alert("Error", "No pet found to update");
+      Alert.alert(t("common.error"), t("profileEdit.noPetToUpdate"));
       return;
     }
 
@@ -233,15 +235,15 @@ export default function ProfileEditScreen() {
       console.log("[Profile Edit] ✅ Profile update complete!");
       console.log("[Profile Edit] ========================================");
 
-      Alert.alert("Success", "Profile saved");
+      Alert.alert(t("profileEdit.successTitle"), t("profileEdit.successBody"));
       router.back();
     } catch (error) {
       console.error("[Profile Edit] ========================================");
       console.error("[Profile Edit] ERROR:", error.message);
       console.error("[Profile Edit] ========================================");
       Alert.alert(
-        "Error",
-        error.message || "Could not save profile. Please try again.",
+        t("common.error"),
+        error.message || t("profileEdit.couldNotSave"),
       );
     } finally {
       setIsSubmitting(false);
@@ -275,7 +277,7 @@ export default function ProfileEditScreen() {
         }}
       >
         <Text style={[TYPE.headline, { color: COLORS.mutedBrown, fontWeight: "500", textAlign: "center" }]}>
-          No pet profile found
+          {t("profileEdit.noPet")}
         </Text>
       </View>
     );
@@ -304,7 +306,7 @@ export default function ProfileEditScreen() {
             <ArrowLeft size={22} color={COLORS.warmBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-            Edit Profile
+            {t("profileEdit.title")}
           </Text>
           <View style={{ width: 22 }} />
         </View>
@@ -359,37 +361,37 @@ export default function ProfileEditScreen() {
             >
               <Camera size={16} color={COLORS.coral} />
               <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.coral }]}>
-                Change Photo
+                {t("profileEdit.changePhoto")}
               </Text>
             </PressableScale>
           </View>
 
           {/* Name */}
           <FormField
-            label="Name"
+            label={t("profileEdit.fieldName")}
             value={formData.name}
             onChangeText={(text) =>
               setFormData((prev) => ({ ...prev, name: text }))
             }
-            placeholder="e.g. Buddy"
+            placeholder={t("profileEdit.namePlaceholder")}
             required
           />
 
           {/* Handle */}
           <FormField
-            label="Handle"
+            label={t("profileEdit.fieldHandle")}
             value={formData.handle}
             onChangeText={(text) =>
               setFormData((prev) => ({ ...prev, handle: text }))
             }
-            placeholder="e.g. buddy_adventures"
+            placeholder={t("profileEdit.handlePlaceholder")}
             autoCapitalize="none"
           />
 
           {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
           <View style={{ marginBottom: SPACING.xl }}>
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-              Breed
+              {t("profileEdit.fieldBreed")}
             </Text>
             <BreedPicker
               value={formData.breed}
@@ -401,7 +403,7 @@ export default function ProfileEditScreen() {
 
           {/* Gender */}
           <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-            Gender
+            {t("profileEdit.fieldGender")}
           </Text>
           <View style={{ flexDirection: "row", gap: SPACING.sm + 2, marginBottom: SPACING.xl }}>
             {["male", "female", "unknown"].map((option) => (
@@ -429,7 +431,7 @@ export default function ProfileEditScreen() {
                     { fontWeight: "700", color: formData.gender === option ? "#FFF" : COLORS.warmBrown },
                   ]}
                 >
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                  {t(`profileEdit.gender${option.charAt(0).toUpperCase() + option.slice(1)}`)}
                 </Text>
               </PressableScale>
             ))}
@@ -437,7 +439,7 @@ export default function ProfileEditScreen() {
 
           {/* Weight */}
           <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-            Weight
+            {t("profileEdit.fieldWeight")}
           </Text>
           <View
             style={{
@@ -497,7 +499,7 @@ export default function ProfileEditScreen() {
           {/* Birthday (known) or estimated Age (unknown) — mutually exclusive */}
           <View style={{ marginBottom: SPACING.xl }}>
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-              Birthday
+              {t("profileEdit.fieldBirthday")}
             </Text>
             <BirthdayOrAgeField
               birthdayUnknown={formData.birthdayUnknown}
@@ -522,7 +524,7 @@ export default function ProfileEditScreen() {
           {/* Adoption Date */}
           <View style={{ marginBottom: SPACING.xl }}>
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-              Adoption Date
+              {t("profileEdit.fieldAdoption")}
             </Text>
             <DateField
               value={formData.adoptionDate}
@@ -541,7 +543,7 @@ export default function ProfileEditScreen() {
 
           {/* Notes */}
           <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-            Notes
+            {t("profileEdit.fieldNotes")}
           </Text>
           <TextInput
             style={{
@@ -551,7 +553,7 @@ export default function ProfileEditScreen() {
               minHeight: 120,
               textAlignVertical: "top",
             }}
-            placeholder="Allergies, food preferences, medical conditions..."
+            placeholder={t("profileEdit.notesPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             value={formData.notes}
             onChangeText={(text) =>
@@ -595,7 +597,7 @@ export default function ProfileEditScreen() {
             ) : (
               <>
                 <Text style={[TYPE.headline, { color: "#FFF", fontWeight: "800" }]}>
-                  Save Changes
+                  {t("profileEdit.saveChanges")}
                 </Text>
                 <Check size={20} color="#FFF" />
               </>

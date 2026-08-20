@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Heart, PlusCircle, X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -30,6 +31,7 @@ import {
 export default function SitterVisitsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const { data: providers, isLoading } = useMyProviders();
   // The first provider the sitter works for (most sitters are staff of one business).
@@ -61,10 +63,10 @@ export default function SitterVisitsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.warmBrown }}>
-            Sitting Visits 💛
+            {t("sitterVisits.headerTitle")}
           </Text>
           <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
-            {provider ? provider.name : "Your assigned sitting jobs"}
+            {provider ? provider.name : t("sitterVisits.headerSubtitleDefault")}
           </Text>
         </View>
       </View>
@@ -82,13 +84,13 @@ export default function SitterVisitsScreen() {
           </View>
         ) : !provider ? (
           <EmptyState
-            title="No sitter workspace"
-            body="You're not active staff of a pet-sitting provider yet."
+            title={t("sitterVisits.noWorkspaceTitle")}
+            body={t("sitterVisits.noWorkspaceBody")}
           />
         ) : sitterBookings.length === 0 ? (
           <EmptyState
-            title="No sitting jobs booked"
-            body="Booked sitting jobs from owners will appear here to log visits."
+            title={t("sitterVisits.noJobsTitle")}
+            body={t("sitterVisits.noJobsBody")}
           />
         ) : (
           sitterBookings.map((b) => (
@@ -117,6 +119,7 @@ export default function SitterVisitsScreen() {
 }
 
 function BookingCard({ booking, visitCount, onLog }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -137,7 +140,7 @@ function BookingCard({ booking, visitCount, onLog }) {
       >
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>
-            {booking.pet_name || "Dog"}
+            {booking.pet_name || t("sitterVisits.dog")}
           </Text>
           <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
             {booking.owner_name ? `${booking.owner_name} · ` : ""}
@@ -145,12 +148,12 @@ function BookingCard({ booking, visitCount, onLog }) {
           </Text>
           {visitCount > 0 ? (
             <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 4 }}>
-              {visitCount} visit{visitCount > 1 ? "s" : ""} logged
+              {t("sitterVisits.visitCount", { count: visitCount })}
             </Text>
           ) : null}
           {booking.meet_and_greet ? (
             <Text style={{ fontSize: 12, color: COLORS.coral, fontWeight: "700", marginTop: 4 }}>
-              Meet & greet
+              {t("sitterVisits.meetGreet")}
             </Text>
           ) : null}
         </View>
@@ -168,7 +171,7 @@ function BookingCard({ booking, visitCount, onLog }) {
         >
           <PlusCircle size={16} color="#FFF" />
           <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFF" }}>
-            Log visit
+            {t("sitterVisits.logVisit")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -180,6 +183,7 @@ function BookingCard({ booking, visitCount, onLog }) {
 // upload path is added in the real upload flow; here we accept already-uploaded URLs). The
 // backend assigns the visit to the calling sitter + owner-derives from the pet.
 function LogVisitModal({ booking, providerId, onClose, onLogged }) {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState("");
   const log = useLogSittingVisit();
 
@@ -187,7 +191,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
 
   const submit = async () => {
     if (!notes.trim()) {
-      Alert.alert("Add a note", "Write a short update for the owner.");
+      Alert.alert(t("sitterVisits.addNoteTitle"), t("sitterVisits.addNoteBody"));
       return;
     }
     try {
@@ -198,12 +202,12 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
         status: "completed",
         notes: notes.trim(),
       });
-      Alert.alert("Visit logged", "The owner will see your update.");
+      Alert.alert(t("sitterVisits.visitLoggedTitle"), t("sitterVisits.visitLoggedBody"));
       reset();
       onClose();
       onLogged?.();
     } catch (e) {
-      Alert.alert("Couldn't log visit", e.message || "Please try again.");
+      Alert.alert(t("sitterVisits.couldNotLog"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
@@ -227,7 +231,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
-            Log a visit
+            {t("sitterVisits.logVisitTitle")}
           </Text>
           <TouchableOpacity onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
@@ -237,16 +241,16 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
         <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
           {booking ? (
             <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
-              {booking.pet_name || "Dog"}
+              {booking.pet_name || t("sitterVisits.dog")}
               {booking.owner_name ? ` · ${booking.owner_name}` : ""}
             </Text>
           ) : null}
 
-          <FieldLabel>Update for the owner</FieldLabel>
+          <FieldLabel>{t("sitterVisits.updateForOwner")}</FieldLabel>
           <TextInput
             value={notes}
             onChangeText={setNotes}
-            placeholder="e.g. Fed, played, and a short walk — happy pup!"
+            placeholder={t("sitterVisits.notesPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             style={inputStyle}
@@ -266,7 +270,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
             }}
           >
             <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-              {log.isPending ? "Logging…" : "Post update"}
+              {log.isPending ? t("sitterVisits.logging") : t("sitterVisits.postUpdate")}
             </Text>
           </TouchableOpacity>
         </KeyboardAwareScrollView>
