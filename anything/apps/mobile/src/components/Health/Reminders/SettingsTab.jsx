@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react-native";
 import * as Notifications from "expo-notifications";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -32,6 +33,7 @@ const C = {
 };
 
 export default function SettingsTab() {
+  const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [timeSensitiveEnabled, setTimeSensitiveEnabled] = useState(true);
   const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
@@ -62,17 +64,23 @@ export default function SettingsTab() {
 
     if (finalStatus === "granted") {
       Alert.alert(
-        "✅ Notifications Enabled",
-        "PawPi can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+        t("reminderSettings.enabledTitle", "✅ Notifications Enabled"),
+        t(
+          "reminderSettings.enabledBody",
+          "PawPi can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+        ),
       );
     } else {
       Alert.alert(
-        "Permission Needed",
-        "To receive reminders, please enable notifications in your device settings.",
+        t("reminderSettings.permissionNeededTitle", "Permission Needed"),
+        t(
+          "reminderSettings.permissionNeededBody",
+          "To receive reminders, please enable notifications in your device settings.",
+        ),
         [
-          { text: "Maybe Later", style: "cancel" },
+          { text: t("reminderSettings.maybeLater", "Maybe Later"), style: "cancel" },
           {
-            text: "Open Settings",
+            text: t("reminderSettings.openSettings", "Open Settings"),
             onPress: () => {
               if (Platform.OS === "ios") {
                 Notifications.openSettingsAsync();
@@ -85,7 +93,10 @@ export default function SettingsTab() {
   };
 
   const handleQuietHoursConfig = () => {
-    Alert.alert("Quiet Hours", "Configure quiet hours (coming soon)");
+    Alert.alert(
+      t("reminderSettings.quietHours", "Quiet Hours"),
+      t("reminderSettings.quietHoursSoon", "Configure quiet hours (coming soon)"),
+    );
   };
 
   // DEV-only: fastest on-device proof that local notifications fire at all.
@@ -93,8 +104,11 @@ export default function SettingsTab() {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🔔 Test notification",
-          body: "If you see this, local notifications are working.",
+          title: t("reminderSettings.testNotifTitle", "🔔 Test notification"),
+          body: t(
+            "reminderSettings.testNotifBody",
+            "If you see this, local notifications are working.",
+          ),
         },
         // Typed DATE trigger — SDK 54 rejects a bare Date. channelId routes
         // Android to the "default" channel; iOS ignores it.
@@ -105,11 +119,17 @@ export default function SettingsTab() {
         },
       });
       Alert.alert(
-        "Test scheduled",
-        "A test notification will fire in ~10 seconds. Background the app to see the banner.",
+        t("reminderSettings.testScheduledTitle", "Test scheduled"),
+        t(
+          "reminderSettings.testScheduledBody",
+          "A test notification will fire in ~10 seconds. Background the app to see the banner.",
+        ),
       );
     } catch (error) {
-      Alert.alert("Couldn't schedule test", String(error?.message ?? error));
+      Alert.alert(
+        t("reminderSettings.testFailed", "Couldn't schedule test"),
+        String(error?.message ?? error),
+      );
     }
   };
 
@@ -207,7 +227,9 @@ export default function SettingsTab() {
               marginBottom: 2,
             }}
           >
-            {isGranted ? "Notifications Enabled" : "Notifications Disabled"}
+            {isGranted
+              ? t("reminderSettings.statusEnabled", "Notifications Enabled")
+              : t("reminderSettings.statusDisabled", "Notifications Disabled")}
           </Text>
           <Text
             style={{
@@ -217,8 +239,14 @@ export default function SettingsTab() {
             }}
           >
             {isGranted
-              ? "You'll receive reminders for your pet's care routine"
-              : "Enable notifications to receive reminders"}
+              ? t(
+                  "reminderSettings.statusEnabledBody",
+                  "You'll receive reminders for your pet's care routine",
+                )
+              : t(
+                  "reminderSettings.statusDisabledBody",
+                  "Enable notifications to receive reminders",
+                )}
           </Text>
         </View>
         {!isGranted && (
@@ -232,7 +260,7 @@ export default function SettingsTab() {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFF" }}>
-              Enable
+              {t("reminderSettings.enable", "Enable")}
             </Text>
           </TouchableOpacity>
         )}
@@ -252,10 +280,10 @@ export default function SettingsTab() {
             marginBottom: 4,
           }}
         >
-          Reminder Settings
+          {t("reminderSettings.title", "Reminder Settings")}
         </Text>
         <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-          Customize how you receive reminders
+          {t("reminderSettings.subtitle", "Customize how you receive reminders")}
         </Text>
       </View>
 
@@ -275,7 +303,7 @@ export default function SettingsTab() {
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>
-            Send test notification (10s)
+            {t("reminderSettings.sendTest", "Send test notification (10s)")}
           </Text>
         </TouchableOpacity>
       )}
@@ -299,12 +327,13 @@ export default function SettingsTab() {
             marginBottom: 8,
           }}
         >
-          How reminders work
+          {t("reminderSettings.howTitle", "How reminders work")}
         </Text>
         <Text style={{ fontSize: 13, color: "#1976D2", lineHeight: 19 }}>
-          PawPi can remind you about feeding, walks, medication, and photo
-          checks so your pet's care routine stays on track. Routines you create
-          automatically generate reminders.
+          {t(
+            "reminderSettings.howBody",
+            "PawPi can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track. Routines you create automatically generate reminders.",
+          )}
         </Text>
       </View>
 
@@ -319,13 +348,13 @@ export default function SettingsTab() {
           letterSpacing: 0.5,
         }}
       >
-        Preferences
+        {t("reminderSettings.preferences", "Preferences")}
       </Text>
 
       <SettingRow
         icon={Bell}
-        title="Push Notifications"
-        description="Receive notifications for reminders"
+        title={t("reminderSettings.pushTitle", "Push Notifications")}
+        description={t("reminderSettings.pushDesc", "Receive notifications for reminders")}
         value={notificationsEnabled}
         onValueChange={setNotificationsEnabled}
         color={C.coral}
@@ -333,8 +362,11 @@ export default function SettingsTab() {
 
       <SettingRow
         icon={Clock}
-        title="Time-Sensitive Alerts"
-        description="Show prominent countdown for urgent reminders"
+        title={t("reminderSettings.timeSensitiveTitle", "Time-Sensitive Alerts")}
+        description={t(
+          "reminderSettings.timeSensitiveDesc",
+          "Show prominent countdown for urgent reminders",
+        )}
         value={timeSensitiveEnabled}
         onValueChange={setTimeSensitiveEnabled}
         color={C.coral}
@@ -342,8 +374,8 @@ export default function SettingsTab() {
 
       <SettingRow
         icon={Volume2}
-        title="Sound & Vibration"
-        description="Play sound and vibrate for reminders"
+        title={t("reminderSettings.soundTitle", "Sound & Vibration")}
+        description={t("reminderSettings.soundDesc", "Play sound and vibrate for reminders")}
         value={soundEnabled}
         onValueChange={setSoundEnabled}
         color={C.sage}
@@ -351,8 +383,11 @@ export default function SettingsTab() {
 
       <SettingRow
         icon={Moon}
-        title="Quiet Hours"
-        description="Pause notifications during specific hours"
+        title={t("reminderSettings.quietHoursTitle", "Quiet Hours")}
+        description={t(
+          "reminderSettings.quietHoursDesc",
+          "Pause notifications during specific hours",
+        )}
         value={quietHoursEnabled}
         onValueChange={setQuietHoursEnabled}
         color="#4DB8E8"
@@ -378,10 +413,13 @@ export default function SettingsTab() {
               marginBottom: 4,
             }}
           >
-            Configure Quiet Hours
+            {t("reminderSettings.configQuietHours", "Configure Quiet Hours")}
           </Text>
           <Text style={{ fontSize: 12, color: "#0369A1" }}>
-            Default: 10:00 PM - 7:00 AM · Tap to customize
+            {t(
+              "reminderSettings.quietHoursDefault",
+              "Default: 10:00 PM - 7:00 AM · Tap to customize",
+            )}
           </Text>
         </TouchableOpacity>
       )}
@@ -398,7 +436,7 @@ export default function SettingsTab() {
           letterSpacing: 0.5,
         }}
       >
-        Snooze
+        {t("reminderSettings.snooze", "Snooze")}
       </Text>
 
       <View
@@ -419,10 +457,13 @@ export default function SettingsTab() {
             marginBottom: 8,
           }}
         >
-          Default Snooze Duration
+          {t("reminderSettings.snoozeDurationTitle", "Default Snooze Duration")}
         </Text>
         <Text style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}>
-          10 minutes, 30 minutes, 1 hour, Tonight, Tomorrow
+          {t(
+            "reminderSettings.snoozeDurationOptions",
+            "10 minutes, 30 minutes, 1 hour, Tonight, Tomorrow",
+          )}
         </Text>
       </View>
 
@@ -445,8 +486,10 @@ export default function SettingsTab() {
             textAlign: "center",
           }}
         >
-          💡 Time-sensitive reminders will show countdown cards and appear at
-          the top of your notifications
+          {t(
+            "reminderSettings.tip",
+            "💡 Time-sensitive reminders will show countdown cards and appear at the top of your notifications",
+          )}
         </Text>
       </View>
     </ScrollView>

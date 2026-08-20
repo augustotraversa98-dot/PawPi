@@ -23,6 +23,7 @@ import {
   Globe,
   Lock,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useSocialWalks, useJoinSocialWalk } from "@/hooks/useSocialWalks";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
@@ -42,6 +43,7 @@ const C = {
 };
 
 export default function NearbyWalksPage() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -113,9 +115,9 @@ export default function NearbyWalksPage() {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Today";
+      return t("nearbyWalks.today", "Today");
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Tomorrow";
+      return t("nearbyWalks.tomorrow", "Tomorrow");
     } else {
       return date.toLocaleDateString("en-US", {
         weekday: "short",
@@ -175,10 +177,10 @@ export default function NearbyWalksPage() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            Buddy Walks
+            {t("nearbyWalks.title", "Buddy Walks")}
           </Text>
           <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-            Find walks near you or create your own
+            {t("nearbyWalks.subtitle", "Find walks near you or create your own")}
           </Text>
         </View>
         <TouchableOpacity
@@ -196,7 +198,7 @@ export default function NearbyWalksPage() {
         >
           <Plus size={16} color="#FFF" />
           <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFF" }}>
-            Create
+            {t("nearbyWalks.create", "Create")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -231,7 +233,7 @@ export default function NearbyWalksPage() {
               color: !isInvited ? "#FFF" : C.warmBrown,
             }}
           >
-            Nearby
+            {t("nearbyWalks.tabNearby", "Nearby")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -255,7 +257,7 @@ export default function NearbyWalksPage() {
               color: isInvited ? "#FFF" : C.warmBrown,
             }}
           >
-            Invited
+            {t("nearbyWalks.tabInvited", "Invited")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -293,7 +295,9 @@ export default function NearbyWalksPage() {
                 marginBottom: 6,
               }}
             >
-              {isInvited ? "No invites yet" : "No walks nearby"}
+              {isInvited
+                ? t("nearbyWalks.emptyInvitedTitle", "No invites yet")
+                : t("nearbyWalks.emptyNearbyTitle", "No walks nearby")}
             </Text>
             <Text
               style={{
@@ -303,8 +307,14 @@ export default function NearbyWalksPage() {
               }}
             >
               {isInvited
-                ? "Private walks you're invited to will show up here"
-                : "Check back later or create your own social walk"}
+                ? t(
+                    "nearbyWalks.emptyInvitedBody",
+                    "Private walks you're invited to will show up here",
+                  )
+                : t(
+                    "nearbyWalks.emptyNearbyBody",
+                    "Check back later or create your own social walk",
+                  )}
             </Text>
           </View>
         )}
@@ -371,7 +381,11 @@ export default function NearbyWalksPage() {
                         fontWeight: "600",
                       }}
                     >
-                      Hosted by {walk.owner_username || "Unknown"}
+                      {t("nearbyWalks.hostedBy", {
+                        name:
+                          walk.owner_username ||
+                          t("nearbyWalks.unknownHost", "Unknown"),
+                      })}
                     </Text>
                   </View>
                   {/* Report this walk (T4) — discovery never lists your own walks. */}
@@ -392,7 +406,7 @@ export default function NearbyWalksPage() {
                           color: C.mutedBrown,
                         }}
                       >
-                        FULL
+                        {t("nearbyWalks.full", "FULL")}
                       </Text>
                     </View>
                   )}
@@ -415,8 +429,10 @@ export default function NearbyWalksPage() {
                         fontWeight: "600",
                       }}
                     >
-                      {formatWalkDate(walk.scheduled_at)} at{" "}
-                      {formatWalkTime(walk.scheduled_at)}
+                      {t("nearbyWalks.dateAtTime", {
+                        date: formatWalkDate(walk.scheduled_at),
+                        time: formatWalkTime(walk.scheduled_at),
+                      })}
                     </Text>
                   </View>
 
@@ -429,8 +445,10 @@ export default function NearbyWalksPage() {
                   >
                     <Clock size={14} color={C.coral} />
                     <Text style={{ fontSize: 13, color: C.warmBrown }}>
-                      {walk.duration_minutes || 30} min ·{" "}
-                      {walk.pace || "Normal"} pace
+                      {t("nearbyWalks.durationPace", {
+                        mins: walk.duration_minutes || 30,
+                        pace: walk.pace || t("nearbyWalks.paceNormal", "Normal"),
+                      })}
                     </Text>
                   </View>
 
@@ -458,8 +476,9 @@ export default function NearbyWalksPage() {
                   >
                     <Users size={14} color={C.coral} />
                     <Text style={{ fontSize: 13, color: C.warmBrown }}>
-                      {spotsAvailable} spot{spotsAvailable !== 1 ? "s" : ""}{" "}
-                      available
+                      {t("nearbyWalks.spotsAvailable", {
+                        count: spotsAvailable,
+                      })}
                     </Text>
                   </View>
                 </View>
@@ -506,10 +525,10 @@ export default function NearbyWalksPage() {
                     }}
                   >
                     {isFull
-                      ? "Walk is full"
+                      ? t("nearbyWalks.walkFull", "Walk is full")
                       : walk.approval_required
-                        ? "Request to join"
-                        : "Join walk"}
+                        ? t("nearbyWalks.requestToJoin", "Request to join")
+                        : t("nearbyWalks.joinWalk", "Join walk")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -545,7 +564,7 @@ export default function NearbyWalksPage() {
             <Text
               style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
             >
-              Request to join
+              {t("nearbyWalks.requestToJoin", "Request to join")}
             </Text>
             <TouchableOpacity
               onPress={() => setSelectedWalk(null)}
@@ -598,13 +617,20 @@ export default function NearbyWalksPage() {
                       lineHeight: 19,
                     }}
                   >
-                    {formatWalkDate(selectedWalk.scheduled_at)} at{" "}
-                    {formatWalkTime(selectedWalk.scheduled_at)}
+                    {t("nearbyWalks.dateAtTime", {
+                      date: formatWalkDate(selectedWalk.scheduled_at),
+                      time: formatWalkTime(selectedWalk.scheduled_at),
+                    })}
                     {"\n"}
-                    {selectedWalk.duration_minutes || 30} min ·{" "}
-                    {selectedWalk.pace || "Normal"} pace
+                    {t("nearbyWalks.durationPace", {
+                      mins: selectedWalk.duration_minutes || 30,
+                      pace:
+                        selectedWalk.pace ||
+                        t("nearbyWalks.paceNormal", "Normal"),
+                    })}
                     {"\n"}
-                    {selectedWalk.meeting_area || "Location TBD"}
+                    {selectedWalk.meeting_area ||
+                      t("nearbyWalks.locationTbd", "Location TBD")}
                   </Text>
                 </View>
 
@@ -617,12 +643,12 @@ export default function NearbyWalksPage() {
                       marginBottom: 8,
                     }}
                   >
-                    Message (optional)
+                    {t("nearbyWalks.messageOptional", "Message (optional)")}
                   </Text>
                   <TextInput
                     value={joinMessage}
                     onChangeText={setJoinMessage}
-                    placeholder="Say hello..."
+                    placeholder={t("nearbyWalks.sayHello", "Say hello...")}
                     placeholderTextColor={C.mutedBrown + "80"}
                     multiline
                     numberOfLines={3}
@@ -673,7 +699,7 @@ export default function NearbyWalksPage() {
                           color: "#FFF",
                         }}
                       >
-                        Send Request
+                        {t("nearbyWalks.sendRequest", "Send Request")}
                       </Text>
                     </>
                   )}
@@ -695,8 +721,10 @@ export default function NearbyWalksPage() {
                       textAlign: "center",
                     }}
                   >
-                    The walk owner will review your request. You'll receive a
-                    notification with the exact meeting location if approved.
+                    {t(
+                      "nearbyWalks.reviewNotice",
+                      "The walk owner will review your request. You'll receive a notification with the exact meeting location if approved.",
+                    )}
                   </Text>
                 </View>
               </>
