@@ -58,7 +58,8 @@
     "send": "Enviar",
     "yourPet": "tu mascota",
     "pleaseTryAgain": "Probá de nuevo.",
-    "error": "Error"
+    "error": "Error",
+    "additionalNotesPlaceholder": "Notas adicionales..."
   },
   "settings": {
     "title": "Ajustes",
@@ -870,6 +871,55 @@
         "reactionLabel": "¿Hubo alguna reacción?",
         "notesLabel": "Notas",
         "notesPlaceholder": "¿Qué pasó? (opcional)"
+      },
+      "upcoming": {
+        "doneTitle": "✅ ¡Listo!",
+        "doneBody": "{{title}} marcado como completo",
+        "snoozedTitle": "⏰ Pospuesto",
+        "snoozedBody": "{{title}} se pospuso por {{duration}}",
+        "deleteTitle": "Eliminar recordatorio",
+        "deleteBody": "¿Seguro que querés eliminar \"{{title}}\"?",
+        "deletedTitle": "🗑️ Eliminado",
+        "deletedBody": "{{title}} fue eliminado"
+      },
+      "settings": {
+        "title": "Ajustes de recordatorios",
+        "subtitle": "Personalizá cómo recibís los recordatorios",
+        "permGrantedTitle": "✅ Notificaciones activadas",
+        "permGrantedBody": "PawPi puede recordarte comidas, paseos, medicación y chequeos con foto para que la rutina de cuidado no se pierda.",
+        "permNeededTitle": "Se necesita permiso",
+        "permNeededBody": "Para recibir recordatorios, activá las notificaciones en los ajustes de tu dispositivo.",
+        "maybeLater": "Más tarde",
+        "openSettings": "Abrir ajustes",
+        "quietHours": "Horas de silencio",
+        "quietHoursSoon": "Configurar horas de silencio (próximamente)",
+        "quietHoursDesc": "Pausar notificaciones durante horarios específicos",
+        "testTitle": "🔔 Notificación de prueba",
+        "testBody": "Si ves esto, las notificaciones locales funcionan.",
+        "testScheduledTitle": "Prueba programada",
+        "testScheduledBody": "Una notificación de prueba llegará en ~10 segundos. Dejá la app en segundo plano para ver el aviso.",
+        "testFailedTitle": "No se pudo programar la prueba",
+        "notifEnabled": "Notificaciones activadas",
+        "notifDisabled": "Notificaciones desactivadas",
+        "notifEnabledHint": "Vas a recibir recordatorios de la rutina de cuidado de tu mascota",
+        "notifDisabledHint": "Activá las notificaciones para recibir recordatorios",
+        "enable": "Activar",
+        "sendTest": "Enviar notificación de prueba (10s)",
+        "howTitle": "Cómo funcionan los recordatorios",
+        "howBody": "PawPi puede recordarte comidas, paseos, medicación y chequeos con foto para que la rutina de cuidado no se pierda. Las rutinas que creás generan recordatorios automáticamente.",
+        "preferences": "Preferencias",
+        "pushTitle": "Notificaciones push",
+        "pushDesc": "Recibir notificaciones de los recordatorios",
+        "timeSensTitle": "Alertas urgentes",
+        "timeSensDesc": "Mostrar cuenta regresiva destacada para recordatorios urgentes",
+        "soundTitle": "Sonido y vibración",
+        "soundDesc": "Reproducir sonido y vibrar para los recordatorios",
+        "configureQuietHours": "Configurar horas de silencio",
+        "quietHoursDefault": "Predeterminado: 22:00 - 07:00 · Tocá para personalizar",
+        "snoozeSection": "Posponer",
+        "defaultSnoozeTitle": "Duración predeterminada",
+        "defaultSnoozeBody": "10 minutos, 30 minutos, 1 hora, Esta noche, Mañana",
+        "tip": "💡 Los recordatorios urgentes muestran cuenta regresiva y aparecen arriba en las notificaciones"
       }
     }
   },
@@ -3035,5 +3085,49 @@
     "snoozeDurationTitle": "Duración predeterminada",
     "snoozeDurationOptions": "10 minutos, 30 minutos, 1 hora, esta noche, mañana",
     "tip": "💡 Los recordatorios urgentes muestran contadores y aparecen arriba de tus notificaciones"
+  },
+  "routines": {
+    "toast": {
+      "saved": "Rutina guardada",
+      "created": "Rutina creada",
+      "deleted": "Rutina eliminada"
+    },
+    "errors": {
+      "updateFailed": "No se pudo actualizar la rutina. Probá de nuevo.",
+      "saveFailed": "No se pudo guardar la rutina. Probá de nuevo.",
+      "deleteFailed": "No se pudo eliminar la rutina. Probá de nuevo."
+    }
+  },
+  "editMedicalProfile": {
+    "validationTitle": "Error de validación",
+    "validationBody": "Revisá los campos marcados.",
+    "savedTitle": "Éxito",
+    "savedBody": "Perfil médico guardado",
+    "saveFailedBody": "No se pudo guardar el perfil médico. Probá de nuevo.",
+    "notesPlaceholder": "Cualquier información médica adicional, alergias o instrucciones de cuidado especial..."
+  },
+  "trackers": {
+    "anythingDifferentPlaceholder": "¿Algo distinto a lo habitual?",
+    "photo": {
+      "addTitle": "Agregar foto",
+      "chooseSource": "Elegí una fuente",
+      "takePhoto": "Sacar foto",
+      "chooseLibrary": "Elegir de la biblioteca"
+    },
+    "vomit": {
+      "notesPlaceholder": "¿Qué más notaste?"
+    }
+  },
+  "wellnessCheck": {
+    "removeTitle": "¿Eliminar este chequeo?",
+    "removeBody": "Se detendrán los recordatorios futuros de este chequeo. El historial de bienestar pasado se conserva.",
+    "removeCheck": "Eliminar chequeo",
+    "checkRemoved": "Chequeo eliminado",
+    "removeFailed": "No se pudo eliminar el chequeo. Probá de nuevo.",
+    "noItemsTitle": "Sin ítems",
+    "noItemsBody": "Agregá al menos un ítem de chequeo de bienestar.",
+    "missingNameTitle": "Falta el nombre",
+    "missingNameBody": "Ingresá un nombre para tu chequeo personalizado.",
+    "whatToLookForPlaceholder": "Qué observar..."
   }
 }

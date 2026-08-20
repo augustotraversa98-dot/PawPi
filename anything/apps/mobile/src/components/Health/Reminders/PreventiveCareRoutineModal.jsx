@@ -13,6 +13,7 @@ import {
 import { X } from "lucide-react-native";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import DateField from "@/components/DateField";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -32,6 +33,7 @@ export default function PreventiveCareRoutineModal({
   onSave,
   editingRoutine,
 }) {
+  const { t } = useTranslation();
   const [productName, setProductName] = useState("");
   const [treatmentType, setTreatmentType] = useState("flea");
   const [lastGiven, setLastGiven] = useState("");
@@ -371,7 +373,7 @@ export default function PreventiveCareRoutineModal({
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Additional notes..."
+              placeholder={t("common.additionalNotesPlaceholder")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={3}
