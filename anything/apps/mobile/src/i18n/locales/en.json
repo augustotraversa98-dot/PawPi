@@ -2328,7 +2328,29 @@
     "suggestedForYou": "SUGGESTED FOR YOU",
     "petFriendsMoments": "PET FRIENDS' MOMENTS",
     "emptyTitle": "No pet moments yet!",
-    "emptyBody": "Be the first to share today's moment."
+    "emptyBody": "Be the first to share today's moment.",
+    "barkModal": {
+      "barksCount_one": "{{count}} bark",
+      "barksCount_other": "{{count}} barks",
+      "beFirst": "Be the first to bark!",
+      "placeholder": "Leave a bark for {{name}}…"
+    }
+  },
+  "ownerMenu": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "title": "More",
+    "sectionCommunity": "COMMUNITY",
+    "sectionAccount": "YOUR ACCOUNT",
+    "community": "Community",
+    "myHub": "My Hub",
+    "dogProfile": "Dog Profile",
+    "family": "Family & Caregivers",
+    "lostFound": "Lost & Found",
+    "memories": "Memories & Wrapped",
+    "reminders": "Reminders & Routines",
+    "settings": "Settings",
+    "resetApp": "Reset App Data"
   },
   "forum": {
     "title": "Discussion",

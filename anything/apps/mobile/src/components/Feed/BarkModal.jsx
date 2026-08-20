@@ -197,7 +197,7 @@ export const BarkModal = memo(function BarkModal({
                   color: COLORS.terracotta,
                 }}
               >
-                {barks.length} barks
+                {t("feed.barkModal.barksCount", { count: barks.length })}
               </Text>
             </View>
           </View>
@@ -224,7 +224,7 @@ export const BarkModal = memo(function BarkModal({
                     fontWeight: "600",
                   }}
                 >
-                  Be the first to bark!
+                  {t("feed.barkModal.beFirst")}
                 </Text>
               </View>
             ) : (
@@ -333,7 +333,7 @@ export const BarkModal = memo(function BarkModal({
                 borderColor: COLORS.peach,
                 maxHeight: 90,
               }}
-              placeholder={`Leave a bark for ${post.pet_name || post.dogName}…`}
+              placeholder={t("feed.barkModal.placeholder", { name: post.pet_name || post.dogName })}
               placeholderTextColor={COLORS.mutedBrown}
               value={text}
               onChangeText={setText}
