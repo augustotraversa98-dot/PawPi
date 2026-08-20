@@ -3304,15 +3304,17 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "sectionCommunity": "COMMUNITY",
-    "sectionYourAccount": "YOUR ACCOUNT",
+    "title": "Menu",
+    "sectionAccount": "YOUR ACCOUNT",
+    "settings": "Settings",
     "community": "Community",
     "myHub": "My Hub",
     "dogProfile": "Dog Profile",
     "family": "Family & Caregivers",
     "lostFound": "Lost & Found",
-    "memoriesWrapped": "Memories & Wrapped",
-    "remindersRoutines": "Reminders & Routines",
-    "resetAppData": "Reset App Data"
+    "memories": "Memories & Wrapped",
+    "reminders": "Reminders & Routines",
+    "resetApp": "Reset App Data"
   },
   "medicalCare": {
     "deleteItemTitle": "Delete care item?",
