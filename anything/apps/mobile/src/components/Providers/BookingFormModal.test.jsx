@@ -30,7 +30,14 @@ jest.mock("@/hooks/useProviders", () => ({
   }),
   useProviderAvailability: () => mockAvailability,
 }));
-jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (k, opts) => {
+      if (opts && typeof opts === "object" && "defaultValue" in opts) return opts.defaultValue;
+      return k;
+    },
+  }),
+}));
 const mockAddBookingToCalendar = jest.fn();
 const mockAddTelehealthToCalendar = jest.fn();
 jest.mock("@/utils/calendarIntegration", () => ({
@@ -186,7 +193,7 @@ test("blocks (alerts, no POST) when there is no active pet", () => {
   fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   expect(mockMutateAsync).not.toHaveBeenCalled();
-  expect(Alert.alert).toHaveBeenCalledWith("No active pet", expect.any(String));
+  expect(Alert.alert).toHaveBeenCalledWith("booking.noActivePetTitle", expect.any(String));
 });
 
 test("Confirm books with petId, provider id, the slot, and the derived provider-tz date/time", async () => {
@@ -608,7 +615,7 @@ test("with no `service` prop (bottom Book) the full service selector still rende
   const view = renderForm(); // no service prop
   expect(view.queryByTestId("booking-service-preselected")).toBeNull();
   expect(view.getByTestId("booking-service-5")).toBeTruthy();
-  expect(view.getByText("General")).toBeTruthy();
+  expect(view.getByText("booking.generalChip")).toBeTruthy();
 });
 
 // ── Booking-flow polish: CTA amount + reason removal ───────────────────────────
