@@ -20,6 +20,7 @@ import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedV
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import { CADENCE_LABELS } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -99,6 +100,7 @@ export default function WellnessCheckRoutineModal({
   onSave,
   editingRoutine,
 }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -339,7 +341,7 @@ export default function WellnessCheckRoutineModal({
                     throw new Error("Failed to delete routine");
                   }
 
-                  Alert.alert("Routine deleted");
+                  Alert.alert(t("routines.toast.deleted"));
                   setItems([]);
                   onClose();
                 } catch (error) {
@@ -348,8 +350,8 @@ export default function WellnessCheckRoutineModal({
                     error,
                   );
                   Alert.alert(
-                    "Error",
-                    "Could not delete routine. Please try again.",
+                    t("common.error"),
+                    t("routines.errors.deleteFailed"),
                   );
                 }
               },
@@ -364,15 +366,15 @@ export default function WellnessCheckRoutineModal({
     } else {
       // Multiple items - show remove check confirmation
       Alert.alert(
-        "Remove this check?",
-        "This will stop future reminders for this check. Past wellness history will stay saved.",
+        t("wellnessCheck.removeTitle"),
+        t("wellnessCheck.removeBody"),
         [
           {
-            text: "Cancel",
+            text: t("common.cancel"),
             style: "cancel",
           },
           {
-            text: "Remove check",
+            text: t("wellnessCheck.removeCheck"),
             style: "destructive",
             onPress: async () => {
               try {
@@ -445,7 +447,7 @@ export default function WellnessCheckRoutineModal({
                     onSave(updatedRoutine);
                   }
 
-                  Alert.alert("Check removed");
+                  Alert.alert(t("wellnessCheck.checkRemoved"));
                 } else {
                   // New unsaved routine - just update local state
                   setItems(updatedItems);
@@ -456,8 +458,8 @@ export default function WellnessCheckRoutineModal({
               } catch (error) {
                 console.error("[WellnessCheck] Error removing check:", error);
                 Alert.alert(
-                  "Error",
-                  "Could not remove check. Please try again.",
+                  t("common.error"),
+                  t("wellnessCheck.removeFailed"),
                 );
               }
             },
@@ -469,7 +471,7 @@ export default function WellnessCheckRoutineModal({
 
   const handleSave = () => {
     if (items.length === 0) {
-      Alert.alert("No Items", "Add at least one wellness check item.");
+      Alert.alert(t("wellnessCheck.noItemsTitle"), t("wellnessCheck.noItemsBody"));
       return;
     }
 
@@ -480,7 +482,7 @@ export default function WellnessCheckRoutineModal({
         !item.customName?.trim(),
     );
     if (invalidCustom) {
-      Alert.alert("Missing Name", "Please enter a name for your custom check.");
+      Alert.alert(t("wellnessCheck.missingNameTitle"), t("wellnessCheck.missingNameBody"));
       return;
     }
 
@@ -924,7 +926,7 @@ export default function WellnessCheckRoutineModal({
                           onChangeText={(text) =>
                             handleItemChange(item.id, "notes", text)
                           }
-                          placeholder="What to look for..."
+                          placeholder={t("wellnessCheck.whatToLookForPlaceholder")}
                           placeholderTextColor={C.mutedBrown}
                           multiline
                           numberOfLines={2}

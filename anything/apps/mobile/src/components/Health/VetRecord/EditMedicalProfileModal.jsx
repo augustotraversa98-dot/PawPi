@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
@@ -24,6 +25,7 @@ export default function EditMedicalProfileModal({
   initialData,
   onSave,
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ export default function EditMedicalProfileModal({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      Alert.alert("Validation Error", "Please check the highlighted fields.");
+      Alert.alert(t("editMedicalProfile.validationTitle"), t("editMedicalProfile.validationBody"));
       return;
     }
 
@@ -218,12 +220,12 @@ export default function EditMedicalProfileModal({
       await queryClient.invalidateQueries({ queryKey: ["health", "weight-logs"] });
       await queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
 
-      Alert.alert("Success", "Medical profile saved");
+      Alert.alert(t("editMedicalProfile.savedTitle"), t("editMedicalProfile.savedBody"));
       onSave?.();
       onClose();
     } catch (error) {
       console.error("Save medical profile error:", error);
-      Alert.alert("Error", "Could not save medical profile. Please try again.");
+      Alert.alert(t("common.error"), t("editMedicalProfile.saveFailedBody"));
     } finally {
       setLoading(false);
     }
@@ -601,7 +603,7 @@ export default function EditMedicalProfileModal({
           label="Medical Notes"
           value={medicalNotes}
           onChangeText={setMedicalNotes}
-          placeholder="Any additional medical information, allergies, or special care instructions..."
+          placeholder={t("editMedicalProfile.notesPlaceholder")}
           multiline
         />
       </FormSection>

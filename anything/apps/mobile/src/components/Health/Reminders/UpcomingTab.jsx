@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Bell, Clock, CheckCircle, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import useRemindersStore from "@/store/remindersStore";
@@ -29,6 +30,7 @@ const C = {
 };
 
 export default function UpcomingTab() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
   const { reminders, completeReminder, snoozeReminder, deleteReminder } =
@@ -97,7 +99,7 @@ export default function UpcomingTab() {
 
   const handleComplete = (reminder) => {
     completeReminder(reminder.id);
-    Alert.alert("✅ Done!", `${reminder.title} marked as complete`);
+    Alert.alert(t("reminders.upcoming.doneTitle"), t("reminders.upcoming.doneBody", { title: reminder.title }));
   };
 
   const handleSnooze = (reminder) => {
@@ -109,8 +111,8 @@ export default function UpcomingTab() {
     if (selectedReminder) {
       snoozeReminder(selectedReminder.id, option);
       Alert.alert(
-        "⏰ Snoozed",
-        `${selectedReminder.title} has been snoozed for ${option.label.toLowerCase()}`,
+        t("reminders.upcoming.snoozedTitle"),
+        t("reminders.upcoming.snoozedBody", { title: selectedReminder.title, duration: option.label.toLowerCase() }),
       );
     }
     setSnoozeModalVisible(false);
@@ -119,16 +121,16 @@ export default function UpcomingTab() {
 
   const handleDelete = (reminder) => {
     Alert.alert(
-      "Delete Reminder",
-      `Are you sure you want to delete "${reminder.title}"?`,
+      t("reminders.upcoming.deleteTitle"),
+      t("reminders.upcoming.deleteBody", { title: reminder.title }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             deleteReminder(reminder.id);
-            Alert.alert("🗑️ Deleted", `${reminder.title} has been removed`);
+            Alert.alert(t("reminders.upcoming.deletedTitle"), t("reminders.upcoming.deletedBody", { title: reminder.title }));
           },
         },
       ],

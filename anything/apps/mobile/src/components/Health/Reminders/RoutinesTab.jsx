@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react-native";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import useRoutinesStore from "@/store/routinesStore";
@@ -37,6 +38,7 @@ const C = {
 };
 
 export default function RoutinesTab({ editRoutineId } = {}) {
+  const { t } = useTranslation();
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
   const queryClient = useQueryClient();
   const {
@@ -151,7 +153,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       invalidateDismissals();
     } catch (error) {
       console.error("[RoutinesTab] Error toggling routine:", error);
-      Alert.alert("Could not update routine. Please try again.");
+      Alert.alert(t("routines.errors.updateFailed"));
     }
   };
 
@@ -182,16 +184,16 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       if (editingRoutine) {
         await updateRoutine(routineToSave.id, routineToSave);
         invalidateDismissals();
-        Alert.alert("Routine saved");
+        Alert.alert(t("routines.toast.saved"));
       } else {
         await addRoutine(routineToSave);
-        Alert.alert("Routine created");
+        Alert.alert(t("routines.toast.created"));
       }
       setSelectedType(null);
       setEditingRoutine(null);
     } catch (error) {
       console.error("[RoutinesTab] Error saving routine:", error);
-      Alert.alert("Could not save routine. Please try again.");
+      Alert.alert(t("routines.errors.saveFailed"));
     }
   };
 
@@ -204,10 +206,10 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       // The early-ack clear happened server-side; refresh the dismissals query so
       // Health → Today re-derives without the now-deleted routine's stale keys.
       invalidateDismissals();
-      Alert.alert("Routine deleted");
+      Alert.alert(t("routines.toast.deleted"));
     } catch (error) {
       console.error("[RoutinesTab] Error deleting routine:", error);
-      Alert.alert("Could not delete routine. Please try again.");
+      Alert.alert(t("routines.errors.deleteFailed"));
     }
   };
 

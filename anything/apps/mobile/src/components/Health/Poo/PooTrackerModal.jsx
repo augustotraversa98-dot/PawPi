@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useLogPoo } from "@/hooks/useHealthTracking";
 import { useUpload } from "@/utils/useUpload";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -36,6 +37,7 @@ const C = {
 };
 
 export default function PooTrackerModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const logPooMutation = useLogPoo();
   const [upload, { loading: uploading }] = useUpload();
@@ -956,7 +958,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                   <TextInput
                     value={notes}
                     onChangeText={setNotes}
-                    placeholder="Anything different from usual?"
+                    placeholder={t("trackers.anythingDifferentPlaceholder")}
                     placeholderTextColor={C.mutedBrown + "80"}
                     multiline
                     numberOfLines={3}

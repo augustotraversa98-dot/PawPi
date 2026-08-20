@@ -58,7 +58,8 @@
     "send": "Send",
     "yourPet": "your pet",
     "pleaseTryAgain": "Please try again.",
-    "error": "Error"
+    "error": "Error",
+    "additionalNotesPlaceholder": "Additional notes..."
   },
   "settings": {
     "title": "Settings",
@@ -870,6 +871,55 @@
         "reactionLabel": "Any reaction?",
         "notesLabel": "Notes",
         "notesPlaceholder": "What happened? (optional)"
+      },
+      "upcoming": {
+        "doneTitle": "✅ Done!",
+        "doneBody": "{{title}} marked as complete",
+        "snoozedTitle": "⏰ Snoozed",
+        "snoozedBody": "{{title}} has been snoozed for {{duration}}",
+        "deleteTitle": "Delete Reminder",
+        "deleteBody": "Are you sure you want to delete \"{{title}}\"?",
+        "deletedTitle": "🗑️ Deleted",
+        "deletedBody": "{{title}} has been removed"
+      },
+      "settings": {
+        "title": "Reminder Settings",
+        "subtitle": "Customize how you receive reminders",
+        "permGrantedTitle": "✅ Notifications Enabled",
+        "permGrantedBody": "PawPi can now remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+        "permNeededTitle": "Permission Needed",
+        "permNeededBody": "To receive reminders, please enable notifications in your device settings.",
+        "maybeLater": "Maybe Later",
+        "openSettings": "Open Settings",
+        "quietHours": "Quiet Hours",
+        "quietHoursSoon": "Configure quiet hours (coming soon)",
+        "quietHoursDesc": "Pause notifications during specific hours",
+        "testTitle": "🔔 Test notification",
+        "testBody": "If you see this, local notifications are working.",
+        "testScheduledTitle": "Test scheduled",
+        "testScheduledBody": "A test notification will fire in ~10 seconds. Background the app to see the banner.",
+        "testFailedTitle": "Couldn't schedule test",
+        "notifEnabled": "Notifications Enabled",
+        "notifDisabled": "Notifications Disabled",
+        "notifEnabledHint": "You'll receive reminders for your pet's care routine",
+        "notifDisabledHint": "Enable notifications to receive reminders",
+        "enable": "Enable",
+        "sendTest": "Send test notification (10s)",
+        "howTitle": "How reminders work",
+        "howBody": "PawPi can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track. Routines you create automatically generate reminders.",
+        "preferences": "Preferences",
+        "pushTitle": "Push Notifications",
+        "pushDesc": "Receive notifications for reminders",
+        "timeSensTitle": "Time-Sensitive Alerts",
+        "timeSensDesc": "Show prominent countdown for urgent reminders",
+        "soundTitle": "Sound & Vibration",
+        "soundDesc": "Play sound and vibrate for reminders",
+        "configureQuietHours": "Configure Quiet Hours",
+        "quietHoursDefault": "Default: 10:00 PM - 7:00 AM · Tap to customize",
+        "snoozeSection": "Snooze",
+        "defaultSnoozeTitle": "Default Snooze Duration",
+        "defaultSnoozeBody": "10 minutes, 30 minutes, 1 hour, Tonight, Tomorrow",
+        "tip": "💡 Time-sensitive reminders will show countdown cards and appear at the top of your notifications"
       }
     }
   },
@@ -3035,5 +3085,49 @@
     "snoozeDurationTitle": "Default Snooze Duration",
     "snoozeDurationOptions": "10 minutes, 30 minutes, 1 hour, Tonight, Tomorrow",
     "tip": "💡 Time-sensitive reminders will show countdown cards and appear at the top of your notifications"
+  },
+  "routines": {
+    "toast": {
+      "saved": "Routine saved",
+      "created": "Routine created",
+      "deleted": "Routine deleted"
+    },
+    "errors": {
+      "updateFailed": "Could not update routine. Please try again.",
+      "saveFailed": "Could not save routine. Please try again.",
+      "deleteFailed": "Could not delete routine. Please try again."
+    }
+  },
+  "editMedicalProfile": {
+    "validationTitle": "Validation Error",
+    "validationBody": "Please check the highlighted fields.",
+    "savedTitle": "Success",
+    "savedBody": "Medical profile saved",
+    "saveFailedBody": "Could not save medical profile. Please try again.",
+    "notesPlaceholder": "Any additional medical information, allergies, or special care instructions..."
+  },
+  "trackers": {
+    "anythingDifferentPlaceholder": "Anything different from usual?",
+    "photo": {
+      "addTitle": "Add Photo",
+      "chooseSource": "Choose a photo source",
+      "takePhoto": "Take Photo",
+      "chooseLibrary": "Choose from Library"
+    },
+    "vomit": {
+      "notesPlaceholder": "What else did you notice?"
+    }
+  },
+  "wellnessCheck": {
+    "removeTitle": "Remove this check?",
+    "removeBody": "This will stop future reminders for this check. Past wellness history will stay saved.",
+    "removeCheck": "Remove check",
+    "checkRemoved": "Check removed",
+    "removeFailed": "Could not remove check. Please try again.",
+    "noItemsTitle": "No Items",
+    "noItemsBody": "Add at least one wellness check item.",
+    "missingNameTitle": "Missing Name",
+    "missingNameBody": "Please enter a name for your custom check.",
+    "whatToLookForPlaceholder": "What to look for..."
   }
 }

@@ -23,6 +23,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import useUpload from "@/utils/useUpload";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -37,6 +38,7 @@ const C = {
 };
 
 export default function VomitTrackerModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [upload, { loading: uploading }] = useUpload();
   const { data: currentPet } = useCurrentPet();
@@ -221,10 +223,10 @@ export default function VomitTrackerModal({ visible, onClose }) {
   };
 
   const handlePhotoUpload = () => {
-    Alert.alert("Add Photo", "Choose a photo source", [
-      { text: "Take Photo", onPress: () => pickAndUpload(true) },
-      { text: "Choose from Library", onPress: () => pickAndUpload(false) },
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("trackers.photo.addTitle"), t("trackers.photo.chooseSource"), [
+      { text: t("trackers.photo.takePhoto"), onPress: () => pickAndUpload(true) },
+      { text: t("trackers.photo.chooseLibrary"), onPress: () => pickAndUpload(false) },
+      { text: t("common.cancel"), style: "cancel" },
     ]);
   };
 
@@ -971,7 +973,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="What else did you notice?"
+                  placeholder={t("trackers.vomit.notesPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   multiline
                   numberOfLines={3}

@@ -14,6 +14,7 @@ import { X, Check, AlertCircle, AlertTriangle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -28,6 +29,7 @@ const C = {
 };
 
 export default function PeeTrackerModal({ visible, onClose }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
   const queryClient = useQueryClient();
@@ -903,7 +905,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                   <TextInput
                     value={notes}
                     onChangeText={setNotes}
-                    placeholder="Anything different from usual?"
+                    placeholder={t("trackers.anythingDifferentPlaceholder")}
                     placeholderTextColor={C.mutedBrown + "80"}
                     multiline
                     numberOfLines={3}
