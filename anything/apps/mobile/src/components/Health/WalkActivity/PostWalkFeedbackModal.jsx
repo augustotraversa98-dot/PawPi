@@ -11,6 +11,7 @@ import {
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Check, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import {
@@ -37,6 +38,7 @@ export default function PostWalkFeedbackModal({
   walkData,
   onComplete,
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
@@ -95,7 +97,7 @@ export default function PostWalkFeedbackModal({
     },
     onError: (error) => {
       console.error("[PostWalkFeedback] Error:", error);
-      Alert.alert("Error", "Could not save walk. Please try again.");
+      Alert.alert(t("common.error"), t("walkFeedback.saveError"));
     },
   });
 
@@ -155,7 +157,7 @@ export default function PostWalkFeedbackModal({
     return notes.join(". ");
   };
 
-  const petName = currentPet?.name || "your dog";
+  const petName = currentPet?.name || t("walkFeedback.yourDog");
 
   return (
     <Modal
@@ -183,11 +185,11 @@ export default function PostWalkFeedbackModal({
             <Text
               style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
             >
-              How was the walk?
+              {t("walkFeedback.headerTitle")}
             </Text>
             <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-              {walkData?.walk?.name || "Walk"} ·{" "}
-              {walkData?.durationMinutes || 0} min
+              {walkData?.walk?.name || t("walkItem.walk")} ·{" "}
+              {t("walkFeedback.minutes", { count: walkData?.durationMinutes || 0 })}
             </Text>
           </View>
           <TouchableOpacity
@@ -236,7 +238,7 @@ export default function PostWalkFeedbackModal({
                   marginBottom: 8,
                 }}
               >
-                Walk logged!
+                {t("walkFeedback.logged")}
               </Text>
               <Text
                 style={{
@@ -245,7 +247,7 @@ export default function PostWalkFeedbackModal({
                   textAlign: "center",
                 }}
               >
-                Great job, {petName}!
+                {t("walkFeedback.greatJob", { name: petName })}
               </Text>
 
               {/* Tracking source */}
@@ -298,7 +300,7 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 6,
                   }}
                 >
-                  Normal walk
+                  {t("walkFeedback.normal")}
                 </Text>
                 <Text
                   style={{
@@ -308,7 +310,7 @@ export default function PostWalkFeedbackModal({
                     textAlign: "center",
                   }}
                 >
-                  Everything went as expected
+                  {t("walkFeedback.normalHint")}
                 </Text>
               </TouchableOpacity>
 
@@ -336,7 +338,7 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 6,
                   }}
                 >
-                  Something was different
+                  {t("walkFeedback.different")}
                 </Text>
                 <Text
                   style={{
@@ -345,7 +347,7 @@ export default function PostWalkFeedbackModal({
                     textAlign: "center",
                   }}
                 >
-                  Log additional details
+                  {t("walkFeedback.differentHint")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -364,7 +366,7 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 10,
                   }}
                 >
-                  Energy after walk
+                  {t("walkFeedback.energyAfter")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["low", "normal", "high"].map((level) => (
@@ -390,7 +392,7 @@ export default function PostWalkFeedbackModal({
                           textTransform: "capitalize",
                         }}
                       >
-                        {level}
+                        {t(`walkFeedback.level.${level}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -407,7 +409,7 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 10,
                   }}
                 >
-                  Pace
+                  {t("walkFeedback.pace")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["relaxed", "normal", "active"].map((p) => (
@@ -432,7 +434,7 @@ export default function PostWalkFeedbackModal({
                           textTransform: "capitalize",
                         }}
                       >
-                        {p}
+                        {t(`walkFeedback.paceOpt.${p}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -449,7 +451,7 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 10,
                   }}
                 >
-                  Potty events
+                  {t("walkFeedback.pottyEvents")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
@@ -460,7 +462,7 @@ export default function PostWalkFeedbackModal({
                         marginBottom: 6,
                       }}
                     >
-                      💩 Poo
+                      {t("walkFeedback.poo")}
                     </Text>
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       {[0, 1, 2, 3].map((count) => (
@@ -500,7 +502,7 @@ export default function PostWalkFeedbackModal({
                         marginBottom: 6,
                       }}
                     >
-                      💦 Pee
+                      {t("walkFeedback.pee")}
                     </Text>
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       {[0, 1, 2, 3].map((count) => (
@@ -559,7 +561,7 @@ export default function PostWalkFeedbackModal({
                       color: C.warmBrown,
                     }}
                   >
-                    Limping or stiffness
+                    {t("walkFeedback.limping")}
                   </Text>
                   <View
                     style={{
@@ -592,7 +594,7 @@ export default function PostWalkFeedbackModal({
                       color: C.warmBrown,
                     }}
                   >
-                    Unusual behavior
+                    {t("walkFeedback.unusualBehavior")}
                   </Text>
                   <View
                     style={{
@@ -621,12 +623,12 @@ export default function PostWalkFeedbackModal({
                     marginBottom: 8,
                   }}
                 >
-                  Additional notes
+                  {t("walkFeedback.additionalNotes")}
                 </Text>
                 <TextInput
                   value={detailedNotes}
                   onChangeText={setDetailedNotes}
-                  placeholder="Any other observations..."
+                  placeholder={t("walkFeedback.notesPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   multiline
                   numberOfLines={3}
@@ -663,8 +665,7 @@ export default function PostWalkFeedbackModal({
                       textAlign: "center",
                     }}
                   >
-                    Based on your logs, this may be worth monitoring if it
-                    continues.
+                    {t("walkFeedback.monitorHint")}
                   </Text>
                 </View>
               )}
@@ -699,7 +700,7 @@ export default function PostWalkFeedbackModal({
                         color: "#FFF",
                       }}
                     >
-                      Save Walk
+                      {t("walkFeedback.save")}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -709,7 +710,7 @@ export default function PostWalkFeedbackModal({
                   style={{ alignItems: "center", paddingVertical: 8 }}
                 >
                   <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                    ← Back
+                    ← {t("common.back")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -728,7 +729,7 @@ export default function PostWalkFeedbackModal({
                   marginTop: 16,
                 }}
               >
-                Saving walk...
+                {t("walkFeedback.saving")}
               </Text>
             </View>
           )}

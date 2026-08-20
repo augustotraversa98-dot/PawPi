@@ -10,6 +10,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Search, User, Store } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
@@ -37,60 +38,60 @@ const formatMessageTime = (timestamp) => {
 };
 
 // Normalize a people DM thread + a business provider thread into one row shape.
-function dmToItem(t) {
+function dmToItem(th, t) {
   return {
-    key: `dm-${t.id}`,
+    key: `dm-${th.id}`,
     kind: "people",
-    name: t.other_name || t.other_username || "Pet parent",
-    avatar: t.other_avatar_url || "",
-    body: t.last_message_body,
-    imagePreview: t.last_message_image_url,
-    at: t.last_message_at,
-    unread: t.unread_count ?? 0,
+    name: th.other_name || th.other_username || t("messagesScreen.petParent"),
+    avatar: th.other_avatar_url || "",
+    body: th.last_message_body,
+    imagePreview: th.last_message_image_url,
+    at: th.last_message_at,
+    unread: th.unread_count ?? 0,
     open: (router) =>
       router.push({
         pathname: "/chat",
         params: {
-          threadId: String(t.id),
-          otherUserId: String(t.other_user_id),
-          otherName: t.other_name || t.other_username || "Pet parent",
-          otherAvatar: t.other_avatar_url || "",
+          threadId: String(th.id),
+          otherUserId: String(th.other_user_id),
+          otherName: th.other_name || th.other_username || t("messagesScreen.petParent"),
+          otherAvatar: th.other_avatar_url || "",
         },
       }),
   };
 }
 
-function providerToItem(t) {
+function providerToItem(th, t) {
   return {
-    key: `biz-${t.id}`,
+    key: `biz-${th.id}`,
     kind: "businesses",
-    name: t.provider_name || "Provider",
-    avatar: t.provider_logo_url || "",
-    body: t.last_message_body,
-    imagePreview: t.last_message_attachment_url,
-    at: t.last_message_at,
-    unread: t.unread_count ?? 0,
+    name: th.provider_name || t("messagesScreen.provider"),
+    avatar: th.provider_logo_url || "",
+    body: th.last_message_body,
+    imagePreview: th.last_message_attachment_url,
+    at: th.last_message_at,
+    unread: th.unread_count ?? 0,
     open: (router) =>
       router.push({
         pathname: "/provider-chat",
         params: {
-          threadId: String(t.id),
-          providerName: t.provider_name || "Provider",
-          ownerUserId: String(t.owner_user_id),
+          threadId: String(th.id),
+          providerName: th.provider_name || t("messagesScreen.provider"),
+          ownerUserId: String(th.owner_user_id),
         },
       }),
   };
 }
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "people", label: "People" },
-  { key: "businesses", label: "Businesses" },
-];
-
 export default function MessagesScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const FILTERS_I = [
+    { key: "all", label: t("messagesScreen.all") },
+    { key: "people", label: t("messagesScreen.people") },
+    { key: "businesses", label: t("messagesScreen.businesses") },
+  ];
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("all");
 
@@ -105,12 +106,12 @@ export default function MessagesScreen() {
   const owners = searchResults?.owners || [];
 
   const items = useMemo(() => {
-    const people = (dmThreads || []).map(dmToItem);
-    const businesses = (bizThreads || []).map(providerToItem);
+    const people = (dmThreads || []).map((th) => dmToItem(th, t));
+    const businesses = (bizThreads || []).map((th) => providerToItem(th, t));
     return [...people, ...businesses].sort(
       (a, b) => new Date(b.at || 0) - new Date(a.at || 0),
     );
-  }, [dmThreads, bizThreads]);
+  }, [dmThreads, bizThreads, t]);
 
   const q = searchQuery.trim().toLowerCase();
   const filtered = items.filter((it) => {
@@ -135,7 +136,7 @@ export default function MessagesScreen() {
         params: {
           threadId: String(thread.id),
           otherUserId: String(owner.id),
-          otherName: owner.full_name || owner.username || "Pet parent",
+          otherName: owner.full_name || owner.username || t("messagesScreen.petParent"),
           otherAvatar: owner.avatar_url || "",
         },
       });
@@ -168,7 +169,7 @@ export default function MessagesScreen() {
             <X size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            Messages
+            {t("messages.title")}
           </Text>
           <View style={{ width: 22 }} />
         </View>
@@ -189,7 +190,7 @@ export default function MessagesScreen() {
           <Search size={18} color={COLORS.mutedBrown} />
           <TextInput
             style={[TYPE.body, { flex: 1, color: COLORS.warmBrown, padding: 0 }]}
-            placeholder="Search people or start a new chat…"
+            placeholder={t("messagesScreen.searchPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -204,7 +205,7 @@ export default function MessagesScreen() {
 
         {/* All / People / Businesses segmented filter */}
         <View style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }}>
-          {FILTERS.map((f) => {
+          {FILTERS_I.map((f) => {
             const active = filter === f.key;
             return (
               <PressableScale
@@ -248,7 +249,7 @@ export default function MessagesScreen() {
                 { color: COLORS.mutedBrown, marginLeft: SPACING.xl, marginBottom: SPACING.xs },
               ]}
             >
-              START A NEW CHAT
+              {t("messagesScreen.startNewChat")}
             </Text>
             {searching && owners.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: SPACING.lg }}>
@@ -266,7 +267,7 @@ export default function MessagesScreen() {
                   },
                 ]}
               >
-                No pet parents found.
+                {t("messagesScreen.noOwnersFound")}
               </Text>
             ) : (
               owners.map((owner) => (
@@ -312,7 +313,7 @@ export default function MessagesScreen() {
                         { fontWeight: "700", color: COLORS.warmBrown },
                       ]}
                     >
-                      {owner.full_name || owner.username || "Pet parent"}
+                      {owner.full_name || owner.username || t("messagesScreen.petParent")}
                     </Text>
                   </Card>
                 </PressableScale>
@@ -334,7 +335,7 @@ export default function MessagesScreen() {
                 { fontWeight: "700", color: COLORS.warmBrown, marginTop: SPACING.lg },
               ]}
             >
-              No conversations yet
+              {t("messagesScreen.emptyTitle")}
             </Text>
             <Text
               style={[
@@ -347,8 +348,7 @@ export default function MessagesScreen() {
                 },
               ]}
             >
-              Search a pet parent above to start a chat, or message a business
-              from its profile.
+              {t("messagesScreen.emptyBody")}
             </Text>
           </View>
         ) : (
@@ -357,8 +357,8 @@ export default function MessagesScreen() {
             const preview = it.body
               ? it.body
               : it.imagePreview
-                ? "📷 Photo"
-                : "Say hi 👋";
+                ? t("messagesScreen.previewPhoto")
+                : t("messagesScreen.previewSayHi");
             return (
               <PressableScale
                 key={it.key}

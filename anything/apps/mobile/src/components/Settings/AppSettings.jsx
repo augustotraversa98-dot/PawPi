@@ -404,7 +404,7 @@ export default function AppSettings({ mode = "petOwner" }) {
       const res = await fetch("/api/account", { method: "DELETE" });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "Failed to delete account");
+        throw new Error(e.error || t("settings.deleteFailed"));
       }
       const AsyncStorage =
         require("@react-native-async-storage/async-storage").default;
@@ -413,26 +413,26 @@ export default function AppSettings({ mode = "petOwner" }) {
       router.replace("/welcome");
     } catch (e) {
       setDeleting(false);
-      Alert.alert("Couldn't delete account", e.message || "Please try again.");
+      Alert.alert(t("settings.deleteErrorTitle"), e.message || t("common.pleaseTryAgain"));
     }
   };
 
   const confirmDeleteAccount = () => {
     Alert.alert(
-      "Delete account?",
-      "This permanently deletes your account and all your pets, health records, posts and other data. This cannot be undone.",
+      t("settings.deleteAccountTitle"),
+      t("settings.deleteAccountBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete account",
+          text: t("settings.deleteAccountCta"),
           style: "destructive",
           onPress: () =>
             Alert.alert(
-              "This is permanent",
-              "Are you absolutely sure? Your account and data will be erased.",
+              t("settings.deletePermanentTitle"),
+              t("settings.deletePermanentBody"),
               [
-                { text: "Keep my account", style: "cancel" },
-                { text: "Delete forever", style: "destructive", onPress: performDelete },
+                { text: t("settings.keepAccount"), style: "cancel" },
+                { text: t("settings.deleteForever"), style: "destructive", onPress: performDelete },
               ],
             ),
         },
@@ -443,9 +443,9 @@ export default function AppSettings({ mode = "petOwner" }) {
   // Contact Us → opens the user's mail app to the support address (Guideline 1.2 / App Store
   // "Support URL"). Always works — SUPPORT_EMAIL has a default.
   const openContactUs = () => {
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("PawPi support")}`;
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(t("settings.supportSubject"))}`;
     Linking.openURL(url).catch(() =>
-      Alert.alert("Contact us", `Email us at ${SUPPORT_EMAIL}`),
+      Alert.alert(t("settings.contactUs"), t("settings.emailUsAt", { email: SUPPORT_EMAIL })),
     );
   };
 
@@ -589,7 +589,7 @@ export default function AppSettings({ mode = "petOwner" }) {
                 letterSpacing: 0.8,
               }}
             >
-              WALK TRACKING
+  {t("settings.walkTrackingSection")}
             </Text>
             <SectionCard>
               <View style={{ paddingVertical: 6 }}>
@@ -623,10 +623,10 @@ export default function AppSettings({ mode = "petOwner" }) {
             letterSpacing: 0.8,
           }}
         >
-          PRIVACY & DATA
+{t("settings.privacyDataSection")}
         </Text>
         <SectionCard>
-          <SettingRow label="Account Privacy" icon={Lock} value="Public" />
+          <SettingRow label={t("settings.accountPrivacy")} icon={Lock} value={t("settings.accountPublic")} />
         </SectionCard>
 
         <Text
@@ -638,11 +638,11 @@ export default function AppSettings({ mode = "petOwner" }) {
             letterSpacing: 0.8,
           }}
         >
-          SUPPORT
+{t("settings.supportSection")}
         </Text>
         <SectionCard>
-          <SettingRow label="Help Center" icon={HelpCircle} value="→" onPress={openHelpCenter} />
-          <SettingRow label="Contact Us" icon={Globe} value="→" onPress={openContactUs} />
+          <SettingRow label={t("settings.helpCenter")} icon={HelpCircle} value="→" onPress={openHelpCenter} />
+          <SettingRow label={t("settings.contactUs")} icon={Globe} value="→" onPress={openContactUs} />
         </SectionCard>
 
         <Text
@@ -654,7 +654,7 @@ export default function AppSettings({ mode = "petOwner" }) {
             letterSpacing: 0.8,
           }}
         >
-          ACCOUNT
+{t("settings.accountSection")}
         </Text>
         <SectionCard>
           <TouchableOpacity
@@ -685,10 +685,10 @@ export default function AppSettings({ mode = "petOwner" }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, color: "#B23A2E", fontWeight: "700" }}>
-                {deleting ? "Deleting…" : "Delete account"}
+                {deleting ? t("settings.deleting") : t("settings.deleteAccount")}
               </Text>
               <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
-                Permanently delete your account and all data.
+                {t("settings.deleteAccountHint")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -702,7 +702,7 @@ export default function AppSettings({ mode = "petOwner" }) {
             PawPi v1.0.0
           </Text>
           <Text style={{ color: C.peach, fontSize: 11 }}>
-            Made with 🐾 for dog parents
+            {t("settings.madeWith")}
           </Text>
         </View>
       </ScrollView>
