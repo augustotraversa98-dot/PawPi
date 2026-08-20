@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { X, Plus, Trash2 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { DEFAULT_WALK, DEFAULT_WALKS } from "@/constants/walkRoutineDefaults";
@@ -26,6 +27,7 @@ export default function WalkRoutineModal({
   editingRoutine,
   petName = "your pet",
 }) {
+  const { t } = useTranslation();
   const {
     step,
     setStep,
@@ -58,7 +60,7 @@ export default function WalkRoutineModal({
   };
 
   const handleAddWalk = () => {
-    setWalks([...walks, { ...DEFAULT_WALK, name: "Walk", time: "15:00" }]);
+    setWalks([...walks, { ...DEFAULT_WALK, name: t("walkRoutine.walkName"), time: "15:00" }]);
     setWalkCount(walks.length + 1);
   };
 
@@ -70,18 +72,18 @@ export default function WalkRoutineModal({
       setDebugStatus("Last walk - will delete full routine");
 
       Alert.alert(
-        "Delete Walk Routine?",
-        "This is the last scheduled walk. Deleting it will remove the Walk Routine and stop future walk reminders. Past completed walks will stay in your dog's history.",
+        t("walkRoutine.deleteLastTitle"),
+        t("walkRoutine.deleteLastBody"),
         [
           {
-            text: "Cancel",
+            text: t("common.cancel"),
             style: "cancel",
             onPress: () => {
               setDebugStatus("");
             },
           },
           {
-            text: "Delete routine",
+            text: t("walkRoutine.deleteRoutine"),
             style: "destructive",
             onPress: () => confirmDeleteFullRoutine(),
           },
@@ -92,18 +94,18 @@ export default function WalkRoutineModal({
       setDebugStatus("Opening delete walk confirmation");
 
       Alert.alert(
-        "Delete this walk?",
-        "This will remove future reminders for this scheduled walk. Past completed walks will stay in your dog's history.",
+        t("walkRoutine.deleteWalkTitle"),
+        t("walkRoutine.deleteWalkBody"),
         [
           {
-            text: "Cancel",
+            text: t("common.cancel"),
             style: "cancel",
             onPress: () => {
               setDebugStatus("");
             },
           },
           {
-            text: "Delete walk",
+            text: t("walkRoutine.deleteWalk"),
             style: "destructive",
             onPress: () => confirmDeleteWalk(index),
           },
@@ -114,7 +116,7 @@ export default function WalkRoutineModal({
 
   const confirmDeleteWalk = async (deleteWalkIndex) => {
     if (deleteWalkIndex === null || deleteWalkIndex === undefined) {
-      Alert.alert("Error", "Could not identify walk to delete");
+      Alert.alert(t("common.error"), t("walkRoutine.couldNotIdentify"));
       return;
     }
 
@@ -157,14 +159,14 @@ export default function WalkRoutineModal({
       }
       setIsDeleting(false);
 
-      Alert.alert("Walk deleted");
+      Alert.alert(t("walkRoutine.walkDeleted"));
 
       // Clear debug status after 2 seconds
       setTimeout(() => setDebugStatus(""), 2000);
     } catch (error) {
       setDebugStatus(`Delete failed: ${error.message}`);
       setIsDeleting(false);
-      Alert.alert("Error", "Could not delete. Please try again.");
+      Alert.alert(t("common.error"), t("walkRoutine.couldNotDelete"));
 
       // Clear error debug status after 3 seconds
       setTimeout(() => setDebugStatus(""), 3000);
@@ -174,7 +176,7 @@ export default function WalkRoutineModal({
   const confirmDeleteFullRoutine = async () => {
     if (!editingRoutine?.id) {
       setDebugStatus("Error: No routine ID");
-      Alert.alert("Error", "Could not delete routine. Please try again.");
+      Alert.alert(t("common.error"), t("walkRoutine.couldNotDeleteRoutine"));
       return;
     }
 
@@ -194,7 +196,7 @@ export default function WalkRoutineModal({
     } catch (error) {
       setDebugStatus(`Delete failed: ${error.message}`);
       setIsDeleting(false);
-      Alert.alert("Error", "Could not delete. Please try again.");
+      Alert.alert(t("common.error"), t("walkRoutine.couldNotDelete"));
 
       // Clear error debug status after 3 seconds
       setTimeout(() => setDebugStatus(""), 3000);
@@ -205,18 +207,18 @@ export default function WalkRoutineModal({
     setDebugStatus("Delete button pressed - opening confirmation");
 
     Alert.alert(
-      "Delete Walk Routine?",
-      "This will remove all future walk reminders. Past completed walks will remain in your dog's history.",
+      t("walkRoutine.deleteRoutineTitle"),
+      t("walkRoutine.deleteRoutineBody"),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
           onPress: () => {
             setDebugStatus("");
           },
         },
         {
-          text: "Delete routine",
+          text: t("walkRoutine.deleteRoutine"),
           style: "destructive",
           onPress: () => confirmDeleteFullRoutine(),
         },
@@ -286,10 +288,10 @@ export default function WalkRoutineModal({
                   marginBottom: 4,
                 }}
               >
-                🚶 {editingRoutine ? "Edit" : "Create"} Walk Routine
+                🚶 {editingRoutine ? t("walkRoutine.edit") : t("walkRoutine.create")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Set {petName}'s walk schedule
+                {t("walkRoutine.subtitle", { pet: petName })}
               </Text>
             </View>
             <TouchableOpacity
@@ -320,7 +322,7 @@ export default function WalkRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Walks
+              {t("walkRoutine.walks")}
             </Text>
 
             {walks.map((walk, index) => (
@@ -361,7 +363,7 @@ export default function WalkRoutineModal({
                   color: C.mutedBrown,
                 }}
               >
-                Add Another Walk
+                {t("walkRoutine.addAnother")}
               </Text>
             </TouchableOpacity>
 
@@ -410,7 +412,7 @@ export default function WalkRoutineModal({
                       letterSpacing: 0.5,
                     }}
                   >
-                    Remove routine
+                    {t("walkRoutine.removeRoutine")}
                   </Text>
                   <Text
                     style={{
@@ -420,8 +422,7 @@ export default function WalkRoutineModal({
                       lineHeight: 17,
                     }}
                   >
-                    Deleting removes all future walk reminders, but past walk
-                    history stays saved.
+                    {t("walkRoutine.removeHint")}
                   </Text>
                   <TouchableOpacity
                     onPress={handleDeleteRoutinePress}
@@ -450,7 +451,7 @@ export default function WalkRoutineModal({
                             color: C.coral,
                           }}
                         >
-                          Delete Walk Routine
+                          {t("walkRoutine.deleteBtn")}
                         </Text>
                       </>
                     )}
@@ -485,7 +486,7 @@ export default function WalkRoutineModal({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                {editingRoutine ? "Save Changes" : "Create Routine"}
+                {editingRoutine ? t("walkRoutine.saveChanges") : t("walkRoutine.createRoutine")}
               </Text>
             </TouchableOpacity>
           </View>
