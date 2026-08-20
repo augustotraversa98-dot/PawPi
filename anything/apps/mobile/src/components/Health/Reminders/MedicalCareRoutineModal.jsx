@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { X, Plus, Edit3, Trash2, ChevronRight } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import {
   ROUTINE_TYPES,
   ROUTINE_FREQUENCY,
@@ -168,6 +169,7 @@ export default function MedicalCareRoutineModal({
   onSave,
   editingRoutine,
 }) {
+  const { t } = useTranslation();
   // step: "list" | "pickType" | "itemForm"
   const [step, setStep] = useState("list");
   const [items, setItems] = useState([]);
@@ -198,12 +200,12 @@ export default function MedicalCareRoutineModal({
 
   const handleDeleteItem = (itemId) => {
     Alert.alert(
-      "Delete care item?",
-      "This will remove this item from the Medical Care routine.",
+      t("medicalCare.deleteItemTitle"),
+      t("medicalCare.deleteItemBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => setItems(items.filter((i) => i.id !== itemId)),
         },
@@ -224,7 +226,7 @@ export default function MedicalCareRoutineModal({
 
   const handleSaveRoutine = () => {
     if (items.length === 0) {
-      Alert.alert("No care items", "Add at least one care item before saving.");
+      Alert.alert(t("medicalCare.noItemsTitle"), t("medicalCare.noItemsBody"));
       return;
     }
     const routine = {
@@ -630,6 +632,7 @@ function buildItemSubtitle(item) {
 // ItemFormModal - form to create/edit one item
 // =========================================================================
 function ItemFormModal({ visible, item, onCancel, onSave }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(item);
 
   useEffect(() => {
@@ -642,7 +645,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
 
   const handleSubmit = () => {
     if (!draft.name || draft.name.trim() === "") {
-      Alert.alert("Name required", "Please enter a name for this care item.");
+      Alert.alert(t("medicalCare.nameRequiredTitle"), t("medicalCare.nameRequiredBody"));
       return;
     }
     onSave(draft);

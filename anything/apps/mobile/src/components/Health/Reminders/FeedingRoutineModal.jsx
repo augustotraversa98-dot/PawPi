@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { X, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import TimeField from "@/components/TimeField";
@@ -96,6 +97,7 @@ export default function FeedingRoutineModal({
   editingRoutine,
   petName = "your pet",
 }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState("count"); // 'count' or 'details'
   const [mealCount, setMealCount] = useState(2);
   const [meals, setMeals] = useState(DEFAULT_MEALS[2]);
@@ -163,7 +165,7 @@ export default function FeedingRoutineModal({
 
   const handleRemoveMeal = (index) => {
     if (meals.length <= 1) {
-      Alert.alert("Minimum Meals", "You need at least one meal per day");
+      Alert.alert(t("feeding.minMealsTitle"), t("feeding.minMealsBody"));
       return;
     }
     const updated = meals.filter((_, i) => i !== index);

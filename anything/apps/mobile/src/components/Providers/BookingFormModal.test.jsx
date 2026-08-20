@@ -478,7 +478,7 @@ test("if checkout fails (e.g. provider not connected → 503) it does NOT create
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync).not.toHaveBeenCalled(); // no booking created
-  expect(Alert.alert).toHaveBeenCalledWith("Couldn't book", "payments not configured");
+  expect(Alert.alert).toHaveBeenCalledWith("booking.couldntBook", "payments not configured");
 });
 
 test("a paid service whose checkout returns no URL is NOT mislabeled 'Request sent!'", async () => {
@@ -495,12 +495,12 @@ test("a paid service whose checkout returns no URL is NOT mislabeled 'Request se
   expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(901);
   await waitFor(() =>
     expect(Alert.alert).toHaveBeenCalledWith(
-      "Payment couldn't start",
-      expect.stringContaining("nothing was charged"),
+      "booking.paymentFailedTitle",
+      "booking.paymentFailedBody",
     ),
   );
   for (const call of Alert.alert.mock.calls) {
-    expect(call[0]).not.toMatch(/request sent/i);
+    expect(call[0]).not.toMatch(/request sent|requestSent/i);
   }
 });
 

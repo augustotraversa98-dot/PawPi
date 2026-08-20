@@ -358,7 +358,7 @@ export default function PhotoCheckRoutineModal({
       visible={visible}
       onClose={onClose}
       title={`${editingRoutine ? "Edit" : "Create"} Photo Check`}
-      subtitle="Visual health monitoring"
+      subtitle={t("health.photoCheck.subtitle")}
       icon="📸"
       ctaLabel={editingRoutine ? "Save Changes" : "Create Routine"}
       ctaColor={ACCENT}

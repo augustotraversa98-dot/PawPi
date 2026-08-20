@@ -808,7 +808,8 @@
       "notesPlaceholder": "Enrojecimiento, hinchazón, secreción, olor, sensibilidad, sin cambios…",
       "notesModalPlaceholder": "¿Alguna observación o cambio que hayas notado?",
       "selectAtLeastOne": "Elegí al menos una zona para el chequeo con foto.",
-      "whatToLookForPlaceholder": "Qué observar..."
+      "whatToLookForPlaceholder": "Qué observar...",
+      "subtitle": "Monitoreo visual de salud"
     },
     "reminders": {
       "schedule": {
@@ -903,7 +904,12 @@
         "deleteTitle": "Eliminar recordatorio",
         "deleteBody": "¿Seguro que querés eliminar \"{{title}}\"?",
         "deletedTitle": "🗑️ Eliminado",
-        "deletedBody": "{{title}} fue eliminado"
+        "deletedBody": "{{title}} fue eliminado",
+        "groupNow": "Ahora",
+        "groupToday": "Hoy",
+        "groupTomorrow": "Mañana",
+        "groupThisWeek": "Esta semana",
+        "groupLater": "Más adelante"
       },
       "settings": {
         "title": "Ajustes de recordatorios",
@@ -1269,7 +1275,14 @@
     "generalChip": "General",
     "notesPlaceholder": "Describí síntomas o necesidades especiales…",
     "depositRequired": "Se requiere una seña de {{amount}} para solicitar este {{noun}}. Te enviaremos a MercadoPago para pagar — si se rechaza, se reintegra automáticamente.",
-    "paymentRequired": "Se requiere un pago de {{amount}} para solicitar este {{noun}}. Te enviaremos a MercadoPago para pagar — si se rechaza, se reintegra automáticamente."
+    "paymentRequired": "Se requiere un pago de {{amount}} para solicitar este {{noun}}. Te enviaremos a MercadoPago para pagar — si se rechaza, se reintegra automáticamente.",
+    "completePaymentTitle": "Casi listo — completá el pago",
+    "completePaymentBody": "Abriendo MercadoPago para pagar tu {{noun}}. {{provider}} confirmará cuando el pago se acredite.",
+    "paymentFailedTitle": "No se pudo iniciar el pago",
+    "paymentFailedBody": "No pudimos abrir la ventana de pago para tu {{noun}}, así que no se cobró nada. Intentá de nuevo.",
+    "requestSentTitle": "¡Solicitud enviada!",
+    "requestSentBody": "{{provider}} confirmará tu {{noun}} pronto.",
+    "couldntBook": "No se pudo reservar"
   },
   "providers": {
     "searchPlaceholder": "Buscar por nombre",
@@ -3195,5 +3208,32 @@
     "previewPhoto": "📷 Foto",
     "previewSayHi": "Decí hola 👋"
   },
-  "batch15Placeholder": {}
+  "batch15Placeholder": {},
+  "ownerMenu": {
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "sectionCommunity": "COMUNIDAD",
+    "sectionYourAccount": "TU CUENTA",
+    "community": "Comunidad",
+    "myHub": "Mi centro",
+    "dogProfile": "Perfil del perro",
+    "family": "Familia y cuidadores",
+    "lostFound": "Perdidos y encontrados",
+    "memoriesWrapped": "Recuerdos y Wrapped",
+    "remindersRoutines": "Recordatorios y rutinas",
+    "resetAppData": "Borrar datos de la app"
+  },
+  "medicalCare": {
+    "deleteItemTitle": "¿Eliminar este ítem?",
+    "deleteItemBody": "Se quitará de la rutina de Cuidado médico.",
+    "noItemsTitle": "Sin ítems",
+    "noItemsBody": "Agregá al menos un ítem antes de guardar.",
+    "nameRequiredTitle": "Falta el nombre",
+    "nameRequiredBody": "Ingresá un nombre para este ítem."
+  },
+  "feeding": {
+    "minMealsTitle": "Mínimo de comidas",
+    "minMealsBody": "Necesitás al menos una comida por día."
+  },
+  "batch17Placeholder": {}
 }
