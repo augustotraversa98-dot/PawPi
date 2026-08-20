@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import { PawPrint } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
 import { BusinessPostCard } from "./BusinessPostCard";
@@ -23,6 +24,7 @@ export function UnlockedFeed({
   onOpenBusinessPost,
   streakByPetId = {},
 }) {
+  const { t } = useTranslation();
   // Phase 2 ticket 2.13 — interleave provider/adoption "suggestion" cards between pet posts at a
   // controlled cadence + cap (see interleaveSuggestions). Posts keep their order/identity; the
   // BeReal lock upstream is unaffected (this only runs in the UNLOCKED feed).
@@ -68,7 +70,7 @@ export function UnlockedFeed({
     >
       <PawPrint size={14} color={COLORS.terracotta} />
       <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
-        SUGGESTED FOR YOU
+        {t("feed.suggestedForYou")}
       </Text>
     </View>
   );
@@ -87,7 +89,7 @@ export function UnlockedFeed({
       >
         <PawPrint size={14} color={COLORS.terracotta} />
         <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
-          PET FRIENDS' MOMENTS
+          {t("feed.petFriendsMoments")}
         </Text>
       </View>
 
@@ -162,7 +164,7 @@ export function UnlockedFeed({
         <View style={{ alignItems: "center", padding: 50 }}>
           <Text style={{ fontSize: 40 }}>🐾</Text>
           <Text style={[TYPE.headline, { color: COLORS.mutedBrown, marginTop: SPACING.md }]}>
-            No pet moments yet!
+            {t("feed.emptyTitle")}
           </Text>
           <Text
             style={[
@@ -170,7 +172,7 @@ export function UnlockedFeed({
               { color: COLORS.mutedBrown, marginTop: 4, textAlign: "center", fontWeight: "500" },
             ]}
           >
-            Be the first to share today's moment.
+            {t("feed.emptyBody")}
           </Text>
         </View>
       )}

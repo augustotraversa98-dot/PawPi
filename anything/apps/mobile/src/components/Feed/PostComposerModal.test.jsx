@@ -7,6 +7,10 @@ import React from "react";
 import { Alert } from "react-native";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 const mockRequestCameraPerm = jest.fn();
 const mockLaunchCamera = jest.fn();
 

@@ -2216,7 +2216,11 @@
     "errorSaveBody": "No pudimos guardar. Probá de nuevo.",
     "captionPlaceholder": "Escribí una descripción…",
     "saveFailedTitle": "No se pudo guardar",
-    "saveFailedBody": "Probá de nuevo."
+    "saveFailedBody": "Probá de nuevo.",
+    "suggestedForYou": "SUGERIDOS PARA VOS",
+    "petFriendsMoments": "MOMENTOS DE AMIGOS PELUDOS",
+    "emptyTitle": "¡Todavía no hay momentos!",
+    "emptyBody": "Sé el primero en compartir el momento de hoy."
   },
   "forum": {
     "title": "Discusión",
@@ -2850,5 +2854,41 @@
     "numberOfSessions": "Cantidad de sesiones",
     "booking": "Reservando…",
     "confirmBooking": "Confirmar reserva"
+  },
+  "rating": {
+    "new": "Nuevo"
+  },
+  "writeReview": {
+    "label": "Escribí una reseña",
+    "title": "Escribí una reseña",
+    "prompt": "¿Cómo fue tu visita a {{provider}}?",
+    "pickRatingTitle": "Elegí una puntuación",
+    "pickRatingBody": "Tocá las estrellas para puntuar del 1 al 5.",
+    "postedTitle": "¡Gracias!",
+    "postedBody": "Tu reseña se publicó.",
+    "errorTitle": "No se pudo publicar la reseña",
+    "bodyPlaceholder": "Contá en pocas palabras tu experiencia (opcional)",
+    "submit": "Enviar reseña",
+    "rateStars_one": "Puntuar con {{count}} estrella",
+    "rateStars_other": "Puntuar con {{count}} estrellas"
+  },
+  "postComposer": {
+    "pickerHeader": "Agregar una foto",
+    "composeHeader": "Actualización diaria",
+    "heading": "Momento del día",
+    "subheading": "¿Qué está haciendo {{petName}} ahora?\n¡Compartí la actualización de hoy con tus amigos peludos!",
+    "takePhoto": "Sacar una foto",
+    "recordVideo": "Grabar un video",
+    "todayOnly": "Solo hoy",
+    "captionLabel": "Agregá una descripción para {{petName}} ✍️",
+    "captionPlaceholder": "¿Qué hace {{petName}} hoy? 🐶",
+    "submit": "Publicar actualización diaria 🐾",
+    "luckyTitle": "🎉 ¡Sos uno de los usuarios afortunados de hoy!",
+    "luckyBody": "Podés compartir un video corto hoy — solo por hoy. Una foto siempre es bienvenida.",
+    "cameraDeniedTitle": "Se necesita acceso a la cámara",
+    "cameraDeniedBody": "Permití el acceso a la cámara en Ajustes.",
+    "cameraDeniedVideoBody": "Permití el acceso a la cámara para grabar un video.",
+    "changePhoto": "Cambiar foto",
+    "changeVideo": "Cambiar video"
   }
 }

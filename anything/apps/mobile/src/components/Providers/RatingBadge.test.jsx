@@ -4,6 +4,10 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );

@@ -1,12 +1,14 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Star } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 
 // Aggregate rating + review count for a provider (ticket 2.2). Real data only: a
 // provider with no reviews (count 0 / avg null) shows a muted "New" pill instead of a
 // fake star score. Used on the vet discovery cards and the provider profile header.
 export default function RatingBadge({ avgRating, reviewCount, size = "sm" }) {
+  const { t } = useTranslation();
   const count = Number(reviewCount) || 0;
   const avg = avgRating == null ? null : Number(avgRating);
 
@@ -22,7 +24,7 @@ export default function RatingBadge({ avgRating, reviewCount, size = "sm" }) {
             color: COLORS.mutedBrown,
           }}
         >
-          New
+          {t("rating.new")}
         </Text>
       </View>
     );
