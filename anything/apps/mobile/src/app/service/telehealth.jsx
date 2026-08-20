@@ -40,6 +40,7 @@ import { useTranslation } from "react-i18next";
 // (the owner's video sessions) and JOIN. Discovery reuses /api/providers/discover?type=
 // telehealth via the SAME useDiscoverProviders hook — no duplicate endpoint, no fake data.
 export default function TelehealthScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: providers, isLoading, isError, refetch } =
@@ -83,15 +84,15 @@ export default function TelehealthScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Telehealth 📹
+            {t("telehealth.headerTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Video consult with a vet
+            {t("telehealth.headerSubtitle")}
           </Text>
         </View>
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("telehealth.messagesA11y")}
           style={{
             width: 40,
             height: 40,
@@ -112,14 +113,14 @@ export default function TelehealthScreen() {
         {/* My consults — only shown when the current pet has any. */}
         {consults.length > 0 && (
           <View style={{ marginBottom: SPACING.sm }}>
-            <SectionLabel>MY CONSULTS</SectionLabel>
+            <SectionLabel>{t("telehealth.sectionMyConsults")}</SectionLabel>
             {sortedConsults.map((c) => (
               <ConsultCard key={c.id} consult={c} petId={petId} />
             ))}
           </View>
         )}
 
-        <SectionLabel>TELEHEALTH VETS</SectionLabel>
+        <SectionLabel>{t("telehealth.sectionTelehealthVets")}</SectionLabel>
 
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
@@ -127,13 +128,13 @@ export default function TelehealthScreen() {
           </View>
         ) : isError ? (
           <EmptyState
-            title="Couldn't load telehealth vets"
-            body="Something went wrong. Pull down to try again."
+            title={t("telehealth.loadErrorTitle")}
+            body={t("telehealth.loadErrorBody")}
           />
         ) : !providers || providers.length === 0 ? (
           <EmptyState
-            title="No telehealth vets yet"
-            body="Check back soon — vets are joining PawPi."
+            title={t("telehealth.emptyTitle")}
+            body={t("telehealth.emptyBody")}
           />
         ) : (
           providers.map((p) => (
@@ -193,7 +194,7 @@ function ConsultCard({ consult, petId }) {
         setNotReadyMessage(joinWaitMessage());
       } else {
         // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
-        setError(e?.message || "Couldn't join the consult");
+        setError(e?.message || t("telehealth.couldNotJoin"));
       }
     }
   };
@@ -219,7 +220,7 @@ function ConsultCard({ consult, petId }) {
       style={{ padding: SPACING.lg, marginBottom: SPACING.md, opacity: closed ? 0.6 : 1 }}
     >
       <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
-        {consult.provider_name || "Video consult"}
+        {consult.provider_name || t("telehealth.defaultConsultName")}
       </Text>
       <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
         {statusLabel}
@@ -253,7 +254,7 @@ function ConsultCard({ consult, petId }) {
           }}
         >
           <Text style={[TYPE.body, { fontWeight: "800", color: "#FFF" }]}>
-            {joinTelehealth.isPending ? "Joining…" : "Join video consult"}
+            {joinTelehealth.isPending ? t("telehealth.joining") : t("telehealth.joinConsult")}
           </Text>
         </PressableScale>
       ) : null}

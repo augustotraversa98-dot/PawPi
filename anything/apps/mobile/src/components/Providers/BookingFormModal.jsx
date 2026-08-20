@@ -223,8 +223,8 @@ export default function BookingFormModal({
     // No active pet → block with a friendly message, never POST.
     if (!currentPet?.id) {
       Alert.alert(
-        "No active pet",
-        "Add or select a pet before booking an appointment.",
+        t("booking.noActivePetTitle"),
+        t("booking.noActivePetBody"),
       );
       return;
     }
@@ -251,8 +251,8 @@ export default function BookingFormModal({
     } else {
       if (!date || !time) {
         Alert.alert(
-          "Pick a date and time",
-          `Choose when you'd like the ${copy.noun}.`,
+          t("booking.pickDateTimeTitle"),
+          t("booking.pickDateTimeBody", { noun: copy.noun }),
         );
         return;
       }
@@ -394,8 +394,7 @@ export default function BookingFormModal({
           }}
         >
           <Text style={{ color: COLORS.mutedBrown, fontSize: 14 }}>
-            You don't have an active pet yet. Add or select a pet first, then
-            come back to book.
+            {t("booking.noActivePetInline")}
           </Text>
         </View>
       )}
@@ -419,12 +418,12 @@ export default function BookingFormModal({
         </Text>
       ) : (
         <>
-          <SectionLabel>Service</SectionLabel>
+          <SectionLabel>{t("booking.sectionService")}</SectionLabel>
           <View
             style={{ flexDirection: "row", flexWrap: "wrap", gap: 9, marginBottom: 18 }}
           >
             <Chip
-              label="General"
+              label={t("booking.generalChip")}
               selected={serviceId == null}
               onPress={() => {
                 serviceTouched.current = true;
@@ -464,10 +463,12 @@ export default function BookingFormModal({
           }}
         >
           <Text style={{ color: COLORS.mutedBrown, fontSize: 13 }}>
-            {paymentPolicy === "deposit" ? "A deposit of " : "Payment of "}
-            {formatPrice(chargeCents)} is required to request this {copy.noun}.
-            You'll be sent to MercadoPago to pay — if it's declined, you're
-            refunded automatically.
+            {t(
+              paymentPolicy === "deposit"
+                ? "booking.depositRequired"
+                : "booking.paymentRequired",
+              { amount: formatPrice(chargeCents), noun: copy.noun },
+            )}
           </Text>
         </View>
       )}
@@ -475,7 +476,7 @@ export default function BookingFormModal({
       {/* Location (optional) */}
       {locations.length > 0 && (
         <>
-          <SectionLabel>Location</SectionLabel>
+          <SectionLabel>{t("booking.sectionLocation")}</SectionLabel>
           <View
             style={{
               flexDirection: "row",
@@ -552,12 +553,12 @@ export default function BookingFormModal({
         </>
       ) : (
         <>
-          <SectionLabel>Date</SectionLabel>
+          <SectionLabel>{t("booking.sectionDate")}</SectionLabel>
           <View style={{ marginBottom: 16 }}>
             <DateField value={date} onChange={setDate} testID="booking-date" />
           </View>
 
-          <SectionLabel>Time</SectionLabel>
+          <SectionLabel>{t("booking.sectionTime")}</SectionLabel>
           <View style={{ marginBottom: 16 }}>
             <TimeField value={time} onChange={setTime} testID="booking-time" />
           </View>
@@ -566,9 +567,9 @@ export default function BookingFormModal({
 
       {/* Notes (optional) — replaces the old per-capability "reason" chips: free text is the
           single place the owner tells the provider what the visit is about. */}
-      <SectionLabel>Notes</SectionLabel>
+      <SectionLabel>{t("booking.sectionNotes")}</SectionLabel>
       <TextInput
-        placeholder="Describe symptoms or special needs…"
+        placeholder={t("booking.notesPlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         style={{
           backgroundColor: COLORS.card,
@@ -589,7 +590,7 @@ export default function BookingFormModal({
           "every 6 weeks"). A simple opt-in chip; sets recurrence_rule on the booking. */}
       {copy.recurrence && (
         <View style={{ marginTop: 18 }}>
-          <SectionLabel>Recurring</SectionLabel>
+          <SectionLabel>{t("booking.sectionRecurring")}</SectionLabel>
           <TouchableOpacity
             testID="booking-recurrence"
             onPress={() => setRepeat((v) => !v)}
