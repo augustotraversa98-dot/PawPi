@@ -3053,6 +3053,97 @@
       "deleteFailed": "Could not delete routine. Please try again."
     }
   },
+  "routineCard": {
+    "deleteTitle": "Delete this routine?",
+    "deleteBody": "This removes it and its future reminders. Past logs and history are kept.",
+    "delete": "Delete",
+    "active": "ACTIVE",
+    "inactive": "INACTIVE",
+    "schedule": "Schedule",
+    "next": "Next",
+    "addToCalendar": "Add to calendar",
+    "editRoutine": "Edit Routine",
+    "deleteRoutine": "Delete Routine",
+    "yourPet": "Your pet",
+    "care": {
+      "medication": "Medication",
+      "vaccine": "Vaccine",
+      "flea_tick": "Flea/tick prevention",
+      "deworming": "Deworming",
+      "heartworm": "Heartworm prevention",
+      "supplement": "Supplement",
+      "other": "Medical care",
+      "medicalCareLabel": "Medical Care",
+      "item": "Item"
+    },
+    "wellness": {
+      "general": "General",
+      "weight": "Weight",
+      "body_condition": "Body condition",
+      "mobility": "Mobility",
+      "mood_energy": "Mood",
+      "skin_coat": "Skin/Coat",
+      "appetite_hydration": "Appetite/Hydration",
+      "custom": "Custom",
+      "fallback": "Wellness Check"
+    },
+    "areas": {
+      "paws": "Paws",
+      "ears": "Ears",
+      "eyes": "Eyes",
+      "teeth": "Teeth",
+      "skin_fur": "Skin/Fur",
+      "face": "Face",
+      "full_body": "Full Body",
+      "other": "Other"
+    },
+    "suffix": {
+      "medication": "Medication",
+      "vaccine": "Vaccine",
+      "prevention": "Prevention"
+    }
+  },
+  "cadenceSelector": {
+    "recommended": "Recommended",
+    "labels": {
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "biweekly": "Every 2 weeks",
+      "monthly": "Monthly",
+      "every3Months": "Every 3 months",
+      "every6Months": "Every 6 months",
+      "yearly": "Yearly",
+      "custom": "Custom",
+      "once": "Once / Never"
+    }
+  },
+  "frequencySelector": {
+    "repeat": "Repeat",
+    "everyDay": "Every day",
+    "weekdays": "Weekdays",
+    "weekends": "Weekends",
+    "customDays": "Custom days"
+  },
+  "socialWalkSettings": {
+    "title": "Social Walk Settings",
+    "visibility": "Visibility",
+    "friendsOnly": "Friends only",
+    "friendsOnlyDesc": "Only mutual pet friends can see this walk",
+    "nearbyPets": "Nearby pets",
+    "nearbyPetsDesc": "Discoverable by pets in your area",
+    "maxPets": "Max pets (including yours)",
+    "meetingArea": "Meeting area (general)",
+    "meetingAreaPlaceholder": "e.g., Central Park, Downtown area",
+    "meetingAreaHelp": "Approximate area shown publicly for privacy",
+    "meetingLocation": "Exact meeting location (private)",
+    "meetingLocationPlaceholder": "e.g., Main entrance by the fountain",
+    "meetingLocationHelp": "Only shown to approved participants",
+    "approvalRequired": "Approval required",
+    "approvalRequiredDesc": "Review join requests before accepting",
+    "notesForGuests": "Notes for guests (optional)",
+    "notesPlaceholder": "e.g., Bring water, poop bags provided"
+  },
   "editMedicalProfile": {
     "validationTitle": "Validation Error",
     "validationBody": "Please check the highlighted fields.",
