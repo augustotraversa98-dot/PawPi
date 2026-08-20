@@ -351,7 +351,7 @@ export default function EditMedicalProfileModal({
           marginBottom: 6,
         }}
       >
-        Sex / Gender
+        {t("editMedicalProfile.fieldGender")}
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["male", "female"].map((option) => (
@@ -393,7 +393,7 @@ export default function EditMedicalProfileModal({
           marginBottom: 6,
         }}
       >
-        Weight Unit
+        {t("editMedicalProfile.fieldWeightUnit")}
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["lbs", "kg"].map((unit) => (
@@ -434,7 +434,7 @@ export default function EditMedicalProfileModal({
           marginBottom: 6,
         }}
       >
-        Spayed / Neutered
+        {t("editMedicalProfile.fieldSpayNeuter")}
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {["Spayed", "Neutered", "Not spayed/neutered", "Unknown"].map(
@@ -478,17 +478,17 @@ export default function EditMedicalProfileModal({
     <KeyboardSafeFormModal
       visible={visible}
       onClose={onClose}
-      title="Edit Medical Profile"
+      title={t("editMedicalProfile.title")}
       onCtaPress={handleSave}
-      ctaLabel={loading ? "Saving…" : "Save Medical Profile"}
+      ctaLabel={loading ? t("editMedicalProfile.saving") : t("editMedicalProfile.saveCta")}
       ctaDisabled={loading}
     >
-      <FormSection title="Basic Information">
+      <FormSection title={t("editMedicalProfile.sectionBasic")}>
         <FormInput
-          label="Breed"
+          label={t("editMedicalProfile.fieldBreed")}
           value={breed}
           onChangeText={setBreed}
-          placeholder="e.g., Golden Retriever"
+          placeholder={t("editMedicalProfile.breedPlaceholder")}
         />
         <View style={{ marginBottom: 16 }}>
           <Text
@@ -499,7 +499,7 @@ export default function EditMedicalProfileModal({
               marginBottom: 6,
             }}
           >
-            Birthday
+            {t("editMedicalProfile.fieldBirthday")}
           </Text>
           <BirthdayOrAgeField
             birthdayUnknown={birthdayUnknown}
@@ -513,58 +513,58 @@ export default function EditMedicalProfileModal({
           />
         </View>
         <FormDateField
-          label="Adoption Date (optional)"
+          label={t("editMedicalProfile.fieldAdoptionDate")}
           value={adoptionDate}
           onChange={setAdoptionDate}
           error={errors.adoptionDate}
         />
         <GenderSelector />
         <FormInput
-          label="Current Weight"
+          label={t("editMedicalProfile.fieldWeight")}
           value={currentWeight}
           onChangeText={setCurrentWeight}
-          placeholder="e.g., 65"
+          placeholder={t("editMedicalProfile.weightPlaceholder")}
           keyboardType="decimal-pad"
           error={errors.currentWeight}
         />
         <WeightUnitSelector />
       </FormSection>
 
-      <FormSection title="Medical Details">
+      <FormSection title={t("editMedicalProfile.sectionMedical")}>
         <SpayedNeuteredSelector />
         <FormDateField
-          label="Spayed / Neutered Date (optional)"
+          label={t("editMedicalProfile.fieldSpayNeuterDate")}
           value={spayedNeuteredDate}
           onChange={setSpayedNeuteredDate}
           error={errors.spayedNeuteredDate}
         />
         <FormInput
-          label="Microchip ID"
+          label={t("editMedicalProfile.fieldMicrochip")}
           value={microchipId}
           onChangeText={setMicrochipId}
-          placeholder="e.g., 985112345678900"
+          placeholder={t("editMedicalProfile.microchipPlaceholder")}
         />
         <FormInput
-          label="Primary Veterinarian"
+          label={t("editMedicalProfile.fieldPrimaryVet")}
           value={primaryVetName}
           onChangeText={setPrimaryVetName}
           placeholder="e.g., Dr. Sarah Johnson"
         />
         <FormInput
-          label="Primary Clinic"
+          label={t("editMedicalProfile.fieldPrimaryClinic")}
           value={primaryClinicName}
           onChangeText={setPrimaryClinicName}
           placeholder="e.g., Happy Paws Veterinary Clinic"
         />
         <FormInput
-          label="Vet Phone"
+          label={t("editMedicalProfile.fieldVetPhone")}
           value={vetPhone}
           onChangeText={setVetPhone}
           placeholder="(555) 123-4567"
           keyboardType="phone-pad"
         />
         <FormInput
-          label="Vet Email (optional)"
+          label={t("editMedicalProfile.fieldVetEmail")}
           value={vetEmail}
           onChangeText={setVetEmail}
           placeholder="clinic@example.com"
@@ -572,35 +572,35 @@ export default function EditMedicalProfileModal({
           error={errors.vetEmail}
         />
         <FormInput
-          label="Emergency Contact Name"
+          label={t("editMedicalProfile.fieldEmergencyContact")}
           value={emergencyContactName}
           onChangeText={setEmergencyContactName}
           placeholder="e.g., Jane Doe"
         />
         <FormInput
-          label="Emergency Contact Phone"
+          label={t("editMedicalProfile.fieldEmergencyPhone")}
           value={emergencyContactPhone}
           onChangeText={setEmergencyContactPhone}
           placeholder="(555) 987-6543"
           keyboardType="phone-pad"
         />
         <FormInput
-          label="Insurance Provider"
+          label={t("editMedicalProfile.fieldInsurance")}
           value={insuranceProvider}
           onChangeText={setInsuranceProvider}
           placeholder="e.g., PetPlan Premium"
         />
         <FormInput
-          label="Insurance Policy Number"
+          label={t("editMedicalProfile.fieldPolicyNumber")}
           value={insurancePolicyNumber}
           onChangeText={setInsurancePolicyNumber}
           placeholder="e.g., PP123456789"
         />
       </FormSection>
 
-      <FormSection title="Notes">
+      <FormSection title={t("editMedicalProfile.sectionNotes")}>
         <FormInput
-          label="Medical Notes"
+          label={t("editMedicalProfile.fieldMedicalNotes")}
           value={medicalNotes}
           onChangeText={setMedicalNotes}
           placeholder={t("editMedicalProfile.notesPlaceholder")}

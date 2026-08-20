@@ -211,7 +211,7 @@ export default function FeedScreen() {
         >
           <ActivityIndicator size="large" color={COLORS.coral} />
           <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginTop: SPACING.md, fontWeight: "600" }]}>
-            Loading posts...
+            {t("feed.loadingPosts")}
           </Text>
         </View>
       ) : postsError && posts.length === 0 ? (
@@ -392,7 +392,7 @@ export default function FeedScreen() {
           >
             <ActivityIndicator size="small" color="#FFF" />
             <Text style={[TYPE.callout, { color: "#FFF", fontWeight: "700" }]}>
-              Uploading photo...
+              {t("feed.uploadingPhoto")}
             </Text>
           </View>
         </View>

@@ -109,7 +109,7 @@ describe("EditMedicalProfileModal — cache invalidation on save", () => {
     );
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
 
-    fireEvent.press(getByText("Save Medical Profile"));
+    fireEvent.press(getByText("editMedicalProfile.saveCta"));
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["pets"] });
@@ -130,7 +130,7 @@ describe("EditMedicalProfileModal — cache invalidation on save", () => {
     );
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
 
-    fireEvent.press(getByText("Save Medical Profile"));
+    fireEvent.press(getByText("editMedicalProfile.saveCta"));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     fireEvent.press(api.getByTestId("birthday-unsure"));
     fireEvent.changeText(api.getByTestId("estimated-age-years"), "4");
     fireEvent.changeText(api.getByTestId("estimated-age-months"), "2");
-    fireEvent.press(api.getByText("Save Medical Profile"));
+    fireEvent.press(api.getByText("editMedicalProfile.saveCta"));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = requestBody();
@@ -226,7 +226,7 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     // birthday stored yet) without typing a birthday; the point is that a
     // previously-stored estimate must survive being left un-submitted.
     fireEvent.press(api.getByTestId("birthday-known"));
-    fireEvent.press(api.getByText("Save Medical Profile"));
+    fireEvent.press(api.getByText("editMedicalProfile.saveCta"));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = requestBody();

@@ -1,8 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { healthColors } from "@/constants/healthColors";
 
 export function VetInformation() {
+  const { t } = useTranslation();
   return (
     <View>
       <Text
@@ -13,7 +15,7 @@ export function VetInformation() {
           marginBottom: 12,
         }}
       >
-        Primary Veterinarian
+        {t("vetInformation.primaryVet")}
       </Text>
       <View
         style={{
@@ -79,7 +81,7 @@ export function VetInformation() {
               color: "#FFF",
             }}
           >
-            Schedule Appointment
+            {t("vetInformation.scheduleAppointment")}
           </Text>
         </TouchableOpacity>
       </View>

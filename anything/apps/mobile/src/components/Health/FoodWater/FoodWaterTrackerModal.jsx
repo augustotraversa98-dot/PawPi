@@ -197,7 +197,7 @@ export default function FoodWaterTrackerModal({
           }}
         >
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-            {trackingType === "food" ? "Log Food" : "Log Water"}
+            {trackingType === "food" ? t("trackers.foodWater.titleFood") : t("trackers.foodWater.titleWater")}
           </Text>
           <TouchableOpacity
             onPress={handleClose}
@@ -242,7 +242,7 @@ export default function FoodWaterTrackerModal({
                   marginBottom: 8,
                 }}
               >
-                Logged!
+                {t("trackers.shared.logged")}
               </Text>
               <Text
                 style={{
@@ -252,8 +252,8 @@ export default function FoodWaterTrackerModal({
                 }}
               >
                 {trackingType === "food"
-                  ? "Food entry added to today's timeline"
-                  : "Water intake logged successfully"}
+                  ? t("trackers.foodWater.confirmedFood")
+                  : t("trackers.foodWater.confirmedWater")}
               </Text>
             </View>
           )}
@@ -269,7 +269,7 @@ export default function FoodWaterTrackerModal({
                   marginBottom: 8,
                 }}
               >
-                What would you like to log?
+                {t("trackers.foodWater.choosePrompt")}
               </Text>
 
               <TouchableOpacity
@@ -309,10 +309,10 @@ export default function FoodWaterTrackerModal({
                       marginBottom: 4,
                     }}
                   >
-                    Food & Treats
+                    {t("trackers.foodWater.optionFood")}
                   </Text>
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    Log meals, snacks, and treats
+                    {t("trackers.foodWater.optionFoodDesc")}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -354,10 +354,10 @@ export default function FoodWaterTrackerModal({
                       marginBottom: 4,
                     }}
                   >
-                    Water Intake
+                    {t("trackers.foodWater.optionWater")}
                   </Text>
                   <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    Track hydration and thirst
+                    {t("trackers.foodWater.optionWaterDesc")}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -375,12 +375,12 @@ export default function FoodWaterTrackerModal({
                   marginBottom: 4,
                 }}
               >
-                What did your pet eat?
+                {t("trackers.foodWater.quickPrompt")}
               </Text>
               <Text
                 style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 12 }}
               >
-                Quick log to save time, or add details for tracking patterns.
+                {t("trackers.foodWater.quickHint")}
               </Text>
 
               <TouchableOpacity
@@ -412,7 +412,7 @@ export default function FoodWaterTrackerModal({
                         marginBottom: 6,
                       }}
                     >
-                      Same as usual
+                      {t("trackers.foodWater.sameAsUsual")}
                     </Text>
                     <Text
                       style={{
@@ -422,7 +422,7 @@ export default function FoodWaterTrackerModal({
                         textAlign: "center",
                       }}
                     >
-                      Regular meal, normal appetite, finished food
+                      {t("trackers.foodWater.sameAsUsualDesc")}
                     </Text>
                   </>
                 )}
@@ -447,7 +447,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 6,
                   }}
                 >
-                  Something changed
+                  {t("trackers.foodWater.somethingChanged")}
                 </Text>
                 <Text
                   style={{
@@ -456,7 +456,7 @@ export default function FoodWaterTrackerModal({
                     textAlign: "center",
                   }}
                 >
-                  Different food, appetite, or behavior
+                  {t("trackers.foodWater.somethingChangedDesc")}
                 </Text>
               </TouchableOpacity>
 
@@ -465,7 +465,7 @@ export default function FoodWaterTrackerModal({
                 style={{ alignItems: "center", paddingVertical: 12 }}
               >
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  ← Back
+                  {t("trackers.shared.back")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -482,7 +482,7 @@ export default function FoodWaterTrackerModal({
                   marginBottom: -8,
                 }}
               >
-                Food details
+                {t("trackers.foodWater.foodDetails")}
               </Text>
 
               {/* Meal Type */}
@@ -495,7 +495,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Meal type
+                  {t("trackers.foodWater.mealType")}
                 </Text>
                 <View
                   style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
@@ -540,12 +540,12 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 8,
                   }}
                 >
-                  Food name or type
+                  {t("trackers.foodWater.foodNameLabel")}
                 </Text>
                 <TextInput
                   value={foodName}
                   onChangeText={setFoodName}
-                  placeholder="e.g., Royal Canin, chicken & rice"
+                  placeholder={t("trackers.foodWater.foodNamePlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   style={{
                     backgroundColor: C.card,
@@ -569,12 +569,12 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 8,
                   }}
                 >
-                  Amount
+                  {t("trackers.foodWater.amount")}
                 </Text>
                 <TextInput
                   value={amount}
                   onChangeText={setAmount}
-                  placeholder="e.g., 1 cup, 5 treats"
+                  placeholder={t("trackers.foodWater.amountPlaceholder")}
                   placeholderTextColor={C.mutedBrown + "80"}
                   style={{
                     backgroundColor: C.card,
@@ -598,7 +598,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Appetite
+                  {t("trackers.foodWater.appetite")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["low", "normal", "high"].map((level) => (
@@ -640,13 +640,13 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Did your pet finish the food?
+                  {t("trackers.foodWater.finishedLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {[
-                    { value: "yes", label: "Yes" },
-                    { value: "partially", label: "Partially" },
-                    { value: "no", label: "No" },
+                    { value: "yes", label: t("trackers.shared.yes") },
+                    { value: "partially", label: t("trackers.shared.partially") },
+                    { value: "no", label: t("trackers.shared.no") },
                   ].map((option) => (
                     <TouchableOpacity
                       key={option.value}
@@ -691,7 +691,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Any vomiting, refusal to eat, or unusual behavior?
+                  {t("trackers.foodWater.vomitingLabel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
@@ -713,7 +713,7 @@ export default function FoodWaterTrackerModal({
                         color: !vomiting ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      No
+                      {t("trackers.shared.no")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -735,7 +735,7 @@ export default function FoodWaterTrackerModal({
                         color: vomiting ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      Yes
+                      {t("trackers.shared.yes")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -751,7 +751,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 8,
                   }}
                 >
-                  Notes (optional)
+                  {t("trackers.foodWater.notesLabel")}
                 </Text>
                 <TextInput
                   value={foodNotes}
@@ -799,7 +799,7 @@ export default function FoodWaterTrackerModal({
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Log Food Entry
+                    {t("trackers.foodWater.submitFood")}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -809,7 +809,7 @@ export default function FoodWaterTrackerModal({
                 style={{ alignItems: "center", paddingVertical: 8 }}
               >
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  ← Back
+                  {t("trackers.shared.back")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -826,7 +826,7 @@ export default function FoodWaterTrackerModal({
                   marginBottom: -8,
                 }}
               >
-                Water intake
+                {t("trackers.foodWater.waterDetails")}
               </Text>
 
               {/* Water Intake Level */}
@@ -839,7 +839,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Water intake level
+                  {t("trackers.foodWater.waterLevel")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {["low", "normal", "high"].map((level) => (
@@ -883,7 +883,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  More thirsty than usual?
+                  {t("trackers.foodWater.moreThirsty")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
@@ -905,7 +905,7 @@ export default function FoodWaterTrackerModal({
                         color: !moreThirsty ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      No
+                      {t("trackers.shared.no")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -930,7 +930,7 @@ export default function FoodWaterTrackerModal({
                         color: moreThirsty ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      Yes
+                      {t("trackers.shared.yes")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -946,7 +946,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 10,
                   }}
                 >
-                  Less thirsty than usual?
+                  {t("trackers.foodWater.lessThirsty")}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
@@ -968,7 +968,7 @@ export default function FoodWaterTrackerModal({
                         color: !lessThirsty ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      No
+                      {t("trackers.shared.no")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -993,7 +993,7 @@ export default function FoodWaterTrackerModal({
                         color: lessThirsty ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      Yes
+                      {t("trackers.shared.yes")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1009,7 +1009,7 @@ export default function FoodWaterTrackerModal({
                     marginBottom: 8,
                   }}
                 >
-                  Notes (optional)
+                  {t("trackers.foodWater.notesLabel")}
                 </Text>
                 <TextInput
                   value={waterNotes}
@@ -1057,7 +1057,7 @@ export default function FoodWaterTrackerModal({
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Log Water Intake
+                    {t("trackers.foodWater.submitWater")}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1067,7 +1067,7 @@ export default function FoodWaterTrackerModal({
                 style={{ alignItems: "center", paddingVertical: 8 }}
               >
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  ← Back
+                  {t("trackers.shared.back")}
                 </Text>
               </TouchableOpacity>
             </View>

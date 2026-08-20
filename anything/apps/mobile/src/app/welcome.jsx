@@ -3,6 +3,7 @@ import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuthModal } from "@/utils/auth/store";
+import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { Button, PressableScale, PawMark } from "@/components/ui";
 import {
@@ -12,6 +13,7 @@ import {
 } from "../../__create/boot-trace";
 
 export default function WelcomeScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { open } = useAuthModal();
@@ -76,7 +78,7 @@ export default function WelcomeScreen() {
               },
             ]}
           >
-            Access for vets & businesses
+            {t("welcome.vetAccessLink")}
           </Text>
         </PressableScale>
 
@@ -111,7 +113,7 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          Your pet's daily care, moments, and community — all in one place.
+          {t("welcome.tagline")}
         </Text>
 
         {/* Spacer to push buttons down */}
@@ -121,7 +123,7 @@ export default function WelcomeScreen() {
         <View style={{ gap: SPACING.lg, marginTop: SPACING.huge }}>
           {/* Create Account Button */}
           <Button
-            title="Create account"
+            title={t("welcome.createAccount")}
             variant="primary"
             size="lg"
             onPress={handleCreateAccount}
@@ -129,7 +131,7 @@ export default function WelcomeScreen() {
 
           {/* Log In Button */}
           <Button
-            title="Log in"
+            title={t("welcome.logIn")}
             variant="secondary"
             size="lg"
             onPress={handleLogin}
@@ -139,7 +141,7 @@ export default function WelcomeScreen() {
           <PressableScale
             onPress={handleForgotPassword}
             accessibilityRole="button"
-            accessibilityLabel="Forgot password?"
+            accessibilityLabel={t("welcome.forgotPassword")}
             style={{ alignSelf: "center", paddingVertical: SPACING.sm }}
           >
             <Text
@@ -148,7 +150,7 @@ export default function WelcomeScreen() {
                 { color: COLORS.mutedBrown, textDecorationLine: "underline" },
               ]}
             >
-              Forgot password?
+              {t("welcome.forgotPassword")}
             </Text>
           </PressableScale>
         </View>

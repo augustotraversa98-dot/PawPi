@@ -69,7 +69,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
   const savePeeLog = async (logData) => {
     if (!currentPet?.id) {
       console.error("[PeeTracker] No current pet found");
-      alert("Could not save. Please select a pet first.");
+      alert(t("trackers.pee.couldNotSaveNoPet"));
       return false;
     }
 
@@ -115,7 +115,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
       return true;
     } catch (error) {
       console.error("[PeeTracker] Error saving pee log:", error);
-      alert("Could not save. Please try again.");
+      alert(t("trackers.pee.couldNotSave"));
       return false;
     } finally {
       setIsSaving(false);
@@ -228,7 +228,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
             <Text
               style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
             >
-              Log Pee
+              {t("trackers.pee.title")}
             </Text>
             <TouchableOpacity
               onPress={handleClose}
@@ -263,7 +263,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginTop: 16,
                   }}
                 >
-                  Saving...
+                  {t("trackers.pee.saving")}
                 </Text>
               </View>
             )}
@@ -292,7 +292,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginBottom: 8,
                   }}
                 >
-                  Logged!
+                  {t("trackers.pee.logged")}
                 </Text>
                 <Text
                   style={{
@@ -301,7 +301,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     textAlign: "center",
                   }}
                 >
-                  Pee entry added to today's timeline
+                  {t("trackers.pee.confirmedBody")}
                 </Text>
               </View>
             )}
@@ -344,8 +344,8 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     }}
                   >
                     {warningIsUrgent
-                      ? "Worth veterinary attention"
-                      : "Worth noting"}
+                      ? t("trackers.pee.worthVetAttention")
+                      : t("trackers.pee.worthNoting")}
                   </Text>
                 </View>
 
@@ -367,9 +367,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    This may be worth discussing with a veterinarian. Seek
-                    professional care if your dog seems unable to pee, is
-                    painful, or symptoms continue.
+                    {t("trackers.pee.warningBody")}
                   </Text>
                 </View>
 
@@ -390,7 +388,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Got it, thanks
+                    {t("trackers.pee.gotItThanks")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -407,7 +405,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginBottom: 4,
                   }}
                 >
-                  How was your pet's pee?
+                  {t("trackers.pee.quickPrompt")}
                 </Text>
                 <Text
                   style={{
@@ -416,7 +414,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginBottom: 12,
                   }}
                 >
-                  Quick log to save time, or add details to track patterns.
+                  {t("trackers.pee.quickHint")}
                 </Text>
 
                 <TouchableOpacity
@@ -441,7 +439,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 6,
                     }}
                   >
-                    Same as usual
+                    {t("trackers.pee.sameAsUsual")}
                   </Text>
                   <Text
                     style={{
@@ -451,7 +449,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    Normal volume, color, and no concerns
+                    {t("trackers.pee.sameAsUsualDesc")}
                   </Text>
                 </TouchableOpacity>
 
@@ -474,7 +472,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 6,
                     }}
                   >
-                    Something changed
+                    {t("trackers.pee.somethingChanged")}
                   </Text>
                   <Text
                     style={{
@@ -483,7 +481,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       textAlign: "center",
                     }}
                   >
-                    Different color, difficulty, or other observations
+                    {t("trackers.pee.somethingChangedDesc")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -500,7 +498,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                     marginBottom: -8,
                   }}
                 >
-                  Pee details
+                  {t("trackers.pee.details")}
                 </Text>
 
                 {/* Volume */}
@@ -513,7 +511,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Volume
+                    {t("trackers.pee.volume")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {["small", "normal", "large"].map((v) => (
@@ -555,7 +553,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Color
+                    {t("trackers.pee.colorLabel")}
                   </Text>
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
@@ -600,7 +598,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Accident in house?
+                    {t("trackers.pee.accidentLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -622,7 +620,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: !accident ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -644,7 +642,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: accident ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -660,7 +658,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Difficulty peeing?
+                    {t("trackers.pee.difficultyLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -682,7 +680,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: !difficulty ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -704,7 +702,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: difficulty ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -720,7 +718,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Pain or crying?
+                    {t("trackers.pee.painLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -742,7 +740,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: !pain ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -764,7 +762,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: pain ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -780,7 +778,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Blood visible?
+                    {t("trackers.pee.bloodLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -802,7 +800,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: !blood ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -824,7 +822,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: blood ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -840,7 +838,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 10,
                     }}
                   >
-                    Increased thirst?
+                    {t("trackers.pee.increasedThirstLabel")}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
@@ -862,7 +860,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: !increasedThirst ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        No
+                        {t("trackers.shared.noLabel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -884,7 +882,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                           color: increasedThirst ? "#FFF" : C.warmBrown,
                         }}
                       >
-                        Yes
+                        {t("trackers.shared.yesLabel")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -900,7 +898,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                       marginBottom: 8,
                     }}
                   >
-                    Notes (optional)
+                    {t("trackers.pee.notesLabel")}
                   </Text>
                   <TextInput
                     value={notes}
@@ -942,7 +940,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                   <Text
                     style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}
                   >
-                    Log Pee Entry
+                    {t("trackers.pee.submit")}
                   </Text>
                 </TouchableOpacity>
 
@@ -951,7 +949,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
                   style={{ alignItems: "center", paddingVertical: 8 }}
                 >
                   <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                    ← Back
+                    {t("trackers.pee.back")}
                   </Text>
                 </TouchableOpacity>
               </View>
