@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Switch, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   Edit3,
   ChevronRight,
@@ -26,6 +27,7 @@ const C = {
 };
 
 export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
+  const { t } = useTranslation();
   const config = ROUTINE_TYPE_CONFIG[routine.type];
 
   // Delete is a SOFT delete (handled by the store): the routine leaves every
@@ -34,12 +36,12 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
   // pauses. Confirm first; the success/error toast is owned by the parent.
   const handleDeletePress = () => {
     Alert.alert(
-      "Delete this routine?",
-      "This removes it and its future reminders. Past logs and history are kept.",
+      t("routineCard.deleteTitle"),
+      t("routineCard.deleteBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("routineCard.delete"),
           style: "destructive",
           onPress: () => onDelete?.(routine.id),
         },
@@ -53,13 +55,13 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
   let displayLabel = config?.label || routine.title;
   let medicalCareItemsSummary = null;
   const careTypeLabels = {
-    medication: "Medication",
-    vaccine: "Vaccine",
-    flea_tick: "Flea/tick prevention",
-    deworming: "Deworming",
-    heartworm: "Heartworm prevention",
-    supplement: "Supplement",
-    other: "Medical care",
+    medication: t("routineCard.care.medication"),
+    vaccine: t("routineCard.care.vaccine"),
+    flea_tick: t("routineCard.care.flea_tick"),
+    deworming: t("routineCard.care.deworming"),
+    heartworm: t("routineCard.care.heartworm"),
+    supplement: t("routineCard.care.supplement"),
+    other: t("routineCard.care.other"),
   };
   if (
     routine.type === ROUTINE_TYPES.MEDICAL_CARE &&
@@ -67,30 +69,30 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
     routine.medicalCareItems.length > 0
   ) {
     // New multi-item format
-    displayLabel = "Medical Care";
+    displayLabel = t("routineCard.care.medicalCareLabel");
     medicalCareItemsSummary = routine.medicalCareItems
-      .map((it) => it.name || careTypeLabels[it.type] || "Item")
+      .map((it) => it.name || careTypeLabels[it.type] || t("routineCard.care.item"))
       .join(" · ");
   } else if (
     routine.type === ROUTINE_TYPES.MEDICAL_CARE &&
     routine.medicalCareSubtype
   ) {
     const careLabel =
-      careTypeLabels[routine.medicalCareSubtype] || "Medical care";
+      careTypeLabels[routine.medicalCareSubtype] || t("routineCard.care.other");
     displayLabel = routine.name ? `${routine.name} · ${careLabel}` : careLabel;
   } else if (
     routine.type === ROUTINE_TYPES.WELLNESS_CHECK &&
     routine.wellnessCheckItems
   ) {
     const itemLabels = {
-      general: "General",
-      weight: "Weight",
-      body_condition: "Body condition",
-      mobility: "Mobility",
-      mood_energy: "Mood",
-      skin_coat: "Skin/Coat",
-      appetite_hydration: "Appetite/Hydration",
-      custom: "Custom",
+      general: t("routineCard.wellness.general"),
+      weight: t("routineCard.wellness.weight"),
+      body_condition: t("routineCard.wellness.body_condition"),
+      mobility: t("routineCard.wellness.mobility"),
+      mood_energy: t("routineCard.wellness.mood_energy"),
+      skin_coat: t("routineCard.wellness.skin_coat"),
+      appetite_hydration: t("routineCard.wellness.appetite_hydration"),
+      custom: t("routineCard.wellness.custom"),
     };
     const items = routine.wellnessCheckItems
       .map((item) => {
@@ -108,16 +110,16 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
       })
       .filter(Boolean)
       .join(" · ");
-    displayLabel = items || "Wellness Check";
+    displayLabel = items || t("routineCard.wellness.fallback");
   } else if (
     routine.type === ROUTINE_TYPES.MEDICATION &&
     routine.medicationName
   ) {
-    displayLabel = `${routine.medicationName} · Medication`;
+    displayLabel = `${routine.medicationName} · ${t("routineCard.suffix.medication")}`;
   } else if (routine.type === ROUTINE_TYPES.VACCINE && routine.name) {
-    displayLabel = `${routine.name} · Vaccine`;
+    displayLabel = `${routine.name} · ${t("routineCard.suffix.vaccine")}`;
   } else if (routine.type === ROUTINE_TYPES.PREVENTIVE && routine.productName) {
-    displayLabel = `${routine.productName} · Prevention`;
+    displayLabel = `${routine.productName} · ${t("routineCard.suffix.prevention")}`;
   }
 
   // For Photo Check routines, show selected body areas
@@ -137,14 +139,14 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
 
     if (activeSchedules.length > 0) {
       const areaLabels = {
-        paws: "Paws",
-        ears: "Ears",
-        eyes: "Eyes",
-        teeth: "Teeth",
-        skin_fur: "Skin/Fur",
-        face: "Face",
-        full_body: "Full Body",
-        other: "Other",
+        paws: t("routineCard.areas.paws"),
+        ears: t("routineCard.areas.ears"),
+        eyes: t("routineCard.areas.eyes"),
+        teeth: t("routineCard.areas.teeth"),
+        skin_fur: t("routineCard.areas.skin_fur"),
+        face: t("routineCard.areas.face"),
+        full_body: t("routineCard.areas.full_body"),
+        other: t("routineCard.areas.other"),
       };
 
       const areaNames = activeSchedules
@@ -311,7 +313,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
                 color: routine.isActive ? C.sage : C.mutedBrown,
               }}
             >
-              {routine.isActive ? "ACTIVE" : "INACTIVE"}
+              {routine.isActive ? t("routineCard.active") : t("routineCard.inactive")}
             </Text>
           </View>
         </View>
@@ -346,7 +348,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
                 letterSpacing: 0.5,
               }}
             >
-              Schedule
+              {t("routineCard.schedule")}
             </Text>
             <Text
               style={{
@@ -382,7 +384,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
                   letterSpacing: 0.5,
                 }}
               >
-                Next
+                {t("routineCard.next")}
               </Text>
               <Text
                 style={{
@@ -402,7 +404,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
               onPress={async () => {
                 // Add all walks to calendar
                 for (const walk of routine.walks) {
-                  await addWalkToCalendar(walk, routine.petName || "Your pet");
+                  await addWalkToCalendar(walk, routine.petName || t("routineCard.yourPet"));
                 }
               }}
               style={{
@@ -426,7 +428,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
                   color: C.sage,
                 }}
               >
-                Add to calendar
+                {t("routineCard.addToCalendar")}
               </Text>
             </TouchableOpacity>
           )}
@@ -450,7 +452,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
       >
         <Edit3 size={14} color={C.mutedBrown} />
         <Text style={{ fontSize: 13, fontWeight: "600", color: C.mutedBrown }}>
-          Edit Routine
+          {t("routineCard.editRoutine")}
         </Text>
         <ChevronRight size={14} color={C.mutedBrown} />
       </TouchableOpacity>
@@ -473,7 +475,7 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
       >
         <Trash2 size={14} color={C.coral} />
         <Text style={{ fontSize: 13, fontWeight: "600", color: C.coral }}>
-          Delete Routine
+          {t("routineCard.deleteRoutine")}
         </Text>
       </TouchableOpacity>
     </View>

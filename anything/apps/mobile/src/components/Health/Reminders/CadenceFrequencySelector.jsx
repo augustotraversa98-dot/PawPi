@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const C = {
@@ -8,6 +9,8 @@ const C = {
   warmBrown: "#3B241B",
 };
 
+// English labels are used as a fallback when a caller renders outside a
+// translation context; the component itself localizes via `t()` below.
 export const CADENCE_LABELS = {
   [ROUTINE_FREQUENCY.HOURLY]: "Hourly",
   [ROUTINE_FREQUENCY.DAILY]: "Daily",
@@ -19,6 +22,19 @@ export const CADENCE_LABELS = {
   [ROUTINE_FREQUENCY.YEARLY]: "Yearly",
   [ROUTINE_FREQUENCY.CUSTOM]: "Custom",
   [ROUTINE_FREQUENCY.ONCE]: "Once / Never",
+};
+
+const CADENCE_I18N_KEYS = {
+  [ROUTINE_FREQUENCY.HOURLY]: "cadenceSelector.labels.hourly",
+  [ROUTINE_FREQUENCY.DAILY]: "cadenceSelector.labels.daily",
+  [ROUTINE_FREQUENCY.WEEKLY]: "cadenceSelector.labels.weekly",
+  [ROUTINE_FREQUENCY.BIWEEKLY]: "cadenceSelector.labels.biweekly",
+  [ROUTINE_FREQUENCY.MONTHLY]: "cadenceSelector.labels.monthly",
+  [ROUTINE_FREQUENCY.EVERY_3_MONTHS]: "cadenceSelector.labels.every3Months",
+  [ROUTINE_FREQUENCY.EVERY_6_MONTHS]: "cadenceSelector.labels.every6Months",
+  [ROUTINE_FREQUENCY.YEARLY]: "cadenceSelector.labels.yearly",
+  [ROUTINE_FREQUENCY.CUSTOM]: "cadenceSelector.labels.custom",
+  [ROUTINE_FREQUENCY.ONCE]: "cadenceSelector.labels.once",
 };
 
 export const CADENCE_OPTIONS = [
@@ -58,6 +74,7 @@ export default function CadenceFrequencySelector({
   style,
   testID = "cadence-frequency",
 }) {
+  const { t } = useTranslation();
   return (
     <View style={[{ gap: 8 }, style]}>
       {options.map((freq) => {
@@ -85,14 +102,14 @@ export default function CadenceFrequencySelector({
                 color: selected ? color : C.warmBrown,
               }}
             >
-              {CADENCE_LABELS[freq]}
+              {CADENCE_I18N_KEYS[freq] ? t(CADENCE_I18N_KEYS[freq]) : CADENCE_LABELS[freq]}
             </Text>
             {recommended === freq && (
               <Text
                 testID={`${testID}-recommended-${freq}`}
                 style={{ fontSize: 12, fontWeight: "700", color }}
               >
-                Recommended
+                {t("cadenceSelector.recommended")}
               </Text>
             )}
           </TouchableOpacity>

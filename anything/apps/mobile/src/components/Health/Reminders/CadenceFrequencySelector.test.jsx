@@ -1,6 +1,27 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { Text } from "react-native";
+
+// Resolve i18n keys to their English values so text-based assertions still pass.
+jest.mock("react-i18next", () => ({
+  useTranslation: () => {
+    const map = {
+      "cadenceSelector.recommended": "Recommended",
+      "cadenceSelector.labels.hourly": "Hourly",
+      "cadenceSelector.labels.daily": "Daily",
+      "cadenceSelector.labels.weekly": "Weekly",
+      "cadenceSelector.labels.biweekly": "Every 2 weeks",
+      "cadenceSelector.labels.monthly": "Monthly",
+      "cadenceSelector.labels.every3Months": "Every 3 months",
+      "cadenceSelector.labels.every6Months": "Every 6 months",
+      "cadenceSelector.labels.yearly": "Yearly",
+      "cadenceSelector.labels.custom": "Custom",
+      "cadenceSelector.labels.once": "Once / Never",
+    };
+    return { t: (k) => map[k] ?? k };
+  },
+}));
+
 import CadenceFrequencySelector, {
   CADENCE_LABELS,
 } from "./CadenceFrequencySelector";

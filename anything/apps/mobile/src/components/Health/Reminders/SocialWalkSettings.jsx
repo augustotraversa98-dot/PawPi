@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, TextInput, Switch } from "react-native";
 import { Users, MapPin, ShieldCheck } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: "#FFF7EF",
@@ -15,6 +16,7 @@ const C = {
 };
 
 export default function SocialWalkSettings({ walk, onChange }) {
+  const { t } = useTranslation();
   if (!walk.socialWalkEnabled) {
     return null;
   }
@@ -43,7 +45,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
             color: C.warmBrown,
           }}
         >
-          Social Walk Settings
+          {t("socialWalkSettings.title")}
         </Text>
       </View>
 
@@ -56,19 +58,19 @@ export default function SocialWalkSettings({ walk, onChange }) {
           marginBottom: 6,
         }}
       >
-        Visibility
+        {t("socialWalkSettings.visibility")}
       </Text>
       <View style={{ gap: 6, marginBottom: 12 }}>
         {[
           {
             value: "friends_only",
-            label: "Friends only",
-            description: "Only mutual pet friends can see this walk",
+            label: t("socialWalkSettings.friendsOnly"),
+            description: t("socialWalkSettings.friendsOnlyDesc"),
           },
           {
             value: "nearby_pets",
-            label: "Nearby pets",
-            description: "Discoverable by pets in your area",
+            label: t("socialWalkSettings.nearbyPets"),
+            description: t("socialWalkSettings.nearbyPetsDesc"),
           },
         ].map((option) => (
           <TouchableOpacity
@@ -114,7 +116,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
           marginBottom: 6,
         }}
       >
-        Max pets (including yours)
+        {t("socialWalkSettings.maxPets")}
       </Text>
       <View
         style={{
@@ -167,13 +169,13 @@ export default function SocialWalkSettings({ walk, onChange }) {
               color: C.mutedBrown,
             }}
           >
-            Meeting area (general)
+            {t("socialWalkSettings.meetingArea")}
           </Text>
         </View>
         <TextInput
           value={walk.meetingArea || ""}
           onChangeText={(text) => onChange("meetingArea", text)}
-          placeholder="e.g., Central Park, Downtown area"
+          placeholder={t("socialWalkSettings.meetingAreaPlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           style={{
             backgroundColor: C.card,
@@ -192,7 +194,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
             marginTop: 4,
           }}
         >
-          Approximate area shown publicly for privacy
+          {t("socialWalkSettings.meetingAreaHelp")}
         </Text>
       </View>
 
@@ -217,13 +219,13 @@ export default function SocialWalkSettings({ walk, onChange }) {
               color: C.mutedBrown,
             }}
           >
-            Exact meeting location (private)
+            {t("socialWalkSettings.meetingLocation")}
           </Text>
         </View>
         <TextInput
           value={walk.meetingLocationDetails || ""}
           onChangeText={(text) => onChange("meetingLocationDetails", text)}
-          placeholder="e.g., Main entrance by the fountain"
+          placeholder={t("socialWalkSettings.meetingLocationPlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           multiline
           numberOfLines={2}
@@ -246,7 +248,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
             marginTop: 4,
           }}
         >
-          Only shown to approved participants
+          {t("socialWalkSettings.meetingLocationHelp")}
         </Text>
       </View>
 
@@ -273,7 +275,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
               marginBottom: 2,
             }}
           >
-            Approval required
+            {t("socialWalkSettings.approvalRequired")}
           </Text>
           <Text
             style={{
@@ -281,7 +283,7 @@ export default function SocialWalkSettings({ walk, onChange }) {
               color: C.mutedBrown,
             }}
           >
-            Review join requests before accepting
+            {t("socialWalkSettings.approvalRequiredDesc")}
           </Text>
         </View>
         <Switch
@@ -302,12 +304,12 @@ export default function SocialWalkSettings({ walk, onChange }) {
             marginBottom: 6,
           }}
         >
-          Notes for guests (optional)
+          {t("socialWalkSettings.notesForGuests")}
         </Text>
         <TextInput
           value={walk.notesForGuests || ""}
           onChangeText={(text) => onChange("notesForGuests", text)}
-          placeholder="e.g., Bring water, poop bags provided"
+          placeholder={t("socialWalkSettings.notesPlaceholder")}
           placeholderTextColor={C.mutedBrown + "80"}
           multiline
           numberOfLines={2}

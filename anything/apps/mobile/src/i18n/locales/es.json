@@ -3053,6 +3053,97 @@
       "deleteFailed": "No se pudo eliminar la rutina. Probá de nuevo."
     }
   },
+  "routineCard": {
+    "deleteTitle": "¿Eliminar esta rutina?",
+    "deleteBody": "Se elimina la rutina y sus próximos recordatorios. Los registros e historial se conservan.",
+    "delete": "Eliminar",
+    "active": "ACTIVA",
+    "inactive": "INACTIVA",
+    "schedule": "Cronograma",
+    "next": "Próximo",
+    "addToCalendar": "Agregar al calendario",
+    "editRoutine": "Editar rutina",
+    "deleteRoutine": "Eliminar rutina",
+    "yourPet": "Tu mascota",
+    "care": {
+      "medication": "Medicación",
+      "vaccine": "Vacuna",
+      "flea_tick": "Prevención pulgas/garrapatas",
+      "deworming": "Desparasitación",
+      "heartworm": "Prevención gusano del corazón",
+      "supplement": "Suplemento",
+      "other": "Atención médica",
+      "medicalCareLabel": "Atención médica",
+      "item": "Ítem"
+    },
+    "wellness": {
+      "general": "General",
+      "weight": "Peso",
+      "body_condition": "Condición corporal",
+      "mobility": "Movilidad",
+      "mood_energy": "Ánimo",
+      "skin_coat": "Piel/Pelaje",
+      "appetite_hydration": "Apetito/Hidratación",
+      "custom": "Personalizado",
+      "fallback": "Chequeo de bienestar"
+    },
+    "areas": {
+      "paws": "Patas",
+      "ears": "Orejas",
+      "eyes": "Ojos",
+      "teeth": "Dientes",
+      "skin_fur": "Piel/Pelaje",
+      "face": "Cara",
+      "full_body": "Cuerpo entero",
+      "other": "Otro"
+    },
+    "suffix": {
+      "medication": "Medicación",
+      "vaccine": "Vacuna",
+      "prevention": "Prevención"
+    }
+  },
+  "cadenceSelector": {
+    "recommended": "Recomendado",
+    "labels": {
+      "hourly": "Cada hora",
+      "daily": "Diario",
+      "weekly": "Semanal",
+      "biweekly": "Cada 2 semanas",
+      "monthly": "Mensual",
+      "every3Months": "Cada 3 meses",
+      "every6Months": "Cada 6 meses",
+      "yearly": "Anual",
+      "custom": "Personalizado",
+      "once": "Una vez / Nunca"
+    }
+  },
+  "frequencySelector": {
+    "repeat": "Repetir",
+    "everyDay": "Todos los días",
+    "weekdays": "Días de semana",
+    "weekends": "Fines de semana",
+    "customDays": "Días personalizados"
+  },
+  "socialWalkSettings": {
+    "title": "Ajustes de paseo social",
+    "visibility": "Visibilidad",
+    "friendsOnly": "Solo amigos",
+    "friendsOnlyDesc": "Solo los amigos mutuos de tu mascota pueden ver este paseo",
+    "nearbyPets": "Mascotas cercanas",
+    "nearbyPetsDesc": "Descubrible por mascotas de tu zona",
+    "maxPets": "Máximo de mascotas (incluida la tuya)",
+    "meetingArea": "Zona de encuentro (general)",
+    "meetingAreaPlaceholder": "ej.: Parque Centenario, centro",
+    "meetingAreaHelp": "La zona aproximada se muestra públicamente por privacidad",
+    "meetingLocation": "Punto de encuentro exacto (privado)",
+    "meetingLocationPlaceholder": "ej.: Entrada principal junto a la fuente",
+    "meetingLocationHelp": "Solo se muestra a los participantes aprobados",
+    "approvalRequired": "Requiere aprobación",
+    "approvalRequiredDesc": "Revisá las solicitudes antes de aceptarlas",
+    "notesForGuests": "Notas para invitados (opcional)",
+    "notesPlaceholder": "ej.: Traé agua, hay bolsitas"
+  },
   "editMedicalProfile": {
     "validationTitle": "Error de validación",
     "validationBody": "Revisá los campos marcados.",

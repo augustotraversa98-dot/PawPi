@@ -1,16 +1,18 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 
 const FREQUENCY_OPTIONS = [
-  { value: ROUTINE_FREQUENCY.DAILY, label: "Every day" },
-  { value: ROUTINE_FREQUENCY.WEEKDAYS, label: "Weekdays" },
-  { value: ROUTINE_FREQUENCY.WEEKENDS, label: "Weekends" },
-  { value: ROUTINE_FREQUENCY.CUSTOM, label: "Custom days" },
+  { value: ROUTINE_FREQUENCY.DAILY, i18nKey: "frequencySelector.everyDay" },
+  { value: ROUTINE_FREQUENCY.WEEKDAYS, i18nKey: "frequencySelector.weekdays" },
+  { value: ROUTINE_FREQUENCY.WEEKENDS, i18nKey: "frequencySelector.weekends" },
+  { value: ROUTINE_FREQUENCY.CUSTOM, i18nKey: "frequencySelector.customDays" },
 ];
 
 export default function FrequencySelector({ frequency, onFrequencyChange }) {
+  const { t } = useTranslation();
   return (
     <>
       <Text
@@ -21,7 +23,7 @@ export default function FrequencySelector({ frequency, onFrequencyChange }) {
           marginBottom: 8,
         }}
       >
-        Repeat
+        {t("frequencySelector.repeat")}
       </Text>
       <View style={{ gap: 8, marginBottom: 16 }}>
         {FREQUENCY_OPTIONS.map((option) => (
@@ -44,7 +46,7 @@ export default function FrequencySelector({ frequency, onFrequencyChange }) {
                 color: frequency === option.value ? C.sage : C.warmBrown,
               }}
             >
-              {option.label}
+              {t(option.i18nKey)}
             </Text>
           </TouchableOpacity>
         ))}
