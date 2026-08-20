@@ -12,9 +12,7 @@
       "url": "https://u.expo.dev/e1ab38b2-5f41-4d15-bc18-64c8b0717a3d",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "locales": {
       "en": "./locales/en.json",
       "es": "./locales/es.json"
