@@ -8,6 +8,7 @@ let mockHistory;
 let mockStreak;
 let mockPush;
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: mockPush }) }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("expo-image", () => ({ Image: () => null }));

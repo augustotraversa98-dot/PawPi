@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -62,6 +63,7 @@ function isExpired(grant) {
 // docs/provider-design.md §2 + §4 item 7. Pet-scoped via useCurrentPet, exactly
 // like the Vet Record it is reached from.
 export default function DataAccessScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -76,28 +78,34 @@ export default function DataAccessScreen() {
       { grantId, action },
       {
         onError: (err) =>
-          Alert.alert("Something went wrong", err.message || "Please try again."),
+          Alert.alert(t("dataAccess.errorTitle"), err.message || t("dataAccess.tryAgain")),
       },
     );
   };
 
   const confirmDeny = (grant) =>
     Alert.alert(
-      "Deny request?",
-      `${grant.provider_name || "This provider"} will not get access to ${grant.pet_name || "your pet"}.`,
+      t("dataAccess.denyTitle"),
+      t("dataAccess.denyBody", {
+        provider: grant.provider_name || t("dataAccess.thisProvider"),
+        pet: grant.pet_name || t("dataAccess.yourPet"),
+      }),
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Deny", style: "destructive", onPress: () => act(grant.id, "deny") },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("dataAccess.deny"), style: "destructive", onPress: () => act(grant.id, "deny") },
       ],
     );
 
   const confirmRevoke = (grant) =>
     Alert.alert(
-      "Revoke access?",
-      `${grant.provider_name || "This provider"} will immediately lose access to ${grant.pet_name || "your pet"}.`,
+      t("dataAccess.revokeTitle"),
+      t("dataAccess.revokeBody", {
+        provider: grant.provider_name || t("dataAccess.thisProvider"),
+        pet: grant.pet_name || t("dataAccess.yourPet"),
+      }),
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Revoke", style: "destructive", onPress: () => act(grant.id, "revoke") },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("dataAccess.revoke"), style: "destructive", onPress: () => act(grant.id, "revoke") },
       ],
     );
 
@@ -118,7 +126,7 @@ export default function DataAccessScreen() {
         <ArrowLeft size={22} color={COLORS.warmBrown} />
       </TouchableOpacity>
       <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
-        Data Access
+        {t("dataAccess.title")}
       </Text>
     </View>
   );
@@ -144,7 +152,7 @@ export default function DataAccessScreen() {
               marginTop: 12,
             }}
           >
-            No pet selected
+            {t("dataAccess.noPetTitle")}
           </Text>
           <Text
             style={{
@@ -154,7 +162,7 @@ export default function DataAccessScreen() {
               textAlign: "center",
             }}
           >
-            Add or choose a pet to manage who can see its records.
+            {t("dataAccess.noPetBody")}
           </Text>
         </View>
       </View>
@@ -201,8 +209,7 @@ export default function DataAccessScreen() {
                 fontWeight: "600",
               }}
             >
-              You control who can see {currentPet.name}'s records. Approve a request
-              to grant access, and revoke it anytime.
+              {t("dataAccess.reassurance", { name: currentPet.name })}
             </Text>
           </View>
 
@@ -215,14 +222,14 @@ export default function DataAccessScreen() {
                 marginBottom: 16,
               }}
             >
-              Couldn't load access requests. Pull to refresh.
+              {t("dataAccess.loadError")}
             </Text>
           ) : null}
 
           {/* Pending requests */}
-          <SectionTitle title="Pending requests" />
+          <SectionTitle title={t("dataAccess.pendingSection")} />
           {pending.length === 0 ? (
-            <EmptyRow icon={Clock} text="No pending requests." />
+            <EmptyRow icon={Clock} text={t("dataAccess.noPending")} />
           ) : (
             pending.map((g) => (
               <GrantCard key={g.id} grant={g}>
@@ -243,7 +250,7 @@ export default function DataAccessScreen() {
                   >
                     <Check size={16} color="#FFF" />
                     <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>
-                      Approve
+                      {t("dataAccess.approve")}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -266,7 +273,7 @@ export default function DataAccessScreen() {
                     <Text
                       style={{ color: COLORS.warmBrown, fontWeight: "700", fontSize: 14 }}
                     >
-                      Deny
+                      {t("dataAccess.deny")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -276,9 +283,9 @@ export default function DataAccessScreen() {
 
           {/* Who has access */}
           <View style={{ height: 8 }} />
-          <SectionTitle title="Who has access" />
+          <SectionTitle title={t("dataAccess.accessSection")} />
           {active.length === 0 ? (
-            <EmptyRow icon={ShieldCheck} text="No one has access yet." />
+            <EmptyRow icon={ShieldCheck} text={t("dataAccess.noAccess")} />
           ) : (
             active.map((g) => (
               <GrantCard key={g.id} grant={g} granted>
@@ -290,7 +297,7 @@ export default function DataAccessScreen() {
                       marginTop: 8,
                     }}
                   >
-                    Access until {formatDate(g.expires_at)}
+                    {t("dataAccess.accessUntil", { date: formatDate(g.expires_at) })}
                   </Text>
                 ) : null}
                 <TouchableOpacity
@@ -313,7 +320,7 @@ export default function DataAccessScreen() {
                   <Text
                     style={{ color: COLORS.terracotta, fontWeight: "800", fontSize: 14 }}
                   >
-                    Revoke access
+                    {t("dataAccess.revokeCta")}
                   </Text>
                 </TouchableOpacity>
               </GrantCard>
@@ -366,7 +373,18 @@ function EmptyRow({ icon: Icon, text }) {
 // switches the line from "wants access to" → "has access to" and shows when it
 // was granted. Children are the per-status actions.
 function GrantCard({ grant, granted, children }) {
+  const { t } = useTranslation();
   const scopes = Array.isArray(grant.scopes) ? grant.scopes : [];
+  const scopeLabelLocal = (s) =>
+    ({
+      medical_read: t("dataAccess.scope.medicalRead"),
+      medical_write: t("dataAccess.scope.medicalWrite"),
+      vaccinations_write: t("dataAccess.scope.vaccinationsWrite"),
+      appointments: t("dataAccess.scope.appointments"),
+      health_logs_read: t("dataAccess.scope.healthLogsRead"),
+      health_logs_write: t("dataAccess.scope.healthLogsWrite"),
+      messaging: t("dataAccess.scope.messaging"),
+    })[s] || s;
   return (
     <View
       style={{
@@ -393,11 +411,11 @@ function GrantCard({ grant, granted, children }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>
-            {grant.provider_name || "Provider"}
+            {grant.provider_name || t("dataAccess.provider")}
           </Text>
           <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
-            {granted ? "has access to" : "wants access to"}{" "}
-            {grant.pet_name || "your pet"}
+            {granted ? t("dataAccess.hasAccessTo") : t("dataAccess.wantsAccessTo")}{" "}
+            {grant.pet_name || t("dataAccess.yourPet")}
           </Text>
         </View>
       </View>
@@ -415,7 +433,7 @@ function GrantCard({ grant, granted, children }) {
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.terracotta }}>
-                {scopeLabel(s)}
+                {scopeLabelLocal(s)}
               </Text>
             </View>
           ))}
@@ -424,7 +442,7 @@ function GrantCard({ grant, granted, children }) {
 
       {granted && grant.granted_at ? (
         <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 10 }}>
-          Granted {formatDate(grant.granted_at)}
+          {t("dataAccess.grantedOn", { date: formatDate(grant.granted_at) })}
         </Text>
       ) : null}
 

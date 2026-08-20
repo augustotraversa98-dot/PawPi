@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronUp,
@@ -19,18 +20,26 @@ import SocialWalkSettings from "./SocialWalkSettings";
 import { addWalkToCalendar } from "@/utils/calendarIntegration";
 
 // Helper function to format frequency for display
-const getFrequencyDisplay = (walk) => {
-  if (walk.frequency === ROUTINE_FREQUENCY.DAILY) return "Every day";
-  if (walk.frequency === ROUTINE_FREQUENCY.WEEKDAYS) return "Weekdays";
-  if (walk.frequency === ROUTINE_FREQUENCY.WEEKENDS) return "Weekends";
+const getFrequencyDisplay = (walk, t) => {
+  if (walk.frequency === ROUTINE_FREQUENCY.DAILY) return t("walkItem.everyDay");
+  if (walk.frequency === ROUTINE_FREQUENCY.WEEKDAYS) return t("walkItem.weekdays");
+  if (walk.frequency === ROUTINE_FREQUENCY.WEEKENDS) return t("walkItem.weekends");
   if (walk.frequency === ROUTINE_FREQUENCY.CUSTOM) {
-    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dayNames = [
+      t("walkItem.days.mon"),
+      t("walkItem.days.tue"),
+      t("walkItem.days.wed"),
+      t("walkItem.days.thu"),
+      t("walkItem.days.fri"),
+      t("walkItem.days.sat"),
+      t("walkItem.days.sun"),
+    ];
     if (walk.days && walk.days.length > 0) {
       return walk.days.map((d) => dayNames[d]).join(", ");
     }
-    return "Custom days";
+    return t("walkItem.customDays");
   }
-  return "Every day";
+  return t("walkItem.everyDay");
 };
 
 export default function WalkItem({
@@ -42,6 +51,7 @@ export default function WalkItem({
   onRemove,
   onChange,
 }) {
+  const { t } = useTranslation();
   const handleToggleDay = (day) => {
     const currentDays = walk.days || [];
     let newDays;
@@ -100,7 +110,7 @@ export default function WalkItem({
                 color: C.mutedBrown,
               }}
             >
-              Walk {index + 1}
+              {t("walkItem.walkN", { n: index + 1 })}
             </Text>
             <TouchableOpacity onPress={handleRemove}>
               <Trash2 size={16} color={C.coral} />
@@ -117,7 +127,7 @@ export default function WalkItem({
                 marginBottom: 6,
               }}
             >
-              {walk.name || "Walk"}
+              {walk.name || t("walkItem.walk")}
             </Text>
             <Text
               style={{
@@ -126,8 +136,8 @@ export default function WalkItem({
                 marginBottom: 4,
               }}
             >
-              {walk.time} · {getFrequencyDisplay(walk)} ·{" "}
-              {walk.durationMinutes || 30} min
+              {walk.time} · {getFrequencyDisplay(walk, t)} ·{" "}
+              {t("walkItem.minutes", { count: walk.durationMinutes || 30 })}
             </Text>
             <Text
               style={{
@@ -136,7 +146,7 @@ export default function WalkItem({
                 textTransform: "capitalize",
               }}
             >
-              {walk.pace || "normal"} pace
+              {t("walkItem.pace", { pace: walk.pace || t("walkItem.paceNormal") })}
             </Text>
           </View>
 
@@ -172,7 +182,7 @@ export default function WalkItem({
                     color: C.warmBrown,
                   }}
                 >
-                  Edit walk details
+                  {t("walkItem.editDetails")}
                 </Text>
               </View>
               <Text
@@ -181,7 +191,7 @@ export default function WalkItem({
                   color: C.mutedBrown,
                 }}
               >
-                Repeat days, pace, social walk, notes
+                {t("walkItem.editDetailsHint")}
               </Text>
             </View>
             <ChevronDown size={20} color={C.mutedBrown} />
@@ -211,7 +221,7 @@ export default function WalkItem({
                   color: C.mutedBrown,
                 }}
               >
-                Walk {index + 1}
+                {t("walkItem.walkN", { n: index + 1 })}
               </Text>
               <Text
                 style={{
@@ -224,7 +234,7 @@ export default function WalkItem({
                   borderRadius: 6,
                 }}
               >
-                Walk details
+                {t("walkItem.walkDetailsBadge")}
               </Text>
             </View>
             <TouchableOpacity onPress={handleRemove}>
@@ -244,7 +254,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Basic Info
+              {t("walkItem.basicInfo")}
             </Text>
 
             <Text
@@ -255,12 +265,12 @@ export default function WalkItem({
                 marginBottom: 6,
               }}
             >
-              Walk name
+              {t("walkItem.walkName")}
             </Text>
             <TextInput
               value={walk.name}
               onChangeText={(text) => onChange("name", text)}
-              placeholder="Walk name"
+              placeholder={t("walkItem.walkName")}
               placeholderTextColor={C.mutedBrown + "80"}
               style={{
                 backgroundColor: C.sand,
@@ -282,7 +292,7 @@ export default function WalkItem({
                 marginBottom: 6,
               }}
             >
-              Walk time
+              {t("walkItem.walkTime")}
             </Text>
             <TimeField
               value={walk.time}
@@ -306,7 +316,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Schedule
+              {t("walkItem.schedule")}
             </Text>
 
             <FrequencySelector
@@ -334,7 +344,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Walk Details
+              {t("walkItem.walkDetails")}
             </Text>
 
             <DurationPaceSelector
@@ -357,7 +367,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Reminders
+              {t("walkItem.reminders")}
             </Text>
 
             <ReminderSettings
@@ -382,7 +392,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Social Walk
+              {t("walkItem.socialWalk")}
             </Text>
 
             <SocialWalkToggle
@@ -407,7 +417,7 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Calendar
+              {t("walkItem.calendar")}
             </Text>
 
             <TouchableOpacity
@@ -432,7 +442,7 @@ export default function WalkItem({
                   color: C.sage,
                 }}
               >
-                Add to calendar
+                {t("walkItem.addToCalendar")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -449,13 +459,13 @@ export default function WalkItem({
                 letterSpacing: 0.5,
               }}
             >
-              Notes
+              {t("walkItem.notes")}
             </Text>
 
             <TextInput
               value={walk.notes}
               onChangeText={(text) => onChange("notes", text)}
-              placeholder="Route, preferences..."
+              placeholder={t("walkItem.notesPlaceholder")}
               placeholderTextColor={C.mutedBrown + "80"}
               multiline
               numberOfLines={3}
@@ -496,7 +506,7 @@ export default function WalkItem({
                 color: C.mutedBrown,
               }}
             >
-              Done editing
+              {t("walkItem.doneEditing")}
             </Text>
             <ChevronUp size={18} color={C.mutedBrown} />
           </TouchableOpacity>

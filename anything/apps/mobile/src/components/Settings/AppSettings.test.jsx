@@ -16,7 +16,7 @@ jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("@/utils/auth/useAuth", () => ({ useAuth: () => ({ setAuth: jest.fn() }) }));
 jest.mock("@/i18n/localePreference", () => ({
   getLocalePreference: jest.fn().mockResolvedValue("en"),
@@ -99,9 +99,9 @@ it("business mode toggle PUTs the server pref", async () => {
 it("business mode groups categories: Notify my phone / Optional push / In-app only", () => {
   const { getByText, getByTestId } = render(<AppSettings mode="business" />);
   // Group headers (t is identity in this harness → the i18n key renders).
-  expect(getByText("bizNotif.groupPush")).toBeTruthy();
-  expect(getByText("bizNotif.groupOptional")).toBeTruthy();
-  expect(getByText("bizNotif.groupInApp")).toBeTruthy();
+  expect(getByText("Notify my phone")).toBeTruthy();
+  expect(getByText("Optional push")).toBeTruthy();
+  expect(getByText("In-app only")).toBeTruthy();
   // PUSH + OPTIONAL categories get a toggle…
   expect(getByTestId("biz-notif-toggle-biz_booking")).toBeTruthy();
   expect(getByTestId("biz-notif-toggle-biz_review")).toBeTruthy();

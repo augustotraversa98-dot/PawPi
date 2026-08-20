@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "rea
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ChevronRight, Sparkles } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetHistory } from "@/hooks/useMemories";
@@ -23,6 +24,7 @@ const C = {
 };
 
 export default function MemoriesScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -46,7 +48,7 @@ export default function MemoriesScreen() {
         <TouchableOpacity testID="memories-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>Memories</Text>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("memoriesScreen.title")}</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
@@ -59,10 +61,10 @@ export default function MemoriesScreen() {
           <Sparkles size={24} color="#FFF" />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: "900", color: "#FFF" }}>
-              {petName ? `${petName}'s Wrapped` : "Your pet's Wrapped"}
+              {petName ? t("memoriesScreen.wrappedTitle", { name: petName }) : t("memoriesScreen.wrappedTitleGeneric")}
             </Text>
             <Text style={{ fontSize: 12, color: "#FFF", opacity: 0.9, marginTop: 2 }}>
-              A beautiful year-in-review, made to share
+              {t("memoriesScreen.wrappedSubtitle")}
             </Text>
           </View>
           <ChevronRight size={20} color="#FFF" />
@@ -71,7 +73,7 @@ export default function MemoriesScreen() {
         {/* Milestones */}
         {milestones.length > 0 && (
           <>
-            <Text style={styles.sectionLabel}>TODAY'S CELEBRATIONS</Text>
+            <Text style={styles.sectionLabel}>{t("memoriesScreen.todaysCelebrations")}</Text>
             {milestones.map((m) => (
               <View key={m.key} testID={`milestone-${m.key}`} style={styles.milestoneCard}>
                 <Text style={{ fontSize: 38 }}>{m.emoji}</Text>
@@ -81,7 +83,7 @@ export default function MemoriesScreen() {
                 </View>
                 <MemoryShareButton
                   petName={petName}
-                  label="Share"
+                  label={t("common.share")}
                   card={{ emoji: m.emoji, headline: m.title, subtitle: m.subtitle }}
                 />
               </View>
@@ -90,11 +92,11 @@ export default function MemoriesScreen() {
         )}
 
         {/* On this day */}
-        <Text style={styles.sectionLabel}>ON THIS DAY</Text>
+        <Text style={styles.sectionLabel}>{t("memoriesScreen.onThisDay")}</Text>
         {isLoading && <ActivityIndicator color={C.coral} />}
         {!isLoading && memories.length === 0 && (
           <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-            No memories from this day yet — keep posting and they'll appear here next year. 🐾
+            {t("memoriesScreen.empty")}
           </Text>
         )}
         {memories.map((m) => (
@@ -103,7 +105,7 @@ export default function MemoriesScreen() {
             <View style={{ padding: 14, flexDirection: "row", alignItems: "center" }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: "800", color: C.warmBrown }}>
-                  {m.yearsAgo === 1 ? "1 year ago" : `${m.yearsAgo} years ago`}
+                  {t("memoriesScreen.yearsAgo", { count: m.yearsAgo })}
                 </Text>
                 {m.caption ? (
                   <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>{m.caption}</Text>
@@ -114,8 +116,8 @@ export default function MemoriesScreen() {
                 label="Share"
                 card={{
                   photoUri: m.image_url,
-                  headline: `${petName || "My pup"} · ${m.yearsAgo === 1 ? "1 year ago" : `${m.yearsAgo} years ago`}`,
-                  subtitle: "on this day",
+                  headline: `${petName || t("memoriesScreen.myPup")} · ${t("memoriesScreen.yearsAgo", { count: m.yearsAgo })}`,
+                  subtitle: t("memoriesScreen.onThisDayLower"),
                 }}
               />
             </View>

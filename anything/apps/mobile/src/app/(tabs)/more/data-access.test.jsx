@@ -16,6 +16,7 @@ let mockGrants;
 let mockCurrentPet;
 const mockMutate = jest.fn();
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
 }));

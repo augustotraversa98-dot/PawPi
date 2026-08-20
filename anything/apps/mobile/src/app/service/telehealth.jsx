@@ -84,15 +84,15 @@ export default function TelehealthScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            {t("telehealth.headerTitle")}
+            {t("telehealth.screenTitle")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            {t("telehealth.headerSubtitle")}
+            {t("telehealth.screenSubtitle")}
           </Text>
         </View>
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel={t("telehealth.messagesA11y")}
+          accessibilityLabel={t("messages.title")}
           style={{
             width: 40,
             height: 40,
@@ -113,14 +113,14 @@ export default function TelehealthScreen() {
         {/* My consults — only shown when the current pet has any. */}
         {consults.length > 0 && (
           <View style={{ marginBottom: SPACING.sm }}>
-            <SectionLabel>{t("telehealth.sectionMyConsults")}</SectionLabel>
+            <SectionLabel>{t("telehealth.myConsults")}</SectionLabel>
             {sortedConsults.map((c) => (
               <ConsultCard key={c.id} consult={c} petId={petId} />
             ))}
           </View>
         )}
 
-        <SectionLabel>{t("telehealth.sectionTelehealthVets")}</SectionLabel>
+        <SectionLabel>{t("telehealth.vetsHeading")}</SectionLabel>
 
         {isLoading ? (
           <View style={{ paddingVertical: 48, alignItems: "center" }}>
@@ -194,7 +194,7 @@ function ConsultCard({ consult, petId }) {
         setNotReadyMessage(joinWaitMessage());
       } else {
         // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
-        setError(e?.message || t("telehealth.couldNotJoin"));
+        setError(e?.message || t("telehealth.joinFailed"));
       }
     }
   };
@@ -220,7 +220,7 @@ function ConsultCard({ consult, petId }) {
       style={{ padding: SPACING.lg, marginBottom: SPACING.md, opacity: closed ? 0.6 : 1 }}
     >
       <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
-        {consult.provider_name || t("telehealth.defaultConsultName")}
+        {consult.provider_name || t("telehealth.videoConsult")}
       </Text>
       <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 2 }]}>
         {statusLabel}
@@ -254,7 +254,7 @@ function ConsultCard({ consult, petId }) {
           }}
         >
           <Text style={[TYPE.body, { fontWeight: "800", color: "#FFF" }]}>
-            {joinTelehealth.isPending ? t("telehealth.joining") : t("telehealth.joinConsult")}
+            {joinTelehealth.isPending ? t("telehealth.joining") : t("telehealth.joinCta")}
           </Text>
         </PressableScale>
       ) : null}
