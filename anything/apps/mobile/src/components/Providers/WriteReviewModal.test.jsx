@@ -10,6 +10,10 @@ import { Alert } from "react-native";
 
 const mockMutate = jest.fn();
 
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
+
 jest.mock("@/hooks/useProviders", () => ({
   useWriteReview: () => ({ mutate: mockMutate, isPending: false }),
 }));

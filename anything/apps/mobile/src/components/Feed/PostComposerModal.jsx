@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Camera, ChevronLeft, Video as VideoIcon, X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import { Video, ResizeMode } from "expo-av";
 import {
@@ -44,8 +45,17 @@ const LuckyDayBanner = memo(function LuckyDayBanner() {
         borderColor: COLORS.honey,
       }}
     >
+      <LuckyDayBannerContent />
+    </View>
+  );
+});
+
+function LuckyDayBannerContent() {
+  const { t } = useTranslation();
+  return (
+    <>
       <Text style={[TYPE.headline, { color: COLORS.terracotta }]}>
-        🎉 You're one of today's lucky users!
+        {t("postComposer.luckyTitle")}
       </Text>
       <Text
         style={[
@@ -53,12 +63,11 @@ const LuckyDayBanner = memo(function LuckyDayBanner() {
           { color: COLORS.warmBrown, marginTop: SPACING.xs },
         ]}
       >
-        You can share a short video today — just for today. A photo's always
-        welcome too.
+        {t("postComposer.luckyBody")}
       </Text>
-    </View>
+    </>
   );
-});
+}
 
 export const PostComposerModal = memo(function PostComposerModal({
   visible,
@@ -77,6 +86,7 @@ export const PostComposerModal = memo(function PostComposerModal({
   //   with its own (localized) copy. Any omitted key falls back to the pet daily-moment string.
   copy,
 }) {
+  const { t: i18nT } = useTranslation();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState("picker"); // "picker" | "compose"
   const [mediaUri, setMediaUri] = useState(null);
@@ -90,18 +100,20 @@ export const PostComposerModal = memo(function PostComposerModal({
   // Effective copy — pet daily-moment defaults, overridable per key by the `copy` prop.
   const c = copy ?? {};
   const t = {
-    pickerHeader: c.pickerHeader ?? "Add a photo",
-    composeHeader: c.composeHeader ?? "Daily update",
-    heading: c.heading ?? "Today's pet moment",
+    pickerHeader: c.pickerHeader ?? i18nT("postComposer.pickerHeader"),
+    composeHeader: c.composeHeader ?? i18nT("postComposer.composeHeader"),
+    heading: c.heading ?? i18nT("postComposer.heading"),
     subheading:
-      c.subheading ??
-      `What is ${petName} up to right now?\nShare today's daily update with your pet friends!`,
-    takePhoto: c.takePhoto ?? "Take a photo",
-    recordVideo: c.recordVideo ?? "Record a video",
-    todayOnly: c.todayOnly ?? "Today only",
-    captionLabel: c.captionLabel ?? `Add a caption for ${petName} ✍️`,
-    captionPlaceholder: c.captionPlaceholder ?? `What's ${petName} doing today? 🐶`,
-    submit: c.submit ?? "Post daily update 🐾",
+      c.subheading ?? i18nT("postComposer.subheading", { petName }),
+    takePhoto: c.takePhoto ?? i18nT("postComposer.takePhoto"),
+    recordVideo: c.recordVideo ?? i18nT("postComposer.recordVideo"),
+    todayOnly: c.todayOnly ?? i18nT("postComposer.todayOnly"),
+    captionLabel:
+      c.captionLabel ?? i18nT("postComposer.captionLabel", { petName }),
+    captionPlaceholder:
+      c.captionPlaceholder ??
+      i18nT("postComposer.captionPlaceholder", { petName }),
+    submit: c.submit ?? i18nT("postComposer.submit"),
   };
 
   // Reset every time modal opens, then decide whether to offer video. When the caller fixes
@@ -140,8 +152,8 @@ export const PostComposerModal = memo(function PostComposerModal({
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(
-        "Camera access needed",
-        "Please allow camera access in settings.",
+        i18nT("postComposer.cameraDeniedTitle"),
+        i18nT("postComposer.cameraDeniedBody"),
       );
       return;
     }
@@ -161,8 +173,8 @@ export const PostComposerModal = memo(function PostComposerModal({
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(
-        "Camera access needed",
-        "Please allow camera access to record a video.",
+        i18nT("postComposer.cameraDeniedTitle"),
+        i18nT("postComposer.cameraDeniedVideoBody"),
       );
       return;
     }
@@ -216,7 +228,7 @@ export const PostComposerModal = memo(function PostComposerModal({
             >
               <ChevronLeft size={20} color={COLORS.coral} />
               <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>
-                Back
+                {i18nT("common.back")}
               </Text>
             </PressableScale>
           ) : (
@@ -362,7 +374,9 @@ export const PostComposerModal = memo(function PostComposerModal({
                 onPress={() => setStep("picker")}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  mediaType === "video" ? "Change video" : "Change photo"
+                  mediaType === "video"
+                    ? i18nT("postComposer.changeVideo")
+                    : i18nT("postComposer.changePhoto")
                 }
                 style={{
                   position: "absolute",

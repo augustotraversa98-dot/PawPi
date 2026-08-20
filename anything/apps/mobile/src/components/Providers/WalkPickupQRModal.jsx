@@ -24,7 +24,7 @@ export default function WalkPickupQRModal({
     enabled: visible,
   });
   const token = data?.token;
-  const tr = (k, fb) => (t ? t(k, fb) : fb);
+  const tr = (k, fb, opts) => (t ? t(k, opts) : fb);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -85,7 +85,11 @@ export default function WalkPickupQRModal({
           </View>
 
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: SPACING.lg }]}>
-            {tr("walkPickup.remaining", `${remaining} walks left with ${businessName ?? "this walker"}`)}
+            {tr(
+              "walkPickup.remaining",
+              `${remaining} walks left with ${businessName ?? "this walker"}`,
+              { count: remaining, business: businessName ?? "" },
+            )}
           </Text>
         </View>
       </View>

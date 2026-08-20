@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { X, Star } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useWriteReview } from "@/hooks/useProviders";
 
@@ -25,6 +26,7 @@ export default function WriteReviewModal({
   providerName,
   petId,
 }) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const writeReview = useWriteReview();
@@ -36,7 +38,7 @@ export default function WriteReviewModal({
 
   const handleSubmit = () => {
     if (rating < 1) {
-      Alert.alert("Pick a rating", "Tap the stars to rate from 1 to 5.");
+      Alert.alert(t("writeReview.pickRatingTitle"), t("writeReview.pickRatingBody"));
       return;
     }
     writeReview.mutate(
@@ -48,12 +50,12 @@ export default function WriteReviewModal({
       },
       {
         onSuccess: () => {
-          Alert.alert("Thanks!", "Your review has been posted.");
+          Alert.alert(t("writeReview.postedTitle"), t("writeReview.postedBody"));
           reset();
           onClose();
         },
         onError: (error) => {
-          Alert.alert("Couldn't post review", error.message || "Please try again.");
+          Alert.alert(t("writeReview.errorTitle"), error.message || t("common.retry"));
         },
       },
     );
@@ -90,7 +92,7 @@ export default function WriteReviewModal({
             }}
           >
             <Text style={{ fontSize: 19, fontWeight: "800", color: COLORS.warmBrown }}>
-              Write a review
+              {t("writeReview.title")}
             </Text>
             <TouchableOpacity
               onPress={onClose}
@@ -112,7 +114,7 @@ export default function WriteReviewModal({
             <Text
               style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}
             >
-              How was your visit to {providerName}?
+              {t("writeReview.prompt", { provider: providerName })}
             </Text>
           ) : null}
 
@@ -130,7 +132,7 @@ export default function WriteReviewModal({
                 key={n}
                 onPress={() => setRating(n)}
                 disabled={submitting}
-                accessibilityLabel={`Rate ${n} star${n > 1 ? "s" : ""}`}
+                accessibilityLabel={t("writeReview.rateStars", { count: n })}
               >
                 <Star
                   size={36}
@@ -144,7 +146,7 @@ export default function WriteReviewModal({
           <TextInput
             value={body}
             onChangeText={setBody}
-            placeholder="Share a few words about your experience (optional)"
+            placeholder={t("writeReview.bodyPlaceholder")}
             placeholderTextColor={COLORS.mutedBrown}
             multiline
             editable={!submitting}
@@ -179,7 +181,7 @@ export default function WriteReviewModal({
               <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-                Submit review
+                {t("writeReview.submit")}
               </Text>
             )}
           </TouchableOpacity>

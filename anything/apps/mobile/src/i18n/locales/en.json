@@ -2216,7 +2216,11 @@
     "errorSaveBody": "Could not save. Please try again.",
     "captionPlaceholder": "Write a caption…",
     "saveFailedTitle": "Couldn't save",
-    "saveFailedBody": "Please try again."
+    "saveFailedBody": "Please try again.",
+    "suggestedForYou": "SUGGESTED FOR YOU",
+    "petFriendsMoments": "PET FRIENDS' MOMENTS",
+    "emptyTitle": "No pet moments yet!",
+    "emptyBody": "Be the first to share today's moment."
   },
   "forum": {
     "title": "Discussion",
@@ -2850,5 +2854,41 @@
     "numberOfSessions": "Number of sessions",
     "booking": "Booking…",
     "confirmBooking": "Confirm booking"
+  },
+  "rating": {
+    "new": "New"
+  },
+  "writeReview": {
+    "label": "Write a review",
+    "title": "Write a review",
+    "prompt": "How was your visit to {{provider}}?",
+    "pickRatingTitle": "Pick a rating",
+    "pickRatingBody": "Tap the stars to rate from 1 to 5.",
+    "postedTitle": "Thanks!",
+    "postedBody": "Your review has been posted.",
+    "errorTitle": "Couldn't post review",
+    "bodyPlaceholder": "Share a few words about your experience (optional)",
+    "submit": "Submit review",
+    "rateStars_one": "Rate {{count}} star",
+    "rateStars_other": "Rate {{count}} stars"
+  },
+  "postComposer": {
+    "pickerHeader": "Add a photo",
+    "composeHeader": "Daily update",
+    "heading": "Today's pet moment",
+    "subheading": "What is {{petName}} up to right now?\nShare today's daily update with your pet friends!",
+    "takePhoto": "Take a photo",
+    "recordVideo": "Record a video",
+    "todayOnly": "Today only",
+    "captionLabel": "Add a caption for {{petName}} ✍️",
+    "captionPlaceholder": "What's {{petName}} doing today? 🐶",
+    "submit": "Post daily update 🐾",
+    "luckyTitle": "🎉 You're one of today's lucky users!",
+    "luckyBody": "You can share a short video today — just for today. A photo's always welcome too.",
+    "cameraDeniedTitle": "Camera access needed",
+    "cameraDeniedBody": "Please allow camera access in settings.",
+    "cameraDeniedVideoBody": "Please allow camera access to record a video.",
+    "changePhoto": "Change photo",
+    "changeVideo": "Change video"
   }
 }
