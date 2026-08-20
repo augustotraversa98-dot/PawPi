@@ -9,6 +9,15 @@
     "more": "Más",
     "profile": "Perfil"
   },
+  "dogProfile": {
+    "loading": "Cargando perfil...",
+    "breed": "Raza",
+    "age": "Edad",
+    "gender": "Sexo",
+    "weight": "Peso",
+    "before": "Antes",
+    "after": "Después"
+  },
   "care": {
     "segLearn": "Aprender",
     "segHire": "Contratar",

@@ -8,6 +8,7 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Edit,
@@ -35,6 +36,7 @@ import { Card, PressableScale } from "@/components/ui";
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Fetch pet from database instead of AsyncStorage
   const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
@@ -117,7 +119,7 @@ export default function ProfileScreen() {
       >
         <ActivityIndicator size="large" color={COLORS.coral} />
         <Text style={[TYPE.callout, { marginTop: SPACING.md, color: COLORS.mutedBrown }]}>
-          Loading profile...
+          {t("dogProfile.loading")}
         </Text>
       </View>
     );
@@ -237,10 +239,10 @@ export default function ProfileScreen() {
             PET INFORMATION
           </Text>
           <Card level="sm" style={{ paddingHorizontal: SPACING.lg }}>
-            <InfoRow label="Breed" value={petBreed} icon={Dog} />
-            <InfoRow label="Age" value={petAge} icon={Calendar} />
-            <InfoRow label="Gender" value={petGender} icon={User} />
-            <InfoRow label="Weight" value={petWeight} icon={Weight} />
+            <InfoRow label={t("dogProfile.breed")} value={petBreed} icon={Dog} />
+            <InfoRow label={t("dogProfile.age")} value={petAge} icon={Calendar} />
+            <InfoRow label={t("dogProfile.gender")} value={petGender} icon={User} />
+            <InfoRow label={t("dogProfile.weight")} value={petWeight} icon={Weight} />
             <InfoRow
               label={
                 petBirthday
@@ -338,6 +340,7 @@ function formatSessionDate(dateString) {
 }
 
 function GroomSessionCard({ session }) {
+  const { t } = useTranslation();
   const before = Array.isArray(session.before_urls) ? session.before_urls : [];
   const after = Array.isArray(session.after_urls) ? session.after_urls : [];
   const dateLabel = formatSessionDate(session.created_at);
@@ -365,8 +368,8 @@ function GroomSessionCard({ session }) {
 
       {before.length > 0 || after.length > 0 ? (
         <View style={{ flexDirection: "row", gap: SPACING.md }}>
-          <PhotoStrip label="Before" urls={before} />
-          <PhotoStrip label="After" urls={after} />
+          <PhotoStrip label={t("dogProfile.before")} urls={before} />
+          <PhotoStrip label={t("dogProfile.after")} urls={after} />
         </View>
       ) : null}
 

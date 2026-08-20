@@ -113,7 +113,7 @@ export default function MemoriesScreen() {
               </View>
               <MemoryShareButton
                 petName={petName}
-                label="Share"
+                label={t("common.share")}
                 card={{
                   photoUri: m.image_url,
                   headline: `${petName || t("memoriesScreen.myPup")} · ${t("memoriesScreen.yearsAgo", { count: m.yearsAgo })}`,
