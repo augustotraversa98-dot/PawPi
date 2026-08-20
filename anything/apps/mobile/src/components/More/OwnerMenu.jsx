@@ -101,7 +101,7 @@ export function OwnerMenu() {
   return (
     <>
       <TouchableOpacity
-        accessibilityLabel="Open menu"
+        accessibilityLabel={t("ownerMenu.openMenu")}
         onPress={() => setMenuVisible(true)}
         style={{
           width: 40,
@@ -147,10 +147,10 @@ export function OwnerMenu() {
               }}
             >
               <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-                More
+                {t("ownerMenu.title")}
               </Text>
               <TouchableOpacity
-                accessibilityLabel="Close menu"
+                accessibilityLabel={t("ownerMenu.closeMenu")}
                 onPress={() => setMenuVisible(false)}
               >
                 <X size={22} color={C.mutedBrown} />
@@ -197,10 +197,10 @@ export function OwnerMenu() {
                   letterSpacing: 0.8,
                 }}
               >
-                COMMUNITY
+                {t("ownerMenu.sectionCommunity")}
               </Text>
               <MenuItem
-                title="Community"
+                title={t("ownerMenu.community")}
                 emoji="🐕"
                 color={C.sageDark}
                 onPress={() => goMenu("/(tabs)/more/community")}
@@ -217,46 +217,46 @@ export function OwnerMenu() {
                   letterSpacing: 0.8,
                 }}
               >
-                YOUR ACCOUNT
+                {t("ownerMenu.sectionAccount")}
               </Text>
               <MenuItem
-                title="My Hub"
+                title={t("ownerMenu.myHub")}
                 emoji="🗂️"
                 color={C.sageDark}
                 onPress={() => goMenu("/(tabs)/more/hub")}
               />
               <MenuItem
-                title="Dog Profile"
+                title={t("ownerMenu.dogProfile")}
                 emoji="🐾"
                 color={C.terracotta}
                 onPress={() => goMenu("/(tabs)/more/profile")}
               />
               <MenuItem
-                title="Family & Caregivers"
+                title={t("ownerMenu.family")}
                 emoji="👨‍👩‍👧"
                 color={C.sageDark}
                 onPress={() => goMenu("/pet-sharing")}
               />
               <MenuItem
-                title="Lost & Found"
+                title={t("ownerMenu.lostFound")}
                 emoji="🔍"
                 color={C.coral}
                 onPress={() => goMenu("/lost-found")}
               />
               <MenuItem
-                title="Memories & Wrapped"
+                title={t("ownerMenu.memories")}
                 emoji="✨"
                 color={C.apricot}
                 onPress={() => goMenu("/memories")}
               />
               <MenuItem
-                title="Reminders & Routines"
+                title={t("ownerMenu.reminders")}
                 emoji="🔔"
                 color="#FF9A62"
                 onPress={() => goMenu("/(tabs)/more/reminders")}
               />
               <MenuItem
-                title="Settings"
+                title={t("ownerMenu.settings")}
                 emoji="⚙️"
                 color={C.mutedBrown}
                 onPress={() => goMenu("/(tabs)/more/settings")}
@@ -279,7 +279,7 @@ export function OwnerMenu() {
               >
                 <LogOut size={18} color="#E53935" />
                 <Text style={{ color: "#E53935", fontWeight: "700", fontSize: 15 }}>
-                  Reset App Data
+                  {t("ownerMenu.resetApp")}
                 </Text>
               </TouchableOpacity>
             </ScrollView>

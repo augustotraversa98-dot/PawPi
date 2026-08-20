@@ -2328,7 +2328,29 @@
     "suggestedForYou": "SUGERIDOS PARA VOS",
     "petFriendsMoments": "MOMENTOS DE AMIGOS PELUDOS",
     "emptyTitle": "¡Todavía no hay momentos!",
-    "emptyBody": "Sé el primero en compartir el momento de hoy."
+    "emptyBody": "Sé el primero en compartir el momento de hoy.",
+    "barkModal": {
+      "barksCount_one": "{{count}} ladrido",
+      "barksCount_other": "{{count}} ladridos",
+      "beFirst": "¡Sé el primero en ladrar!",
+      "placeholder": "Dejale un ladrido a {{name}}…"
+    }
+  },
+  "ownerMenu": {
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "title": "Más",
+    "sectionCommunity": "COMUNIDAD",
+    "sectionAccount": "TU CUENTA",
+    "community": "Comunidad",
+    "myHub": "Mi Hub",
+    "dogProfile": "Perfil del perro",
+    "family": "Familia y cuidadores",
+    "lostFound": "Perdidos y encontrados",
+    "memories": "Recuerdos y Wrapped",
+    "reminders": "Recordatorios y rutinas",
+    "settings": "Ajustes",
+    "resetApp": "Restablecer datos de la app"
   },
   "forum": {
     "title": "Discusión",
