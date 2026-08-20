@@ -83,82 +83,88 @@ async function GET(request) {
     const lngMin = applyRadius ? lng - lngPad : null;
     const lngMax = applyRadius ? lng + lngPad : null;
 
-    // ── Providers ── published-provider projection (mirrors /api/providers/discover): capabilities[]
-    // + primary location (lowest-id via LATERAL) + avg_rating/review_count over provider_reviews as
-    // correlated subqueries. neighborhood is NOT applied here (providers are city-wide).
-    let providerRows = [];
-    if (includeProviders) {
-      providerRows = await sql`
-        SELECT
-          p.id, p.slug, p.name,
-          (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
-          (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count,
-          (SELECT COALESCE(array_agg(pc.capability ORDER BY pc.capability), ARRAY[]::text[])
-             FROM provider_capabilities pc WHERE pc.provider_id = p.id) AS capabilities,
-          loc.lat AS lat,
-          loc.lng AS lng,
-          loc.address AS address,
-          loc.hours_json AS hours_json
-        FROM providers p
-        LEFT JOIN LATERAL (
-          SELECT lat, lng, address, hours_json
-          FROM provider_locations pl
-          WHERE pl.provider_id = p.id
-          ORDER BY pl.id ASC
-          LIMIT 1
-        ) loc ON true
-        WHERE p.status = 'published'
-          -- Exclude demo/seed providers (0111) from real discovery.
-          AND p.is_demo IS NOT TRUE
-          AND (
-            ${capability}::text IS NULL
-            OR EXISTS (
-              SELECT 1 FROM provider_capabilities pc
-              WHERE pc.provider_id = p.id AND pc.capability = ${capability}
-            )
-          )
-          AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
-          AND (
-            ${applyRadius ? false : true}
-            OR (
-              loc.lat IS NOT NULL AND loc.lng IS NOT NULL
-              AND loc.lat BETWEEN ${latMin} AND ${latMax}
-              AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
-            )
-          )
-        ORDER BY p.name ASC
-      `;
-    }
-
-    // ── Places ── published, non-deleted catalog (0075) with avg_rating/review_count over
-    // place_reviews (overall_rating, non-deleted) as correlated subqueries. neighborhood + category
-    // (as placeCategory) are exact filters here.
-    let placeRows = [];
-    if (includePlaces) {
-      placeRows = await sql`
-        SELECT
-          pl.id, pl.name, pl.category, pl.neighborhood, pl.address, pl.lat, pl.lng,
-          (SELECT ROUND(AVG(r.overall_rating)::numeric, 1) FROM place_reviews r
-             WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS avg_rating,
-          (SELECT COUNT(*)::int FROM place_reviews r
-             WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS review_count
-        FROM places pl
-        WHERE pl.status = 'published'
-          AND pl.deleted_at IS NULL
-          AND (${qLike}::text IS NULL OR pl.name ILIKE ${qLike})
-          AND (${placeCategory}::text IS NULL OR pl.category = ${placeCategory})
-          AND (${neighborhood}::text IS NULL OR pl.neighborhood = ${neighborhood})
-          AND (
-            ${applyRadius ? false : true}
-            OR (
-              pl.lat IS NOT NULL AND pl.lng IS NOT NULL
-              AND pl.lat BETWEEN ${latMin} AND ${latMax}
-              AND pl.lng BETWEEN ${lngMin} AND ${lngMax}
-            )
-          )
-        ORDER BY pl.name ASC
-      `;
-    }
+    // ── Providers + Places ── two independent sources (mirrors /api/providers/discover and
+    // /api/places respectively) run CONCURRENTLY instead of sequentially: neither query depends
+    // on the other's result, and the 'all' category (the default/no-category request) needs both,
+    // so awaiting them one after another was doubling the DB round-trip for that request shape.
+    // postgres.js pipelines concurrently-issued queries on the same connection, so this is safe to
+    // do even though both run inside the request's single transaction (withRequestContext).
+    const [providerRows, placeRows] = await Promise.all([
+      // ── Providers ── published-provider projection (mirrors /api/providers/discover):
+      // capabilities[] + primary location (lowest-id via LATERAL) + avg_rating/review_count over
+      // provider_reviews as correlated subqueries. neighborhood is NOT applied here (providers are
+      // city-wide).
+      includeProviders
+        ? sql`
+            SELECT
+              p.id, p.slug, p.name,
+              (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+              (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count,
+              (SELECT COALESCE(array_agg(pc.capability ORDER BY pc.capability), ARRAY[]::text[])
+                 FROM provider_capabilities pc WHERE pc.provider_id = p.id) AS capabilities,
+              loc.lat AS lat,
+              loc.lng AS lng,
+              loc.address AS address,
+              loc.hours_json AS hours_json
+            FROM providers p
+            LEFT JOIN LATERAL (
+              SELECT lat, lng, address, hours_json
+              FROM provider_locations pl
+              WHERE pl.provider_id = p.id
+              ORDER BY pl.id ASC
+              LIMIT 1
+            ) loc ON true
+            WHERE p.status = 'published'
+              -- Exclude demo/seed providers (0111) from real discovery.
+              AND p.is_demo IS NOT TRUE
+              AND (
+                ${capability}::text IS NULL
+                OR EXISTS (
+                  SELECT 1 FROM provider_capabilities pc
+                  WHERE pc.provider_id = p.id AND pc.capability = ${capability}
+                )
+              )
+              AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
+              AND (
+                ${applyRadius ? false : true}
+                OR (
+                  loc.lat IS NOT NULL AND loc.lng IS NOT NULL
+                  AND loc.lat BETWEEN ${latMin} AND ${latMax}
+                  AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+                )
+              )
+            ORDER BY p.name ASC
+          `
+        : [],
+      // ── Places ── published, non-deleted catalog (0075) with avg_rating/review_count over
+      // place_reviews (overall_rating, non-deleted) as correlated subqueries. neighborhood +
+      // category (as placeCategory) are exact filters here.
+      includePlaces
+        ? sql`
+            SELECT
+              pl.id, pl.name, pl.category, pl.neighborhood, pl.address, pl.lat, pl.lng,
+              (SELECT ROUND(AVG(r.overall_rating)::numeric, 1) FROM place_reviews r
+                 WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS avg_rating,
+              (SELECT COUNT(*)::int FROM place_reviews r
+                 WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS review_count
+            FROM places pl
+            WHERE pl.status = 'published'
+              AND pl.deleted_at IS NULL
+              AND (${qLike}::text IS NULL OR pl.name ILIKE ${qLike})
+              AND (${placeCategory}::text IS NULL OR pl.category = ${placeCategory})
+              AND (${neighborhood}::text IS NULL OR pl.neighborhood = ${neighborhood})
+              AND (
+                ${applyRadius ? false : true}
+                OR (
+                  pl.lat IS NOT NULL AND pl.lng IS NOT NULL
+                  AND pl.lat BETWEEN ${latMin} AND ${latMax}
+                  AND pl.lng BETWEEN ${lngMin} AND ${lngMax}
+                )
+              )
+            ORDER BY pl.name ASC
+          `
+        : [],
+    ]);
 
     // Normalize both sources to the unified typed row. slug/capabilities are provider-only;
     // category/neighborhood are place-only — the other side is null so callers get a stable shape.
