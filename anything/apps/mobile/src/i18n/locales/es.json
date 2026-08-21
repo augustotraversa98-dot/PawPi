@@ -1323,6 +1323,7 @@
     "paymentFailedBody": "No pudimos abrir la ventana de pago para tu {{noun}}, así que no se cobró nada. Intentá de nuevo.",
     "requestSentTitle": "¡Solicitud enviada!",
     "requestSentBody": "{{provider}} confirmará tu {{noun}} pronto.",
+    "payInPersonNote": "Sin pago online: solo solicitá la reserva y pagale a {{provider}} en persona.",
     "couldntBook": "No se pudo reservar"
   },
   "providers": {

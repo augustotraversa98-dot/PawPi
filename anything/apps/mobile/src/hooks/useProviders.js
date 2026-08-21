@@ -1806,11 +1806,12 @@ export function useToggleAdoptionFavorite() {
 }
 
 // Start a BOOKING payment via the SHARED 2.3 payment layer (POST /api/payments/checkout,
-// kind:'booking'). mutateAsync({ provider_id, amount_cents, source_ref? }) →
-// { order, checkoutUrl, deeplink, ... }. Used by BookingFormModal when the chosen service has a
-// deposit/full payment policy (pay-at-request, migration 0070). Surfaces the backend's 503
-// "payments not configured" verbatim so the UI can tell the customer. Same route the rest of the
-// app uses — no duplicate payment code.
+// kind:'booking'). mutateAsync({ provider_id, service_id }) for a service booking, OR
+// ({ provider_id, source_ref:'transport:<id>' }) for a transport fare → { order, checkoutUrl, … }.
+// The AMOUNT is derived on the SERVER (service payment_policy or the trip fare) — we never send a
+// client amount_cents (fail-closed pricing, 2026-08-21), so a tampered amount can't underpay. Used
+// by BookingFormModal (deposit/full services, migration 0070) + transport pay-on-confirm. Surfaces
+// the backend's 503 / no_payment_required verbatim. Same route the rest of the app uses.
 export function useBookingCheckout() {
   return useMutation({
     mutationFn: async (body) => {

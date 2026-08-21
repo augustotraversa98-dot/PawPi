@@ -86,13 +86,14 @@ export default function InsurancePolicyScreen() {
   const pay = async (policy) => {
     if (!policy.premium_cents) return;
     try {
+      // The premium is set by the insurer and verified SERVER-side from this policy
+      // (source_ref "ins-<id>") — we never send a client amount (fail-closed pricing, 2026-08-21).
       const res = await fetch(`/api/payments/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider_id: policy.provider_id,
           kind: "subscription",
-          amount_cents: policy.premium_cents,
           rail: "mercadopago",
           source_ref: `ins-${policy.id}`,
         }),

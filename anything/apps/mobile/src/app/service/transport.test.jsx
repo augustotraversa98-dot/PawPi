@@ -120,9 +120,9 @@ test("a confirmed trip with a fare shows Pay; paying starts checkout (fare→cen
   const { getByTestId } = render(<TransportScreen />);
   fireEvent.press(getByTestId("pay-7"));
   await waitFor(() => expect(mockCheckout).toHaveBeenCalledTimes(1));
+  // The amount is derived SERVER-side from the trip fare — the client sends only the reference.
   expect(mockCheckout).toHaveBeenCalledWith({
     provider_id: 100,
-    amount_cents: 1500, // fare 15 → 1500 cents
     source_ref: "transport:7",
   });
   await waitFor(() =>

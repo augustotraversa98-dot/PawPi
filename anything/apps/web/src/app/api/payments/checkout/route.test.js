@@ -4,9 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // are mocked at the module boundary.
 //
 // B1 (night-run #1) — FAIL-CLOSED server-side pricing: the client's amount_cents is NEVER charged
-// as-is except for a bounded donation. `product` is priced from the catalog / rx-fulfillment row;
-// booking / adoption_fee / subscription have no server price source yet and are rejected. These
-// tests pin that contract (they REPLACE the old ones that asserted the trust-the-client behavior).
+// as-is except for a bounded donation. `product` is priced from the catalog / rx-fulfillment row.
+// BOOKINGS-PRICING (2026-08-21) wires the rest to a server price source: booking → provider_services
+// policy OR transport_trips fare; adoption_fee → adoptable_listings fee; subscription → the owner's
+// insurance_policies premium. A tampered amount_cents can never change the charge (regression tests
+// below); a priceable entity with no amount returns `no_payment_required` (book/apply free instead),
+// and a kind with no price reference still fails closed with `pricing_not_configured`.
 
 import { POST } from './route';
 import { auth } from '@/auth';
@@ -202,20 +205,218 @@ describe('B1 fail-closed pricing', () => {
     expect(sql).not.toHaveBeenCalled();
   });
 
-  // ---- kinds with no server price source → fail closed ----
-  it.each(['booking', 'adoption_fee', 'subscription'])(
-    "%s → 400 pricing_not_configured, no order created",
-    async (kind) => {
-      auth.mockResolvedValue(SESSION);
-      const res = await POST(
-        jsonReq({ provider_id: 5, kind, rail: 'mercadopago', amount_cents: 10000 }),
-      );
-      expect(res.status).toBe(400);
-      expect((await res.json()).code).toBe('pricing_not_configured');
-      expect(sql).not.toHaveBeenCalled();
-      expect(createCheckout).not.toHaveBeenCalled();
-    },
-  );
+  // ---- booking: priced from the service's payment_policy ----
+  it('booking (full policy): charges the SERVER price_cents, ignoring a tampered amount_cents', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([
+        { payment_policy: 'full', price_cents: 8000, deposit_cents: 2000 },
+      ]) // provider_services lookup
+      .mockResolvedValueOnce([{ id: 30, amount_cents: 8000 }]); // INSERT orders
+    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
+
+    const res = await POST(
+      jsonReq({
+        provider_id: 5,
+        kind: 'booking',
+        rail: 'mercadopago',
+        amount_cents: 1, // tampered — must be ignored
+        service_id: 9,
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    // The service lookup is scoped to the service id + provider.
+    expect(sql.mock.calls[0]).toEqual(expect.arrayContaining([9, 5]));
+    const orderInsert = sql.mock.calls[1];
+    expect(orderInsert[0].join(' ')).toContain('INSERT INTO orders');
+    expect(orderInsert).toEqual(expect.arrayContaining([8000])); // server price, not 1
+    expect(orderInsert).not.toContain(1);
+  });
+
+  it('booking (deposit policy): charges deposit_cents, not price_cents', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([
+        { payment_policy: 'deposit', price_cents: 8000, deposit_cents: 2000 },
+      ])
+      .mockResolvedValueOnce([{ id: 31, amount_cents: 2000 }]);
+    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
+
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'booking', rail: 'mercadopago', amount_cents: 999999, service_id: 9 }),
+    );
+    expect(res.status).toBe(201);
+    expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([2000]));
+    expect(sql.mock.calls[1]).not.toContain(8000);
+  });
+
+  it("booking ('none' policy): 400 no_payment_required, no order (book it free instead)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([
+      { payment_policy: 'none', price_cents: 8000, deposit_cents: 2000 },
+    ]);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'booking', rail: 'mercadopago', amount_cents: 8000, service_id: 9 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('no_payment_required');
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it('booking: an inactive / foreign service → 404 unpriceable_booking', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]); // provider_services lookup → none
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'booking', rail: 'mercadopago', amount_cents: 1, service_id: 999 }),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe('unpriceable_booking');
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  // ---- booking: transport fare path (source_ref "transport:<id>") ----
+  it('booking/transport: prices from the owner transport_trips fare, ignoring the client amount', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ fare_amount: 45.5 }]) // transport_trips lookup (dollars)
+      .mockResolvedValueOnce([{ id: 32, amount_cents: 4550 }]); // INSERT orders
+    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
+
+    const res = await POST(
+      jsonReq({
+        provider_id: 5,
+        kind: 'booking',
+        rail: 'mercadopago',
+        amount_cents: 1, // tampered
+        source_ref: 'transport:77',
+      }),
+    );
+    expect(res.status).toBe(201);
+    // Scoped to the parsed trip id + caller + provider.
+    expect(sql.mock.calls[0]).toEqual(expect.arrayContaining([77, 7, 5]));
+    expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([4550])); // 45.50 → cents
+    expect(sql.mock.calls[1]).not.toContain(1);
+  });
+
+  it('booking: no service and no fare reference → 400 pricing_not_configured', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'booking', rail: 'mercadopago', amount_cents: 10000 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('pricing_not_configured');
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  // ---- adoption_fee: priced from the listing ----
+  it('adoption_fee: charges the SERVER listing fee, ignoring a tampered amount_cents', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ adoption_fee_cents: 12000 }]) // adoptable_listings lookup
+      .mockResolvedValueOnce([{ id: 40, amount_cents: 12000 }]); // INSERT orders
+    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
+
+    const res = await POST(
+      jsonReq({
+        provider_id: 5,
+        kind: 'adoption_fee',
+        rail: 'mercadopago',
+        amount_cents: 1, // tampered
+        source_ref: 'adoption-listing-9',
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(sql.mock.calls[0]).toEqual(expect.arrayContaining([9, 5]));
+    expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([12000]));
+    expect(sql.mock.calls[1]).not.toContain(1);
+  });
+
+  it('adoption_fee: a listing with no fee → 400 no_payment_required, no order', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ adoption_fee_cents: 0 }]);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'adoption_fee', rail: 'mercadopago', amount_cents: 5000, source_ref: 'adoption-listing-9' }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('no_payment_required');
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it('adoption_fee: unknown listing → 404 unpriceable_adoption', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'adoption_fee', rail: 'mercadopago', amount_cents: 1, source_ref: 'adoption-listing-999' }),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe('unpriceable_adoption');
+  });
+
+  it('adoption_fee: no listing reference → 400 pricing_not_configured', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'adoption_fee', rail: 'mercadopago', amount_cents: 10000 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('pricing_not_configured');
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  // ---- subscription: priced from the owner's insurance policy premium ----
+  it('subscription: charges the insurer-set premium, ignoring a tampered amount_cents', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ premium_cents: 30000 }]) // insurance_policies lookup
+      .mockResolvedValueOnce([{ id: 50, amount_cents: 30000 }]); // INSERT orders
+    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
+
+    const res = await POST(
+      jsonReq({
+        provider_id: 5,
+        kind: 'subscription',
+        rail: 'mercadopago',
+        amount_cents: 1, // tampered
+        source_ref: 'ins-3',
+      }),
+    );
+    expect(res.status).toBe(201);
+    // Scoped to the policy id + the caller (owner_user_id).
+    expect(sql.mock.calls[0]).toEqual(expect.arrayContaining([3, 7]));
+    expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([30000]));
+    expect(sql.mock.calls[1]).not.toContain(1);
+  });
+
+  it('subscription: a policy with no premium yet → 400 no_payment_required', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ premium_cents: null }]);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 5000, source_ref: 'ins-3' }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('no_payment_required');
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("subscription: another owner's policy id → 404 unpriceable_subscription", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]); // scoped by owner_user_id → no row
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 1, source_ref: 'ins-999' }),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe('unpriceable_subscription');
+  });
+
+  it('subscription: no policy reference → 400 pricing_not_configured', async () => {
+    auth.mockResolvedValue(SESSION);
+    const res = await POST(
+      jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 10000 }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('pricing_not_configured');
+    expect(sql).not.toHaveBeenCalled();
+  });
 
   // ---- donation bounds ----
   it('donation: a valid amount is charged as-is', async () => {

@@ -1323,6 +1323,7 @@
     "paymentFailedBody": "We couldn't open the payment window for your {{noun}}, so nothing was charged. Please try again.",
     "requestSentTitle": "Request sent!",
     "requestSentBody": "{{provider}} will confirm your {{noun}} soon.",
+    "payInPersonNote": "No online payment — just request the booking and pay {{provider}} in person.",
     "couldntBook": "Couldn't book"
   },
   "providers": {

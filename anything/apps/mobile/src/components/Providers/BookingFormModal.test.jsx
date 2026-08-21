@@ -412,7 +412,9 @@ test("a single paid service is auto-selected so booking CHARGES without tapping 
   fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
-  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, amount_cents: 5000 });
+  // The server derives the amount from the service policy — we send service_id, NEVER a client amount.
+  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, service_id: 5 });
+  expect(mockCheckoutMutateAsync.mock.calls[0][0].amount_cents).toBeUndefined();
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].service_id).toBe(5);
   expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(900);
@@ -429,7 +431,7 @@ test("a 'full' policy service starts checkout, links the order, and opens Mercad
   fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
-  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, amount_cents: 5000 });
+  expect(mockCheckoutMutateAsync.mock.calls[0][0]).toMatchObject({ provider_id: 3, service_id: 5 });
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   expect(mockMutateAsync.mock.calls[0][0].order_id).toBe(900);
   await waitFor(() =>
@@ -450,7 +452,9 @@ test("a 'deposit' policy charges the deposit amount, not the full price", async 
   fireEvent.press(view.getByText(/booking\.reserveSlot/));
 
   await waitFor(() => expect(mockCheckoutMutateAsync).toHaveBeenCalledTimes(1));
-  expect(mockCheckoutMutateAsync.mock.calls[0][0].amount_cents).toBe(1500);
+  // Deposit vs full is resolved SERVER-side from the policy; the client just names the service.
+  expect(mockCheckoutMutateAsync.mock.calls[0][0].service_id).toBe(5);
+  expect(mockCheckoutMutateAsync.mock.calls[0][0].amount_cents).toBeUndefined();
   await waitFor(() => expect(Linking.openURL).toHaveBeenCalled());
 });
 
