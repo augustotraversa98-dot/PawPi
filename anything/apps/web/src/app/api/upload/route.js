@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { auth } from "@/auth";
+import {
+  validateUpload,
+  MAX_UPLOAD_BYTES,
+} from "@/app/api/utils/uploadValidation";
+import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 const BUCKET = "media";
 
@@ -7,7 +13,7 @@ const BUCKET = "media";
 // using the service_role key so the key never reaches the device. Accepts
 // multipart/form-data with a `file` field and returns { url, mimeType } where
 // `url` is the public URL — the same shape the mobile useUpload hook expects.
-export async function POST(request) {
+async function POST(request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -27,14 +33,28 @@ export async function POST(request) {
       return Response.json({ error: "file is required" }, { status: 400 });
     }
 
-    const mimeType = file.type || "application/octet-stream";
-    const ext =
-      (file.name?.split(".").pop() || mimeType.split("/").pop() || "bin")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "") || "bin";
+    // Type + size gate (S3): only the content types the app actually uploads (images, PDF, CSV/XLSX)
+    // and a size cap. We store the VALIDATED mime below, never the raw client-declared one, so an
+    // active-markup type (text/html, image/svg+xml, …) can neither pass nor be served as active
+    // content from the public bucket.
+    const validation = validateUpload({
+      mimeType: file.type,
+      filename: file.name,
+      size: file.size,
+    });
+    if (!validation.ok) {
+      return Response.json({ error: validation.error }, { status: validation.status });
+    }
+    const mimeType = validation.mime;
+    const ext = validation.ext;
     const objectPath = `uploads/${randomUUID()}.${ext}`;
 
     const bytes = await file.arrayBuffer();
+    // Belt-and-suspenders: file.size can be absent on some Blob shapes — enforce the cap on the
+    // bytes we actually read too.
+    if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+      return Response.json({ error: "File too large" }, { status: 413 });
+    }
 
     const uploadResponse = await fetch(
       `${supabaseUrl}/storage/v1/object/${BUCKET}/${objectPath}`,
@@ -67,3 +87,9 @@ export async function POST(request) {
     return Response.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+
+// #6: wrap in a request context (so the Postgres-backed limiter has a transaction to count in) and
+// rate limit uploads to cap storage/cost flooding. withRequestContext is a no-op passthrough in unit
+// tests (no real pool) — the route behaves exactly as before there.
+const wrappedPOST = withRequestContext(withRateLimit("upload_create", POST));
+export { wrappedPOST as POST };
