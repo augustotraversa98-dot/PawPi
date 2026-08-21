@@ -5,7 +5,6 @@ import {
   setCurrentUserId,
 } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
-import { getCurrentWeight } from "@/app/api/utils/petWeight";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -55,17 +54,29 @@ async function GET(request) {
     // falling back to pets.weight only when it has zero weigh-ins logged yet.
     // Every consumer of this list (useCurrentPet/usePetProfile — Dog Profile,
     // the Edit Pet Profile prefill, headers) gets the correct value for free.
-    const petsWithCurrentWeight = await Promise.all(
-      pets.map(async (pet) => {
-        const currentWeight = await getCurrentWeight(
-          pet.id,
-          userId,
-          pet.weight,
-          pet.weight_unit,
-        );
-        return { ...pet, ...currentWeight };
-      }),
-    );
+    //
+    // Batched in one query (same fix as api/shop/orders/route.js) instead of
+    // one getCurrentWeight round-trip per pet.
+    const petIds = pets.map((p) => p.id);
+    const latestWeights =
+      petIds.length > 0
+        ? await sql`
+            SELECT DISTINCT ON (pet_id) pet_id, weight, weight_unit
+            FROM health_weight_logs
+            WHERE pet_id = ANY(${petIds}) AND owner_user_id = ${userId}
+            ORDER BY pet_id, logged_at DESC
+          `
+        : [];
+    const latestWeightByPetId = new Map(latestWeights.map((w) => [w.pet_id, w]));
+
+    const petsWithCurrentWeight = pets.map((pet) => {
+      const latest = latestWeightByPetId.get(pet.id);
+      return {
+        ...pet,
+        weight: latest ? latest.weight : pet.weight,
+        weight_unit: latest ? latest.weight_unit : pet.weight_unit,
+      };
+    });
 
     return Response.json({ pets: petsWithCurrentWeight });
   } catch (error) {
