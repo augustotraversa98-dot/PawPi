@@ -18,6 +18,35 @@
     "before": "Before",
     "after": "After"
   },
+  "petProfile": {
+    "petProfile": "Pet profile",
+    "withOwner": "with {{name}}",
+    "dailyPosts": "Daily posts",
+    "dailyMoments": "Daily moments",
+    "noDailyPosts": "No daily posts yet",
+    "momentsEmpty": "{{name}}'s daily moments will appear here.",
+    "momentsEmptyGeneric": "These daily moments will appear here.",
+    "ageYear": "year",
+    "ageYears": "years",
+    "ageMonth": "month",
+    "ageMonths": "months",
+    "ageUnderMonth": "Under 1 month"
+  },
+  "community": {
+    "title": "Community",
+    "subtitle": "Ask, share, and connect with pet parents.",
+    "sortHot": "Hot",
+    "sortNew": "New",
+    "sortTop": "Top",
+    "category": {
+      "All": "All",
+      "Health": "Health",
+      "Food": "Food",
+      "Training": "Training",
+      "Behavior": "Behavior",
+      "General": "General"
+    }
+  },
   "care": {
     "segLearn": "Learn",
     "segHire": "Hire",
@@ -105,6 +134,7 @@
     "title": "Health",
     "hubTitle": "Health Hub",
     "nutritionButton": "Nutrition",
+    "disclaimer": "PawPi helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.",
     "today": "Today",
     "track": "Track",
     "insights": "Insights",
@@ -3391,6 +3421,18 @@
     "wrappedTitleGeneric": "Your pet's Wrapped",
     "wrappedSubtitle": "A beautiful year-in-review, made to share",
     "todaysCelebrations": "TODAY'S CELEBRATIONS",
+    "milestones": {
+      "birthdayTitle": "Happy birthday, {{name}}!",
+      "birthdayYears": "{{count}} years young today",
+      "birthdayGeneric": "Another year of joy",
+      "gotchaTitle": "{{name}}'s Gotcha Day!",
+      "gotchaYears": "{{count}} years together",
+      "gotchaGeneric": "The day you found each other",
+      "streakTitle": "{{count}}-day streak!",
+      "streakSub": "{{name}} has posted {{count}} days in a row",
+      "postsTitle": "{{count}} daily moments",
+      "postsSub": "{{name}} just hit {{count}} dailies"
+    },
     "onThisDay": "ON THIS DAY",
     "onThisDayLower": "on this day",
     "empty": "No memories from this day yet — keep posting and they'll appear here next year. 🐾",
