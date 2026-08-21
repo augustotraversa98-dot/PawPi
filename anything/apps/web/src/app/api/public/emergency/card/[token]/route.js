@@ -15,7 +15,13 @@ async function GET(request, { params }) {
     if (!card) {
       return Response.json({ error: "expired_or_revoked" }, { status: 404 });
     }
-    return Response.json({ card });
+    // This is an UNAUTHENTICATED response carrying pet PII (name, photo, microchip, and — when
+    // the owner shared a full-scope link — allergies/conditions/vet + emergency contacts). Never
+    // let a shared/CDN/proxy cache retain it, and don't let a revoked link linger in a cache.
+    return Response.json(
+      { card },
+      { headers: { "Cache-Control": "no-store, private" } },
+    );
   } catch (e) {
     console.error("[GET /api/public/emergency/card/[token]] Error:", e?.message);
     return Response.json({ error: "Failed to load card" }, { status: 500 });

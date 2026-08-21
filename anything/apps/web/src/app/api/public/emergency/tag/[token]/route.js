@@ -16,7 +16,12 @@ async function GET(request, { params }) {
     if (!card) {
       return Response.json({ error: "not_available" }, { status: 404 });
     }
-    return Response.json({ card });
+    // Unauthenticated response carrying pet PII (basic fields, plus medical ONLY when the owner
+    // opted in via show_medical_on_tag). Never let a shared/CDN/proxy cache retain it.
+    return Response.json(
+      { card },
+      { headers: { "Cache-Control": "no-store, private" } },
+    );
   } catch (e) {
     console.error("[GET /api/public/emergency/tag/[token]] Error:", e?.message);
     return Response.json({ error: "Failed to load tag" }, { status: 500 });
