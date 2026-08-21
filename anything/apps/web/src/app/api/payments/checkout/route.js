@@ -39,17 +39,18 @@ const ALLOWED_KINDS = [
 // every priceable kind derives its amount on the server, and any kind without a server price source
 // is rejected. See docs/night-run/2026-08-21/SECURITY_FIXES.md #1.
 //
-// BOOKINGS-PRICING (2026-08-21, feat/bookings-no-payment-and-pricing). Each remaining kind is now
-// wired to a SERVER price source so no owner-reachable flow returns `pricing_not_configured`:
+// BOOKINGS-PRICING (2026-08-21, feat/bookings-no-payment-and-pricing). The priceable booking kinds
+// derive their amount from a SERVER source so no owner-reachable flow returns `pricing_not_configured`:
 //   • booking      → a provider_services row (payment_policy full→price_cents / deposit→deposit_cents),
 //                    OR a transport_trips fare (source_ref "transport:<id>").
 //   • adoption_fee → the adoptable_listings.adoption_fee_cents on the referenced listing.
-//   • subscription → the owner's insurance_policies.premium_cents (source_ref "ins-<id>").
-// A priceable entity that carries NO amount (payment_policy 'none', a fee of 0, an unset premium /
-// fare) is not an error — those flows book/apply with NO payment at all (no order); we reject the
-// *checkout* with `no_payment_required` (distinct from `pricing_not_configured`) so the client
-// falls back to the no-payment path. The client's amount_cents is ignored for every kind except a
-// bounded donation, so a tampered amount can never underpay.
+// A priceable entity that carries NO amount (payment_policy 'none', a fee of 0, an unset fare) is not
+// an error — those flows book/apply with NO payment at all (no order); we reject the *checkout* with
+// `no_payment_required` (distinct from `pricing_not_configured`) so the client falls back to the
+// no-payment path. The client's amount_cents is ignored for every kind except a bounded donation, so
+// a tampered amount can never underpay.
+//   • subscription → LEAD-GEN ONLY for v1: insurance is its only user and has NO in-app premium
+//     payment (the insurer arranges payment directly). The branch rejects with `not_available`.
 
 // A donation is legitimately donor-chosen; bound it so it can't be zero/negative or absurd. Tune
 // before launch if needed (this is a sanity cap, not a product limit).
@@ -232,43 +233,6 @@ async function priceAdoptionFee({ source_ref, provider_id }) {
   return { amountCents: fee };
 }
 
-// Derive the authoritative amount for a `subscription` checkout: the premium the INSURER set on the
-// owner's own policy (insurance_policies.premium_cents, source_ref "ins-<id>"), scoped to the caller
-// via owner_user_id. (ARCHITECTURE's "no binding/payment" describes the lead/marketplace layer, 0054;
-// the paid PREMIUM path was added by 0058/ticket 2.72 and is a real in-app purchase — the amount is
-// insurer-set and server-verified, never client-chosen.) An unset/zero premium → `no_payment_required`.
-async function priceSubscription({ source_ref, userId }) {
-  const m = typeof source_ref === "string" ? source_ref.match(/^ins-(\d+)$/) : null;
-  if (!m) {
-    return {
-      error: "Checkout for 'subscription' requires an insurance-policy reference",
-      code: "pricing_not_configured",
-      status: 400,
-    };
-  }
-  const rows = await sql`
-    SELECT premium_cents
-    FROM insurance_policies
-    WHERE id = ${parseInt(m[1], 10)} AND owner_user_id = ${userId}
-  `;
-  if (rows.length === 0) {
-    return {
-      error: "Insurance policy not found",
-      code: "unpriceable_subscription",
-      status: 404,
-    };
-  }
-  const premium = rows[0].premium_cents;
-  if (premium == null || premium <= 0) {
-    return {
-      error: "This policy has no premium to pay yet.",
-      code: "no_payment_required",
-      status: 400,
-    };
-  }
-  return { amountCents: premium };
-}
-
 async function POST(request) {
   try {
     const session = await auth();
@@ -353,14 +317,16 @@ async function POST(request) {
       }
       amountToCharge = priced.amountCents;
     } else if (kind === "subscription") {
-      const priced = await priceSubscription({ source_ref, userId });
-      if (priced.error) {
-        return Response.json(
-          { error: priced.error, code: priced.code },
-          { status: priced.status },
-        );
-      }
-      amountToCharge = priced.amountCents;
+      // LEAD-GEN ONLY (v1, 2026-08-21): insurance is the only `subscription` user, and there is NO
+      // in-app premium payment — the insurer arranges payment with the owner directly. Reject any
+      // subscription checkout so no in-app insurance-premium charge path exists, even if called.
+      return Response.json(
+        {
+          error: "In-app subscription payment isn't available.",
+          code: "not_available",
+        },
+        { status: 400 },
+      );
     } else {
       // Defensive: an ALLOWED_KIND with no pricing branch — reject rather than trust the client.
       return Response.json(

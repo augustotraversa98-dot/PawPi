@@ -5,11 +5,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 //
 // B1 (night-run #1) — FAIL-CLOSED server-side pricing: the client's amount_cents is NEVER charged
 // as-is except for a bounded donation. `product` is priced from the catalog / rx-fulfillment row.
-// BOOKINGS-PRICING (2026-08-21) wires the rest to a server price source: booking → provider_services
-// policy OR transport_trips fare; adoption_fee → adoptable_listings fee; subscription → the owner's
-// insurance_policies premium. A tampered amount_cents can never change the charge (regression tests
-// below); a priceable entity with no amount returns `no_payment_required` (book/apply free instead),
-// and a kind with no price reference still fails closed with `pricing_not_configured`.
+// BOOKINGS-PRICING (2026-08-21) wires the priceable kinds to a server price source: booking →
+// provider_services policy OR transport_trips fare; adoption_fee → adoptable_listings fee. A tampered
+// amount_cents can never change the charge (regression tests below); a priceable entity with no amount
+// returns `no_payment_required` (book/apply free instead), and a kind with no price reference still
+// fails closed with `pricing_not_configured`. `subscription` is LEAD-GEN ONLY for v1 (insurance has no
+// in-app premium payment) — it is always rejected with `not_available`.
 
 import { POST } from './route';
 import { auth } from '@/auth';
@@ -363,59 +364,33 @@ describe('B1 fail-closed pricing', () => {
     expect(sql).not.toHaveBeenCalled();
   });
 
-  // ---- subscription: priced from the owner's insurance policy premium ----
-  it('subscription: charges the insurer-set premium, ignoring a tampered amount_cents', async () => {
+  // ---- subscription: LEAD-GEN ONLY (v1) — insurance has no in-app premium payment ----
+  it('subscription: always rejected with not_available, no order (even with a valid ins ref)', async () => {
     auth.mockResolvedValue(SESSION);
-    sql
-      .mockResolvedValueOnce([{ premium_cents: 30000 }]) // insurance_policies lookup
-      .mockResolvedValueOnce([{ id: 50, amount_cents: 30000 }]); // INSERT orders
-    createCheckout.mockResolvedValue({ payment: { id: 1 }, checkoutUrl: 'u' });
-
     const res = await POST(
       jsonReq({
         provider_id: 5,
         kind: 'subscription',
         rail: 'mercadopago',
-        amount_cents: 1, // tampered
+        amount_cents: 30000,
         source_ref: 'ins-3',
       }),
     );
-    expect(res.status).toBe(201);
-    // Scoped to the policy id + the caller (owner_user_id).
-    expect(sql.mock.calls[0]).toEqual(expect.arrayContaining([3, 7]));
-    expect(sql.mock.calls[1]).toEqual(expect.arrayContaining([30000]));
-    expect(sql.mock.calls[1]).not.toContain(1);
-  });
-
-  it('subscription: a policy with no premium yet → 400 no_payment_required', async () => {
-    auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([{ premium_cents: null }]);
-    const res = await POST(
-      jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 5000, source_ref: 'ins-3' }),
-    );
     expect(res.status).toBe(400);
-    expect((await res.json()).code).toBe('no_payment_required');
+    expect((await res.json()).code).toBe('not_available');
+    expect(sql).not.toHaveBeenCalled();
     expect(createCheckout).not.toHaveBeenCalled();
   });
 
-  it("subscription: another owner's policy id → 404 unpriceable_subscription", async () => {
-    auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([]); // scoped by owner_user_id → no row
-    const res = await POST(
-      jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 1, source_ref: 'ins-999' }),
-    );
-    expect(res.status).toBe(404);
-    expect((await res.json()).code).toBe('unpriceable_subscription');
-  });
-
-  it('subscription: no policy reference → 400 pricing_not_configured', async () => {
+  it('subscription: rejected even with no reference (no in-app charge path exists)', async () => {
     auth.mockResolvedValue(SESSION);
     const res = await POST(
       jsonReq({ provider_id: 5, kind: 'subscription', rail: 'mercadopago', amount_cents: 10000 }),
     );
     expect(res.status).toBe(400);
-    expect((await res.json()).code).toBe('pricing_not_configured');
+    expect((await res.json()).code).toBe('not_available');
     expect(sql).not.toHaveBeenCalled();
+    expect(createCheckout).not.toHaveBeenCalled();
   });
 
   // ---- donation bounds ----

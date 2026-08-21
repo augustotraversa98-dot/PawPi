@@ -15,13 +15,13 @@ import { COLORS } from "@/constants/colors";
 import {
   useInsurancePolicies,
   useApplyPolicy,
-  useActivatePolicy,
 } from "@/hooks/useInsurance";
 
-// Insurance apply / policy hub (ticket 2.72, extends the 2.54 marketplace). From a plan, the owner
-// READS + ACCEPTS the insurer's terms/disclaimer, applies (records terms_accepted_at), then — once
-// the insurer issues a premium — pays via 2.3 and the policy goes active. PawPi facilitates; the
-// insurer is the party-of-record (no underwriting). Real data + empty states.
+// Insurance apply / policy hub (ticket 2.72, extends the 2.54 marketplace). LEAD-GEN ONLY for v1
+// (2026-08-21): from a plan, the owner READS + ACCEPTS the insurer's terms/disclaimer and applies
+// (records terms_accepted_at) — that's the end of the in-app flow. There is NO in-app premium
+// payment: once the insurer issues a premium they arrange payment with the owner directly. PawPi
+// facilitates the lead; the insurer is the party-of-record (no underwriting, no binding, no charge).
 
 const STATUS_LABEL = {
   application: "Under review",
@@ -58,7 +58,6 @@ export default function InsurancePolicyScreen() {
 
   const { data: policies = [] } = useInsurancePolicies(petId ?? null);
   const apply = useApplyPolicy(petId);
-  const activate = useActivatePolicy(petId);
 
   const [accepted, setAccepted] = useState(false);
 
@@ -80,39 +79,6 @@ export default function InsurancePolicyScreen() {
       setAccepted(false);
     } catch (e) {
       Alert.alert(t("ins.couldNotApply"), e.message || "");
-    }
-  };
-
-  const pay = async (policy) => {
-    if (!policy.premium_cents) return;
-    try {
-      // The premium is set by the insurer and verified SERVER-side from this policy
-      // (source_ref "ins-<id>") — we never send a client amount (fail-closed pricing, 2026-08-21).
-      const res = await fetch(`/api/payments/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider_id: policy.provider_id,
-          kind: "subscription",
-          rail: "mercadopago",
-          source_ref: `ins-${policy.id}`,
-        }),
-      });
-      if (res.status === 503) {
-        Alert.alert(t("ins.payUnavailable"), t("ins.payUnavailableBody"));
-        return;
-      }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Payment failed");
-      if (data.checkoutUrl) Linking.openURL(data.checkoutUrl);
-      // Best-effort: activate once the rail reports the payment approved (webhook-driven).
-      if (data.payment?.id) {
-        activate
-          .mutateAsync({ id: policy.id, payment_id: data.payment.id })
-          .catch(() => {});
-      }
-    } catch (e) {
-      Alert.alert(t("ins.couldNotPay"), e.message || "");
     }
   };
 
@@ -178,15 +144,17 @@ export default function InsurancePolicyScreen() {
                   </Text>
                 ) : null}
                 {p.premium_cents != null && p.status === "payment_pending" && (
-                  <TouchableOpacity
-                    testID={`ins-pay-${p.id}`}
-                    onPress={() => pay(p)}
-                    style={{ marginTop: 10, backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 9, alignItems: "center" }}
+                  // LEAD-GEN ONLY (v1): no in-app premium payment. Once the insurer has issued a
+                  // premium they arrange payment with the owner directly — surface that instead of
+                  // a pay button, so the insurance flow never reaches an in-app charge.
+                  <Text
+                    testID={`ins-premium-note-${p.id}`}
+                    style={{ marginTop: 8, fontSize: 12, color: COLORS.mutedBrown, lineHeight: 17 }}
                   >
-                    <Text style={{ color: "#fff", fontWeight: "800" }}>
-                      {t("ins.payPremium")} {money(p.premium_cents)}
-                    </Text>
-                  </TouchableOpacity>
+                    {t("ins.premiumContactNote", {
+                      insurer: p.provider_name || t("ins.theInsurer"),
+                    })}
+                  </Text>
                 )}
               </View>
             ))}
