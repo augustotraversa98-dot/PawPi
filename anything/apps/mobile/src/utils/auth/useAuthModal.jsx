@@ -29,7 +29,7 @@ export const AuthModal = () => {
   }
 
   return (
-    <Modal visible={isOpen && !auth} transparent={true} animationType="slide">
+    <Modal visible={isOpen && !auth} transparent={true} animationType="slide" onRequestClose={close}>
       <View
         style={{
           position: "absolute",

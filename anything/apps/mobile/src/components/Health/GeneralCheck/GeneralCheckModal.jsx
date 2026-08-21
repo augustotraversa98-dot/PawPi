@@ -287,7 +287,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
   const progress = (assessedCount / CHECK_AREAS.length) * 100;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleCloseModal}>
       <KeyboardAvoidingView
         style={{
           flex: 1,
