@@ -246,7 +246,7 @@ export default function MedicalCareRoutineModal({
   // ---------- LIST STEP ----------
   if (step === "list") {
     return (
-      <Modal visible={visible} animationType="slide" transparent={true}>
+      <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={{ flex: 1, backgroundColor: C.cream }}>
           <Header
             title="💊 Medical Care"
@@ -389,7 +389,7 @@ export default function MedicalCareRoutineModal({
   // ---------- PICK TYPE STEP ----------
   if (step === "pickType") {
     return (
-      <Modal visible={visible} animationType="slide" transparent={true}>
+      <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={() => setStep("list")}>
         <View
           style={{
             flex: 1,
@@ -652,7 +652,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onCancel}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

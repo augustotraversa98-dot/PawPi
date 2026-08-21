@@ -131,6 +131,7 @@ export const PostDetailModal = memo(function PostDetailModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
         {/* Header */}

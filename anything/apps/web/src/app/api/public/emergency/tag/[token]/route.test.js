@@ -24,6 +24,8 @@ describe('public tag GET', () => {
     const res = await GET(req(), PARAMS);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ card: CARD });
+    // Unauthenticated pet-PII response must never be cached by a shared/CDN/proxy cache.
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
     // The ONLY query is the DEFINER tag fn — no broad table SELECT.
     const text = sql.mock.calls[0][0].join(' ');
     expect(text).toContain('app_emergency_card_by_tag');
