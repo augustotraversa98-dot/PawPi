@@ -16,6 +16,7 @@
 // wrapped so a malformed file FAILS SOFT — an empty catalog, never a throw to the caller.
 
 import { llmConfig } from "./config";
+import { safeFetch } from "./safeFetch";
 
 // --- type detection ----------------------------------------------------------
 
@@ -42,7 +43,9 @@ export function detectDocumentKind({ filename, mimeType } = {}) {
 async function toBuffer(file) {
   if (file?.buffer) return file.buffer;
   if (file?.url) {
-    const res = await fetch(file.url, { redirect: "follow" });
+    // safeFetch: SSRF guard — only the app's storage hosts over https, no private/internal targets,
+    // redirects re-validated. See ./safeFetch. A blocked url throws → the caller fails soft (empty).
+    const res = await safeFetch(file.url);
     if (!res?.ok) throw new Error(`fetch ${res?.status}`);
     return Buffer.from(await res.arrayBuffer());
   }

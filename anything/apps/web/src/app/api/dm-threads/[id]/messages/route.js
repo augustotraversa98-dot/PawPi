@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 
@@ -139,5 +140,6 @@ async function POST(request, { params }) {
 }
 
 const wrappedGET = withRequestContext(GET);
-const wrappedPOST = withRequestContext(POST);
+// #6: rate limit the message WRITE only (never the GET) — caps DM spam.
+const wrappedPOST = withRequestContext(withRateLimit("dm_message_create", POST));
 export { wrappedGET as GET, wrappedPOST as POST };

@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 // GET /api/public/emergency/card/[token] — PUBLIC, NO AUTH (ticket 2.51). The revocable vet
 // link. Data SOLELY through the SECURITY DEFINER fn app_emergency_card_by_link, which returns the
@@ -28,5 +29,6 @@ async function GET(request, { params }) {
   }
 }
 
-const wrappedGET = withRequestContext(GET);
+// #6: IP-keyed rate limit (public, no auth) — defense-in-depth against blind token probing.
+const wrappedGET = withRequestContext(withRateLimit("emergency_public_read", GET));
 export { wrappedGET as GET };

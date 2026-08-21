@@ -238,10 +238,41 @@ describe('the limit catalog', () => {
     expect(Object.keys(RATE_LIMITS).sort()).toEqual([
       'bark_create',
       'booking_create',
+      'checkout_create',
+      'dm_message_create',
+      'emergency_public_read',
+      'emergency_relay',
       'follow_toggle',
       'paw_toggle',
       'post_create',
       'report_create',
+      'upload_create',
     ]);
+  });
+
+  // #6: the sensitive-route buckets exist and produce a real 429 when the counter says over-limit
+  // (so removing a bucket, or a route's wrapper, regresses visibly). Per-bucket end-to-end limiting
+  // is proven in test/integration/rate-limit.integration.test.ts.
+  it.each([
+    'emergency_public_read',
+    'emergency_relay',
+    'upload_create',
+    'checkout_create',
+    'dm_message_create',
+  ])('bucket %s 429s when over the limit', async (bucket) => {
+    queue([{ allowed: false, hits: 999, retry_after_seconds: 30 }]);
+    const res = await enforceRateLimit(bucket, req(), { userId: 5 });
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('30');
+  });
+
+  it('emergency buckets key by IP for an anonymous caller (no user id)', async () => {
+    queue(
+      [{ id: null }], // current_app_user_id() → no user
+      [{ allowed: true, hits: 1, retry_after_seconds: 300 }],
+    );
+    await enforceRateLimit('emergency_public_read', req({ 'x-forwarded-for': '203.0.113.9' }));
+    // subject param (2nd bind) is the IP, prefixed.
+    expect(sqlMock.fn.mock.calls[1].slice(1)[1]).toBe('ip:203.0.113.9');
   });
 });
