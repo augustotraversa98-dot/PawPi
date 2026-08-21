@@ -1,3 +1,6 @@
+// Initialize the real i18next singleton (English by default in tests) so the localized
+// milestone copy resolves — detectMilestones now formats via i18n.t.
+import "@/i18n";
 import {
   onThisDay,
   longestStreak,

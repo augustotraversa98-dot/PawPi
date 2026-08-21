@@ -3406,6 +3406,18 @@
     "wrappedTitleGeneric": "Wrapped de tu mascota",
     "wrappedSubtitle": "Un hermoso resumen del año, hecho para compartir",
     "todaysCelebrations": "CELEBRACIONES DE HOY",
+    "milestones": {
+      "birthdayTitle": "¡Feliz cumpleaños, {{name}}!",
+      "birthdayYears": "Hoy cumple {{count}} años",
+      "birthdayGeneric": "Otro año de alegría",
+      "gotchaTitle": "¡El día que llegó {{name}}!",
+      "gotchaYears": "{{count}} años juntos",
+      "gotchaGeneric": "El día en que se encontraron",
+      "streakTitle": "¡Racha de {{count}} días!",
+      "streakSub": "{{name}} posteó {{count}} días seguidos",
+      "postsTitle": "{{count}} momentos diarios",
+      "postsSub": "{{name}} llegó a {{count}} momentos diarios"
+    },
     "onThisDay": "UN DÍA COMO HOY",
     "onThisDayLower": "un día como hoy",
     "empty": "Todavía no hay recuerdos de este día — seguí publicando y aparecerán acá el año que viene. 🐾",

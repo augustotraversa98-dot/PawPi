@@ -15,7 +15,10 @@
  * and "HH:MM:SS" (Postgres `time` columns).
  */
 
-import i18n from "@/i18n";
+// The raw i18next singleton (configured by src/i18n) — imported directly, not via
+// "@/i18n", so this low-level util never triggers that module's init side-effect
+// (which crashes tests that mock react-i18next). Reads i18n.language at call time.
+import i18n from "i18next";
 
 const MONTH_NAMES = [
   "January",

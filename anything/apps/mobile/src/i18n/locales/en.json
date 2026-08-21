@@ -3406,6 +3406,18 @@
     "wrappedTitleGeneric": "Your pet's Wrapped",
     "wrappedSubtitle": "A beautiful year-in-review, made to share",
     "todaysCelebrations": "TODAY'S CELEBRATIONS",
+    "milestones": {
+      "birthdayTitle": "Happy birthday, {{name}}!",
+      "birthdayYears": "{{count}} years young today",
+      "birthdayGeneric": "Another year of joy",
+      "gotchaTitle": "{{name}}'s Gotcha Day!",
+      "gotchaYears": "{{count}} years together",
+      "gotchaGeneric": "The day you found each other",
+      "streakTitle": "{{count}}-day streak!",
+      "streakSub": "{{name}} has posted {{count}} days in a row",
+      "postsTitle": "{{count}} daily moments",
+      "postsSub": "{{name}} just hit {{count}} dailies"
+    },
     "onThisDay": "ON THIS DAY",
     "onThisDayLower": "on this day",
     "empty": "No memories from this day yet — keep posting and they'll appear here next year. 🐾",
