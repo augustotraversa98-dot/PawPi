@@ -111,7 +111,11 @@ export default function PetProfileScreen({ embedded = false }) {
   // Localized age string ("3 años", "2 años, 6 meses", "~6 meses"). Units come
   // from i18n; the shared getDisplayAge stays English-only for its callers/tests.
   const formatAge = (parts) => {
-    if (!parts) return params.age || "";
+    // No parts means the age is unknown. If the pet has loaded, that's a real
+    // "no age" answer — render nothing, never a stale navigation param (which
+    // could otherwise surface a wrong/garbage age). Only while the pet is still
+    // loading do we fall back to the param passed from the card as a placeholder.
+    if (!parts) return pet ? "" : params.age || "";
     const segs = [];
     if (parts.years > 0)
       segs.push(`${parts.years} ${t(parts.years === 1 ? "petProfile.ageYear" : "petProfile.ageYears")}`);
