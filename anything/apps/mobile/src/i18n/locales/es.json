@@ -32,6 +32,21 @@
     "ageMonths": "meses",
     "ageUnderMonth": "Menos de 1 mes"
   },
+  "community": {
+    "title": "Comunidad",
+    "subtitle": "Preguntá, compartí y conectá con otros dueños.",
+    "sortHot": "Populares",
+    "sortNew": "Nuevos",
+    "sortTop": "Destacados",
+    "category": {
+      "All": "Todos",
+      "Health": "Salud",
+      "Food": "Comida",
+      "Training": "Entrenamiento",
+      "Behavior": "Comportamiento",
+      "General": "General"
+    }
+  },
   "care": {
     "segLearn": "Aprender",
     "segHire": "Contratar",

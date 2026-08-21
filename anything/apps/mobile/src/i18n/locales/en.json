@@ -32,6 +32,21 @@
     "ageMonths": "months",
     "ageUnderMonth": "Under 1 month"
   },
+  "community": {
+    "title": "Community",
+    "subtitle": "Ask, share, and connect with pet parents.",
+    "sortHot": "Hot",
+    "sortNew": "New",
+    "sortTop": "Top",
+    "category": {
+      "All": "All",
+      "Health": "Health",
+      "Food": "Food",
+      "Training": "Training",
+      "Behavior": "Behavior",
+      "General": "General"
+    }
+  },
   "care": {
     "segLearn": "Learn",
     "segHire": "Hire",
