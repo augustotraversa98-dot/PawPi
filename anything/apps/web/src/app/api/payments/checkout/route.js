@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { createCheckout } from "@/app/api/utils/payments";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
@@ -149,5 +150,6 @@ async function POST(request) {
   }
 }
 
-const wrappedPOST = withRequestContext(POST);
+// #6: rate limit — caps payment-attempt abuse (mirrors booking_create).
+const wrappedPOST = withRequestContext(withRateLimit("checkout_create", POST));
 export { wrappedPOST as POST };
