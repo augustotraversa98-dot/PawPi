@@ -3553,13 +3553,22 @@ CREATE POLICY care_access_grants_select ON public.care_access_grants
     owner_user_id = current_app_user_id()
     OR app_is_active_staff_of(provider_id)
   );
--- INSERT: active staff requesting (requested_by='provider'); the owner never inserts.
+-- INSERT: provider-request branch (active staff requesting) OR owner-initiated branch
+-- (caller owns the subject pet, requesting as 'owner' — issue #506 / 0123). The pet
+-- subquery is the ownership gate; owner_user_id equality pins the stored owner column.
 DROP POLICY IF EXISTS care_access_grants_insert ON public.care_access_grants;
 CREATE POLICY care_access_grants_insert ON public.care_access_grants
   FOR INSERT
   WITH CHECK (
-    app_is_active_staff_of(provider_id)
-    AND requested_by = 'provider'
+    (
+      app_is_active_staff_of(provider_id)
+      AND requested_by = 'provider'
+    )
+    OR (
+      requested_by = 'owner'
+      AND owner_user_id = current_app_user_id()
+      AND pet_id IN (SELECT id FROM pets WHERE owner_user_id = current_app_user_id())
+    )
   );
 -- UPDATE: owner only (approve/deny/revoke). DELETE: none (grants are status-flipped).
 DROP POLICY IF EXISTS care_access_grants_update ON public.care_access_grants;
