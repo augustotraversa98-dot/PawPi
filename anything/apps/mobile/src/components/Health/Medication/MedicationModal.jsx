@@ -461,7 +461,7 @@ export default function MedicationModal({
   ];
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

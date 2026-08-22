@@ -17,6 +17,7 @@
 // The heavy work (fetch + model call) is injectable via opts so tests never hit the network in CI.
 
 import { anthropicConfig, EnrichmentNotConfiguredError } from "./config";
+import { safeFetch } from "./safeFetch";
 
 // Anthropic base64 request/document limit is 32MB; refuse anything larger up front (fail soft).
 const MAX_BYTES = 32 * 1024 * 1024;
@@ -63,7 +64,9 @@ export function detectMedia({ filename, mimeType } = {}) {
 // Fetch the stored file as transient bytes. Best-effort with a hard size cap + timeout; throws on
 // any problem so the caller can fail soft. (Overridable in tests via opts.fetchBytes.)
 async function defaultFetchBytes(url) {
-  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(30000) });
+  // safeFetch: SSRF guard — only the app's storage hosts over https, no private/internal targets,
+  // redirects re-validated (a client can supply this url via the extract route). See ./safeFetch.
+  const res = await safeFetch(url, { signal: AbortSignal.timeout(30000) });
   if (!res?.ok) throw new Error(`fetch ${res?.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length === 0) throw new Error("empty file");

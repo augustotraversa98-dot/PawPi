@@ -117,7 +117,7 @@ export default function FeedingIssueModal({
     : "";
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={handleClose}>
       <KeyboardAvoidingAnimatedView
         style={{ flex: 1, backgroundColor: C.cream }}
         behavior="padding"

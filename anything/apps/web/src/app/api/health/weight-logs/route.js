@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 
 async function GET(request) {
   try {
@@ -81,13 +82,22 @@ async function POST(request) {
       );
     }
 
+    // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to
+    // the pet's OWNER. Also the ownership gate — a caller cannot write a log against
+    // a pet they neither own nor were granted family access to.
+    const access = await resolvePetLogOwner(userProfileId, parseInt(petId));
+    if (access.error) {
+      return Response.json({ error: access.error }, { status: access.status });
+    }
+    const ownerUserId = access.ownerUserId;
+
     const result = await sql`
       INSERT INTO health_weight_logs (
         pet_id, owner_user_id, weight, weight_unit,
         body_shape_estimate, photo_url, notes
       ) VALUES (
         ${parseInt(petId)},
-        ${userProfileId},
+        ${ownerUserId},
         ${parseFloat(weight)},
         ${weightUnit || "lbs"},
         ${bodyShapeEstimate || null},

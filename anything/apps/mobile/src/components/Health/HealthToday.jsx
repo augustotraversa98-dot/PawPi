@@ -66,7 +66,7 @@ import {
 const OVERDUE_COLLAPSE_THRESHOLD = 5;
 
 export default function HealthToday() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
@@ -522,7 +522,7 @@ export default function HealthToday() {
           {t("health.todayView.title")}
         </Text>
         <Text style={[TYPE.callout, { color: COLORS.mutedBrown }]}>
-          {new Date().toLocaleDateString("en-US", {
+          {new Date().toLocaleDateString(i18n?.language || "en-US", {
             weekday: "long",
             month: "long",
             day: "numeric",

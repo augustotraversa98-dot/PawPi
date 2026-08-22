@@ -2,6 +2,13 @@
 // posts + dates. Operates on canonical YYYY-MM-DD local-day strings (no Date math across
 // midnight). Empty-safe: thin/young accounts get honest zeros, never fabricated stats.
 
+// The raw i18next singleton (configured by src/i18n) — imported directly, not via
+// "@/i18n", to avoid that module's init side-effect in tests. Milestone copy is localized
+// here (pure functions, no hook); tests assert on milestone `key`s, not the text, so safe.
+import i18n from "i18next";
+
+const mt = (key, vars) => i18n.t(`memoriesScreen.milestones.${key}`, vars);
+
 function parseYMD(s) {
   if (typeof s !== "string") return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
@@ -89,8 +96,10 @@ export function detectMilestones(pet, ctx = {}) {
       out.push({
         key: "birthday",
         emoji: "🎂",
-        title: `Happy birthday, ${name}!`,
-        subtitle: bd.y ? `${t.y - bd.y} years young today` : "Another year of joy",
+        title: mt("birthdayTitle", { name }),
+        subtitle: bd.y
+          ? mt("birthdayYears", { count: t.y - bd.y })
+          : mt("birthdayGeneric"),
         shareable: true,
       });
     }
@@ -99,8 +108,10 @@ export function detectMilestones(pet, ctx = {}) {
       out.push({
         key: "gotcha",
         emoji: "🏡",
-        title: `${name}'s Gotcha Day!`,
-        subtitle: ad.y ? `${t.y - ad.y} years together` : "The day you found each other",
+        title: mt("gotchaTitle", { name }),
+        subtitle: ad.y
+          ? mt("gotchaYears", { count: t.y - ad.y })
+          : mt("gotchaGeneric"),
         shareable: true,
       });
     }
@@ -110,8 +121,8 @@ export function detectMilestones(pet, ctx = {}) {
     out.push({
       key: `streak-${currentStreak}`,
       emoji: "🔥",
-      title: `${currentStreak}-day streak!`,
-      subtitle: `${name} has posted ${currentStreak} days in a row`,
+      title: mt("streakTitle", { count: currentStreak }),
+      subtitle: mt("streakSub", { name, count: currentStreak }),
       shareable: true,
     });
   }
@@ -121,8 +132,8 @@ export function detectMilestones(pet, ctx = {}) {
     out.push({
       key: `posts-${totalPosts}`,
       emoji: "📸",
-      title: `${totalPosts} daily moments`,
-      subtitle: `${name} just hit ${totalPosts} dailies`,
+      title: mt("postsTitle", { count: totalPosts }),
+      subtitle: mt("postsSub", { name, count: totalPosts }),
       shareable: true,
     });
   }

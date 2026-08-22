@@ -175,6 +175,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      onRequestClose={handleClose}
     >
       <View style={{ flex: 1, backgroundColor: C.cream }}>
         {/* Header */}

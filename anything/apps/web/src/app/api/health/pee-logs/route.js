@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 
 async function GET(request) {
   try {
@@ -83,6 +84,15 @@ async function POST(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
+    // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to
+    // the pet's OWNER. Also the ownership gate — a caller cannot write a log against
+    // a pet they neither own nor were granted family access to.
+    const access = await resolvePetLogOwner(userProfileId, parseInt(petId));
+    if (access.error) {
+      return Response.json({ error: access.error }, { status: access.status });
+    }
+    const ownerUserId = access.ownerUserId;
+
     const result = await sql`
       INSERT INTO health_pee_logs (
         pet_id, owner_user_id, frequency, volume, color,
@@ -90,7 +100,7 @@ async function POST(request) {
         blood_visible, increased_thirst, notes
       ) VALUES (
         ${parseInt(petId)},
-        ${userProfileId},
+        ${ownerUserId},
         ${frequency || null},
         ${volume || null},
         ${color || null},

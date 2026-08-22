@@ -24,7 +24,7 @@ import {
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
 import { useStartDM } from "@/hooks/useDMs";
-import { getDisplayAge } from "@/utils/petAge";
+import { getDisplayAgeParts } from "@/utils/petAge";
 import {
   COLORS,
   TYPE,
@@ -68,7 +68,7 @@ export default function PetProfileScreen({ embedded = false }) {
     ? owner?.full_name || owner?.username || ""
     : params.ownerName || "";
   const breed = pet?.breed ?? params.breed ?? "";
-  const ageText = pet ? getDisplayAge(pet) || "" : params.age || "";
+  const ageParts = pet ? getDisplayAgeParts(pet) : null;
 
   const posts = profile?.posts || [];
   const isFollowing = !!profile?.isFollowing;
@@ -108,6 +108,23 @@ export default function PetProfileScreen({ embedded = false }) {
   const [likedPosts, setLikedPosts] = useState({});
   const [shareDeckVisible, setShareDeckVisible] = useState(false);
   const { t } = useTranslation();
+  // Localized age string ("3 años", "2 años, 6 meses", "~6 meses"). Units come
+  // from i18n; the shared getDisplayAge stays English-only for its callers/tests.
+  const formatAge = (parts) => {
+    // No parts means the age is unknown. If the pet has loaded, that's a real
+    // "no age" answer — render nothing, never a stale navigation param (which
+    // could otherwise surface a wrong/garbage age). Only while the pet is still
+    // loading do we fall back to the param passed from the card as a placeholder.
+    if (!parts) return pet ? "" : params.age || "";
+    const segs = [];
+    if (parts.years > 0)
+      segs.push(`${parts.years} ${t(parts.years === 1 ? "petProfile.ageYear" : "petProfile.ageYears")}`);
+    if (parts.months > 0)
+      segs.push(`${parts.months} ${t(parts.months === 1 ? "petProfile.ageMonth" : "petProfile.ageMonths")}`);
+    const s = segs.length ? segs.join(", ") : t("petProfile.ageUnderMonth");
+    return parts.approximate ? `~${s}` : s;
+  };
+  const ageText = formatAge(ageParts);
   const togglePaw = useTogglePaw(detailPost?.id);
 
   // Compose the post object the modal expects from a grid item + this pet's
@@ -197,12 +214,12 @@ export default function PetProfileScreen({ embedded = false }) {
           >
             <ChevronLeft size={22} color={COLORS.coral} />
             <Text style={[TYPE.headline, { color: COLORS.coral }]}>
-              Back
+              {t("common.back")}
             </Text>
           </PressableScale>
         )}
         <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
-          {embedded ? "Profile" : "Pet profile"}
+          {embedded ? t("tabs.profile") : t("petProfile.petProfile")}
         </Text>
         {embedded ? (
           <OwnerMenu />
@@ -362,7 +379,7 @@ export default function PetProfileScreen({ embedded = false }) {
             <Text
               style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: SPACING.xs }]}
             >
-              with {ownerName}
+              {t("petProfile.withOwner", { name: ownerName })}
             </Text>
           )}
 
@@ -400,7 +417,9 @@ export default function PetProfileScreen({ embedded = false }) {
                     { fontWeight: "800", color: isFollowing ? COLORS.mutedBrown : "#FFF" },
                   ]}
                 >
-                  {isFollowing ? "Following ✓" : "Follow +"}
+                  {isFollowing
+                    ? `${t("storefront.follow.following")} ✓`
+                    : `${t("storefront.follow.follow")} +`}
                 </Text>
               </PressableScale>
 
@@ -427,7 +446,7 @@ export default function PetProfileScreen({ embedded = false }) {
                   <Text
                     style={[TYPE.headline, { fontWeight: "800", color: COLORS.terracotta }]}
                   >
-                    Message
+                    {t("providers.message")}
                   </Text>
                 </PressableScale>
               )}
@@ -438,18 +457,18 @@ export default function PetProfileScreen({ embedded = false }) {
         {/* ── Stats strip (shared SocialStatRow — same row as the business storefront) ── */}
         <SocialStatRow
           stats={[
-            { key: "posts", value: stats?.totalPosts ?? 0, label: "Daily posts" },
+            { key: "posts", value: stats?.totalPosts ?? 0, label: t("petProfile.dailyPosts") },
             {
               key: "paws",
               value: stats?.totalPaws ?? 0,
-              label: "Paws",
+              label: t("storefront.social.paws"),
               color: COLORS.coral,
             },
-            { key: "barks", value: stats?.totalBarks ?? 0, label: "Barks" },
+            { key: "barks", value: stats?.totalBarks ?? 0, label: t("storefront.social.barks") },
             {
               key: "followers",
               value: stats?.followers ?? 0,
-              label: "Followers",
+              label: t("storefront.social.followers"),
               color: COLORS.sageDark,
               onPress: resolvedFollowsPetId
                 ? () => openFollows("followers")
@@ -458,7 +477,7 @@ export default function PetProfileScreen({ embedded = false }) {
             {
               key: "following",
               value: stats?.following ?? 0,
-              label: "Following",
+              label: t("storefront.follow.following"),
               onPress: resolvedFollowsPetId
                 ? () => openFollows("following")
                 : undefined,
@@ -478,7 +497,7 @@ export default function PetProfileScreen({ embedded = false }) {
           >
             <Grid3X3 size={18} color={COLORS.warmBrown} />
             <Text style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800" }]}>
-              Daily moments
+              {t("petProfile.dailyMoments")}
             </Text>
           </View>
 
@@ -510,7 +529,7 @@ export default function PetProfileScreen({ embedded = false }) {
                 <Text
                   style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
                 >
-                  No daily posts yet
+                  {t("petProfile.noDailyPosts")}
                 </Text>
                 <Text
                   style={[
@@ -523,7 +542,9 @@ export default function PetProfileScreen({ embedded = false }) {
                     },
                   ]}
                 >
-                  {name ? `${name}'s` : "These"} daily moments will appear here.
+                  {name
+                    ? t("petProfile.momentsEmpty", { name })
+                    : t("petProfile.momentsEmptyGeneric")}
                 </Text>
               </View>
             }

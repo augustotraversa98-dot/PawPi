@@ -286,9 +286,13 @@ export default function BookingFormModal({
       let orderId;
       let checkoutUrl;
       if (takePayment) {
+        // The server derives the authoritative amount from the chosen service's payment_policy
+        // (full → price, deposit → deposit) — we send the service id, NEVER a client amount, so a
+        // tampered amount can't underpay (fail-closed checkout, 2026-08-21). The CTA still shows
+        // chargeCents for display only.
         const checkoutRes = await checkout.mutateAsync({
           provider_id: provider.id,
-          amount_cents: chargeCents,
+          service_id: serviceId,
         });
         orderId = checkoutRes.order?.id;
         checkoutUrl = checkoutRes.checkoutUrl || checkoutRes.deeplink;
@@ -469,6 +473,27 @@ export default function BookingFormModal({
                 : "booking.paymentRequired",
               { amount: formatPrice(chargeCents), noun: copy.noun },
             )}
+          </Text>
+        </View>
+      )}
+
+      {/* No-online-payment heads-up (Workstream B, 2026-08-21). When a chosen service takes no
+          online payment (payment_policy 'none') and this isn't a prepaid-credit walk, make it clear
+          the owner simply requests the booking and settles in person — no pay step, no MercadoPago. */}
+      {!requiresPayment && !payWithCredit && chosenService && (
+        <View
+          testID="booking-pay-in-person-note"
+          style={{
+            backgroundColor: COLORS.sand,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 18,
+            borderWidth: 1,
+            borderColor: COLORS.peach,
+          }}
+        >
+          <Text style={{ color: COLORS.mutedBrown, fontSize: 13 }}>
+            {t("booking.payInPersonNote", { provider: provider?.name })}
           </Text>
         </View>
       )}

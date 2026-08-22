@@ -297,7 +297,7 @@ export default function PhotoCheckCaptureModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: C.cream }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

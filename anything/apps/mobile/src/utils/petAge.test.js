@@ -3,7 +3,7 @@
 // a known birthday always wins and is calculated live; age_years/age_months
 // is only shown, marked approximate, when there's no birthday.
 
-import { getDisplayAge } from "./petAge";
+import { getDisplayAge, getDisplayAgeParts } from "./petAge";
 
 const NOW = new Date(2026, 6, 15); // 15 July 2026 (local)
 
@@ -96,5 +96,66 @@ describe("getDisplayAge — nothing known", () => {
   it("returns null for a missing/undefined pet", () => {
     expect(getDisplayAge(null)).toBeNull();
     expect(getDisplayAge(undefined)).toBeNull();
+  });
+});
+
+describe("getDisplayAge — calendar edge cases", () => {
+  it("handles a leap-day (Feb 29) birthday", () => {
+    // Born 29 Feb 2024 (a real leap day) -> 2 years, 4 months as of 15 Jul 2026
+    // (the 29th of the anniversary month hasn't been reached, so one month short).
+    expect(getDisplayAge({ birthday: "2024-02-29" }, NOW)).toBe(
+      "2 years, 4 months",
+    );
+  });
+
+  it("reads an exact anniversary (same month + same day as today) as whole years", () => {
+    expect(getDisplayAge({ birthday: "2023-07-15" }, NOW)).toBe("3 years");
+  });
+
+  it("rolls back a year when the anniversary day is later this same month", () => {
+    // Born 20 Jul 2023: as of 15 Jul 2026 the 20th hasn't arrived, so 2y 11m, not 3y.
+    expect(getDisplayAge({ birthday: "2023-07-20" }, NOW)).toBe(
+      "2 years, 11 months",
+    );
+  });
+});
+
+describe("getDisplayAge — regression: the live Mango/Phoebs bug", () => {
+  it("Mango (birthday set, stored age columns null) renders a real age, never blank", () => {
+    // The bug: a pet WITH a birthday showed no age because the screen read the
+    // (null) stored columns. Birthday must always win and compute live.
+    const mango = { birthday: "2023-08-01", age_years: null, age_months: null };
+    expect(getDisplayAge(mango, NOW)).toBe("2 years, 11 months"); // ~3 years old
+  });
+
+  it("Phoebs (no birthday, stored estimate) shows the estimate marked approximate", () => {
+    // The bug's mirror: a pet WITHOUT a birthday should show its stored estimate
+    // as approximate — not be presented as an exact, authoritative age.
+    const phoebs = { birthday: null, age_years: 13, age_months: 3 };
+    expect(getDisplayAge(phoebs, NOW)).toBe("~13 years, 3 months");
+  });
+});
+
+describe("getDisplayAgeParts — structured output for localized callers", () => {
+  it("returns exact parts from a birthday (approximate: false)", () => {
+    expect(getDisplayAgeParts({ birthday: "2024-01-15" }, NOW)).toEqual({
+      years: 2,
+      months: 6,
+      approximate: false,
+    });
+  });
+
+  it("returns the stored estimate marked approximate when there's no birthday", () => {
+    expect(getDisplayAgeParts({ age_years: 13, age_months: 3 })).toEqual({
+      years: 13,
+      months: 3,
+      approximate: true,
+    });
+  });
+
+  it("returns null when nothing is known, so callers render a clean empty state", () => {
+    expect(getDisplayAgeParts({})).toBeNull();
+    expect(getDisplayAgeParts({ age_years: 0, age_months: 0 })).toBeNull();
+    expect(getDisplayAgeParts(null)).toBeNull();
   });
 });

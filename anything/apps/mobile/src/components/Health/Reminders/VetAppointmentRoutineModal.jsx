@@ -434,7 +434,7 @@ export default function VetAppointmentRoutineModal({
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal visible={visible} animationType="slide">
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingAnimatedView
         style={{ flex: 1, backgroundColor: C.cream }}
         behavior="padding"
