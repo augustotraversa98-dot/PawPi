@@ -14,6 +14,8 @@ import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
+import WidgetSync from "@/native/WidgetSync"; // iOS widget snapshot writer (ticket 2.76)
+import { useWidgetDeepLinks } from "@/native/useWidgetDeepLinks"; // widget tap → route (2.76)
 
 SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
@@ -21,6 +23,9 @@ markBootStep("layout:module-evaluated");
 export default function RootLayout() {
   const { initiate, isReady, isAuthenticated } = useAuth();
   markBootStep("layout:render");
+
+  // Route widget taps (pawpi://widget/...) to the right screen (ticket 2.76).
+  useWidgetDeepLinks();
 
   useEffect(() => {
     markBootStep("layout:initiate-effect");
@@ -123,6 +128,9 @@ export default function RootLayout() {
           {/* Adoption applications review (business hub, A2) — pushed from Today's glance row. */}
           <Stack.Screen name="business-adoption" />
         </Stack>
+        {/* Keeps the iOS Home/Lock-screen widget snapshot fresh (ticket 2.76).
+            Renders nothing; stays inert until the Apple App Group is configured. */}
+        <WidgetSync />
         <AuthModal />
       </GestureHandlerRootView>
     </QueryClientProvider>

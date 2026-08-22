@@ -4,6 +4,7 @@
     "slug": "pawpi",
     "scheme": "pawpi",
     "version": "1.0.0",
+    "scheme": "pawpi",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
@@ -110,7 +111,8 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      "@bacons/apple-targets"
     ],
     "web": {
       "bundler": "metro",
