@@ -12,6 +12,7 @@ import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Footprints, Play, QrCode, History, ChevronRight, Check, Clock } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   useMyProviders,
@@ -481,8 +482,10 @@ function BookingCard({ booking, onStart, busy, t }) {
           </View>
           <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
             {booking.owner_name ? `${booking.owner_name} · ` : ""}
-            {booking.appointment_date}
-            {booking.appointment_time ? ` ${booking.appointment_time}` : ""}
+            {formatDisplayDate(booking.appointment_date)}
+            {booking.appointment_time
+              ? ` ${formatDisplayTime(booking.appointment_time)}`
+              : ""}
           </Text>
         </View>
         <TouchableOpacity

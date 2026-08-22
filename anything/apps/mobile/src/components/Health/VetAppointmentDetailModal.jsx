@@ -15,6 +15,7 @@ import { X, CheckCircle, Edit, Trash2, FileText, Star } from "lucide-react-nativ
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { formatDisplayTime } from "@/utils/canonicalDateTime";
 import { Card, PressableScale } from "@/components/ui";
 
 export default function VetAppointmentDetailModal({
@@ -145,7 +146,7 @@ export default function VetAppointmentDetailModal({
         hour12: true,
       });
     } catch {
-      return `${appointment.appointment_date} at ${appointment.appointment_time}`;
+      return `${appointment.appointment_date} at ${formatDisplayTime(appointment.appointment_time)}`;
     }
   };
 

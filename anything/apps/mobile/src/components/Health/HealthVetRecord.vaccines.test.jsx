@@ -149,13 +149,23 @@ describe("Vet Record — three groups", () => {
     expect(screen.getByText("No upcoming appointment")).toBeTruthy();
   });
 
-  test("Next visit surfaces the soonest scheduled appointment", () => {
+  // Dates are relative to NOW so the test is stable over time (and proves the
+  // past-exclusion rule): +N / -N days as a canonical "YYYY-MM-DD".
+  const dayOffset = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate(),
+    ).padStart(2, "0")}`;
+  };
+
+  test("Next visit surfaces the soonest FUTURE scheduled appointment", () => {
     mockQueryData["vet-appointments"] = {
       appointments: [
         {
           id: 2,
           title: "Dental cleaning",
-          appointment_date: "2026-09-01",
+          appointment_date: dayOffset(30),
           appointment_time: "14:30",
           clinic: "Downtown Vet",
           status: "scheduled",
@@ -163,7 +173,7 @@ describe("Vet Record — three groups", () => {
         {
           id: 1,
           title: "Annual checkup",
-          appointment_date: "2026-08-20",
+          appointment_date: dayOffset(7),
           appointment_time: "09:00",
           clinic: "PawCare",
           status: "scheduled",
@@ -171,9 +181,27 @@ describe("Vet Record — three groups", () => {
       ],
     };
     const screen = render(<HealthVetRecord />);
-    // The 08-20 appointment is soonest → it, not the 09-01 one, is shown.
+    // The +7-day appointment is the soonest FUTURE one → it, not the +30-day one, is shown.
     expect(screen.getByText("Annual checkup")).toBeTruthy();
     expect(screen.queryByText("Dental cleaning")).toBeNull();
+  });
+
+  test("Next visit hides a PAST scheduled appointment (it belongs to history)", () => {
+    mockQueryData["vet-appointments"] = {
+      appointments: [
+        {
+          id: 3,
+          title: "Old telehealth consult",
+          appointment_date: dayOffset(-14),
+          appointment_time: "22:59",
+          status: "scheduled",
+        },
+      ],
+    };
+    const screen = render(<HealthVetRecord />);
+    // A past date+time must NOT surface as the "Next visit" — the empty state shows instead.
+    expect(screen.queryByText("Old telehealth consult")).toBeNull();
+    expect(screen.getByText("No upcoming appointment")).toBeTruthy();
   });
 });
 
