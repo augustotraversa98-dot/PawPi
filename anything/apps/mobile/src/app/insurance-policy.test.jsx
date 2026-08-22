@@ -1,7 +1,7 @@
-// Insurance apply / policy hub (ticket 2.72):
+// Insurance apply / policy hub (ticket 2.72; LEAD-GEN ONLY v1):
 //   - the non-underwriting disclaimer is always present;
 //   - apply requires accepting terms, then posts the right body (with terms_accepted + plan/provider);
-//   - an existing policy renders in the hub with a Pay entry when a premium is set.
+//   - an existing policy with a premium renders a CONTACT note, NOT a pay button (no in-app payment).
 // Hooks are mocked.
 
 import React from "react";
@@ -10,7 +10,6 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 let mockParams;
 let mockPolicies;
 let mockApply;
-let mockActivate;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
@@ -24,7 +23,6 @@ jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 jest.mock("@/hooks/useInsurance", () => ({
   useInsurancePolicies: () => mockPolicies,
   useApplyPolicy: () => mockApply,
-  useActivatePolicy: () => mockActivate,
 }));
 
 import InsurancePolicyScreen from "./insurance-policy";
@@ -40,7 +38,6 @@ beforeEach(() => {
   };
   mockPolicies = { data: [] };
   mockApply = { mutateAsync: jest.fn().mockResolvedValue({}), isPending: false };
-  mockActivate = { mutateAsync: jest.fn().mockResolvedValue({}) };
 });
 
 it("always shows the non-underwriting disclaimer", () => {
@@ -69,7 +66,7 @@ it("applies with the right body after accepting terms", async () => {
   );
 });
 
-it("renders an existing policy with a Pay entry when a premium is set", () => {
+it("renders an existing policy with a CONTACT note (no pay button) when a premium is set", () => {
   mockPolicies = {
     data: [
       {
@@ -83,7 +80,9 @@ it("renders an existing policy with a Pay entry when a premium is set", () => {
       },
     ],
   };
-  const { getByTestId } = render(<InsurancePolicyScreen />);
+  const { getByTestId, queryByTestId } = render(<InsurancePolicyScreen />);
   expect(getByTestId("ins-policy-7")).toBeTruthy();
-  expect(getByTestId("ins-pay-7")).toBeTruthy();
+  // Lead-gen only: the insurer arranges payment directly — no in-app pay button.
+  expect(getByTestId("ins-premium-note-7")).toBeTruthy();
+  expect(queryByTestId("ins-pay-7")).toBeNull();
 });

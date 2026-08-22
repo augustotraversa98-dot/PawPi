@@ -38,19 +38,23 @@ const ALLOWED_KINDS = [
 // anything. The rule now: the client amount is NEVER charged as-is except for a bounded donation;
 // every priceable kind derives its amount on the server, and any kind without a server price source
 // is rejected. See docs/night-run/2026-08-21/SECURITY_FIXES.md #1.
+//
+// BOOKINGS-PRICING (2026-08-21, feat/bookings-no-payment-and-pricing). The priceable booking kinds
+// derive their amount from a SERVER source so no owner-reachable flow returns `pricing_not_configured`:
+//   • booking      → a provider_services row (payment_policy full→price_cents / deposit→deposit_cents),
+//                    OR a transport_trips fare (source_ref "transport:<id>").
+//   • adoption_fee → the adoptable_listings.adoption_fee_cents on the referenced listing.
+// A priceable entity that carries NO amount (payment_policy 'none', a fee of 0, an unset fare) is not
+// an error — those flows book/apply with NO payment at all (no order); we reject the *checkout* with
+// `no_payment_required` (distinct from `pricing_not_configured`) so the client falls back to the
+// no-payment path. The client's amount_cents is ignored for every kind except a bounded donation, so
+// a tampered amount can never underpay.
+//   • subscription → LEAD-GEN ONLY for v1: insurance is its only user and has NO in-app premium
+//     payment (the insurer arranges payment directly). The branch rejects with `not_available`.
 
 // A donation is legitimately donor-chosen; bound it so it can't be zero/negative or absurd. Tune
 // before launch if needed (this is a sanity cap, not a product limit).
 const DONATION_MAX_CENTS = 5_000_000;
-
-// Kinds with no server-verified price contract yet. Fail closed until each is wired to its price
-// source (per-flow spec in SECURITY_FIXES.md #1): booking → provider_services, adoption_fee →
-// adoptable_listings, subscription → the plan/product it renews.
-const PRICING_NOT_CONFIGURED_KINDS = new Set([
-  "booking",
-  "adoption_fee",
-  "subscription",
-]);
 
 // Derive the authoritative amount for a `product` checkout on the server. Two shapes:
 //   - shop-catalog: `items[]` each name a real shop_products row (active, same provider) — sum
@@ -118,6 +122,117 @@ async function priceProduct({ items, source_ref, provider_id, userId }) {
   };
 }
 
+// Derive the authoritative amount for a `booking` checkout on the server. Two shapes:
+//   - service booking: `service_id` names a real ACTIVE provider_services row of THIS provider; the
+//     amount follows its payment_policy (full → price_cents, deposit → deposit_cents). A 'none'
+//     policy — or a deposit/full with no amount set — is NOT a checkout: the owner books it for free
+//     via /providers/[id]/book with no order (Workstream B), so we return `no_payment_required`.
+//   - transport fare: no service, `source_ref = "transport:<id>"` — the price is the provider-set
+//     fare on the OWNER's transport_trips row (numeric dollars → integer cents). Scoped to the caller
+//     + provider so a tampered id can't price someone else's trip.
+// Returns { amountCents } or { error, code, status }. Never trusts the client amount.
+async function priceBooking({ service_id, source_ref, provider_id, userId }) {
+  if (service_id !== undefined && service_id !== null) {
+    const rows = await sql`
+      SELECT payment_policy, price_cents, deposit_cents
+      FROM provider_services
+      WHERE id = ${service_id} AND provider_id = ${provider_id} AND active = true
+    `;
+    if (rows.length === 0) {
+      return {
+        error: "Service not available for this provider",
+        code: "unpriceable_booking",
+        status: 404,
+      };
+    }
+    const svc = rows[0];
+    const policy = svc.payment_policy ?? "none";
+    const amountCents =
+      policy === "full"
+        ? svc.price_cents
+        : policy === "deposit"
+          ? svc.deposit_cents
+          : null;
+    if (amountCents == null || amountCents <= 0) {
+      // Free / pay-in-person service — book it with no online payment (no order). Fall back.
+      return {
+        error: "This service takes no online payment — book it without paying.",
+        code: "no_payment_required",
+        status: 400,
+      };
+    }
+    return { amountCents };
+  }
+
+  const trip =
+    typeof source_ref === "string" ? source_ref.match(/^transport:(\d+)$/) : null;
+  if (trip) {
+    const rows = await sql`
+      SELECT fare_amount
+      FROM transport_trips
+      WHERE id = ${parseInt(trip[1], 10)}
+        AND owner_user_id = ${userId}
+        AND provider_id = ${provider_id}
+    `;
+    const fare = rows[0]?.fare_amount;
+    const amountCents = fare == null ? null : Math.round(Number(fare) * 100);
+    if (amountCents == null || !Number.isFinite(amountCents) || amountCents <= 0) {
+      return {
+        error: "This trip has no fare set yet.",
+        code: "no_payment_required",
+        status: 400,
+      };
+    }
+    return { amountCents };
+  }
+
+  // No priced service and no fare reference → we cannot price it. Fail closed.
+  return {
+    error: "Checkout for 'booking' requires a priced service or a fare reference",
+    code: "pricing_not_configured",
+    status: 400,
+  };
+}
+
+// Derive the authoritative amount for an `adoption_fee` checkout: the adoption_fee_cents on the
+// referenced listing (source_ref "adoption-listing-<id>"), scoped to the checkout's provider so a
+// tampered id can't charge for another shelter's dog. A listing with NO fee (0) is not an error —
+// the owner just APPLIES (no payment), so we return `no_payment_required`. Never trusts the client.
+async function priceAdoptionFee({ source_ref, provider_id }) {
+  const m =
+    typeof source_ref === "string"
+      ? source_ref.match(/^adoption-listing-(\d+)$/)
+      : null;
+  if (!m) {
+    return {
+      error: "Checkout for 'adoption_fee' requires an adoption-listing reference",
+      code: "pricing_not_configured",
+      status: 400,
+    };
+  }
+  const rows = await sql`
+    SELECT adoption_fee_cents
+    FROM adoptable_listings
+    WHERE id = ${parseInt(m[1], 10)} AND provider_id = ${provider_id}
+  `;
+  if (rows.length === 0) {
+    return {
+      error: "Adoption listing not found",
+      code: "unpriceable_adoption",
+      status: 404,
+    };
+  }
+  const fee = rows[0].adoption_fee_cents;
+  if (fee == null || fee <= 0) {
+    return {
+      error: "This adoption has no fee — no payment is needed.",
+      code: "no_payment_required",
+      status: 400,
+    };
+  }
+  return { amountCents: fee };
+}
+
 async function POST(request) {
   try {
     const session = await auth();
@@ -138,6 +253,7 @@ async function POST(request) {
       currency,
       rail,
       source_ref,
+      service_id,
       items,
       idempotency_key,
     } = body;
@@ -182,12 +298,32 @@ async function POST(request) {
         );
       }
       amountToCharge = amount_cents;
-    } else if (PRICING_NOT_CONFIGURED_KINDS.has(kind)) {
-      // No server-verified price source yet → never charge a client amount. Fail closed.
+    } else if (kind === "booking") {
+      const priced = await priceBooking({ service_id, source_ref, provider_id, userId });
+      if (priced.error) {
+        return Response.json(
+          { error: priced.error, code: priced.code },
+          { status: priced.status },
+        );
+      }
+      amountToCharge = priced.amountCents;
+    } else if (kind === "adoption_fee") {
+      const priced = await priceAdoptionFee({ source_ref, provider_id });
+      if (priced.error) {
+        return Response.json(
+          { error: priced.error, code: priced.code },
+          { status: priced.status },
+        );
+      }
+      amountToCharge = priced.amountCents;
+    } else if (kind === "subscription") {
+      // LEAD-GEN ONLY (v1, 2026-08-21): insurance is the only `subscription` user, and there is NO
+      // in-app premium payment — the insurer arranges payment with the owner directly. Reject any
+      // subscription checkout so no in-app insurance-premium charge path exists, even if called.
       return Response.json(
         {
-          error: `Checkout for '${kind}' is not enabled until server-side pricing is configured`,
-          code: "pricing_not_configured",
+          error: "In-app subscription payment isn't available.",
+          code: "not_available",
         },
         { status: 400 },
       );

@@ -1171,10 +1171,7 @@
     "appliedTitle": "Application sent",
     "appliedBody": "The insurer will review and set your premium.",
     "couldNotApply": "Couldn't apply",
-    "payPremium": "Pay premium",
-    "couldNotPay": "Couldn't start payment",
-    "payUnavailable": "Payments not available yet",
-    "payUnavailableBody": "Your application is saved; you can pay once payments are set up."
+    "premiumContactNote": "Premium: {{insurer}} will contact you to arrange payment — there's no payment step here."
   },
   "places": {
     "title": "Pet-friendly places",
@@ -1323,6 +1320,7 @@
     "paymentFailedBody": "We couldn't open the payment window for your {{noun}}, so nothing was charged. Please try again.",
     "requestSentTitle": "Request sent!",
     "requestSentBody": "{{provider}} will confirm your {{noun}} soon.",
+    "payInPersonNote": "No online payment — just request the booking and pay {{provider}} in person.",
     "couldntBook": "Couldn't book"
   },
   "providers": {
@@ -2525,7 +2523,7 @@
     "compare": "Compare",
     "compareRow": "{{price}} · Deductible {{deductible}} · Reimb. {{reimb}}",
     "getQuote": "Get a quote",
-    "applyBuy": "Apply / Buy",
+    "applyBuy": "Apply",
     "getQuoteFor": "Get a quote: {{name}}",
     "forPet": "For {{name}}",
     "contactEmail": "Contact email",
