@@ -41,9 +41,10 @@ beforeEach(() => {
 describe('GET /api/pets — authenticated path', () => {
   it('authed -> 200 with the user\'s pets', async () => {
     auth.mockResolvedValue(SESSION);
-    // 1st sql call: profile lookup. 2nd: pets by owner. 3rd: getCurrentWeight's
-    // per-pet health_weight_logs lookup — empty here, so the fallback
-    // (pets.weight/weight_unit, already on PET_ROW) passes through unchanged.
+    // 1st sql call: profile lookup. 2nd: pets by owner. 3rd: the batched
+    // latest-weight lookup (one query for all pets) — empty here, so the
+    // fallback (pets.weight/weight_unit, already on PET_ROW) passes through
+    // unchanged.
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([PET_ROW])
