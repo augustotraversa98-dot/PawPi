@@ -22,10 +22,10 @@ import { GlassSurface, PressableScale } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 
 const SECTIONS = [
-  { id: "today", label: "Today", icon: Heart },
-  { id: "track", label: "Track", icon: Activity },
-  { id: "insights", label: "Insights", icon: TrendingUp },
-  { id: "vet-record", label: "Vet Record", icon: FileText },
+  { id: "today", labelKey: "health.today", icon: Heart },
+  { id: "track", labelKey: "health.track", icon: Activity },
+  { id: "insights", labelKey: "health.insights", icon: TrendingUp },
+  { id: "vet-record", labelKey: "health.vetRecord.title", icon: FileText },
 ];
 
 export default function HealthScreen() {
@@ -119,9 +119,7 @@ export default function HealthScreen() {
           }}
         >
           <Text style={[TYPE.caption, { color: COLORS.mutedBrown, lineHeight: 16, textAlign: "center", letterSpacing: 0 }]}>
-            PawPi helps you track changes and prepare better conversations
-            with your veterinarian. It does not diagnose or replace professional
-            veterinary care.
+            {t("health.disclaimer")}
           </Text>
         </View>
       </GlassSurface>
@@ -172,7 +170,7 @@ export default function HealthScreen() {
                     },
                   ]}
                 >
-                  {section.label}
+                  {t(section.labelKey)}
                 </Text>
               </PressableScale>
             );

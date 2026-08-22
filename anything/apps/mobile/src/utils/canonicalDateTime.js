@@ -15,6 +15,11 @@
  * and "HH:MM:SS" (Postgres `time` columns).
  */
 
+// The raw i18next singleton (configured by src/i18n) — imported directly, not via
+// "@/i18n", so this low-level util never triggers that module's init side-effect
+// (which crashes tests that mock react-i18next). Reads i18n.language at call time.
+import i18n from "i18next";
+
 const MONTH_NAMES = [
   "January",
   "February",
@@ -28,6 +33,23 @@ const MONTH_NAMES = [
   "October",
   "November",
   "December",
+];
+
+// Spanish month names for the localized display date. Kept local (not in the
+// i18n catalog) so this low-level util has no catalog/init dependency in tests.
+const MONTH_NAMES_ES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
 ];
 
 function buildLocalDate(year, month, day) {
@@ -86,11 +108,21 @@ export function canonicalizeDateValue(value) {
   return date ? toCanonicalDate(date) : "";
 }
 
-/** Display format: "21 April 2025". Returns "" for empty/unparseable values. */
+/**
+ * Display format, localized by the active language:
+ *   en → "21 April 2025"    es → "21 de abril de 2025"
+ * Returns "" for empty/unparseable values.
+ */
 export function formatDisplayDate(value) {
   const date = parseDateValue(value);
   if (!date) return "";
-  return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const lang = (i18n && i18n.language) || "en";
+  if (lang.startsWith("es")) {
+    return `${day} de ${MONTH_NAMES_ES[date.getMonth()]} de ${year}`;
+  }
+  return `${day} ${MONTH_NAMES[date.getMonth()]} ${year}`;
 }
 
 /** Date the picker should open on: the field's value if set, else today. */

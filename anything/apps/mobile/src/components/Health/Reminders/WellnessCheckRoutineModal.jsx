@@ -530,7 +530,7 @@ export default function WellnessCheckRoutineModal({
 
   // Main Modal - Wellness Check Routine Builder
   return (
-    <Modal visible={visible} animationType="slide">
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingAnimatedView
         style={{ flex: 1, backgroundColor: C.cream }}
         behavior="padding"

@@ -31,6 +31,12 @@ const getHTMLOrError = (component) => {
 	}
 };
 export async function GET(request) {
+	// Dev-only scaffolding: this endpoint renders every route and serializes render
+	// errors (internals). It must never be reachable in production. Mirror the same
+	// gate its sibling __create/check-social-secrets uses.
+	if (process.env.NEXT_PUBLIC_CREATE_ENV !== 'DEVELOPMENT') {
+		return Response.json({ error: 'not found' }, { status: 404 });
+	}
 	const results = await Promise.allSettled(
 		routes.map(async (route) => {
 			let component = null;

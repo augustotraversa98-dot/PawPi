@@ -220,7 +220,7 @@ export default function FeedingRoutineModal({
   // Step 1: Meal Count Selection
   if (step === "count" && !editingRoutine) {
     return (
-      <Modal visible={visible} animationType="slide" transparent={true}>
+      <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View
           style={{
             flex: 1,
@@ -336,7 +336,7 @@ export default function FeedingRoutineModal({
 
   // Step 2: Details with meal-specific schedules
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingAnimatedView
         style={{ flex: 1, backgroundColor: C.cream }}
         behavior="padding"

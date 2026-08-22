@@ -35,9 +35,9 @@ const CATEGORY_COLORS = {
 };
 
 const SORTS = [
-  { key: "hot", label: "Hot", Icon: Flame },
-  { key: "new", label: "New", Icon: Clock },
-  { key: "top", label: "Top", Icon: TrendingUp },
+  { key: "hot", labelKey: "community.sortHot", Icon: Flame },
+  { key: "new", labelKey: "community.sortNew", Icon: Clock },
+  { key: "top", labelKey: "community.sortTop", Icon: TrendingUp },
 ];
 
 export default function CommunityScreen() {
@@ -99,7 +99,7 @@ export default function CommunityScreen() {
                 }}
               >
                 <Text style={[TYPE.caption, { color: catStyle.text, fontWeight: "700", letterSpacing: 0 }]}>
-                  {thread.category}
+                  {t(`community.category.${thread.category}`)}
                 </Text>
               </View>
             </View>
@@ -162,10 +162,10 @@ export default function CommunityScreen() {
             </PressableScale>
             <View style={{ flex: 1 }}>
               <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-                Community 🐕
+                {t("community.title")} 🐕
               </Text>
               <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>
-                Ask, share, and connect with pet parents.
+                {t("community.subtitle")}
               </Text>
             </View>
           </View>
@@ -214,7 +214,7 @@ export default function CommunityScreen() {
           backgroundColor: COLORS.cream,
         }}
       >
-        {SORTS.map(({ key, label, Icon }) => (
+        {SORTS.map(({ key, labelKey, Icon }) => (
           <PressableScale
             key={key}
             testID={`sort-${key}`}
@@ -239,7 +239,7 @@ export default function CommunityScreen() {
                 },
               ]}
             >
-              {label}
+              {t(labelKey)}
             </Text>
           </PressableScale>
         ))}
@@ -283,7 +283,7 @@ export default function CommunityScreen() {
                   },
                 ]}
               >
-                {cat}
+                {t(`community.category.${cat}`)}
               </Text>
             </PressableScale>
           ))}

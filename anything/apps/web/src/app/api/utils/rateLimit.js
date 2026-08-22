@@ -65,6 +65,15 @@ export const RATE_LIMITS = {
   // Taps. Legitimately fast and bursty — a scroll-and-paw session must never trip.
   paw_toggle: { limit: 120, windowSeconds: 60 },
   follow_toggle: { limit: 60, windowSeconds: 300 },
+
+  // #6 (night-run S6) — sensitive routes that had no throttle. All generous: a real user/vet
+  // never trips them; they exist to cap abuse (token probing, notification spam, storage/cost
+  // flooding, payment attempts). The public-emergency buckets key by IP (no auth there).
+  emergency_public_read: { limit: 60, windowSeconds: 300 }, // per-IP: caps blind token probing
+  emergency_relay: { limit: 10, windowSeconds: 3600 }, // per-IP: caps owner-notification spam
+  upload_create: { limit: 30, windowSeconds: 300 }, // caps storage/cost flooding
+  checkout_create: { limit: 15, windowSeconds: 3600 }, // mirrors booking_create
+  dm_message_create: { limit: 60, windowSeconds: 60 }, // fast enough for a real back-and-forth
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';

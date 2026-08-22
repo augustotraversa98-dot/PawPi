@@ -15,6 +15,11 @@ let mockParams;
 const mockPush = jest.fn();
 const mockNavigate = jest.fn();
 
+// Resolve t() against the real English catalog so the assertions below can pin
+// the actual copy (the labels moved from hardcoded strings to i18n keys).
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: mockPush, navigate: mockNavigate }),
   useLocalSearchParams: () => mockParams,

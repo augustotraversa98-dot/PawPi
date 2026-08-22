@@ -18,6 +18,35 @@
     "before": "Before",
     "after": "After"
   },
+  "petProfile": {
+    "petProfile": "Pet profile",
+    "withOwner": "with {{name}}",
+    "dailyPosts": "Daily posts",
+    "dailyMoments": "Daily moments",
+    "noDailyPosts": "No daily posts yet",
+    "momentsEmpty": "{{name}}'s daily moments will appear here.",
+    "momentsEmptyGeneric": "These daily moments will appear here.",
+    "ageYear": "year",
+    "ageYears": "years",
+    "ageMonth": "month",
+    "ageMonths": "months",
+    "ageUnderMonth": "Under 1 month"
+  },
+  "community": {
+    "title": "Community",
+    "subtitle": "Ask, share, and connect with pet parents.",
+    "sortHot": "Hot",
+    "sortNew": "New",
+    "sortTop": "Top",
+    "category": {
+      "All": "All",
+      "Health": "Health",
+      "Food": "Food",
+      "Training": "Training",
+      "Behavior": "Behavior",
+      "General": "General"
+    }
+  },
   "care": {
     "segLearn": "Learn",
     "segHire": "Hire",
@@ -105,6 +134,7 @@
     "title": "Health",
     "hubTitle": "Health Hub",
     "nutritionButton": "Nutrition",
+    "disclaimer": "PawPi helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.",
     "today": "Today",
     "track": "Track",
     "insights": "Insights",
@@ -1141,10 +1171,7 @@
     "appliedTitle": "Application sent",
     "appliedBody": "The insurer will review and set your premium.",
     "couldNotApply": "Couldn't apply",
-    "payPremium": "Pay premium",
-    "couldNotPay": "Couldn't start payment",
-    "payUnavailable": "Payments not available yet",
-    "payUnavailableBody": "Your application is saved; you can pay once payments are set up."
+    "premiumContactNote": "Premium: {{insurer}} will contact you to arrange payment — there's no payment step here."
   },
   "places": {
     "title": "Pet-friendly places",
@@ -1293,6 +1320,7 @@
     "paymentFailedBody": "We couldn't open the payment window for your {{noun}}, so nothing was charged. Please try again.",
     "requestSentTitle": "Request sent!",
     "requestSentBody": "{{provider}} will confirm your {{noun}} soon.",
+    "payInPersonNote": "No online payment — just request the booking and pay {{provider}} in person.",
     "couldntBook": "Couldn't book"
   },
   "providers": {
@@ -2495,7 +2523,7 @@
     "compare": "Compare",
     "compareRow": "{{price}} · Deductible {{deductible}} · Reimb. {{reimb}}",
     "getQuote": "Get a quote",
-    "applyBuy": "Apply / Buy",
+    "applyBuy": "Apply",
     "getQuoteFor": "Get a quote: {{name}}",
     "forPet": "For {{name}}",
     "contactEmail": "Contact email",
@@ -3391,6 +3419,18 @@
     "wrappedTitleGeneric": "Your pet's Wrapped",
     "wrappedSubtitle": "A beautiful year-in-review, made to share",
     "todaysCelebrations": "TODAY'S CELEBRATIONS",
+    "milestones": {
+      "birthdayTitle": "Happy birthday, {{name}}!",
+      "birthdayYears": "{{count}} years young today",
+      "birthdayGeneric": "Another year of joy",
+      "gotchaTitle": "{{name}}'s Gotcha Day!",
+      "gotchaYears": "{{count}} years together",
+      "gotchaGeneric": "The day you found each other",
+      "streakTitle": "{{count}}-day streak!",
+      "streakSub": "{{name}} has posted {{count}} days in a row",
+      "postsTitle": "{{count}} daily moments",
+      "postsSub": "{{name}} just hit {{count}} dailies"
+    },
     "onThisDay": "ON THIS DAY",
     "onThisDayLower": "on this day",
     "empty": "No memories from this day yet — keep posting and they'll appear here next year. 🐾",

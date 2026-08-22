@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 // POST /api/public/emergency/tag/[token]/contact — PUBLIC, NO AUTH (ticket 2.51). A stranger on
 // the tag page relays a message to the owner WITHOUT seeing any owner data. Routed through the
@@ -21,5 +22,6 @@ async function POST(request, { params }) {
   }
 }
 
-const wrappedPOST = withRequestContext(POST);
+// #6: IP-keyed rate limit (public, no auth) — caps owner-notification spam from a scanned tag.
+const wrappedPOST = withRequestContext(withRateLimit("emergency_relay", POST));
 export { wrappedPOST as POST };

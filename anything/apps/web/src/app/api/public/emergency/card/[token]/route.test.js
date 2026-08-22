@@ -23,6 +23,8 @@ describe('public card (vet link) GET', () => {
     const res = await GET(req(), PARAMS);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ card: CARD });
+    // Unauthenticated pet-PII response must never be cached by a shared/CDN/proxy cache.
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
     const text = sql.mock.calls[0][0].join(' ');
     expect(text).toContain('app_emergency_card_by_link');
     expect(text).not.toContain('pet_emergency_share_links'); // never reads the table directly

@@ -201,6 +201,7 @@ export const PostComposerModal = memo(function PostComposerModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      onRequestClose={onClose}
     >
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: COLORS.cream }}

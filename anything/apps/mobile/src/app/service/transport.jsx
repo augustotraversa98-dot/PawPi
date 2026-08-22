@@ -89,9 +89,11 @@ export default function TransportScreen() {
     }
     setPayingId(t.id);
     try {
+      // The server derives the amount from the trip's fare (source_ref "transport:<id>") — we send
+      // only the reference, NEVER a client amount (fail-closed pricing, 2026-08-21). `cents` above is
+      // just the local >0 guard so we don't open checkout for a fare-less trip.
       const res = await checkout.mutateAsync({
         provider_id: t.provider_id,
-        amount_cents: cents,
         source_ref: `transport:${t.id}`,
       });
       const url = res.checkoutUrl || res.deeplink;
