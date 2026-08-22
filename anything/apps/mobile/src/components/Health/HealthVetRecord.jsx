@@ -17,7 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
 import { getDisplayAge } from "@/utils/petAge";
-import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
@@ -419,11 +419,34 @@ export default function HealthVetRecord() {
     enabled: !!currentPet?.id,
   });
 
-  // The next upcoming appointment: soonest scheduled one (completed/past → history).
+  // The next upcoming appointment: soonest scheduled one that is still in the FUTURE
+  // (a past scheduled appointment nobody marked complete belongs to history, not here —
+  // otherwise "Next visit" shows a date in the past). We compare each appointment's local
+  // date+time to now; a date with no time counts as end-of-day so a same-day appointment
+  // stays "upcoming" for the whole day.
   const nextAppointment = (() => {
     const appts = upcomingAppointmentsData?.appointments || [];
+    const nowMs = Date.now();
+    const instantMs = (a) => {
+      const [Y, Mo, D] = String(a.appointment_date ?? "")
+        .slice(0, 10)
+        .split("-")
+        .map(Number);
+      if (!Y || !Mo || !D) return NaN;
+      const hm =
+        typeof a.appointment_time === "string" &&
+        /^\d{1,2}:\d{2}/.test(a.appointment_time)
+          ? a.appointment_time.slice(0, 5)
+          : "23:59";
+      const [h, m] = hm.split(":").map(Number);
+      return new Date(Y, Mo - 1, D, h, m, 0, 0).getTime();
+    };
     const upcoming = appts
       .filter((a) => a.status === "scheduled" || a.status == null)
+      .filter((a) => {
+        const ms = instantMs(a);
+        return Number.isNaN(ms) || ms >= nowMs; // keep undated (defensive) + future
+      })
       .sort((a, b) =>
         `${a.appointment_date}T${a.appointment_time || ""}`.localeCompare(
           `${b.appointment_date}T${b.appointment_time || ""}`,
@@ -2056,7 +2079,7 @@ export default function HealthVetRecord() {
                 >
                   {t("health.vetRecord.apptAt", {
                     date: formatDisplayDate(nextAppointment.appointment_date),
-                    time: nextAppointment.appointment_time,
+                    time: formatDisplayTime(nextAppointment.appointment_time),
                   })}
                 </Text>
                 {nextAppointment.clinic && (

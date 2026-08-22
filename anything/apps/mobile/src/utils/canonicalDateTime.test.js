@@ -151,8 +151,11 @@ describe("formatDisplayTime", () => {
     expect(formatDisplayTime("8:05", false)).toBe("08:05");
   });
 
-  it("tolerates legacy HH:MM:SS values", () => {
+  it("tolerates legacy HH:MM:SS values (drops the seconds)", () => {
     expect(formatDisplayTime("20:00:00", true)).toBe("8:00 PM");
+    // The exact Postgres `time`-column shape that leaked seconds into the UI.
+    expect(formatDisplayTime("22:59:00", false)).toBe("22:59");
+    expect(formatDisplayTime("22:59:00", true)).toBe("10:59 PM");
   });
 
   it("returns empty string for empty/unparseable values", () => {
