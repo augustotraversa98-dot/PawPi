@@ -73,9 +73,12 @@ altered.
 - **Notifications** have no create endpoint — they are produced as **side effects**
   of the follow / DM / join-request / lost-report actions the script performs, so
   the demo account ends up with real notifications.
-- **Prescriptions** cannot be created by an owner. The script grants the demo
-  provider (a vet) `medical_write` **care access**, then issues the Rx from the
-  provider side — the intended product flow.
+- **Prescriptions** cannot be created by an owner. The script establishes
+  **care access** via the provider-request → owner-approve flow (the clinic
+  requests `medical_write`; the owner approves), then issues the Rx from the
+  provider side — the intended product flow. (The owner-initiated
+  `POST /api/care-access/grants` is currently broken by an RLS policy and 500s;
+  the script deliberately avoids it. See the tracked bug.)
 - **Calendar events/bookings** have no create route; a booking *is* a
   `vet_appointments` row (created via the booking/appointment endpoints above).
 
