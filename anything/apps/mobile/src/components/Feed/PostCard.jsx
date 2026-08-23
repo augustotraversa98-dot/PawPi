@@ -1,5 +1,13 @@
 import React, { memo } from "react";
-import { View, Text, TouchableOpacity, Pressable, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  StyleSheet,
+  Alert,
+  useWindowDimensions,
+} from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import { PawPrint, Megaphone, Lock } from "lucide-react-native";
@@ -34,6 +42,17 @@ const LOCKED_PHOTO_BLUR = 45;
 const LOCKED_PHOTO_WASH = "rgba(255, 247, 239, 0.4)"; // cream @ 40% — recognizable-but-not-clear
 const LOCKED_PHOTO_SOLID = "rgba(216, 197, 181, 0.97)"; // muted sand, near-opaque fallback
 
+// Rotating, name-aware FOMO CTAs for a LOCKED card (feed polish #4). Each locked
+// card shows one — varied by position so the wall of teases never reads as a
+// single repeated line — nudging the viewer to post their own daily moment. All
+// four ship EN + ES; {{petName}} is the poster's pet.
+const LOCKED_CTA_KEYS = [
+  "feed.lockedCard1",
+  "feed.lockedCard2",
+  "feed.lockedCard3",
+  "feed.lockedCard4",
+];
+
 export const PostCard = memo(function PostCard({
   post,
   liked,
@@ -46,9 +65,17 @@ export const PostCard = memo(function PostCard({
   // While locked, tapping anywhere on the card nudges the viewer to post (opens
   // the composer) instead of doing nothing.
   onLockedPress,
+  // Position of this card in the locked feed — picks which rotating FOMO CTA to
+  // show (feed polish #4). Ignored when unlocked.
+  lockedCtaIndex = 0,
 }) {
   const togglePawMutation = useTogglePaw(post.id);
   const reduceTransparency = useReduceTransparency();
+  const { width: windowWidth } = useWindowDimensions();
+  // Full card CONTENT width, derived from the device (feed polish #1) — the card
+  // has a SPACING.lg gutter on each side. The image renders at exactly this width
+  // so it fills every phone (SE → Pro Max) with no right-edge crop.
+  const contentWidth = Math.round(windowWidth - SPACING.lg * 2);
 
   const handlePawPress = async () => {
     if (locked) return;
@@ -100,6 +127,11 @@ export const PostCard = memo(function PostCard({
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
 
   const { t } = useTranslation();
+  // Name-aware FOMO CTA for the locked variant (feed polish #4).
+  const lockedCtaMessage = t(
+    LOCKED_CTA_KEYS[(lockedCtaIndex || 0) % LOCKED_CTA_KEYS.length],
+    { petName: dogName },
+  );
   // Birthday / adoption-day highlight (2.37) → milestone moment (E3): a 🎂 by the name + a thicker
   // signature-orange frame, and on a milestone day an animated ribbon + confetti + a "Share this"
   // CTA. Computed from the pet's own date fields against the viewer's local day — never fabricated.
@@ -201,7 +233,7 @@ export const PostCard = memo(function PostCard({
         <Pressable
           testID="feed-post-photo"
           onPress={onLockedPress}
-          style={{ width: "100%", height: 340 }}
+          style={{ width: contentWidth, height: contentWidth }}
         >
           <Image
             testID="feed-post-locked-media"
@@ -264,7 +296,7 @@ export const PostCard = memo(function PostCard({
           videoUri={videoUri}
           posterUri={posterUri}
           onDoubleTap={handleDoubleTapPaw}
-          style={{ width: "100%", height: 340 }}
+          style={{ width: contentWidth, height: contentWidth }}
         />
       ) : (
         <PawablePhoto
@@ -273,7 +305,7 @@ export const PostCard = memo(function PostCard({
           disabled={false}
           onSingleTap={onOpenProfile}
           onDoubleTap={handleDoubleTapPaw}
-          style={{ width: "100%", height: 340 }}
+          responsiveWidth={contentWidth}
         />
       )}
         {/* Milestone moment (E3): celebratory ribbon + one-shot confetti over the photo */}
@@ -306,82 +338,106 @@ export const PostCard = memo(function PostCard({
         onPress={locked ? onLockedPress : undefined}
       >
         {locked ? (
-          <View
-            testID="feed-post-caption-locked"
-            style={{
-              height: 13,
-              width: "65%",
-              borderRadius: 7,
-              backgroundColor: MATERIALS.surfaceSunken,
-              marginBottom: SPACING.lg,
-            }}
-          />
-        ) : (
-          post.caption && (
-            <TouchableOpacity
-              testID="feed-post-caption"
-              onPress={onOpenDetail}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}
-                numberOfLines={2}
-              >
-                <Text style={{ fontWeight: "800" }}>{dogName} </Text>
-                {post.caption}
-              </Text>
-            </TouchableOpacity>
-          )
-        )}
-
-        {/* Action Row */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingTop: locked || post.caption ? SPACING.md : 0,
-            borderTopWidth: locked || post.caption ? 1 : 0,
-            borderTopColor: MATERIALS.hairline,
-            gap: SPACING.xl,
-          }}
-        >
-          <PressableScale
-            onPress={handlePawPress}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            disabled={locked || togglePawMutation.isPending}
-          >
-            <PawPrint
-              size={22}
-              color={liked && !locked ? COLORS.coral : COLORS.mutedBrown}
-              fill={liked && !locked ? COLORS.coral : "none"}
+          // Locked: the caption is CONTENT, so it's replaced by an obscured
+          // placeholder bar and a rotating, name-aware FOMO CTA (feed polish #4)
+          // that invites the viewer to post their own moment to reveal this one.
+          <>
+            <View
+              testID="feed-post-caption-locked"
+              style={{
+                height: 13,
+                width: "65%",
+                borderRadius: RADIUS.chip,
+                backgroundColor: MATERIALS.surfaceSunken,
+                marginBottom: SPACING.lg,
+              }}
             />
-            <Text
-              style={[
-                TYPE.subhead,
-                { color: liked && !locked ? COLORS.coral : COLORS.mutedBrown },
-              ]}
+            <View
+              testID="feed-post-locked-cta"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: SPACING.sm,
+                paddingTop: SPACING.md,
+                borderTopWidth: 1,
+                borderTopColor: MATERIALS.hairline,
+              }}
             >
-              {pawsCount} paws
-            </Text>
-          </PressableScale>
+              <PawPrint size={16} color={COLORS.coral} />
+              <Text
+                style={[TYPE.subhead, { flex: 1, color: COLORS.warmBrown, fontWeight: "700" }]}
+              >
+                {lockedCtaMessage}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            {post.caption && (
+              <TouchableOpacity
+                testID="feed-post-caption"
+                onPress={onOpenDetail}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[TYPE.callout, { color: COLORS.warmBrown, marginBottom: SPACING.lg }]}
+                  numberOfLines={2}
+                >
+                  <Text style={{ fontWeight: "800" }}>{dogName} </Text>
+                  {post.caption}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-          <PressableScale
-            onPress={locked ? undefined : onOpenBarks}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            disabled={locked}
-          >
-            <Megaphone size={20} color={COLORS.mutedBrown} />
-            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
-              {barksCount} barks
-            </Text>
-          </PressableScale>
+            {/* Action Row */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingTop: post.caption ? SPACING.md : 0,
+                borderTopWidth: post.caption ? 1 : 0,
+                borderTopColor: MATERIALS.hairline,
+                gap: SPACING.xl,
+              }}
+            >
+              <PressableScale
+                onPress={handlePawPress}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                disabled={togglePawMutation.isPending}
+              >
+                <PawPrint
+                  size={22}
+                  color={liked ? COLORS.coral : COLORS.mutedBrown}
+                  fill={liked ? COLORS.coral : "none"}
+                />
+                <Text
+                  style={[
+                    TYPE.subhead,
+                    { color: liked ? COLORS.coral : COLORS.mutedBrown },
+                  ]}
+                >
+                  {pawsCount} paws
+                </Text>
+              </PressableScale>
 
-          <View style={{ flex: 1 }} />
+              <PressableScale
+                onPress={onOpenBarks}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                <Megaphone size={20} color={COLORS.mutedBrown} />
+                <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
+                  {barksCount} barks
+                </Text>
+              </PressableScale>
 
-          {/* Share a branded story frame of this daily photo (ticket 2.28). Optional;
-              the daily-post flow + BeReal lock are untouched. */}
-          <DailyShareButton petName={dogName} photoUri={photo} locked={locked} />
-        </View>
+              <View style={{ flex: 1 }} />
+
+              {/* Share a branded story frame of this daily photo (ticket 2.28). Optional;
+                  the daily-post flow + BeReal lock are untouched. */}
+              <DailyShareButton petName={dogName} photoUri={photo} locked={locked} />
+            </View>
+          </>
+        )}
       </Pressable>
     </Card>
   );

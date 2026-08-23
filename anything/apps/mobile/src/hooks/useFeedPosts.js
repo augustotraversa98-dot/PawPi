@@ -198,18 +198,20 @@ export function useTogglePaw(postId) {
         queryKey: ["posts"],
       });
 
-      // Optimistically update all posts queries
+      // Optimistically update all posts queries. Fill flag and count move
+      // TOGETHER from one place (feed polish #2), and the count is guarded so a
+      // missing/zero base can never render an impossible "filled paw over 0".
       queryClient.setQueriesData({ queryKey: ["posts", "feed"] }, (old) => {
         if (!old || !Array.isArray(old)) return old;
-        return old.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                user_has_pawed: !isPawed,
-                paw_count: isPawed ? post.paw_count - 1 : post.paw_count + 1,
-              }
-            : post,
-        );
+        return old.map((post) => {
+          if (post.id !== postId) return post;
+          const base = post.paw_count ?? 0;
+          return {
+            ...post,
+            user_has_pawed: !isPawed,
+            paw_count: isPawed ? Math.max(0, base - 1) : base + 1,
+          };
+        });
       });
 
       return { previousQueries };

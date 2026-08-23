@@ -1,8 +1,8 @@
-// Feed screen — locked vs unlocked scroll behavior.
-// Product rule: while locked the feed is a STATIC blurred backdrop behind the
-// pinned floating card — no scroll, no pull-to-refresh. Once unlocked it scrolls
-// and refreshes normally. These tests pin that on the real RefreshableScrollView
-// (the feed children are stubbed so the test isolates the scroll wiring).
+// Feed screen — scroll behavior.
+// Product rule (feed polish #4): the feed scrolls whether locked or unlocked. A
+// frozen locked feed read as buggy; now it's a scrollable, blurred FOMO tease.
+// These tests pin that on the real RefreshableScrollView (the feed children are
+// stubbed so the test isolates the scroll wiring).
 
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
@@ -25,6 +25,7 @@ jest.mock("@/hooks/useFeedSuggestions", () => ({
 jest.mock("@/hooks/useFeedPosts", () => ({
   usePostingStreak: () => ({ streak: 0 }),
   useUpdatePostCaption: () => ({ mutateAsync: jest.fn() }),
+  useTogglePaw: () => ({ mutate: jest.fn(), mutateAsync: jest.fn(), isPending: false }),
 }));
 
 // Stub the feed children so the test focuses purely on the scroll view wiring.
@@ -37,7 +38,6 @@ jest.mock("@/components/Feed/DailyPromptCard", () => ({
 }));
 jest.mock("@/components/Feed/LockedFeedOverlay", () => ({
   LockedFeedOverlay: () => null,
-  LockedFloatingCard: () => null,
 }));
 jest.mock("@/components/Feed/UnlockedFeed", () => ({ UnlockedFeed: () => null }));
 jest.mock("@/components/Feed/MilestoneEventCard", () => ({ FollowedMilestones: () => null }));
@@ -72,10 +72,10 @@ const feedData = (overrides) => ({
   ...overrides,
 });
 
-test("locked feed does not scroll", () => {
+test("locked feed still scrolls (FOMO tease, not a frozen wall)", () => {
   mockFeed = feedData({ feedUnlocked: false });
   const { getByTestId } = render(<FeedScreen />);
-  expect(getByTestId("feed-scroll").props.scrollEnabled).toBe(false);
+  expect(getByTestId("feed-scroll").props.scrollEnabled).toBe(true);
 });
 
 test("unlocked feed scrolls", () => {
