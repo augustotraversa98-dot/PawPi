@@ -231,3 +231,75 @@ screenshots of Feed + Health (idle + mid-scroll).
 ## 6. Guardrails
 Surgical, reversible changes. Preserve every route name, param, deep link, and persistence. No fake
 data. No duplicated/competing bars. iOS gets NativeTabs; Android keeps the working JS bar.
+
+---
+
+## 7. Pre-merge hardening pass (verified on iOS 26.5 simulator, 2026-08-24)
+
+Focused robustness + verification pass before marking PR #512 ready for EAS build 14. One small fix
+committed (Dark Mode glass); everything else confirmed. Legend: ✅ pass · ⚠️ accepted limitation ·
+🔧 fixed this pass.
+
+### 1. Core behaviors
+- ⚠️ **Shrink-on-scroll (`minimizeBehavior="onScrollDown"`)** — the prop is wired end-to-end and
+  *applied natively*: RNScreens 4.16 sets `_controller.tabBarMinimizeBehavior = .onScrollDown` under an
+  `@available(iOS 26.0)` guard (verified in `RNSBottomTabsHostComponentView.mm`), and expo-router
+  passes it through. However the shrink **animation did not render in the Simulator** across slow-drag,
+  fast-fling, and concurrent mid-drag captures — the bar stayed full-height (content-scroll-behind +
+  scroll-edge translucency DO work). This matches known Simulator input/animation limitations for iOS
+  26 tab-bar minimize. **Not a merge blocker** (degrades to a normal full bar; no crash), but
+  **must be confirmed on a physical iOS 26 device / EAS build 14.**
+- ✅ **Pet switch** — the native bar has *no* pet-dependent element (the Profile icon is a static
+  `pawprint.circle` SF Symbol by design; see §4c). Switching the active pet correctly updates screen
+  content (Feed/Health/Profile all re-render for the new pet) and leaves the bar unchanged — expected.
+- ✅ **Deep links** — route *resolution* is router-core and unchanged (`health.section-deeplink.test.jsx`
+  passes); in-app navigation to `health` (+ section) works with the native bar mounted. An external
+  cold-start deep link (`simctl openurl … //health?section=vet-record`) lands on the auth-gated Feed,
+  **but the identical URL behaves the same on `main` (JS bar)** — it's the app's custom `index.tsx`
+  auth-gated startup, pre-existing and tab-bar-independent, **not a regression from this PR.**
+
+### 2. Accessibility on the native bar
+- ✅ **VoiceOver labels** — each tab's `<Label>{t(tabs.*)}</Label>` sets the `UITabBarItem` title,
+  which is its accessibility label; VoiceOver reads the localized names (EN: Feed/Health/Care/Stores &
+  Vets/Profile · ES: Inicio/Salud/Cuidado/Tiendas y Veterinarias/Perfil).
+- ✅ **Dynamic Type / bold text** — at max accessibility size the native bar keeps labels at a fixed
+  legible size and shows the full **"Tiendas y Veterinarias" with no truncation** — an improvement over
+  the old JS bar, which truncated it ("Tiendas y…") even at the default size.
+
+### 3. Fallback matrix
+- 🔧 **Dark Mode** — FOUND + FIXED a regression: the `GlassSurface`→`GlassView` upgrade defaulted to
+  `colorScheme="auto"`, so glass headers went dark-grey over PawPi's always-cream body. PawPi ships a
+  fixed warm/light palette (no dark theme), and the old `BlurView` path was pinned to `tint="light"`.
+  Fix: pin `GlassView colorScheme="light"` in `GlassSurface.jsx`. Re-verified — headers stay light in
+  Dark Mode.
+- ✅ **Increase Contrast** — native bar stays fully legible (labels/icons/active coral clear); system
+  handles the contrast bump.
+- ⚠️ **Reduce Transparency** — not togglable via `simctl ui`; code-verified: `GlassSurface` renders its
+  **solid** branch first (`MATERIALS.solidFallback`), and the native `UITabBar` is made opaque by the
+  system automatically. Worth a final on-device glance.
+- ⚠️ **iOS < 26** — only the 26.5 runtime is installed, so not runtime-tested. Graceful by construction:
+  the native `UITabBar` renders a standard opaque bar (`minimizeBehavior` ignored pre-26), and
+  `GlassSurface` falls back to the `expo-blur` `BlurView` (`isLiquidGlassAvailable()` → false).
+
+### 4. Pushed (non-tab) screens
+- ✅ No pushed screen was modified by this PR. Root-level pushes (notifications, messages, chat) are
+  full-screen **modals with no tab bar**; in-tab pushes (e.g. `more/*` "Familia y cuidadores") render
+  **full-screen and hide the tab bar** on push. With no bar beneath them, there is no trapped content
+  and no new bottom gap — spot-checked both. (The edge-to-edge `contentInsetAdjustmentBehavior` change
+  was scoped only to the 5 tab roots + `ServicesDiscovery` + `pet-profile`.)
+
+### 5. No dead code / no double bars
+- ✅ All `tabBarBackground` / `GlassSurface` pill styling lives **only** inside `AndroidGlassTabs`
+  (the Android path); `NativeGlassTabs` contains none — no chance of two competing bars on iOS.
+- 🔧 The shared `GlassSurface` upgrade's one regression (Dark Mode, above) is fixed; headers otherwise
+  render correctly (Feed/Health/Care/Services verified).
+
+### 6. Test suite
+- ✅ `npm test` → **260 suites / 2021 tests green**, deterministic across the many runs this session
+  (no flakiness introduced by the development branch-switching).
+
+### Merge recommendation
+**No blockers.** One fix committed (Dark Mode glass). Two items to confirm on a physical iOS 26 device
+via EAS build 14 (neither blocks merge, both degrade gracefully): the **scroll-to-minimize animation**
+(§7.1) and a final glance at **Reduce Transparency** (§7.3). Accepted `unstable_`-API limitation: the
+iOS Profile-tab pet photo (§4c).

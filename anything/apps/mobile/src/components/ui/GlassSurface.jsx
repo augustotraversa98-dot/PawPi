@@ -70,12 +70,20 @@ export function GlassSurface({
 
   // iOS 26: the genuine Liquid Glass material. The GlassView samples + refracts
   // the content scrolling behind it; a light warm tint keeps it on-brand.
+  //
+  // colorScheme="light": PawPi ships a FIXED warm/cream palette — the app body
+  // never switches to a dark theme, so its glass chrome must stay the LIGHT
+  // material even under system Dark Mode. Without this, GlassView's default
+  // "auto" would render a dark glass header over the always-cream body (a grey
+  // mismatch). This mirrors the old BlurView path, which was pinned to
+  // tint="light" (BLUR.tint) and so was always light too.
   if (LIQUID_GLASS) {
     return (
       <View style={[{ overflow: "hidden", borderColor }, style]} {...rest}>
         <GlassView
           glassEffectStyle="regular"
           tintColor={glassColor}
+          colorScheme="light"
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
