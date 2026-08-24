@@ -34,20 +34,167 @@ async function GET(request) {
 
     let timeline = [];
 
-    // Fetch food logs
-    const foodLogs = petId
-      ? await sql`
+    // ── Nine independent per-log-type sources ── none depends on another's result, so
+    // awaiting them one after another was serializing nine DB round-trips into every
+    // request (Autofix HighLatencyP95, same pattern/fix as c2c2f39). postgres.js
+    // pipelines concurrently-issued queries on the same connection, so Promise.all is
+    // safe here even though all of them run inside the request's single transaction
+    // (withRequestContext). Query text/filters/response shape unchanged.
+    const [
+      foodLogs,
+      pooLogs,
+      walkLogs,
+      generalChecks,
+      photoChecks,
+      peeLogs,
+      vomitLogs,
+      mobilityLogs,
+      weightLogs,
+      medicalCareLogs,
+    ] = await Promise.all([
+      // Fetch food logs
+      petId
+        ? sql`
           SELECT 'food' as event_type, id, logged_at as event_time, meal_type, food_name, notes
           FROM health_food_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
             AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
         `
-      : await sql`
+        : sql`
           SELECT 'food' as event_type, id, logged_at as event_time, meal_type, food_name, notes
           FROM health_food_logs
           WHERE owner_user_id = ${ownerUserId}
             AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
+        `,
+      // Fetch poo logs
+      petId
+        ? sql`
+          SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
+          FROM health_poo_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
+          FROM health_poo_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch walk logs
+      petId
+        ? sql`
+          SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
+          FROM health_walk_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
+          FROM health_walk_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
+        `,
+      // Fetch general checks
+      petId
+        ? sql`
+          SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
+          FROM health_general_checks
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
+          FROM health_general_checks
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch photo checks
+      petId
+        ? sql`
+          SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
+          FROM health_photo_checks
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
+          FROM health_photo_checks
+          WHERE owner_user_id = ${ownerUserId}
+            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
+        `,
+      // Fetch pee logs
+      petId
+        ? sql`
+          SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
+          FROM health_pee_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
+          FROM health_pee_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch vomit logs
+      petId
+        ? sql`
+          SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
+          FROM health_vomit_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
+          FROM health_vomit_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch mobility logs
+      petId
+        ? sql`
+          SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
+          FROM health_mobility_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
+          FROM health_mobility_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch weight logs
+      petId
+        ? sql`
+          SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
+          FROM health_weight_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
+          FROM health_weight_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+        `,
+      // Fetch medical care logs
+      petId
+        ? sql`
+          SELECT 'medical_care' as event_type, id, given_at as event_time,
+                 care_type, name, dose, status, notes, reaction_or_issue
+          FROM health_medical_care_logs
+          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
+        `
+        : sql`
+          SELECT 'medical_care' as event_type, id, given_at as event_time,
+                 care_type, name, dose, status, notes, reaction_or_issue
+          FROM health_medical_care_logs
+          WHERE owner_user_id = ${ownerUserId}
+            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
+        `,
+    ]);
 
     timeline.push(
       ...foodLogs.map((log) => ({
@@ -57,25 +204,7 @@ async function GET(request) {
         title: log.meal_type ? `${log.meal_type} meal` : "Food logged",
         summary: log.food_name || "Meal recorded",
         icon: "🍽️",
-      }))
-    );
-
-    // Fetch poo logs
-    const pooLogs = petId
-      ? await sql`
-          SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
-          FROM health_poo_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
-          FROM health_poo_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...pooLogs.map((log) => ({
         type: "poo",
         id: log.id,
@@ -83,25 +212,7 @@ async function GET(request) {
         title: "Bathroom break",
         summary: [log.amount, log.shape, log.color].filter(Boolean).join(", "),
         icon: "💩",
-      }))
-    );
-
-    // Fetch walk logs
-    const walkLogs = petId
-      ? await sql`
-          SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
-          FROM health_walk_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
-          FROM health_walk_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...walkLogs.map((log) => ({
         type: "walk",
         id: log.id,
@@ -114,25 +225,7 @@ async function GET(request) {
               }`
             : "Exercise logged",
         icon: "🚶",
-      }))
-    );
-
-    // Fetch general checks
-    const generalChecks = petId
-      ? await sql`
-          SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
-          FROM health_general_checks
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
-          FROM health_general_checks
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...generalChecks.map((check) => ({
         type: "general_check",
         id: check.id,
@@ -140,25 +233,7 @@ async function GET(request) {
         title: "General check",
         summary: [check.mood, check.energy].filter(Boolean).join(", "),
         icon: "🔍",
-      }))
-    );
-
-    // Fetch photo checks
-    const photoChecks = petId
-      ? await sql`
-          SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
-          FROM health_photo_checks
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
-          FROM health_photo_checks
-          WHERE owner_user_id = ${ownerUserId}
-            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...photoChecks.map((check) => ({
         type: "photo_check",
         id: check.id,
@@ -166,25 +241,7 @@ async function GET(request) {
         title: "Photo check",
         summary: check.body_area ? `${check.body_area} area` : "Photo logged",
         icon: "📸",
-      }))
-    );
-
-    // Fetch pee logs
-    const peeLogs = petId
-      ? await sql`
-          SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
-          FROM health_pee_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
-          FROM health_pee_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...peeLogs.map((log) => ({
         type: "pee",
         id: log.id,
@@ -192,25 +249,7 @@ async function GET(request) {
         title: "Pee logged",
         summary: [log.volume, log.color].filter(Boolean).join(", "),
         icon: "💧",
-      }))
-    );
-
-    // Fetch vomit logs
-    const vomitLogs = petId
-      ? await sql`
-          SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
-          FROM health_vomit_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
-          FROM health_vomit_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...vomitLogs.map((log) => ({
         type: "vomit",
         id: log.id,
@@ -220,25 +259,7 @@ async function GET(request) {
           ? `${log.number_of_episodes || 1} episode(s), ${log.appearance}`
           : `${log.number_of_episodes || 1} episode(s)`,
         icon: "🤢",
-      }))
-    );
-
-    // Fetch mobility logs
-    const mobilityLogs = petId
-      ? await sql`
-          SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
-          FROM health_mobility_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
-          FROM health_mobility_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...mobilityLogs.map((log) => ({
         type: "mobility",
         id: log.id,
@@ -253,25 +274,7 @@ async function GET(request) {
             .filter(Boolean)
             .join(", ") || "Mobility checked",
         icon: "🦴",
-      }))
-    );
-
-    // Fetch weight logs
-    const weightLogs = petId
-      ? await sql`
-          SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
-          FROM health_weight_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
-          FROM health_weight_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
-        `;
-
-    timeline.push(
+      })),
       ...weightLogs.map((log) => ({
         type: "weight",
         id: log.id,
@@ -283,23 +286,6 @@ async function GET(request) {
         icon: "⚖️",
       }))
     );
-
-    // Fetch medical care logs
-    const medicalCareLogs = petId
-      ? await sql`
-          SELECT 'medical_care' as event_type, id, given_at as event_time,
-                 care_type, name, dose, status, notes, reaction_or_issue
-          FROM health_medical_care_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
-        `
-      : await sql`
-          SELECT 'medical_care' as event_type, id, given_at as event_time,
-                 care_type, name, dose, status, notes, reaction_or_issue
-          FROM health_medical_care_logs
-          WHERE owner_user_id = ${ownerUserId}
-            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
-        `;
 
     const careTypeIcons = {
       medication: "💊",
