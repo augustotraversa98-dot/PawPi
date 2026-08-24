@@ -131,12 +131,25 @@ Import surface: `import { NativeTabs, Icon, Label } from "expo-router/unstable-n
   there) and add a thin render test per branch by toggling `Platform.OS`. `health.section-deeplink`
   and the other screen tests don't touch the layout tree and should stay green.
 
-### 4c. Profile tab avatar icon
-- Native `Icon` can't host the `PetAvatar` React component. Two paths: render the pet photo as an
-  image `src={{ uri }}`, or fall back to an SF Symbol.
-- **Plan:** ship **SF Symbol `pawprint.circle.fill`** with the coral selected tint for reliability
-  and correct scroll-edge tinting (a remote-URI tab image is finicky to tint/circle-mask and updates
-  awkwardly on pet-switch). Revisit avatar-as-image as a follow-up if you want the photo back.
+### 4c. Profile tab avatar icon — KNOWN iOS PLATFORM LIMITATION (not a bug)
+- Native `Icon` can't host the `PetAvatar` React component (SF Symbols or an image source only).
+- **Investigated + tested on iOS 26.5 (2026-08-24):** the active pet's PHOTO **cannot** be shown as
+  the iOS native tab icon in Expo SDK 54. Expo Router's `convertOptionsIconToPropsIcon`
+  (`native-tabs/NativeBottomTabs/NativeTabsView.js`) maps an `<Icon src={{uri}}>` to
+  react-native-screens' **`templateSource`** on iOS in *both* the 4.16 and 4.18 code paths — never
+  `imageSource`. `templateSource` = a *tinted template* (iOS fills the alpha shape with the tab
+  tint), so an opaque photo would render as a solid coral square, not the photo. Empirically it was
+  worse: passing the remote `avatar_url` **broke the whole tab bar** (a solid black bar with no
+  icons); reverting to the SF Symbol instantly fixed it. The only path to the real photo would be
+  patch-package'ing expo-router + a local-download/circular-mask pipeline — fragile on a core nav
+  lib, out of scope for an App Store branch.
+- **Decision (Augusto, approved):** ship the **`pawprint.circle` / `pawprint.circle.fill`** SF Symbol
+  with the coral selected tint on iOS. Android keeps the live `PetAvatar` pet photo via the JS bar.
+- **Identity preserved on-screen:** the Profile tab landing (`(tabs)/more/index.jsx` →
+  `pet-profile.jsx` embedded) already **leads with a prominent 128px pet-photo hero** (the active
+  pet's `PetAvatar` inside the live Care Ring), then the name, `@handle`, breed/age, and a grid of the
+  pet's photos — verified on the iOS 26.5 sim. So the photo identity lost from the tiny tab icon is
+  clearly present, and much larger, on the screen itself. No code change needed.
 
 ### 4d. Icon mapping (SF Symbols)
 | slot | route | default → selected SF Symbol |
