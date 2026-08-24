@@ -166,6 +166,10 @@ a sharp corner:
 Circular elements (avatars, icon badges) keep `borderRadius = size / 2`. Do not
 introduce raw pixel radii or leave corners sharp — reach for the nearest token.
 
+The app `RADIUS` scale in `spacing.js` is canonical (it also exposes size aliases
+`RADIUS.xs/sm/md/lg/xl`); the legacy print values above are not the app source of
+truth — do not change the app tokens to match them.
+
 ---
 
 ## 9. Never

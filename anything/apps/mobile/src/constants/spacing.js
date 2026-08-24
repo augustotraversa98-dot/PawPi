@@ -35,4 +35,12 @@ export const RADIUS = {
   sheet: RADII.xxl, // sheets / large surfaces
   chip: RADII.pill, // tags, pills
   bar: RADII.xxl, // the floating tab bar
+
+  // Size aliases so RADIUS.xs/sm/md/lg/xl resolve to the numeric scale.
+  // Without these ~40 call sites got borderRadius: undefined → sharp corners.
+  xs: RADII.xs, // 8
+  sm: RADII.sm, // 12
+  md: RADII.md, // 16
+  lg: RADII.lg, // 20
+  xl: RADII.xl, // 24
 };
