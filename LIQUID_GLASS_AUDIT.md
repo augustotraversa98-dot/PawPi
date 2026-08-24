@@ -192,6 +192,29 @@ screenshots of Feed + Health (idle + mid-scroll).
 
 ---
 
+## 5b. Implementation status (Phases 0–3 done)
+- **Phase 1 ✅** — `_layout.jsx` split (iOS `NativeTabs` / Android `<Tabs>`), shared `tabsConfig.js`,
+  `minimizeBehavior="onScrollDown"`, no custom bg/blur on iOS, side effects preserved,
+  `_layout.test.jsx` rewritten for both branches.
+- **Phase 2 ✅** — `contentInsetAdjustmentBehavior="automatic"` + removed magic `paddingBottom` on
+  Feed / Health / Care / Services (ServicesDiscovery) / Profile (pet-profile).
+- **Phase 3 ✅** — `GlassSurface` upgraded to real `GlassView` on iOS 26 (guarded), blur fallback
+  elsewhere, solid under Reduce Transparency; services map-mode bottom sheet given glass bg + grabber.
+  Small header buttons intentionally left non-glass (they sit ON the glass header → avoid glass-on-glass).
+- **Phase 4 (QA) — in progress:**
+  - `npm test` (mobile): **260 suites / 2021 tests green.**
+  - Reduce Transparency → solid `MATERIALS.solidFallback` preserved (GlassSurface solid branch first).
+  - Dark Mode: iOS native path uses `PlatformColor("secondaryLabel")` + `GlassView colorScheme:"auto"`
+    (adapts automatically); `userInterfaceStyle:"automatic"` unchanged.
+  - **Verified on iOS 26.5 simulator ✅** — a local Xcode 26 Debug build (`BUILD SUCCEEDED`) on an
+    iPhone 16 Pro Max (iOS 26.5) rendered the genuine native Liquid Glass tab bar: floating
+    translucent capsule, SF Symbols (`house` / `heart.text.square` / `pawprint` / `stethoscope` /
+    `pawprint.circle`), coral active tint, and content scrolling *behind* the bar (green from the
+    next feed post visibly bleeds through it) — the scroll-edge effect. Tab switching + deep content
+    all work. (An existing demo session was already signed in, so Feed/Health were reachable.)
+  - Real Liquid Glass renders only in an iOS-26-SDK build (EAS build 14 / local Xcode 26), not Expo
+    Go; iOS 18 falls back to a standard opaque bar.
+
 ## 6. Guardrails
 Surgical, reversible changes. Preserve every route name, param, deep link, and persistence. No fake
 data. No duplicated/competing bars. iOS gets NativeTabs; Android keeps the working JS bar.
