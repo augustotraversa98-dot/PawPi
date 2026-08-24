@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Heart, Activity, TrendingUp, FileText, Utensils } from "lucide-react-native";
 
 // Import the 4 section components (removed HealthReminders)
@@ -28,11 +28,26 @@ const SECTIONS = [
   { id: "vet-record", labelKey: "health.vetRecord.title", icon: FileText },
 ];
 
+const SECTION_IDS = new Set(SECTIONS.map((s) => s.id));
+
 export default function HealthScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("today");
+  // Allow deep links (e.g. the Vet-Summary readiness card) to open a specific
+  // section: `/(tabs)/health?section=vet-record`. Unknown/absent → "today".
+  const params = useLocalSearchParams();
+  const paramSection =
+    typeof params?.section === "string" && SECTION_IDS.has(params.section)
+      ? params.section
+      : null;
+  const [activeSection, setActiveSection] = useState(paramSection || "today");
+
+  // Sync when the deep-link param changes while the screen is already mounted
+  // (navigating to the Health tab from elsewhere doesn't remount it).
+  useEffect(() => {
+    if (paramSection) setActiveSection(paramSection);
+  }, [paramSection]);
 
   const renderContent = () => {
     switch (activeSection) {

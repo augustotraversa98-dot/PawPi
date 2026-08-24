@@ -148,6 +148,24 @@ font. If you need a font-independent file, convert the text to outlines yourself
 Chip 8px · card 14px · panel 20px · pill button 999px · app icon 22.3%.
 Cards: #FFFCF8 on #FFF7EF with a 1px #F0E0D0 border. No shadows.
 
+### In-app UI corner-radius tokens (mobile)
+
+The values above are the print/marketing + app-icon reference. The **mobile app**
+ships the softer iOS-style scale introduced with the Liquid Glass foundation, and
+every card / box / button MUST use these semantic tokens (from
+`anything/apps/mobile/src/constants/spacing.js`) rather than a hardcoded number or
+a sharp corner:
+
+| Token            | px  | Use for                                  |
+| ---------------- | --- | ---------------------------------------- |
+| `RADIUS.control` | 16  | buttons, inputs, small inner boxes       |
+| `RADIUS.card`    | 24  | content cards                            |
+| `RADIUS.sheet`   | 28  | sheets / large surfaces / floating bar   |
+| `RADIUS.chip`    | 999 | tags, pills, fully-rounded chips         |
+
+Circular elements (avatars, icon badges) keep `borderRadius = size / 2`. Do not
+introduce raw pixel radii or leave corners sharp — reach for the nearest token.
+
 ---
 
 ## 9. Never

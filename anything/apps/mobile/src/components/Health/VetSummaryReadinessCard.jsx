@@ -51,7 +51,12 @@ export function VetSummaryReadinessCard({ petId, petName }) {
 
       <Pressable
         style={styles.link}
-        onPress={() => router.push("/(tabs)/more/vet")}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/health",
+            params: { section: "vet-record" },
+          })
+        }
         accessibilityRole="button"
       >
         <Text style={styles.linkText}>{t("vetReadiness.viewSummary")} →</Text>

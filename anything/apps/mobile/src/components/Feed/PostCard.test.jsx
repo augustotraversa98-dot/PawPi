@@ -1,5 +1,10 @@
 import React from "react";
 import { render, fireEvent, act } from "@testing-library/react-native";
+// Resolve t() against the real EN catalog so the locked-CTA assertions reflect
+// real copy (and a mistyped key fails loudly).
+jest.mock("react-i18next", () =>
+  require("@/i18n/testMock").makeReactI18nextMock(),
+);
 import { PostCard } from "./PostCard";
 
 // useTogglePaw pulls in react-query; stub it so the card renders without a
@@ -230,10 +235,25 @@ describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
     expect(onOpenProfile).not.toHaveBeenCalled();
   });
 
-  it("disables the paw button while locked (no mutation)", () => {
-    const { getByText } = render(<PostCard post={basePost} locked liked={false} />);
-    fireEvent.press(getByText("0 paws"));
+  it("shows a name-aware FOMO CTA instead of a paw button while locked", () => {
+    const { getByTestId, getByText, queryByText } = render(
+      <PostCard post={basePost} locked liked={false} />,
+    );
+    // No paw button/count on a locked card — it's replaced by the CTA (polish #4).
+    expect(queryByText("0 paws")).toBeNull();
+    expect(getByTestId("feed-post-locked-cta")).toBeTruthy();
+    // The CTA names the poster's pet (real name, never fabricated content).
+    expect(getByText(/Post today's moment to see what Phoebe/)).toBeTruthy();
     expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("rotates the locked CTA by card position (varied, not one repeated line)", () => {
+    const a = render(<PostCard post={basePost} locked lockedCtaIndex={0} />);
+    expect(a.getByText(/Post today's moment to see what Phoebe/)).toBeTruthy();
+    a.unmount();
+    // A different position surfaces a different variant — not one repeated line.
+    const b = render(<PostCard post={basePost} locked lockedCtaIndex={1} />);
+    expect(b.getByText(/Share your pet's day to unlock Phoebe/)).toBeTruthy();
   });
 });
 

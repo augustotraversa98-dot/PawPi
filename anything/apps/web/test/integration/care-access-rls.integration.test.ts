@@ -170,7 +170,12 @@ describe('RLS R2f — care_access_grants SELECT (as pawpi_app)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 2. care_access_grants — INSERT (the access-request route: active staff, provider-requested).
+// 2. care_access_grants — INSERT. TWO branches (issue #506 / migration 0123):
+//    (a) provider-request: active staff of provider_id, requested_by='provider';
+//    (b) owner-initiated : requested_by='owner', owner_user_id=me, AND the caller owns
+//        the subject pet. The owner branch must NOT let a caller create a grant for a pet
+//        (or an owner_user_id) that isn't theirs — that would escalate provider access to
+//        someone else's pet, since app_provider_has_grant keys on pet_id, not owner.
 describe('RLS R2f — care_access_grants INSERT (as pawpi_app)', () => {
   it('active staff INSERT a pending request with RETURNING * (the snapshot proof)', async () => {
     // Mirrors providers/[id]/access-requests: owner_user_id = the PET OWNER (A), not the
@@ -188,12 +193,44 @@ describe('RLS R2f — care_access_grants INSERT (as pawpi_app)', () => {
     });
   });
 
-  it('an owner (A) cannot INSERT a grant — only provider staff request', async () => {
+  it('owner A CAN INSERT an owner-initiated grant for THEIR OWN pet (issue #506)', async () => {
+    // The `POST /api/care-access/grants` "Share clinic history" path: active grant,
+    // requested_by='owner', owner_user_id = the caller, pet owned by the caller. RETURNING
+    // reads it back via the owner SELECT trust view.
+    const created = await asApp(A.profileId, (tx) => tx`
+      insert into care_access_grants
+        (pet_id, owner_user_id, provider_id, scopes, status, requested_by, granted_at)
+      values
+        (${A.petId}, ${A.profileId}, ${PROVIDER_ID}, ${['medical_read']}, 'active', 'owner', now())
+      returning id, owner_user_id, status, requested_by
+    `);
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({
+      owner_user_id: A.profileId, status: 'active', requested_by: 'owner',
+    });
+  });
+
+  it("owner A canNOT INSERT an owner grant for a pet they do NOT own (B's pet) — denied", async () => {
+    // The escalation the ownership subquery closes: A tries to share B's pet (pet_id = B's,
+    // owner_user_id spoofed to B). pet_id ∉ A's pets → owner branch fails; provider branch
+    // fails too (A is not staff) → RLS denies.
     await expect(
       asApp(A.profileId, (tx) => tx`
         insert into care_access_grants
-          (pet_id, owner_user_id, provider_id, scopes, status, requested_by)
-        values (${A.petId}, ${A.profileId}, ${PROVIDER_ID}, ${['medical_read']}, 'pending', 'owner')
+          (pet_id, owner_user_id, provider_id, scopes, status, requested_by, granted_at)
+        values (${B.petId}, ${B.profileId}, ${PROVIDER_ID}, ${['medical_read']}, 'active', 'owner', now())
+      `),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it("owner A canNOT INSERT an owner grant labeling B as owner_user_id for A's own pet — denied", async () => {
+    // owner_user_id must equal the caller: pinning it to B (≠ A) fails owner_user_id =
+    // current_app_user_id(), so the row cannot be mis-attributed even for A's own pet.
+    await expect(
+      asApp(A.profileId, (tx) => tx`
+        insert into care_access_grants
+          (pet_id, owner_user_id, provider_id, scopes, status, requested_by, granted_at)
+        values (${A.petId}, ${B.profileId}, ${PROVIDER_ID}, ${['medical_read']}, 'active', 'owner', now())
       `),
     ).rejects.toThrow(/row-level security/i);
   });
@@ -208,7 +245,11 @@ describe('RLS R2f — care_access_grants INSERT (as pawpi_app)', () => {
     ).rejects.toThrow(/row-level security/i);
   });
 
-  it("staff cannot forge requested_by='owner' (the WITH CHECK pins it to 'provider')", async () => {
+  it("staff cannot forge requested_by='owner' to self-approve access to a pet they don't own", async () => {
+    // STAFF flipping requested_by to 'owner' does NOT sneak past the owner branch: it
+    // requires owner_user_id = current_app_user_id() (here A ≠ STAFF) AND the caller to own
+    // the pet (STAFF owns none of A's pets). The provider branch needs requested_by
+    // ='provider'. Both fail → denied.
     await expect(
       asApp(STAFF.profileId, (tx) => tx`
         insert into care_access_grants
