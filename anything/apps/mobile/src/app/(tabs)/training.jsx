@@ -284,7 +284,11 @@ export default function TrainingScreen() {
       ) : (
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        // Liquid Glass: scroll behind the translucent iOS 26 tab bar; the native
+        // tab controller insets the last row so it clears the bar (replaces the
+        // old hard-coded paddingBottom). iOS-only; ignored on Android.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ padding: 16, paddingBottom: SPACING.xxl }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hire-a-trainer banner → PROVIDER training service (2.10), kept distinct. */}
@@ -395,7 +399,10 @@ export default function TrainingScreen() {
             </Text>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          >
             <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 21, marginBottom: 16 }}>
               {openProgram?.summary}
             </Text>
@@ -475,7 +482,10 @@ export default function TrainingScreen() {
             </Text>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          >
             {openSession && openProgram && (
               <>
                 <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 22, marginBottom: 18 }}>

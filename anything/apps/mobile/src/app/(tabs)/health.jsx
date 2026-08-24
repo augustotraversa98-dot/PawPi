@@ -199,7 +199,11 @@ export default function HealthScreen() {
       ) : (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          // Liquid Glass: scroll behind the translucent iOS 26 tab bar; the native
+          // tab controller insets the last row so it clears the bar (replaces the
+          // old hard-coded paddingBottom). iOS-only; ignored on Android.
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: SPACING.xxl }}
           showsVerticalScrollIndicator={false}
         >
           {renderContent()}

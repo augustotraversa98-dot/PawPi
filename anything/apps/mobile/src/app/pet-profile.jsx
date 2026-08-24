@@ -240,7 +240,13 @@ export default function PetProfileScreen({ embedded = false }) {
       <RefreshableScrollView
         refetch={refetch}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
+        // Liquid Glass: as the Profile tab root, content scrolls behind the
+        // translucent iOS 26 tab bar; `automatic` lets the native tab controller
+        // inset the last row (and the home indicator) so we no longer hand-add
+        // insets.bottom. iOS-only; ignored on Android (in-flow pill reserves its
+        // own footprint).
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingBottom: SPACING.xxl }}
       >
         {/* ── Hero section ── */}
         <View
