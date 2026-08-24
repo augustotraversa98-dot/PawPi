@@ -51,7 +51,9 @@ export default async function seedReminders(ctx) {
       type: "wellness_check",
       title: "Chequeo de bienestar",
       frequency: "weekly",
-      days: ["sun"],
+      // NOTE: the routines.days column is integer[] (0–6), not day-name strings.
+      // The specific weekday lives in wellnessCheckSchedule (jsonb); we omit the
+      // top-level days array rather than store an ambiguous integer.
       notificationEnabled: true,
       wellnessCheckSchedule: { frequency: "weekly", day: "sun", time: "10:00" },
     },

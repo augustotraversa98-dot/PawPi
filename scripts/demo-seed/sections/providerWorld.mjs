@@ -145,9 +145,12 @@ export default async function seedProviderWorld(ctx) {
       let photoA, photoB;
       try { photoA = await imgB("friend-1.jpg"); } catch { /* optional */ }
       try { photoB = await imgB("friend-2.jpg"); } catch { /* optional */ }
+      // size / energy_level / vaccination_status are CHECK-constrained to English
+      // enum values (small|medium|large|xlarge, low|medium|high,
+      // up_to_date|partial|unknown). Free-text fields (name/breed/story) stay ES.
       const toCreate = [
-        { name: "Rocco", breed: "Mestizo", age_years: 2, age_months: 0, gender: "male", size: "mediano", photo_urls: photoA ? [photoA] : [], story: "Rocco es cariñoso y juguetón, rescatado de la calle. Busca una familia con patio.", good_with_kids: true, good_with_dogs: true, good_with_cats: false, energy_level: "media", vaccination_status: "al día", adoption_fee_cents: 0, currency: "ARS" },
-        { name: "Nina", breed: "Caniche mestiza", age_years: 3, age_months: 6, gender: "female", size: "pequeño", photo_urls: photoB ? [photoB] : [], story: "Nina es tranquila y compañera, ideal para departamento. Ya está castrada.", good_with_kids: true, good_with_dogs: true, good_with_cats: true, energy_level: "baja", vaccination_status: "al día", adoption_fee_cents: 0, currency: "ARS" },
+        { name: "Rocco", breed: "Mestizo", age_years: 2, age_months: 0, gender: "male", size: "medium", photo_urls: photoA ? [photoA] : [], story: "Rocco es cariñoso y juguetón, rescatado de la calle. Busca una familia con patio.", good_with_kids: true, good_with_dogs: true, good_with_cats: false, energy_level: "medium", vaccination_status: "up_to_date", adoption_fee_cents: 0, currency: "ARS" },
+        { name: "Nina", breed: "Caniche mestiza", age_years: 3, age_months: 6, gender: "female", size: "small", photo_urls: photoB ? [photoB] : [], story: "Nina es tranquila y compañera, ideal para departamento. Ya está castrada.", good_with_kids: true, good_with_dogs: true, good_with_cats: true, energy_level: "low", vaccination_status: "up_to_date", adoption_fee_cents: 0, currency: "ARS" },
       ];
       for (const l of toCreate) {
         const res = await B.post(`/api/providers/${pid}/adoptable-listings`, l);
@@ -166,17 +169,27 @@ export default async function seedProviderWorld(ctx) {
     r.error(`adoption listings: ${e.message}`);
   }
 
-  // --- A grants the clinic care access (enables the vet Rx + care-access UI) ---
+  // --- Establish clinic care access (enables the vet Rx + the care-access UI).
+  // Use the provider-request → owner-approve flow: the clinic (B) requests, the
+  // owner (A) approves. The owner-initiated POST /api/care-access/grants is
+  // blocked by the care_access_grants INSERT RLS policy (owner inserts are not
+  // permitted; only requested_by='provider' by active staff), so it 500s — see
+  // the bug write-up. This two-step path is the one RLS actually allows. ---
   try {
-    const grant = await A.post("/api/care-access/grants", {
-      petId,
-      providerId: pid,
-      scopes: ["medical_read", "medical_write", "vaccinations_write", "appointments"],
-    });
-    if (grant.ok) r.created("care-access grant to clinic");
-    else r.error(`care grant: ${grant.status} ${JSON.stringify(grant.data).slice(0, 120)}`);
+    const scopes = ["medical_read", "medical_write", "vaccinations_write", "appointments"];
+    const req = await B.post(`/api/providers/${pid}/access-requests`, { petId, scopes });
+    const grant = req.data?.grant;
+    if (!grant) {
+      r.error(`care-access request: ${req.status} ${JSON.stringify(req.data).slice(0, 120)}`);
+    } else if (grant.status === "active") {
+      r.skipped("care-access grant (already active)");
+    } else {
+      const appr = await A.patch(`/api/care-access/grants/${grant.id}`, { action: "approve" });
+      if (appr.ok) r.created("care-access grant (clinic requested, owner approved)");
+      else r.error(`care-access approve: ${appr.status} ${JSON.stringify(appr.data).slice(0, 120)}`);
+    }
   } catch (e) {
-    r.error(`care grant: ${e.message}`);
+    r.error(`care access: ${e.message}`);
   }
 
   // --- A books the provider (pay-in-person: no order_id, no pay_with_credit) ---
