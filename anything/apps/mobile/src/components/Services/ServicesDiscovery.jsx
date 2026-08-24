@@ -714,7 +714,9 @@ export default function ServicesDiscovery({
         <View style={{ flex: 1, borderRightWidth: 1, borderColor: MATERIALS.glassBorder }}>
           <RefreshableScrollView
             refetch={refetch}
-            contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
+            // Liquid Glass: clear the translucent iOS 26 tab bar natively.
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ padding: SPACING.lg, paddingBottom: SPACING.xxl }}
           >
             {deniedBanner}
             {filterBar}
@@ -748,7 +750,29 @@ export default function ServicesDiscovery({
           {filterBar}
           {offMapNote}
         </View>
-        <BottomSheet ref={sheetRef} index={0} snapPoints={snapPoints}>
+        <BottomSheet
+          ref={sheetRef}
+          index={0}
+          snapPoints={snapPoints}
+          // Liquid Glass: the sheet floats over the map, so its background is the
+          // glass material (real Liquid Glass on iOS 26, blur fallback elsewhere,
+          // solid under Reduce Transparency — all handled by GlassSurface), with a
+          // warm branded grabber. Matches the iOS 26 sheet look.
+          handleIndicatorStyle={{ backgroundColor: MATERIALS.hairline, width: 40 }}
+          backgroundComponent={({ style }) => (
+            <GlassSurface
+              glassColor={MATERIALS.glassTintStrong}
+              style={[
+                style,
+                {
+                  borderRadius: RADIUS.sheet,
+                  borderWidth: 1,
+                  borderColor: MATERIALS.glassBorder,
+                },
+              ]}
+            />
+          )}
+        >
           <BottomSheetScrollView
             contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}
           >
@@ -763,7 +787,9 @@ export default function ServicesDiscovery({
     body = (
       <RefreshableScrollView
         refetch={refetch}
-        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
+        // Liquid Glass: clear the translucent iOS 26 tab bar natively.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: SPACING.xxl }}
       >
         {deniedBanner}
         {toggle}

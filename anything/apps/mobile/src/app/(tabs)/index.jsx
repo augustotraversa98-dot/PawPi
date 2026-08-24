@@ -273,7 +273,13 @@ export default function FeedScreen() {
             scrollEnabled
             refetch={[refetchPosts, refetchTodayDailyUpdate]}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 60 }}
+            // Liquid Glass: content scrolls BEHIND the translucent iOS 26 tab bar
+            // (the scroll-edge effect). `automatic` lets the native tab controller
+            // inset the last row so it clears the bar — replacing the old
+            // hard-coded paddingBottom hack. iOS-only prop; ignored on Android,
+            // where the in-flow pill already reserves its footprint.
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ paddingBottom: SPACING.xxl }}
           >
             {/* ── Getting-started activation card (ticket 2.98) + Daily Prompt Card ──
                 The activation card retires itself at 100%, so most of the time this
