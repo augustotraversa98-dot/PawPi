@@ -1,34 +1,31 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { Camera, Lock } from "lucide-react-native";
+import { Camera } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { COLORS, SPACING } from "@/constants/theme";
+import { COLORS, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
 
-// LockedFeedOverlay — the "post to unlock" tease.
+// LockedFeedOverlay — the "post to unlock" FOMO feed (feed polish #4).
 //
 // The feed query already returns the full following+suggested feed regardless of
-// whether the viewer has posted, so we render ALL of it while locked — a
-// SCROLLABLE, blurred BACKGROUND where each card shows clear identity (avatar /
-// pet name / @handle / "by owner") but a BLURRED photo and an obscured caption
-// (PostCard owns that blur + the Reduce-Transparency fallback). The incentive to
-// post is being able to see WHO posted but not WHAT.
-//
-// Over that blurred feed sits ONE floating lock card (`LockedFloatingCard`),
-// rendered as a sibling of the ScrollView in (tabs)/index.jsx so it stays PINNED
-// while the feed scrolls behind it. There is no full-screen scrim (the old
-// absoluteFill scrim read as opaque and blocked scrolling) and no post cap.
+// whether the viewer has posted. While locked we render ALL of it as a normal,
+// SCROLLABLE list where each card shows clear identity (avatar / pet name /
+// @handle / "by owner") but a BLURRED photo and an obscured caption (PostCard
+// owns that blur + the Reduce-Transparency fallback). Each card carries a
+// rotating, name-aware CTA ("Post today's moment to see what {petName} is up
+// to") — so scrolling reveals WHO posted and drives the urge to post to see
+// WHAT. The old frozen "single lock message over a 3-post backdrop" is gone: a
+// frozen wall read as buggy, and one repeated message had no pull.
 //
 // VISUAL: the locked-state chrome is the pre-glass "warm solid" look — solid
-// cream cards with a soft terracotta shadow + peach hairline border, NOT the
-// frosted GlassSurface used by the unlocked feed. Only the locked state reverts.
+// cream cards with a soft terracotta shadow + peach hairline border.
 
 // Solid warm card (pre-glass aesthetic): opaque card surface, soft terracotta
-// shadow, 1.5px peach border.
+// shadow, peach border. Used by the zero-post "be the first" empty state.
 const WARM_CARD = {
   backgroundColor: COLORS.card,
-  borderRadius: 26,
+  borderRadius: RADIUS.card,
   shadowColor: COLORS.terracotta,
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.12,
@@ -41,7 +38,7 @@ const WARM_CARD = {
 // Solid coral CTA button (pre-glass aesthetic).
 const WARM_BUTTON = {
   backgroundColor: COLORS.coral,
-  borderRadius: 16,
+  borderRadius: RADIUS.control,
   paddingVertical: 14,
   paddingHorizontal: 28,
   flexDirection: "row",
@@ -54,75 +51,8 @@ const WARM_BUTTON = {
   shadowRadius: 8,
 };
 
-// The single floating lock card pinned over the blurred feed. It is positioned
-// by its caller (a sibling of the ScrollView in (tabs)/index.jsx), so it stays
-// put while the feed scrolls behind it. `top` lets the caller tuck it just below
-// the daily-prompt card. The post count is folded into the subtext for a bit of
-// social proof (no new data exposure — it comes straight from the fetched feed).
-export function LockedFloatingCard({ count = 0, petName, onPostPress, top = 0 }) {
-  const { t } = useTranslation();
-  return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: "absolute",
-        top,
-        left: 0,
-        right: 0,
-        paddingHorizontal: SPACING.lg,
-        alignItems: "center",
-      }}
-    >
-      <View style={{ ...WARM_CARD, padding: 26, alignItems: "center", width: "100%" }}>
-        <View
-          style={{
-            width: 58,
-            height: 58,
-            borderRadius: 29,
-            backgroundColor: COLORS.sand,
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 14,
-            borderWidth: 1,
-            borderColor: COLORS.peach,
-          }}
-        >
-          <Lock size={26} color={COLORS.terracotta} />
-        </View>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "800",
-            color: COLORS.warmBrown,
-            textAlign: "center",
-            letterSpacing: -0.3,
-            marginBottom: 8,
-          }}
-        >
-          {t("feed.lockedTitle")}
-        </Text>
-        <Text
-          style={{
-            fontSize: 13,
-            color: COLORS.mutedBrown,
-            textAlign: "center",
-            lineHeight: 19,
-            marginBottom: 20,
-          }}
-        >
-          {count > 0
-            ? t("feed.lockedBodyFriends", { count, petName })
-            : t("feed.lockedBodyEmpty", { petName })}
-        </Text>
-        <UnlockCTA onPostPress={onPostPress} centered />
-      </View>
-    </View>
-  );
-}
-
 // The "be the first" empty locked state — brand-new account or no friends have
-// posted yet today. Friendly message + CTA, no scrim, never crashes with zero
-// posts. There's nothing behind it, so no floating overlay is used here.
+// posted yet today. Friendly message + CTA; never crashes with zero posts.
 function EmptyLockedState({ petName, onPostPress }) {
   const { t } = useTranslation();
   return (
@@ -180,14 +110,6 @@ function UnlockCTA({ onPostPress, centered }) {
   );
 }
 
-// The static blurred BACKDROP behind the floating lock card. The locked feed
-// doesn't scroll, so the off-screen posts are unreachable — we render only the
-// first few (enough to fill the screen behind the card) instead of the whole
-// feed. The floating lock card is rendered separately (see LockedFloatingCard).
-// With zero posts there's nothing to blur, so we show the "be the first" empty
-// state and the caller skips the floating overlay.
-const BACKDROP_POSTS = 3;
-
 export function LockedFeedOverlay({ posts, petName, onPostPress }) {
   const list = Array.isArray(posts) ? posts : [];
 
@@ -195,14 +117,18 @@ export function LockedFeedOverlay({ posts, petName, onPostPress }) {
     return <EmptyLockedState petName={petName} onPostPress={onPostPress} />;
   }
 
+  // Render the WHOLE feed, locked — the enclosing ScrollView scrolls it (feed
+  // polish #4). Each card gets its position so its FOMO CTA rotates through the
+  // name-aware variants instead of repeating one line down the list.
   return (
     <View>
-      {list.slice(0, BACKDROP_POSTS).map((post) => (
+      {list.map((post, index) => (
         <PostCard
           key={post.id}
           post={post}
           liked={false}
           locked
+          lockedCtaIndex={index}
           onLockedPress={onPostPress}
         />
       ))}

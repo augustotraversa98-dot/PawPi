@@ -1,14 +1,13 @@
-// LockedFeedOverlay — the "post to unlock" tease.
-// Product-critical: when locked, the feed is a SCROLLABLE, blurred BACKGROUND
-// showing WHO posted (clear identity) but not WHAT (blurred photo + obscured
-// caption), with ONE floating lock card pinned over it. There is no 6-post cap,
-// no opaque scrim, no social-proof header card, and no bottom sticky bar — those
-// were removed when the original floating-card-over-blurred-feed look was
-// restored. These tests pin the current behavior.
+// LockedFeedOverlay — the "post to unlock" FOMO tease (feed polish #4).
+// Product-critical: when locked, the feed is a SCROLLABLE, blurred list showing
+// WHO posted (clear identity) but not WHAT (blurred photo + obscured caption).
+// Every post renders (no cap — you can scroll the whole tease), and each card
+// carries a rotating, name-aware FOMO CTA. There is no pinned floating lock card
+// and no social-proof header card — those were replaced by the per-card CTAs.
 
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
-import { LockedFeedOverlay, LockedFloatingCard } from "./LockedFeedOverlay";
+import { LockedFeedOverlay } from "./LockedFeedOverlay";
 
 // Resolve t() against the real EN catalog so assertions match rendered copy.
 jest.mock("react-i18next", () =>
@@ -41,15 +40,23 @@ const post = (id) => ({
   caption: "moment",
 });
 
-describe("LockedFeedOverlay — static blurred backdrop", () => {
-  it("caps the backdrop to the first few posts (locked feed doesn't scroll)", () => {
+describe("LockedFeedOverlay — scrollable blurred FOMO feed", () => {
+  it("renders EVERY post (no cap — the whole tease is scrollable)", () => {
     const posts = Array.from({ length: 12 }, (_, i) => post(i + 1));
     const { getAllByTestId } = render(
       <LockedFeedOverlay posts={posts} petName="Rex" onPostPress={() => {}} />,
     );
-    // Off-screen posts are unreachable while locked, so only the first few
-    // render behind the floating card — less work, same look.
-    expect(getAllByTestId("feed-post-photo")).toHaveLength(3);
+    // The enclosing ScrollView scrolls the whole locked feed, so all cards render.
+    expect(getAllByTestId("feed-post-photo")).toHaveLength(12);
+  });
+
+  it("shows a name-aware FOMO CTA on each locked card", () => {
+    const { getAllByTestId, getByText } = render(
+      <LockedFeedOverlay posts={[post(1), post(2)]} petName="Rex" onPostPress={() => {}} />,
+    );
+    expect(getAllByTestId("feed-post-locked-cta")).toHaveLength(2);
+    // The CTA names the poster's pet (real identity, never fabricated content).
+    expect(getByText(/what Pet1/)).toBeTruthy();
   });
 
   it("keeps each card's identity visible but obscures the caption", () => {
@@ -101,38 +108,5 @@ describe("LockedFeedOverlay — static blurred backdrop", () => {
     );
     // Falls through to the empty 'be the first' state.
     expect(getByText("No pet friends have posted yet")).toBeTruthy();
-  });
-});
-
-describe("LockedFloatingCard — pinned unlock card", () => {
-  it("shows the lock headline and exactly one CTA", () => {
-    const { getByText, getAllByText } = render(
-      <LockedFloatingCard count={3} petName="Rex" onPostPress={() => {}} />,
-    );
-    expect(getByText("Share today's pet moment to unlock the feed")).toBeTruthy();
-    expect(getAllByText("Post today's photo")).toHaveLength(1);
-  });
-
-  it("folds the post count into the subtext (plural)", () => {
-    const { getByText } = render(
-      <LockedFloatingCard count={3} petName="Rex" onPostPress={() => {}} />,
-    );
-    expect(getByText(/3 pet friends shared today/)).toBeTruthy();
-  });
-
-  it("singularizes the count subtext with exactly one post", () => {
-    const { getByText } = render(
-      <LockedFloatingCard count={1} petName="Rex" onPostPress={() => {}} />,
-    );
-    expect(getByText(/1 pet friend shared today/)).toBeTruthy();
-  });
-
-  it("fires onPostPress from the CTA", () => {
-    const onPostPress = jest.fn();
-    const { getByText } = render(
-      <LockedFloatingCard count={2} petName="Rex" onPostPress={onPostPress} />,
-    );
-    fireEvent.press(getByText("Post today's photo"));
-    expect(onPostPress).toHaveBeenCalledTimes(1);
   });
 });

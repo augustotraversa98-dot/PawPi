@@ -9,7 +9,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { FeedHeader } from "@/components/Feed/FeedHeader";
 import { DailyPromptCard } from "@/components/Feed/DailyPromptCard";
 import { GettingStartedCard } from "@/components/Home/GettingStartedCard";
-import { LockedFeedOverlay, LockedFloatingCard } from "@/components/Feed/LockedFeedOverlay";
+import { LockedFeedOverlay } from "@/components/Feed/LockedFeedOverlay";
 import { UnlockedFeed } from "@/components/Feed/UnlockedFeed";
 import { FollowedMilestones } from "@/components/Feed/MilestoneEventCard";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
@@ -17,7 +17,7 @@ import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
-import { usePostingStreak, useUpdatePostCaption } from "@/hooks/useFeedPosts";
+import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
 
 export default function FeedScreen() {
@@ -60,11 +60,22 @@ export default function FeedScreen() {
   const [barkPost, setBarkPost] = useState(null);
   const [detailPost, setDetailPost] = useState(null);
 
-  // Height of the daily-prompt card, measured on layout. The locked floating
-  // card is pinned just below it so they never overlap at rest; once the user
-  // scrolls, the prompt slides away and the floating card stays put over the
-  // blurred feed.
-  const [promptHeight, setPromptHeight] = useState(0);
+  // Single source of truth for the open post (feed polish #2): read the LIVE copy
+  // from the feed query by id so the detail modal's paw fill AND count always
+  // reflect the shared cache — never a frozen snapshot that drifts out of sync
+  // (e.g. a filled paw over a stale "0"). Falls back to the captured post when it
+  // isn't in the current page (e.g. viewing today's own post before it lands).
+  const detailPostLive = detailPost
+    ? posts.find((p) => p.id === detailPost.id) || detailPost
+    : null;
+  // Toggle the open post's paw through the SAME mutation the feed card uses, so
+  // pawing/un-pawing in the modal updates the shared query and the feed card's
+  // fill + count move together.
+  const detailPawToggle = useTogglePaw(detailPost?.id);
+  const toggleDetailPaw = useCallback(() => {
+    if (!detailPostLive) return;
+    detailPawToggle.mutate({ isPawed: !!detailPostLive.user_has_pawed });
+  }, [detailPawToggle, detailPostLive]);
 
   // ── Navigate to pet profile ──
   const openProfile = useCallback(
@@ -256,19 +267,20 @@ export default function FeedScreen() {
         <View style={{ flex: 1 }}>
           <RefreshableScrollView
             testID="feed-scroll"
-            // While locked the feed is a STATIC blurred backdrop behind the
-            // floating card — no scroll and no pull-to-refresh. Both come back
-            // fully once unlocked.
-            scrollEnabled={feedUnlocked}
-            refetch={feedUnlocked ? [refetchPosts, refetchTodayDailyUpdate] : []}
+            // The feed scrolls whether locked or unlocked (feed polish #4): while
+            // locked it's a blurred, FOMO-driving tease you can scroll through to
+            // see WHO posted; pull-to-refresh + full content return once unlocked.
+            scrollEnabled
+            refetch={[refetchPosts, refetchTodayDailyUpdate]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 60 }}
           >
             {/* ── Getting-started activation card (ticket 2.98) + Daily Prompt Card ──
-                Both live in the same onLayout block so the locked floating card's `top`
-                offset stays correct (it pins below this header area). The activation card
-                retires itself at 100%, so most of the time this is just the prompt. */}
-            <View onLayout={(e) => setPromptHeight(e.nativeEvent.layout.height)}>
+                The activation card retires itself at 100%, so most of the time this
+                is just the prompt — the primary "post today" CTA at the top of the
+                feed (per active pet). The locked feed below adds its own per-card
+                FOMO nudges (feed polish #4). */}
+            <View>
               <GettingStartedCard onSharePost={() => setComposerVisible(true)} />
               <DailyPromptCard
                 petName={petName}
@@ -309,18 +321,6 @@ export default function FeedScreen() {
               />
             )}
           </RefreshableScrollView>
-
-          {/* ── Locked: ONE floating lock card pinned over the blurred feed ──
-              Only when there are posts to blur behind it (the zero-post state
-              shows its own "be the first" card inside the scroll instead). */}
-          {!feedUnlocked && posts?.length > 0 && (
-            <LockedFloatingCard
-              count={posts.length}
-              petName={petName}
-              onPostPress={() => setComposerVisible(true)}
-              top={promptHeight}
-            />
-          )}
         </View>
       )}
 
@@ -343,17 +343,18 @@ export default function FeedScreen() {
       {/* ── POST DETAIL MODAL ── */}
       <PostDetailModal
         visible={!!detailPost}
-        post={detailPost}
-        liked={detailPost ? !!likedPosts[detailPost.id] : false}
+        post={detailPostLive}
+        // Fill + count both read from the same live post (feed polish #2).
+        liked={!!detailPostLive?.user_has_pawed}
         // The viewer can delete only their own active pet's post.
-        canDelete={!!detailPost && detailPost.pet_id === petProfile?.id}
-        canEdit={!!detailPost && detailPost.pet_id === petProfile?.id}
+        canDelete={!!detailPostLive && detailPostLive.pet_id === petProfile?.id}
+        canEdit={!!detailPostLive && detailPostLive.pet_id === petProfile?.id}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })
         }
-        onDelete={() => detailPost && handleConfirmDelete(detailPost)}
+        onDelete={() => detailPostLive && handleConfirmDelete(detailPostLive)}
         onClose={() => setDetailPost(null)}
-        onToggleLike={() => detailPost && handleToggleLike(detailPost.id)}
+        onToggleLike={toggleDetailPaw}
         onOpenBarks={() => {
           setBarkPost(detailPost);
           setDetailPost(null);

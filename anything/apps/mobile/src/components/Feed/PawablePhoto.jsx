@@ -3,6 +3,7 @@ import { Animated, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { feedImageHeight } from "@/utils/feedImageAspect";
 
 // Below this gap (ms) a second tap counts as a double-tap (ticket 2.64).
 const DOUBLE_TAP_DELAY = 260;
@@ -21,12 +22,31 @@ export function PawablePhoto({
   contentFit = "cover",
   pawSize = 96,
   testID = "pawable-photo",
+  // Instagram-style responsive sizing (feed polish #1/#3). When a numeric width
+  // is passed, the photo renders at that exact content width and derives its
+  // height from the image's natural aspect ratio (clamped 1:1 → 4:5). Callers
+  // that don't pass it keep the legacy fixed-`style` behavior untouched.
+  responsiveWidth,
 }) {
   const lastTapRef = useRef(0);
   const singleTapTimer = useRef(null);
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [popping, setPopping] = useState(false);
+  // Natural width/height ratio, measured on load (feed polish #3).
+  const [naturalRatio, setNaturalRatio] = useState(null);
+
+  const responsive = typeof responsiveWidth === "number" && responsiveWidth > 0;
+  const responsiveStyle = responsive
+    ? { width: responsiveWidth, height: feedImageHeight(responsiveWidth, naturalRatio) }
+    : style;
+
+  const handleLoad = useCallback((event) => {
+    const src = event?.source;
+    if (src && src.width > 0 && src.height > 0) {
+      setNaturalRatio(src.width / src.height);
+    }
+  }, []);
 
   const clearSingleTap = useCallback(() => {
     if (singleTapTimer.current) {
@@ -76,7 +96,12 @@ export function PawablePhoto({
 
   return (
     <Pressable testID={testID} onPress={handlePress}>
-      <Image source={{ uri: photoUri }} style={style} contentFit={contentFit} />
+      <Image
+        source={{ uri: photoUri }}
+        style={responsiveStyle}
+        contentFit={contentFit}
+        onLoad={responsive ? handleLoad : undefined}
+      />
       {popping ? (
         <View
           pointerEvents="none"

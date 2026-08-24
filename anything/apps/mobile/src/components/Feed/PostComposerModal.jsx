@@ -277,7 +277,7 @@ export const PostComposerModal = memo(function PostComposerModal({
               testID="composer-take-photo"
               style={{
                 backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.lg,
+                borderRadius: RADIUS.control,
                 padding: SPACING.lg,
                 flexDirection: "row",
                 alignItems: "center",
@@ -302,7 +302,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                 style={{
                   marginTop: SPACING.md,
                   backgroundColor: COLORS.card,
-                  borderRadius: RADIUS.lg,
+                  borderRadius: RADIUS.control,
                   padding: SPACING.lg,
                   flexDirection: "row",
                   alignItems: "center",
@@ -352,7 +352,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                   style={{
                     width: "100%",
                     height: SCREEN_W - 40,
-                    borderRadius: RADIUS.lg,
+                    borderRadius: RADIUS.control,
                     backgroundColor: "#000",
                   }}
                   resizeMode={ResizeMode.COVER}
@@ -366,7 +366,7 @@ export const PostComposerModal = memo(function PostComposerModal({
                   style={{
                     width: "100%",
                     height: SCREEN_W - 40,
-                    borderRadius: RADIUS.lg,
+                    borderRadius: RADIUS.control,
                   }}
                   resizeMode="cover"
                 />
@@ -430,7 +430,7 @@ export const PostComposerModal = memo(function PostComposerModal({
               accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.lg,
+                borderRadius: RADIUS.control,
                 padding: SPACING.lg,
                 alignItems: "center",
                 shadowColor: COLORS.coral,

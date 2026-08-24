@@ -87,7 +87,7 @@ export function DailyPromptCard({
               marginTop: SPACING.md,
               padding: SPACING.sm,
               backgroundColor: COLORS.sand,
-              borderRadius: RADIUS.sm,
+              borderRadius: RADIUS.control,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
@@ -130,7 +130,7 @@ export function DailyPromptCard({
               accessibilityRole="button"
               style={{
                 backgroundColor: COLORS.sage,
-                borderRadius: RADIUS.sm,
+                borderRadius: RADIUS.control,
                 paddingVertical: SPACING.sm,
                 paddingHorizontal: SPACING.lg,
               }}

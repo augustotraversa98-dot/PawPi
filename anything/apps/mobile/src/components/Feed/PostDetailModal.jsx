@@ -240,11 +240,13 @@ export const PostDetailModal = memo(function PostDetailModal({
               style={{ width: SCREEN_W, height: SCREEN_W }}
             />
           ) : (
+            // Instagram-style: full screen width, height from the image's natural
+            // aspect (clamped 1:1 → 4:5), matching the feed card (feed polish #3).
             <PawablePhoto
               testID="detail-post-photo"
               photoUri={photo}
               onDoubleTap={handleDoubleTapPaw}
-              style={{ width: SCREEN_W, height: SCREEN_W }}
+              responsiveWidth={SCREEN_W}
             />
           )}
 
@@ -265,7 +267,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     {
                       minHeight: 72,
                       backgroundColor: COLORS.card,
-                      borderRadius: RADIUS.sm,
+                      borderRadius: RADIUS.control,
                       borderWidth: 1.5,
                       borderColor: MATERIALS.hairline,
                       paddingHorizontal: SPACING.md,
@@ -435,7 +437,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     style={{
                       flex: 1,
                       backgroundColor: COLORS.card,
-                      borderRadius: RADIUS.sm,
+                      borderRadius: RADIUS.control,
                       padding: SPACING.md,
                       borderWidth: 1,
                       borderColor: MATERIALS.hairline,
