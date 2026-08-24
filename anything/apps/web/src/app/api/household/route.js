@@ -50,17 +50,27 @@ async function ringForPet(petId, ownerUserId, tz, day) {
   return ringClosed;
 }
 
-async function streakForPet(petId) {
-  let streak = null;
+// Streaks for a whole household in ONE query instead of one round-trip per pet. Every request
+// runs inside a single per-request transaction (withRequestContext), so the per-pet awaits this
+// replaced were not actually concurrent at the DB level — they queued up sequentially on the same
+// connection, each paying its own SAVEPOINT/RELEASE overhead. Same fix shape as the other
+// HighLatencyP95 N+1s (daycare-stays, training-programs, shop-orders): batch via WHERE = ANY(ids).
+async function streaksForPets(petIds) {
+  const streaksByPetId = new Map();
+  if (petIds.length === 0) return streaksByPetId;
   try {
     await withSavepoint(async () => {
-      const [st] = await sql`SELECT current_count, longest_count FROM pet_streaks WHERE pet_id = ${petId}`;
-      if (st) streak = { current: st.current_count, longest: st.longest_count };
+      const rows = await sql`
+        SELECT pet_id, current_count, longest_count FROM pet_streaks WHERE pet_id = ANY(${petIds})
+      `;
+      for (const r of rows) {
+        streaksByPetId.set(r.pet_id, { current: r.current_count, longest: r.longest_count });
+      }
     });
   } catch (e) {
     if (!isMissingTable(e)) throw e;
   }
-  return streak;
+  return streaksByPetId;
 }
 
 async function GET() {
@@ -100,6 +110,8 @@ async function GET() {
       if (!isMissingTable(e)) throw e;
     }
 
+    const streaksByPetId = await streaksForPets([...owned, ...coCared].map((p) => p.id));
+
     const build = async (rows, isMine) =>
       Promise.all(
         rows.map(async (p) => ({
@@ -108,7 +120,7 @@ async function GET() {
           avatar_url: p.avatar_url,
           is_mine: isMine,
           ring_closed: await ringForPet(p.id, ownerUserId, tz, today),
-          streak: await streakForPet(p.id),
+          streak: streaksByPetId.get(p.id) ?? null,
         })),
       );
 
