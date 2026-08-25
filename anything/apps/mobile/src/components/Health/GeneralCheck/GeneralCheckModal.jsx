@@ -542,53 +542,64 @@ export default function GeneralCheckModal({
                       </Pressable>
                     </View>
 
-                    {/* "Something changed" → change options + optional photo + note */}
+                    {/* "Something changed" → what changed. (The photo + note below are
+                        offered for EITHER status, so they live in their own block.) */}
                     {changed && (
-                      <>
-                        <View style={{ gap: 8 }}>
-                          <Text
-                            style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
-                          >
-                            {tc("whatChanged")}
-                          </Text>
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                            {CHANGE_OPTIONS.map((option) => {
-                              const isSelected = ad.changes?.includes(option.key);
-                              return (
-                                <Pressable
-                                  key={option.key}
-                                  onPress={() => toggleQuickChange(area.key, option.key)}
-                                  accessibilityRole="checkbox"
-                                  accessibilityLabel={changeLabel(option)}
-                                  accessibilityState={{ checked: !!isSelected }}
+                      <View style={{ gap: 8 }}>
+                        <Text
+                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                        >
+                          {tc("whatChanged")}
+                        </Text>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          {CHANGE_OPTIONS.map((option) => {
+                            const isSelected = ad.changes?.includes(option.key);
+                            return (
+                              <Pressable
+                                key={option.key}
+                                onPress={() => toggleQuickChange(area.key, option.key)}
+                                accessibilityRole="checkbox"
+                                accessibilityLabel={changeLabel(option)}
+                                accessibilityState={{ checked: !!isSelected }}
+                                style={{
+                                  backgroundColor: isSelected ? C.coral + "20" : C.cream,
+                                  borderRadius: 999,
+                                  paddingVertical: 8,
+                                  paddingHorizontal: 12,
+                                  borderWidth: 1.5,
+                                  borderColor: isSelected ? C.coral : C.peach,
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
+                                <Text
                                   style={{
-                                    backgroundColor: isSelected ? C.coral + "20" : C.cream,
-                                    borderRadius: 999,
-                                    paddingVertical: 8,
-                                    paddingHorizontal: 12,
-                                    borderWidth: 1.5,
-                                    borderColor: isSelected ? C.coral : C.peach,
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    gap: 6,
+                                    fontSize: 13,
+                                    fontWeight: isSelected ? "700" : "600",
+                                    color: isSelected ? C.coral : C.warmBrown,
                                   }}
                                 >
-                                  <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
-                                  <Text
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? "700" : "600",
-                                      color: isSelected ? C.coral : C.warmBrown,
-                                    }}
-                                  >
-                                    {changeLabel(option)}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
+                                  {changeLabel(option)}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
                         </View>
+                      </View>
+                    )}
 
+                    {/* Optional photo + note — offered once the area is answered EITHER
+                        way. A "looks usual" photo is still useful evidence a vet may read
+                        differently than the owner. Never gates Save. */}
+                    {ad.status != null && (
+                      <>
+                        <Text
+                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                        >
+                          {tc("addPhoto")}
+                        </Text>
                         <View style={{ flexDirection: "row", gap: 10 }}>
                           <TouchableOpacity
                             onPress={() => capturePhotoForArea(area.key, "camera")}

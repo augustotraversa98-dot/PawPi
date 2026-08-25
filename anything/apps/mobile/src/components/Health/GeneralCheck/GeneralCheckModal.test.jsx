@@ -347,3 +347,71 @@ test("quick mode: falls back to the fixed opening order when no suggestions are 
   expect(queryByLabelText("Ears: Looks usual")).toBeTruthy();
   expect(queryByLabelText("Teeth & Mouth: Looks usual")).toBeNull();
 });
+
+test("quick mode: 'Se ve normal' reveals an optional photo control (no change options)", () => {
+  const { getByText, getByLabelText, queryByLabelText, queryByText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={jest.fn()}
+    />,
+  );
+
+  // Nothing answered yet → no photo control at all.
+  expect(queryByLabelText("Take photo")).toBeNull();
+
+  // Answering "looks usual" reveals the optional photo control — but NOT the
+  // "what changed" list (there's nothing changed to describe).
+  fireEvent.press(getByLabelText("Paws: Looks usual"));
+  expect(getByText("Add photo (optional)")).toBeTruthy();
+  expect(getByLabelText("Take photo")).toBeTruthy();
+  expect(queryByText("What changed? (select all that apply)")).toBeNull();
+});
+
+test("quick mode: a photo attached on a 'looks usual' area persists with status usual", async () => {
+  mockMutateAsync.mockResolvedValueOnce({ check: { id: 9 } });
+  const { getByText, getByLabelText, findByLabelText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(getByLabelText("Paws: Looks usual"));
+  fireEvent.press(getByLabelText("Take photo")); // paws is the only answered area
+  await waitFor(() => expect(mockUpload).toHaveBeenCalled());
+  await findByLabelText("Remove photo"); // thumbnail appeared
+
+  // Answer the other area so Save enables, then persist.
+  fireEvent.press(getByLabelText("Ears: Looks usual"));
+  fireEvent.press(getByText("Save"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+  const payload = mockMutateAsync.mock.calls[0][0];
+  expect(payload.areas.paws.status).toBe("usual");
+  expect(payload.areas.paws.photos).toEqual(["https://cdn/photo.jpg"]);
+});
+
+test("quick mode: toggling usual↔changed keeps an attached photo", async () => {
+  const { getByLabelText, findByLabelText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(getByLabelText("Paws: Looks usual"));
+  fireEvent.press(getByLabelText("Take photo"));
+  await findByLabelText("Remove photo");
+
+  // Switch to "changed" and back to "usual" — the photo survives both toggles.
+  fireEvent.press(getByLabelText("Paws: Something changed"));
+  expect(getByLabelText("Remove photo")).toBeTruthy();
+  fireEvent.press(getByLabelText("Paws: Looks usual"));
+  expect(getByLabelText("Remove photo")).toBeTruthy();
+});
