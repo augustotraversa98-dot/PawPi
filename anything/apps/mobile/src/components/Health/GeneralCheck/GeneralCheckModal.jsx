@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -28,7 +28,7 @@ import {
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { CHECK_AREAS, CHANGE_OPTIONS } from "@/data/generalCheckData";
+import { CHECK_AREAS, CHANGE_OPTIONS, QUICK_SUGGESTION_COUNT } from "@/data/generalCheckData";
 import { useLogGeneralCheck } from "@/hooks/useHealthTracking";
 
 const C = {
@@ -43,7 +43,19 @@ const C = {
   sand: "#F5EDE4",
 };
 
-export default function GeneralCheckModal({ visible, onClose }) {
+// mode: "full" (default) is the per-area wizard opened from HealthTrack. "quick" is the
+// light guided check opened from the Care Ring — it shows only today's SUGGESTED areas
+// (`suggestedAreas`, a small rotating set), each starting UNANSWERED. The owner must mark
+// each ("looks usual" or "something changed") before Save enables; there is no passive
+// all-usual default, so the ring's Care segment can't be filled without a real observation.
+// onSaved(check) hands the created row back to the caller (the Care Ring) so it can offer Undo.
+export default function GeneralCheckModal({
+  visible,
+  onClose,
+  mode = "full",
+  onSaved,
+  suggestedAreas,
+}) {
   const { t } = useTranslation();
   const tc = (k, vars) => t(`health.generalCheck.${k}`, vars);
   // Localized area label/description + change-option label, falling back to the
@@ -68,6 +80,9 @@ export default function GeneralCheckModal({ visible, onClose }) {
 
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [checkData, setCheckData] = useState({});
+  // Quick mode only: the suggested area keys FROZEN at open, so they don't shuffle mid-
+  // session if the parent's `suggestedAreas` prop recomputes while the sheet is open.
+  const [quickAreaKeys, setQuickAreaKeys] = useState([]);
 
   const currentArea = CHECK_AREAS[currentAreaIndex];
   const currentAreaData = checkData[currentArea?.key] || {
@@ -75,6 +90,59 @@ export default function GeneralCheckModal({ visible, onClose }) {
     changes: [],
     notes: "",
     photos: [],
+  };
+
+  // Quick mode: freeze today's suggested areas on open. NO status is seeded — every
+  // suggested area starts unanswered, so Save stays disabled until the owner actually
+  // marks each one (no hollow all-usual write). Falls back to the fixed opening order if
+  // the caller passed nothing yet (e.g. history still loading).
+  useEffect(() => {
+    if (!visible || mode !== "quick") return;
+    const keys =
+      Array.isArray(suggestedAreas) && suggestedAreas.length > 0
+        ? suggestedAreas.slice(0, QUICK_SUGGESTION_COUNT)
+        : CHECK_AREAS.slice(0, QUICK_SUGGESTION_COUNT).map((a) => a.key);
+    setQuickAreaKeys(keys);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, mode]);
+
+  // Quick-mode per-area editors — each takes an explicit area key (multiple suggested
+  // areas are answerable at once, so they can't lean on the wizard's single "current area").
+  const setQuickStatus = (areaKey, status) => {
+    setCheckData((prev) => ({
+      ...prev,
+      [areaKey]: {
+        ...(prev[areaKey] || { changes: [], notes: "", photos: [] }),
+        status,
+        changes: status === "usual" ? [] : prev[areaKey]?.changes || [],
+      },
+    }));
+  };
+
+  const toggleQuickChange = (areaKey, changeKey) => {
+    setCheckData((prev) => {
+      const area = prev[areaKey] || { status: "changed", changes: [], notes: "", photos: [] };
+      const changes = area.changes || [];
+      return {
+        ...prev,
+        [areaKey]: {
+          ...area,
+          changes: changes.includes(changeKey)
+            ? changes.filter((c) => c !== changeKey)
+            : [...changes, changeKey],
+        },
+      };
+    });
+  };
+
+  const setQuickNotes = (areaKey, text) => {
+    setCheckData((prev) => ({
+      ...prev,
+      [areaKey]: {
+        ...(prev[areaKey] || { status: "changed", changes: [], notes: "", photos: [] }),
+        notes: text,
+      },
+    }));
   };
 
   const handleAreaStatus = (status) => {
@@ -115,11 +183,11 @@ export default function GeneralCheckModal({ visible, onClose }) {
     });
   };
 
-  // Append an uploaded photo URL to the CURRENT area's photos[]. Read the area fresh
-  // from state (not the closed-over currentAreaData) so back-to-back adds don't clobber.
-  const addPhotoToCurrentArea = (url) => {
+  // Append/remove an uploaded photo URL on a SPECIFIC area's photos[]. Read the area
+  // fresh from state (not a closed-over snapshot) so back-to-back adds don't clobber.
+  const addPhotoToArea = (areaKey, url) => {
     setCheckData((prev) => {
-      const area = prev[currentArea.key] || {
+      const area = prev[areaKey] || {
         status: null,
         changes: [],
         notes: "",
@@ -127,18 +195,18 @@ export default function GeneralCheckModal({ visible, onClose }) {
       };
       return {
         ...prev,
-        [currentArea.key]: { ...area, photos: [...(area.photos || []), url] },
+        [areaKey]: { ...area, photos: [...(area.photos || []), url] },
       };
     });
   };
 
-  const removePhotoFromCurrentArea = (url) => {
+  const removePhotoFromArea = (areaKey, url) => {
     setCheckData((prev) => {
-      const area = prev[currentArea.key];
+      const area = prev[areaKey];
       if (!area) return prev;
       return {
         ...prev,
-        [currentArea.key]: {
+        [areaKey]: {
           ...area,
           photos: (area.photos || []).filter((p) => p !== url),
         },
@@ -146,11 +214,16 @@ export default function GeneralCheckModal({ visible, onClose }) {
     });
   };
 
+  // Wizard-facing aliases bound to the current step's area (unchanged call sites).
+  const addPhotoToCurrentArea = (url) => addPhotoToArea(currentArea.key, url);
+  const removePhotoFromCurrentArea = (url) =>
+    removePhotoFromArea(currentArea.key, url);
+
   // Shared capture flow: pick (camera or library) → upload via the app's chokepoint
-  // (@/utils/useUpload → POST /api/upload → hosted URL) → store the URL on the area.
+  // (@/utils/useUpload → POST /api/upload → hosted URL) → store the URL on the given area.
   // Permission denial and upload failure both degrade gracefully (the check still saves
   // without a photo); nothing here can throw up to the render.
-  const capturePhoto = async (source) => {
+  const capturePhotoForArea = async (areaKey, source) => {
     if (uploading) return;
     try {
       const permission =
@@ -180,7 +253,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
       const uploadResult = await upload({
         reactNativeAsset: {
           uri: asset.uri,
-          name: `general_check_${currentArea.key}_${asset.fileName || "photo"}.jpg`,
+          name: `general_check_${areaKey}_${asset.fileName || "photo"}.jpg`,
           mimeType: asset.mimeType || "image/jpeg",
         },
       });
@@ -189,12 +262,15 @@ export default function GeneralCheckModal({ visible, onClose }) {
         Alert.alert(tc("photoError"));
         return;
       }
-      addPhotoToCurrentArea(uploadResult.url);
+      addPhotoToArea(areaKey, uploadResult.url);
     } catch (error) {
       console.error("[GeneralCheck] photo capture error:", error);
       Alert.alert(tc("photoError"));
     }
   };
+
+  // Wizard-facing alias bound to the current step's area (unchanged call sites).
+  const capturePhoto = (source) => capturePhotoForArea(currentArea.key, source);
 
   const goToArea = (index) => {
     if (index < 0 || index > CHECK_AREAS.length - 1) return;
@@ -237,8 +313,9 @@ export default function GeneralCheckModal({ visible, onClose }) {
     // to the API's shape (teeth_mouth → teeth, skin_fur → skin). Un-checked areas
     // simply carry an undefined status → the route stores NULL, so only areas the
     // owner actually assessed are recorded — no invented data.
+    let saved;
     try {
-      await logGeneralCheckMutation.mutateAsync({
+      saved = await logGeneralCheckMutation.mutateAsync({
         areas: {
           eyes: checkData.eyes,
           ears: checkData.ears,
@@ -256,6 +333,10 @@ export default function GeneralCheckModal({ visible, onClose }) {
       return;
     }
 
+    // Hand the created row back so a caller (the Care Ring) can offer Undo. No-op for the
+    // wizard, which passes no onSaved.
+    onSaved?.(saved?.check);
+
     if (changedCount > 0) {
       Alert.alert(
         tc("savedTitle"),
@@ -271,6 +352,7 @@ export default function GeneralCheckModal({ visible, onClose }) {
 
   const handleCloseModal = () => {
     setCurrentAreaIndex(0);
+    setQuickAreaKeys([]);
     setCheckData({});
     onClose();
   };
@@ -285,6 +367,440 @@ export default function GeneralCheckModal({ visible, onClose }) {
   // last area would falsely read "100% complete" with nothing checked.
   const assessedCount = Object.values(checkData).filter((a) => a?.status).length;
   const progress = (assessedCount / CHECK_AREAS.length) * 100;
+
+  // ── Quick mode: the light guided check (Care Ring). A self-contained return kept
+  // ENTIRELY separate from the wizard below, so the wizard render (and its tests) are
+  // untouched. Shows only today's SUGGESTED areas, each UNANSWERED; the owner marks every
+  // one before Save enables — no hollow all-usual write. ──
+  if (mode === "quick") {
+    const suggested = quickAreaKeys
+      .map((key) => CHECK_AREAS.find((a) => a.key === key))
+      .filter(Boolean);
+    const allAnswered =
+      suggested.length > 0 &&
+      suggested.every((a) => checkData[a.key]?.status != null);
+    const saveDisabled = isSaving || !allAnswered;
+
+    const andWord = tc("quickAreasAnd");
+    const names = suggested.map((a) => areaLabel(a));
+    const joinedAreas =
+      names.length <= 1
+        ? names[0] || ""
+        : names.length === 2
+          ? `${names[0]} ${andWord} ${names[1]}`
+          : `${names.slice(0, -1).join(", ")} ${andWord} ${names[names.length - 1]}`;
+
+    return (
+      <Modal
+        visible={visible}
+        animationType="slide"
+        transparent
+        onRequestClose={handleCloseModal}
+      >
+        <KeyboardAvoidingView
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "flex-end",
+          }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View
+            style={{
+              backgroundColor: C.cream,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 20,
+              paddingBottom: insets.bottom + 20,
+              height: "90%",
+            }}
+          >
+            {/* Header */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: 20,
+                marginBottom: 6,
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
+                {tc("title")}
+              </Text>
+              <TouchableOpacity
+                onPress={handleCloseModal}
+                accessibilityRole="button"
+                accessibilityLabel={tc("back")}
+              >
+                <X size={24} color={C.warmBrown} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
+                {tc("quickTodayLabel", { areas: joinedAreas })}
+              </Text>
+              <Text style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 18, marginTop: 2 }}>
+                {tc("quickInstruction")}
+              </Text>
+            </View>
+
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {suggested.map((area) => {
+                const ad = checkData[area.key] || {
+                  status: null,
+                  changes: [],
+                  notes: "",
+                  photos: [],
+                };
+                const changed = ad.status === "changed";
+                return (
+                  <View
+                    key={area.key}
+                    style={{
+                      backgroundColor: C.card,
+                      borderRadius: 14,
+                      borderWidth: 1.5,
+                      borderColor: changed
+                        ? "#FFB74D"
+                        : ad.status === "usual"
+                          ? C.sage
+                          : C.peach,
+                      marginBottom: 12,
+                      padding: 14,
+                      gap: 12,
+                    }}
+                  >
+                    {/* Area heading */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      <Text style={{ fontSize: 24 }}>{area.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown }}>
+                          {areaLabel(area)}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 1 }}>
+                          {areaDesc(area)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Status choice — starts unanswered; one must be picked to save. */}
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <Pressable
+                        onPress={() => setQuickStatus(area.key, "usual")}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`${areaLabel(area)}: ${tc("looksUsual")}`}
+                        accessibilityState={{ selected: ad.status === "usual" }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: ad.status === "usual" ? C.sage : C.cream,
+                          borderRadius: 12,
+                          paddingVertical: 12,
+                          alignItems: "center",
+                          borderWidth: 1.5,
+                          borderColor: ad.status === "usual" ? C.sage : C.peach,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "700",
+                            color: ad.status === "usual" ? "#FFF" : C.warmBrown,
+                          }}
+                        >
+                          {tc("looksUsual")}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setQuickStatus(area.key, "changed")}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`${areaLabel(area)}: ${tc("somethingChanged")}`}
+                        accessibilityState={{ selected: ad.status === "changed" }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: ad.status === "changed" ? "#FFB74D" : C.cream,
+                          borderRadius: 12,
+                          paddingVertical: 12,
+                          alignItems: "center",
+                          borderWidth: 1.5,
+                          borderColor: ad.status === "changed" ? "#FFB74D" : C.peach,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "700",
+                            color: ad.status === "changed" ? "#FFF" : C.warmBrown,
+                          }}
+                        >
+                          {tc("somethingChanged")}
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    {/* "Something changed" → what changed. (The photo + note below are
+                        offered for EITHER status, so they live in their own block.) */}
+                    {changed && (
+                      <View style={{ gap: 8 }}>
+                        <Text
+                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                        >
+                          {tc("whatChanged")}
+                        </Text>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          {CHANGE_OPTIONS.map((option) => {
+                            const isSelected = ad.changes?.includes(option.key);
+                            return (
+                              <Pressable
+                                key={option.key}
+                                onPress={() => toggleQuickChange(area.key, option.key)}
+                                accessibilityRole="checkbox"
+                                accessibilityLabel={changeLabel(option)}
+                                accessibilityState={{ checked: !!isSelected }}
+                                style={{
+                                  backgroundColor: isSelected ? C.coral + "20" : C.cream,
+                                  borderRadius: 999,
+                                  paddingVertical: 8,
+                                  paddingHorizontal: 12,
+                                  borderWidth: 1.5,
+                                  borderColor: isSelected ? C.coral : C.peach,
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: isSelected ? "700" : "600",
+                                    color: isSelected ? C.coral : C.warmBrown,
+                                  }}
+                                >
+                                  {changeLabel(option)}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Optional photo + note — offered once the area is answered EITHER
+                        way. A "looks usual" photo is still useful evidence a vet may read
+                        differently than the owner. Never gates Save. */}
+                    {ad.status != null && (
+                      <>
+                        <Text
+                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                        >
+                          {tc("addPhoto")}
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                          <TouchableOpacity
+                            onPress={() => capturePhotoForArea(area.key, "camera")}
+                            disabled={uploading}
+                            accessibilityRole="button"
+                            accessibilityLabel={tc("takePhoto")}
+                            style={{
+                              flex: 1,
+                              backgroundColor: C.cream,
+                              borderRadius: 12,
+                              padding: 12,
+                              borderWidth: 1.5,
+                              borderColor: C.peach,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
+                              opacity: uploading ? 0.6 : 1,
+                            }}
+                          >
+                            <Camera size={16} color={C.terracotta} />
+                            <Text
+                              style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
+                            >
+                              {tc("takePhoto")}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => capturePhotoForArea(area.key, "library")}
+                            disabled={uploading}
+                            accessibilityRole="button"
+                            accessibilityLabel={tc("choosePhoto")}
+                            style={{
+                              flex: 1,
+                              backgroundColor: C.cream,
+                              borderRadius: 12,
+                              padding: 12,
+                              borderWidth: 1.5,
+                              borderColor: C.peach,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
+                              opacity: uploading ? 0.6 : 1,
+                            }}
+                          >
+                            <ImageIcon size={16} color={C.terracotta} />
+                            <Text
+                              style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
+                            >
+                              {tc("choosePhoto")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {ad.photos?.length > 0 && (
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                            {ad.photos.map((uri) => (
+                              <View key={uri} style={{ position: "relative" }}>
+                                <Image
+                                  source={{ uri }}
+                                  style={{
+                                    width: 64,
+                                    height: 64,
+                                    borderRadius: 12,
+                                    borderWidth: 1.5,
+                                    borderColor: C.peach,
+                                  }}
+                                  resizeMode="cover"
+                                />
+                                <TouchableOpacity
+                                  onPress={() => removePhotoFromArea(area.key, uri)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={tc("removePhoto")}
+                                  hitSlop={8}
+                                  style={{
+                                    position: "absolute",
+                                    top: -8,
+                                    right: -8,
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 12,
+                                    backgroundColor: C.warmBrown,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <X size={14} color="#FFF" />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        <TextInput
+                          value={ad.notes}
+                          onChangeText={(text) => setQuickNotes(area.key, text)}
+                          placeholder={tc("notesPlaceholder")}
+                          placeholderTextColor={C.mutedBrown + "80"}
+                          multiline
+                          style={{
+                            backgroundColor: C.cream,
+                            borderRadius: 12,
+                            padding: 12,
+                            fontSize: 14,
+                            color: C.warmBrown,
+                            borderWidth: 1,
+                            borderColor: C.peach,
+                            minHeight: 64,
+                            textAlignVertical: "top",
+                          }}
+                        />
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+
+              {uploading && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <ActivityIndicator size="small" color={C.terracotta} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}>
+                    {tc("uploadingPhoto")}
+                  </Text>
+                </View>
+              )}
+
+              {/* Safety framing — this prepares vet conversations, it is not a diagnosis. */}
+              <View
+                style={{
+                  backgroundColor: "#FFF4E6",
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: "#FFE4C4",
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  marginTop: 4,
+                }}
+              >
+                <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
+                <Text style={{ fontSize: 11, color: C.mutedBrown, lineHeight: 16, flex: 1 }}>
+                  {tc("safetyWarning")}
+                </Text>
+              </View>
+            </KeyboardAwareScrollView>
+
+            {/* Save — disabled until every suggested area is answered. */}
+            <View
+              style={{
+                paddingHorizontal: 20,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: C.peach,
+              }}
+            >
+              {!allAnswered && (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.mutedBrown,
+                    textAlign: "center",
+                    marginBottom: 10,
+                  }}
+                >
+                  {tc("quickSaveHint")}
+                </Text>
+              )}
+              <TouchableOpacity
+                onPress={handleComplete}
+                disabled={saveDisabled}
+                accessibilityRole="button"
+                accessibilityLabel={tc("save")}
+                accessibilityState={{ disabled: saveDisabled }}
+                style={{
+                  backgroundColor: saveDisabled ? C.mutedBrown + "40" : C.coral,
+                  borderRadius: 14,
+                  padding: 16,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+                  {isSaving ? tc("saving") : tc("save")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleCloseModal}>

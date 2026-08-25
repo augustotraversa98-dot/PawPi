@@ -160,8 +160,54 @@ async function GET(request) {
   }
 }
 
+// Delete a single general check the caller owns — the undo path for the Care Ring's
+// light Quick Check (the guided check that fills the Care segment). Owner-scoped in the
+// WHERE (and enforced again by the table's own-row RLS 0022), so a caller can never delete
+// another owner's check. A hard delete of the just-created row, mirroring the wellness-log
+// undo: the Care Ring derivation stops counting it the instant the row is gone, so the
+// segment re-opens with no dependency on a soft-delete filter in the ring's DB function.
+async function DELETE(request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userProfiles = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+    `;
+    if (userProfiles.length === 0) {
+      return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+    const ownerUserId = userProfiles[0].id;
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id || !/^\d+$/.test(id)) {
+      return Response.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const deleted = await sql`
+      DELETE FROM health_general_checks
+      WHERE id = ${parseInt(id, 10)} AND owner_user_id = ${ownerUserId}
+      RETURNING id
+    `;
+    if (deleted.length === 0) {
+      return Response.json({ error: "General check not found" }, { status: 404 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("[health/general-checks] Error deleting check:", error);
+    return Response.json(
+      { error: "Failed to delete general check" },
+      { status: 500 },
+    );
+  }
+}
+
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
 const wrappedPOST = withRequestContext(POST);
 const wrappedGET = withRequestContext(GET);
-export { wrappedPOST as POST, wrappedGET as GET };
+const wrappedDELETE = withRequestContext(DELETE);
+export { wrappedPOST as POST, wrappedGET as GET, wrappedDELETE as DELETE };

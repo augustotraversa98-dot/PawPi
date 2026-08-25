@@ -55,6 +55,31 @@ export function useDeleteWellnessLog(petId) {
   });
 }
 
+// The undo path for the Care Ring's light Quick Check: deletes the general check just
+// created (by id, owner-scoped on the server), then re-invalidates the ring so the Care
+// segment re-opens, plus the general-checks list + vet-readiness. Only ever removes the
+// one just made — past checks are never touched.
+export function useDeleteGeneralCheck(petId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await fetch(`/api/health/general-checks?id=${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Failed to delete");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: careRingKey(petId) });
+      queryClient.invalidateQueries({ queryKey: ["health", "general-checks"] });
+      queryClient.invalidateQueries({ queryKey: vetReadinessKey(petId) });
+    },
+  });
+}
+
 export function vetReadinessKey(petId) {
   return ["vet-summary-readiness", petId];
 }
