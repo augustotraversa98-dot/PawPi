@@ -120,3 +120,41 @@ describe("QC-B — general check per-area detail", () => {
     expect(row.areas).toBeNull();
   });
 });
+
+// The undo path for the Care Ring's light Quick Check: the just-created check can be
+// deleted by id, owner-scoped, so the ring's Care segment re-opens.
+describe("general check DELETE (Care Ring Undo)", () => {
+  it("the owner can delete their just-created check by id", async () => {
+    const created = await (await postCheck()).json();
+    const id = created.check.id;
+    expect(id).toBeTypeOf("number");
+
+    const del = await apiReq(`/health/general-checks?id=${id}`, "DELETE");
+    expect(del.status).toBe(200);
+    expect(await del.json()).toEqual({ ok: true });
+
+    // Gone from the pet's history — and thus no longer counted by the ring derivation.
+    const list = await (await apiReq(`/health/general-checks?petId=${OWNER.petId}`)).json();
+    expect(list.checks).toHaveLength(0);
+    const rows = await raw`select id from health_general_checks where pet_id = ${OWNER.petId}`;
+    expect(rows).toHaveLength(0);
+  });
+
+  it("another owner cannot delete this pet's check (owner scoping → 404)", async () => {
+    const created = await (await postCheck()).json();
+    const id = created.check.id;
+
+    authState.session = sessionFor(OTHER.authUserId);
+    const del = await apiReq(`/health/general-checks?id=${id}`, "DELETE");
+    expect(del.status).toBe(404);
+
+    // The row survives — the other owner never removed it.
+    const rows = await raw`select id from health_general_checks where pet_id = ${OWNER.petId}`;
+    expect(rows).toHaveLength(1);
+  });
+
+  it("a non-numeric id is rejected (400)", async () => {
+    const del = await apiReq(`/health/general-checks?id=abc`, "DELETE");
+    expect(del.status).toBe(400);
+  });
+});

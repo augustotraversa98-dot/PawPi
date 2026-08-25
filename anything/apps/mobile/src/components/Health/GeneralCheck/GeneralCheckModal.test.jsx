@@ -249,3 +249,101 @@ test("renders fully localized in Spanish (es-AR)", () => {
   expect(getByText("Opcional — saltealo si no revisaste esta zona")).toBeTruthy();
   expect(getByText("Siguiente")).toBeTruthy();
 });
+
+// ── Quick mode v2: only today's SUGGESTED areas render, each UNANSWERED, and Save is
+//    gated until every one is explicitly answered (no hollow all-usual write). ──
+
+test("quick mode: renders only the suggested areas, unanswered, with Save disabled", () => {
+  const onClose = jest.fn();
+  const { getByText, queryByLabelText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={onClose}
+    />,
+  );
+
+  // Only the two suggested areas are offered — a non-suggested area (Eyes) is absent.
+  expect(queryByLabelText("Paws: Looks usual")).toBeTruthy();
+  expect(queryByLabelText("Ears: Looks usual")).toBeTruthy();
+  expect(queryByLabelText("Eyes: Looks usual")).toBeNull();
+
+  // Nothing answered yet → the save hint shows and pressing Save is a no-op.
+  expect(getByText("Answer the suggested areas to save")).toBeTruthy();
+  fireEvent.press(getByText("Save"));
+  expect(mockMutateAsync).not.toHaveBeenCalled();
+});
+
+test("quick mode: Save enables only after every suggested area is answered", async () => {
+  const onClose = jest.fn();
+  const onSaved = jest.fn();
+  mockMutateAsync.mockResolvedValueOnce({ check: { id: 5 } });
+
+  const { getByText, getByLabelText, queryByText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={onClose}
+      onSaved={onSaved}
+    />,
+  );
+
+  // Answer only the first suggested area → still blocked (hint remains, no write).
+  fireEvent.press(getByLabelText("Paws: Looks usual"));
+  fireEvent.press(getByText("Save"));
+  expect(mockMutateAsync).not.toHaveBeenCalled();
+  expect(getByText("Answer the suggested areas to save")).toBeTruthy();
+
+  // Answer the second → the hint clears and Save persists exactly once.
+  fireEvent.press(getByLabelText("Ears: Looks usual"));
+  expect(queryByText("Answer the suggested areas to save")).toBeNull();
+  fireEvent.press(getByText("Save"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+  // Only the answered (suggested) areas carry a status; untouched ones stay undefined.
+  const payload = mockMutateAsync.mock.calls[0][0];
+  expect(payload.areas.paws.status).toBe("usual");
+  expect(payload.areas.ears.status).toBe("usual");
+  expect(payload.areas.eyes).toBeUndefined();
+
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ id: 5 }));
+});
+
+test("quick mode: flagging a change reveals options and persists them", async () => {
+  const { getByText, getByLabelText, queryByText } = render(
+    <GeneralCheckModal
+      visible
+      mode="quick"
+      suggestedAreas={["paws", "ears"]}
+      onClose={jest.fn()}
+    />,
+  );
+
+  // Change options are hidden until an area is marked "something changed".
+  expect(queryByText("What changed? (select all that apply)")).toBeNull();
+
+  fireEvent.press(getByLabelText("Paws: Something changed"));
+  expect(getByText("What changed? (select all that apply)")).toBeTruthy();
+  fireEvent.press(getByText("Limping"));
+
+  // Answer the other suggested area so Save enables, then persist.
+  fireEvent.press(getByLabelText("Ears: Looks usual"));
+  fireEvent.press(getByText("Save"));
+  await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+  const payload = mockMutateAsync.mock.calls[0][0];
+  expect(payload.areas.paws.status).toBe("changed");
+  expect(payload.areas.paws.changes).toEqual(["limping"]);
+  expect(payload.areas.ears.status).toBe("usual");
+});
+
+test("quick mode: falls back to the fixed opening order when no suggestions are passed", () => {
+  const { queryByLabelText } = render(
+    <GeneralCheckModal visible mode="quick" onClose={jest.fn()} />,
+  );
+  // Fallback = first QUICK_SUGGESTION_COUNT areas (eyes, ears).
+  expect(queryByLabelText("Eyes: Looks usual")).toBeTruthy();
+  expect(queryByLabelText("Ears: Looks usual")).toBeTruthy();
+  expect(queryByLabelText("Teeth & Mouth: Looks usual")).toBeNull();
+});

@@ -5,14 +5,17 @@
 // pause-until date). A rest/paused day keeps the ring and streak intact — the copy stays gentle.
 
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { maybeScheduleStreakSave } from "@/utils/engagementNotifications";
-import { useLogAllGood, useDeleteWellnessLog } from "@/hooks/useHealthReinforcement";
+import { useDeleteGeneralCheck } from "@/hooks/useHealthReinforcement";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
+import GeneralCheckModal from "@/components/Health/GeneralCheck/GeneralCheckModal";
 import { CareRing } from "@/components/Health/CareRing";
 import { useCareRing, useSetRestDay, useSetPause, useRepairStreak } from "@/hooks/useCareRing";
+import { useGeneralChecks } from "@/hooks/useFetchHealthData";
+import { getSuggestedAreas } from "@/data/generalCheckData";
 import {
   normalizeRing,
   ringStatusKey,
@@ -36,45 +39,33 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const setRest = useSetRestDay(petId);
   const setPause = useSetPause(petId);
   const repairStreak = useRepairStreak(petId);
-  const logAllGood = useLogAllGood(petId); // E10 care log — NR3: now gated behind an explicit confirm
-  const deleteWellnessLog = useDeleteWellnessLog(petId); // NR3 undo
+  const deleteGeneralCheck = useDeleteGeneralCheck(petId); // undo the just-saved check
+  // Rotate the quick check's suggested areas by recency, derived from this pet's own
+  // general-check history (already scoped to pet_id + owner by the hook). Areas checked
+  // today drop to the back so coverage moves day to day.
+  const { data: gcData } = useGeneralChecks();
+  const suggestedAreas = getSuggestedAreas(gcData?.checks || [], undefined, getLocalPostDateString());
   const [showPause, setShowPause] = useState(false);
-  // NR3: holds the id of the wellness log we just created, so we can offer Undo even
-  // after the ring's Care segment flips to done (which would otherwise hide the block).
-  const [justLoggedId, setJustLoggedId] = useState(null);
+  const [checkOpen, setCheckOpen] = useState(false);
+  // Holds the id of the general check we just saved, so we can offer Undo even after the
+  // ring's Care segment flips to done (which would otherwise hide the block).
+  const [justCheckId, setJustCheckId] = useState(null);
   const count = streakCount(data);
 
-  // NR3 — the "all good" check-in must be DELIBERATE. A bare tap no longer writes; it
-  // opens a confirm dialog. We also drop a breadcrumb so any stray/accidental press is
-  // visible in logs (it never reaches the write without the explicit "Log" below).
-  const requestAllGood = () => {
-    console.log("[CareRingCard] all-good check-in requested", { petId });
-    Alert.alert(
-      t("health.careRing.allGoodConfirmTitle", { name }),
-      t("health.careRing.allGoodConfirmBody", { name }),
-      [
-        { text: t("health.careRing.allGoodConfirmCancel"), style: "cancel" },
-        { text: t("health.careRing.allGoodConfirmLog"), onPress: confirmAllGood },
-      ],
-    );
+  // The "quick check-in" is now a real (light) guided check: pressing the action opens
+  // GeneralCheckModal in quick mode. Completing it (Save) records a real general check,
+  // which fills the ring's Care segment — no separate "all good" wellness write, so the
+  // segment can't be satisfied twice. onSaved hands back the created row for Undo.
+  const onCheckSaved = (check) => {
+    if (check?.id != null) setJustCheckId(check.id);
   };
 
-  const confirmAllGood = async () => {
-    try {
-      const res = await logAllGood.mutateAsync();
-      const id = res?.log?.id;
-      if (id != null) setJustLoggedId(id);
-    } catch {
-      // Surfaced by the ring's own state; keep the card responsive.
-    }
-  };
-
-  const undoAllGood = async () => {
-    const id = justLoggedId;
-    setJustLoggedId(null);
+  const undoCheck = async () => {
+    const id = justCheckId;
+    setJustCheckId(null);
     if (id == null) return;
     try {
-      await deleteWellnessLog.mutateAsync(id);
+      await deleteGeneralCheck.mutateAsync(id);
     } catch {
       // If the delete fails the ring stays closed; nothing destructive happened.
     }
@@ -152,18 +143,18 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         })}
       </View>
 
-      {/* "All good" check-in (E10) — NR3: separated from the segment pills by a divider,
-          styled as a distinct outlined action (not a green segment look-alike), and it
-          NEVER writes on a bare tap — press opens a confirm dialog. After logging, an
-          Undo affordance can delete the just-created wellness log. */}
-      {justLoggedId != null ? (
+      {/* Quick check-in — separated from the segment pills by a divider and styled as a
+          distinct outlined action (not a green segment look-alike). Pressing it opens the
+          light guided check (GeneralCheckModal, quick mode); completing it fills the Care
+          segment. After saving, an Undo affordance deletes the just-created check. */}
+      {justCheckId != null ? (
         <>
           <View style={styles.divider} />
           <View style={styles.loggedRow}>
             <Text style={styles.loggedText}>{t("health.careRing.allGoodLogged")}</Text>
             <Pressable
-              onPress={undoAllGood}
-              disabled={deleteWellnessLog.isPending}
+              onPress={undoCheck}
+              disabled={deleteGeneralCheck.isPending}
               accessibilityRole="button"
               accessibilityLabel={t("health.careRing.allGoodUndo")}
               hitSlop={8}
@@ -177,8 +168,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
           <View style={styles.divider} />
           <Pressable
             style={styles.allGood}
-            onPress={requestAllGood}
-            disabled={logAllGood.isPending}
+            onPress={() => setCheckOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={t("health.careRing.allGoodAction")}
           >
@@ -187,6 +177,14 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
           </Pressable>
         </>
       ) : null}
+
+      <GeneralCheckModal
+        visible={checkOpen}
+        mode="quick"
+        suggestedAreas={suggestedAreas}
+        onClose={() => setCheckOpen(false)}
+        onSaved={onCheckSaved}
+      />
 
       {/* Rest / vacation mode — always visible, always gentle. */}
       <View style={styles.restRow}>

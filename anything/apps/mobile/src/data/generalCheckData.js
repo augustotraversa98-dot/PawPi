@@ -126,6 +126,103 @@ export const CHECK_AREAS = [
   },
 ];
 
+// How many areas the light Care-Ring Quick Check suggests per day. A single knob —
+// change to 1–3 to widen/narrow the daily nudge.
+export const QUICK_SUGGESTION_COUNT = 2;
+
+// Read an area's recorded status from ONE general-check row, tolerant of both shapes the
+// API returns: the flat *_status columns (always written) and the additive `areas` jsonb
+// (0118). Column/jsonb names differ from the CHECK_AREAS keys for two areas
+// (teeth_mouth → teeth_status/teeth, skin_fur → skin_fur_status/skin), so map explicitly.
+const AREA_FLAT_FIELD = {
+  eyes: "eyes_status",
+  ears: "ears_status",
+  teeth_mouth: "teeth_status",
+  skin_fur: "skin_fur_status",
+  paws: "paws_status",
+  face: "face_status",
+  mood: "mood",
+  energy: "energy",
+};
+const AREA_JSONB_KEY = {
+  eyes: "eyes",
+  ears: "ears",
+  teeth_mouth: "teeth",
+  skin_fur: "skin",
+  paws: "paws",
+  face: "face",
+  mood: "mood",
+  energy: "energy",
+};
+
+function areaStatusInRow(row, areaKey) {
+  const flat = row?.[AREA_FLAT_FIELD[areaKey]];
+  if (flat != null) return flat;
+  const areas = row?.areas;
+  if (areas && typeof areas === "object") {
+    const a = areas[AREA_JSONB_KEY[areaKey]];
+    if (a && a.status != null) return a.status;
+  }
+  return null;
+}
+
+// Local calendar day ("YYYY-MM-DD") for a check row's date. A bare date string is taken
+// verbatim; a datetime is reduced to its LOCAL day (so it lines up with the owner-local
+// `today` the caller passes). Rotation is a soft suggestion heuristic — never ring credit —
+// so a rare timezone-boundary wobble here is harmless.
+function rowDayString(row) {
+  const v = row?.logged_at ?? row?.date ?? row?.timestamp ?? null;
+  if (v == null) return null;
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = v instanceof Date ? v : new Date(v);
+  if (isNaN(d.getTime())) return typeof v === "string" ? v.slice(0, 10) : null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Choose today's suggested areas for the light Quick Check — a small rotating set so
+// coverage moves day to day. Pure + unit-testable.
+//   • `history`: the pet's general-check rows (newest-first or any order), from
+//     GET /api/health/general-checks (flat *_status columns and/or `areas` jsonb).
+//   • `count`: how many to suggest.
+//   • `today`: owner-local "YYYY-MM-DD".
+// Ranking: never-checked areas first, then least-recently-checked; an area already checked
+// TODAY is pushed to the back (so it isn't re-suggested and rotates out tomorrow); the
+// fixed CHECK_AREAS order is the stable tie-break (and the whole fallback for a new pet
+// with no history). Returns an array of area keys, length ≤ count.
+export function getSuggestedAreas(history, count = QUICK_SUGGESTION_COUNT, today) {
+  const rows = Array.isArray(history) ? history : [];
+  const lastDay = {}; // areaKey -> most recent "YYYY-MM-DD" that area carried a status
+  for (const row of rows) {
+    const day = rowDayString(row);
+    if (!day) continue;
+    for (const area of CHECK_AREAS) {
+      if (areaStatusInRow(row, area.key) != null) {
+        if (lastDay[area.key] == null || day > lastDay[area.key]) {
+          lastDay[area.key] = day;
+        }
+      }
+    }
+  }
+
+  const ranked = CHECK_AREAS.map((area, index) => {
+    const last = lastDay[area.key] ?? null;
+    return { key: area.key, last, checkedToday: last != null && last === today, index };
+  }).sort((a, b) => {
+    if (a.checkedToday !== b.checkedToday) return a.checkedToday ? 1 : -1;
+    if (a.last !== b.last) {
+      if (a.last == null) return -1; // never-checked first
+      if (b.last == null) return 1;
+      return a.last < b.last ? -1 : 1; // oldest first
+    }
+    return a.index - b.index; // stable fixed order
+  });
+
+  return ranked.slice(0, Math.max(0, count)).map((r) => r.key);
+}
+
 // Available change options
 export const CHANGE_OPTIONS = [
   { key: "redness", label: "Redness", emoji: "🔴" },
