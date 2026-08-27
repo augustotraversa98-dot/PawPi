@@ -1,4 +1,6 @@
 import React from "react";
+import { StyleSheet } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { render, fireEvent, act } from "@testing-library/react-native";
 // Resolve t() against the real EN catalog so the locked-CTA assertions reflect
 // real copy (and a mistyped key fails loudly).
@@ -412,5 +414,29 @@ describe("PostCard — video posts (daily video moments, step 4)", () => {
     );
     fireEvent.press(getByTestId("feed-post-photo"));
     expect(onLockedPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PostCard — 4:5 portrait media (modern Instagram size)", () => {
+  // height = 1.25 × width (4:5). Rounding is applied in the component, so we
+  // assert against the same rounded formula.
+  const is4x5 = ({ width, height }) => {
+    expect(width).toBeGreaterThan(0);
+    expect(height).toBe(Math.round((width * 5) / 4));
+  };
+
+  it("locked media renders a 4:5 portrait frame", () => {
+    const { getByTestId } = render(<PostCard post={basePost} locked />);
+    is4x5(StyleSheet.flatten(getByTestId("feed-post-photo").props.style));
+  });
+
+  it("unlocked photo renders the same 4:5 portrait frame (cover-cropped)", () => {
+    const { UNSAFE_getAllByType } = render(<PostCard post={basePost} />);
+    // The media image is the wide one; the avatar image is 42pt.
+    const media = UNSAFE_getAllByType(ExpoImage)
+      .map((n) => StyleSheet.flatten(n.props.style) || {})
+      .find((s) => s.width > 100 && s.height);
+    expect(media).toBeTruthy();
+    is4x5(media);
   });
 });

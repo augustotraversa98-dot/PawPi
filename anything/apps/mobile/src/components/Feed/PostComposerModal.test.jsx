@@ -75,6 +75,10 @@ test("tapping the action opens the camera and advances to compose on capture", a
 
   // It goes straight to the camera — never the library.
   await waitFor(() => expect(mockLaunchCamera).toHaveBeenCalled());
+  // …cropping to the 4:5 portrait frame the feed shows (modern Instagram size).
+  expect(mockLaunchCamera).toHaveBeenCalledWith(
+    expect.objectContaining({ allowsEditing: true, aspect: [4, 5] }),
+  );
   // Once a photo is captured, the caption step appears.
   await waitFor(() => expect(getByTestId("composer-caption")).toBeTruthy());
 });

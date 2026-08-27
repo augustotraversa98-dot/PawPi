@@ -83,8 +83,11 @@ export const PostCard = memo(function PostCard({
   const contentWidth = Math.round(windowWidth - SPACING.lg * 2);
   // The media renders as a rounded TILE inside the card: a small horizontal inset
   // on each side makes the rounding visible against the card gutters. All media
-  // (photo/video/locked) sizes to this width so they clip to the same container.
+  // (photo/video/locked) sizes to this same 4:5 portrait frame — the modern
+  // Instagram ratio — so a locked tease and its posted reveal are identical, and
+  // existing square photos center-crop (contentFit "cover") instead of gapping.
   const mediaWidth = contentWidth - SPACING.sm * 2;
+  const mediaHeight = Math.round((mediaWidth * 5) / 4);
 
   const handlePawPress = async () => {
     if (locked) return;
@@ -266,7 +269,7 @@ export const PostCard = memo(function PostCard({
         <Pressable
           testID="feed-post-photo"
           onPress={onLockedPress}
-          style={{ width: mediaWidth, height: mediaWidth }}
+          style={{ width: mediaWidth, height: mediaHeight }}
         >
           <Image
             testID="feed-post-locked-media"
@@ -423,7 +426,7 @@ export const PostCard = memo(function PostCard({
           videoUri={videoUri}
           posterUri={posterUri}
           onDoubleTap={handleDoubleTapPaw}
-          style={{ width: mediaWidth, height: mediaWidth }}
+          style={{ width: mediaWidth, height: mediaHeight }}
         />
       ) : (
         <PawablePhoto
@@ -432,7 +435,7 @@ export const PostCard = memo(function PostCard({
           disabled={false}
           onSingleTap={onOpenProfile}
           onDoubleTap={handleDoubleTapPaw}
-          responsiveWidth={mediaWidth}
+          style={{ width: mediaWidth, height: mediaHeight }}
         />
       )}
         {/* Milestone moment (E3): celebratory ribbon + one-shot confetti over the photo */}
