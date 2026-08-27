@@ -53,3 +53,11 @@ test("an unknown section param falls back to Today (never a blank screen)", () =
   const { getByText } = render(<HealthScreen />);
   expect(getByText("TODAY_SECTION")).toBeTruthy();
 });
+
+// The Nutrition header button is intentionally hidden (feature not yet wired up).
+// Its screen/route/hooks stay intact — only the entry point is gated off.
+test("the Nutrition header button is not rendered", () => {
+  const { queryByTestId, queryByText } = render(<HealthScreen />);
+  expect(queryByTestId("nutrition-button")).toBeNull();
+  expect(queryByText("Nutrition")).toBeNull();
+});
