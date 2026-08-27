@@ -43,6 +43,7 @@ async function GET(request, { params }) {
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url, p.cover_image_url,
         p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
         p.storefront_section_order,
+        p.claim_status,
         (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
         (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
       FROM providers p
@@ -72,7 +73,7 @@ async function GET(request, { params }) {
       walkPackagesProbe,
     ] = await Promise.all([
       sql`
-        SELECT id, name, address, lat, lng, hours_json, phone
+        SELECT id, name, address, lat, lng, hours_json, phone, pet_policy
         FROM provider_locations
         WHERE provider_id = ${provider.id}
         ORDER BY created_at ASC

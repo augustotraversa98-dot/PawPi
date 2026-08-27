@@ -111,6 +111,7 @@ async function GET(request) {
     const rows = await sql`
       SELECT
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+        p.claim_status,
         (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
         (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count,
         (SELECT COALESCE(array_agg(pc.capability ORDER BY pc.capability), ARRAY[]::text[])
@@ -119,10 +120,11 @@ async function GET(request) {
         loc.lng AS lng,
         loc.name AS location_name,
         loc.address AS location_address,
-        loc.hours_json AS hours_json
+        loc.hours_json AS hours_json,
+        loc.pet_policy AS pet_policy
       FROM providers p
       LEFT JOIN LATERAL (
-        SELECT lat, lng, name, address, hours_json
+        SELECT lat, lng, name, address, hours_json, pet_policy
         FROM provider_locations pl
         WHERE pl.provider_id = p.id
         ORDER BY pl.id ASC
