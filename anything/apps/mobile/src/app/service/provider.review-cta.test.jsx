@@ -1,5 +1,6 @@
 // Storefront "Leave a review" CTA: shown ONLY when the signed-in owner has a COMPLETED
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // booking with THIS provider (from useMyBookings().past). Tapping it opens the shared
 // WriteReviewModal with this provider + the pet from that booking. Hidden when there is no

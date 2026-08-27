@@ -1,5 +1,6 @@
 // Ticket 2.23 — service images on the public provider profile. A service that
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // carries image_urls renders one <Image testID="service-image"> per URL; a service
 // with no images renders none (the storefront shows just the text — no fakes).

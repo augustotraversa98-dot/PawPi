@@ -3596,5 +3596,44 @@
     "minMealsTitle": "Mínimo de comidas",
     "minMealsBody": "Necesitás al menos una comida por día."
   },
-  "batch17Placeholder": {}
+  "batch17Placeholder": {},
+  "claim": {
+    "headline": "¿Es tu negocio?",
+    "subhead": "Reclamá tu ficha en PawPi para actualizar fotos, horarios, servicios y responder reseñas.",
+    "cta": "Reclamalo",
+    "retryCta": "Volver a reclamar",
+    "pendingBadge": "Solicitud enviada",
+    "signInPrompt": "Iniciá sesión para reclamar tu negocio.",
+    "signIn": "Iniciar sesión",
+    "modalTitle": "Reclamar este negocio",
+    "modalIntro": "Contanos cómo verificar que sos el dueño. Un revisor humano lo confirma y te pasa las llaves.",
+    "methodLabel": "¿Cómo te podemos contactar?",
+    "methodPhone": "Teléfono del negocio",
+    "methodEmail": "Email del negocio",
+    "methodDocument": "Documento",
+    "noteLabel": "¿Algo más? (opcional)",
+    "notePlaceholder": "Ej. Soy el dueño y mi WhatsApp es +54 11 ...",
+    "submitCta": "Enviar reclamo",
+    "submittedTitle": "Reclamo enviado",
+    "submittedBody": "Vamos a revisar tu reclamo y te avisamos pronto.",
+    "reviewNote": "Los reclamos se revisan a mano. Vas a ver el estado en \"Mis reclamos\".",
+    "errorTitle": "No pudimos enviar el reclamo",
+    "errorGeneric": "Volvé a intentar en un momento.",
+    "errorAlreadyClaimed": "Este negocio ya fue reclamado.",
+    "errorAlreadyPending": "Ya hay un reclamo pendiente en este negocio.",
+    "errorNotFound": "Este negocio ya no está disponible.",
+    "myClaimsTitle": "Mis reclamos",
+    "myClaimsEmptyTitle": "Todavía no tenés reclamos",
+    "myClaimsEmptyBody": "¿Encontraste tu negocio en el directorio de PawPi? Abrí su perfil y tocá \"Reclamalo\".",
+    "statusPending": "En revisión",
+    "statusApproved": "Aprobado",
+    "statusRejected": "Rechazado",
+    "statusWithdrawn": "Retirado",
+    "dogsAllowedBadge": "Pet friendly"
+  },
+  "petFriendly": {
+    "title": "Lugares pet friendly",
+    "emptyTitle": "Todavía no hay lugares pet friendly",
+    "emptyBody": "Volvé pronto — estamos sumando lugares al directorio."
+  }
 }

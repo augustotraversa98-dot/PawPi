@@ -3596,5 +3596,44 @@
     "minMealsTitle": "Minimum meals",
     "minMealsBody": "You need at least one meal per day."
   },
-  "batch17Placeholder": {}
+  "batch17Placeholder": {},
+  "claim": {
+    "headline": "Is this your business?",
+    "subhead": "Claim your PawPi listing to update photos, hours, services, and reply to reviews.",
+    "cta": "Claim it",
+    "retryCta": "Retry claim",
+    "pendingBadge": "Claim submitted",
+    "signInPrompt": "Sign in to claim your business.",
+    "signIn": "Sign in",
+    "modalTitle": "Claim this business",
+    "modalIntro": "Tell us how we can verify you own this business. A human reviewer will confirm and hand you the keys.",
+    "methodLabel": "How can we reach you?",
+    "methodPhone": "Business phone",
+    "methodEmail": "Business email",
+    "methodDocument": "Document",
+    "noteLabel": "Anything else? (optional)",
+    "notePlaceholder": "e.g. I'm the owner and my WhatsApp is +54 11 ...",
+    "submitCta": "Send claim",
+    "submittedTitle": "Claim submitted",
+    "submittedBody": "We'll review your claim and get back to you soon.",
+    "reviewNote": "Claims are reviewed manually. You'll see the status in \"My claims\".",
+    "errorTitle": "Couldn't submit claim",
+    "errorGeneric": "Please try again in a moment.",
+    "errorAlreadyClaimed": "This business has already been claimed.",
+    "errorAlreadyPending": "A claim is already pending on this business.",
+    "errorNotFound": "This business is no longer available.",
+    "myClaimsTitle": "My claims",
+    "myClaimsEmptyTitle": "No claims yet",
+    "myClaimsEmptyBody": "Found your business in the PawPi directory? Open its profile and tap \"Claim it\".",
+    "statusPending": "Pending review",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "statusWithdrawn": "Withdrawn",
+    "dogsAllowedBadge": "Dogs allowed"
+  },
+  "petFriendly": {
+    "title": "Pet-friendly places",
+    "emptyTitle": "No pet-friendly places yet",
+    "emptyBody": "Check back soon — we're growing the directory."
+  }
 }

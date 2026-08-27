@@ -52,6 +52,7 @@ import BookingFormModal from "@/components/Providers/BookingFormModal";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
 import ProviderFollowButton from "@/components/Providers/ProviderFollowButton";
+import ClaimCTA from "@/components/Providers/ClaimCTA";
 import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessStatRow";
 import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
 import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
@@ -597,6 +598,12 @@ export default function ProviderScreen() {
               fromPriceLabel={fromPriceLabel}
               t={t}
             />
+            {/* "¿Es tu negocio? Reclamalo" — appears only when the listing is unclaimed
+                (seeded directory row from 0124). Renders nothing for claimed businesses,
+                so no existing storefront changes. */}
+            {provider?.id != null ? (
+              <ClaimCTA providerId={provider.id} claimStatus={provider.claim_status} />
+            ) : null}
             {/* Follow + Message on ONE row (ticket 2.93) — the follow toggle (ticket 2.92) beside
                 the Message action (relocated up from the removed bottom trust strip). The follower
                 COUNT is no longer here; it lives in the Posts-tab stat row. */}

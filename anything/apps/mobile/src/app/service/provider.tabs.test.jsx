@@ -1,5 +1,6 @@
 // Storefront shell (redesign Phase 1, PR-1): the provider screen renders section panels
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // behind a horizontal tab bar. Panels are MOUNTED-BUT-HIDDEN (display:none) so every section
 // stays in the tree; the tab bar + the tappable rating summary switch which one is visible.
