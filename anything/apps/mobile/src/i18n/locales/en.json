@@ -2372,6 +2372,8 @@
     "lockedCard2": "Share your pet's day to unlock {{petName}}'s moment",
     "lockedCard3": "{{petName}} posted today — share yours to peek 👀",
     "lockedCard4": "Unlock {{petName}}'s moment by posting your own 🐾",
+    "lockedHeadline": "See {{petName}}'s day",
+    "lockedPostCta": "Post today's moment",
     "adoptionEyebrow": "ADOPT ME",
     "adoptionFree": "Free to adopt",
     "adoptionAtProvider": "at {{name}}",

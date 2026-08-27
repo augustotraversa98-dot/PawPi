@@ -27,6 +27,10 @@ import {
 import { PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
+// Preview mirrors the feed frame: 4:5 portrait (height = 1.25 × width) so what you
+// crop is what the card will show. Width = screen minus the ScrollView's 20pt gutters.
+const PREVIEW_W = SCREEN_W - 40;
+const PREVIEW_H = Math.round((PREVIEW_W * 5) / 4);
 
 // Celebratory treatment for the daily "lucky" user. Shown above the capture
 // buttons ONLY when the server says they're eligible today. Pure presentation —
@@ -159,7 +163,7 @@ export const PostComposerModal = memo(function PostComposerModal({
     }
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect: [4, 5], // 4:5 portrait — matches the feed frame (PostCard)
       quality: 0.85,
     });
     if (!result.canceled) {
@@ -350,8 +354,8 @@ export const PostComposerModal = memo(function PostComposerModal({
                   testID="composer-video-preview"
                   source={{ uri: mediaUri }}
                   style={{
-                    width: "100%",
-                    height: SCREEN_W - 40,
+                    width: PREVIEW_W,
+                    height: PREVIEW_H,
                     borderRadius: RADIUS.control,
                     backgroundColor: "#000",
                   }}
@@ -364,8 +368,8 @@ export const PostComposerModal = memo(function PostComposerModal({
                 <Image
                   source={{ uri: mediaUri }}
                   style={{
-                    width: "100%",
-                    height: SCREEN_W - 40,
+                    width: PREVIEW_W,
+                    height: PREVIEW_H,
                     borderRadius: RADIUS.control,
                   }}
                   resizeMode="cover"
