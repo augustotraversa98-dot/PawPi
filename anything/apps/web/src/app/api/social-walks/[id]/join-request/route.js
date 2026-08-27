@@ -118,7 +118,13 @@ async function POST(request, { params }) {
   } catch (error) {
     console.error("[social-walks] Error creating join request:", error);
 
-    if (error.message?.includes("duplicate key value")) {
+    // Duplicate pending request → 23505 unique_violation on
+    // idx_social_walk_join_requests_unique_pending (0007_social_walks.sql).
+    // Key off SQLSTATE, not the message text (driver-stable).
+    if (
+      error.code === "23505" ||
+      error.message?.includes("duplicate key value")
+    ) {
       return Response.json(
         { error: "Join request already pending" },
         { status: 400 },
