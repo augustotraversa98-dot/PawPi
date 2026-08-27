@@ -1,5 +1,6 @@
 // Storefront shell (Services Hub P4a): per-type primary action + capability-aware booking.
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 //   - a grooming-only provider books as `groomer`, telehealth as `telehealth`, vet as `vet`
 //     (NOT the book/route 'vet' default);

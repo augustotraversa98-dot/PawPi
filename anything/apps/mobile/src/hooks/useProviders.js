@@ -19,14 +19,19 @@ import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
 // nearest-first. No screen consumes the new fields yet; this only widens the contract.
 export function useDiscoverProviders(arg = "vet") {
   const opts = typeof arg === "string" ? { capability: arg } : arg || {};
-  const { capability, lat, lng, radius, q, openNow } = opts;
+  const { capability, provider_type, lat, lng, radius, q, openNow } = opts;
 
   return useQuery({
     // Every param is part of the key so distinct filters cache independently.
-    queryKey: ["providers", "discover", { capability, lat, lng, radius, q, openNow }],
+    queryKey: [
+      "providers",
+      "discover",
+      { capability, provider_type, lat, lng, radius, q, openNow },
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (capability) params.set("capability", capability);
+      if (provider_type) params.set("provider_type", provider_type);
       if (lat != null && lng != null) {
         params.set("lat", String(lat));
         params.set("lng", String(lng));

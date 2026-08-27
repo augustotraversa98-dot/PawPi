@@ -88,9 +88,27 @@ describe('GET /api/providers/discover', () => {
     // providers.provider_type column. P1 does it via EXISTS (one row per provider).
     expect(text).toContain('EXISTS');
     expect(text).toContain('pc.capability =');
-    expect(text).not.toContain('provider_type = ');
     expect(text).toContain("status = 'published'");
-    expect(values).toContain('vet'); // bound param, not interpolated
+    expect(values).toContain('vet'); // bound param, not interpolated (as ?capability)
+    // 0125 added a distinct ?provider_type filter (needed for pet_friendly seed rows,
+    // which carry NO provider_capabilities). ?type=vet is the CAPABILITY alias — the
+    // providerType bind stays null so the SQL guard `${providerType}::text IS NULL`
+    // short-circuits that branch (no filtering on providers.provider_type).
+    expect(text).toContain('p.provider_type =');
+  });
+
+  it('?provider_type=pet_friendly filters on providers.provider_type (0125, for pet-friendly seed rows)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+
+    await GET(
+      req('http://localhost/api/providers/discover?provider_type=pet_friendly'),
+    );
+
+    const [strings, ...values] = sql.mock.calls[0];
+    const text = strings.join(' ');
+    expect(text).toContain('p.provider_type =');
+    expect(values).toContain('pet_friendly');
   });
 
   it('?capability= is the P1 alias for ?type= (binds the capability)', async () => {

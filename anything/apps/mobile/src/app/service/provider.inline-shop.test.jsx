@@ -1,5 +1,6 @@
 // Storefront redesign PR-3b: the Items tab IS the store — an inline browse grid with a quick
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // "+" add, a screen-level cart bar + checkout, and tap-card → product detail, all backed by the
 // shared useStorefrontCart (StorefrontCatalog modal is no longer opened from provider.jsx). The

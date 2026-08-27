@@ -1,5 +1,6 @@
 // Storefront header polish (redesign Phase 1, PR-2): the StoreHeader meta row (open-now pill
 jest.mock("@/components/Providers/ProviderFollowButton", () => () => null);
+jest.mock("@/components/Providers/ClaimCTA", () => () => null);
 jest.mock("@/components/Providers/StorefrontPanels/BusinessStatRow", () => () => null);
 // wired to deriveOpenNow) and the promoted Instagram chip. deriveOpenNow is mocked so the
 // open/closed/unknown wiring is deterministic (the util has its own tests). Sticky tab bar is

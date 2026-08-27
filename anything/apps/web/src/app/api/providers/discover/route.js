@@ -62,6 +62,12 @@ async function GET(request) {
     const capability =
       searchParams.get("capability") || searchParams.get("type") || null;
 
+    // provider_type filter (0125, additive) — needed by the pet-friendly directory
+    // surface: seeded `pet_friendly` providers have NO provider_capabilities row
+    // (they don't offer services), so the capability filter above never matches them.
+    // Composes with the capability filter (both apply when both are given).
+    const providerType = searchParams.get("provider_type") || null;
+
     // Name search — a simple ILIKE, bound (never interpolated). Empty → no filter.
     const q = searchParams.get("q") || null;
     const qLike = q ? `%${q}%` : null;
@@ -140,6 +146,7 @@ async function GET(request) {
             WHERE pc.provider_id = p.id AND pc.capability = ${capability}
           )
         )
+        AND (${providerType}::text IS NULL OR p.provider_type = ${providerType})
         AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
         AND (
           ${applyRadius ? false : true}
