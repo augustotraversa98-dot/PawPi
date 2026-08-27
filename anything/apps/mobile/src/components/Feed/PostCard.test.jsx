@@ -15,6 +15,15 @@ jest.mock("@/hooks/useFeedPosts", () => ({
   useTogglePaw: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
 
+// Drive the a11y prefs so tests can flip Reduce Transparency (solid fallback) and
+// Reduce Motion (no pulse). Both default to false = full effect, matching the OS.
+let mockReduceTransparency = false;
+let mockReduceMotion = false;
+jest.mock("@/hooks/useAccessibilityPrefs", () => ({
+  useReduceTransparency: () => mockReduceTransparency,
+  useReducedMotion: () => mockReduceMotion,
+}));
+
 // expo-av's native Video doesn't render under jest-expo — mock it to a View that
 // drives play/pause through the ref so the video-post tests can assert playback.
 const mockPlayAsync = jest.fn(() => Promise.resolve());
@@ -39,6 +48,8 @@ beforeEach(() => {
   mockMutateAsync.mockClear();
   mockPlayAsync.mockClear();
   mockPauseAsync.mockClear();
+  mockReduceTransparency = false;
+  mockReduceMotion = false;
 });
 
 const videoPost = {
@@ -235,25 +246,49 @@ describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
     expect(onOpenProfile).not.toHaveBeenCalled();
   });
 
-  it("shows a name-aware FOMO CTA instead of a paw button while locked", () => {
+  it("shows a name-aware post CTA instead of a paw button while locked", () => {
     const { getByTestId, getByText, queryByText } = render(
       <PostCard post={basePost} locked liked={false} />,
     );
-    // No paw button/count on a locked card — it's replaced by the CTA (polish #4).
+    // No paw button/count on a locked card — it's replaced by the CTA cluster.
     expect(queryByText("0 paws")).toBeNull();
+    // A real accessible primary button that invites posting today's moment.
     expect(getByTestId("feed-post-locked-cta")).toBeTruthy();
-    // The CTA names the poster's pet (real name, never fabricated content).
+    expect(getByText("Post today's moment")).toBeTruthy();
+    // Name-aware headline + rotating FOMO subline (real name, never fabricated).
+    expect(getByText("See Phoebe's day")).toBeTruthy();
     expect(getByText(/Post today's moment to see what Phoebe/)).toBeTruthy();
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("rotates the locked CTA by card position (varied, not one repeated line)", () => {
+  it("tapping the locked CTA button opens the composer", () => {
+    const onLockedPress = jest.fn();
+    const { getByTestId } = render(
+      <PostCard post={basePost} locked onLockedPress={onLockedPress} />,
+    );
+    fireEvent.press(getByTestId("feed-post-locked-cta"));
+    expect(onLockedPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("rotates the locked FOMO subline by card position (varied, not one line)", () => {
     const a = render(<PostCard post={basePost} locked lockedCtaIndex={0} />);
     expect(a.getByText(/Post today's moment to see what Phoebe/)).toBeTruthy();
     a.unmount();
     // A different position surfaces a different variant — not one repeated line.
     const b = render(<PostCard post={basePost} locked lockedCtaIndex={1} />);
     expect(b.getByText(/Share your pet's day to unlock Phoebe/)).toBeTruthy();
+  });
+
+  it("renders the solid fallback AND the CTA under Reduce Transparency", () => {
+    mockReduceTransparency = true;
+    const { getByTestId, queryByTestId } = render(
+      <PostCard post={basePost} locked />,
+    );
+    // Blur can't render → near-opaque wash keeps the media obscured…
+    expect(getByTestId("feed-post-locked-solid")).toBeTruthy();
+    expect(queryByTestId("feed-post-locked-blur")).toBeNull();
+    // …and the CTA button still sits legibly on top of it.
+    expect(getByTestId("feed-post-locked-cta")).toBeTruthy();
   });
 });
 

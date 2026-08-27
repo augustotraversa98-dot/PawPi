@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
-import { PawPrint, Megaphone, Lock } from "lucide-react-native";
+import { MotiView } from "moti";
+import { PawPrint, Megaphone, Lock, Camera } from "lucide-react-native";
 import {
   COLORS,
   TAG_COLORS,
@@ -18,9 +19,13 @@ import {
   RADIUS,
   SPACING,
   MATERIALS,
+  ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
-import { useReduceTransparency } from "@/hooks/useAccessibilityPrefs";
+import {
+  useReduceTransparency,
+  useReducedMotion,
+} from "@/hooks/useAccessibilityPrefs";
 import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
@@ -71,11 +76,15 @@ export const PostCard = memo(function PostCard({
 }) {
   const togglePawMutation = useTogglePaw(post.id);
   const reduceTransparency = useReduceTransparency();
+  const reduceMotion = useReducedMotion();
   const { width: windowWidth } = useWindowDimensions();
   // Full card CONTENT width, derived from the device (feed polish #1) — the card
-  // has a SPACING.lg gutter on each side. The image renders at exactly this width
-  // so it fills every phone (SE → Pro Max) with no right-edge crop.
+  // has a SPACING.lg gutter on each side.
   const contentWidth = Math.round(windowWidth - SPACING.lg * 2);
+  // The media renders as a rounded TILE inside the card: a small horizontal inset
+  // on each side makes the rounding visible against the card gutters. All media
+  // (photo/video/locked) sizes to this width so they clip to the same container.
+  const mediaWidth = contentWidth - SPACING.sm * 2;
 
   const handlePawPress = async () => {
     if (locked) return;
@@ -127,11 +136,25 @@ export const PostCard = memo(function PostCard({
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
 
   const { t } = useTranslation();
-  // Name-aware FOMO CTA for the locked variant (feed polish #4).
+  // Name-aware copy for the locked variant. The headline names the pet; the
+  // subline rotates the FOMO/reciprocity line by card position (feed polish #4)
+  // so a wall of teases never reads as one repeated line.
+  const lockedHeadline = t("feed.lockedHeadline", { petName: dogName });
   const lockedCtaMessage = t(
     LOCKED_CTA_KEYS[(lockedCtaIndex || 0) % LOCKED_CTA_KEYS.length],
     { petName: dogName },
   );
+  const lockedPostCta = t("feed.lockedPostCta");
+
+  // Primary CTA press: a light haptic + open the composer. Lazy-require keeps a
+  // missing native module from ever crashing the render/test.
+  const handleLockedCtaPress = () => {
+    try {
+      const Haptics = require("expo-haptics");
+      Haptics.impactAsync?.(Haptics.ImpactFeedbackStyle?.Light);
+    } catch {}
+    onLockedPress?.();
+  };
   // Birthday / adoption-day highlight (2.37) → milestone moment (E3): a 🎂 by the name + a thicker
   // signature-orange frame, and on a milestone day an animated ribbon + confetti + a "Share this"
   // CTA. Computed from the pet's own date fields against the viewer's local day — never fabricated.
@@ -227,13 +250,23 @@ export const PostCard = memo(function PostCard({
 
       {/* Photo. Unlocked: single tap opens the pet's profile, double tap gives a
           Paw (2.64). Locked: the photo is blurred (you can tell WHO posted from
-          the header, but not WHAT) and tapping it opens the composer. */}
-      <View style={{ position: "relative" }}>
+          the header, but not WHAT) and tapping it opens the composer.
+          The media is a rounded TILE: overflow-hidden + a modest radius + a small
+          horizontal inset so every overlay (blur/wash, CTA cluster, milestone
+          ribbon/confetti, double-tap Paw) clips to the same rounded container. */}
+      <View
+        style={{
+          position: "relative",
+          marginHorizontal: SPACING.sm,
+          borderRadius: RADIUS.md,
+          overflow: "hidden",
+        }}
+      >
       {locked ? (
         <Pressable
           testID="feed-post-photo"
           onPress={onLockedPress}
-          style={{ width: contentWidth, height: contentWidth }}
+          style={{ width: mediaWidth, height: mediaWidth }}
         >
           <Image
             testID="feed-post-locked-media"
@@ -267,24 +300,118 @@ export const PostCard = memo(function PostCard({
               />
             </>
           )}
-          {/* Centered lock badge — a warm "post to reveal" cue. */}
+          {/* "Post to reveal" CTA cluster over the blur — an invitation, not a
+              wall. Sits on a soft cream scrim so it stays legible over any blurred
+              photo AND under Reduce Transparency (the scrim is opaque cream, no
+              glass). box-none lets taps outside the button fall through to the
+              card's own onLockedPress. */}
           <View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { justifyContent: "center", alignItems: "center" }]}
+            pointerEvents="box-none"
+            style={[
+              StyleSheet.absoluteFill,
+              { justifyContent: "center", alignItems: "center", padding: SPACING.lg },
+            ]}
           >
             <View
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: COLORS.cream,
-                justifyContent: "center",
                 alignItems: "center",
+                maxWidth: "90%",
+                paddingHorizontal: SPACING.lg,
+                paddingVertical: SPACING.lg,
+                borderRadius: RADIUS.lg,
+                backgroundColor: "rgba(255, 247, 239, 0.86)", // cream scrim
                 borderWidth: 1,
-                borderColor: COLORS.peach,
+                borderColor: MATERIALS.hairline,
+                ...ELEVATION.sm,
               }}
             >
-              <Lock size={22} color={COLORS.terracotta} />
+              {/* Friendly camera in a coral circle, with a small lock accent so it
+                  reads "post to reveal" — not "blocked". */}
+              <View style={{ marginBottom: SPACING.sm }}>
+                <View
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: COLORS.coral,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    ...ELEVATION.sm,
+                  }}
+                >
+                  <Camera size={26} color={COLORS.cream} />
+                </View>
+                <View
+                  style={{
+                    position: "absolute",
+                    right: -2,
+                    bottom: -2,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: COLORS.cream,
+                    borderWidth: 1,
+                    borderColor: COLORS.peach,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Lock size={12} color={COLORS.terracotta} />
+                </View>
+              </View>
+
+              <Text
+                style={[TYPE.headline, { color: COLORS.warmBrown, textAlign: "center" }]}
+              >
+                {lockedHeadline}
+              </Text>
+              <Text
+                style={[
+                  TYPE.footnote,
+                  {
+                    color: COLORS.mutedBrown,
+                    textAlign: "center",
+                    marginTop: SPACING.xs,
+                    marginBottom: SPACING.md,
+                  },
+                ]}
+              >
+                {lockedCtaMessage}
+              </Text>
+
+              {/* Gentle pulse to draw the eye — disabled under Reduce Motion. */}
+              <MotiView
+                from={{ scale: 1 }}
+                animate={{ scale: reduceMotion ? 1 : 1.04 }}
+                transition={{
+                  type: "timing",
+                  duration: 1100,
+                  loop: !reduceMotion,
+                  repeatReverse: true,
+                }}
+              >
+                <PressableScale
+                  testID="feed-post-locked-cta"
+                  onPress={handleLockedCtaPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={lockedPostCta}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: SPACING.sm,
+                    backgroundColor: COLORS.coral,
+                    paddingVertical: SPACING.sm + 2,
+                    paddingHorizontal: SPACING.lg,
+                    borderRadius: RADIUS.chip,
+                    ...ELEVATION.md,
+                  }}
+                >
+                  <Camera size={18} color={COLORS.cream} />
+                  <Text style={[TYPE.subhead, { color: COLORS.cream, fontWeight: "800" }]}>
+                    {lockedPostCta}
+                  </Text>
+                </PressableScale>
+              </MotiView>
             </View>
           </View>
         </Pressable>
@@ -296,7 +423,7 @@ export const PostCard = memo(function PostCard({
           videoUri={videoUri}
           posterUri={posterUri}
           onDoubleTap={handleDoubleTapPaw}
-          style={{ width: contentWidth, height: contentWidth }}
+          style={{ width: mediaWidth, height: mediaWidth }}
         />
       ) : (
         <PawablePhoto
@@ -305,7 +432,7 @@ export const PostCard = memo(function PostCard({
           disabled={false}
           onSingleTap={onOpenProfile}
           onDoubleTap={handleDoubleTapPaw}
-          responsiveWidth={contentWidth}
+          responsiveWidth={mediaWidth}
         />
       )}
         {/* Milestone moment (E3): celebratory ribbon + one-shot confetti over the photo */}
@@ -339,38 +466,17 @@ export const PostCard = memo(function PostCard({
       >
         {locked ? (
           // Locked: the caption is CONTENT, so it's replaced by an obscured
-          // placeholder bar and a rotating, name-aware FOMO CTA (feed polish #4)
-          // that invites the viewer to post their own moment to reveal this one.
-          <>
-            <View
-              testID="feed-post-caption-locked"
-              style={{
-                height: 13,
-                width: "65%",
-                borderRadius: RADIUS.chip,
-                backgroundColor: MATERIALS.surfaceSunken,
-                marginBottom: SPACING.lg,
-              }}
-            />
-            <View
-              testID="feed-post-locked-cta"
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: SPACING.sm,
-                paddingTop: SPACING.md,
-                borderTopWidth: 1,
-                borderTopColor: MATERIALS.hairline,
-              }}
-            >
-              <PawPrint size={16} color={COLORS.coral} />
-              <Text
-                style={[TYPE.subhead, { flex: 1, color: COLORS.warmBrown, fontWeight: "700" }]}
-              >
-                {lockedCtaMessage}
-              </Text>
-            </View>
-          </>
+          // placeholder bar — you can tell there's a caption, but not read it.
+          // The name-aware FOMO CTA now lives over the blurred media above.
+          <View
+            testID="feed-post-caption-locked"
+            style={{
+              height: 13,
+              width: "65%",
+              borderRadius: RADIUS.chip,
+              backgroundColor: MATERIALS.surfaceSunken,
+            }}
+          />
         ) : (
           <>
             {post.caption && (

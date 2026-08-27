@@ -2372,6 +2372,8 @@
     "lockedCard2": "Compartí el día de tu mascota para desbloquear el momento de {{petName}}",
     "lockedCard3": "{{petName}} publicó hoy — compartí el tuyo para espiar 👀",
     "lockedCard4": "Desbloqueá el momento de {{petName}} publicando el tuyo 🐾",
+    "lockedHeadline": "¿Qué hizo {{petName}} hoy?",
+    "lockedPostCta": "Postear el momento de hoy",
     "adoptionEyebrow": "ADOPTAME",
     "adoptionFree": "Adopción gratuita",
     "adoptionAtProvider": "en {{name}}",
