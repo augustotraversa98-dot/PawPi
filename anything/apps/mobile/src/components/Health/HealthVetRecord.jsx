@@ -45,6 +45,7 @@ import { AddDocumentModal } from "./VetRecord/AddDocumentModal";
 import { AddVetNoteModal } from "./VetRecord/AddVetNoteModal";
 import { AddVetRecordModal } from "./VetRecord/AddVetRecordModal";
 import MedicationModal from "./Medication/MedicationModal";
+import VetAppointmentDetailModal from "./VetAppointmentDetailModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import { PrescriptionsSection } from "./VetRecord/PrescriptionsSection";
@@ -127,6 +128,7 @@ export default function HealthVetRecord() {
     useState(false);
   const [showEditMedicalProfile, setShowEditMedicalProfile] = useState(false);
   const [selectedSurgery, setSelectedSurgery] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedLab, setSelectedLab] = useState(null);
   // VR-B: real add flows for the record types the picker used to stub as "Soon".
   // vetRecordModalType drives the shared AddVetRecordModal (allergy/condition/surgery/lab);
@@ -793,67 +795,173 @@ export default function HealthVetRecord() {
         );
 
       case "visits": {
+        // Merge the two things the badge counts — completed/past vet appointments
+        // (the same set `completedAppointmentsCount` sums: status "completed" OR a
+        // date before today, on non-deleted rows) and surgeries — into one list so
+        // the rendered count matches counts.visits (bug: the tab used to drop every
+        // past appointment and show only surgeries). Reuses the already-fetched
+        // ["vet-appointments", petId] query — no extra request.
+        const todayStr = (() => {
+          const d = new Date();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+            d.getDate(),
+          ).padStart(2, "0")}`;
+        })();
+        const visitAppointments = (
+          upcomingAppointmentsData?.appointments || []
+        ).filter(
+          (a) =>
+            a.status === "completed" ||
+            String(a.appointment_date ?? "").slice(0, 10) < todayStr,
+        );
         const surgeries = surgeriesData?.surgeries || [];
+        // Normalize to one sortable stream (date desc), tagged by kind.
+        const items = [
+          ...visitAppointments.map((a) => ({
+            kind: "appointment",
+            id: `appt-${a.id}`,
+            date: a.appointment_date,
+            data: a,
+          })),
+          ...surgeries.map((s) => ({
+            kind: "surgery",
+            id: `surg-${s.id}`,
+            date: s.surgery_date,
+            data: s,
+          })),
+        ].sort((a, b) =>
+          String(b.date ?? "").localeCompare(String(a.date ?? "")),
+        );
+
         return (
           <View style={{ marginBottom: 16 }}>
-            {surgeries.length === 0 && counts.visits === 0 ? (
-              <EmptyState
-                icon={Stethoscope}
-                title={t("health.vetRecord.visitsEmptyTitle")}
-                description={t("health.vetRecord.visitsEmptyDesc")}
-              />
-            ) : surgeries.length === 0 ? (
+            {items.length === 0 ? (
               <EmptyState
                 icon={Stethoscope}
                 title={t("health.vetRecord.visitsEmptyTitle")}
                 description={t("health.vetRecord.visitsEmptyDesc")}
               />
             ) : (
-              surgeries.map((surgery) => (
-                <TouchableOpacity
-                  key={surgery.id}
-                  onPress={() => setSelectedSurgery(surgery)}
-                  style={{
-                    backgroundColor: MATERIALS.surface,
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 12,
-                    borderWidth: 1.5,
-                    borderColor: MATERIALS.hairline,
-                  }}
-                >
-                  <Text
+              items.map((item) =>
+                item.kind === "surgery" ? (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => setSelectedSurgery(item.data)}
                     style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: COLORS.warmBrown,
-                      marginBottom: 6,
+                      backgroundColor: MATERIALS.surface,
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderWidth: 1.5,
+                      borderColor: MATERIALS.hairline,
                     }}
                   >
-                    {surgery.procedure}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: COLORS.mutedBrown,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {formatDisplayDate(surgery.surgery_date)}
-                  </Text>
-                  {surgery.surgeon && surgery.clinic && (
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "700",
+                        color: COLORS.warmBrown,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {item.data.procedure}
+                    </Text>
                     <Text
                       style={{
                         fontSize: 12,
                         color: COLORS.mutedBrown,
+                        marginBottom: 4,
                       }}
                     >
-                      {surgery.surgeon} • {surgery.clinic}
+                      {formatDisplayDate(item.data.surgery_date)}
                     </Text>
-                  )}
-                  {renderAttribution(surgery)}
-                </TouchableOpacity>
-              ))
+                    {item.data.surgeon && item.data.clinic && (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: COLORS.mutedBrown,
+                        }}
+                      >
+                        {item.data.surgeon} • {item.data.clinic}
+                      </Text>
+                    )}
+                    {renderAttribution(item.data)}
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    key={item.id}
+                    testID="vet-visit-row"
+                    onPress={() => setSelectedAppointment(item.data)}
+                    style={{
+                      backgroundColor: MATERIALS.surface,
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderWidth: 1.5,
+                      borderColor: MATERIALS.hairline,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Stethoscope size={15} color={COLORS.coral} />
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "700",
+                          color: COLORS.warmBrown,
+                          flex: 1,
+                        }}
+                      >
+                        {item.data.title}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: COLORS.mutedBrown,
+                        marginBottom:
+                          item.data.clinic ||
+                          item.data.veterinarian ||
+                          item.data.reason_for_visit
+                            ? 4
+                            : 0,
+                      }}
+                    >
+                      {item.data.appointment_time
+                        ? t("health.vetRecord.apptAt", {
+                            date: formatDisplayDate(item.data.appointment_date),
+                            time: formatDisplayTime(item.data.appointment_time),
+                          })
+                        : formatDisplayDate(item.data.appointment_date)}
+                    </Text>
+                    {(item.data.clinic || item.data.veterinarian) && (
+                      <Text style={{ fontSize: 12, color: COLORS.mutedBrown }}>
+                        {[item.data.veterinarian, item.data.clinic]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </Text>
+                    )}
+                    {item.data.reason_for_visit && (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: COLORS.mutedBrown,
+                          fontStyle: "italic",
+                          marginTop: 3,
+                        }}
+                      >
+                        {item.data.reason_for_visit}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ),
+              )
             )}
           </View>
         );
@@ -2769,6 +2877,19 @@ export default function HealthVetRecord() {
           </View>
         </View>
       </Modal>
+
+      {/* Visit (completed/past appointment) Detail Modal — same modal as Health →
+          Today's countdown card. Marking complete / deleting inside it invalidates
+          the appointments query; we also refresh the summary so the badge count
+          stays in sync with the list. */}
+      <VetAppointmentDetailModal
+        visible={selectedAppointment !== null}
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        onComplete={() =>
+          invalidateRecordKeys(["vet-appointments"])
+        }
+      />
 
       {/* Edit Medical Profile Modal */}
       {showEditMedicalProfile && (
