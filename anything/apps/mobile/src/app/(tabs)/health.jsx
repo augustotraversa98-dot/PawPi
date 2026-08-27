@@ -30,6 +30,13 @@ const SECTIONS = [
 
 const SECTION_IDS = new Set(SECTIONS.map((s) => s.id));
 
+// Nutrition entry point is hidden for now: the /nutrition screen isn't wired
+// into the rest of the app yet (the saved plan is surfaced nowhere else and the
+// food-recall alerts have no live data feed), so it only confuses owners. The
+// screen, route, hooks, and data are all kept intact — flip this to `true` to
+// re-enable the header button once the feature is connected.
+const SHOW_NUTRITION = false;
+
 export default function HealthScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -95,27 +102,29 @@ export default function HealthScreen() {
           </Text>
           <Text style={{ fontSize: 22 }}>🩺</Text>
           <View style={{ flex: 1 }} />
-          <PressableScale
-            testID="nutrition-button"
-            onPress={() => router.push("/nutrition")}
-            accessibilityRole="button"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              backgroundColor: MATERIALS.glassTintLight,
-              borderRadius: RADIUS.chip,
-              paddingHorizontal: SPACING.md,
-              paddingVertical: 7,
-              borderWidth: 1,
-              borderColor: MATERIALS.hairline,
-            }}
-          >
-            <Utensils size={15} color={COLORS.coral} />
-            <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
-              {t("health.nutritionButton")}
-            </Text>
-          </PressableScale>
+          {SHOW_NUTRITION && (
+            <PressableScale
+              testID="nutrition-button"
+              onPress={() => router.push("/nutrition")}
+              accessibilityRole="button"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: MATERIALS.glassTintLight,
+                borderRadius: RADIUS.chip,
+                paddingHorizontal: SPACING.md,
+                paddingVertical: 7,
+                borderWidth: 1,
+                borderColor: MATERIALS.hairline,
+              }}
+            >
+              <Utensils size={15} color={COLORS.coral} />
+              <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
+                {t("health.nutritionButton")}
+              </Text>
+            </PressableScale>
+          )}
         </View>
 
         {/* Pet switcher */}
