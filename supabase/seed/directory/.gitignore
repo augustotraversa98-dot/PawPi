@@ -1,0 +1,8 @@
+# Raw scrape / pull artifacts are intermediate — only the deduped master and the
+# loader ship in git. Regenerate the raw files locally with serpapi_pull.py when needed.
+serpapi_pull*.csv
+serpapi_pull*.json
+serpapi_run_log.json
+pawpi_directory_master.json
+pawpi_directory_seed_caba_amba.csv
+run.out
