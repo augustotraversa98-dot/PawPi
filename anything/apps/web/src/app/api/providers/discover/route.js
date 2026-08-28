@@ -1,6 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+
+const UNDEFINED_COLUMN = "42703"; // pre-0124/0125 DB lacks claim_status/pet_policy → degrade cleanly
 
 // Owner-facing provider discovery (docs/provider-design.md §4 item 5).
 // The PUBLIC read view: any logged-in owner can browse PUBLISHED providers.
@@ -114,7 +116,18 @@ async function GET(request) {
     //     id = primary until an additive is_primary flag exists; see the plan §6)
     // Providers with no location return NULL coords: they still appear in the list, are
     // absent from the map, and drop out only when a ?radius filter is active.
-    const rows = await sql`
+    //
+    // DEGRADE-CLEAN (house pattern; see SCHEMA_NOTES "hand-applied to Supabase after
+    // merge"): p.claim_status and loc.pet_policy are additive columns from 0124/0125.
+    // Migrations here are hand-applied to Supabase AFTER the code deploys, so there is
+    // a window where this route runs against a DB that doesn't have them yet. Try the
+    // full projection first, inside a SAVEPOINT (this handler runs inside
+    // withRequestContext's transaction, so an unguarded failed query would abort the
+    // whole request); on undefined_column (42703) retry without the two new columns,
+    // defaulting them to null — existing consumers already treat a falsy claim_status /
+    // pet_policy as "unknown / not shown" (ClaimCTA renders nothing, PetPolicyBadge
+    // renders null).
+    const selectFull = () => sql`
       SELECT
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
         p.claim_status,
@@ -158,6 +171,59 @@ async function GET(request) {
         )
       ORDER BY p.name ASC
     `;
+
+    const selectPreMigration = () => sql`
+      SELECT
+        p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url,
+        NULL::text AS claim_status,
+        (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+        (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count,
+        (SELECT COALESCE(array_agg(pc.capability ORDER BY pc.capability), ARRAY[]::text[])
+           FROM provider_capabilities pc WHERE pc.provider_id = p.id) AS capabilities,
+        loc.lat AS lat,
+        loc.lng AS lng,
+        loc.name AS location_name,
+        loc.address AS location_address,
+        loc.hours_json AS hours_json,
+        NULL::text AS pet_policy
+      FROM providers p
+      LEFT JOIN LATERAL (
+        SELECT lat, lng, name, address, hours_json
+        FROM provider_locations pl
+        WHERE pl.provider_id = p.id
+        ORDER BY pl.id ASC
+        LIMIT 1
+      ) loc ON true
+      WHERE p.status = 'published'
+        -- Exclude demo/seed providers (0111) from real discovery.
+        AND p.is_demo IS NOT TRUE
+        AND (
+          ${capability}::text IS NULL
+          OR EXISTS (
+            SELECT 1 FROM provider_capabilities pc
+            WHERE pc.provider_id = p.id AND pc.capability = ${capability}
+          )
+        )
+        AND (${providerType}::text IS NULL OR p.provider_type = ${providerType})
+        AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
+        AND (
+          ${applyRadius ? false : true}
+          OR (
+            loc.lat IS NOT NULL AND loc.lng IS NOT NULL
+            AND loc.lat BETWEEN ${latMin} AND ${latMax}
+            AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
+          )
+        )
+      ORDER BY p.name ASC
+    `;
+
+    let rows;
+    try {
+      rows = await withSavepoint(selectFull);
+    } catch (e) {
+      if (e?.code !== UNDEFINED_COLUMN) throw e;
+      rows = await selectPreMigration();
+    }
 
     // No geo → published set in name order (the pre-P1 behaviour, now with the extra
     // fields). With geo → attach distance_km and re-sort nearest-first; providers
