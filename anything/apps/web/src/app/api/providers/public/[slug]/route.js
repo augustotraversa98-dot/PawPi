@@ -1,6 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+
+const UNDEFINED_COLUMN = "42703"; // pre-0124/0125 DB lacks claim_status/pet_policy → degrade cleanly
 
 // A single published provider's PUBLIC profile (docs/provider-design.md §4 item 5).
 // Viewable by any logged-in user. Returns public business info + the provider's
@@ -38,7 +40,13 @@ async function GET(request, { params }) {
     // review_count (ticket 2.2) come from correlated subqueries over provider_reviews —
     // always-correct, no cached column. No reviews → avg_rating NULL + review_count 0.
     // cover_image_url (ticket 2.22) is the storefront banner.
-    const providers = await sql`
+    //
+    // DEGRADE-CLEAN (house pattern; see SCHEMA_NOTES "hand-applied to Supabase after
+    // merge"): p.claim_status is an additive column from 0124, hand-applied to Supabase
+    // AFTER this code deploys. Try it first, in a SAVEPOINT (this handler runs inside
+    // withRequestContext's transaction); on undefined_column (42703) retry without it —
+    // ClaimCTA already renders nothing when claim_status isn't 'unclaimed'.
+    const selectProviderFull = () => sql`
       SELECT
         p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url, p.cover_image_url,
         p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
@@ -50,19 +58,61 @@ async function GET(request, { params }) {
       WHERE p.slug = ${slug} AND p.status = 'published'
       LIMIT 1
     `;
+    const selectProviderPreMigration = () => sql`
+      SELECT
+        p.id, p.slug, p.name, p.provider_type, p.bio, p.logo_url, p.cover_image_url,
+        p.website_url, p.instagram_url, p.facebook_url, p.google_maps_url,
+        p.storefront_section_order,
+        NULL::text AS claim_status,
+        (SELECT ROUND(AVG(r.rating)::numeric, 1) FROM provider_reviews r WHERE r.provider_id = p.id) AS avg_rating,
+        (SELECT COUNT(*)::int FROM provider_reviews r WHERE r.provider_id = p.id) AS review_count
+      FROM providers p
+      WHERE p.slug = ${slug} AND p.status = 'published'
+      LIMIT 1
+    `;
+    let providers;
+    try {
+      providers = await withSavepoint(selectProviderFull);
+    } catch (e) {
+      if (e?.code !== UNDEFINED_COLUMN) throw e;
+      providers = await selectProviderPreMigration();
+    }
     if (providers.length === 0) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
 
     const provider = providers[0];
 
-    // All locations surface; only active services do. These reads (plus the two to_regclass
+    // Locations — pulled out of the concurrent batch below because it carries
+    // pet_policy (additive, 0124), the same pre-migration DEGRADE-CLEAN concern as
+    // claim_status above: run in its own SAVEPOINT so a 42703 here can't abort the
+    // sibling queries sharing this request's transaction/connection.
+    const selectLocationsFull = () => sql`
+      SELECT id, name, address, lat, lng, hours_json, phone, pet_policy
+      FROM provider_locations
+      WHERE provider_id = ${provider.id}
+      ORDER BY created_at ASC
+    `;
+    const selectLocationsPreMigration = () => sql`
+      SELECT id, name, address, lat, lng, hours_json, phone, NULL::text AS pet_policy
+      FROM provider_locations
+      WHERE provider_id = ${provider.id}
+      ORDER BY created_at ASC
+    `;
+    let locations;
+    try {
+      locations = await withSavepoint(selectLocationsFull);
+    } catch (e) {
+      if (e?.code !== UNDEFINED_COLUMN) throw e;
+      locations = await selectLocationsPreMigration();
+    }
+
+    // The rest surface; only active services do. These reads (plus the two to_regclass
     // probes and the posts-scoped postsCount) are all independent of one another — none depends
     // on another's result — so they're fired together instead of one-by-one, which was adding a
     // full network round trip per query on this hot storefront read path (perf fix, no behavior
     // change; same pattern already used in vet-record/summary and vet-record/full-summary).
     const [
-      locations,
       services,
       capabilityRows,
       products,
@@ -72,12 +122,6 @@ async function GET(request, { params }) {
       pawsProbe,
       walkPackagesProbe,
     ] = await Promise.all([
-      sql`
-        SELECT id, name, address, lat, lng, hours_json, phone, pet_policy
-        FROM provider_locations
-        WHERE provider_id = ${provider.id}
-        ORDER BY created_at ASC
-      `,
       sql`
         SELECT id, name, description, duration_min, price_cents, deposit_cents, payment_policy, image_urls, active, is_featured, sort_order
         FROM provider_services
