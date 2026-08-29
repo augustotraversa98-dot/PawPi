@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, Image, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -18,7 +25,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
-import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { useRefresh } from "@/hooks/useRefresh";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
@@ -40,6 +47,7 @@ export default function GroomingScreen() {
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
+  const { refreshing, onRefresh } = useRefresh(refetch);
 
   const openProvider = (slug) => {
     router.push({
@@ -95,57 +103,76 @@ export default function GroomingScreen() {
         </PressableScale>
       </GlassSurface>
 
-      <RefreshableScrollView
-        refetch={refetch}
+      {/* PERF (crash fix): virtualized list — see vet.jsx. FlatList renders only what's on
+          screen so a populated directory (100s+ of groomers) can't freeze the JS thread. */}
+      <FlatList
+        data={isLoading || isError || !hasProviders ? [] : filtered}
+        keyExtractor={(p) => String(p.id)}
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
-      >
-        <Text
-          style={[
-            TYPE.subhead,
-            { color: COLORS.mutedBrown, fontWeight: "800", marginBottom: SPACING.md + 2, letterSpacing: 0.6 },
-          ]}
-        >
-          GROOMERS NEAR YOU
-        </Text>
-
-        {hasProviders ? (
-          <ProviderListControls
-            query={query}
-            setQuery={setQuery}
-            sort={sort}
-            setSort={setSort}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.coral}
+            colors={[COLORS.coral]}
           />
-        ) : null}
-
-        {isLoading ? (
-          <View style={{ paddingVertical: 48, alignItems: "center" }}>
-            <ActivityIndicator color={COLORS.coral} />
-          </View>
-        ) : isError ? (
-          <EmptyState
-            title="Couldn't load groomers"
-            body="Something went wrong. Pull down to try again."
-          />
-        ) : !hasProviders ? (
-          <EmptyState
-            title="No groomers available yet"
-            body="Check back soon — groomers are joining PawPi."
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title={t("common.noResults")}
-            body={t("providers.noMatchBody", { query: query.trim() })}
-          />
-        ) : (
-          filtered.map((p) => (
-            <ProviderCard
-              key={p.id}
-              provider={p}
-              onPress={() => openProvider(p.slug)}
-            />
-          ))
+        }
+        ListHeaderComponent={
+          <>
+            <Text
+              style={[
+                TYPE.subhead,
+                {
+                  color: COLORS.mutedBrown,
+                  fontWeight: "800",
+                  marginBottom: SPACING.md + 2,
+                  letterSpacing: 0.6,
+                },
+              ]}
+            >
+              GROOMERS NEAR YOU
+            </Text>
+            {hasProviders ? (
+              <ProviderListControls
+                query={query}
+                setQuery={setQuery}
+                sort={sort}
+                setSort={setSort}
+              />
+            ) : null}
+          </>
+        }
+        renderItem={({ item }) => (
+          <ProviderCard provider={item} onPress={() => openProvider(item.slug)} />
         )}
-      </RefreshableScrollView>
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={{ paddingVertical: 48, alignItems: "center" }}>
+              <ActivityIndicator color={COLORS.coral} />
+            </View>
+          ) : isError ? (
+            <EmptyState
+              title="Couldn't load groomers"
+              body="Something went wrong. Pull down to try again."
+            />
+          ) : !hasProviders ? (
+            <EmptyState
+              title="No groomers available yet"
+              body="Check back soon — groomers are joining PawPi."
+            />
+          ) : (
+            <EmptyState
+              title={t("common.noResults")}
+              body={t("providers.noMatchBody", { query: query.trim() })}
+            />
+          )
+        }
+      />
     </View>
   );
 }

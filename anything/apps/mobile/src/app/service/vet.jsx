@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, Image, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -18,7 +25,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
-import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { useRefresh } from "@/hooks/useRefresh";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
@@ -36,6 +43,7 @@ export default function VetScreen() {
   const { query, setQuery, sort, setSort, filtered } =
     useProviderListFilter(providers);
   const hasProviders = !!providers && providers.length > 0;
+  const { refreshing, onRefresh } = useRefresh(refetch);
 
   const openProvider = (slug) => {
     router.push({ pathname: "/service/provider", params: { slug } });
@@ -88,48 +96,64 @@ export default function VetScreen() {
         </PressableScale>
       </GlassSurface>
 
-      <RefreshableScrollView
-        refetch={refetch}
+      {/* PERF (crash fix): virtualized list. Once the seeded directory populates this screen
+          (1,000+ vets), rendering every card in a ScrollView froze/crashed the JS thread; a
+          FlatList mounts only what's visible. Controls sit in ListHeaderComponent (passed as an
+          element so the search box keeps focus while typing); all states go through
+          ListEmptyComponent. */}
+      <FlatList
+        data={isLoading || isError || !hasProviders ? [] : filtered}
+        keyExtractor={(p) => String(p.id)}
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 80 }}
-      >
-        {hasProviders ? (
-          <ProviderListControls
-            query={query}
-            setQuery={setQuery}
-            sort={sort}
-            setSort={setSort}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.coral}
+            colors={[COLORS.coral]}
           />
-        ) : null}
-
-        {isLoading ? (
-          <View style={{ paddingVertical: 48, alignItems: "center" }}>
-            <ActivityIndicator color={COLORS.coral} />
-          </View>
-        ) : isError ? (
-          <EmptyState
-            title="Couldn't load vets"
-            body="Something went wrong. Pull down to try again."
-          />
-        ) : !hasProviders ? (
-          <EmptyState
-            title="No vets available yet"
-            body="Check back soon — vet clinics are joining PawPi."
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title={t("common.noResults")}
-            body={t("providers.noMatchBody", { query: query.trim() })}
-          />
-        ) : (
-          filtered.map((p) => (
-            <ProviderCard
-              key={p.id}
-              provider={p}
-              onPress={() => openProvider(p.slug)}
+        }
+        ListHeaderComponent={
+          hasProviders ? (
+            <ProviderListControls
+              query={query}
+              setQuery={setQuery}
+              sort={sort}
+              setSort={setSort}
             />
-          ))
+          ) : null
+        }
+        renderItem={({ item }) => (
+          <ProviderCard provider={item} onPress={() => openProvider(item.slug)} />
         )}
-      </RefreshableScrollView>
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={{ paddingVertical: 48, alignItems: "center" }}>
+              <ActivityIndicator color={COLORS.coral} />
+            </View>
+          ) : isError ? (
+            <EmptyState
+              title="Couldn't load vets"
+              body="Something went wrong. Pull down to try again."
+            />
+          ) : !hasProviders ? (
+            <EmptyState
+              title="No vets available yet"
+              body="Check back soon — vet clinics are joining PawPi."
+            />
+          ) : (
+            <EmptyState
+              title={t("common.noResults")}
+              body={t("providers.noMatchBody", { query: query.trim() })}
+            />
+          )
+        }
+      />
     </View>
   );
 }

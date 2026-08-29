@@ -6,6 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
+  RefreshControl,
   ActivityIndicator,
   Platform,
   useWindowDimensions,
@@ -14,7 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetFlatList,
+} from "@gorhom/bottom-sheet";
+import { useRefresh } from "@/hooks/useRefresh";
 import {
   ArrowLeft,
   Store,
@@ -31,7 +37,6 @@ import {
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
-import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useServicesDiscover } from "@/hooks/useServicesDiscover";
 import { useIsWideScreen } from "@/hooks/useIsWideScreen";
@@ -93,6 +98,13 @@ const STORES_VETS_ALLOWED = [...STORES_VETS_CATEGORIES, ...PLACE_CATEGORIES];
 // When the user searches a free-text LOCATION, bound results to this radius (km) around it so the
 // list shows what's near that place (device/near-me geo stays unbounded).
 const LOCATION_SEARCH_RADIUS_KM = 25;
+
+// PERF (crash fix): the seeded directory can surface thousands of located items, and plotting every
+// one as a native react-native-maps pin freezes/crashes the JS+UI thread (esp. on the New
+// Architecture). Cap the number of pins actually drawn — the list stays complete (virtualized
+// FlatList), only the map is bounded to the first N of the shown set (selected item is hoisted to
+// the top of displayItems, so its pin is always within the cap).
+const MAX_MAP_MARKERS = 60;
 
 function formatKm(km) {
   if (km == null) return null;
@@ -323,18 +335,24 @@ export default function ServicesDiscovery({
 
   // Map data: only the shown items that actually have a location (providers OR places).
   const withCoords = useMemo(() => displayItems.filter(hasCoords), [displayItems]);
+  // PERF: bound the pins actually plotted (see MAX_MAP_MARKERS). displayItems already hoists the
+  // selected item to the top, so a tapped/selected pin is always inside this slice.
+  const mapItems = useMemo(
+    () => withCoords.slice(0, MAX_MAP_MARKERS),
+    [withCoords],
+  );
   const markers = useMemo(
     () =>
-      withCoords.map((it) => ({
+      mapItems.map((it) => ({
         lat: Number(it.lat),
         lng: Number(it.lng),
         id: it.id,
         title: it.name,
       })),
-    [withCoords],
+    [mapItems],
   );
   const selectedIndex = useMemo(
-    () => withCoords.findIndex((it) => it.id === selectedId),
+    () => mapItems.findIndex((it) => it.id === selectedId),
     [withCoords, selectedId],
   );
 
@@ -625,41 +643,61 @@ export default function ServicesDiscovery({
     </>
   );
 
-  const results =
-    displayItems.length === 0 ? (
-      <EmptyState
-        testID="discover-no-results"
-        title={t("discover.noResultsTitle")}
-        body={t("discover.noResultsBody")}
-        action={
-          <PressableScale
-            testID="discover-clear-filters"
-            onPress={clearFilters}
-            style={{
-              marginTop: SPACING.md,
-              paddingHorizontal: SPACING.lg,
-              paddingVertical: SPACING.sm + 2,
-              borderRadius: RADIUS.chip,
-              backgroundColor: COLORS.coral,
-            }}
-          >
-            <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>
-              {t("discover.clearFilters")}
-            </Text>
-          </PressableScale>
-        }
+  // PERF (crash fix): the results list is VIRTUALIZED. The seeded directory can return thousands of
+  // items, and rendering them all with .map() inside a ScrollView froze/crashed the JS thread (tab
+  // switches + search stopped responding). A FlatList renders only what's on screen. The header
+  // content (filters/search) is passed as an ELEMENT to ListHeaderComponent — never an inline
+  // function component — so the search TextInput reconciles in place and keeps focus while typing.
+  const { refreshing, onRefresh } = useRefresh(refetch);
+
+  const keyExtractor = useCallback((it) => `${it.type}-${it.id}`, []);
+  const renderResult = useCallback(
+    ({ item }) => (
+      <ResultCard
+        item={item}
+        t={t}
+        selected={item.id === selectedId}
+        onPress={() => openItem(item)}
       />
-    ) : (
-      displayItems.map((it) => (
-        <ResultCard
-          key={`${it.type}-${it.id}`}
-          item={it}
-          t={t}
-          selected={it.id === selectedId}
-          onPress={() => openItem(it)}
-        />
-      ))
-    );
+    ),
+    [t, selectedId, openItem],
+  );
+  // Shared virtualization tuning. removeClippedSubviews is left OFF: on the New Architecture it has
+  // caused blank/disappearing rows, and windowSize already bounds mounted rows.
+  const listPerf = {
+    keyExtractor,
+    renderItem: renderResult,
+    initialNumToRender: 8,
+    maxToRenderPerBatch: 8,
+    windowSize: 7,
+    removeClippedSubviews: false,
+    keyboardShouldPersistTaps: "handled",
+    keyboardDismissMode: "on-drag",
+  };
+  const noResultsNode = (
+    <EmptyState
+      testID="discover-no-results"
+      title={t("discover.noResultsTitle")}
+      body={t("discover.noResultsBody")}
+      action={
+        <PressableScale
+          testID="discover-clear-filters"
+          onPress={clearFilters}
+          style={{
+            marginTop: SPACING.md,
+            paddingHorizontal: SPACING.lg,
+            paddingVertical: SPACING.sm + 2,
+            borderRadius: RADIUS.chip,
+            backgroundColor: COLORS.coral,
+          }}
+        >
+          <Text style={[TYPE.subhead, { color: "#fff", fontWeight: "800" }]}>
+            {t("discover.clearFilters")}
+          </Text>
+        </PressableScale>
+      }
+    />
+  );
 
   // Subtle "how many are on the map" note (never fabricate a pin).
   const offMapNote =
@@ -712,18 +750,30 @@ export default function ServicesDiscovery({
     body = (
       <View testID="discover-split" style={{ flex: 1, flexDirection: "row" }}>
         <View style={{ flex: 1, borderRightWidth: 1, borderColor: MATERIALS.glassBorder }}>
-          <RefreshableScrollView
-            refetch={refetch}
+          <FlatList
+            data={displayItems}
             // Liquid Glass: clear the translucent iOS 26 tab bar natively.
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={{ padding: SPACING.lg, paddingBottom: SPACING.xxl }}
-          >
-            {deniedBanner}
-            {filterBar}
-            {searchAndSort}
-            {offMapNote}
-            {results}
-          </RefreshableScrollView>
+            ListHeaderComponent={
+              <>
+                {deniedBanner}
+                {filterBar}
+                {searchAndSort}
+                {offMapNote}
+              </>
+            }
+            ListEmptyComponent={noResultsNode}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={COLORS.coral}
+                colors={[COLORS.coral]}
+              />
+            }
+            {...listPerf}
+          />
         </View>
         <View style={{ flex: 1 }}>{mapNode}</View>
       </View>
@@ -773,30 +823,44 @@ export default function ServicesDiscovery({
             />
           )}
         >
-          <BottomSheetScrollView
+          <BottomSheetFlatList
+            data={displayItems}
             contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}
-          >
-            {searchAndSort}
-            {results}
-          </BottomSheetScrollView>
+            ListHeaderComponent={searchAndSort}
+            ListEmptyComponent={noResultsNode}
+            {...listPerf}
+          />
         </BottomSheet>
       </View>
     );
   } else {
     // Narrow list mode (default; also the only mode on Android / web-narrow).
     body = (
-      <RefreshableScrollView
-        refetch={refetch}
+      <FlatList
+        testID="discover-list"
+        data={displayItems}
         // Liquid Glass: clear the translucent iOS 26 tab bar natively.
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: SPACING.lg, paddingBottom: SPACING.xxl }}
-      >
-        {deniedBanner}
-        {toggle}
-        {filterBar}
-        {searchAndSort}
-        {results}
-      </RefreshableScrollView>
+        ListHeaderComponent={
+          <>
+            {deniedBanner}
+            {toggle}
+            {filterBar}
+            {searchAndSort}
+          </>
+        }
+        ListEmptyComponent={noResultsNode}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.coral}
+            colors={[COLORS.coral]}
+          />
+        }
+        {...listPerf}
+      />
     );
   }
 

@@ -90,7 +90,7 @@ jest.mock("@/utils/geocoding", () => ({
 // the sheet opens at the lower peek snap.
 jest.mock("@gorhom/bottom-sheet", () => {
   const React = require("react");
-  const { View, Text } = require("react-native");
+  const { View, Text, FlatList } = require("react-native");
   const BottomSheet = React.forwardRef(({ children, index }, ref) => {
     React.useImperativeHandle(ref, () => ({ snapToIndex: jest.fn() }));
     return (
@@ -104,6 +104,9 @@ jest.mock("@gorhom/bottom-sheet", () => {
     __esModule: true,
     default: BottomSheet,
     BottomSheetScrollView: ({ children }) => <View>{children}</View>,
+    // Delegate the sheet's list to the REAL FlatList so data/renderItem/ListHeaderComponent
+    // render (the component now virtualizes the sheet list with BottomSheetFlatList).
+    BottomSheetFlatList: FlatList,
   };
 });
 
