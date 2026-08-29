@@ -117,12 +117,27 @@ async function GET(request) {
             WHERE p.status = 'published'
               -- Exclude demo/seed providers (0111) from real discovery.
               AND p.is_demo IS NOT TRUE
+              -- HighLatencyP95: the 0124/0125 directory seed (load_master.mjs) publishes 3,627
+              -- vet/shop/groomer/pet_friendly rows with NO provider_capabilities row, unlike
+              -- every owner-created provider (always >=1, see POST /api/providers). The
+              -- 'all'/no-category branch used to mean "every published provider" == "every
+              -- capability-bearing provider" — that invariant broke, so the unified Discover hub
+              -- (always fetches category='all', filters client-side) now pays this row's three
+              -- correlated subqueries per capability-less seed row on every load. Those rows
+              -- aren't reachable via any single-category filter either (same EXISTS below) and
+              -- have their own surfaces (pet-friendly.jsx, claim CTA) — require >=1 capability
+              -- when unfiltered too, to restore the pre-seed row count without hiding any real,
+              -- bookable provider.
               AND (
-                ${capability}::text IS NULL
-                OR EXISTS (
-                  SELECT 1 FROM provider_capabilities pc
-                  WHERE pc.provider_id = p.id AND pc.capability = ${capability}
-                )
+                CASE
+                  WHEN ${capability}::text IS NOT NULL THEN EXISTS (
+                    SELECT 1 FROM provider_capabilities pc
+                    WHERE pc.provider_id = p.id AND pc.capability = ${capability}
+                  )
+                  ELSE EXISTS (
+                    SELECT 1 FROM provider_capabilities pc WHERE pc.provider_id = p.id
+                  )
+                END
               )
               AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
               AND (
