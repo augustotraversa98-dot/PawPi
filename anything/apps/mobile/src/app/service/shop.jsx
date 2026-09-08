@@ -5,6 +5,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  FlatList,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -19,6 +21,7 @@ import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
+import { useRefresh } from "@/hooks/useRefresh";
 import {
   useDiscoverProviders,
   useShopOrders,
@@ -140,33 +143,50 @@ export default function ShopScreen() {
 function BrowseTab({ onOpenShop }) {
   const { t } = useTranslation();
   const { data: shops, isLoading, isError, refetch } = useDiscoverProviders("shop");
+  const { refreshing, onRefresh } = useRefresh(refetch);
+  const hasShops = Array.isArray(shops) && shops.length > 0;
 
+  // PERF (crash fix): virtualized list — once the seeded directory populates this tab (1,000+
+  // shops), rendering every card in a ScrollView froze the JS thread. A FlatList mounts only
+  // what's on screen.
   return (
-    <RefreshableScrollView
-      refetch={refetch}
+    <FlatList
+      data={isLoading || isError || !hasShops ? [] : shops}
+      keyExtractor={(s) => String(s.id)}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
-    >
-      <SectionLabel>{t("shop.shopsNearYou")}</SectionLabel>
-      {isLoading ? (
-        <View style={{ paddingVertical: 48, alignItems: "center" }}>
-          <ActivityIndicator color={COLORS.coral} />
-        </View>
-      ) : isError ? (
-        <EmptyState
-          title={t("shop.couldNotLoadShops")}
-          body={t("shop.pullDownRetry")}
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      windowSize={7}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={COLORS.coral}
+          colors={[COLORS.coral]}
         />
-      ) : !shops || shops.length === 0 ? (
-        <EmptyState
-          title={t("shop.noShopsYet")}
-          body={t("shop.shopsComingSoon")}
-        />
-      ) : (
-        shops.map((s) => (
-          <ShopCard key={s.id} shop={s} onPress={() => onOpenShop(s)} />
-        ))
+      }
+      ListHeaderComponent={<SectionLabel>{t("shop.shopsNearYou")}</SectionLabel>}
+      renderItem={({ item }) => (
+        <ShopCard shop={item} onPress={() => onOpenShop(item)} />
       )}
-    </RefreshableScrollView>
+      ListEmptyComponent={
+        isLoading ? (
+          <View style={{ paddingVertical: 48, alignItems: "center" }}>
+            <ActivityIndicator color={COLORS.coral} />
+          </View>
+        ) : isError ? (
+          <EmptyState
+            title={t("shop.couldNotLoadShops")}
+            body={t("shop.pullDownRetry")}
+          />
+        ) : (
+          <EmptyState
+            title={t("shop.noShopsYet")}
+            body={t("shop.shopsComingSoon")}
+          />
+        )
+      }
+    />
   );
 }
 
