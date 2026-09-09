@@ -64,6 +64,41 @@ const withDeadline = (init: Params[1] | undefined) => {
   return { signal: controller.signal, clear: () => clearTimeout(timer) };
 };
 
+// The sign-in bridge routes 401 as part of their normal protocol; never treat those as an
+// expired session.
+const isAuthBridgeURL = (url: string) => {
+  const base = process.env.EXPO_PUBLIC_BASE_URL;
+  const path = base && url.startsWith(base) ? url.slice(base.length) : url;
+  return path.startsWith('/api/auth/');
+};
+
+let sessionExpiryInFlight = false;
+const handleSessionExpired = () => {
+  // Several queries usually fail together; sign out once.
+  if (sessionExpiryInFlight) return;
+  sessionExpiryInFlight = true;
+  try {
+    const { useAuthStore } = require('@/utils/auth/store');
+    if (useAuthStore.getState().auth) {
+      useAuthStore.getState().setAuth(null);
+    }
+    const { router } = require('expo-router');
+    router.replace('/welcome');
+  } catch {
+    // Never let session handling break the request itself.
+  } finally {
+    // Allow a later, genuinely new session to be handled again.
+    setTimeout(() => {
+      sessionExpiryInFlight = false;
+    }, 1000);
+  }
+};
+
+// Test-only: clear the one-shot guard between cases.
+export const __resetSessionExpiryForTests = () => {
+  sessionExpiryInFlight = false;
+};
+
 type Params = Parameters<typeof expoFetch>;
 const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
@@ -143,6 +178,19 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     });
   } finally {
     deadline.clear();
+  }
+
+  // Expired / revoked session (AUDIT_2026-09 A-07). A 401 on an /api route while we were
+  // sending a bearer means the stored JWT is dead. Before this, nothing reacted: every query
+  // and mutation kept failing until the user force-quit so the EntryPoint could notice.
+  // Drop the session (which also clears the React-Query cache) and send the user to Welcome.
+  // Guards: only first-party /api URLs, only when a bearer was actually attached (an
+  // unauthenticated 401 is the caller's business), and never for the auth bridge itself
+  // (/api/auth/*), which legitimately 401s during sign-in. The auth store + router are
+  // required lazily so this entry-file module keeps zustand/expo-router out of its import
+  // graph (see utils/auth/secureStore).
+  if (auth && response.status === 401 && isApiURL(url) && !isAuthBridgeURL(url)) {
+    handleSessionExpired();
   }
 
   // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —

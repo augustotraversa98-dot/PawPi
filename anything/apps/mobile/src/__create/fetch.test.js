@@ -179,3 +179,87 @@ describe('first-party request deadline', () => {
     expect(init?.signal ?? null).toBeNull();
   });
 });
+
+// Expired session (AUDIT_2026-09 A-07): a 401 on an /api route while a bearer was attached
+// must drop the session and route to Welcome — once — and never fire for the auth bridge or
+// for requests that carried no token.
+describe('expired-session handling', () => {
+  const mockSetAuth = jest.fn();
+  const mockReplace = jest.fn();
+  let storedAuth;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.requireActual('./fetch').__resetSessionExpiryForTests();
+    mockSetAuth.mockClear();
+    mockReplace.mockClear();
+    storedAuth = { jwt: 'test-jwt', user: { id: 'u1' } };
+    jest.doMock('@/utils/auth/store', () => ({
+      useAuthStore: {
+        getState: () => ({
+          auth: storedAuth,
+          setAuth: (v) => {
+            storedAuth = v;
+            mockSetAuth(v);
+          },
+        }),
+      },
+    }));
+    jest.doMock('expo-router', () => ({ router: { replace: mockReplace } }));
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.dontMock('@/utils/auth/store');
+    jest.dontMock('expo-router');
+  });
+
+  const unauthorized = () => resp({ ok: false, status: 401, contentType: 'application/json' });
+
+  test('401 with a bearer on an /api route signs out and goes to Welcome', async () => {
+    expoFetch.mockResolvedValueOnce(unauthorized());
+
+    const res = await fetchToWeb('/api/pets');
+
+    expect(res.status).toBe(401);
+    expect(mockSetAuth).toHaveBeenCalledWith(null);
+    expect(mockReplace).toHaveBeenCalledWith('/welcome');
+  });
+
+  test('a burst of 401s signs out only once', async () => {
+    expoFetch.mockResolvedValue(unauthorized());
+
+    await Promise.all([fetchToWeb('/api/pets'), fetchToWeb('/api/posts'), fetchToWeb('/api/routines')]);
+
+    expect(mockSetAuth).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+  });
+
+  test('401 without a stored token is left to the caller', async () => {
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    expoFetch.mockResolvedValueOnce(unauthorized());
+
+    await fetchToWeb('/api/pets');
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('401 from the auth bridge never counts as an expired session', async () => {
+    expoFetch.mockResolvedValueOnce(unauthorized());
+
+    await fetchToWeb('/api/auth/token');
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('a non-401 failure does not sign out', async () => {
+    expoFetch.mockResolvedValueOnce(resp({ ok: false, status: 500, contentType: 'application/json' }));
+
+    await fetchToWeb('/api/pets');
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+  });
+});
