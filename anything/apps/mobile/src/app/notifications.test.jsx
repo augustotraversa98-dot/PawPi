@@ -47,8 +47,16 @@ jest.mock("@/store/socialPetStore", () => ({
   __esModule: true,
   default: (selector) => selector(mockStoreState),
 }));
+let mockDbLoading = false;
+let mockDbError = false;
+const mockRefetchDb = jest.fn();
 jest.mock("@/hooks/useNotifications", () => ({
-  useNotifications: () => ({ data: mockDbNotifications }),
+  useNotifications: () => ({
+    data: mockDbNotifications,
+    isLoading: mockDbLoading,
+    isError: mockDbError,
+    refetch: mockRefetchDb,
+  }),
   useMarkNotificationsRead: () => ({ mutate: mockMarkRead }),
 }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
@@ -383,4 +391,33 @@ test("empty state when there are no notifications", () => {
   mockDbNotifications = [];
   const { getByText } = render(<NotificationsScreen />);
   expect(getByText("No new notifications yet")).toBeTruthy();
+});
+
+// AUDIT_2026-09 A-09: the list must not claim "all caught up" while loading or after a failure.
+describe("loading / error gates", () => {
+  afterEach(() => {
+    mockDbLoading = false;
+    mockDbError = false;
+    mockRefetchDb.mockClear();
+  });
+
+  test("shows a spinner while the API list is loading and nothing is merged yet", () => {
+    mockDbNotifications = undefined;
+    mockStoreState = { ...mockStoreState, notifications: [] };
+    mockDbLoading = true;
+    const { getByTestId, queryByText } = render(<NotificationsScreen />);
+    expect(getByTestId("notifications-loading")).toBeTruthy();
+    expect(queryByText("No new notifications yet")).toBeNull();
+  });
+
+  test("shows an error with Retry when the API list failed and nothing is merged", () => {
+    mockDbNotifications = undefined;
+    mockStoreState = { ...mockStoreState, notifications: [] };
+    mockDbError = true;
+    const { getByTestId, getByText, queryByText } = render(<NotificationsScreen />);
+    expect(getByTestId("notifications-error")).toBeTruthy();
+    expect(queryByText("No new notifications yet")).toBeNull();
+    fireEvent.press(getByText("Try again"));
+    expect(mockRefetchDb).toHaveBeenCalled();
+  });
 });

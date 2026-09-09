@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Image } from "react-native";
+import { View, Text, ScrollView, Image, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   X,
@@ -466,7 +466,12 @@ export default function NotificationsScreen() {
     (state) => state.markAllNotificationsRead,
   );
 
-  const { data: dbNotifications } = useNotifications();
+  const {
+    data: dbNotifications,
+    isLoading: dbLoading,
+    isError: dbError,
+    refetch: refetchDb,
+  } = useNotifications();
   const markRead = useMarkNotificationsRead();
 
   // Pending care-access requests (a vet/business asking to see a pet's records)
@@ -668,7 +673,37 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
-        {filteredNotifications.length === 0 ? (
+        {/* Loading / error gates (AUDIT_2026-09 A-09): the list used to render "all caught
+            up" while the fetch was in flight and stayed that way on failure. */}
+        {dbLoading && filteredNotifications.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 80 }} testID="notifications-loading">
+            <ActivityIndicator color={COLORS.coral} />
+          </View>
+        ) : dbError && filteredNotifications.length === 0 ? (
+          <View
+            style={{ alignItems: "center", paddingVertical: 80, paddingHorizontal: SPACING.xl, gap: SPACING.md }}
+            testID="notifications-error"
+          >
+            <PawMark size={48} color={COLORS.coral} />
+            <Text style={[TYPE.callout, { color: COLORS.warmBrown, textAlign: "center" }]}>
+              {t("notifications.loadError")}
+            </Text>
+            <PressableScale
+              onPress={() => refetchDb()}
+              accessibilityRole="button"
+              style={{
+                backgroundColor: COLORS.coral,
+                paddingHorizontal: SPACING.xl,
+                paddingVertical: SPACING.sm,
+                borderRadius: 24,
+              }}
+            >
+              <Text style={[TYPE.callout, { color: COLORS.cream, fontWeight: "700" }]}>
+                {t("common.retry")}
+              </Text>
+            </PressableScale>
+          </View>
+        ) : filteredNotifications.length === 0 ? (
           <View style={{ alignItems: "center", paddingVertical: 80 }}>
             <PawMark size={48} color={COLORS.coral} />
             <Text

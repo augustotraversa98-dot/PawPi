@@ -19,6 +19,7 @@
     "after": "Después"
   },
   "petProfile": {
+    "loadError": "No pudimos cargar este perfil. Revisá tu conexión e intentá de nuevo.",
     "petProfile": "Perfil de la mascota",
     "withOwner": "con {{name}}",
     "dailyPosts": "Publicaciones diarias",
@@ -1018,6 +1019,7 @@
     "empty": "Todavía no hay conversaciones"
   },
   "notifications": {
+    "loadError": "No pudimos cargar tus notificaciones. Revisá tu conexión e intentá de nuevo.",
     "title": "Notificaciones",
     "markAllRead": "Marcar todo como leído",
     "empty": "Todavía no hay notificaciones",
