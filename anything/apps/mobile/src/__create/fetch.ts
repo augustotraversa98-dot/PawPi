@@ -43,6 +43,27 @@ const isApiURL = (url: string) => {
   return path.startsWith('/api/') || path === '/api';
 };
 
+// Fail-closed deadline for first-party requests (AUDIT_2026-09 A-02). Every React-Query
+// queryFn in the app calls this wrapper with no AbortSignal, so a request that stalls at the
+// TCP level (captive Wi-Fi, half-open socket, backend cold start) used to never settle:
+// `isFetching` stayed true forever and the screen showed an endless spinner — the class of
+// bug that got App Store build 16 rejected. When the caller supplies no signal we attach our
+// own and abort after FIRST_PARTY_TIMEOUT_MS, which turns the hang into a normal rejection
+// that React-Query retries once and then surfaces through the screens' existing error
+// states. The timer is cleared as soon as the response HEADERS arrive, so a slow body
+// download or a streaming (SSE) response is never cut off mid-way. A caller-supplied
+// signal is respected as-is (no deadline is added on top of it).
+export const FIRST_PARTY_TIMEOUT_MS = 15_000;
+
+const withDeadline = (init: Params[1] | undefined) => {
+  if (init?.signal) {
+    return { signal: init.signal, clear: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FIRST_PARTY_TIMEOUT_MS);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+};
+
 type Params = Parameters<typeof expoFetch>;
 const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
@@ -112,10 +133,17 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const fetchImpl = isFormDataBody ? originalFetch : expoFetch;
 
-  const response = await fetchImpl(finalInput, {
-    ...init,
-    headers: finalHeaders,
-  });
+  const deadline = withDeadline(init);
+  let response: Awaited<ReturnType<typeof fetchImpl>>;
+  try {
+    response = await fetchImpl(finalInput, {
+      ...init,
+      headers: finalHeaders,
+      signal: deadline.signal,
+    });
+  } finally {
+    deadline.clear();
+  }
 
   // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —
   // HTTP 200 with an HTML body. Callers do `if (!res.ok) throw; await res.json()`, so res.ok is
