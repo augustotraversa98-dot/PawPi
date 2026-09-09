@@ -9,6 +9,7 @@ import { startReminderNotificationSync } from "@/utils/reminderNotificationSync"
 import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
 import { registerPushTokenAsync } from "@/utils/registerPushToken";
+import { registerNotificationTapRouting } from "@/utils/notificationDeepLink";
 import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
@@ -42,6 +43,14 @@ export default function RootLayout() {
     if (isAuthenticated) {
       registerPushTokenAsync();
     }
+  }, [isAuthenticated]);
+
+  // Route OS notification taps (local reminders + BN2 server pushes) to a real screen —
+  // a tap while running navigates at once; the tap that LAUNCHED the app is parked until
+  // the EntryPoint has made its own routing decision (AUDIT_2026-09 A-08).
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    return registerNotificationTapRouting();
   }, [isAuthenticated]);
 
   // Apply the saved language override (ticket 2.29) — defaults to the phone's language.
