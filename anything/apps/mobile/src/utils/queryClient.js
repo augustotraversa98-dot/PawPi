@@ -11,6 +11,15 @@ export const queryClient = new QueryClient({
       cacheTime: 1000 * 60 * 30, // 30 minutes
       retry: 1,
       refetchOnWindowFocus: false,
+      // Offline must fail CLOSED (AUDIT_2026-09 A-06). The default 'online' mode pauses an
+      // offline query (isLoading=false, data=undefined → every screen renders its EMPTY
+      // state) and pauses an offline mutation (its button spins forever). 'offlineFirst'
+      // fires the request once so it fails fast into the screens' existing error states,
+      // then resumes when connectivity returns (see utils/connectivity.js).
+      networkMode: "offlineFirst",
+    },
+    mutations: {
+      networkMode: "offlineFirst",
     },
   },
 });
