@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { secretEquals } from "@/app/api/utils/secretCompare";
 
 // POST /api/recalls/ingest — machine-to-machine pet-food recall ingest (Wave 7 ticket 2.75).
 //
@@ -13,7 +14,7 @@ async function POST(request) {
   if (!secret) {
     return Response.json({ error: "recall feed not configured" }, { status: 503 });
   }
-  if (request.headers.get("x-cron-secret") !== secret) {
+  if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

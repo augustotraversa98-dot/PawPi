@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { parseIcsBusy, fetchIcsFeed } from "@/app/api/utils/calendarImport";
+import { secretEquals } from "@/app/api/utils/secretCompare";
 
 // POST /api/providers/calendar/sync — the business-calendar IMPORT scheduler (ticket 2.84).
 //
@@ -14,7 +15,7 @@ async function POST(request) {
   if (!secret) {
     return Response.json({ error: "scheduler not configured" }, { status: 503 });
   }
-  if (request.headers.get("x-cron-secret") !== secret) {
+  if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
