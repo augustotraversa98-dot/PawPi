@@ -24,8 +24,13 @@ export const MIGRATIONS_DIR = path.resolve(
  * is supported when no parameters are bound). Fails loudly, naming the file.
  */
 export async function runMigrations(sql: Sql): Promise<string[]> {
+  // Only ever apply properly-numbered migrations (NNNN_*.sql). This deliberately
+  // excludes non-migration .sql files that live alongside them — e.g. the
+  // copy-paste `TEMPLATE.sql` (the secure-migration pattern) and any stray
+  // verify_*.sql — so dropping a helper file into supabase/migrations/ can never
+  // be silently executed against the harness DB.
   const files = (await readdir(MIGRATIONS_DIR))
-    .filter((f) => f.endsWith('.sql'))
+    .filter((f) => /^\d{4}_.*\.sql$/.test(f))
     .sort();
   if (files.length === 0) {
     throw new Error(`No .sql migrations found in ${MIGRATIONS_DIR}`);
