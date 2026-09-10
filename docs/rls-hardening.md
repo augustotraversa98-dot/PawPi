@@ -720,3 +720,35 @@ invariant and forces any new table to be classified.)
   → zero)**, switch `DATABASE_URL` to `pawpi_app`, then a full cross-boundary sweep AS `pawpi_app`
   (owner isolation + provider consent + revoke-instant) on live Supabase. This is where RLS actually
   turns on in production.
+
+## Data-API attack surface & key hygiene (AUDIT_2026-09 A-01 / A-32)
+
+The RLS work above protects rows *once the app connects as `pawpi_app`*. Two things sit **beside**
+it — the Supabase Data API (PostgREST) and the project keys — and they are the P0-latent surface the
+September 2026 audit found. Prevention rules, so this class can't recur:
+
+- **The app never uses the Supabase Data API.** Everything reaches Postgres through the app's own
+  API as `pawpi_app` (porsager `postgres()` over `DATABASE_URL`); the mobile app talks only to
+  `EXPO_PUBLIC_BASE_URL`. There is no `@supabase/supabase-js`, no `createClient`, no anon/publishable
+  key, and no Realtime anywhere in the repo (evidence: `docs/db-data-api-safety-evidence.md`). So the
+  publishable (anon) key **can stay unused**, and the Data API can be closed entirely.
+- **Close the auto-API surface:** in the Supabase Dashboard → **Settings → API → Exposed schemas**,
+  remove `public`. Nothing is lost (the app doesn't use it) and the PostgREST surface goes to zero
+  even if a future migration re-grants something by mistake. This is the belt to `0126`'s braces.
+- **`0126` (hand-applied) revokes the Supabase-default `GRANT ALL … TO anon, authenticated`** on every
+  public table/sequence/function and revokes `EXECUTE … FROM PUBLIC` on routines, then re-grants only
+  `pawpi_app` (+ `service_role` for seeds). `ALTER DEFAULT PRIVILEGES` (in `0126`, on top of `0019`'s
+  grant-to-`pawpi_app`) makes the locked-down state the **default for future objects**, not a
+  per-table thing to remember. `verify_0126.sql` proves anon/authenticated hold zero grants afterward.
+- **Never embed the service-role / secret key client-side.** It is server-only (used by
+  `/api/upload` and the seed scripts as `SUPABASE_SERVICE_ROLE_KEY`, and by `DATABASE_URL`), and it
+  bypasses RLS — shipping it in the mobile bundle or web client would be a full-database credential.
+  It is not in the repo or the bundle today; keep it that way.
+- **If the publishable (anon) key was ever exposed, rotate it** (Dashboard → Settings → API). With
+  the Data API closed and `0126` applied it grants nothing, but rotation is cheap insurance and the
+  app never reads it, so nothing breaks.
+- **CI locks the invariants:** `rls-gap-closure.integration.test.ts` (every public table RLS+policied
+  or documented-exempt) and `security-hardening.integration.test.ts` (`SECURITY DEFINER` search_path
+  pinned; `pawpi_app` is `NOBYPASSRLS`). The anon-grant half of A-01 can't be reproduced in the
+  harness (no anon role / no PostgREST there) → it is guarded by `0126` + `verify_0126.sql` on
+  Supabase and by the evidence doc.
