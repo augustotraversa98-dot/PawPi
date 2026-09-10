@@ -19,14 +19,14 @@ import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
 // nearest-first. No screen consumes the new fields yet; this only widens the contract.
 export function useDiscoverProviders(arg = "vet") {
   const opts = typeof arg === "string" ? { capability: arg } : arg || {};
-  const { capability, provider_type, lat, lng, radius, q, openNow } = opts;
+  const { capability, provider_type, lat, lng, radius, q, openNow, limit, offset } = opts;
 
   return useQuery({
     // Every param is part of the key so distinct filters cache independently.
     queryKey: [
       "providers",
       "discover",
-      { capability, provider_type, lat, lng, radius, q, openNow },
+      { capability, provider_type, lat, lng, radius, q, openNow, limit, offset },
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -39,6 +39,10 @@ export function useDiscoverProviders(arg = "vet") {
       }
       if (q) params.set("q", q);
       if (openNow) params.set("openNow", "true");
+      // Paging (AUDIT_2026-09 A-14): the route caps a page at 500 (default 200) and returns
+      // `page.hasMore`; callers that need the long tail pass limit/offset explicitly.
+      if (limit != null) params.set("limit", String(limit));
+      if (offset != null) params.set("offset", String(offset));
       const qs = params.toString();
       const response = await fetch(
         `/api/providers/discover${qs ? `?${qs}` : ""}`,

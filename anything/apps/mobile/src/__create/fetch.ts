@@ -43,6 +43,62 @@ const isApiURL = (url: string) => {
   return path.startsWith('/api/') || path === '/api';
 };
 
+// Fail-closed deadline for first-party requests (AUDIT_2026-09 A-02). Every React-Query
+// queryFn in the app calls this wrapper with no AbortSignal, so a request that stalls at the
+// TCP level (captive Wi-Fi, half-open socket, backend cold start) used to never settle:
+// `isFetching` stayed true forever and the screen showed an endless spinner — the class of
+// bug that got App Store build 16 rejected. When the caller supplies no signal we attach our
+// own and abort after FIRST_PARTY_TIMEOUT_MS, which turns the hang into a normal rejection
+// that React-Query retries once and then surfaces through the screens' existing error
+// states. The timer is cleared as soon as the response HEADERS arrive, so a slow body
+// download or a streaming (SSE) response is never cut off mid-way. A caller-supplied
+// signal is respected as-is (no deadline is added on top of it).
+export const FIRST_PARTY_TIMEOUT_MS = 15_000;
+
+const withDeadline = (init: Params[1] | undefined) => {
+  if (init?.signal) {
+    return { signal: init.signal, clear: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FIRST_PARTY_TIMEOUT_MS);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+};
+
+// The sign-in bridge routes 401 as part of their normal protocol; never treat those as an
+// expired session.
+const isAuthBridgeURL = (url: string) => {
+  const base = process.env.EXPO_PUBLIC_BASE_URL;
+  const path = base && url.startsWith(base) ? url.slice(base.length) : url;
+  return path.startsWith('/api/auth/');
+};
+
+let sessionExpiryInFlight = false;
+const handleSessionExpired = () => {
+  // Several queries usually fail together; sign out once.
+  if (sessionExpiryInFlight) return;
+  sessionExpiryInFlight = true;
+  try {
+    const { useAuthStore } = require('@/utils/auth/store');
+    if (useAuthStore.getState().auth) {
+      useAuthStore.getState().setAuth(null);
+    }
+    const { router } = require('expo-router');
+    router.replace('/welcome');
+  } catch {
+    // Never let session handling break the request itself.
+  } finally {
+    // Allow a later, genuinely new session to be handled again.
+    setTimeout(() => {
+      sessionExpiryInFlight = false;
+    }, 1000);
+  }
+};
+
+// Test-only: clear the one-shot guard between cases.
+export const __resetSessionExpiryForTests = () => {
+  sessionExpiryInFlight = false;
+};
+
 type Params = Parameters<typeof expoFetch>;
 const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
@@ -112,10 +168,30 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const fetchImpl = isFormDataBody ? originalFetch : expoFetch;
 
-  const response = await fetchImpl(finalInput, {
-    ...init,
-    headers: finalHeaders,
-  });
+  const deadline = withDeadline(init);
+  let response: Awaited<ReturnType<typeof fetchImpl>>;
+  try {
+    response = await fetchImpl(finalInput, {
+      ...init,
+      headers: finalHeaders,
+      signal: deadline.signal,
+    });
+  } finally {
+    deadline.clear();
+  }
+
+  // Expired / revoked session (AUDIT_2026-09 A-07). A 401 on an /api route while we were
+  // sending a bearer means the stored JWT is dead. Before this, nothing reacted: every query
+  // and mutation kept failing until the user force-quit so the EntryPoint could notice.
+  // Drop the session (which also clears the React-Query cache) and send the user to Welcome.
+  // Guards: only first-party /api URLs, only when a bearer was actually attached (an
+  // unauthenticated 401 is the caller's business), and never for the auth bridge itself
+  // (/api/auth/*), which legitimately 401s during sign-in. The auth store + router are
+  // required lazily so this entry-file module keeps zustand/expo-router out of its import
+  // graph (see utils/auth/secureStore).
+  if (auth && response.status === 401 && isApiURL(url) && !isAuthBridgeURL(url)) {
+    handleSessionExpired();
+  }
 
   // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —
   // HTTP 200 with an HTML body. Callers do `if (!res.ok) throw; await res.json()`, so res.ok is

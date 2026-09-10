@@ -9,14 +9,19 @@ import { startReminderNotificationSync } from "@/utils/reminderNotificationSync"
 import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
 import { registerPushTokenAsync } from "@/utils/registerPushToken";
+import { registerNotificationTapRouting } from "@/utils/notificationDeepLink";
 import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
+import { wireQueryConnectivity } from "@/utils/connectivity";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
 
 SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
+// Tell React-Query about offline + background BEFORE any query mounts (A-06 / A-16).
+wireQueryConnectivity();
 
 export default function RootLayout() {
   const { initiate, isReady, isAuthenticated } = useAuth();
@@ -42,6 +47,14 @@ export default function RootLayout() {
     if (isAuthenticated) {
       registerPushTokenAsync();
     }
+  }, [isAuthenticated]);
+
+  // Route OS notification taps (local reminders + BN2 server pushes) to a real screen —
+  // a tap while running navigates at once; the tap that LAUNCHED the app is parked until
+  // the EntryPoint has made its own routing decision (AUDIT_2026-09 A-08).
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    return registerNotificationTapRouting();
   }, [isAuthenticated]);
 
   // Apply the saved language override (ticket 2.29) — defaults to the phone's language.
@@ -124,6 +137,7 @@ export default function RootLayout() {
           <Stack.Screen name="business-adoption" />
         </Stack>
         <AuthModal />
+        <OfflineBanner />
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

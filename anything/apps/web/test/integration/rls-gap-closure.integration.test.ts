@@ -292,15 +292,23 @@ describe('RLS R2g — auth/identity tables are readable as pawpi_app (RLS disabl
 //    R3 gap (RLS-on-no-policy) cannot recur in the harness. The analog of the R1-rollout
 //    route-wrap completeness guard (src/app/api/rls-rollout-completeness.test.js).
 describe('RLS R2g — completeness: every public table is policied or documented-exempt', () => {
-  // The 5 auth/identity infra tables are RLS-EXEMPT by necessity (read pre-identity →
-  // cannot be gated on app.current_user_id). 0026 DISABLEs RLS on them. Any addition here
-  // must be a deliberate, documented decision — that is the whole point of the allowlist.
+  // The 5 auth/identity infra tables are RLS-EXEMPT BY NECESSITY: they are read
+  // BEFORE app.current_user_id exists, so a policy keyed on current_app_user_id()
+  // would deny the very lookups that establish identity (an unbreakable chicken-and-
+  // egg lockout once pawpi_app connects). 0026 DISABLEs RLS on them; they are
+  // protected by the auth flow + 0019's least-privilege grants + 0126's revoke of
+  // anon/authenticated, NOT by row policies. This is why the audit's PREFERRED
+  // remedy ("enable RLS + drop the allowlist") does NOT apply here — enabling RLS on
+  // these would break login. Any ADDITION to this set must be an equally deliberate,
+  // documented decision — that is the whole point of the allowlist.
+  //
+  // WHY EACH IS EXEMPT:
   const RLS_EXEMPT = new Set<string>([
-    'auth_users',
-    'auth_accounts',
-    'auth_sessions',
-    'auth_verification_token',
-    'user_profiles',
+    'auth_users',             // password hashes + identity; read by the Auth.js adapter at login, pre-identity.
+    'auth_accounts',          // OAuth/credential links; read by the adapter during sign-in, pre-identity.
+    'auth_sessions',          // session rows; read/written by the adapter during sign-in, pre-identity.
+    'auth_verification_token',// email/reset tokens; consumed before any session/identity exists.
+    'user_profiles',          // resolveUserId translates auth_user_id → user_profiles.id to STAMP the GUC → must be readable before it is set.
   ]);
 
   it('classifies every base table; none is RLS-enabled-without-a-policy or unclassified', async () => {

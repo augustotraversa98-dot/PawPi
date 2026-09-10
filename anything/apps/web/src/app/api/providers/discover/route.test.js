@@ -50,7 +50,9 @@ describe('GET /api/providers/discover', () => {
     const res = await GET(req());
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ providers: PUBLISHED });
+    const body = await res.json();
+    expect(body.providers).toEqual(PUBLISHED);
+    expect(body.page).toMatchObject({ limit: 200, offset: 0, count: 1 }); // A-14 paging envelope
     // Drafts are excluded by the query, not in code.
     expect(allQueryText()).toContain("status = 'published'");
   });
@@ -146,12 +148,12 @@ describe('GET /api/providers/discover', () => {
     expect(values).toContain('%happy%'); // wrapped + bound, not interpolated
   });
 
-  it('geo ?lat&lng → attaches distance_km and sorts nearest-first', async () => {
+  it('geo ?lat&lng → distance_km is computed and ordered nearest-first IN SQL (A-14: paging-exact)', async () => {
     auth.mockResolvedValue(SESSION);
-    // Two providers: one far, one near. Query order is name ASC; the route re-sorts by distance.
+    // SQL returns the page already nearest-first, distance_km as a numeric string.
     sql.mockResolvedValueOnce([
-      { id: 1, name: 'Far', lat: -34.9, lng: -58.9 },
-      { id: 2, name: 'Near', lat: -34.61, lng: -58.41 },
+      { id: 2, name: 'Near', lat: -34.61, lng: -58.41, distance_km: '1.4' },
+      { id: 1, name: 'Far', lat: -34.9, lng: -58.9, distance_km: '55.2' },
     ]);
 
     // Buenos Aires-ish origin close to provider 2.
@@ -160,9 +162,13 @@ describe('GET /api/providers/discover', () => {
     );
 
     const { providers } = await res.json();
-    expect(providers.map((p) => p.id)).toEqual([2, 1]); // nearest first
+    expect(providers.map((p) => p.id)).toEqual([2, 1]); // SQL order preserved
     expect(providers[0].distance_km).toBeLessThan(providers[1].distance_km);
     expect(typeof providers[0].distance_km).toBe('number');
+    // The origin is bound into the haversine and the ORDER BY is on distance_km.
+    expect(sql.mock.calls[0].slice(1)).toContain(-34.6);
+    expect(sql.mock.calls[0].slice(1)).toContain(-58.4);
+    expect(allQueryText()).toContain('ORDER BY distance_km ASC NULLS LAST');
   });
 
   it('geo: a provider with no coords sorts last with distance_km null', async () => {
@@ -233,5 +239,52 @@ describe('GET /api/providers/discover', () => {
     expect(text).toContain('avg_rating');
     expect(text).toContain('review_count');
     expect(text).toContain('provider_reviews');
+  });
+});
+
+// AUDIT_2026-09 A-14: the directory is paged and nearest-first ordering happens in SQL.
+describe('paging + SQL distance (A-14)', () => {
+  it('binds LIMIT/OFFSET (default 200/0) and reports the page', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+    const res = await GET(new Request('http://localhost/api/providers/discover'));
+    const body = await res.json();
+    expect(allQueryText()).toContain('LIMIT');
+    expect(allQueryText()).toContain('OFFSET');
+    expect(allQueryText()).toContain('ORDER BY distance_km ASC NULLS LAST, p.name ASC');
+    expect(body.page).toEqual({ limit: 200, offset: 0, count: 0, hasMore: false });
+    const values = sql.mock.calls[0].slice(1);
+    expect(values).toContain(200);
+    expect(values).toContain(0);
+  });
+
+  it('honours ?limit/?offset, clamps to 500, and flags hasMore when the page is full', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1 }, { id: 2 }]);
+    const res = await GET(new Request('http://localhost/api/providers/discover?limit=2&offset=4'));
+    const body = await res.json();
+    expect(sql.mock.calls[0].slice(1)).toContain(2);
+    expect(sql.mock.calls[0].slice(1)).toContain(4);
+    expect(body.page).toEqual({ limit: 2, offset: 4, count: 2, hasMore: true });
+    expect(body.providers.map((p) => p.id)).toEqual([1, 2]);
+
+    sql.mockResolvedValueOnce([]);
+    await GET(new Request('http://localhost/api/providers/discover?limit=99999'));
+    expect(sql.mock.calls[1].slice(1)).toContain(500);
+  });
+
+  it('with geo: distance_km comes from SQL and is exposed as a number; without geo it is dropped', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1, distance_km: '1.25' }, { id: 2, distance_km: null }]);
+    let res = await GET(new Request('http://localhost/api/providers/discover?lat=-34.6&lng=-58.4'));
+    let { providers } = await res.json();
+    expect(providers[0].distance_km).toBe(1.25);
+    expect(providers[1].distance_km).toBeNull();
+    expect(sql.mock.calls[0].slice(1)).toContain(-34.6);
+
+    sql.mockResolvedValueOnce([{ id: 1, distance_km: null }]);
+    res = await GET(new Request('http://localhost/api/providers/discover'));
+    ({ providers } = await res.json());
+    expect('distance_km' in providers[0]).toBe(false);
   });
 });

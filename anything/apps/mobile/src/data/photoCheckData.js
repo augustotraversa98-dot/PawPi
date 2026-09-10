@@ -1,4 +1,6 @@
-// Mock data for Photo Check system
+// Photo Check constants (schedules, labels). The seeded sample history that used to live
+// here was removed (AUDIT_2026-09 A-13): PhotoHistory now reads the pet's real photo
+// checks from the API.
 
 export const PHOTO_CHECK_SCHEDULES = {
   paws: {
@@ -43,68 +45,6 @@ export const PHOTO_CHECK_SCHEDULES = {
   },
 };
 
-export const PHOTO_CHECK_HISTORY = [
-  {
-    id: "pc001",
-    petId: "sample-pet",
-    bodyArea: "paws",
-    imageUrl:
-      "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400",
-    notes: "Looking good, no redness",
-    createdAt: "2026-04-29T08:30:00Z",
-    includedInVetSummary: false,
-  },
-  {
-    id: "pc002",
-    petId: "sample-pet",
-    bodyArea: "eyes",
-    imageUrl:
-      "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400",
-    notes: "Clear and bright",
-    createdAt: "2026-05-01T09:15:00Z",
-    includedInVetSummary: false,
-  },
-  {
-    id: "pc003",
-    petId: "sample-pet",
-    bodyArea: "teeth",
-    imageUrl: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400",
-    notes: "Some tartar buildup on back molars",
-    createdAt: "2026-04-28T10:00:00Z",
-    includedInVetSummary: true,
-  },
-  {
-    id: "pc004",
-    petId: "sample-pet",
-    bodyArea: "ears",
-    imageUrl:
-      "https://images.unsplash.com/photo-1529472119196-cb724127a98e?w=400",
-    notes: "",
-    createdAt: "2026-04-28T11:20:00Z",
-    includedInVetSummary: false,
-  },
-  {
-    id: "pc005",
-    petId: "sample-pet",
-    bodyArea: "skin_fur",
-    imageUrl:
-      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400",
-    notes: "Coat is shiny and healthy",
-    createdAt: "2026-05-01T14:30:00Z",
-    includedInVetSummary: false,
-  },
-  {
-    id: "pc006",
-    petId: "sample-pet",
-    bodyArea: "full_body",
-    imageUrl:
-      "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=400",
-    notes: "Maintaining good weight",
-    createdAt: "2026-05-05T16:00:00Z",
-    includedInVetSummary: false,
-  },
-];
-
 export const FREQUENCY_OPTIONS = [
   { value: "off", label: "Off" },
   { value: "weekly", label: "Weekly" },
@@ -141,29 +81,4 @@ export function getDuePhotoChecks() {
   });
 
   return dueChecks;
-}
-
-// Helper function to get photo history by body area
-export function getPhotoHistoryByArea(area) {
-  return PHOTO_CHECK_HISTORY.filter((photo) => photo.bodyArea === area).sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-  );
-}
-
-// Helper function to get all photo history grouped by area
-export function getPhotoHistoryGrouped() {
-  const grouped = {};
-  PHOTO_CHECK_HISTORY.forEach((photo) => {
-    if (!grouped[photo.bodyArea]) {
-      grouped[photo.bodyArea] = [];
-    }
-    grouped[photo.bodyArea].push(photo);
-  });
-
-  // Sort each group by date (newest first)
-  Object.keys(grouped).forEach((area) => {
-    grouped[area].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  });
-
-  return grouped;
 }

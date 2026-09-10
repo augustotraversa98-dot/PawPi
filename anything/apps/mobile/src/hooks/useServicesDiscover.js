@@ -9,11 +9,11 @@ import { useQuery } from "@tanstack/react-query";
 // places.category; "all" (or omitted) returns both sources. `neighborhood` filters PLACES only
 // (providers are city-wide). lat/lng attach distance_km + nearest-first ordering. Every param is
 // part of the query key so distinct filters cache independently.
-export function useServicesDiscover({ q, category, neighborhood, lat, lng, radius } = {}) {
+export function useServicesDiscover({ q, category, neighborhood, lat, lng, radius, limit, offset } = {}) {
   return useQuery({
     queryKey: [
       "services-discover",
-      { q, category, neighborhood, lat, lng, radius },
+      { q, category, neighborhood, lat, lng, radius, limit, offset },
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -25,6 +25,9 @@ export function useServicesDiscover({ q, category, neighborhood, lat, lng, radiu
         params.set("lng", String(lng));
         if (radius != null) params.set("radius", String(radius));
       }
+      // Paging (AUDIT_2026-09 A-14): per-source limit (default 200, max 500) + offset.
+      if (limit != null) params.set("limit", String(limit));
+      if (offset != null) params.set("offset", String(offset));
       const qs = params.toString();
       const res = await fetch(`/api/services/discover${qs ? `?${qs}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch discovery");

@@ -15,6 +15,7 @@
 // Adding a vendor = one more branch below. Routes never learn which vendor is in use.
 
 import { emailConfig } from "./config";
+import { thirdPartySignal } from "../thirdPartyFetch";
 
 /**
  * Resend adapter: one authenticated JSON POST. https://resend.com/docs/api-reference/emails
@@ -22,7 +23,7 @@ import { emailConfig } from "./config";
  */
 async function sendViaResend(cfg, { to, subject, text, html }) {
   const res = await fetch(`${cfg.baseUrl}/emails`, {
-    method: "POST",
+    signal: thirdPartySignal(), method: "POST",
     headers: {
       Authorization: `Bearer ${cfg.apiKey}`,
       "Content-Type": "application/json",
