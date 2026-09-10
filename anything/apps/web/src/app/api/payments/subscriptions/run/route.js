@@ -6,6 +6,7 @@ import {
 import { createCheckout } from "@/app/api/utils/payments";
 import { PaymentsNotConfiguredError } from "@/app/api/utils/payments/config";
 import { nextChargeAt } from "@/app/api/utils/payments/subscriptionCadence";
+import { secretEquals } from "@/app/api/utils/secretCompare";
 
 // POST /api/payments/subscriptions/run — the SHOP AUTO-REORDER charger (Phase 2 ticket 2.17).
 //
@@ -26,7 +27,7 @@ async function POST(request) {
   if (!secret) {
     return Response.json({ error: "scheduler not configured" }, { status: 503 });
   }
-  if (request.headers.get("x-cron-secret") !== secret) {
+  if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

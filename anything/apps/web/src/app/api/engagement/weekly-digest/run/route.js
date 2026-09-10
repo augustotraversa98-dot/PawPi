@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { withTransaction, setCurrentUserId, withSavepoint } from "@/app/api/utils/requestContext";
 import { sendEmail } from "@/app/api/utils/email";
 import { digestPushBody, digestEmail } from "../message";
+import { secretEquals } from "@/app/api/utils/secretCompare";
 
 // POST /api/engagement/weekly-digest/run — the "Rex's Week" weekly SENDER (unit E11).
 //
@@ -37,7 +38,7 @@ async function POST(request) {
   if (!secret) {
     return Response.json({ error: "scheduler not configured" }, { status: 503 });
   }
-  if (request.headers.get("x-cron-secret") !== secret) {
+  if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
