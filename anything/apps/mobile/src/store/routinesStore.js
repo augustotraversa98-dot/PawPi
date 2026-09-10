@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { mockRoutines } from "@/data/routinesData";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
 
@@ -105,10 +104,10 @@ const useRoutinesStore = create((set, get) => ({
       return transformedRoutines;
     } catch (error) {
       console.error("[routinesStore] Error loading routines:", error);
-      set({ error: error.message, loading: false });
-      // Fallback to mock data if API fails
-      set({ routines: mockRoutines, initialized: true });
-      return mockRoutines;
+      // No mock fallback (AUDIT_2026-09 A-13): a failed load must surface as an error +
+      // empty state, never as phantom sample routines generating phantom reminders.
+      set({ error: error.message, loading: false, routines: [], initialized: true });
+      return [];
     }
   },
 

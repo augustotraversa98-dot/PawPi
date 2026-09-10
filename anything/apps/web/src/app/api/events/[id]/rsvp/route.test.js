@@ -77,3 +77,42 @@ describe("POST /api/events/[id]/rsvp", () => {
     expect(sql.mock.calls[0].slice(1)).toContain(null);
   });
 });
+
+// AUDIT_2026-09 A-21: a body pet_id must belong to (or be shared with) the caller.
+describe("pet_id ownership", () => {
+  it("rejects an RSVP with someone else's pet (403) and writes nothing", async () => {
+    auth.mockResolvedValue({ user: { id: "auth-1" } });
+    resolveUserId.mockResolvedValue(7);
+    sql.mockResolvedValueOnce([]); // ownership check → not mine
+    const res = await POST(
+      new Request("http://localhost/api/events/9/rsvp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "going", pet_id: 42 }),
+      }),
+      { params: { id: "9" } },
+    );
+    expect(res.status).toBe(403);
+    expect(sql).toHaveBeenCalledTimes(1);
+    expect(sql.mock.calls[0][0].join(" ")).toContain("app_user_has_pet_access");
+  });
+
+  it("accepts an RSVP with the caller's own pet", async () => {
+    auth.mockResolvedValue({ user: { id: "auth-1" } });
+    resolveUserId.mockResolvedValue(7);
+    sql
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // ownership check → mine
+      .mockResolvedValueOnce([{ id: 1, event_id: 9, status: "going", pet_id: 42 }]) // upsert
+      .mockResolvedValueOnce([{ attendee_count: 1 }]); // count
+    const res = await POST(
+      new Request("http://localhost/api/events/9/rsvp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "going", pet_id: 42 }),
+      }),
+      { params: { id: "9" } },
+    );
+    expect(res.status).toBe(200);
+    expect(sql).toHaveBeenCalledTimes(3);
+  });
+});

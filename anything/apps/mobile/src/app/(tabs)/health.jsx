@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Heart, Activity, TrendingUp, FileText, Utensils } from "lucide-react-native";
+import { Utensils } from "lucide-react-native";
+import { HEALTH_SECTIONS, HEALTH_SECTION_IDS } from "@/constants/healthSections";
 
 // Import the 4 section components (removed HealthReminders)
 import HealthToday from "../../components/Health/HealthToday";
@@ -21,14 +22,9 @@ import {
 import { GlassSurface, PressableScale } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 
-const SECTIONS = [
-  { id: "today", labelKey: "health.today", icon: Heart },
-  { id: "track", labelKey: "health.track", icon: Activity },
-  { id: "insights", labelKey: "health.insights", icon: TrendingUp },
-  { id: "vet-record", labelKey: "health.vetRecord.title", icon: FileText },
-];
-
-const SECTION_IDS = new Set(SECTIONS.map((s) => s.id));
+// Section strip (+ the Insights gate) lives in @/constants/healthSections.
+const SECTIONS = HEALTH_SECTIONS;
+const SECTION_IDS = HEALTH_SECTION_IDS;
 
 // Nutrition entry point is hidden for now: the /nutrition screen isn't wired
 // into the rest of the app yet (the saved plan is surfaced nowhere else and the

@@ -53,11 +53,14 @@ jest.mock("@/hooks/useFeedPosts", () => ({
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: mockViewer }),
 }));
+let mockProfileError = false;
+const mockProfileRefetch = jest.fn();
 jest.mock("@/hooks/usePetSocialProfile", () => ({
   usePetSocialProfile: () => ({
     data: mockProfile,
     isLoading: false,
-    refetch: jest.fn(),
+    isError: mockProfileError,
+    refetch: mockProfileRefetch,
   }),
   useToggleFollow: () => ({ mutate: jest.fn() }),
 }));
@@ -211,5 +214,23 @@ describe("Profile tab — embedded mode (ticket 2.60)", () => {
     expect(getByText("Rex")).toBeTruthy();
     // …and it's your own pet, so no Follow affordance.
     expect(queryByText("Follow +")).toBeNull();
+  });
+});
+
+// AUDIT_2026-09 A-09: a failed profile fetch must say so and offer Retry, not read as
+// "this pet has nothing".
+describe("fetch failure", () => {
+  afterEach(() => {
+    mockProfileError = false;
+    mockProfileRefetch.mockClear();
+  });
+
+  test("shows an error card with Retry that refetches", () => {
+    mockProfile = undefined;
+    mockProfileError = true;
+    const { getByTestId, getByText } = render(<PetProfileScreen />);
+    expect(getByTestId("pet-profile-error")).toBeTruthy();
+    fireEvent.press(getByText("Try again"));
+    expect(mockProfileRefetch).toHaveBeenCalled();
   });
 });

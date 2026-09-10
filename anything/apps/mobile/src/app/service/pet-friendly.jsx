@@ -20,6 +20,9 @@ export default function PetFriendlyScreen() {
   const { t } = useTranslation();
   const { data: providers, isLoading, refetch, isRefetching } = useDiscoverProviders({
     provider_type: "pet_friendly",
+    // The directory is large (thousands of seeded rows) and this list has no geo, so ask for
+    // the server's maximum page. Infinite paging is the follow-up (AUDIT_2026-09 A-14).
+    limit: 500,
   });
 
   return (

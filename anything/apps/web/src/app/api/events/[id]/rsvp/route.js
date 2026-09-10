@@ -24,6 +24,25 @@ async function POST(request, { params }) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
     const petId = body.pet_id ?? null;
+    // AUDIT_2026-09 A-21: pet_id was trusted from the body, and event_rsvps_insert only pins
+    // user_profile_id — so anyone could RSVP "as" any pet id (impersonation today; a leak the
+    // day an attendee list ships). The pet must be the caller's own or one they have
+    // household access to (app_user_has_pet_access reads the request identity).
+    if (petId != null) {
+      const petIdNum = Number.parseInt(String(petId), 10);
+      if (!Number.isInteger(petIdNum)) {
+        return Response.json({ error: "Invalid pet" }, { status: 400 });
+      }
+      const owned = await sql`
+        SELECT 1 FROM pets
+        WHERE id = ${petIdNum}
+          AND (owner_user_id = ${userId} OR app_user_has_pet_access(${petIdNum}))
+        LIMIT 1
+      `;
+      if (owned.length === 0) {
+        return Response.json({ error: "You can't RSVP with that pet" }, { status: 403 });
+      }
+    }
     // Optional device calendar event id (2.80): persisted on the caller's OWN rsvp row
     // (per-attendee, migration 0063). Pass null to clear it (e.g. on un-RSVP / not_going).
     const calendarEventId = body.calendar_event_id ?? null;

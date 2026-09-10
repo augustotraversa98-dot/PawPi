@@ -193,12 +193,13 @@ describe("GET /api/services/discover", () => {
 
   it("geo → distance_km attached and MERGED list sorts nearest-first across both types", async () => {
     auth.mockResolvedValue(SESSION);
-    // Provider is FAR; place is NEAR the query origin → place must sort first.
+    // Provider is FAR; place is NEAR the query origin → place must sort first. distance_km is
+    // computed per source in SQL (A-14) and arrives as a numeric string.
     sql.mockResolvedValueOnce([
-      { id: 1, name: "Far Vet", capabilities: [], lat: -34.9, lng: -58.9 },
+      { id: 1, name: "Far Vet", capabilities: [], lat: -34.9, lng: -58.9, distance_km: "55.2" },
     ]);
     sql.mockResolvedValueOnce([
-      { id: "near", name: "Near Cafe", category: "cafe", lat: -34.61, lng: -58.41 },
+      { id: "near", name: "Near Cafe", category: "cafe", lat: -34.61, lng: -58.41, distance_km: "1.4" },
     ]);
 
     const res = await GET(req("lat=-34.6&lng=-58.4"));
@@ -264,5 +265,33 @@ describe("GET /api/services/discover", () => {
     sql.mockResolvedValueOnce([]);
     await GET(req());
     expect(allText()).not.toContain("care_access");
+  });
+});
+
+// AUDIT_2026-09 A-14: both sources are paged (per source) and ordered by SQL distance.
+describe("paging + SQL distance (A-14)", () => {
+  it("binds LIMIT/OFFSET on both sources and reports the page", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([]);
+    const res = await GET(new Request("http://localhost/api/services/discover?limit=10&offset=20"));
+    const body = await res.json();
+    expect(callText(0)).toContain("LIMIT");
+    expect(callText(0)).toContain("ORDER BY distance_km ASC NULLS LAST, p.name ASC");
+    expect(callText(1)).toContain("ORDER BY distance_km ASC NULLS LAST, pl.name ASC");
+    expect(callValues(0)).toContain(10);
+    expect(callValues(0)).toContain(20);
+    expect(callValues(1)).toContain(10);
+    expect(body.page).toEqual({ limit: 10, offset: 20, count: 0, hasMore: false });
+  });
+
+  it("geo: items carry SQL distance_km and merge nearest-first across sources", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1, name: "Far Vet", capabilities: ["vet"], distance_km: "5.5" }]);
+    sql.mockResolvedValueOnce([{ id: 7, name: "Near Cafe", category: "cafe", distance_km: "0.4" }]);
+    const res = await GET(new Request("http://localhost/api/services/discover?lat=-34.6&lng=-58.4"));
+    const { items } = await res.json();
+    expect(items.map((i) => i.name)).toEqual(["Near Cafe", "Far Vet"]);
+    expect(items[0].distance_km).toBe(0.4);
   });
 });

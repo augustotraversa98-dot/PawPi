@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentPet } from "./usePetProfile";
+import { getTodayDbDate } from "@/utils/dateFormatting";
 
 // Fetch food logs
 export function useFoodLogs(limit = 10) {
@@ -114,7 +115,9 @@ export function usePhotoChecks(limit = 20) {
 // Fetch timeline for today
 export function useHealthTimeline() {
   const { data: currentPet } = useCurrentPet();
-  const today = new Date().toISOString().split("T")[0];
+  // Local calendar day (AUDIT_2026-09 A-11): toISOString() is the UTC date, already
+  // tomorrow from 21:00 in Argentina, so the Today timeline showed the wrong day.
+  const today = getTodayDbDate();
 
   return useQuery({
     queryKey: ["health", "timeline", currentPet?.id, today],

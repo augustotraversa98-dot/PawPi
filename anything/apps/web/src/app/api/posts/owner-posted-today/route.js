@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
 
 /**
  * GET /api/posts/owner-posted-today
@@ -30,7 +31,8 @@ async function GET(request) {
 
     // Resolve the owner key (user_profiles.id) from the auth user id.
     const userProfile = await sql`
-      SELECT id FROM user_profiles
+      SELECT id, (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
+      FROM user_profiles
       WHERE auth_user_id = ${authUserId}
       LIMIT 1
     `;
@@ -43,7 +45,8 @@ async function GET(request) {
     }
 
     const userId = userProfile[0].id;
-    const todayDate = new Date().toISOString().split("T")[0];
+    // Owner-local today (AUDIT_2026-09 A-10) — must agree with the Care Ring and POST /api/posts.
+    const todayDate = ownerTodayFrom(userProfile[0]);
 
     // Any daily update today across ALL pets owned by this user.
     const rows = await sql`

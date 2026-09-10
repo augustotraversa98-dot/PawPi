@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { parsePaging } from "@/app/api/utils/paging";
 import { num, distanceKm } from "@/app/api/utils/placesQuery";
 import { resolveDiscoveryCategory } from "@/app/api/utils/discoveryCategories";
 
@@ -74,6 +75,11 @@ async function GET(request) {
       lng <= 180;
     const applyRadius = hasGeo && radiusKm != null && radiusKm > 0;
 
+    // Paging (AUDIT_2026-09 A-14): ?limit / ?offset apply PER SOURCE (providers, places), so a
+    // merged page holds at most 2×limit items. Distance is computed in SQL so nearest-first
+    // paging is exact within each source.
+    const { limit, offset } = parsePaging(searchParams);
+
     const latPad = applyRadius ? radiusKm / 111 : null;
     const lngPad = applyRadius
       ? radiusKm / (111 * Math.max(0.01, Math.cos((lat * Math.PI) / 180)))
@@ -105,7 +111,15 @@ async function GET(request) {
               loc.lat AS lat,
               loc.lng AS lng,
               loc.address AS address,
-              loc.hours_json AS hours_json
+              loc.hours_json AS hours_json,
+              (CASE
+                 WHEN ${hasGeo} AND loc.lat IS NOT NULL AND loc.lng IS NOT NULL THEN
+                   2 * 6371 * asin(sqrt(
+                     power(sin(radians((loc.lat - ${lat ?? 0}) / 2)), 2)
+                     + cos(radians(${lat ?? 0})) * cos(radians(loc.lat))
+                       * power(sin(radians((loc.lng - ${lng ?? 0}) / 2)), 2)))
+                 ELSE NULL
+               END) AS distance_km
             FROM providers p
             LEFT JOIN LATERAL (
               SELECT lat, lng, address, hours_json
@@ -133,7 +147,8 @@ async function GET(request) {
                   AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
                 )
               )
-            ORDER BY p.name ASC
+            ORDER BY distance_km ASC NULLS LAST, p.name ASC
+            LIMIT ${limit} OFFSET ${offset}
           `
         : [],
       // ── Places ── published, non-deleted catalog (0075) with avg_rating/review_count over
@@ -146,7 +161,15 @@ async function GET(request) {
               (SELECT ROUND(AVG(r.overall_rating)::numeric, 1) FROM place_reviews r
                  WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS avg_rating,
               (SELECT COUNT(*)::int FROM place_reviews r
-                 WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS review_count
+                 WHERE r.place_id = pl.id AND r.deleted_at IS NULL) AS review_count,
+              (CASE
+                 WHEN ${hasGeo} AND pl.lat IS NOT NULL AND pl.lng IS NOT NULL THEN
+                   2 * 6371 * asin(sqrt(
+                     power(sin(radians((pl.lat - ${lat ?? 0}) / 2)), 2)
+                     + cos(radians(${lat ?? 0})) * cos(radians(pl.lat))
+                       * power(sin(radians((pl.lng - ${lng ?? 0}) / 2)), 2)))
+                 ELSE NULL
+               END) AS distance_km
             FROM places pl
             WHERE pl.status = 'published'
               AND pl.deleted_at IS NULL
@@ -161,7 +184,8 @@ async function GET(request) {
                   AND pl.lng BETWEEN ${lngMin} AND ${lngMax}
                 )
               )
-            ORDER BY pl.name ASC
+            ORDER BY distance_km ASC NULLS LAST, pl.name ASC
+            LIMIT ${limit} OFFSET ${offset}
           `
         : [],
     ]);
@@ -184,6 +208,7 @@ async function GET(request) {
       hours_json: r.hours_json ?? null,
       avg_rating: r.avg_rating,
       review_count: r.review_count,
+      distance_km: r.distance_km == null ? null : Number(r.distance_km),
     }));
 
     const placeItems = placeRows.map((r) => ({
@@ -200,6 +225,7 @@ async function GET(request) {
       hours_json: null, // places carry no hours → always "included" by the open-now filter
       avg_rating: r.avg_rating,
       review_count: r.review_count,
+      distance_km: r.distance_km == null ? null : Number(r.distance_km),
     }));
 
     const merged = [...providerItems, ...placeItems];
@@ -207,22 +233,24 @@ async function GET(request) {
     // No geo → unified NAME order across both sources (each source arrived name-sorted; the merge
     // needs a single re-sort). With geo → attach distance_km and re-sort nearest-first; coord-less
     // items sort last (and were already excluded from any source when ?radius is set).
+    const page = {
+      limit,
+      offset,
+      count: merged.length,
+      hasMore: providerItems.length === limit || placeItems.length === limit,
+    };
     if (!hasGeo) {
-      merged.sort((a, b) => a.name.localeCompare(b.name));
-      return Response.json({ items: merged });
+      const items = merged.map(({ distance_km, ...it }) => it);
+      items.sort((a, b) => a.name.localeCompare(b.name));
+      return Response.json({ items, page });
     }
 
-    const items = merged
-      .map((it) => ({
-        ...it,
-        distance_km:
-          it.lat != null && it.lng != null
-            ? distanceKm(lat, lng, Number(it.lat), Number(it.lng))
-            : null,
-      }))
-      .sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
+    // distance_km was computed in SQL per source; the merge only needs the single re-sort.
+    const items = [...merged].sort(
+      (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
+    );
 
-    return Response.json({ items });
+    return Response.json({ items, page });
   } catch (error) {
     console.error("[GET /api/services/discover] Error:", error.message);
     return Response.json(

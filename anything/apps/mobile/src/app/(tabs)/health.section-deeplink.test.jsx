@@ -61,3 +61,14 @@ test("the Nutrition header button is not rendered", () => {
   expect(queryByTestId("nutrition-button")).toBeNull();
   expect(queryByText("Nutrition")).toBeNull();
 });
+
+// AUDIT_2026-09 A-13: the Insights section renders sample data, so it is gated off
+// (SHOW_INSIGHTS=false in @/constants/healthSections). Neither the strip nor the deep link
+// may reach it until it is built on real queries.
+test("Insights is not offered in the strip and ?section=insights falls back to Today", () => {
+  mockParams = { section: "insights" };
+  const { getByText, queryByText } = render(<HealthScreen />);
+  expect(getByText("TODAY_SECTION")).toBeTruthy();
+  expect(queryByText("INSIGHTS_SECTION")).toBeNull();
+  expect(queryByText("Insights")).toBeNull();
+});

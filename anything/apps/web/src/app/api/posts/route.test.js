@@ -377,3 +377,41 @@ describe('POST /api/posts — media_type + daily-video gate', () => {
     expect(nulls).toBeGreaterThanOrEqual(2);
   });
 });
+
+// AUDIT_2026-09 A-10: the daily moment's calendar day is the OWNER-LOCAL day selected with the
+// identity row, never the server's UTC date — both for the duplicate check and the INSERT.
+describe('POST /api/posts — owner-local post_date', () => {
+  it('uses local_today from the profile row for the dedup check and the INSERT when no post_date is sent', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-1' } });
+    sql
+      .mockResolvedValueOnce([{ id: 50, local_today: '2026-09-10' }]) // profile (+ owner-local day)
+      .mockResolvedValueOnce([{ id: 9 }]) // pet ownership
+      .mockResolvedValueOnce([]) // no daily yet today
+      .mockResolvedValueOnce([{ id: 123 }]) // INSERT ... RETURNING id
+      .mockResolvedValueOnce([{ id: 123 }]); // full fetch
+
+    const res = await POST(
+      postReq({ pet_id: 9, image_url: 'https://cdn/x.jpg', is_daily_update: true }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(queryText(0).toLowerCase()).toContain('local_today');
+    expect(queryValues(2)).toContain('2026-09-10'); // dedup keyed on the owner-local day
+    expect(queryValues(3)).toContain('2026-09-10'); // stamped on the row
+  });
+
+  it('a client-sent post_date still wins over the owner-local day', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-1' } });
+    sql
+      .mockResolvedValueOnce([{ id: 50, local_today: '2026-09-10' }])
+      .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 123 }])
+      .mockResolvedValueOnce([{ id: 123 }]);
+
+    await POST(postReq({ pet_id: 9, image_url: 'https://cdn/x.jpg', is_daily_update: true, post_date: '2026-09-09' }));
+
+    expect(queryValues(2)).toContain('2026-09-09');
+    expect(queryValues(3)).toContain('2026-09-09');
+  });
+});
