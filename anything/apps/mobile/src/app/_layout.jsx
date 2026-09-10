@@ -12,12 +12,16 @@ import { registerPushTokenAsync } from "@/utils/registerPushToken";
 import { registerNotificationTapRouting } from "@/utils/notificationDeepLink";
 import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
+import { wireQueryConnectivity } from "@/utils/connectivity";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
 
 SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
+// Tell React-Query about offline + background BEFORE any query mounts (A-06 / A-16).
+wireQueryConnectivity();
 
 export default function RootLayout() {
   const { initiate, isReady, isAuthenticated } = useAuth();
@@ -133,6 +137,7 @@ export default function RootLayout() {
           <Stack.Screen name="business-adoption" />
         </Stack>
         <AuthModal />
+        <OfflineBanner />
       </GestureHandlerRootView>
     </QueryClientProvider>
   );
