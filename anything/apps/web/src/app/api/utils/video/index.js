@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 import { videoConfig, VideoNotConfiguredError } from "./config";
+import { thirdPartySignal } from "../thirdPartyFetch";
 
 // The room id for a session — the vendor's stored room_ref if present, else a deterministic
 // per-session id so both participants resolve the SAME room.
@@ -71,7 +72,7 @@ export function isTelehealthSessionExpired(session, { nowMs = Date.now() } = {})
 
 async function dailyFetch(cfg, path, { method = "GET", body } = {}) {
   const res = await fetch(`${DAILY_API_BASE}/${path}`, {
-    method,
+    signal: thirdPartySignal(), method,
     headers: {
       Authorization: `Bearer ${cfg.apiKey}`,
       ...(body ? { "Content-Type": "application/json" } : {}),
