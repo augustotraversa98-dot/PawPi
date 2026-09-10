@@ -19,6 +19,7 @@ import {
   PaymentsNotConfiguredError,
   ProviderPaymentAccountError,
 } from './config';
+import { thirdPartySignal } from '../thirdPartyFetch';
 
 export const RAIL = 'mercadopago';
 
@@ -49,7 +50,7 @@ export async function exchangeOAuthCode(code) {
   const cfg = mercadopagoConfig();
   if (!cfg) throw new PaymentsNotConfiguredError(RAIL);
   const res = await fetch('https://api.mercadopago.com/oauth/token', {
-    method: 'POST',
+    signal: thirdPartySignal(), method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       grant_type: 'authorization_code',
@@ -135,7 +136,7 @@ export async function createCheckout({ order, account, idempotencyKey, payer }) 
   }
 
   const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
-    method: 'POST',
+    signal: thirdPartySignal(), method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${account.access_token}`,
@@ -203,7 +204,7 @@ export async function getPaymentStatus({ externalId, account }) {
   const token = account?.access_token ?? cfg.clientSecret;
   const res = await fetch(
     `https://api.mercadopago.com/v1/payments/${externalId}`,
-    { headers: { authorization: `Bearer ${token}` } },
+    { signal: thirdPartySignal(), headers: { authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`MercadoPago status fetch failed (${res.status})`);
   const data = await res.json();
@@ -218,7 +219,7 @@ export async function refund({ payment, account }) {
   const res = await fetch(
     `https://api.mercadopago.com/v1/payments/${payment.external_id}/refunds`,
     {
-      method: 'POST',
+      signal: thirdPartySignal(), method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${account.access_token}`,
