@@ -29,3 +29,34 @@ If a request would break a brand rule, say so and offer the compliant alternativ
 Strategy + priorities: `PawPi_instructions.md` and `docs/`. Mobile app: `anything/apps/mobile`.
 All user-facing copy ships EN + ES (`anything/apps/mobile/src/i18n/locales/en.json` + `es.json`).
 Product name is "PawPi". No fake/mock data — empty states only.
+
+## Database migration conventions — READ BEFORE WRITING ANY MIGRATION
+Full model: `docs/rls-hardening.md`. Copy `supabase/migrations/TEMPLATE.sql` to
+`supabase/migrations/NNNN_short_name.sql` (next free number) and follow it. The rules
+below are CI-enforced against the real migrations in the integration harness
+(`cd anything/apps/web && npm run test:integration`) — a violation fails the build, naming
+the offender.
+
+1. **Every `CREATE TABLE` in `public`** must `ENABLE` **and** `FORCE ROW LEVEL SECURITY`
+   and add explicit owner-scoped policies (`owner_user_id = current_app_user_id()`;
+   `current_app_user_id()` is NULL when no identity is in scope → deny by default). A new
+   public table with RLS off, or forced-with-no-policy, fails
+   `test/integration/rls-gap-closure.integration.test.ts`. The only exceptions are the 5
+   auth/identity tables in that test's documented `RLS_EXEMPT` allowlist — do not add to it
+   without a written reason.
+2. **Every `SECURITY DEFINER` function** must pin its search path
+   (`set search_path = public, pg_temp`) and `grant execute … to pawpi_app` explicitly. An
+   unpinned DEFINER function fails
+   `test/integration/security-hardening.integration.test.ts`. Prefer `SECURITY INVOKER`
+   (the default) unless the function must read rows the caller's RLS would hide.
+3. **Never `GRANT … TO anon`, `authenticated`, or `PUBLIC`** on app tables/sequences/
+   functions. The app connects only as `pawpi_app` (never the Supabase Data API/PostgREST);
+   `pawpi_app` already holds DML on all objects and future ones (`0019` + its
+   `ALTER DEFAULT PRIVILEGES`), and `0126` revokes the Supabase-default anon/authenticated
+   grants. See `docs/db-data-api-safety-evidence.md`.
+4. **Anything hand-applied** (role/grant/RLS/auth/storage changes, or any migration that
+   REVOKEs) ships a `supabase/verify_NNNN.sql` shaped so every row reads PASS, and a note in
+   the PR body that it is human-applied — see `supabase/verify_0126.sql` / `verify_0127.sql`
+   and `docs/db-migration-runbook-0126-0127.md`.
+5. **Before each release**, run the Supabase **Security & Performance advisors** and triage
+   anything new — see `docs/LAUNCH-CHECKLIST.md`.
