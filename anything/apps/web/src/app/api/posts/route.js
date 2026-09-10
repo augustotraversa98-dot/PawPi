@@ -7,6 +7,7 @@ import {
 import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { isVideoEligible } from "@/app/api/utils/videoEligibility";
+import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -382,9 +383,10 @@ async function POST(request) {
 
     const authUserId = session.user.id;
 
-    // Get user profile
+    // Get user profile (+ the owner-LOCAL calendar day, see utils/ownerLocalDay.js)
     const userProfile = await sql`
-      SELECT id FROM user_profiles 
+      SELECT id, (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
+      FROM user_profiles 
       WHERE auth_user_id = ${authUserId}
       LIMIT 1
     `;
@@ -402,6 +404,10 @@ async function POST(request) {
     }
 
     const userId = userProfile[0].id;
+    // Owner-local today (AUDIT_2026-09 A-10): the UTC date is already tomorrow from 21:00 in
+    // Argentina, which put the daily moment on the wrong day, left the Care Ring empty and
+    // refused the next morning's post as a duplicate.
+    const ownerToday = ownerTodayFrom(userProfile[0]);
 
     const body = await request.json();
 
@@ -465,15 +471,17 @@ async function POST(request) {
     // Daily moment cap: ONE per AUTHOR per pet per day (E13 PR2 — a caregiver adds their OWN slide, but
     // not a second one). Was one-per-pet-per-day; now scoped to this author so the household can each
     // contribute. (The DB index idx_posts_one_daily_per_author_per_pet_per_day backstops this.)
-    if (is_daily_update) {
-      const today = new Date().toISOString().split("T")[0];
+    // The calendar day this post belongs to: the client's local day when sent, else the
+    // owner-local today — never the server's UTC date.
+    const finalPostDate = post_date || ownerToday;
 
+    if (is_daily_update) {
       const existingDaily = await sql`
         SELECT id FROM posts
         WHERE pet_id = ${pet_id}
           AND user_id = ${userId}
           AND is_daily_update = true
-          AND post_date = ${today}
+          AND post_date = ${finalPostDate}
         LIMIT 1
       `;
 
@@ -493,8 +501,6 @@ async function POST(request) {
     }
 
     // Create post
-
-    const finalPostDate = post_date || new Date().toISOString().split("T")[0];
 
     // Video posts: require a playable URL and re-check eligibility SERVER-SIDE for
     // the post's day. Never trust a client-sent eligibility flag — the gate is the

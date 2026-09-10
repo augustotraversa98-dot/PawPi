@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isVideoEligible } from "@/app/api/utils/videoEligibility";
+import sql from "@/app/api/utils/sql";
+import { ownerTodayFrom, utcTodayStr } from "@/app/api/utils/ownerLocalDay";
 
 /**
  * GET /api/posts/video-eligibility
@@ -31,7 +33,18 @@ async function GET(request) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    const date = new Date().toISOString().split("T")[0];
+    // Owner-local today (AUDIT_2026-09 A-10) so eligibility is answered for the same day
+    // POST /api/posts will stamp. Falls back to UTC today if the lookup is unavailable.
+    let date = utcTodayStr();
+    try {
+      const rows = await sql`
+        SELECT (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
+        FROM user_profiles WHERE id = ${userId}
+      `;
+      date = ownerTodayFrom(rows?.[0]);
+    } catch {
+      // keep the UTC fallback
+    }
 
     return Response.json({ eligible: isVideoEligible(userId, date), date });
   } catch (error) {

@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { ownerTodayFrom, DAY_RE, OWNER_TZ_DEFAULT } from "@/app/api/utils/ownerLocalDay";
 
 // Get unified health timeline for today
 async function GET(request) {
@@ -11,7 +12,9 @@ async function GET(request) {
     }
 
     const userProfiles = await sql`
-      SELECT id FROM user_profiles WHERE auth_user_id = ${session.user.id}
+      SELECT id, COALESCE(timezone, 'America/Buenos_Aires') AS tz,
+             (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
+      FROM user_profiles WHERE auth_user_id = ${session.user.id}
     `;
 
     if (userProfiles.length === 0) {
@@ -25,12 +28,22 @@ async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const petId = searchParams.get("petId");
+    // The requested calendar day in the OWNER's timezone (AUDIT_2026-09 A-11). Default =
+    // owner-local today (never the server's UTC date); the window is [local midnight,
+    // next local midnight) converted to instants, so a 23:30 walk in Buenos Aires shows
+    // under the right day instead of tomorrow's.
+    const requested = searchParams.get("date");
     const date =
-      searchParams.get("date") || new Date().toISOString().split("T")[0];
-
-    // Get start and end of the requested date
-    const startOfDay = `${date}T00:00:00Z`;
-    const endOfDay = `${date}T23:59:59Z`;
+      requested && DAY_RE.test(requested)
+        ? requested
+        : ownerTodayFrom(userProfiles[0]);
+    const tz = userProfiles[0].tz || OWNER_TZ_DEFAULT;
+    const [bounds] = await sql`
+      SELECT ((${date}::date)::timestamp AT TIME ZONE ${tz}) AS start_at,
+             (((${date}::date) + 1)::timestamp AT TIME ZONE ${tz}) AS end_at
+    `;
+    const startOfDay = new Date(bounds.start_at).toISOString();
+    const endOfDay = new Date(bounds.end_at).toISOString();
 
     let timeline = [];
 
@@ -58,13 +71,13 @@ async function GET(request) {
           SELECT 'food' as event_type, id, logged_at as event_time, meal_type, food_name, notes
           FROM health_food_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'food' as event_type, id, logged_at as event_time, meal_type, food_name, notes
           FROM health_food_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch poo logs
       petId
@@ -72,13 +85,13 @@ async function GET(request) {
           SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
           FROM health_poo_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
           FROM health_poo_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch walk logs
       petId
@@ -86,13 +99,13 @@ async function GET(request) {
           SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
           FROM health_walk_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
+            AND start_time >= ${startOfDay} AND start_time < ${endOfDay}
         `
         : sql`
           SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
           FROM health_walk_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND start_time >= ${startOfDay} AND start_time <= ${endOfDay}
+            AND start_time >= ${startOfDay} AND start_time < ${endOfDay}
         `,
       // Fetch general checks
       petId
@@ -100,13 +113,13 @@ async function GET(request) {
           SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
           FROM health_general_checks
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
           FROM health_general_checks
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch photo checks
       petId
@@ -114,13 +127,13 @@ async function GET(request) {
           SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
           FROM health_photo_checks
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
+            AND created_at >= ${startOfDay} AND created_at < ${endOfDay}
         `
         : sql`
           SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
           FROM health_photo_checks
           WHERE owner_user_id = ${ownerUserId}
-            AND created_at >= ${startOfDay} AND created_at <= ${endOfDay}
+            AND created_at >= ${startOfDay} AND created_at < ${endOfDay}
         `,
       // Fetch pee logs
       petId
@@ -128,13 +141,13 @@ async function GET(request) {
           SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
           FROM health_pee_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
           FROM health_pee_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch vomit logs
       petId
@@ -142,13 +155,13 @@ async function GET(request) {
           SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
           FROM health_vomit_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
           FROM health_vomit_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch mobility logs
       petId
@@ -156,13 +169,13 @@ async function GET(request) {
           SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
           FROM health_mobility_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
           FROM health_mobility_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch weight logs
       petId
@@ -170,13 +183,13 @@ async function GET(request) {
           SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
           FROM health_weight_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
           SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
           FROM health_weight_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND logged_at >= ${startOfDay} AND logged_at <= ${endOfDay}
+            AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `,
       // Fetch medical care logs
       petId
@@ -185,14 +198,14 @@ async function GET(request) {
                  care_type, name, dose, status, notes, reaction_or_issue
           FROM health_medical_care_logs
           WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
-            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
+            AND given_at >= ${startOfDay} AND given_at < ${endOfDay}
         `
         : sql`
           SELECT 'medical_care' as event_type, id, given_at as event_time,
                  care_type, name, dose, status, notes, reaction_or_issue
           FROM health_medical_care_logs
           WHERE owner_user_id = ${ownerUserId}
-            AND given_at >= ${startOfDay} AND given_at <= ${endOfDay}
+            AND given_at >= ${startOfDay} AND given_at < ${endOfDay}
         `,
     ]);
 
