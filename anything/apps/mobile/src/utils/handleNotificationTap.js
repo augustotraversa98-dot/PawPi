@@ -1,71 +1,14 @@
 import { router } from "expo-router";
-import { ROUTINE_TYPES } from "@/data/routinesData";
+import { reminderTapRoute } from "./notificationDeepLink";
 
 /**
- * Handle notification tap - opens the correct tracker
+ * Handle an in-app reminder notification tap — opens the Health section where that
+ * reminder lives (Today, or Vet Record for vaccines / vet appointments). One push,
+ * never two (AUDIT_2026-09 A-08).
  */
 export function handleNotificationTap(notification) {
   if (!notification) return;
-
-  const { type, relatedTracker, relatedBodyArea, routineId, reminderId } =
-    notification;
-
-  // Navigate to health tab first
-  router.push("/(tabs)/health");
-
-  // Then open the specific tracker based on type
-  switch (type) {
-    case "feeding":
-    case ROUTINE_TYPES.FEEDING:
-      // Food & Water tracker is part of Health Track tab
-      // The tracker modal can be opened via the health screen
-      break;
-
-    case "walk":
-    case ROUTINE_TYPES.WALK:
-      // Walk tracker is part of Health Track tab
-      break;
-
-    case "medication":
-    case ROUTINE_TYPES.MEDICATION:
-      // Medication tracker is part of Health Track tab
-      break;
-
-    case "photo_check":
-    case ROUTINE_TYPES.PHOTO_CHECK:
-      // Photo check tracker with specific body area
-      // Opens photo check modal with the body area preset
-      break;
-
-    case "general_check":
-    case ROUTINE_TYPES.GENERAL_CHECK:
-      // General check tracker
-      break;
-
-    case "weight_check":
-    case ROUTINE_TYPES.WEIGHT_CHECK:
-      // Weight tracker
-      break;
-
-    case "preventive":
-    case ROUTINE_TYPES.PREVENTIVE:
-      // Preventive care tracker
-      break;
-
-    case "vaccine":
-    case ROUTINE_TYPES.VACCINE:
-      // Opens vet record / vaccine section
-      break;
-
-    case "vet_appointment":
-    case ROUTINE_TYPES.VET_APPOINTMENT:
-      // Opens vet record / appointment detail
-      break;
-
-    default:
-      // Default: just go to health tab
-      router.push("/(tabs)/health");
-  }
+  router.push(reminderTapRoute(notification));
 }
 
 /**
