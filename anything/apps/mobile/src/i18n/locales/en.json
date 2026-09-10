@@ -2584,6 +2584,8 @@
     }
   },
   "welcome": {
+    "settingUp": "Setting up your account…",
+    "oneMoment": "This will only take a moment…",
     "vetAccessLink": "Access for vets & businesses",
     "tagline": "Your pet's daily care, moments, and community — all in one place.",
     "createAccount": "Create account",

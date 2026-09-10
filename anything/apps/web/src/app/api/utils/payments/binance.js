@@ -11,6 +11,7 @@
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { binanceConfig, PaymentsNotConfiguredError } from './config';
+import { thirdPartySignal } from '../thirdPartyFetch';
 
 export const RAIL = 'binance';
 
@@ -48,7 +49,7 @@ export async function createCheckout({ order, idempotencyKey }) {
     goods: { goodsType: '02', goodsName: `PawPi ${order.kind}` },
   });
   const res = await fetch(`${BASE}/binancepay/openapi/v3/order`, {
-    method: 'POST',
+    signal: thirdPartySignal(), method: 'POST',
     headers: signRequest(cfg, body),
     body,
   });
@@ -108,7 +109,7 @@ export async function refund({ payment }) {
     refundAmount: (payment.amount_cents / 100).toFixed(2),
   });
   const res = await fetch(`${BASE}/binancepay/openapi/order/refund`, {
-    method: 'POST',
+    signal: thirdPartySignal(), method: 'POST',
     headers: signRequest(cfg, body),
     body,
   });
@@ -136,7 +137,7 @@ export async function payout({ provider, account, amountCents }) {
     ],
   });
   const res = await fetch(`${BASE}/binancepay/openapi/payout/transfer`, {
-    method: 'POST',
+    signal: thirdPartySignal(), method: 'POST',
     headers: signRequest(cfg, body),
     body,
   });

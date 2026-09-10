@@ -8,8 +8,14 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
+      // v5 name. The previous `cacheTime` (a v4 option) was silently ignored, so unused
+      // queries were garbage-collected after the 5-minute default instead of 30 minutes.
+      gcTime: 1000 * 60 * 30, // 30 minutes
       retry: 1,
+      // One short pause before the single retry. The default exponential delay is fine, but
+      // combined with the 15 s fetch deadline (see __create/fetch.ts) a fixed 1.5 s keeps the
+      // worst-case time-to-error-state bounded (~32 s) instead of open-ended.
+      retryDelay: 1500,
       refetchOnWindowFocus: false,
       // Offline must fail CLOSED (AUDIT_2026-09 A-06). The default 'online' mode pauses an
       // offline query (isLoading=false, data=undefined → every screen renders its EMPTY
