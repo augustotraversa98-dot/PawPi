@@ -81,6 +81,7 @@
     "pleaseTryAgain": "Intentá de nuevo."
   },
   "common": {
+    "offlineBanner": "Sin conexión a internet — mostrando datos guardados",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",

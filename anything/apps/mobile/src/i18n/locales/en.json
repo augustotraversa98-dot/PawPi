@@ -81,6 +81,7 @@
     "pleaseTryAgain": "Please try again."
   },
   "common": {
+    "offlineBanner": "No internet connection — showing saved data",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
