@@ -2583,6 +2583,8 @@
     }
   },
   "welcome": {
+    "settingUp": "Preparando tu cuenta…",
+    "oneMoment": "Esto tomará solo un momento…",
     "vetAccessLink": "Acceso para veterinarias y negocios",
     "tagline": "El cuidado diario de tu mascota, sus momentos y la comunidad — todo en un lugar.",
     "createAccount": "Crear cuenta",
