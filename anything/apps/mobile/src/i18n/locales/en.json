@@ -19,6 +19,7 @@
     "after": "After"
   },
   "petProfile": {
+    "loadError": "Couldn't load this profile. Check your connection and try again.",
     "petProfile": "Pet profile",
     "withOwner": "with {{name}}",
     "dailyPosts": "Daily posts",
@@ -1019,6 +1020,7 @@
     "empty": "No conversations yet"
   },
   "notifications": {
+    "loadError": "Couldn't load your notifications. Check your connection and try again.",
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "empty": "No new notifications yet",

@@ -37,6 +37,7 @@ export default function SettingsTab() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [timeSensitiveEnabled, setTimeSensitiveEnabled] = useState(true);
   const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
+  const SHOW_QUIET_HOURS = false;
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [permissionStatus, setPermissionStatus] = useState(null);
 
@@ -381,6 +382,9 @@ export default function SettingsTab() {
         color={C.sage}
       />
 
+      {/* Quiet hours is not built yet (its only action was a "coming soon" alert —
+          AUDIT_2026-09 A-33). Hidden until it does something; flip to re-enable. */}
+      {SHOW_QUIET_HOURS && (
       <SettingRow
         icon={Moon}
         title={t("reminderSettings.quietHoursTitle", "Quiet Hours")}
@@ -392,8 +396,9 @@ export default function SettingsTab() {
         onValueChange={setQuietHoursEnabled}
         color="#4DB8E8"
       />
+      )}
 
-      {quietHoursEnabled && (
+      {SHOW_QUIET_HOURS && quietHoursEnabled && (
         <TouchableOpacity
           onPress={handleQuietHoursConfig}
           style={{
