@@ -19,6 +19,7 @@
     "after": "Después"
   },
   "petProfile": {
+    "loadError": "No pudimos cargar este perfil. Revisá tu conexión e intentá de nuevo.",
     "petProfile": "Perfil de la mascota",
     "withOwner": "con {{name}}",
     "dailyPosts": "Publicaciones diarias",
@@ -81,6 +82,7 @@
     "pleaseTryAgain": "Intentá de nuevo."
   },
   "common": {
+    "offlineBanner": "Sin conexión a internet — mostrando datos guardados",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -1018,6 +1020,7 @@
     "empty": "Todavía no hay conversaciones"
   },
   "notifications": {
+    "loadError": "No pudimos cargar tus notificaciones. Revisá tu conexión e intentá de nuevo.",
     "title": "Notificaciones",
     "markAllRead": "Marcar todo como leído",
     "empty": "Todavía no hay notificaciones",
@@ -2583,6 +2586,8 @@
     }
   },
   "welcome": {
+    "settingUp": "Preparando tu cuenta…",
+    "oneMoment": "Esto tomará solo un momento…",
     "vetAccessLink": "Acceso para veterinarias y negocios",
     "tagline": "El cuidado diario de tu mascota, sus momentos y la comunidad — todo en un lugar.",
     "createAccount": "Crear cuenta",

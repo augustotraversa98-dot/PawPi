@@ -475,12 +475,12 @@ function generateMedicationReminders(
 ) {
   const reminders = [];
   const times = Array.isArray(routine.times) ? routine.times : [];
-  const startDate = routine.startDate
-    ? new Date(routine.startDate)
-    : new Date();
-  const medicationEndDate = routine.endDate
-    ? new Date(routine.endDate)
-    : endDate;
+  // Date-only strings ("YYYY-MM-DD") must be read as LOCAL calendar days. `new Date(str)`
+  // parses them as UTC midnight, which on a UTC-negative device (Buenos Aires) is 21:00 of
+  // the PREVIOUS day: the course started a day early and its last day was dropped
+  // (AUDIT_2026-09 A-12).
+  const startDate = parseLocalDate(routine.startDate) ?? new Date();
+  const medicationEndDate = parseLocalDate(routine.endDate) ?? endDate;
 
   let currentDate = new Date(Math.max(now, startDate));
   currentDate.setHours(0, 0, 0, 0);
@@ -957,7 +957,9 @@ function generateVetAppointmentReminders(
   relatedTracker,
 ) {
   const reminders = [];
-  const appointmentDate = routine.date ? new Date(routine.date) : null;
+  // Local calendar day (see generateMedicationReminders) — a UTC parse fired the
+  // reminder on the day BEFORE the appointment on UTC-negative devices.
+  const appointmentDate = routine.date ? parseLocalDate(routine.date) : null;
 
   if (appointmentDate && routine.times?.[0]) {
     const [hours, minutes] = routine.times[0].split(":");
@@ -966,9 +968,9 @@ function generateVetAppointmentReminders(
 
     if (scheduledTime >= now && scheduledTime <= endDate) {
       reminders.push({
-        id: `reminder_${routine.id}_${
-          appointmentDate.toISOString().split("T")[0]
-        }`,
+        // Durable dismissal key: the calendar date as written on the routine, which is
+        // what the previous UTC parse + toISOString produced in every timezone.
+        id: `reminder_${routine.id}_${dateOnlyKey(routine.date, appointmentDate)}`,
         routineId: routine.id,
         petId: routine.petId,
         type: "vet_appointment",
@@ -1061,8 +1063,9 @@ function generateMedicalCareReminders(routine, now, endDate) {
     // --- Dose-course items: medication, supplement (one or more times per day) ---
     if (careType === "medication" || careType === "supplement") {
       const times = Array.isArray(item.times) ? item.times : [];
-      const startDate = item.startDate ? new Date(item.startDate) : new Date();
-      const itemEndDate = item.endDate ? new Date(item.endDate) : endDate;
+      // Local calendar days, not UTC midnight (AUDIT_2026-09 A-12).
+      const startDate = parseLocalDate(item.startDate) ?? new Date();
+      const itemEndDate = parseLocalDate(item.endDate) ?? endDate;
 
       // Emit every dose of one cadence day (>= now). Shared by the back-compat
       // daily walk and the recurring-cadence path so the id (a durable dismissal
@@ -1554,12 +1557,21 @@ function wellnessInstanceId(routineId, checkType, itemIndex, occurrence, frequen
 // as LOCAL dates — new Date("2026-01-31") is UTC midnight, which is Jan 30 in
 // UTC- timezones and would shift the day-of-month anchor.
 function parseLocalDate(value) {
+  if (value == null || value === "") return null;
   if (typeof value === "string") {
     const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
   }
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// The "YYYY-MM-DD" segment used in durable reminder ids. For a date-only string it is the
+// string itself (exactly what `new Date(str).toISOString()` used to yield in every
+// timezone); for any other input it falls back to the UTC date of the parsed instant.
+function dateOnlyKey(value, parsed) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return parsed.toISOString().split("T")[0];
 }
 
 // The anchor is the schedule's true start: the item/schedule-level startDate
@@ -2242,7 +2254,7 @@ function generateOverdueMedicalCare(routine, now, windowStart) {
       const times = Array.isArray(item.times) ? item.times : [];
       const effectiveStart = clampOverdueStart(windowStart, routine, item);
       // Parity with the future generator: don't emit doses after the course ended.
-      const itemEnd = item.endDate ? new Date(item.endDate) : null;
+      const itemEnd = item.endDate ? parseLocalDate(item.endDate) : null;
       const itemEndValid = itemEnd && !isNaN(itemEnd.getTime());
 
       // Emit every past, in-window, pre-course-end dose of one cadence day.

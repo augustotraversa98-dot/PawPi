@@ -49,7 +49,7 @@ export default function PetProfileScreen({ embedded = false }) {
   const petId = params.petId || (embedded ? String(currentPet?.id ?? "") : "");
   const updateCaption = useUpdatePostCaption();
 
-  const { data: profile, isLoading, refetch } = usePetSocialProfile(
+  const { data: profile, isLoading, isError, refetch } = usePetSocialProfile(
     petId,
     viewerPetId,
   );
@@ -248,6 +248,39 @@ export default function PetProfileScreen({ embedded = false }) {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: SPACING.xxl }}
       >
+        {/* Fetch failure (AUDIT_2026-09 A-09): without this the header showed the params
+            placeholders over an empty grid and read as "this pet has nothing". */}
+        {isError && !profile ? (
+          <View
+            testID="pet-profile-error"
+            style={{
+              margin: SPACING.lg,
+              padding: SPACING.lg,
+              borderRadius: 16,
+              backgroundColor: COLORS.sand,
+              alignItems: "center",
+              gap: SPACING.sm,
+            }}
+          >
+            <Text style={[TYPE.callout, { color: COLORS.warmBrown, textAlign: "center" }]}>
+              {t("petProfile.loadError")}
+            </Text>
+            <PressableScale
+              onPress={() => refetch()}
+              accessibilityRole="button"
+              style={{
+                backgroundColor: COLORS.coral,
+                paddingHorizontal: SPACING.xl,
+                paddingVertical: SPACING.sm,
+                borderRadius: 24,
+              }}
+            >
+              <Text style={[TYPE.callout, { color: COLORS.cream, fontWeight: "700" }]}>
+                {t("common.retry")}
+              </Text>
+            </PressableScale>
+          </View>
+        ) : null}
         {/* ── Hero section ── */}
         <View
           style={{

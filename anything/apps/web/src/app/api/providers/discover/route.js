@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { parsePaging } from "@/app/api/utils/paging";
 
 const UNDEFINED_COLUMN = "42703"; // pre-0124/0125 DB lacks claim_status/pet_policy → degrade cleanly
 
@@ -35,18 +36,6 @@ function num(v) {
   if (v == null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-// Haversine distance in km between two lat/lng points (mirrors adoption/listings).
-function distanceKm(aLat, aLng, bLat, bLng) {
-  const R = 6371;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
 }
 
 async function GET(request) {
@@ -96,6 +85,11 @@ async function GET(request) {
       lng <= 180;
     const applyRadius = hasGeo && radiusKm != null && radiusKm > 0;
 
+    // Paging (AUDIT_2026-09 A-14). The directory holds thousands of rows; without a bound
+    // every call shipped the whole published set (≈1,400 rows with three correlated
+    // subqueries each). Distance is now computed in SQL so nearest-first paging is exact.
+    const { limit, offset } = parsePaging(searchParams);
+
     // Bounding box for the radius pre-filter (1° lat ≈ 111km; lng shrinks by cos(lat)).
     const latPad = applyRadius ? radiusKm / 111 : null;
     const lngPad = applyRadius
@@ -140,7 +134,15 @@ async function GET(request) {
         loc.name AS location_name,
         loc.address AS location_address,
         loc.hours_json AS hours_json,
-        loc.pet_policy AS pet_policy
+        loc.pet_policy AS pet_policy,
+        (CASE
+           WHEN ${hasGeo} AND loc.lat IS NOT NULL AND loc.lng IS NOT NULL THEN
+             2 * 6371 * asin(sqrt(
+               power(sin(radians((loc.lat - ${lat ?? 0}) / 2)), 2)
+               + cos(radians(${lat ?? 0})) * cos(radians(loc.lat))
+                 * power(sin(radians((loc.lng - ${lng ?? 0}) / 2)), 2)))
+           ELSE NULL
+         END) AS distance_km
       FROM providers p
       LEFT JOIN LATERAL (
         SELECT lat, lng, name, address, hours_json, pet_policy
@@ -169,7 +171,8 @@ async function GET(request) {
             AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
           )
         )
-      ORDER BY p.name ASC
+      ORDER BY distance_km ASC NULLS LAST, p.name ASC
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
     const selectPreMigration = () => sql`
@@ -185,7 +188,15 @@ async function GET(request) {
         loc.name AS location_name,
         loc.address AS location_address,
         loc.hours_json AS hours_json,
-        NULL::text AS pet_policy
+        NULL::text AS pet_policy,
+        (CASE
+           WHEN ${hasGeo} AND loc.lat IS NOT NULL AND loc.lng IS NOT NULL THEN
+             2 * 6371 * asin(sqrt(
+               power(sin(radians((loc.lat - ${lat ?? 0}) / 2)), 2)
+               + cos(radians(${lat ?? 0})) * cos(radians(loc.lat))
+                 * power(sin(radians((loc.lng - ${lng ?? 0}) / 2)), 2)))
+           ELSE NULL
+         END) AS distance_km
       FROM providers p
       LEFT JOIN LATERAL (
         SELECT lat, lng, name, address, hours_json
@@ -214,7 +225,8 @@ async function GET(request) {
             AND loc.lng BETWEEN ${lngMin} AND ${lngMax}
           )
         )
-      ORDER BY p.name ASC
+      ORDER BY distance_km ASC NULLS LAST, p.name ASC
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
     let rows;
@@ -225,24 +237,21 @@ async function GET(request) {
       rows = await selectPreMigration();
     }
 
-    // No geo → published set in name order (the pre-P1 behaviour, now with the extra
-    // fields). With geo → attach distance_km and re-sort nearest-first; providers
-    // lacking coords sort to the end (and were already excluded when ?radius is set).
-    if (!hasGeo) {
-      return Response.json({ providers: rows });
-    }
+    // No geo → distance_km is NULL for every row and the ORDER BY degrades to name order
+    // (the pre-P1 behaviour). With geo → SQL computed distance_km and ordered nearest-first
+    // with coord-less providers last (already excluded when ?radius is set). Normalise the
+    // numeric column and drop it entirely when no geo was given, keeping the old shape.
+    const providers = rows.map((r) => {
+      const { distance_km, ...rest } = r;
+      return hasGeo
+        ? { ...rest, distance_km: distance_km == null ? null : Number(distance_km) }
+        : rest;
+    });
 
-    const providers = rows
-      .map((r) => ({
-        ...r,
-        distance_km:
-          r.lat != null && r.lng != null
-            ? distanceKm(lat, lng, Number(r.lat), Number(r.lng))
-            : null,
-      }))
-      .sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
-
-    return Response.json({ providers });
+    return Response.json({
+      providers,
+      page: { limit, offset, count: providers.length, hasMore: providers.length === limit },
+    });
   } catch (error) {
     console.error("[GET /api/providers/discover] Error:", error.message);
     return Response.json(

@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+} from "react-native";
 import {
   Camera,
   Clock,
@@ -8,10 +15,8 @@ import {
   ChevronUp,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import {
-  getPhotoHistoryGrouped,
-  BODY_AREA_LABELS,
-} from "@/data/photoCheckData";
+import { BODY_AREA_LABELS } from "@/data/photoCheckData";
+import { usePhotoChecks } from "@/hooks/useFetchHealthData";
 
 const C = {
   cream: "#FFF7EF",
@@ -53,9 +58,39 @@ function formatTime(dateString) {
   });
 }
 
+// Group the pet's REAL photo checks (GET /api/health/photo-checks) by body area, newest
+// first. Rows come back snake_case from the API; a camelCase fallback keeps any older
+// caller shape working. (AUDIT_2026-09 A-13: this used to render a seeded sample gallery
+// for petId "sample-pet".)
+export function groupPhotoChecksByArea(rows) {
+  const grouped = {};
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const photo = {
+      id: row.id,
+      bodyArea: row.body_area ?? row.bodyArea ?? "other",
+      imageUrl: row.image_url ?? row.imageUrl ?? null,
+      notes: row.notes ?? null,
+      createdAt: row.created_at ?? row.createdAt,
+      includedInVetSummary: Boolean(
+        row.included_in_vet_summary ?? row.includedInVetSummary,
+      ),
+    };
+    if (!grouped[photo.bodyArea]) grouped[photo.bodyArea] = [];
+    grouped[photo.bodyArea].push(photo);
+  });
+  Object.keys(grouped).forEach((area) => {
+    grouped[area].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  });
+  return grouped;
+}
+
 export default function PhotoHistory() {
   const { t } = useTranslation();
-  const photoHistory = getPhotoHistoryGrouped();
+  const { data, isLoading, isError, refetch } = usePhotoChecks(100);
+  const photoHistory = useMemo(
+    () => groupPhotoChecksByArea(data?.photoChecks),
+    [data],
+  );
   const [expandedAreas, setExpandedAreas] = useState([]);
 
   const toggleArea = (area) => {
@@ -87,7 +122,48 @@ export default function PhotoHistory() {
         </View>
 
         {/* Photo History by Area */}
-        {bodyAreasWithPhotos.length === 0 ? (
+        {isLoading ? (
+          <View style={{ paddingVertical: 32, alignItems: "center" }}>
+            <ActivityIndicator color={C.coral} />
+          </View>
+        ) : isError ? (
+          <View
+            testID="photo-history-error"
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 20,
+              padding: 24,
+              borderWidth: 1.5,
+              borderColor: C.peach,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                color: C.mutedBrown,
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              {t("common.somethingWrong")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => refetch()}
+              accessibilityRole="button"
+              style={{
+                backgroundColor: C.coral,
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 20,
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                {t("common.retry")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : bodyAreasWithPhotos.length === 0 ? (
           <View
             style={{
               backgroundColor: C.card,
