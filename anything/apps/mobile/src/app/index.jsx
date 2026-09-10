@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
+import { markNavigationReady } from "@/utils/notificationDeepLink";
 import { PawMark } from "@/components/ui";
 import { COLORS } from "@/constants/theme";
 
@@ -171,5 +172,8 @@ export default function EntryPoint() {
   console.log("[EntryPoint] Redirecting to:", destination);
   markBootStep("entrypoint:redirect");
   markBootComplete();
+  // The redirect is now in place; a notification tap that launched the app (parked by
+  // registerNotificationTapRouting) can be delivered on top of it.
+  setTimeout(markNavigationReady, 0);
   return <Redirect href={destination} />;
 }
