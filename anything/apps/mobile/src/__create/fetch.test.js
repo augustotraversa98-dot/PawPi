@@ -114,3 +114,68 @@ test('an intentionally non-JSON /api endpoint (text/calendar) is NOT treated as 
   const res = await fetchToWeb('/api/calendar/booking-123.ics');
   expect(res.ok).toBe(true); // passed through, no throw
 });
+
+// Fail-closed deadline (AUDIT_2026-09 A-02): a first-party request that never settles must
+// reject after FIRST_PARTY_TIMEOUT_MS instead of hanging React-Query in `isFetching` forever.
+describe('first-party request deadline', () => {
+  const { FIRST_PARTY_TIMEOUT_MS } = jest.requireActual('./fetch');
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('attaches an abort signal to first-party requests when the caller gives none', async () => {
+    await fetchToWeb('/api/pets');
+
+    const [, init] = expoFetch.mock.calls[0];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(init.signal.aborted).toBe(false);
+  });
+
+  test('respects a caller-supplied signal instead of adding its own', async () => {
+    const controller = new AbortController();
+
+    await fetchToWeb('/api/pets', { signal: controller.signal });
+
+    const [, init] = expoFetch.mock.calls[0];
+    expect(init.signal).toBe(controller.signal);
+  });
+
+  test('rejects after the deadline when the request never settles', async () => {
+    jest.useFakeTimers();
+    expoFetch.mockImplementationOnce(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(new Error('Aborted')));
+        }),
+    );
+
+    const pending = fetchToWeb('/api/pets');
+    // Attach the rejection expectation BEFORE the clock moves so the abort is never an
+    // unhandled rejection.
+    const rejects = expect(pending).rejects.toThrow('Aborted');
+    // Let the async SecureStore read settle so the fetch (and its timer) is actually started.
+    await jest.advanceTimersByTimeAsync(0);
+    expect(jest.getTimerCount()).toBe(1);
+
+    await jest.advanceTimersByTimeAsync(FIRST_PARTY_TIMEOUT_MS);
+
+    await rejects;
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  test('clears the deadline as soon as the response arrives (slow bodies are not cut off)', async () => {
+    jest.useFakeTimers();
+
+    await fetchToWeb('/api/pets');
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  test('does not add a deadline to third-party requests', async () => {
+    await fetchToWeb('https://example.com/thing');
+
+    const [, init] = expoFetch.mock.calls[0];
+    expect(init?.signal ?? null).toBeNull();
+  });
+});
