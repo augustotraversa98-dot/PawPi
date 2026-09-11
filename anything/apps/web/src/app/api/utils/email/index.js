@@ -7,8 +7,8 @@
 //
 // Degrade-clean contract (the VIDEO_API_KEY / CRON_SECRET pattern in this repo):
 //   • EMAIL_API_KEY unset          → { sent: false, reason: 'not_configured' } and the intended
-//                                    send is LOGGED server-side (recipient + subject only, never
-//                                    the body, which can contain a reset token).
+//                                    send is LOGGED server-side (REDACTED recipient + subject
+//                                    only, never the body, which can contain a reset token).
 //   • vendor rejects / network dies → { sent: false, reason: 'send_failed' }, logged, no throw.
 //   • sent                          → { sent: true, id }.
 //
@@ -16,6 +16,16 @@
 
 import { emailConfig } from "./config";
 import { thirdPartySignal } from "../thirdPartyFetch";
+
+// (AUDIT A-27) Redact an address for logs: keep the first character of the
+// local part and the domain, mask the rest — enough to debug routing without
+// writing a full inbox to the server log. Empty/invalid input → "[redacted]".
+export function redactEmail(addr) {
+  if (typeof addr !== "string" || !addr.includes("@")) return "[redacted]";
+  const [local, domain] = addr.split("@");
+  const head = local.slice(0, 1) || "";
+  return `${head}***@${domain}`;
+}
 
 /**
  * Resend adapter: one authenticated JSON POST. https://resend.com/docs/api-reference/emails
@@ -61,10 +71,11 @@ export async function sendEmail({ to, subject, text, html }) {
 
   if (!cfg) {
     // Not set up yet. Log the INTENT so the flow is still traceable in the server log during
-    // pre-go-live testing — subject + recipient only. The body is deliberately omitted because a
-    // reset email contains a single-use token, and logs are not a secret store.
+    // pre-go-live testing — subject + a REDACTED recipient only (AUDIT A-27: the raw address is
+    // PII and, for a reset, ties an inbox to a token flow). The body is deliberately omitted
+    // because a reset email contains a single-use token, and logs are not a secret store.
     console.log(
-      `[email] EMAIL_API_KEY not set — skipping send to ${to} (subject: "${subject}")`,
+      `[email] EMAIL_API_KEY not set — skipping send to ${redactEmail(to)} (subject: "${subject}")`,
     );
     return { sent: false, reason: "not_configured" };
   }

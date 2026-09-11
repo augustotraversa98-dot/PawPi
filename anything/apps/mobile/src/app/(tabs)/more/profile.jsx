@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -44,15 +44,8 @@ export default function ProfileScreen() {
   // Grooming sessions for this pet (ticket 2.6) — before/after photos a groomer logged.
   const { data: groomSessions } = useGroomSessions(currentPet?.id);
 
-  // Debug logging
-  useEffect(() => {
-    console.log("[Dog Profile] ========================================");
-    console.log("[Dog Profile] Screen loaded");
-    console.log("[Dog Profile] Auth user:", authUser);
-    console.log("[Dog Profile] Current pet:", currentPet);
-    console.log("[Dog Profile] Loading:", loadingPet);
-    console.log("[Dog Profile] ========================================");
-  }, [authUser, currentPet, loadingPet]);
+  // (AUDIT A-27) Removed the mount debug block that logged the full auth-user
+  // and pet objects (PII) to client logs.
 
   // Helper to format weight
   const formatWeight = (weight, weightUnit) => {

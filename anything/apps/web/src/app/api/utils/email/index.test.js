@@ -4,7 +4,23 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // unconfigured or broken vendor can never turn a working user action into a 500 (the
 // dormant-behind-keys pattern used by VIDEO_API_KEY / CRON_SECRET / the payments keys).
 
-import { sendEmail, emailConfig } from "./index";
+import { sendEmail, emailConfig, redactEmail } from "./index";
+
+describe("redactEmail (AUDIT A-27)", () => {
+  it("masks the local part but keeps first char + domain", () => {
+    expect(redactEmail("owner@example.com")).toBe("o***@example.com");
+  });
+  it("handles junk safely", () => {
+    expect(redactEmail("")).toBe("[redacted]");
+    expect(redactEmail("no-at-sign")).toBe("[redacted]");
+    expect(redactEmail(null)).toBe("[redacted]");
+    expect(redactEmail(undefined)).toBe("[redacted]");
+  });
+  it("never leaks the full address", () => {
+    const out = redactEmail("longlocalpart@example.com");
+    expect(out).not.toContain("longlocalpart");
+  });
+});
 
 const SAVED = {
   key: process.env.EMAIL_API_KEY,
@@ -101,11 +117,13 @@ describe("sendEmail — degrade clean with no key", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("logs the INTENDED send server-side so the flow stays traceable pre-go-live", async () => {
+  it("logs the INTENDED send server-side (redacted recipient) so the flow stays traceable pre-go-live", async () => {
     await sendEmail(MESSAGE);
     const line = console.log.mock.calls[0][0];
     expect(line).toContain("EMAIL_API_KEY not set");
-    expect(line).toContain("owner@example.com");
+    // AUDIT A-27: recipient is masked, never the full address.
+    expect(line).toContain("o***@example.com");
+    expect(line).not.toContain("owner@example.com");
     expect(line).toContain("Reset your PawPi password");
   });
 

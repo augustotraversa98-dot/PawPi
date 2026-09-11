@@ -17,9 +17,8 @@ function useUpload() {
   const [loading, setLoading] = React.useState(false);
   const upload = React.useCallback(async (input) => {
     try {
-      console.log("[useUpload] ========================================");
-      console.log("[useUpload] Starting upload");
-      console.log("[useUpload] Input:", input);
+      // (AUDIT A-27) Do not log the raw upload input — it can carry file URIs
+      // and, for URL inputs, the source media URL.
       setLoading(true);
       let response;
 
@@ -150,9 +149,8 @@ function useUpload() {
         }
 
         const data = await response.json();
-        console.log("[useUpload] ✅ Upload response data:", data);
-        console.log("[useUpload] URL:", data.url);
-        console.log("[useUpload] ========================================");
+        // (AUDIT A-27) Do not log the returned media URL — for the private
+        // medical/chat buckets the URL is a long-lived bearer credential.
         return { url: data.url, mimeType: data.mimeType || null };
       }
     } catch (uploadError) {
