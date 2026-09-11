@@ -32,15 +32,25 @@ async function GET(request, { params }) {
     }
 
     await requireProviderCapability(providerId, "adoption");
-    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
+    const membership = await requireProviderRole(
+      providerId,
+      userId,
+      ALL_PROVIDER_ROLES,
+    );
+    // (AUDIT A-23) The applicant's email is PII. Any active staff may REVIEW an
+    // application, but only owner/admin see the raw email; regular staff/vet reach
+    // the applicant through the application thread (A3) instead. The email is still
+    // joined below (one column) and nulled out for non-privileged roles so the
+    // shape stays stable for the shelter dashboard.
+    const canSeeApplicantEmail =
+      membership?.role === "owner" || membership?.role === "admin";
 
-    // RLS scopes to this place's staff. Join the listing (the dog) + the applicant's PUBLIC
-    // contact fields (name + email) so the shelter can reach out to schedule a visit. Email
-    // lives on auth_users (RLS-disabled identity table, 0026), joined via the profile's
-    // auth_user_id — the same path the payments receipt join uses. There is NO phone column on
-    // the profile, so the recommended "Best contact number" question (application_questions,
-    // 0086) is the phone channel — its answer rides in `answers`. Only these public-contact
-    // columns are widened; no RLS change (the row-level scope is unchanged).
+    // RLS scopes to this place's staff. Join the listing (the dog) + the applicant's name, and
+    // the email for owner/admin only (nulled for other roles above — AUDIT A-23). Email lives on
+    // auth_users (RLS-disabled identity table, 0026), joined via the profile's auth_user_id.
+    // There is NO phone column on the profile, so the recommended "Best contact number" question
+    // (application_questions, 0086) is the phone channel — its answer rides in `answers`. No RLS
+    // change (the row-level scope is unchanged).
     const applications = await sql`
       SELECT
         a.id, a.listing_id, a.provider_id, a.applicant_owner_user_id, a.answers,
@@ -56,7 +66,12 @@ async function GET(request, { params }) {
       ORDER BY a.created_at DESC, a.id DESC
     `;
 
-    return Response.json({ applications });
+    // (AUDIT A-23) Strip the applicant email for non owner/admin roles.
+    const scoped = canSeeApplicantEmail
+      ? applications
+      : applications.map((a) => ({ ...a, applicant_email: null }));
+
+    return Response.json({ applications: scoped });
   } catch (e) {
     if (e instanceof ProviderAuthError) {
       return Response.json({ error: e.message }, { status: e.status ?? 403 });

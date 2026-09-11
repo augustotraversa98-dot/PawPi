@@ -27,8 +27,16 @@ async function GET(request, { params }) {
     // Owner OR active provider-staff of the order's provider may read. The join to
     // provider_staff resolves the provider scope; a removed/invited membership returns
     // no row, exactly like the RLS policy.
+    //
+    // (AUDIT A-23) Project an EXPLICIT column list, never p.* — the payments row also
+    // holds rail-internal fields (external_id = the MercadoPago/Binance payment id) and
+    // the idempotency_key, which the client never needs and which are a payment-rail
+    // credential surface. The receipt needs status + amounts + rail + timestamps only.
     const rows = await sql`
-      SELECT p.*, o.owner_user_id, o.provider_id, o.kind, o.status AS order_status
+      SELECT
+        p.id, p.order_id, p.rail, p.status, p.amount_cents, p.commission_cents,
+        p.created_at, p.updated_at,
+        o.owner_user_id, o.provider_id, o.kind, o.status AS order_status
       FROM payments p
       JOIN orders o ON o.id = p.order_id
       WHERE p.id = ${paymentId}
