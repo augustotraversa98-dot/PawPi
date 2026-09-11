@@ -99,7 +99,8 @@
     "yourPet": "your pet",
     "pleaseTryAgain": "Please try again.",
     "error": "Error",
-    "additionalNotesPlaceholder": "Additional notes..."
+    "additionalNotesPlaceholder": "Additional notes...",
+    "couldNotSave": "Could not save. Please try again."
   },
   "settings": {
     "title": "Settings",
