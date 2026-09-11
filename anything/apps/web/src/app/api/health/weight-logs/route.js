@@ -25,14 +25,18 @@ async function GET(request) {
     const { searchParams } = new URL(request.url);
     const petId = searchParams.get("petId");
     const limit = parseInt(searchParams.get("limit") || "20");
+    // (AUDIT A-30) Optional lower time bound for the overdue derivation.
+    const since = searchParams.get("since");
 
     if (!petId || !Number.isInteger(parseInt(petId))) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
+    const sinceClause = since ? sql`AND logged_at >= ${since}` : sql``;
     const logs = await sql`
       SELECT * FROM health_weight_logs
       WHERE pet_id = ${parseInt(petId)} AND owner_user_id = ${userProfileId}
+        ${sinceClause}
       ORDER BY logged_at DESC
       LIMIT ${limit}
     `;

@@ -108,12 +108,16 @@ async function GET(request) {
     const petId = searchParams.get("petId");
     const bodyArea = searchParams.get("bodyArea");
     const limit = parseInt(searchParams.get("limit") || "50");
+    // (AUDIT A-30) Optional lower time bound for the overdue derivation.
+    const since = searchParams.get("since");
+    const sinceClause = since ? sql`AND created_at >= ${since}` : sql``;
 
     let photoChecks;
     if (petId && bodyArea) {
       photoChecks = await sql`
         SELECT * FROM health_photo_checks
         WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId} AND body_area = ${bodyArea}
+          ${sinceClause}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `;
@@ -121,6 +125,7 @@ async function GET(request) {
       photoChecks = await sql`
         SELECT * FROM health_photo_checks
         WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          ${sinceClause}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `;
@@ -128,6 +133,7 @@ async function GET(request) {
       photoChecks = await sql`
         SELECT * FROM health_photo_checks
         WHERE owner_user_id = ${ownerUserId}
+          ${sinceClause}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `;

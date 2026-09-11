@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // client-supplied petId with no ownership check. It now routes through resolvePetLogOwner (the same
 // owner-OR-family gate the food/walk/poo-log routes use), anchoring the write to the pet's owner.
 
-import { POST } from "./route";
+import { POST, GET } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
@@ -53,5 +53,30 @@ describe("POST /api/health/wellness-logs — ownership gate", () => {
     const res = await POST(post({ petId: 5, checkType: "general" }));
     expect(res.status).toBe(200);
     expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5);
+  });
+});
+
+describe("GET /api/health/wellness-logs — ?since bound (AUDIT A-30)", () => {
+  const get = (qs) =>
+    new Request(`http://localhost/api/health/wellness-logs?${qs}`);
+
+  const allTemplates = () =>
+    sql.mock.calls.map((c) => (c[0] ?? []).join(" ")).join(" || ");
+  const allArgs = () =>
+    JSON.stringify(sql.mock.calls.flatMap((c) => c.slice(1)));
+
+  it("applies the since lower bound when provided", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValue([{ id: 7 }]); // profile + fragment + logs all return harmlessly
+    await GET(get("petId=5&since=2026-08-01"));
+    expect(allTemplates()).toContain("logged_at >=");
+    expect(allArgs()).toContain("2026-08-01");
+  });
+
+  it("omits the bound when since is absent (no regression)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValue([{ id: 7 }]);
+    await GET(get("petId=5"));
+    expect(allTemplates()).not.toContain("logged_at >=");
   });
 });

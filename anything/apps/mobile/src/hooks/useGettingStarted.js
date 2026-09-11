@@ -19,6 +19,9 @@ function useHasReminder(petId) {
   return useQuery({
     queryKey: ["routines", "exist", petId],
     enabled: !!petId,
+    // (AUDIT A-30) 30 s staleTime so remounting the Feed doesn't re-hit this
+    // existence check on every mount.
+    staleTime: 30 * 1000,
     queryFn: async () => {
       const res = await fetch(`/api/routines?petId=${petId}`);
       if (!res.ok) throw new Error("Failed to load routines");
@@ -40,9 +43,33 @@ export function useGettingStarted() {
   const { data: pet } = useCurrentPet();
   const petId = pet?.id;
 
+  // Celebration flag — assume "already celebrated" until storage confirms
+  // otherwise, so a returning fully-done user never flashes the celebration AND
+  // (AUDIT A-30) the activation queries below never fire once the card has
+  // retired: a retired card would otherwise refetch the full social profile
+  // (staleTime:0) on every Feed mount for nothing.
+  const [celebrated, setCelebrated] = useState(true);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(CELEBRATED_KEY).then((v) => {
+      if (active) setCelebrated(v === "1");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const markCelebrated = useCallback(() => {
+    setCelebrated(true);
+    AsyncStorage.setItem(CELEBRATED_KEY, "1").catch(() => {});
+  }, []);
+
+  // Gate the activation reads on !celebrated by passing a null petId when the
+  // card is retired — usePetSocialProfile / useHasReminder already `enabled: !!petId`.
+  const activationPetId = celebrated ? null : petId;
+
   const { data: foodLogs } = useFoodLogs();
-  const { data: profile } = usePetSocialProfile(petId);
-  const { data: hasReminder } = useHasReminder(petId);
+  const { data: profile } = usePetSocialProfile(activationPetId);
+  const { data: hasReminder } = useHasReminder(activationPetId);
 
   const hasMeal = (foodLogs?.logs?.length ?? 0) > 0;
   const hasPost = (profile?.stats?.totalPosts ?? 0) > 0;
@@ -85,23 +112,6 @@ export function useGettingStarted() {
     const granted = await requestNotificationPermissions();
     setNotificationsGranted(granted); // the effect above then schedules the daily reminder
     return granted;
-  }, []);
-
-  // Celebration: assume "already celebrated" until storage confirms otherwise, so a returning
-  // fully-done user never flashes the celebration.
-  const [celebrated, setCelebrated] = useState(true);
-  useEffect(() => {
-    let active = true;
-    AsyncStorage.getItem(CELEBRATED_KEY).then((v) => {
-      if (active) setCelebrated(v === "1");
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-  const markCelebrated = useCallback(() => {
-    setCelebrated(true);
-    AsyncStorage.setItem(CELEBRATED_KEY, "1").catch(() => {});
   }, []);
 
   return {
