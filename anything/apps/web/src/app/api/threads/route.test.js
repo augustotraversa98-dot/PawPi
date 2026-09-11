@@ -12,6 +12,18 @@ import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+vi.mock('@/app/api/utils/providerAuth', () => {
+  class ProviderAuthError extends Error {
+    constructor(m) { super(m); this.status = 403; }
+  }
+  return {
+    requireProviderRole: vi.fn(),
+    ProviderAuthError,
+    ALL_PROVIDER_ROLES: ['owner', 'admin', 'staff', 'vet'],
+  };
+});
+
+import { requireProviderRole } from '@/app/api/utils/providerAuth';
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
@@ -74,6 +86,15 @@ describe('GET /api/threads', () => {
     const res = await GET(getReq('?side=provider&providerId=10'));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ threads: [{ id: 5 }] });
+  });
+
+  it('provider side: a non-staff caller → 403 (AUDIT A-22)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // resolveUserId
+    const { ProviderAuthError } = await import('@/app/api/utils/providerAuth');
+    requireProviderRole.mockRejectedValueOnce(new ProviderAuthError('not staff'));
+    const res = await GET(getReq('?side=provider&providerId=10'));
+    expect(res.status).toBe(403);
   });
 });
 

@@ -65,5 +65,9 @@ describe("GET transport-trips/[tripId]/track", () => {
     expect(sql.mock.calls[1][0].join(" ")).toContain(
       "FROM transport_trip_locations",
     );
+    // AUDIT A-22: the trip read carries the explicit owner-or-active-staff predicate.
+    const tripQ = sql.mock.calls[0][0].join(" ");
+    expect(tripQ).toContain("owner_user_id");
+    expect(tripQ).toContain("provider_staff");
   });
 });

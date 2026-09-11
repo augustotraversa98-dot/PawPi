@@ -39,11 +39,23 @@ describe("GET messages", () => {
   it("returns messages + hasMore", async () => {
     auth.mockResolvedValue(SESSION);
     const MSGS = [{ id: 2, body: "hi" }];
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce(MSGS);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check (AUDIT A-22)
+      .mockResolvedValueOnce(MSGS); // messages
     const res = await GET(getReq(), PARAMS);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ messages: MSGS, hasMore: false });
-    expect(queryTextOf(1)).toContain("FROM dm_messages");
+    expect(queryTextOf(2)).toContain("FROM dm_messages");
+  });
+
+  it("403 when the caller is not a participant (AUDIT A-22)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([]); // participant check → none
+    const res = await GET(getReq(), PARAMS);
+    expect(res.status).toBe(403);
   });
 });
 

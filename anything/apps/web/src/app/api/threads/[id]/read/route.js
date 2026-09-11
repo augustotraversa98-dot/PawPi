@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isMessageThreadParticipant } from "@/app/api/utils/messagingAccess";
 
 // POST /api/threads/[id]/read — mark a thread read (Phase 2 ticket 2.5).
 //
@@ -23,6 +24,15 @@ async function POST(request, { params }) {
     }
 
     const threadId = params.id;
+
+    // (AUDIT A-22) Explicit participant gate (defense-in-depth on top of RLS).
+    if (!(await isMessageThreadParticipant(userId, threadId))) {
+      return Response.json(
+        { error: "You are not a participant of this thread" },
+        { status: 403 },
+      );
+    }
+
     const updated = await sql`
       UPDATE messages
       SET read_at = now()

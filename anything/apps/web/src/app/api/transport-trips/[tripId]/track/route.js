@@ -24,13 +24,25 @@ async function GET(request, { params }) {
     }
 
     // RLS-scoped trip read (owner or active staff). Missing/unauthorized → 404.
+    // (AUDIT A-22) The WHERE also carries the explicit owner-or-active-staff
+    // predicate the RLS policy encodes, so the scope is enforced at the app layer
+    // too (defense-in-depth), not RLS alone.
     const tripRows = await sql`
       SELECT
         id, status, provider_id, pet_id,
         pickup_lat, pickup_lng, pickup_address,
         dropoff_lat, dropoff_lng, dropoff_address
-      FROM transport_trips
-      WHERE id = ${tripId}
+      FROM transport_trips t
+      WHERE t.id = ${tripId}
+        AND (
+          t.owner_user_id = ${userId}
+          OR EXISTS (
+            SELECT 1 FROM provider_staff ps
+            WHERE ps.provider_id = t.provider_id
+              AND ps.user_profile_id = ${userId}
+              AND ps.status = 'active'
+          )
+        )
     `;
     if (tripRows.length === 0) {
       return Response.json(

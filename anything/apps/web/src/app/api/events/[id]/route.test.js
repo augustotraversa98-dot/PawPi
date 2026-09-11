@@ -44,6 +44,18 @@ describe("GET /api/events/[id]", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).event).toMatchObject({ id: 8, my_rsvp: "going" });
   });
+
+  // AUDIT A-22: the detail read mirrors the list filter — never a soft-deleted
+  // event, and a non-published event only to its host.
+  it("filters on deleted_at + published-or-host", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 8 }]);
+    await GET(get(), PARAMS);
+    const q = sql.mock.calls[0][0].join(" ");
+    expect(q).toContain("deleted_at IS NULL");
+    expect(q).toContain("status = 'published'");
+    expect(q).toContain("host_user_id");
+  });
 });
 
 describe("PATCH /api/events/[id]", () => {

@@ -27,13 +27,23 @@ it("401 unauth", async () => {
 it("marks the OTHER side's messages read, scoped to me", async () => {
   auth.mockResolvedValue(SESSION);
   sql
-    .mockResolvedValueOnce([PROFILE_ROW])
-    .mockResolvedValueOnce([{ id: 1 }, { id: 2 }]);
+    .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+    .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check (AUDIT A-22)
+    .mockResolvedValueOnce([{ id: 1 }, { id: 2 }]); // UPDATE ... RETURNING
   const res = await POST(req(), PARAMS);
   expect(res.status).toBe(200);
   expect(await res.json()).toEqual({ updated: 2 });
-  const text = (sql.mock.calls[1]?.[0] ?? []).join(" ");
+  const text = (sql.mock.calls[2]?.[0] ?? []).join(" ");
   expect(text).toContain("UPDATE dm_messages");
   expect(text).toContain("sender_user_id <>");
-  expect(sql.mock.calls[1].slice(1)).toContain(7);
+  expect(sql.mock.calls[2].slice(1)).toContain(7);
+});
+
+it("403 when the caller is not a participant (AUDIT A-22)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql
+    .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+    .mockResolvedValueOnce([]); // participant check → not a participant
+  const res = await POST(req(), PARAMS);
+  expect(res.status).toBe(403);
 });

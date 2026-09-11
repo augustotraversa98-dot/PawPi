@@ -5,6 +5,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
+import { isMessageThreadParticipant } from "@/app/api/utils/messagingAccess";
 
 // /api/threads/[id]/messages — the conversation view (Phase 2 ticket 2.5).
 //
@@ -37,6 +38,17 @@ async function GET(request, { params }) {
     }
 
     const threadId = params.id;
+
+    // (AUDIT A-22) Explicit participant gate (defense-in-depth on top of RLS):
+    // a non-participant (not the owner, not active staff of the provider) gets
+    // 403, not a silent empty list.
+    if (!(await isMessageThreadParticipant(userId, threadId))) {
+      return Response.json(
+        { error: "You are not a participant of this thread" },
+        { status: 403 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const rawLimit = parseInt(searchParams.get("limit") ?? "30", 10);
     const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 30, 1), 100);
