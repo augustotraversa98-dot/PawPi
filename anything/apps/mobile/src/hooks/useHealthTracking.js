@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "./usePetProfile";
 import { invalidateHealthGraph } from "./useHealthReinforcement";
 
@@ -7,6 +8,7 @@ import { invalidateHealthGraph } from "./useHealthReinforcement";
 export function useLogFood() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (foodData) => {
@@ -46,7 +48,7 @@ export function useLogFood() {
     },
     onError: (error) => {
       console.error("[useLogFood] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -55,6 +57,7 @@ export function useLogFood() {
 export function useLogPoo() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (pooData) => {
@@ -95,7 +98,7 @@ export function useLogPoo() {
     },
     onError: (error) => {
       console.error("[useLogPoo] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -104,6 +107,7 @@ export function useLogPoo() {
 export function useLogWalk() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (walkData) => {
@@ -143,7 +147,7 @@ export function useLogWalk() {
     },
     onError: (error) => {
       console.error("[useLogWalk] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -152,6 +156,7 @@ export function useLogWalk() {
 export function useLogGeneralCheck() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (checkData) => {
@@ -198,7 +203,7 @@ export function useLogGeneralCheck() {
     },
     onError: (error) => {
       console.error("[useLogGeneralCheck] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -207,6 +212,7 @@ export function useLogGeneralCheck() {
 export function useLogPhotoCheck() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (photoData) => {
@@ -241,7 +247,7 @@ export function useLogPhotoCheck() {
     },
     onError: (error) => {
       console.error("[useLogPhotoCheck] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -250,6 +256,7 @@ export function useLogPhotoCheck() {
 export function useLogPee() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (peeData) => {
@@ -290,7 +297,7 @@ export function useLogPee() {
     },
     onError: (error) => {
       console.error("[useLogPee] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -299,6 +306,7 @@ export function useLogPee() {
 export function useLogVomit() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (vomitData) => {
@@ -338,7 +346,7 @@ export function useLogVomit() {
     },
     onError: (error) => {
       console.error("[useLogVomit] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }
@@ -347,6 +355,7 @@ export function useLogVomit() {
 export function useLogWeight() {
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (weightData) => {
@@ -383,7 +392,7 @@ export function useLogWeight() {
     },
     onError: (error) => {
       console.error("[useLogWeight] Error:", error);
-      Alert.alert("Error", "Could not save. Please try again.");
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     },
   });
 }

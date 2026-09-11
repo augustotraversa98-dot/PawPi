@@ -99,7 +99,8 @@
     "yourPet": "tu mascota",
     "pleaseTryAgain": "Probá de nuevo.",
     "error": "Error",
-    "additionalNotesPlaceholder": "Notas adicionales..."
+    "additionalNotesPlaceholder": "Notas adicionales...",
+    "couldNotSave": "No se pudo guardar. Probá de nuevo."
   },
   "settings": {
     "title": "Ajustes",
