@@ -42,6 +42,11 @@ describe('GET /api/payments/[id]', () => {
     expect(q).toContain('FROM payments');
     expect(q).toContain('JOIN orders');
     expect(q).toContain('provider_staff');
+    // AUDIT A-23: explicit projection, never p.* — the rail-internal external_id
+    // and the idempotency_key must not be selected.
+    expect(q).not.toContain('p.*');
+    expect(q).not.toMatch(/external_id/);
+    expect(q).not.toMatch(/idempotency_key/);
   });
 
   it('404 when not visible / not found (no existence leak)', async () => {
