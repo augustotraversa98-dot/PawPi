@@ -152,12 +152,16 @@ async function GET(request) {
     const { searchParams } = new URL(request.url);
     const petId = searchParams.get("petId");
     const limit = parseInt(searchParams.get("limit") || "50");
+    // (AUDIT A-30) Optional lower time bound for the overdue derivation.
+    const since = searchParams.get("since");
+    const sinceClause = since ? sql`AND given_at >= ${since}` : sql``;
 
     let logs;
     if (petId) {
       logs = await sql`
         SELECT * FROM health_medical_care_logs
         WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          ${sinceClause}
         ORDER BY given_at DESC
         LIMIT ${limit}
       `;
@@ -165,6 +169,7 @@ async function GET(request) {
       logs = await sql`
         SELECT * FROM health_medical_care_logs
         WHERE owner_user_id = ${ownerUserId}
+          ${sinceClause}
         ORDER BY given_at DESC
         LIMIT ${limit}
       `;

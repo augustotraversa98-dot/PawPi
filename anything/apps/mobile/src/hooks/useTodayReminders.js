@@ -89,6 +89,14 @@ export function useTodayReminders({ now } = {}) {
   const nowMs = now != null ? new Date(now).getTime() : tick;
   const refreshNow = useCallback(() => setTick(Date.now()), []);
 
+  // (AUDIT A-30) Overdue is only ever resolved against RECENT logs, so bound the
+  // four log fetches to the last 30 days (date-only, stable within a day → no key
+  // churn) instead of downloading hundreds of all-time rows per pet switch. The
+  // limits stay as a safety cap.
+  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
   const dismissalsQuery = usePetList(
     "reminder-dismissals",
     `/api/health/reminder-dismissals?petId=${petId}`,
@@ -97,25 +105,25 @@ export function useTodayReminders({ now } = {}) {
   );
   const wellnessQuery = usePetList(
     "wellness-logs",
-    `/api/health/wellness-logs?petId=${petId}&limit=200`,
+    `/api/health/wellness-logs?petId=${petId}&limit=200&since=${since30d}`,
     (d) => d.logs,
     petId,
   );
   const weightQuery = usePetList(
     "weight-logs",
-    `/api/health/weight-logs?petId=${petId}&limit=50`,
+    `/api/health/weight-logs?petId=${petId}&limit=50&since=${since30d}`,
     (d) => d.logs,
     petId,
   );
   const medicalQuery = usePetList(
     "medical-care-logs",
-    `/api/health/medical-care-logs?petId=${petId}&limit=200`,
+    `/api/health/medical-care-logs?petId=${petId}&limit=200&since=${since30d}`,
     (d) => d.logs,
     petId,
   );
   const photoQuery = usePetList(
     "photo-checks",
-    `/api/health/photo-checks?petId=${petId}&limit=100`,
+    `/api/health/photo-checks?petId=${petId}&limit=100&since=${since30d}`,
     (d) => d.photoChecks,
     petId,
   );

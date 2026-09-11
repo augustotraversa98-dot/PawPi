@@ -14,6 +14,9 @@ async function GET(request) {
   const petId = searchParams.get("petId");
   const checkType = searchParams.get("checkType");
   const limit = parseInt(searchParams.get("limit") || "20");
+  // (AUDIT A-30) Optional lower time bound so the Health-home overdue derivation
+  // can fetch only recent logs (?since=<ISO>) instead of hundreds of all-time rows.
+  const since = searchParams.get("since");
 
   if (!petId) {
     return Response.json({ error: "petId is required" }, { status: 400 });
@@ -32,7 +35,8 @@ async function GET(request) {
     }
     const userProfileId = userProfiles[0].id;
 
-    // Build query with optional checkType filter
+    // Build query with optional checkType + since filters.
+    const sinceClause = since ? sql`AND logged_at >= ${since}` : sql``;
     let logs;
     if (checkType) {
       logs = await sql`
@@ -40,6 +44,7 @@ async function GET(request) {
         WHERE pet_id = ${parseInt(petId)}
           AND owner_user_id = ${userProfileId}
           AND check_type = ${checkType}
+          ${sinceClause}
         ORDER BY logged_at DESC
         LIMIT ${limit}
       `;
@@ -48,6 +53,7 @@ async function GET(request) {
         SELECT * FROM health_wellness_logs
         WHERE pet_id = ${parseInt(petId)}
           AND owner_user_id = ${userProfileId}
+          ${sinceClause}
         ORDER BY logged_at DESC
         LIMIT ${limit}
       `;
