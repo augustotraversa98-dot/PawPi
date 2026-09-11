@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import {
   requireProviderCapability,
+  requireProviderRole,
+  ALL_PROVIDER_ROLES,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -44,6 +46,7 @@ async function POST(request, { params }) {
 
     // GATE 1 — the provider must HOLD 'telehealth'.
     await requireProviderCapability(providerId, "telehealth");
+    await requireProviderRole(providerId, staffUserId, ALL_PROVIDER_ROLES);
 
     const body = (await request.json()) ?? {};
     const { booking_id } = body;

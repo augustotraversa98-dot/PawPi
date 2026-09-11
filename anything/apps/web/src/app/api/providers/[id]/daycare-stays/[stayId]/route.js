@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import {
   requireProviderCapability,
+  requireProviderRole,
+  ALL_PROVIDER_ROLES,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
@@ -43,6 +45,7 @@ async function PATCH(request, { params }) {
 
     // GATE 1 — the provider must HOLD the 'daycare' capability (2.1). 403 if not.
     await requireProviderCapability(providerId, "daycare");
+    await requireProviderRole(providerId, staffUserId, ALL_PROVIDER_ROLES);
 
     const body = (await request.json()) ?? {};
     const { action } = body;

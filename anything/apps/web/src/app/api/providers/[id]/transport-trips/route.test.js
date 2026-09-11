@@ -18,7 +18,7 @@ vi.mock("@/app/api/utils/providerAuth", () => {
       this.status = 403;
     }
   }
-  return { requireProviderCapability: vi.fn(), ProviderAuthError };
+  return { requireProviderCapability: vi.fn(), requireProviderRole: vi.fn(), ALL_PROVIDER_ROLES: ["owner", "admin", "staff", "vet"], ProviderAuthError };
 });
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import {
   requireProviderCapability,
+  requireProviderRole,
+  ALL_PROVIDER_ROLES,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -66,6 +68,7 @@ async function GET(request, { params }) {
 
     // MODULE gate — the provider must hold the 'walker' capability (2.1). 403 if not.
     await requireProviderCapability(providerId, "walker");
+    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");

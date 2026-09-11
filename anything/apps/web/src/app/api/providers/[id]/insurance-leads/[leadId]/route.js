@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import {
   requireProviderCapability,
+  requireProviderRole,
+  ALL_PROVIDER_ROLES,
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -24,6 +26,7 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     await requireProviderCapability(providerId, "insurance");
+    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
     const body = (await request.json()) ?? {};
     if (!STATUSES.includes(body.status)) {

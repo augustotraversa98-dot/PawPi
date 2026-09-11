@@ -5,13 +5,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PATCH } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { requireProviderCapability } from "@/app/api/utils/providerAuth";
+import {
+  requireProviderCapability,
+  requireProviderRole,
+} from "@/app/api/utils/providerAuth";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/providerAuth", () => {
   class ProviderAuthError extends Error { constructor(m) { super(m); this.status = 403; } }
-  return { requireProviderCapability: vi.fn(), ProviderAuthError };
+  return { requireProviderCapability: vi.fn(), requireProviderRole: vi.fn(), ALL_PROVIDER_ROLES: ["owner", "admin", "staff", "vet"], ProviderAuthError };
 });
 
 const SESSION = { user: { id: 42 } };
@@ -30,6 +33,16 @@ it("rejects an invalid status", async () => {
   auth.mockResolvedValue(SESSION);
   sql.mockResolvedValueOnce(PROFILE);
   expect((await PATCH(patch({ status: "spam" }), PARAMS)).status).toBe(400);
+});
+
+// AUDIT A-20: a non-staff caller who happens to hit a capability-holding
+// provider is now 403'd by the explicit role gate, not silently 200'd.
+it("non-staff → 403 (explicit role gate, not RLS-only)", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE);
+  const { ProviderAuthError } = await import("@/app/api/utils/providerAuth");
+  requireProviderRole.mockRejectedValueOnce(new ProviderAuthError("not staff"));
+  expect((await PATCH(patch({ status: "contacted" }), PARAMS)).status).toBe(403);
 });
 
 it("updates the status (RLS scopes to staff)", async () => {
