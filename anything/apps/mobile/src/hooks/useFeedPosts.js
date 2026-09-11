@@ -136,6 +136,10 @@ export function useDeletePost() {
       // BeReal composer reopens for a re-upload.
       queryClient.invalidateQueries({ queryKey: ["today-daily-update"] });
       queryClient.invalidateQueries({ queryKey: ["owner-posted-today"] });
+      // (AUDIT A-24) Deleting today's moment must re-open the Care Ring's Moment
+      // segment. The mutation only knows the post id, so invalidate the whole
+      // ["care-ring"] prefix (cheap, day-/pet-scoped keys all match).
+      queryClient.invalidateQueries({ queryKey: ["care-ring"] });
     },
   });
 }

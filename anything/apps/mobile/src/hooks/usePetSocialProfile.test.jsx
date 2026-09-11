@@ -88,7 +88,7 @@ describe("useToggleFollow", () => {
       json: async () => ({ following: true, followersCount: 4 }),
     }));
     const qc = makeClient();
-    qc.setQueryData(["petProfile", "7"], {
+    qc.setQueryData(["petProfile", "7", 4], {
       isFollowing: false,
       stats: { followers: 3 },
     });
@@ -102,7 +102,7 @@ describe("useToggleFollow", () => {
     });
 
     await waitFor(() => {
-      const cached = qc.getQueryData(["petProfile", "7"]);
+      const cached = qc.getQueryData(["petProfile", "7", 4]);
       expect(cached.isFollowing).toBe(true);
       expect(cached.stats.followers).toBe(4);
     });
@@ -122,7 +122,7 @@ describe("useToggleFollow", () => {
       json: async () => ({ following: false, followersCount: 2 }),
     }));
     const qc = makeClient();
-    qc.setQueryData(["petProfile", "7"], {
+    qc.setQueryData(["petProfile", "7", 4], {
       isFollowing: true,
       stats: { followers: 3 },
     });
@@ -136,7 +136,7 @@ describe("useToggleFollow", () => {
     });
 
     await waitFor(() => {
-      const cached = qc.getQueryData(["petProfile", "7"]);
+      const cached = qc.getQueryData(["petProfile", "7", 4]);
       expect(cached.isFollowing).toBe(false);
       expect(cached.stats.followers).toBe(2);
     });
@@ -149,7 +149,7 @@ describe("useToggleFollow", () => {
   test("rolls back the optimistic update when the request fails", async () => {
     global.fetch = jest.fn(async () => ({ ok: false, json: async () => ({}) }));
     const qc = makeClient();
-    qc.setQueryData(["petProfile", "7"], {
+    qc.setQueryData(["petProfile", "7", 4], {
       isFollowing: false,
       stats: { followers: 3 },
     });
@@ -164,7 +164,7 @@ describe("useToggleFollow", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    const cached = qc.getQueryData(["petProfile", "7"]);
+    const cached = qc.getQueryData(["petProfile", "7", 4]);
     expect(cached.isFollowing).toBe(false);
     expect(cached.stats.followers).toBe(3);
   });

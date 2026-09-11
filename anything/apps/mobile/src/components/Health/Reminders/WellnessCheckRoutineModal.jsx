@@ -20,6 +20,7 @@ import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedV
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import { CADENCE_LABELS } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
+import useRoutinesStore from "@/store/routinesStore";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -101,6 +102,7 @@ export default function WellnessCheckRoutineModal({
   editingRoutine,
 }) {
   const { t } = useTranslation();
+  const deleteRoutine = useRoutinesStore((s) => s.deleteRoutine);
   const [items, setItems] = useState([]);
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -332,14 +334,12 @@ export default function WellnessCheckRoutineModal({
               style: "destructive",
               onPress: async () => {
                 try {
-                  const response = await fetch(
-                    `/api/routines?id=${editingRoutine.id}`,
-                    { method: "DELETE" },
-                  );
-
-                  if (!response.ok) {
-                    throw new Error("Failed to delete routine");
-                  }
+                  // (AUDIT A-24) Route the delete through the routines store, not
+                  // an inline fetch — the store also cancels this routine's future
+                  // reminders and clears its early-dismissal acks, so wellness
+                  // reminders actually stop firing (the inline DELETE left them
+                  // scheduled locally).
+                  await deleteRoutine(editingRoutine.id);
 
                   Alert.alert(t("routines.toast.deleted"));
                   setItems([]);

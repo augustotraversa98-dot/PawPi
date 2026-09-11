@@ -1,12 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// (AUDIT A-31) The profile payload's `isFollowing` depends on the VIEWER pet, so
+// the cache must be keyed on both. Keying on petId alone served a stale
+// isFollowing after switching the active pet.
+export function petProfileKey(petId, viewerPetId) {
+  return ["petProfile", petId, viewerPetId ?? null];
+}
+
 // Dog Social Profile data. GET /api/pets/[id]/profile returns the pet identity,
 // owner, aggregate stats, isFollowing (only when viewerPetId is supplied) and
-// the pet's posts for the daily-moments grid. Keyed on petId so useToggleFollow
-// can optimistically patch the same cache entry.
+// the pet's posts for the daily-moments grid. Keyed on petId + viewerPetId so
+// useToggleFollow can optimistically patch the same cache entry.
 export function usePetSocialProfile(petId, viewerPetId) {
   return useQuery({
-    queryKey: ["petProfile", petId],
+    queryKey: petProfileKey(petId, viewerPetId),
     queryFn: async () => {
       const qs = viewerPetId ? `?viewerPetId=${viewerPetId}` : "";
       const response = await fetch(`/api/pets/${petId}/profile${qs}`);
@@ -66,12 +73,15 @@ export function useToggleFollow(petId) {
 
       return response.json();
     },
-    onMutate: async ({ isFollowing }) => {
-      await queryClient.cancelQueries({ queryKey: ["petProfile", petId] });
+    onMutate: async ({ isFollowing, viewerPetId }) => {
+      // (AUDIT A-31) Patch the exact viewer-scoped cache entry; invalidate on the
+      // ["petProfile", petId] prefix so every viewer's entry re-syncs from server.
+      const key = petProfileKey(petId, viewerPetId);
+      await queryClient.cancelQueries({ queryKey: key });
 
-      const previous = queryClient.getQueryData(["petProfile", petId]);
+      const previous = queryClient.getQueryData(key);
 
-      queryClient.setQueryData(["petProfile", petId], (old) => {
+      queryClient.setQueryData(key, (old) => {
         if (!old) return old;
         const delta = isFollowing ? -1 : 1;
         return {
@@ -84,11 +94,11 @@ export function useToggleFollow(petId) {
         };
       });
 
-      return { previous };
+      return { previous, key };
     },
     onError: (err, variables, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["petProfile", petId], context.previous);
+      if (context?.previous !== undefined && context?.key) {
+        queryClient.setQueryData(context.key, context.previous);
       }
     },
     onSettled: () => {

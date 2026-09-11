@@ -98,6 +98,12 @@ export function useUpdateGrant(petId) {
       queryClient.invalidateQueries({
         queryKey: ["care-access-grants", petId],
       });
+      // (AUDIT A-24) Also refresh the cross-pet ["care-access-grants","all"] list
+      // that drives the bell badge — otherwise approving/denying a request left
+      // the pending-count badge stale until a manual reload.
+      queryClient.invalidateQueries({
+        queryKey: ["care-access-grants", "all"],
+      });
     },
   });
 }

@@ -3,7 +3,8 @@
 // be written for EVERY snooze — including reminders that don't live in this
 // store (vet appointments come from React Query), for which the map entry is
 // the entire snooze. Before this map, snoozing a vet appointment was a silent
-// no-op. In-memory only by design (no persistence this round).
+// no-op. (AUDIT A-25) The map is now PERSISTED (only that slice) so snoozes
+// survive an app restart.
 
 jest.mock("@/utils/notifications", () => ({
   scheduleReminderNotification: jest.fn(async () => "notif-1"),
@@ -60,6 +61,30 @@ describe("remindersStore — snoozes map", () => {
     expect(updated.nextTriggerAt).toBe(expected);
     // The original scheduled time is untouched — cards keep showing it.
     expect(updated.scheduledAt).toBe(r.scheduledAt);
+  });
+
+  it("(AUDIT A-25) persists ONLY the snoozes slice so it survives a restart", () => {
+    // zustand's persist middleware exposes a `.persist` API on the store.
+    expect(useRemindersStore.persist).toBeDefined();
+    const opts = useRemindersStore.persist.getOptions();
+    expect(opts.name).toBe("pawpi:reminderSnoozes");
+    // reminders are re-derived on load and must NOT be frozen to disk.
+    const partial = opts.partialize({
+      reminders: [{ id: "x" }],
+      snoozes: { a: "2030-01-01T00:00:00.000Z" },
+    });
+    expect(partial).toEqual({ snoozes: { a: "2030-01-01T00:00:00.000Z" } });
+  });
+
+  it("(AUDIT A-25) merge drops already-expired snoozes on rehydrate", () => {
+    const { merge } = useRemindersStore.persist.getOptions();
+    const past = new Date(NOW.getTime() - 60 * 1000).toISOString();
+    const future = new Date(NOW.getTime() + 60 * 60 * 1000).toISOString();
+    const merged = merge(
+      { snoozes: { expired: past, live: future } },
+      { snoozes: {}, reminders: [] },
+    );
+    expect(merged.snoozes).toEqual({ live: future });
   });
 
   it("snoozing an id NOT in the store (vet appointment) still records the snooze", async () => {

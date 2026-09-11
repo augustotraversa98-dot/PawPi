@@ -10,7 +10,28 @@ import {
   useLogAllGood,
   useDeleteWellnessLog,
   useVetSummaryReadiness,
+  invalidateHealthGraph,
 } from "./useHealthReinforcement";
+
+describe("invalidateHealthGraph (AUDIT A-24)", () => {
+  it("invalidates timeline + care-ring + vet-summary readiness for the pet", () => {
+    const qc = { invalidateQueries: jest.fn() };
+    invalidateHealthGraph(qc, "5");
+    const keys = qc.invalidateQueries.mock.calls.map((c) => c[0].queryKey);
+    expect(keys).toContainEqual(["health", "timeline"]);
+    expect(keys).toContainEqual(["care-ring", "5"]);
+    expect(keys).toContainEqual(["vet-summary-readiness", "5"]);
+  });
+  it("still refreshes the timeline but skips pet-scoped keys when petId is null", () => {
+    const qc = { invalidateQueries: jest.fn() };
+    invalidateHealthGraph(qc, null);
+    expect(qc.invalidateQueries).toHaveBeenCalledTimes(1);
+    expect(qc.invalidateQueries.mock.calls[0][0].queryKey).toEqual([
+      "health",
+      "timeline",
+    ]);
+  });
+});
 
 function makeWrapper(qc) {
   return function Wrapper({ children }) {

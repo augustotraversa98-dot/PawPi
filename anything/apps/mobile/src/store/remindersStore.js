@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getReminderStatus, REMINDER_STATUS } from "@/data/remindersData";
 import useSocialPetStore from "./socialPetStore";
 import useRoutinesStore from "./routinesStore";
@@ -8,7 +10,9 @@ import {
   resolveReminderTiming,
 } from "@/utils/notifications";
 
-const useRemindersStore = create((set, get) => ({
+const useRemindersStore = create(
+  persist(
+    (set, get) => ({
   // State - start with empty array, will be populated from routines
   reminders: [],
 
@@ -16,7 +20,8 @@ const useRemindersStore = create((set, get) => ({
   // the per-reminder snoozedUntil field — is the read path for Today's
   // sectioning, because some reminders never live in this store (vet
   // appointments come from React Query) yet still need a working snooze.
-  // In-memory only, like the rest of this store: lost on app restart.
+  // (AUDIT A-25) PERSISTED (only this slice) so a snooze survives an app restart
+  // — previously a restart resurrected every snoozed reminder into Today.
   snoozes: {},
 
   // Actions
@@ -485,6 +490,25 @@ const useRemindersStore = create((set, get) => ({
   getRemindersByStatus: (status) => {
     return get().reminders.filter((r) => getReminderStatus(r) === status);
   },
-}));
+    }),
+    {
+      name: "pawpi:reminderSnoozes",
+      storage: createJSONStorage(() => AsyncStorage),
+      // (AUDIT A-25) Persist ONLY the snoozes map — `reminders` are re-derived
+      // from routines on every load and must not be frozen to disk.
+      partialize: (state) => ({ snoozes: state.snoozes }),
+      // Drop snoozes whose `until` is already in the past on rehydrate, so the
+      // map doesn't grow without bound across restarts.
+      merge: (persisted, current) => {
+        const now = Date.now();
+        const snoozes = {};
+        for (const [id, until] of Object.entries(persisted?.snoozes ?? {})) {
+          if (until && new Date(until).getTime() > now) snoozes[id] = until;
+        }
+        return { ...current, snoozes };
+      },
+    },
+  ),
+);
 
 export default useRemindersStore;

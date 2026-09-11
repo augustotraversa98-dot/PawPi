@@ -84,6 +84,19 @@ export function vetReadinessKey(petId) {
   return ["vet-summary-readiness", petId];
 }
 
+// AUDIT A-24 — the single place that re-derives every "health graph" view a log
+// touches: the Care Ring segments, the vet-summary readiness meter, and the
+// shared health timeline. Every health-log mutation calls this so the ring and
+// readiness update the instant a source log lands (poo/pee/vomit/weight/photo-
+// check previously skipped both). careRingKey/vetReadinessKey are the 2-element
+// prefixes, so invalidation still matches the day-scoped care-ring query key.
+export function invalidateHealthGraph(queryClient, petId) {
+  queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+  if (petId == null) return;
+  queryClient.invalidateQueries({ queryKey: careRingKey(petId) });
+  queryClient.invalidateQueries({ queryKey: vetReadinessKey(petId) });
+}
+
 export function useVetSummaryReadiness(petId) {
   return useQuery({
     queryKey: vetReadinessKey(petId),
