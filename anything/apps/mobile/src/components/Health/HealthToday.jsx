@@ -70,8 +70,16 @@ export default function HealthToday() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
-  const { reminders, completeReminder, snoozeReminder, snoozes, clearSnooze } =
-    useRemindersStore();
+  // (AUDIT A-17) Subscribe with per-field selectors instead of the whole store,
+  // so this screen only re-renders when the data it actually reads (reminders /
+  // snoozes) changes — not on every unrelated store commit (e.g. the N commits
+  // routinesStore→remindersStore make on a pet switch). Zustand actions are
+  // stable references, so selecting them never adds a subscription.
+  const reminders = useRemindersStore((s) => s.reminders);
+  const snoozes = useRemindersStore((s) => s.snoozes);
+  const completeReminder = useRemindersStore((s) => s.completeReminder);
+  const snoozeReminder = useRemindersStore((s) => s.snoozeReminder);
+  const clearSnooze = useRemindersStore((s) => s.clearSnooze);
   const loadRoutines = useRoutinesStore((s) => s.loadRoutines);
   const [loadedPetId, setLoadedPetId] = useState(null);
   // Fetch vet appointment reminders
@@ -138,7 +146,6 @@ export default function HealthToday() {
   const [snoozedExpanded, setSnoozedExpanded] = useState(null);
   const [snoozeModalVisible, setSnoozeModalVisible] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
   const [photoCheckReminder, setPhotoCheckReminder] = useState(null);
   const [issueModalVisible, setIssueModalVisible] = useState(false);
@@ -147,14 +154,10 @@ export default function HealthToday() {
   const [wellnessReminder, setWellnessReminder] = useState(null);
   const [feedingIssueReminder, setFeedingIssueReminder] = useState(null);
 
-  // Auto-refresh countdown every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey((prev) => prev + 1);
-    }, 60000); // 60 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+  // (AUDIT A-17) The per-minute setRefreshKey that used to remount EVERY countdown
+  // card each minute (via key={id-refreshKey}) is gone: each countdown card already
+  // runs its own 60 s timer, so remounting them was pure churn (unmount + remount +
+  // re-measure every card, every minute). The keys are now stable (key={reminder.id}).
 
   // Combine routine reminders with vet appointment reminders, scoped to the
   // active pet. The reminders store is a flat, multi-pet array (routines carry
@@ -473,7 +476,7 @@ export default function HealthToday() {
     if (reminder.type === REMINDER_TYPES.FEEDING) {
       return (
         <FeedingCountdownCard
-          key={`${reminder.id}-${refreshKey}`}
+          key={reminder.id}
           reminder={reminder}
           onComplete={handleComplete}
           onSnooze={handleSnooze}
@@ -482,7 +485,7 @@ export default function HealthToday() {
     } else if (reminder.type === REMINDER_TYPES.WALK) {
       return (
         <WalkCountdownCard
-          key={`${reminder.id}-${refreshKey}`}
+          key={reminder.id}
           reminder={reminder}
           onComplete={handleComplete}
           onSnooze={handleSnooze}
@@ -491,7 +494,7 @@ export default function HealthToday() {
     } else if (reminder.type === "vet_appointment") {
       return (
         <VetAppointmentCountdownCard
-          key={`${reminder.id}-${refreshKey}`}
+          key={reminder.id}
           reminder={reminder}
           onComplete={handleComplete}
           onSnooze={handleSnooze}
@@ -500,7 +503,7 @@ export default function HealthToday() {
     } else {
       return (
         <CountdownCard
-          key={`${reminder.id}-${refreshKey}`}
+          key={reminder.id}
           reminder={reminder}
           onComplete={handleComplete}
           onSnooze={handleSnooze}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   useFeedPosts,
   useCreatePost,
@@ -76,13 +76,20 @@ export function useFeedData() {
   // email, the full auth-user and pet objects and per-post state — PII that was
   // shipping to client logs in the release bundle.
 
-  // Convert database posts to liked posts object
-  const likedPosts = posts.reduce((acc, post) => {
-    if (post.user_has_pawed) {
-      acc[post.id] = true;
-    }
-    return acc;
-  }, {});
+  // Convert database posts to liked posts object.
+  // (AUDIT A-15) Memoized so its identity is stable across renders — a fresh
+  // object each render would change UnlockedFeed's `likedPosts` prop and defeat
+  // the per-card memo.
+  const likedPosts = useMemo(
+    () =>
+      posts.reduce((acc, post) => {
+        if (post.user_has_pawed) {
+          acc[post.id] = true;
+        }
+        return acc;
+      }, {}),
+    [posts],
+  );
 
   const handlePost = useCallback(
     async ({ uri, caption, mediaType = "image" }) => {

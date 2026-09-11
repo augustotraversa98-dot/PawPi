@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -46,9 +46,12 @@ export default function FeedScreen() {
   // Posting streak for the active pet (ticket 2.37) — the 🔥 badge shows on its
   // own cards. Other pets' streaks aren't fetched (bounded to one query).
   const { streak: activeStreak } = usePostingStreak(petProfile?.id);
-  const streakByPetId = petProfile?.id
-    ? { [petProfile.id]: activeStreak }
-    : {};
+  // (AUDIT A-15) Memoize so the map identity is stable across renders — a fresh
+  // object each render would change FeedPostRow's prop and re-render every card.
+  const streakByPetId = useMemo(
+    () => (petProfile?.id ? { [petProfile.id]: activeStreak } : {}),
+    [petProfile?.id, activeStreak],
+  );
 
   // Phase 2 ticket 2.13 — public provider/adoption suggestion cards, interleaved into the
   // UNLOCKED feed at a capped cadence. Independent query from the posts feed (never disturbs the

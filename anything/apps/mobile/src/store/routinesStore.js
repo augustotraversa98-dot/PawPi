@@ -90,16 +90,15 @@ const useRoutinesStore = create((set, get) => ({
 
       set({ routines: transformedRoutines, loading: false, initialized: true });
 
-      // Generate reminders from active routines
+      // Generate reminders from active routines. (AUDIT A-17) Commit them in ONE
+      // batch so loading N routines fires a single reminders-store commit, not N
+      // (each of which re-rendered every subscriber, e.g. HealthToday).
       const remindersStore = useRemindersStore.getState();
       const activeRoutines = transformedRoutines.filter((r) => r.isActive);
-
-      activeRoutines.forEach((routine) => {
-        const reminders = generateRemindersFromRoutine(routine);
-        reminders.forEach((reminder) => {
-          remindersStore.addReminderFromRoutine(reminder);
-        });
-      });
+      const allReminders = activeRoutines.flatMap((routine) =>
+        generateRemindersFromRoutine(routine),
+      );
+      await remindersStore.addRemindersFromRoutines(allReminders);
 
       return transformedRoutines;
     } catch (error) {
