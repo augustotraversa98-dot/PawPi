@@ -29,6 +29,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -119,7 +120,7 @@ export default function NearbyWalksPage() {
     } else if (date.toDateString() === tomorrow.toDateString()) {
       return t("nearbyWalks.tomorrow", "Tomorrow");
     } else {
-      return date.toLocaleDateString("en-US", {
+      return formatLocalDate(date, {
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -127,14 +128,7 @@ export default function NearbyWalksPage() {
     }
   };
 
-  const formatWalkTime = (isoString) => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+  const formatWalkTime = (isoString) => formatLocalTime(isoString);
 
   const getSpotsAvailable = (walk) => {
     const taken = parseInt(walk.approved_participants_count || 0) + 1; // +1 for host

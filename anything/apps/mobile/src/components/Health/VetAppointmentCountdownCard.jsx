@@ -5,6 +5,7 @@ import { Calendar, Clock, Zap, Eye } from "lucide-react-native";
 import { getTimeDisplay } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 import VetAppointmentDetailModal from "./VetAppointmentDetailModal";
+import { formatLocalTime, formatLocalDate } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -48,11 +49,7 @@ export default function VetAppointmentCountdownCard({
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const timeStr = date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+      const timeStr = formatLocalTime(date);
 
       // Check if today
       if (date.toDateString() === now.toDateString()) {
@@ -64,10 +61,7 @@ export default function VetAppointmentCountdownCard({
       }
       // Otherwise show date
       else {
-        const dateStr = date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        const dateStr = formatLocalDate(date, { month: "short", day: "numeric", year: undefined });
         return t("health.vetAppt.dateAt", { date: dateStr, time: timeStr });
       }
     } catch {

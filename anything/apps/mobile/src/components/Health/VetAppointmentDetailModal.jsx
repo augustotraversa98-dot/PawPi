@@ -17,6 +17,7 @@ import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { formatDisplayTime } from "@/utils/canonicalDateTime";
 import { Card, PressableScale } from "@/components/ui";
+import { formatLocalDateTime } from "@/utils/localeDateTime";
 
 export default function VetAppointmentDetailModal({
   visible,
@@ -136,14 +137,10 @@ export default function VetAppointmentDetailModal({
       const date = new Date(
         `${appointment.appointment_date}T${appointment.appointment_time}`,
       );
-      return date.toLocaleString("en-US", {
+      return formatLocalDateTime(date, {
         weekday: "long",
         month: "long",
         day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
       });
     } catch {
       return `${appointment.appointment_date} at ${formatDisplayTime(appointment.appointment_time)}`;
