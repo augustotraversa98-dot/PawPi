@@ -24,6 +24,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import useUpload from "@/utils/useUpload";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateHealthGraph } from "@/hooks/useHealthReinforcement";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -126,6 +128,7 @@ export default function PhotoCheckCaptureModal({
 }) {
   const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
+  const queryClient = useQueryClient();
   const [upload, { loading: uploading }] = useUpload();
 
   const [step, setStep] = useState("capture"); // 'capture', 'notes', 'skipConfirm'
@@ -274,6 +277,12 @@ export default function PhotoCheckCaptureModal({
       }
 
       console.log("[PhotoCheckCapture] Photo check saved successfully");
+
+      // (AUDIT A-24) Refresh the photo-check list + the Care Ring / vet-summary
+      // readiness so the capture shows up immediately (previously invalidated
+      // nothing — the new photo only appeared after a manual reload).
+      queryClient.invalidateQueries({ queryKey: ["health", "photo-checks"] });
+      invalidateHealthGraph(queryClient, currentPet.id);
 
       // Mark reminder as complete
       if (reminderId && onComplete) {

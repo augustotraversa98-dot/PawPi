@@ -16,7 +16,11 @@ export function careRingKey(petId) {
 export function useCareRing(petId) {
   const day = getLocalPostDateString();
   return useQuery({
-    queryKey: careRingKey(petId),
+    // (AUDIT A-31) Include the local day in the query key so the ring re-fetches
+    // across midnight instead of serving yesterday's cached ring. careRingKey
+    // (the 2-element prefix) is still what mutations invalidate, so a prefix
+    // invalidation continues to match this day-scoped key.
+    queryKey: [...careRingKey(petId), day],
     enabled: !!petId,
     staleTime: 0,
     refetchOnMount: true,

@@ -86,7 +86,9 @@ export default function WeightModal({ visible, onClose }) {
 
   // Fetch weight history
   const { data: weightHistory, isLoading: isLoadingHistory } = useQuery({
-    queryKey: ["health", "weight-logs", currentPet?.id],
+    // (AUDIT A-31) Key includes the limit so this history view doesn't collide
+    // with useWeightLogs' cache entry for a different page size.
+    queryKey: ["health", "weight-logs", currentPet?.id, 20],
     queryFn: async () => {
       if (!currentPet?.id) return { logs: [] };
 

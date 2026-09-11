@@ -111,11 +111,20 @@ export default function RxFulfillmentScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Payment failed");
       // Link the order so the fulfillment tracks its payment.
-      await fetch(`/api/rx-fulfillment-orders/${order.id}`, {
+      // (AUDIT A-29) Don't ignore the PATCH result: if the link fails the payment
+      // still proceeds (the checkout URL is already valid), but log it so a
+      // fulfillment that isn't tracking its payment is diagnosable, not silent.
+      const linkRes = await fetch(`/api/rx-fulfillment-orders/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order_id: data.order?.id }),
       });
+      if (!linkRes.ok) {
+        console.warn(
+          "[rx-fulfillment] failed to link order to payment:",
+          linkRes.status,
+        );
+      }
       if (data.checkoutUrl) Linking.openURL(data.checkoutUrl);
     } catch (e) {
       Alert.alert(t("rxf.couldNotPay"), e.message || "");

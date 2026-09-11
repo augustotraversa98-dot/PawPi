@@ -5,6 +5,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -141,8 +142,10 @@ export default function MessagesScreen() {
         },
       });
     } catch (e) {
-      // Surface nothing destructive — the thread create is idempotent; a failure
-      // just leaves the search open.
+      // (AUDIT A-29) Don't fail silently — the tap did nothing visible before, so
+      // the user couldn't tell the chat failed to open. Surface a retryable error.
+      console.error("[messages] startChatWithOwner failed:", e?.message);
+      Alert.alert(t("common.error"), t("common.somethingWrong"));
     }
   };
 

@@ -73,7 +73,9 @@ export function useGeneralChecks(limit = 10) {
   const { data: currentPet } = useCurrentPet();
 
   return useQuery({
-    queryKey: ["health", "general-checks", currentPet?.id],
+    // (AUDIT A-31) Include limit so consumers paging different sizes don't share
+    // one cache entry.
+    queryKey: ["health", "general-checks", currentPet?.id, limit],
     queryFn: async () => {
       if (!currentPet?.id) return { checks: [] };
 
@@ -95,7 +97,9 @@ export function usePhotoChecks(limit = 20) {
   const { data: currentPet } = useCurrentPet();
 
   return useQuery({
-    queryKey: ["health", "photo-checks", currentPet?.id],
+    // (AUDIT A-31) Include limit so consumers paging different sizes don't share
+    // one cache entry.
+    queryKey: ["health", "photo-checks", currentPet?.id, limit],
     queryFn: async () => {
       if (!currentPet?.id) return { photoChecks: [] };
 
@@ -186,7 +190,9 @@ export function useWeightLogs(limit = 20) {
   const { data: currentPet } = useCurrentPet();
 
   return useQuery({
-    queryKey: ["health", "weight-logs", currentPet?.id],
+    // (AUDIT A-31) Include limit so two consumers requesting different page sizes
+    // don't share one cache entry (the smaller list was served to the larger).
+    queryKey: ["health", "weight-logs", currentPet?.id, limit],
     queryFn: async () => {
       if (!currentPet?.id) return { logs: [] };
 

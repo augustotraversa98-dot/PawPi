@@ -107,13 +107,22 @@ export default function MapLocationPicker({
     }
     const [lat, lng] = debouncedPinKey.split(",").map(Number);
     let cancelled = false;
-    reverseGeocode(lat, lng).then((addr) => {
-      if (cancelled) return;
-      setResolvedAddress(addr);
-      if (addr && showAddress && onAddressChange) {
-        onAddressChange(addr);
-      }
-    });
+    reverseGeocode(lat, lng)
+      .then((addr) => {
+        if (cancelled) return;
+        setResolvedAddress(addr);
+        if (addr && showAddress && onAddressChange) {
+          onAddressChange(addr);
+        }
+      })
+      // (AUDIT A-29) A rejected reverse-geocode was an unhandled promise; swallow
+      // it deliberately (the address is optional) but keep the pin usable.
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn("[MapLocationPicker] reverse geocode failed:", err?.message);
+          setResolvedAddress(null);
+        }
+      });
     return () => {
       cancelled = true;
     };

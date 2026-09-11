@@ -197,12 +197,18 @@ export default function TabLayout() {
       reminders.map((reminder) =>
         remindersStore.addReminderFromRoutine(reminder),
       ),
-    ).then(async () => {
-      if (__DEV__) {
-        const scheduled = await getScheduledNotifications();
-        console.log(`[notifications] scheduled count: ${scheduled.length}`);
-      }
-    });
+    )
+      .then(async () => {
+        if (__DEV__) {
+          const scheduled = await getScheduledNotifications();
+          console.log(`[notifications] scheduled count: ${scheduled.length}`);
+        }
+      })
+      // (AUDIT A-29) Don't leave the scheduling promise unhandled — a rejection
+      // here otherwise surfaced as an unhandled-rejection warning at startup.
+      .catch((err) => {
+        console.warn("[notifications] reminder scheduling failed:", err?.message);
+      });
 
     // Start notification sync
     const cleanup = startReminderNotificationSync();

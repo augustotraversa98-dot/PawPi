@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 import { useCurrentPet } from "./usePetProfile";
+import { invalidateHealthGraph } from "./useHealthReinforcement";
 
 // Food logging
 export function useLogFood() {
@@ -88,6 +89,8 @@ export function useLogPoo() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "poo-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
+      invalidateHealthGraph(queryClient, currentPet?.id);
       console.log("[useLogPoo] Poo logged successfully");
     },
     onError: (error) => {
@@ -232,6 +235,8 @@ export function useLogPhotoCheck() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "photo-checks"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
+      invalidateHealthGraph(queryClient, currentPet?.id);
       console.log("[useLogPhotoCheck] Photo check logged successfully");
     },
     onError: (error) => {
@@ -279,6 +284,8 @@ export function useLogPee() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "pee-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
+      invalidateHealthGraph(queryClient, currentPet?.id);
       console.log("[useLogPee] Pee logged successfully");
     },
     onError: (error) => {
@@ -325,6 +332,8 @@ export function useLogVomit() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "vomit-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
+      invalidateHealthGraph(queryClient, currentPet?.id);
       console.log("[useLogVomit] Vomit logged successfully");
     },
     onError: (error) => {
@@ -368,6 +377,8 @@ export function useLogWeight() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health", "weight-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
+      // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
+      invalidateHealthGraph(queryClient, currentPet?.id);
       console.log("[useLogWeight] Weight logged successfully");
     },
     onError: (error) => {
