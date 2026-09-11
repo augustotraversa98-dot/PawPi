@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import nodeConsole from 'node:console';
 import Credentials from '@auth/core/providers/credentials';
-import { authHandler, initAuthConfig } from '@hono/auth-js';
+import { authHandler, initAuthConfig, getAuthUser } from '@hono/auth-js';
 import pg from 'pg';
 import { hash, verify } from 'argon2';
 import { Hono } from 'hono';
@@ -178,11 +178,20 @@ if (process.env.AUTH_SECRET) {
       // (web localhost) and on device given the protocol-aware cookies below.
       session: {
         strategy: 'jwt',
+        // (AUDIT A-05) Shorten the session lifetime from the 30-day default to
+        // 7 days so a leaked/replayed token has a bounded blast radius even
+        // before the server-side revocation check below kicks in.
+        maxAge: 7 * 24 * 60 * 60,
       },
       callbacks: {
         session({ session, token }) {
           if (token.sub) {
             session.user.id = token.sub;
+          }
+          // (AUDIT A-05) Surface the JWT issued-at so the revocation guard can
+          // compare it against auth_users.token_invalidated_at.
+          if (typeof token.iat === 'number') {
+            (session as unknown as { iat?: number }).iat = token.iat;
           }
           return session;
         },
@@ -383,6 +392,41 @@ app.use('/api/auth/*', async (c, next) => {
   }
   return next();
 });
+
+// (AUDIT A-05) Server-side JWT revocation guard. For every authenticated /api/*
+// request (never the auth endpoints themselves), if the caller's JWT was issued
+// before their auth_users.token_invalidated_at cutoff, reject it. That cutoff is
+// bumped on password reset / sign-out-everywhere / account deletion, so a leaked
+// or replayed token dies the moment one of those happens instead of living out
+// the 7-day JWT lifetime. Unauthenticated requests and any error fail OPEN (the
+// per-route auth still gates them) so a DB blip can never lock everyone out.
+app.use('/api/*', async (c, next) => {
+  if (c.req.path.startsWith('/api/auth/')) return next();
+  try {
+    const authUser = await getAuthUser(c);
+    const sub =
+      (authUser?.session?.user as { id?: string } | undefined)?.id ??
+      (authUser?.token as { sub?: string } | undefined)?.sub;
+    const iat =
+      (authUser?.session as unknown as { iat?: number } | undefined)?.iat ??
+      (authUser?.token as { iat?: number } | undefined)?.iat;
+    if (sub != null && typeof iat === 'number') {
+      const { isTokenRevoked } = await import(
+        '../src/app/api/utils/tokenRevocation.js'
+      );
+      if (await isTokenRevoked(sub, iat)) {
+        return c.json(
+          { error: 'Your session has expired. Please sign in again.' },
+          401
+        );
+      }
+    }
+  } catch {
+    // fail open — the per-route auth() still enforces access
+  }
+  return next();
+});
+
 app.route(API_BASENAME, api);
 
 const serverPromise = createHonoServer({
