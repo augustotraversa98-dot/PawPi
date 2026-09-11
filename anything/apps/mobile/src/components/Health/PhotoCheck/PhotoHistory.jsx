@@ -17,6 +17,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { BODY_AREA_LABELS } from "@/data/photoCheckData";
 import { usePhotoChecks } from "@/hooks/useFetchHealthData";
+import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -42,20 +43,11 @@ const BODY_AREA_COLORS = {
 };
 
 function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatLocalDate(dateString, { month: "short", day: "numeric" });
 }
 
 function formatTime(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatLocalTime(dateString);
 }
 
 // Group the pet's REAL photo checks (GET /api/health/photo-checks) by body area, newest

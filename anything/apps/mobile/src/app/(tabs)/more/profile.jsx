@@ -32,6 +32,7 @@ import {
   MATERIALS,
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
+import { formatLocalDate } from "@/utils/localeDateTime";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -322,11 +323,7 @@ function GroomingSection({ sessions }) {
 function formatSessionDate(dateString) {
   if (!dateString) return null;
   try {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return formatLocalDate(dateString, { month: "long", day: "numeric" });
   } catch {
     return dateString;
   }

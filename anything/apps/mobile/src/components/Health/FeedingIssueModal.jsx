@@ -13,6 +13,7 @@ import { X, Camera } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import { formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -110,10 +111,7 @@ export default function FeedingIssueModal({
 
   const mealName = reminder?.title || t("health.feeding.thisMeal");
   const scheduledTime = reminder?.scheduledAt
-    ? new Date(reminder.scheduledAt).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      })
+    ? formatLocalTime(reminder.scheduledAt)
     : "";
 
   return (

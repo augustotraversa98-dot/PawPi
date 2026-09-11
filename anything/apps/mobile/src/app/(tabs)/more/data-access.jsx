@@ -15,6 +15,7 @@ import {
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { formatLocalDate } from "@/utils/localeDateTime";
 import {
   useCareAccessGrants,
   useUpdateGrant,
@@ -39,11 +40,7 @@ function scopeLabel(scope) {
 function formatDate(dateStr) {
   if (!dateStr) return "";
   try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return formatLocalDate(dateStr, { month: "short", day: "numeric" });
   } catch {
     return dateStr;
   }
