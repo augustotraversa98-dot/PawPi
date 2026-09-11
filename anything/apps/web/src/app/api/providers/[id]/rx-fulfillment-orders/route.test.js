@@ -7,14 +7,18 @@ import { GET } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { requireProviderCapability } from "@/app/api/utils/providerAuth";
+import {
+  requireProviderCapability,
+  requireProviderRole,
+  ProviderAuthError,
+} from "@/app/api/utils/providerAuth";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
 vi.mock("@/app/api/utils/providerAuth", async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, requireProviderCapability: vi.fn() };
+  return { ...actual, requireProviderCapability: vi.fn(), requireProviderRole: vi.fn() };
 });
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
@@ -39,6 +43,13 @@ describe("GET providers/[id]/rx-fulfillment-orders", () => {
     requireProviderCapability.mockRejectedValueOnce(
       Object.assign(new Error("Provider does not have the 'pharmacy' capability"), { status: 403 }),
     );
+    expect((await GET(req(), PARAMS)).status).toBe(403);
+  });
+
+  // AUDIT A-20: non-staff is 403'd by the explicit role gate, not 200 {[]}.
+  it("non-staff → 403 (explicit role gate)", async () => {
+    auth.mockResolvedValue(SESSION);
+    requireProviderRole.mockRejectedValueOnce(new ProviderAuthError("not staff"));
     expect((await GET(req(), PARAMS)).status).toBe(403);
   });
 

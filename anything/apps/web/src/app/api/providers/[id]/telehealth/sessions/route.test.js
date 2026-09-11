@@ -8,7 +8,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { requireProviderCapability } from "@/app/api/utils/providerAuth";
+import {
+  requireProviderCapability,
+  requireProviderRole,
+} from "@/app/api/utils/providerAuth";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -20,7 +23,7 @@ vi.mock("@/app/api/utils/providerAuth", () => {
       this.status = 403;
     }
   }
-  return { requireProviderCapability: vi.fn(), ProviderAuthError };
+  return { requireProviderCapability: vi.fn(), requireProviderRole: vi.fn(), ALL_PROVIDER_ROLES: ["owner", "admin", "staff", "vet"], ProviderAuthError };
 });
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
@@ -47,6 +50,14 @@ describe("POST telehealth/sessions", () => {
     requireProviderCapability.mockRejectedValue(
       new ProviderAuthError("Provider does not have the 'telehealth' capability"),
     );
+    const res = await POST(req({ booking_id: 5 }), PARAMS);
+    expect(res.status).toBe(403);
+  });
+
+  // AUDIT A-20: a non-staff caller is 403'd by the explicit role gate.
+  it("a non-staff caller → 403 (explicit role gate)", async () => {
+    const { ProviderAuthError } = await import("@/app/api/utils/providerAuth");
+    requireProviderRole.mockRejectedValueOnce(new ProviderAuthError("not staff"));
     const res = await POST(req({ booking_id: 5 }), PARAMS);
     expect(res.status).toBe(403);
   });

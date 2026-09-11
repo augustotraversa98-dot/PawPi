@@ -11,7 +11,7 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/providerAuth", () => {
   class ProviderAuthError extends Error { constructor(m) { super(m); this.status = 403; } }
-  return { requireProviderCapability: vi.fn(), ProviderAuthError };
+  return { requireProviderCapability: vi.fn(), requireProviderRole: vi.fn(), ALL_PROVIDER_ROLES: ["owner", "admin", "staff", "vet"], ProviderAuthError };
 });
 
 const SESSION = { user: { id: 42 } };

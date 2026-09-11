@@ -15,7 +15,7 @@ vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
 vi.mock("@/app/api/utils/providerAuth", async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, requireProviderCapability: vi.fn() };
+  return { ...actual, requireProviderCapability: vi.fn(), requireProviderRole: vi.fn() };
 });
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };

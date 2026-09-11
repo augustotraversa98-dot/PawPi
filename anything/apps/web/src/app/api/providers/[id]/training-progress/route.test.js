@@ -16,7 +16,7 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/providerAuth", async () => {
   const actual = await vi.importActual("@/app/api/utils/providerAuth");
-  return { ...actual, requireProviderCapability: vi.fn() };
+  return { ...actual, requireProviderCapability: vi.fn(), requireProviderRole: vi.fn() };
 });
 vi.mock("@/app/api/utils/careAccess", async () => {
   const actual = await vi.importActual("@/app/api/utils/careAccess");
