@@ -90,6 +90,37 @@ const useRemindersStore = create(
     return newReminder;
   },
 
+  // (AUDIT A-17) Batched variant used by routinesStore.loadRoutines: resolve +
+  // schedule every reminder, then commit ONCE. The per-reminder addReminderFromRoutine
+  // above did one set() per reminder, so loading N routines' reminders fired N store
+  // commits — N re-renders of every subscriber (HealthToday) per pet switch.
+  addRemindersFromRoutines: async (reminders) => {
+    const existingIds = new Set(get().reminders.map((r) => r.id));
+    const toAdd = [];
+    for (const reminder of reminders) {
+      if (existingIds.has(reminder.id)) continue;
+      existingIds.add(reminder.id); // de-dup within the batch too
+      const routine = useRoutinesStore
+        .getState()
+        .routines.find((r) => r.id === reminder.routineId);
+      const reminderTiming = resolveReminderTiming(reminder, routine);
+      let scheduledNotificationId = null;
+      if (
+        reminder.notificationEnabled &&
+        reminder.status !== REMINDER_STATUS.DISABLED
+      ) {
+        scheduledNotificationId = await scheduleReminderNotification(
+          reminder,
+          reminderTiming,
+        );
+      }
+      toAdd.push({ ...reminder, scheduledNotificationId });
+    }
+    if (toAdd.length === 0) return [];
+    set((state) => ({ reminders: [...state.reminders, ...toAdd] }));
+    return toAdd;
+  },
+
   // Remove future reminders by routine (keeps completed)
   removeFutureRemindersByRoutine: async (routineId) => {
     const reminders = get().reminders;

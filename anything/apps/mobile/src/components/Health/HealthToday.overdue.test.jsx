@@ -32,16 +32,19 @@ jest.mock("@/hooks/usePetProfile", () => ({
 jest.mock("@/hooks/useVetAppointmentReminders", () => ({
   useVetAppointmentReminders: () => ({ data: [] }),
 }));
-jest.mock("@/store/remindersStore", () => ({
-  __esModule: true,
-  default: () => ({
+jest.mock("@/store/remindersStore", () => {
+  const store = {
     reminders: [],
     snoozes: {},
     completeReminder: jest.fn(),
     snoozeReminder: jest.fn(),
     clearSnooze: jest.fn(),
-  }),
-}));
+  };
+  return {
+    __esModule: true,
+    default: (selector) => (selector ? selector(store) : store),
+  };
+});
 jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
   default: (selector) =>

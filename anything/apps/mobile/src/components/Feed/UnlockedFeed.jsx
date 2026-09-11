@@ -1,9 +1,39 @@
-import React, { useMemo } from "react";
+import React, { useMemo, memo } from "react";
 import { View, Text } from "react-native";
 import { PawPrint } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
+
+// (AUDIT A-15) Memoized row wrapper so React.memo(PostCard) actually holds. The
+// feed used to pass fresh `() => onToggleLike(item.id)` closures to PostCard on
+// every render, defeating its memo — so ANY state change on the Feed screen
+// (opening a modal, a paw elsewhere) re-rendered every card. The callbacks the
+// screen hands down are already stable; this wrapper is memoized on the item +
+// its primitive liked/streak + those stable callbacks, and builds the per-item
+// closures internally, so a card only re-renders when its own data changes.
+const FeedPostRow = memo(function FeedPostRow({
+  item,
+  liked,
+  streak,
+  onToggleLike,
+  onOpenBarks,
+  onOpenDetail,
+  onOpenProfile,
+}) {
+  return (
+    <PostCard
+      post={item}
+      liked={liked}
+      locked={false}
+      streak={streak}
+      onToggleLike={() => onToggleLike(item.id)}
+      onOpenBarks={() => onOpenBarks(item)}
+      onOpenDetail={() => onOpenDetail(item)}
+      onOpenProfile={() => onOpenProfile(item)}
+    />
+  );
+});
 import { BusinessPostCard } from "./BusinessPostCard";
 import { ProviderFeedCard } from "./ProviderFeedCard";
 import { AdoptionFeedCard } from "./AdoptionFeedCard";
@@ -146,15 +176,14 @@ export function UnlockedFeed({
         return (
           <React.Fragment key={item.id}>
             {item.id === dividerBeforeId && <SuggestedDivider />}
-            <PostCard
-              post={item}
+            <FeedPostRow
+              item={item}
               liked={!!likedPosts[item.id]}
-              locked={false}
               streak={streakByPetId[item.pet_id] || 0}
-              onToggleLike={() => onToggleLike(item.id)}
-              onOpenBarks={() => onOpenBarks(item)}
-              onOpenDetail={() => onOpenDetail(item)}
-              onOpenProfile={() => onOpenProfile(item)}
+              onToggleLike={onToggleLike}
+              onOpenBarks={onOpenBarks}
+              onOpenDetail={onOpenDetail}
+              onOpenProfile={onOpenProfile}
             />
           </React.Fragment>
         );

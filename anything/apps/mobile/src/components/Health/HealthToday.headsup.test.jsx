@@ -44,7 +44,7 @@ const mockStore = {
 };
 jest.mock("@/store/remindersStore", () => ({
   __esModule: true,
-  default: () => mockStore,
+  default: (selector) => (selector ? selector(mockStore) : mockStore),
 }));
 jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
