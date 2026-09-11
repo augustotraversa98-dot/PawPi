@@ -194,6 +194,27 @@ describe('POST /api/care-access/grants', () => {
     expect(allQueryTexts().some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
   });
 
+  // AUDIT A-26: the select-then-insert race. A concurrent request slips past the
+  // dedup SELECT and the partial unique index (0128) makes the INSERT raise
+  // 23505; the route returns the winning grant instead of a 500.
+  it('a 23505 on INSERT (concurrent create) returns the winning grant, not a 500', async () => {
+    auth.mockResolvedValue(SESSION);
+    const winner = { id: 77, status: 'active', provider_id: 9, pet_id: 5 };
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ id: 5 }]) // pet
+      .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([]) // dedup: none
+      .mockRejectedValueOnce(Object.assign(new Error('dup'), { code: '23505' })) // INSERT loses
+      .mockResolvedValueOnce([winner]); // winner SELECT
+
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.grant.id).toBe(77);
+    expect(body.deduped).toBe(true);
+  });
+
   it("404 when the pet does NOT belong to the caller (owner-scoped)", async () => {
     auth.mockResolvedValue(SESSION);
     sql

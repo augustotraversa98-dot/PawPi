@@ -156,26 +156,49 @@ async function POST(request) {
       return Response.json({ grant: existing[0], deduped: true });
     }
 
-    const created = await sql`
-      INSERT INTO care_access_grants (
-        pet_id,
-        owner_user_id,
-        provider_id,
-        scopes,
-        status,
-        requested_by,
-        granted_at
-      ) VALUES (
-        ${petId},
-        ${userId},
-        ${providerId},
-        ${scopeList},
-        ${"active"},
-        ${"owner"},
-        NOW()
-      )
-      RETURNING *
-    `;
+    // (AUDIT A-26) The dedup SELECT above is a select-then-insert race: two
+    // concurrent requests can both find no existing grant and both insert. The
+    // partial UNIQUE(provider_id, pet_id) WHERE status IN ('pending','active')
+    // (migration 0128, hand-applied) makes the loser raise 23505; catch it and
+    // return the winner instead of a 500. Forward-compatible: before the index
+    // exists no 23505 is raised and this behaves exactly as before.
+    let created;
+    try {
+      created = await sql`
+        INSERT INTO care_access_grants (
+          pet_id,
+          owner_user_id,
+          provider_id,
+          scopes,
+          status,
+          requested_by,
+          granted_at
+        ) VALUES (
+          ${petId},
+          ${userId},
+          ${providerId},
+          ${scopeList},
+          ${"active"},
+          ${"owner"},
+          NOW()
+        )
+        RETURNING *
+      `;
+    } catch (e) {
+      if (e?.code === "23505") {
+        const winner = await sql`
+          SELECT * FROM care_access_grants
+          WHERE pet_id = ${petId} AND provider_id = ${providerId}
+            AND status IN ('pending', 'active')
+          ORDER BY id DESC
+          LIMIT 1
+        `;
+        if (winner.length > 0) {
+          return Response.json({ grant: winner[0], deduped: true });
+        }
+      }
+      throw e;
+    }
 
     return Response.json({ grant: created[0] }, { status: 201 });
   } catch (error) {

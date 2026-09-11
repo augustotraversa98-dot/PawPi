@@ -300,9 +300,14 @@ export default function EmergencyCardScreen() {
 
               <TouchableOpacity
                 testID="create-link"
-                onPress={() => createLink.mutate({ scope: linkScope, ttlHours: linkTtl })}
+                // (AUDIT A-26) Guard against a double-tap creating two links.
+                disabled={createLink.isPending}
+                onPress={() => {
+                  if (createLink.isPending) return;
+                  createLink.mutate({ scope: linkScope, ttlHours: linkTtl });
+                }}
                 activeOpacity={0.85}
-                style={{ marginTop: 14, backgroundColor: COLORS.sageDark, borderRadius: 14, paddingVertical: 12, alignItems: "center" }}
+                style={{ marginTop: 14, backgroundColor: COLORS.sageDark, borderRadius: 14, paddingVertical: 12, alignItems: "center", opacity: createLink.isPending ? 0.6 : 1 }}
               >
                 <Text style={{ color: "#fff", fontWeight: "800" }}>{t("emergencyCard.createVetLink")}</Text>
               </TouchableOpacity>

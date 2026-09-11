@@ -66,6 +66,12 @@ describe("POST /api/posts/[id]/paw", () => {
     expect(values).toContain(9); // recipient = post owner
     expect(values).toContain(7); // actor = caller
     expect(values).toContain("paw");
+    // AUDIT A-26: the INSERT is idempotent (ON CONFLICT DO NOTHING) so a
+    // concurrent double-tap can't 500 on the (post_id,user_id) unique.
+    const insertText = sql.mock.calls
+      .map((c) => (c?.[0] ?? []).join(" "))
+      .find((t) => t.includes("INSERT INTO post_paws"));
+    expect(insertText).toContain("ON CONFLICT");
   });
 
   it("self-paw (owner is the actor) → no notification", async () => {
