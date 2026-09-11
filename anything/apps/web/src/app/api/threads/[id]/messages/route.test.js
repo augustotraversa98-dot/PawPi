@@ -44,6 +44,7 @@ describe('GET /api/threads/[id]/messages', () => {
     const MSGS = [{ id: 2 }, { id: 1 }];
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check (AUDIT A-22)
       .mockResolvedValueOnce(MSGS); // messages
     const res = await GET(getReq('?limit=30'), PARAMS);
     expect(res.status).toBe(200);
@@ -54,7 +55,10 @@ describe('GET /api/threads/[id]/messages', () => {
     auth.mockResolvedValue(SESSION);
     // limit=2 → fetch 3; 3 returned → hasMore true, slice to 2.
     const ROWS = [{ id: 3 }, { id: 2 }, { id: 1 }];
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce(ROWS);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check
+      .mockResolvedValueOnce(ROWS);
     const res = await GET(getReq('?limit=2'), PARAMS);
     const json = await res.json();
     expect(json.hasMore).toBe(true);
@@ -63,9 +67,21 @@ describe('GET /api/threads/[id]/messages', () => {
 
   it('?before= pages backwards (binds the cursor)', async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check
+      .mockResolvedValueOnce([]);
     await GET(getReq('?before=50'), PARAMS);
     expect(lastValues()).toContain('50');
+  });
+
+  it('403 when the caller is not a participant (AUDIT A-22)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([]); // participant check → none
+    const res = await GET(getReq(), PARAMS);
+    expect(res.status).toBe(403);
   });
 });
 

@@ -2,6 +2,11 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  requireProviderRole,
+  ProviderAuthError,
+  ALL_PROVIDER_ROLES,
+} from "@/app/api/utils/providerAuth";
 
 // /api/threads — owner ↔ provider chat threads (Phase 2 ticket 2.5).
 // docs/phase2-tickets/2.5-chat-messaging.md, docs/phase2-superapp-master-plan.md §2.
@@ -91,6 +96,10 @@ async function GET(request) {
           { status: 400 },
         );
       }
+      // (AUDIT A-22) Explicit staff gate: only active staff of this provider may
+      // list its inbox (defense-in-depth — a non-staff caller gets 403, not an
+      // empty list from RLS).
+      await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
       // RLS already restricts to threads of providers the caller staffs; the
       // provider_id filter narrows to the requested provider (the active dashboard one).
       threads = await threadCards(userId, sql`t.provider_id = ${providerId}`);
@@ -102,6 +111,9 @@ async function GET(request) {
 
     return Response.json({ threads });
   } catch (error) {
+    if (error instanceof ProviderAuthError) {
+      return Response.json({ error: error.message }, { status: error.status ?? 403 });
+    }
     console.error("[GET /api/threads] Error:", error.message);
     return Response.json({ error: "Failed to fetch threads" }, { status: 500 });
   }

@@ -5,6 +5,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { isDmThreadParticipant } from "@/app/api/utils/messagingAccess";
 
 // /api/dm-threads/[id]/messages — messages on one owner↔owner DM thread (ticket 2.27).
 //   GET  — newest-first, paginated (?limit=&before=<id>). RLS returns ZERO rows for a
@@ -25,6 +26,16 @@ async function GET(request, { params }) {
     }
 
     const threadId = params.id;
+
+    // (AUDIT A-22) Explicit participant gate (defense-in-depth on top of RLS):
+    // a non-participant gets 403, not a silent empty list.
+    if (!(await isDmThreadParticipant(userId, threadId))) {
+      return Response.json(
+        { error: "Not a participant of this thread" },
+        { status: 403 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(
       Math.max(parseInt(searchParams.get("limit") || "30", 10) || 30, 1),

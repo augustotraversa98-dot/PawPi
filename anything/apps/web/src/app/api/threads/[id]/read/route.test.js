@@ -37,6 +37,7 @@ describe('POST /api/threads/[id]/read', () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ "?column?": 1 }]) // participant check (AUDIT A-22)
       .mockResolvedValueOnce([{ id: 1 }, { id: 2 }]); // UPDATE ... RETURNING id
     const res = await POST(req(), PARAMS);
     expect(res.status).toBe(200);
@@ -45,5 +46,14 @@ describe('POST /api/threads/[id]/read', () => {
     expect(text).toContain('UPDATE messages');
     expect(text).toContain('sender_user_id <>');
     expect(text).toContain('read_at IS NULL');
+  });
+
+  it('403 when the caller is not a participant (AUDIT A-22)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([]); // participant check → none
+    const res = await POST(req(), PARAMS);
+    expect(res.status).toBe(403);
   });
 });

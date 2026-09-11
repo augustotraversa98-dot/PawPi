@@ -2,6 +2,11 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  requireProviderRole,
+  ProviderAuthError,
+  ALL_PROVIDER_ROLES,
+} from "@/app/api/utils/providerAuth";
 
 // GET /api/threads/unread-count — the caller's total unread message count (ticket 2.5).
 //
@@ -32,6 +37,8 @@ async function GET(request) {
     // every thread RLS lets me see. The unread predicate is identical in all cases.
     let rows;
     if (side === "provider" && providerId) {
+      // (AUDIT A-22) Only active staff of this provider may read its badge count.
+      await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
       rows = await sql`
         SELECT COUNT(*)::int AS unread_count
         FROM messages m
@@ -60,6 +67,9 @@ async function GET(request) {
 
     return Response.json({ unread_count: rows[0]?.unread_count ?? 0 });
   } catch (error) {
+    if (error instanceof ProviderAuthError) {
+      return Response.json({ error: error.message }, { status: error.status ?? 403 });
+    }
     console.error("[GET /api/threads/unread-count] Error:", error.message);
     return Response.json({ error: "Failed to fetch unread count" }, { status: 500 });
   }

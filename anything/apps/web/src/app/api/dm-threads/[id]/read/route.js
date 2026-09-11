@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isDmThreadParticipant } from "@/app/api/utils/messagingAccess";
 
 // POST /api/dm-threads/[id]/read — mark the messages I RECEIVED (from the other side) as
 // read (ticket 2.27). Participant-scoped UPDATE; a non-participant matches zero rows.
@@ -17,6 +18,15 @@ async function POST(request, { params }) {
     }
 
     const threadId = params.id;
+
+    // (AUDIT A-22) Explicit participant gate (defense-in-depth on top of RLS).
+    if (!(await isDmThreadParticipant(userId, threadId))) {
+      return Response.json(
+        { error: "Not a participant of this thread" },
+        { status: 403 },
+      );
+    }
+
     const updated = await sql`
       UPDATE dm_messages
       SET read_at = now()

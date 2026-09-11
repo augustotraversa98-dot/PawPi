@@ -28,6 +28,8 @@ async function GET(request, { params }) {
       FROM events e
       JOIN user_profiles up ON up.id = e.host_user_id
       WHERE e.id = ${params.id}
+        AND e.deleted_at IS NULL
+        AND (e.status = 'published' OR e.host_user_id = ${userId})
     `;
     if (rows.length === 0) {
       return Response.json({ error: "Event not found" }, { status: 404 });
