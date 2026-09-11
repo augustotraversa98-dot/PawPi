@@ -11,6 +11,7 @@ import { proxy } from 'hono/proxy';
 import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
+import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
@@ -75,6 +76,10 @@ app.use('*', async (c, next) => {
 });
 
 app.use(contextStorage());
+
+// AUDIT A-28 — baseline security headers (HSTS, X-Frame-Options, nosniff,
+// Referrer-Policy, CSP) on every response. CORS is configured separately below.
+app.use('*', securityHeaders());
 
 app.onError((err, c) => {
   // Always log the full error server-side (the console override above tags it

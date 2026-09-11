@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   useFeedPosts,
   useCreatePost,
@@ -72,73 +72,9 @@ export function useFeedData() {
     useOwnerPostedToday(hasPet);
   const feedUnlocked = ownerPostedToday || hasPostedToday;
 
-  // Debug logging on mount and when key values change
-  useEffect(() => {
-    console.log("[useFeedData] ========================================");
-    console.log("[useFeedData] Feed State Update:");
-    console.log("[useFeedData] ========================================");
-    console.log("[useFeedData] Auth & User Info:");
-    console.log("[useFeedData]   - Auth user ID:", authUser?.id);
-    console.log("[useFeedData]   - Auth user email:", authUser?.email);
-    console.log("[useFeedData] ----------------------------------------");
-    console.log("[useFeedData] Pet Info:");
-    console.log("[useFeedData]   - Current pet:", currentPet);
-    console.log("[useFeedData]   - Pet ID:", petId);
-    console.log("[useFeedData]   - Pet name:", petName);
-    console.log("[useFeedData]   - Has pet:", hasPet);
-    console.log("[useFeedData]   - Loading pet:", loadingPet);
-    console.log("[useFeedData] ----------------------------------------");
-    console.log("[useFeedData] Daily Update State:");
-    console.log("[useFeedData]   - Today's date (local):", today);
-    console.log(
-      "[useFeedData]   - Today's daily update (API):",
-      todayDailyUpdate,
-    );
-    console.log(
-      "[useFeedData]   - Daily post in Feed (fallback):",
-      dailyPostInFeed,
-    );
-    console.log(
-      "[useFeedData]   - Effective today's daily update:",
-      effectiveTodayDailyUpdate,
-    );
-    console.log("[useFeedData]   - Today's post ID:", todayPostId);
-    console.log("[useFeedData]   - Has posted today (FINAL):", hasPostedToday);
-    console.log("[useFeedData]   - Loading daily update:", loadingDailyUpdate);
-    console.log("[useFeedData] ----------------------------------------");
-    console.log("[useFeedData] Posts State:");
-    console.log("[useFeedData]   - Total posts fetched:", posts.length);
-    console.log("[useFeedData]   - Loading posts:", loadingPosts);
-    if (posts.length > 0 && petId) {
-      const userPetPosts = posts.filter((p) => p.pet_id === petId);
-      console.log(
-        "[useFeedData]   - Current pet's posts:",
-        userPetPosts.length,
-      );
-      const dailyPosts = userPetPosts.filter((p) => p.is_daily_update);
-      console.log(
-        "[useFeedData]   - Current pet's daily posts:",
-        dailyPosts.length,
-      );
-    }
-    console.log("[useFeedData] ========================================");
-  }, [
-    authUser,
-    currentPet,
-    petId,
-    petName,
-    hasPet,
-    loadingPet,
-    today,
-    todayDailyUpdate,
-    dailyPostInFeed,
-    effectiveTodayDailyUpdate,
-    todayPostId,
-    hasPostedToday,
-    loadingDailyUpdate,
-    posts.length,
-    loadingPosts,
-  ]);
+  // (AUDIT A-27) Removed the mount/update debug block that logged the auth
+  // email, the full auth-user and pet objects and per-post state — PII that was
+  // shipping to client logs in the release bundle.
 
   // Convert database posts to liked posts object
   const likedPosts = posts.reduce((acc, post) => {
