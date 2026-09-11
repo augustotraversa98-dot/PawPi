@@ -65,7 +65,12 @@ describe("E12 — reengagement GET", () => {
   });
 
   it("recent activity → not lapsed", async () => {
-    await seedWalk(OWNER.petId, OWNER.profileId, "2026-08-15 12:00:00+00");
+    // (AUDIT A-37) This test hits the endpoint with the REAL system clock (no
+    // runAt override), so the seeded activity MUST be relative to now — a
+    // hard-coded 2026-08-15 became >7 days old on 2026-08-23 and the test has
+    // failed on main ever since (a date bomb). Seed 2 days ago instead.
+    const recentTs = new Date(Date.now() - 2 * 86400000).toISOString();
+    await seedWalk(OWNER.petId, OWNER.profileId, recentTs);
     const b = await (await apiReq(`/pets/${OWNER.petId}/reengagement?n=7`)).json();
     expect(b.lapsed).toBe(false);
   });
