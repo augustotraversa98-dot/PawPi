@@ -82,7 +82,7 @@ export default function EventsScreen() {
     };
   }, []);
 
-  const { data: events = [], isLoading } = useEvents(coord || {});
+  const { data: events = [], isLoading, isError, refetch } = useEvents(coord || {});
   const rsvp = useRsvpEvent();
   const cancel = useCancelEvent();
 
@@ -177,6 +177,24 @@ export default function EventsScreen() {
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
         {isLoading ? (
           <ActivityIndicator color={COLORS.coral} style={{ marginTop: SPACING.xxl }} />
+        ) : isError ? (
+          <Card
+            testID="events-error"
+            radius={RADIUS.card}
+            style={{ padding: 28, alignItems: "center", marginTop: SPACING.sm }}
+          >
+            <CalendarDays size={28} color={COLORS.mutedBrown} />
+            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.sm, marginBottom: SPACING.md, textAlign: "center" }]}>
+              {t("common.somethingWrong")}
+            </Text>
+            <PressableScale
+              onPress={() => refetch()}
+              accessibilityRole="button"
+              style={{ backgroundColor: COLORS.coral, paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS.chip }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "700" }}>{t("common.retry")}</Text>
+            </PressableScale>
+          </Card>
         ) : events.length === 0 ? (
           <Card
             testID="events-empty"

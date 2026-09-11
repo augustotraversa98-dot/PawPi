@@ -12,6 +12,7 @@ import { ChevronLeft, PawPrint, Search } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useFollowList } from "@/hooks/usePetSocialProfile";
+import { useTranslation } from "react-i18next";
 
 const C = {
   coral: "#FF6F61",
@@ -29,6 +30,7 @@ const C = {
 // tappable counts on the pet social profile (pet-profile.jsx) via the root stack
 // so the 2.19 nav isn't corrupted.
 export default function FollowsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -41,7 +43,7 @@ export default function FollowsScreen() {
   // viewer's active pet so the list still shows the current pet's lists (2.67).
   const petId = params.petId || (viewerPetId ? String(viewerPetId) : "");
 
-  const { data: pets = [], isLoading } = useFollowList(petId, rel, viewerPetId);
+  const { data: pets = [], isLoading, isError, refetch } = useFollowList(petId, rel, viewerPetId);
 
   const [query, setQuery] = useState("");
   // Local follow-state map seeded from the server flag; lets the toggle update
@@ -234,7 +236,22 @@ export default function FollowsScreen() {
         renderItem={renderRow}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading ? null : isError ? (
+            // (AUDIT A-33) A failed load used to read as "no follows"; show a
+            // retryable error instead.
+            <View testID="follows-error" style={{ alignItems: "center", marginTop: 40 }}>
+              <Text style={{ textAlign: "center", color: C.mutedBrown, fontSize: 14, marginBottom: 12 }}>
+                {t("common.somethingWrong")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => refetch()}
+                accessibilityRole="button"
+                style={{ backgroundColor: C.coral, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
+              >
+                <Text style={{ color: "#FFF", fontWeight: "700" }}>{t("common.retry")}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <Text
               testID="follows-empty"
               style={{
