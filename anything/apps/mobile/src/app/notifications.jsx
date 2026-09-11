@@ -130,7 +130,10 @@ function bookingDisplay(n, t) {
       message: t("notifications.bookingHint"),
     };
   }
-  const when = [formatDisplayDate(payload.date), formatDisplayTime(payload.time)]
+  // F2: force 24h — the app is 24h under es-AR/en-GB (A-34). formatDisplayTime's
+  // default honors the DEVICE clock preference (12h on a US-region sim), which
+  // leaked AM/PM into booking notifications; pass hour12=false explicitly.
+  const when = [formatDisplayDate(payload.date), formatDisplayTime(payload.time, false)]
     .filter(Boolean)
     .join(" · ");
   const title = t(`notifications.${n.type}`, {
