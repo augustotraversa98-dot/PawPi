@@ -2,7 +2,7 @@
 // and the close affordance navigates back. WebView, router, and icons are mocked.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 
 let mockParams;
 const mockBack = jest.fn();
@@ -60,4 +60,20 @@ test("no joinUrl → a clean message instead of an empty WebView", () => {
   const { getByText, queryByTestId } = render(<TelehealthCallScreen />);
   expect(getByText("Couldn't load the video consult")).toBeTruthy();
   expect(queryByTestId("webview")).toBeNull();
+});
+
+test("(AUDIT A-33) a WebView that never loads falls back to the error screen after 15s", () => {
+  jest.useFakeTimers();
+  try {
+    const { getByText, queryByText } = render(<TelehealthCallScreen />);
+    // While loading, the error message is not shown.
+    expect(queryByText("Couldn't load the video consult")).toBeNull();
+    // The WebView never fires onLoadEnd — advance past the 15 s fallback.
+    act(() => {
+      jest.advanceTimersByTime(15000);
+    });
+    expect(getByText("Couldn't load the video consult")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
 });

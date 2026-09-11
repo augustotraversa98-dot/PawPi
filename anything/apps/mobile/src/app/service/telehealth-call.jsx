@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, ActivityIndicator, Text } from "react-native";
 import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +20,15 @@ export default function TelehealthCallScreen() {
   const { joinUrl } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // (AUDIT A-33) 15 s fallback: if the WebView never fires onLoadEnd (a stalled
+  // connection), don't spin forever — surface the "could not load" screen so the
+  // user can leave and retry instead of staring at a black loading overlay.
+  useEffect(() => {
+    if (!loading || error) return;
+    const id = setTimeout(() => setError(true), 15000);
+    return () => clearTimeout(id);
+  }, [loading, error]);
 
   const leave = () => {
     if (router.canGoBack()) router.back();
