@@ -936,7 +936,10 @@ export default function HealthVetRecord() {
                       {item.data.appointment_time
                         ? t("health.vetRecord.apptAt", {
                             date: formatDisplayDate(item.data.appointment_date),
-                            time: formatDisplayTime(item.data.appointment_time),
+                            // F2: force 24h (hour12=false) — app convention is 24h
+                            // under es-AR/en-GB; the helper default follows the
+                            // device clock and leaked AM/PM here.
+                            time: formatDisplayTime(item.data.appointment_time, false),
                           })
                         : formatDisplayDate(item.data.appointment_date)}
                     </Text>
@@ -2187,7 +2190,8 @@ export default function HealthVetRecord() {
                 >
                   {t("health.vetRecord.apptAt", {
                     date: formatDisplayDate(nextAppointment.appointment_date),
-                    time: formatDisplayTime(nextAppointment.appointment_time),
+                    // F2: force 24h — same apptAt template as the visits list above.
+                    time: formatDisplayTime(nextAppointment.appointment_time, false),
                   })}
                 </Text>
                 {nextAppointment.clinic && (

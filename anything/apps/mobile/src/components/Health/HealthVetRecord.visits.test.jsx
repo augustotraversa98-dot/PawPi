@@ -99,7 +99,8 @@ beforeEach(() => {
 });
 
 const openVisits = (screen) => {
-  fireEvent.press(screen.getByText("Medical history"));
+  // Section header label is localized (en: "Medical history", es: "Historial médico").
+  fireEvent.press(screen.getByText(/Medical history|Historial médico/));
   fireEvent.press(screen.getByTestId("history-tab-visits"));
 };
 
@@ -160,6 +161,30 @@ describe("Vet Record — Visits & procedures list matches the badge", () => {
     // Rendered visit items == counts.visits: 2 appointment rows + 1 surgery = 3,
     // exactly the badge (completedAppointmentsCount 2 + surgeriesCount 1).
     expect(screen.queryByText("Upcoming dental")).toBeTruthy(); // in Next visit, not history
+  });
+
+  // F2: visit times must render 24h under both languages (app convention is 24h
+  // for es-AR/en-GB). The bug was formatDisplayTime defaulting to the DEVICE clock,
+  // which showed "4:00 PM" on a 12h-preference sim. hour12=false now pins it 24h.
+  test.each([["en"], ["es"]])("visit rows render 24h times, never AM/PM (%s)", (lang) => {
+    mockLangRef.current = lang;
+    mockQueryData["vet-record-summary"] = { completedAppointmentsCount: 1 };
+    mockQueryData["vet-appointments"] = {
+      appointments: [
+        {
+          id: 1,
+          title: "Skin recheck",
+          appointment_date: dayOffset(-40),
+          appointment_time: "16:00",
+          status: "completed",
+        },
+      ],
+    };
+    const screen = render(<HealthVetRecord />);
+    openVisits(screen);
+    // 24h "16:00" appears; the 12h form "4:00 PM" never does.
+    expect(screen.getByText(/16:00$/)).toBeTruthy();
+    expect(screen.queryByText(/PM|AM/)).toBeNull();
   });
 
   test("tapping a visit row opens the appointment detail modal", () => {

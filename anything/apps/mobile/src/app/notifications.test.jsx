@@ -273,10 +273,11 @@ const dbBooking = {
 
 test("a booking notification renders the localized title from the JSON payload", () => {
   mockDbNotifications = [dbBooking];
-  const { getByText } = render(<NotificationsScreen />);
-  // Interpolated template: "Confirmed — {{service}} · {{date}} at {{provider}}".
-  // The time portion is device 12/24h-dependent, so match around it.
-  expect(getByText(/Confirmed — Grooming · 1 July 2026.*at Pet Spa/)).toBeTruthy();
+  const { getByText, queryByText } = render(<NotificationsScreen />);
+  // Interpolated template: "Confirmed — {{service}} · {{date}} · {{time}} at {{provider}}".
+  // F2: the time is pinned to 24h ("09:00"), never the device-clock 12h form ("9:00 AM").
+  expect(getByText(/Confirmed — Grooming · 1 July 2026 · 09:00 at Pet Spa/)).toBeTruthy();
+  expect(queryByText(/9:00 AM/)).toBeNull();
 });
 
 test("a booking notification falls back to a generic per-type title when the payload is absent", () => {
