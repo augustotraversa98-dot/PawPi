@@ -51,10 +51,14 @@ async function POST(request, { params }) {
       return Response.json({ message: "Already pawed" }, { status: 200 });
     }
 
-    // Add paw
+    // Add paw. (AUDIT A-26) ON CONFLICT DO NOTHING on the (post_id, user_id)
+    // unique (0004) makes a double-tap idempotent — two concurrent taps both
+    // passed the existence check above and the second INSERT raised 23505 → 500
+    // + a UI flicker. The count read below reflects the single row either way.
     await sql`
       INSERT INTO post_paws (post_id, user_id)
       VALUES (${postId}, ${userId})
+      ON CONFLICT (post_id, user_id) DO NOTHING
     `;
 
     // Get new paw count

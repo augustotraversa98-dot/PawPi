@@ -78,6 +78,9 @@ export default function PetSharingScreen() {
 
   const handleInvite = (owner) => {
     if (!petId) return;
+    // (AUDIT A-26) Guard against a double-tap sending two invites for the same
+    // caregiver while the first is still in flight.
+    if (invite.isPending) return;
     invite.mutate({ granteeUserId: owner.id, granteeUsername: owner.username, role });
     setQuery("");
   };

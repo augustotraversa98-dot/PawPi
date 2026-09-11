@@ -170,6 +170,26 @@ async function POST(request) {
 
     let created;
     try {
+      // (AUDIT A-26) Open-request guard: one open request per pet. Without it a
+      // double submit (or an impatient re-tap) creates several duplicate open
+      // requests that all fan out notifications. A 42P01 here is caught below
+      // (unmigrated prod → 503), same as the INSERT.
+      const openReq = await sql`
+        SELECT id FROM walk_requests
+        WHERE pet_id = ${petId}
+          AND owner_user_id = ${userId}
+          AND status = 'open'
+        LIMIT 1
+      `;
+      if (openReq.length > 0) {
+        return Response.json(
+          {
+            error: "You already have an open walk request for this pet",
+            existing_id: openReq[0].id,
+          },
+          { status: 409 },
+        );
+      }
       created = await sql`
         INSERT INTO walk_requests (
           owner_user_id, pet_id, target_provider_id,
