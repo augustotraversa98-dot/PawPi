@@ -6,6 +6,12 @@ import {
 } from "@/app/api/utils/uploadValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
+import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import {
+  PRIVATE_BUCKET,
+  buildPrivateMediaKey,
+} from "@/app/api/utils/mediaAccess";
 
 const BUCKET = "media";
 
@@ -47,7 +53,35 @@ async function POST(request) {
     }
     const mimeType = validation.mime;
     const ext = validation.ext;
-    const objectPath = `uploads/${randomUUID()}.${ext}`;
+
+    // (AUDIT A-04) Private mode: medical/chat callers pass visibility=private +
+    // petId. The file goes to the PRIVATE bucket under an owner-scoped prefix
+    // (pets/<petId>/<uuid>.<ext>) and the response returns the object KEY (served
+    // later, auth-gated, via GET /api/media). The caller must own/have family
+    // access to that pet. Public mode (the default) is unchanged.
+    const visibility = formData.get("visibility");
+    const isPrivate = visibility === "private";
+    let bucket = BUCKET;
+    let objectPath = `uploads/${randomUUID()}.${ext}`;
+    if (isPrivate) {
+      const petId = Number(formData.get("petId"));
+      if (!Number.isInteger(petId) || petId <= 0) {
+        return Response.json(
+          { error: "petId is required for a private upload" },
+          { status: 400 },
+        );
+      }
+      const userId = await resolveUserId(session.user.id);
+      if (userId === null) {
+        return Response.json({ error: "User profile not found" }, { status: 404 });
+      }
+      const access = await resolvePetLogOwner(userId, petId);
+      if (access.error) {
+        return Response.json({ error: access.error }, { status: access.status });
+      }
+      bucket = PRIVATE_BUCKET;
+      objectPath = buildPrivateMediaKey(petId, randomUUID(), ext);
+    }
 
     const bytes = await file.arrayBuffer();
     // Belt-and-suspenders: file.size can be absent on some Blob shapes — enforce the cap on the
@@ -57,7 +91,7 @@ async function POST(request) {
     }
 
     const uploadResponse = await fetch(
-      `${supabaseUrl}/storage/v1/object/${BUCKET}/${objectPath}`,
+      `${supabaseUrl}/storage/v1/object/${bucket}/${objectPath}`,
       {
         method: "POST",
         headers: {
@@ -78,6 +112,12 @@ async function POST(request) {
         detail,
       );
       return Response.json({ error: "Upload failed" }, { status: 502 });
+    }
+
+    if (isPrivate) {
+      // Store the KEY, not a URL. The client persists this and later fetches the
+      // file through GET /api/media?key=… (auth-gated + short-lived signed URL).
+      return Response.json({ key: objectPath, mimeType });
     }
 
     const url = `${supabaseUrl}/storage/v1/object/public/${BUCKET}/${objectPath}`;

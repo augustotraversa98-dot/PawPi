@@ -11,6 +11,10 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 // Mocked sql → withRequestContext passes through and the rate limiter is a no-op (no real tx),
 // so these tests exercise the upload handler exactly as before the #6 wrapper was added.
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn(async () => 7) }));
+vi.mock("@/app/api/utils/petLogAccess", () => ({
+  resolvePetLogOwner: vi.fn(async () => ({ ownerUserId: 7, isOwner: true })),
+}));
 
 const OLD_ENV = { ...process.env };
 
@@ -61,6 +65,36 @@ describe("POST /api/upload", () => {
     expect(body.url).toContain("/storage/v1/object/public/media/uploads/");
     // Supabase object write used the validated Content-Type.
     expect(fetchMock.mock.calls[0][1].headers["Content-Type"]).toBe("image/png");
+  });
+
+  // (AUDIT A-04) Private mode: medical/chat uploads go to the private bucket under
+  // an owner-scoped prefix and return the KEY (not a public URL).
+  it("private upload → media-private, owner-scoped key, no public URL", async () => {
+    auth.mockResolvedValue({ user: { id: "a" } });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: true, text: async () => "" });
+    const req = {
+      async formData() {
+        return {
+          get: (k) =>
+            k === "file"
+              ? fileLike({ type: "application/pdf", name: "vet.pdf" })
+              : k === "visibility"
+                ? "private"
+                : k === "petId"
+                  ? "5"
+                  : null,
+        };
+      },
+    };
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.url).toBeUndefined();
+    expect(body.key).toMatch(/^pets\/5\/[a-f0-9-]+\.pdf$/);
+    // The object write targeted the PRIVATE bucket.
+    expect(fetchMock.mock.calls[0][0]).toContain("/object/media-private/pets/5/");
   });
 
   it("active-markup type (text/html) → 400, no storage write", async () => {
