@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { validatePassword } from "@/app/api/utils/passwordStrength";
 import { hashResetToken } from "@/app/api/utils/passwordResetToken";
+import { invalidateUserTokens } from "@/app/api/utils/tokenRevocation";
 
 // POST /api/account/reset-password — finish a self-service password reset.
 //
@@ -64,8 +65,22 @@ async function POST(request) {
       `,
     );
 
-    if (rows?.[0]?.auth_user_id == null) {
+    const authUserId = rows?.[0]?.auth_user_id;
+    if (authUserId == null) {
       return Response.json({ error: INVALID_TOKEN_MESSAGE }, { status: 400 });
+    }
+
+    // (AUDIT A-05) A reset must also kill already-issued JWTs — clearing
+    // auth_sessions above does nothing for the JWT strategy. Stamp the per-user
+    // revocation cutoff so the guard 401s any token issued before now. Best
+    // effort: a failure here must not fail the reset (the password DID change).
+    try {
+      await invalidateUserTokens(authUserId);
+    } catch (e) {
+      console.error(
+        "[reset-password] token revocation stamp failed (non-fatal):",
+        e?.message,
+      );
     }
 
     return Response.json(

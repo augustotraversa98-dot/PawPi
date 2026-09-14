@@ -49,12 +49,19 @@ describe("POST /api/account/reset-password — happy path", () => {
     expect(body.message).toContain("password has been updated");
   });
 
-  it("consumes the token through the 0069 DEFINER helper (no direct table write)", async () => {
+  it("consumes the token through the 0069 DEFINER helper (no direct password write)", async () => {
     await POST(post({ token: "tok", password: GOOD_PASSWORD }));
-    expect(sql).toHaveBeenCalledTimes(1);
+    // First call: the DEFINER token-consume (which writes the password itself).
     const query = sql.mock.calls[0][0].join(" ");
     expect(query).toContain("app_consume_password_reset_token");
+    // The route never writes the password/account tables directly.
     expect(/insert\s+into|update\s+auth_accounts/i.test(query)).toBe(false);
+    // (AUDIT A-05) Second call: stamp the JWT-revocation cutoff so the reset also
+    // kills already-issued tokens. NOT a password write.
+    expect(sql).toHaveBeenCalledTimes(2);
+    const revoke = sql.mock.calls[1][0].join(" ");
+    expect(revoke).toContain("UPDATE auth_users");
+    expect(revoke).toContain("token_invalidated_at = now()");
   });
 
   it("sends the token's HASH, never the token itself", async () => {
