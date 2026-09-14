@@ -21,3 +21,11 @@
 
 ALTER TABLE auth_users
   ADD COLUMN IF NOT EXISTS token_invalidated_at timestamptz;
+
+-- VERIFY: run supabase/verify_0130.sql after applying — every row must read PASS.
+--
+-- ROLLBACK. Safe to drop; the app code reads the column defensively
+-- (utils/tokenRevocation.isTokenRevoked catches the missing-column error and
+-- fails OPEN, so revocation simply becomes a no-op — no request is blocked).
+-- Drop only if the code that reads it is NOT live (or has been rolled back first):
+--   ALTER TABLE auth_users DROP COLUMN IF EXISTS token_invalidated_at;
