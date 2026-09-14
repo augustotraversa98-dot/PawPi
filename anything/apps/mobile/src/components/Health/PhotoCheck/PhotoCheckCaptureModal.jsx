@@ -237,20 +237,24 @@ export default function PhotoCheckCaptureModal({
       // Upload photo if provided
       if (imageUri) {
         console.log("[PhotoCheckCapture] Uploading photo...");
+        // (AUDIT A-04) A body-photo is medical data → upload to the PRIVATE
+        // bucket scoped to this pet. The server returns a KEY (not a URL); it is
+        // stored in image_url and rendered later through the auth-gated streamer.
         const uploadResult = await upload({
           reactNativeAsset: {
             uri: imageUri,
             name: `photo_check_${bodyArea}_${Date.now()}.jpg`,
             mimeType: "image/jpeg",
           },
+          visibility: "private",
+          petId: currentPet.id,
         });
 
         if (uploadResult.error) {
           throw new Error(uploadResult.error);
         }
 
-        uploadedImageUrl = uploadResult.url;
-        console.log("[PhotoCheckCapture] Photo uploaded:", uploadedImageUrl);
+        uploadedImageUrl = uploadResult.key ?? uploadResult.url;
       }
 
       // Combine notes and observations

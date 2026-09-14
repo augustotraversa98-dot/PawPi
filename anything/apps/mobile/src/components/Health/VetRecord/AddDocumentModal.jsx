@@ -26,6 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { useUpload } from "@/utils/useUpload";
+import { resolvePrivateMediaUrl } from "@/utils/privateMedia";
 import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { getLocalPostDateString } from "@/utils/dateUtils";
@@ -231,10 +232,16 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       const mimeType = fileMimeType || "image/jpeg";
       const ext = isPdf ? "pdf" : "jpg";
       const filename = fileName || `vet_doc_${Date.now()}.${ext}`;
+      // (AUDIT A-04) A vet document is medical → PRIVATE bucket scoped to this
+      // pet. The server returns a KEY (not a public URL); it is persisted in
+      // file_url and opened later through the auth-gated streamer.
       const uploadResult = await upload({
         reactNativeAsset: { uri: fileUri, name: filename, mimeType },
+        visibility: "private",
+        petId,
       });
-      if (uploadResult.error || !uploadResult.url) {
+      const storedFile = uploadResult.key ?? uploadResult.url;
+      if (uploadResult.error || !storedFile) {
         throw new Error(uploadResult.error || "Upload failed");
       }
 
@@ -248,7 +255,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
           // human label for back-compat display (mirror the category key).
           category,
           documentType: t(`health.vetRecord.docCategory.${category}`),
-          fileUrl: uploadResult.url,
+          fileUrl: storedFile,
           documentDate: documentDate || null,
         }),
       });
@@ -260,8 +267,19 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       // The file is stored — refresh Documents now so it appears regardless of what reading finds.
       onSaved?.();
       setSaving(false);
-      // Then read it (non-blocking bonus) — with the real mimeType so PDFs are read as PDFs.
-      await runExtraction({ url: uploadResult.url, filename, mimeType });
+      // Then read it (non-blocking bonus). The extractor fetches the file by URL
+      // server-side, so a private key must first be exchanged for a short-lived
+      // signed URL (resolved immediately, used within its ~60 s life). A legacy
+      // public URL passes through unchanged.
+      let extractUrl = storedFile;
+      try {
+        extractUrl = await resolvePrivateMediaUrl(storedFile);
+      } catch {
+        // Signing failed → skip extraction; the document is already saved.
+        setPhase("readError");
+        return;
+      }
+      await runExtraction({ url: extractUrl, filename, mimeType });
     } catch (error) {
       setSaving(false);
       Alert.alert(

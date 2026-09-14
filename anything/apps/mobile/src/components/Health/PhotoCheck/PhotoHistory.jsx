@@ -15,6 +15,7 @@ import {
   ChevronUp,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import PrivateImage from "@/components/ui/PrivateImage";
 import { BODY_AREA_LABELS } from "@/data/photoCheckData";
 import { usePhotoChecks } from "@/hooks/useFetchHealthData";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
@@ -321,8 +322,8 @@ export default function PhotoHistory() {
                               borderColor: C.peach,
                             }}
                           >
-                            <Image
-                              source={{ uri: photo.imageUrl }}
+                            <PrivateImage
+                              value={photo.imageUrl}
                               style={{
                                 width: "100%",
                                 height: 120,

@@ -23,6 +23,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import useUpload from "@/utils/useUpload";
+import PrivateImage from "@/components/ui/PrivateImage";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -201,12 +202,16 @@ export default function VomitTrackerModal({ visible, onClose }) {
         return;
       }
 
+      // (AUDIT A-04) Vomit photo → PRIVATE bucket scoped to this pet; keep the
+      // returned KEY (rendered via the auth-gated streamer, incl. the preview).
       const uploadResult = await upload({
         reactNativeAsset: {
           uri: result.assets[0].uri,
           name: `vomit_${Date.now()}.jpg`,
           mimeType: "image/jpeg",
         },
+        visibility: "private",
+        petId: currentPet?.id,
       });
 
       if (uploadResult.error) {
@@ -214,8 +219,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
         return;
       }
 
-      setPhotoUrl(uploadResult.url);
-      console.log("[VomitTracker] Photo uploaded:", uploadResult.url);
+      setPhotoUrl(uploadResult.key ?? uploadResult.url);
     } catch (error) {
       console.error("[VomitTracker] Photo upload failed:", error);
       alert(t("trackers.vomit.photoUploadFailed"));
@@ -901,8 +905,8 @@ export default function VomitTrackerModal({ visible, onClose }) {
                 </Text>
                 {photoUrl ? (
                   <View style={{ position: "relative" }}>
-                    <Image
-                      source={{ uri: photoUrl }}
+                    <PrivateImage
+                      value={photoUrl}
                       style={{
                         width: "100%",
                         height: 200,
