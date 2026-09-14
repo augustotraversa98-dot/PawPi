@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useLogPoo } from "@/hooks/useHealthTracking";
 import { useUpload } from "@/utils/useUpload";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -41,6 +42,7 @@ export default function PooTrackerModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const logPooMutation = useLogPoo();
   const [upload, { loading: uploading }] = useUpload();
+  const { data: currentPet } = useCurrentPet();
 
   const [step, setStep] = useState("quickChoice");
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -113,17 +115,21 @@ export default function PooTrackerModal({ visible, onClose }) {
       // fails we still save the log without it.
       let uploadedPhotoUrl = null;
       if (localPhotoUri) {
+        // (AUDIT A-04) Stool photo → PRIVATE bucket scoped to this pet; store the
+        // returned KEY (rendered later via the auth-gated streamer).
         const uploadResult = await upload({
           reactNativeAsset: {
             uri: localPhotoUri,
             name: `poo_${Date.now()}.jpg`,
             mimeType: "image/jpeg",
           },
+          visibility: "private",
+          petId: currentPet?.id,
         });
         if (uploadResult.error) {
           alert(t("trackers.poo.photoUploadFailed"));
         } else {
-          uploadedPhotoUrl = uploadResult.url;
+          uploadedPhotoUrl = uploadResult.key ?? uploadResult.url;
         }
       }
 

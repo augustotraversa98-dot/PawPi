@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
 import { getDisplayAge } from "@/utils/petAge";
+import { resolvePrivateMediaUrl } from "@/utils/privateMedia";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
@@ -310,8 +311,18 @@ export default function HealthVetRecord() {
     });
   }, [queryClient, currentPet?.id]);
 
-  const openDocument = useCallback((doc) => {
-    if (doc?.file_url) Linking.openURL(doc.file_url).catch(() => {});
+  const openDocument = useCallback(async (doc) => {
+    if (!doc?.file_url) return;
+    // (AUDIT A-04) file_url may be a PRIVATE object key or a legacy public URL.
+    // Resolve a key to a short-lived signed URL via the streamer before opening;
+    // a URL passes through unchanged. Linking can't carry auth headers, so we
+    // must hand it a directly-openable URL.
+    try {
+      const url = await resolvePrivateMediaUrl(doc.file_url);
+      if (url) await Linking.openURL(url);
+    } catch {
+      /* signing/open failed — surface nothing (best-effort open) */
+    }
   }, []);
 
   const deleteDocument = useCallback(

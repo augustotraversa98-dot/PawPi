@@ -22,6 +22,23 @@ function useUpload() {
       setLoading(true);
       let response;
 
+      // (AUDIT A-04) Private mode: medical/chat callers pass { visibility:
+      // "private", petId }. The file then goes to the PRIVATE bucket
+      // (media-private) under an owner-scoped key and the server returns { key }
+      // instead of { url } — the caller stores the KEY and renders it later
+      // through GET /api/media?key=… (auth-gated + short-lived signed URL). All
+      // upload shapes route through postForm so this applies uniformly; the
+      // default (no visibility) is the unchanged public path.
+      const isPrivate = input?.visibility === "private";
+      const petId = input?.petId;
+      const postForm = (formData) => {
+        if (isPrivate) {
+          formData.append("visibility", "private");
+          if (petId != null) formData.append("petId", String(petId));
+        }
+        return fetch("/api/upload", { method: "POST", body: formData });
+      };
+
       if ("reactNativeAsset" in input && input.reactNativeAsset) {
         let asset = input.reactNativeAsset;
         console.log("[useUpload] React Native asset detected");
@@ -36,10 +53,7 @@ function useUpload() {
           const formData = new FormData();
           formData.append("file", asset.file);
 
-          response = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
+          response = await postForm(formData);
         } else {
           console.log(
             "[useUpload] Asset has no file property, uploading bytes to /api/upload",
@@ -65,10 +79,7 @@ function useUpload() {
             });
           }
 
-          response = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
+          response = await postForm(formData);
         }
       } else if ("url" in input) {
         console.log("[useUpload] URL input detected:", input.url);
@@ -88,10 +99,7 @@ function useUpload() {
           });
         }
 
-        response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        response = await postForm(formData);
       } else if ("base64" in input) {
         console.log("[useUpload] Base64 input detected");
         const dataUri = input.base64.startsWith("data:")
@@ -111,10 +119,7 @@ function useUpload() {
           });
         }
 
-        response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        response = await postForm(formData);
       } else {
         console.log("[useUpload] Buffer input detected");
         const formData = new FormData();
@@ -128,10 +133,7 @@ function useUpload() {
           });
         }
 
-        response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        response = await postForm(formData);
       }
 
       if (response) {
@@ -151,7 +153,14 @@ function useUpload() {
         const data = await response.json();
         // (AUDIT A-27) Do not log the returned media URL — for the private
         // medical/chat buckets the URL is a long-lived bearer credential.
-        return { url: data.url, mimeType: data.mimeType || null };
+        // (AUDIT A-04) Private uploads return { key } (no url); public uploads
+        // return { url }. Surface both so callers store whichever they got —
+        // key-bearing callers persist data.key and render via GET /api/media.
+        return {
+          url: data.url ?? null,
+          key: data.key ?? null,
+          mimeType: data.mimeType || null,
+        };
       }
     } catch (uploadError) {
       console.error("[useUpload] ========================================");

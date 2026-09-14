@@ -8,11 +8,18 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { createSignedMediaUrl } from "@/app/api/utils/mediaAccess";
+import { assertCareAccess } from "@/app/api/utils/careAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
 vi.mock("@/app/api/utils/petLogAccess", () => ({
   resolvePetLogOwner: vi.fn(),
+}));
+vi.mock("@/app/api/utils/careAccess", () => ({ assertCareAccess: vi.fn() }));
+// withSavepoint just runs its callback in these unit tests (no real tx).
+vi.mock("@/app/api/utils/requestContext", () => ({
+  withRequestContext: (fn) => fn,
+  withSavepoint: (fn) => fn(),
 }));
 vi.mock("@/app/api/utils/mediaAccess", async (orig) => {
   const actual = await orig();
@@ -20,9 +27,10 @@ vi.mock("@/app/api/utils/mediaAccess", async (orig) => {
 });
 
 const SESSION = { user: { id: 42 } };
-const req = (key) =>
+const req = (key, providerId) =>
   new Request(
-    `http://localhost/api/media?key=${key == null ? "" : encodeURIComponent(key)}`,
+    `http://localhost/api/media?key=${key == null ? "" : encodeURIComponent(key)}` +
+      (providerId == null ? "" : `&providerId=${providerId}`),
   );
 
 beforeEach(() => {
@@ -63,4 +71,44 @@ it("502 when signing fails", async () => {
   resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
   createSignedMediaUrl.mockRejectedValue(new Error("sign failed"));
   expect((await GET(req("pets/5/a.jpg"))).status).toBe(502);
+});
+
+it("?json=1 returns the signed URL as JSON (mobile path) instead of a 302", async () => {
+  resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
+  createSignedMediaUrl.mockResolvedValue("https://sb/sign/media-private/pets/5/a.jpg?token=json");
+  const res = await GET(
+    new Request("http://localhost/api/media?key=pets%2F5%2Fa.jpg&json=1"),
+  );
+  expect(res.status).toBe(200);
+  expect(res.headers.get("Cache-Control")).toBe("no-store");
+  expect((await res.json()).url).toContain("token=json");
+});
+
+it("302 for a provider with a medical_read grant (via ?providerId)", async () => {
+  resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
+  assertCareAccess.mockResolvedValue({ id: 99 }); // grant row
+  createSignedMediaUrl.mockResolvedValue("https://sb/sign/media-private/pets/5/a.jpg?token=prov");
+  const res = await GET(req("pets/5/a.jpg", 12));
+  expect(res.status).toBe(302);
+  expect(res.headers.get("Location")).toContain("token=prov");
+  expect(assertCareAccess).toHaveBeenCalledWith(5, 12, "medical_read", {
+    staffUserId: 7,
+    action: "read",
+    resource: "media:pets/5/a.jpg",
+  });
+});
+
+it("403 for a provider WITHOUT the grant (assertCareAccess throws)", async () => {
+  resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
+  assertCareAccess.mockRejectedValue(Object.assign(new Error("no grant"), { status: 403 }));
+  const res = await GET(req("pets/5/a.jpg", 12));
+  expect(res.status).toBe(403);
+  expect(createSignedMediaUrl).not.toHaveBeenCalled();
+});
+
+it("does not attempt the provider branch without ?providerId (owner/family only)", async () => {
+  resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
+  const res = await GET(req("pets/5/a.jpg"));
+  expect(res.status).toBe(403);
+  expect(assertCareAccess).not.toHaveBeenCalled();
 });

@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import useUpload from "@/utils/useUpload";
+import PrivateImage from "@/components/ui/PrivateImage";
+import { useCurrentPet } from "@/hooks/usePetProfile";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
@@ -77,6 +79,7 @@ export default function GeneralCheckModal({
   const scrollViewRef = useRef(null);
   const logGeneralCheckMutation = useLogGeneralCheck();
   const [upload, { loading: uploading }] = useUpload();
+  const { data: currentPet } = useCurrentPet();
 
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [checkData, setCheckData] = useState({});
@@ -250,19 +253,24 @@ export default function GeneralCheckModal({
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
+      // (AUDIT A-04) General-check body photos are medical → PRIVATE bucket
+      // scoped to this pet; store the returned KEY (rendered via the streamer).
       const uploadResult = await upload({
         reactNativeAsset: {
           uri: asset.uri,
           name: `general_check_${areaKey}_${asset.fileName || "photo"}.jpg`,
           mimeType: asset.mimeType || "image/jpeg",
         },
+        visibility: "private",
+        petId: currentPet?.id,
       });
 
-      if (uploadResult?.error || !uploadResult?.url) {
+      const stored = uploadResult?.key ?? uploadResult?.url;
+      if (uploadResult?.error || !stored) {
         Alert.alert(tc("photoError"));
         return;
       }
-      addPhotoToArea(areaKey, uploadResult.url);
+      addPhotoToArea(areaKey, stored);
     } catch (error) {
       console.error("[GeneralCheck] photo capture error:", error);
       Alert.alert(tc("photoError"));
@@ -659,8 +667,8 @@ export default function GeneralCheckModal({
                           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                             {ad.photos.map((uri) => (
                               <View key={uri} style={{ position: "relative" }}>
-                                <Image
-                                  source={{ uri }}
+                                <PrivateImage
+                                  value={uri}
                                   style={{
                                     width: 64,
                                     height: 64,
@@ -1288,8 +1296,8 @@ export default function GeneralCheckModal({
                 >
                   {currentAreaData.photos.map((uri) => (
                     <View key={uri} style={{ position: "relative" }}>
-                      <Image
-                        source={{ uri }}
+                      <PrivateImage
+                        value={uri}
                         style={{
                           width: 72,
                           height: 72,

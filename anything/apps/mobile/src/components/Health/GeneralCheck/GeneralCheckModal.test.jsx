@@ -32,6 +32,10 @@ const mockMutateAsync = jest.fn().mockResolvedValue({});
 jest.mock("@/hooks/useHealthTracking", () => ({
   useLogGeneralCheck: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }));
+// (AUDIT A-04) the modal now reads the current pet to scope private uploads.
+jest.mock("@/hooks/usePetProfile", () => ({
+  useCurrentPet: () => ({ data: { id: 1 } }),
+}));
 
 // QC-B: the photo buttons are wired to expo-image-picker + useUpload. Mock both so we
 // can prove the buttons are no longer dead and the uploaded URL lands on the area.
