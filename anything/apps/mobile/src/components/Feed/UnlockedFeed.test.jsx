@@ -127,6 +127,7 @@ const moment = (over) => ({
   user_id: 100,
   username: "tats",
   pet_name: "Rex",
+  pet_handle: "rex",
   pet_avatar: "https://example.com/a.jpg",
   is_daily_update: true,
   post_date: "2026-08-14",
@@ -139,7 +140,7 @@ const moment = (over) => ({
 });
 
 describe("UnlockedFeed — FF3 day card grouping", () => {
-  it("groups a pet's same-day moments into one DayCard with per-author slides", () => {
+  it("keeps the DayCard carousel for a GENUINE multi-caregiver day (2+ authors)", () => {
     const posts = [
       moment({ id: 2, user_id: 200, username: "bob", created_at: "2026-08-14T18:00:00Z" }),
       moment({ id: 1, user_id: 100, username: "tats", created_at: "2026-08-14T09:00:00Z" }),
@@ -153,23 +154,54 @@ describe("UnlockedFeed — FF3 day card grouping", () => {
     expect(getByTestId("day-card-slide-2")).toBeTruthy();
   });
 
-  it("does not regress non-moment posts: a regular post still renders as a normal card", () => {
+  it("routes a LONE daily moment through the canonical PostCard (handle, streak, Daily moment tag) — not a DayCard", () => {
+    // A single-author, single-slide day is just a post; it must inherit the full PostCard
+    // chrome the divergent DayCard was missing (the build-18 "broken card" bug).
+    const posts = [moment({ id: 1, caption: "daycaption" })];
+    const { queryByTestId, getByText } = render(
+      <UnlockedFeed
+        {...baseProps}
+        posts={posts}
+        streakByPetId={{ 10: 3 }}
+        suggestions={undefined}
+      />,
+    );
+    // NOT wrapped in a day card any more.
+    expect(queryByTestId("day-card")).toBeNull();
+    // Full PostCard chrome is present: @handle, 🔥 streak, the "Daily moment" tag, the caption.
+    expect(getByText("@rex")).toBeTruthy();
+    expect(getByText("🔥3")).toBeTruthy();
+    expect(getByText("Daily moment")).toBeTruthy();
+    expect(getByText(/daycaption/)).toBeTruthy();
+  });
+
+  it("does not regress non-moment posts: a regular post still renders alongside a moment", () => {
     const posts = [moment({ id: 1, caption: "daycaption" }), post(99)];
-    const { getByTestId, getByText, getAllByText } = render(
+    const { queryByTestId, getByText, getAllByText } = render(
       <UnlockedFeed {...baseProps} posts={posts} suggestions={undefined} />,
     );
-    expect(getByTestId("day-card")).toBeTruthy();
-    expect(getByText(/daycaption/)).toBeTruthy(); // the day card caption
+    expect(queryByTestId("day-card")).toBeNull(); // lone moment is a PostCard now
+    expect(getByText(/daycaption/)).toBeTruthy(); // the moment's caption
     expect(getAllByText("Pet99").length).toBeGreaterThan(0); // the regular PostCard still renders
   });
 
-  it("tapping the day card opens the shown slide's real post", () => {
+  it("a lone moment's paw reflects REAL like state (filled coral when liked)", () => {
+    const posts = [moment({ id: 1, paw_count: 1 })];
+    const { getByText } = render(
+      <UnlockedFeed {...baseProps} posts={posts} likedPosts={{ 1: true }} suggestions={undefined} />,
+    );
+    // PostCard renders "<count> paws" in coral when liked — a liked post reads ≥1, never
+    // the old "red paw but 0" mismatch.
+    expect(getByText("1 paws")).toBeTruthy();
+  });
+
+  it("tapping a lone moment's caption opens its real post detail", () => {
     const onOpenDetail = jest.fn();
-    const posts = [moment({ id: 1 })];
+    const posts = [moment({ id: 1, caption: "daycaption" })];
     const { getByTestId } = render(
       <UnlockedFeed {...baseProps} posts={posts} onOpenDetail={onOpenDetail} suggestions={undefined} />,
     );
-    fireEvent.press(getByTestId("day-card-open"));
+    fireEvent.press(getByTestId("feed-post-caption"));
     expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 });
