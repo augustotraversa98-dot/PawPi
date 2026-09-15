@@ -83,7 +83,11 @@ const BODY_AREAS = [
   },
 ];
 
-export default function PhotoCheckModal({ visible, onClose, onSave }) {
+// `onSelectArea(bodyAreaId)` — when provided, this modal acts purely as a body-area
+// PICKER and hands the chosen area to the parent (which opens PhotoCheckCaptureModal,
+// the real capture + private-upload + POST path). Without it, the legacy self-contained
+// capture/preview flow is used. `onSave` is the legacy stub path (kept for back-compat).
+export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea }) {
   const { t } = useTranslation();
   const [step, setStep] = useState("select"); // 'select', 'capture', 'preview'
   const [selectedArea, setSelectedArea] = useState(null);
@@ -91,6 +95,16 @@ export default function PhotoCheckModal({ visible, onClose, onSave }) {
   const [notes, setNotes] = useState("");
 
   const handleAreaSelect = (area) => {
+    if (onSelectArea) {
+      // Picker mode: reset our own step for next open and hand off the area — the
+      // parent swaps to PhotoCheckCaptureModal, so capture/upload/POST happens there.
+      setStep("select");
+      setSelectedArea(null);
+      setImageUri(null);
+      setNotes("");
+      onSelectArea(area.id);
+      return;
+    }
     setSelectedArea(area);
     setStep("capture");
   };
