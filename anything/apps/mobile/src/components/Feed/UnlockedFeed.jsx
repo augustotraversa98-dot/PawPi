@@ -163,11 +163,38 @@ export function UnlockedFeed({
         // FF3 — a pet's same-day daily moments, grouped into one multi-caregiver day card.
         // Tapping opens the currently-shown slide's real post (paws/barks/comments live there).
         if (item.kind === "daycard") {
+          const slides = item.dayCard?.slides || [];
+          // A LONE daily moment (single author → single slide, the common case) is just a
+          // normal post. Render it through the canonical PostCard so it inherits the 4:5
+          // media, @handle, 🔥 streak, "Daily moment" tag, timestamp and the REAL paw
+          // toggle/state for free — the divergent DayCard carousel is reserved for genuine
+          // multi-caregiver days (2+ slides). groupFeedDayCards is left untouched, so the
+          // interleave cadence + "Suggested" divider order are unaffected.
+          if (slides.length <= 1) {
+            const postItem = slides[0]?._post;
+            if (!postItem) return null;
+            return (
+              <React.Fragment key={item.id}>
+                {item.id === dividerBeforeId && <SuggestedDivider />}
+                <FeedPostRow
+                  item={postItem}
+                  liked={!!likedPosts[postItem.id]}
+                  streak={streakByPetId[postItem.pet_id] || 0}
+                  onToggleLike={onToggleLike}
+                  onOpenBarks={onOpenBarks}
+                  onOpenDetail={onOpenDetail}
+                  onOpenProfile={onOpenProfile}
+                />
+              </React.Fragment>
+            );
+          }
           return (
             <React.Fragment key={item.id}>
               {item.id === dividerBeforeId && <SuggestedDivider />}
               <DayCard
                 dayCard={item.dayCard}
+                likedByPostId={likedPosts}
+                streak={streakByPetId[item.pet_id] || 0}
                 onOpenDetail={(post) => post && onOpenDetail?.(post)}
               />
             </React.Fragment>
