@@ -7,7 +7,7 @@
 // path. Child modals + hooks are mocked.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("lucide-react-native", () =>
@@ -52,6 +52,7 @@ function mockModal(name) {
   };
 }
 jest.mock("./PhotoCheck/PhotoCheckModal", () => mockModal("photoCheck"));
+jest.mock("./PhotoCheck/PhotoCheckCaptureModal", () => mockModal("photoCheckCapture"));
 jest.mock("./FoodWater/FoodWaterTrackerModal", () => mockModal("foodWater"));
 jest.mock("./Poo/PooTrackerModal", () => mockModal("poo"));
 jest.mock("./Pee/PeeTrackerModal", () => mockModal("pee"));
@@ -145,6 +146,27 @@ test("Bathroom & Digestion folds pee/poo/vomit behind one chooser", () => {
   // Chooser is shown; picking Pee opens the (already-persisting) pee modal.
   fireEvent.press(getByText("Pee"));
   expect(modalVisibility.pee).toBe(true);
+});
+
+// Photo Check must PERSIST (was a silent data-loss dead-end): tapping the tile opens
+// the body-area picker, and selecting an area hands off to PhotoCheckCaptureModal —
+// the SAME working flow the Hoy tab uses (private upload + POST /api/health/photo-checks).
+test("Photo Check routes through the persisting capture flow (picker → capture with body area)", () => {
+  const { getByText } = render(<HealthTrack />);
+  // Picker opens; the capture modal is not yet visible.
+  expect(modalVisibility.photoCheck).toBe(false);
+  expect(modalVisibility.photoCheckCapture).toBe(false);
+  fireEvent.press(getByText("Photo Check"));
+  expect(modalVisibility.photoCheck).toBe(true);
+
+  // The picker is wired to hand off the chosen area (NOT the old silent onSave stub).
+  expect(typeof modalProps.photoCheck.onSelectArea).toBe("function");
+  expect(modalProps.photoCheck.onSave).toBeUndefined();
+
+  // Selecting a body area opens the real capture+POST modal scoped to that area.
+  act(() => modalProps.photoCheck.onSelectArea("ears"));
+  expect(modalVisibility.photoCheckCapture).toBe(true);
+  expect(modalProps.photoCheckCapture.bodyArea).toBe("ears");
 });
 
 // STRUCTURAL invariant: the source of the Care Ring bug was a coming-soon tile that

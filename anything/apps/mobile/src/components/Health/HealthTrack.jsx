@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react-native";
 import PhotoCheckModal from "./PhotoCheck/PhotoCheckModal";
+import PhotoCheckCaptureModal from "./PhotoCheck/PhotoCheckCaptureModal";
 import FoodWaterTrackerModal from "./FoodWater/FoodWaterTrackerModal";
 import PooTrackerModal from "./Poo/PooTrackerModal";
 import PeeTrackerModal from "./Pee/PeeTrackerModal";
@@ -126,6 +127,13 @@ export default function HealthTrack() {
   const petName = currentPet?.name || t("common.yourPet");
 
   const [photoCheckModalVisible, setPhotoCheckModalVisible] = useState(false);
+  // The Registrar (records) Photo Check is a two-step: PhotoCheckModal is the
+  // body-area PICKER, then we hand off to PhotoCheckCaptureModal — the SAME
+  // working flow the Hoy tab uses (capture → private upload {visibility:"private",
+  // petId} → POST /api/health/photo-checks). This replaces the old stub handler
+  // that yielded a device-local file:// URI and persisted nothing.
+  const [photoCheckCaptureVisible, setPhotoCheckCaptureVisible] = useState(false);
+  const [photoCheckBodyArea, setPhotoCheckBodyArea] = useState(null);
   const [foodWaterModalVisible, setFoodWaterModalVisible] = useState(false);
   const [foodWaterModalType, setFoodWaterModalType] = useState("food");
   const [bathroomChooserVisible, setBathroomChooserVisible] = useState(false);
@@ -143,12 +151,14 @@ export default function HealthTrack() {
   const labelFor = (id) => t(`health.trackScreen.${id}Label`);
   const descFor = (id) => t(`health.trackScreen.${id}Desc`);
 
-  const handlePhotoCheckSave = (photoData) => {
-    // Photo Check persistence needs the upload flow (PhotoCheckCaptureModal + useUpload)
-    // to turn the local capture into a hosted URL; PhotoCheckModal only yields a local
-    // file:// URI, so we deliberately DON'T POST it here (a device-local path would be
-    // unusable everywhere else). Left as a known follow-up rather than storing bad data.
-    console.log("Photo check captured:", photoData);
+  // Registrar Photo Check now PERSISTS: the picker (PhotoCheckModal) hands the chosen
+  // body area to PhotoCheckCaptureModal, which uploads the photo privately (per pet)
+  // and POSTs to /api/health/photo-checks so it lands in Photo History via the
+  // auth-gated streamer. No more silent data-loss dead-end.
+  const handlePhotoCheckAreaSelected = (bodyAreaId) => {
+    setPhotoCheckModalVisible(false);
+    setPhotoCheckBodyArea(bodyAreaId || "other");
+    setPhotoCheckCaptureVisible(true);
   };
 
   const handleTrackerPress = (tracker) => {
@@ -410,11 +420,23 @@ export default function HealthTrack() {
         </View>
       </Modal>
 
-      {/* Photo Check Modal */}
+      {/* Photo Check — body-area picker. Selecting an area hands off to the
+          capture modal below (the real, persisting upload+POST path). */}
       <PhotoCheckModal
         visible={photoCheckModalVisible}
         onClose={() => setPhotoCheckModalVisible(false)}
-        onSave={handlePhotoCheckSave}
+        onSelectArea={handlePhotoCheckAreaSelected}
+      />
+
+      {/* Photo Check — capture + private upload + POST /api/health/photo-checks
+          (same working flow as the Hoy tab). Scoped to the current pet. */}
+      <PhotoCheckCaptureModal
+        visible={photoCheckCaptureVisible}
+        onClose={() => {
+          setPhotoCheckCaptureVisible(false);
+          setPhotoCheckBodyArea(null);
+        }}
+        bodyArea={photoCheckBodyArea || "other"}
       />
 
       {/* Food & Water Tracker Modal */}
