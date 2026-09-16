@@ -27,27 +27,47 @@ async function requireOwner(session) {
   return { ownerUserId };
 }
 
-async function ringForPet(petId, ownerUserId, tz, day) {
-  // Prefer the shared derivation (E13/0102); degrade to the persisted pet_care_days row, then null.
-  let ringClosed = null;
+// Ring status for a whole household in ONE query instead of one round-trip per pet. Same fix
+// shape as streaksForPets below: withRequestContext runs the whole request on a single pooled
+// connection, so the per-pet awaits this replaced were not actually concurrent at the DB level —
+// they queued up sequentially, each paying its own SAVEPOINT/RELEASE + function-call overhead.
+// Uses a LATERAL join to call the EXISTING app_pet_ring_segments() once per pet in a single
+// statement (no DB/migration change — the DEFINER function itself is untouched, so the
+// owner+caregiver shared-ring semantics it provides are preserved).
+async function ringsForPets(petIds, tz, day) {
+  const ringByPetId = new Map();
+  if (petIds.length === 0) return ringByPetId;
   try {
     await withSavepoint(async () => {
-      const [d] = await sql`SELECT * FROM app_pet_ring_segments(${petId}, ${tz}, ${day}::date)`;
-      if (d) ringClosed = !!(d.walk_done && d.moment_done && d.care_done);
+      const rows = await sql`
+        SELECT p.id AS pet_id, r.walk_done, r.moment_done, r.care_done
+        FROM UNNEST(${petIds}::int[]) AS p(id)
+        CROSS JOIN LATERAL app_pet_ring_segments(p.id, ${tz}, ${day}::date) r
+      `;
+      for (const r of rows) {
+        ringByPetId.set(r.pet_id, !!(r.walk_done && r.moment_done && r.care_done));
+      }
     });
-    if (ringClosed !== null) return ringClosed;
+    if (ringByPetId.size > 0) return ringByPetId;
   } catch (e) {
     if (e?.code !== UNDEFINED_FUNCTION) throw e;
   }
   try {
     await withSavepoint(async () => {
-      const [r] = await sql`SELECT ring_closed FROM pet_care_days WHERE pet_id = ${petId} AND day = ${day}::date`;
-      ringClosed = r ? !!r.ring_closed : false;
+      const rows = await sql`
+        SELECT pet_id, ring_closed FROM pet_care_days WHERE pet_id = ANY(${petIds}) AND day = ${day}::date
+      `;
+      const rowByPetId = new Map(rows.map((r) => [r.pet_id, !!r.ring_closed]));
+      // Table exists — match the original per-pet fallback: no row for a pet means ring_closed=false,
+      // not null (null is reserved for "the table itself doesn't exist yet").
+      for (const petId of petIds) {
+        ringByPetId.set(petId, rowByPetId.get(petId) ?? false);
+      }
     });
   } catch (e) {
     if (!isMissingTable(e)) throw e;
   }
-  return ringClosed;
+  return ringByPetId;
 }
 
 // Streaks for a whole household in ONE query instead of one round-trip per pet. Every request
@@ -110,21 +130,21 @@ async function GET() {
       if (!isMissingTable(e)) throw e;
     }
 
-    const streaksByPetId = await streaksForPets([...owned, ...coCared].map((p) => p.id));
+    const allPetIds = [...owned, ...coCared].map((p) => p.id);
+    const streaksByPetId = await streaksForPets(allPetIds);
+    const ringsByPetId = await ringsForPets(allPetIds, tz, today);
 
-    const build = async (rows, isMine) =>
-      Promise.all(
-        rows.map(async (p) => ({
-          id: p.id,
-          name: p.name,
-          avatar_url: p.avatar_url,
-          is_mine: isMine,
-          ring_closed: await ringForPet(p.id, ownerUserId, tz, today),
-          streak: streaksByPetId.get(p.id) ?? null,
-        })),
-      );
+    const build = (rows, isMine) =>
+      rows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        avatar_url: p.avatar_url,
+        is_mine: isMine,
+        ring_closed: ringsByPetId.get(p.id) ?? null,
+        streak: streaksByPetId.get(p.id) ?? null,
+      }));
 
-    const dogs = [...(await build(owned, true)), ...(await build(coCared, false))];
+    const dogs = [...build(owned, true), ...build(coCared, false)];
 
     // Family streak (E14) — per owner, over OWNED pets. Degrade cleanly.
     let familyStreak = null;
