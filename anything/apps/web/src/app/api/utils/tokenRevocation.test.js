@@ -48,3 +48,29 @@ describe("isTokenRevoked (AUDIT A-05)", () => {
     expect(await isTokenRevoked(7, undefined)).toBe(false);
   });
 });
+
+describe("isTokenRevoked — undefined_column latch (incident 2026-09-16)", () => {
+  // Isolated module instance (vi.resetModules) so this doesn't leak the
+  // latched in-process flag into the other tests in this file.
+  it("stops querying the DB after a 42703 (column truly absent), but not after a generic error", async () => {
+    vi.resetModules();
+    const freshSql = vi.fn();
+    vi.doMock("@/app/api/utils/sql", () => ({ default: freshSql }));
+    const { isTokenRevoked: isTokenRevokedFresh } = await import(
+      "./tokenRevocation"
+    );
+
+    const columnMissing = Object.assign(new Error("column does not exist"), {
+      code: "42703",
+    });
+    freshSql.mockRejectedValueOnce(columnMissing);
+    expect(await isTokenRevokedFresh(7, 1_700_000_000)).toBe(false);
+    expect(freshSql).toHaveBeenCalledTimes(1);
+
+    // Latched: a second call must not hit the DB again.
+    expect(await isTokenRevokedFresh(7, 1_700_000_000)).toBe(false);
+    expect(freshSql).toHaveBeenCalledTimes(1);
+
+    vi.doUnmock("@/app/api/utils/sql");
+  });
+});
