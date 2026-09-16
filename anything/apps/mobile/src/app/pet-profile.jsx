@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -12,13 +12,13 @@ import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { SocialStatRow } from "@/components/social/SocialStatRow";
 import { MomentsGrid } from "@/components/social/MomentsGrid";
-import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useCurrentPet, usePetProfile } from "@/hooks/usePetProfile";
 import { CareRing } from "@/components/Health/CareRing";
 import { StreakChip } from "@/components/Health/StreakChip";
 import { MilestoneCountdownBanner } from "@/components/Feed/MilestoneCountdownBanner";
 import { ShareCardDeck } from "@/components/Feed/ShareCardDeck";
 import { useCareRing } from "@/hooks/useCareRing";
-import { useTogglePaw, useUpdatePostCaption } from "@/hooks/useFeedPosts";
+import { useTogglePaw, useUpdatePostCaption, useDeletePost } from "@/hooks/useFeedPosts";
 import {
   usePetSocialProfile,
   useToggleFollow,
@@ -48,6 +48,18 @@ export default function PetProfileScreen({ embedded = false }) {
   // viewer's own active pet. As a pushed route, use the param pet.
   const petId = params.petId || (embedded ? String(currentPet?.id ?? "") : "");
   const updateCaption = useUpdatePostCaption();
+  const deletePost = useDeletePost();
+
+  // Every post on this screen belongs to the profile's pet (petId), so the viewer
+  // may edit/delete them when they OWN that pet — any of their pets, not just the
+  // active one, and String-compared so a number/string id mismatch can't hide the
+  // controls. Mirrors the Feed's owner check; the server DELETE/PATCH stay the
+  // real guard (owner-scoped by user_id).
+  const { data: allPets } = usePetProfile();
+  const ownsProfilePet = useMemo(
+    () => new Set((allPets ?? []).map((p) => String(p.id))).has(String(petId)),
+    [allPets, petId],
+  );
 
   const { data: profile, isLoading, isError, refetch } = usePetSocialProfile(
     petId,
@@ -163,6 +175,34 @@ export default function PetProfileScreen({ embedded = false }) {
     if (!canFollow) return;
     toggleFollow.mutate({ isFollowing, viewerPetId });
   }, [canFollow, isFollowing, viewerPetId, toggleFollow]);
+
+  // Delete one of your own posts from the profile grid (confirm first). On success
+  // refetch the grid so the tile disappears; useDeletePost also invalidates the
+  // feed + petProfile caches so it's gone everywhere.
+  const handleDeletePost = useCallback(() => {
+    const target = detailPost;
+    if (!target?.id) return;
+    Alert.alert(
+      "Delete post?",
+      "This permanently removes the post.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDetailPost(null);
+            try {
+              await deletePost.mutateAsync(target.id);
+              await refetch();
+            } catch (e) {
+              Alert.alert("Error", `Could not delete: ${e.message}`);
+            }
+          },
+        },
+      ],
+    );
+  }, [detailPost, deletePost, refetch]);
 
   // Tapping Followers / Following opens the searchable list (ticket 2.61).
   // Resolve the pet robustly (ticket 2.67): the route param, else — in the
@@ -637,7 +677,9 @@ export default function PetProfileScreen({ embedded = false }) {
         visible={!!detailPost}
         post={detailPost}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
-        canEdit={!!detailPost && detailPost.pet_id === viewerPetId}
+        canDelete={!!detailPost && ownsProfilePet}
+        canEdit={!!detailPost && ownsProfilePet}
+        onDelete={handleDeletePost}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })
         }
