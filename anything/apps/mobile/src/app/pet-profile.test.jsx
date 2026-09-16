@@ -49,9 +49,11 @@ jest.mock("@/components/Feed/BarkModal", () => ({ BarkModal: () => null }));
 jest.mock("@/hooks/useFeedPosts", () => ({
   useTogglePaw: () => ({ mutate: jest.fn() }),
   useUpdatePostCaption: () => ({ mutateAsync: jest.fn() }),
+  useDeletePost: () => ({ mutateAsync: jest.fn() }),
 }));
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: mockViewer }),
+  usePetProfile: () => ({ data: mockViewer ? [mockViewer] : [] }),
 }));
 let mockProfileError = false;
 const mockProfileRefetch = jest.fn();

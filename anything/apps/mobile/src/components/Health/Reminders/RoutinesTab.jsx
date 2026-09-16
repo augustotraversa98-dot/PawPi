@@ -62,6 +62,18 @@ export default function RoutinesTab({ editRoutineId } = {}) {
     }
   }, [currentPet?.id, queryClient]);
 
+  // The Home "Getting started" card derives its "Set your first reminder" item
+  // from the ["routines","exist",petId] existence query (useHasReminder), which
+  // has a 30s staleTime. Creating/deleting a routine here must refresh it so the
+  // checklist item ticks (or un-ticks) without waiting out the stale window.
+  const invalidateRoutinesExist = useCallback(() => {
+    if (currentPet?.id != null) {
+      queryClient.invalidateQueries({
+        queryKey: ["routines", "exist", currentPet.id],
+      });
+    }
+  }, [currentPet?.id, queryClient]);
+
   const [typeSelectorVisible, setTypeSelectorVisible] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
   const [editingRoutine, setEditingRoutine] = useState(null);
@@ -187,6 +199,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         Alert.alert(t("routines.toast.saved"));
       } else {
         await addRoutine(routineToSave);
+        invalidateRoutinesExist(); // tick Home's "Set your first reminder" item
         Alert.alert(t("routines.toast.created"));
       }
       setSelectedType(null);
@@ -206,6 +219,9 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       // The early-ack clear happened server-side; refresh the dismissals query so
       // Health → Today re-derives without the now-deleted routine's stale keys.
       invalidateDismissals();
+      // If that was the last routine, Home's "Set your first reminder" item must
+      // un-tick — refresh the existence query.
+      invalidateRoutinesExist();
       Alert.alert(t("routines.toast.deleted"));
     } catch (error) {
       console.error("[RoutinesTab] Error deleting routine:", error);

@@ -89,6 +89,12 @@ export function useCreatePost() {
       // Invalidate posts queries
       queryClient.invalidateQueries({ queryKey: ["posts"] });
 
+      // The Getting-started "Share your first post" item reads stats.totalPosts
+      // from the ["petProfile", …] cache (usePetSocialProfile). Without this the
+      // count stayed stale and the item never ticked until an app restart.
+      // Prefix-invalidate so every viewer-scoped entry re-syncs from the server.
+      queryClient.invalidateQueries({ queryKey: ["petProfile"] });
+
       // IMPORTANT: Invalidate today's daily update query to unlock the Feed
       queryClient.invalidateQueries({ queryKey: ["today-daily-update"] });
 
@@ -132,6 +138,9 @@ export function useDeletePost() {
         Array.isArray(old) ? old.filter((p) => p.id !== postId) : old,
       );
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Keep the Getting-started post-count (stats.totalPosts, read from the
+      // ["petProfile", …] cache) in sync after a delete too, mirroring create.
+      queryClient.invalidateQueries({ queryKey: ["petProfile"] });
       // Deleting today's daily frees the slot — refresh the lock state so the
       // BeReal composer reopens for a re-upload.
       queryClient.invalidateQueries({ queryKey: ["today-daily-update"] });

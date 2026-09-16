@@ -25,6 +25,7 @@ export default function FeedScreen() {
   const { t } = useTranslation();
   const {
     petProfile,
+    ownedPetIds,
     petName,
     hasPostedToday,
     feedUnlocked,
@@ -71,6 +72,15 @@ export default function FeedScreen() {
   const detailPostLive = detailPost
     ? posts.find((p) => p.id === detailPost.id) || detailPost
     : null;
+  // The viewer owns (and may edit/delete) the open post when its pet belongs to
+  // the current user — ANY of their pets, not only the active one — matching the
+  // owner-scoped DELETE/PATCH routes. String-compared so a number/string pet_id
+  // mismatch can't wrongly hide the controls. Business posts (no owned pet_id)
+  // fall through to false.
+  const ownsDetailPost =
+    !!detailPostLive &&
+    !!ownedPetIds &&
+    ownedPetIds.has(String(detailPostLive.pet_id));
   // Toggle the open post's paw through the SAME mutation the feed card uses, so
   // pawing/un-pawing in the modal updates the shared query and the feed card's
   // fill + count move together.
@@ -355,9 +365,9 @@ export default function FeedScreen() {
         post={detailPostLive}
         // Fill + count both read from the same live post (feed polish #2).
         liked={!!detailPostLive?.user_has_pawed}
-        // The viewer can delete only their own active pet's post.
-        canDelete={!!detailPostLive && detailPostLive.pet_id === petProfile?.id}
-        canEdit={!!detailPostLive && detailPostLive.pet_id === petProfile?.id}
+        // The viewer can delete/edit any post they own (any of their pets).
+        canDelete={ownsDetailPost}
+        canEdit={ownsDetailPost}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })
         }
