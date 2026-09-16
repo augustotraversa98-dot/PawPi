@@ -11,7 +11,12 @@
 import React from "react";
 import { renderHook, waitFor, act } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useFeedPosts, useTogglePaw } from "./useFeedPosts";
+import {
+  useFeedPosts,
+  useTogglePaw,
+  useCreatePost,
+  useDeletePost,
+} from "./useFeedPosts";
 
 // useFeedPosts reads the active pet via useCurrentPet; stub it per test.
 const mockUseCurrentPet = jest.fn();
@@ -109,6 +114,48 @@ describe("useFeedPosts", () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
     expect(lastFetchUrl()).toContain("viewerPetId=9");
+  });
+});
+
+// Bug fix — "Share your first post" never completes. Creating OR deleting a post
+// must invalidate the ["petProfile", …] cache (usePetSocialProfile), because the
+// Getting-started checklist reads stats.totalPosts from there. Without it the
+// count stayed stale and the item never ticked/un-ticked without an app restart.
+describe("useCreatePost / useDeletePost — petProfile cache refresh", () => {
+  test("creating a post invalidates the petProfile query", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ post: { id: 99, pet_id: 4 } }),
+    }));
+    const client = makeClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+
+    const { result } = renderHook(() => useCreatePost(), {
+      wrapper: makeWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ pet_id: 4, image_url: "x" });
+    });
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["petProfile"] });
+  });
+
+  test("deleting a post invalidates the petProfile query", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ success: true }),
+    }));
+    const client = makeClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+
+    const { result } = renderHook(() => useDeletePost(), {
+      wrapper: makeWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync(99);
+    });
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["petProfile"] });
   });
 });
 

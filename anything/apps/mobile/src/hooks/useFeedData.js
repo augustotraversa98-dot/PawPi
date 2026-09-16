@@ -5,7 +5,7 @@ import {
   useDeletePost,
   useTogglePaw,
 } from "./useFeedPosts";
-import { useCurrentPet } from "./usePetProfile";
+import { useCurrentPet, usePetProfile } from "./usePetProfile";
 import { useTodayDailyUpdate } from "./useTodayDailyUpdate";
 import { useOwnerPostedToday } from "./useOwnerPostedToday";
 import { useUpload } from "@/utils/useUpload";
@@ -17,7 +17,21 @@ import useUser from "@/utils/auth/useUser";
 export function useFeedData() {
   // Load current pet from database instead of AsyncStorage
   const { data: currentPet, isLoading: loadingPet, hasPet } = useCurrentPet();
+  // ALL of the user's pets — so we can tell whether a post being viewed belongs
+  // to the current user (any of their pets), not just the active one. Shares the
+  // ["pets"] query with useCurrentPet, so no extra fetch.
+  const { data: allPets } = usePetProfile();
   const [upload, { loading: uploading }] = useUpload();
+
+  // The set of pet ids the current user owns, as STRINGS for a type-safe compare
+  // against post.pet_id (DB ints can arrive as number or string across payloads).
+  // The DELETE/PATCH post routes are owner-scoped by user_id, so the viewer may
+  // edit/delete ANY post they own — this set is what the feed uses to show those
+  // affordances for every owned pet, not only the active one.
+  const ownedPetIds = useMemo(
+    () => new Set((allPets ?? []).map((p) => String(p.id))),
+    [allPets],
+  );
 
   const petId = currentPet?.id;
   const petName = currentPet?.name || "your pup";
@@ -268,6 +282,7 @@ export function useFeedData() {
 
   return {
     petProfile: currentPet, // Return database pet instead of AsyncStorage
+    ownedPetIds, // Set<string> of every pet id the user owns (delete/edit gating)
     petName,
     hasPostedToday, // per active pet (DailyPromptCard prompt)
     feedUnlocked, // per owner (feed lock)

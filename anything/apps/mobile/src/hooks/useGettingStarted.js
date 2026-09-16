@@ -44,10 +44,7 @@ export function useGettingStarted() {
   const petId = pet?.id;
 
   // Celebration flag — assume "already celebrated" until storage confirms
-  // otherwise, so a returning fully-done user never flashes the celebration AND
-  // (AUDIT A-30) the activation queries below never fire once the card has
-  // retired: a retired card would otherwise refetch the full social profile
-  // (staleTime:0) on every Feed mount for nothing.
+  // otherwise, so a returning fully-done user never flashes the celebration.
   const [celebrated, setCelebrated] = useState(true);
   useEffect(() => {
     let active = true;
@@ -63,9 +60,16 @@ export function useGettingStarted() {
     AsyncStorage.setItem(CELEBRATED_KEY, "1").catch(() => {});
   }, []);
 
-  // Gate the activation reads on !celebrated by passing a null petId when the
-  // card is retired — usePetSocialProfile / useHasReminder already `enabled: !!petId`.
-  const activationPetId = celebrated ? null : petId;
+  // The activation reads run for the ACTIVE pet whenever there is one — NOT gated
+  // on `celebrated`. `celebrated` is a global, one-shot flag (set the first time
+  // the user completes the checklist), but activation is per-pet: gating the reads
+  // on it left every celebrated account with the post/reminder/meal items frozen
+  // permanently unticked (their queries were disabled), and made the card unable
+  // to detect completeness for a newly-active, not-yet-activated pet. Correctness
+  // wins over the old A-30 micro-optimization; useHasReminder still carries a 30s
+  // staleTime and usePetSocialProfile keeps its cached data across mounts, so the
+  // per-mount cost for an already-retired card is a single lightweight refetch.
+  const activationPetId = petId;
 
   const { data: foodLogs } = useFoodLogs();
   const { data: profile } = usePetSocialProfile(activationPetId);
