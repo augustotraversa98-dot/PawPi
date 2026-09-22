@@ -91,7 +91,6 @@
           "backgroundColor": "#FF6F61"
         }
       ],
-      "expo-audio",
       [
         "expo-build-properties",
         {
