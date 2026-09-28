@@ -16,7 +16,16 @@
     "gender": "Sexo",
     "weight": "Peso",
     "before": "Antes",
-    "after": "Después"
+    "after": "Después",
+    "title": "Perfil del perro",
+    "petInformation": "INFORMACIÓN DE LA MASCOTA",
+    "notesPreferences": "NOTAS Y PREFERENCIAS",
+    "grooming": "PELUQUERÍA",
+    "birthdayOrAdoption": "Cumpleaños / Fecha de adopción",
+    "notesEmpty": "Todavía no hay notas. Agregá información sobre alergias, preferencias de comida o condiciones médicas.",
+    "groomingEmpty": "Todavía no hay sesiones de peluquería. Reservá un groomer desde Servicios → Peluquería; sus fotos de antes y después y sus notas de pelaje van a aparecer acá.",
+    "groomerFallback": "Groomer",
+    "productsUsed": "Productos: {{products}}"
   },
   "petProfile": {
     "loadError": "No pudimos cargar este perfil. Revisá tu conexión e intentá de nuevo.",
@@ -376,6 +385,17 @@
     "recordSoonBody": "Agregar registros de {{type}} está en camino. Por ahora, usa Nota veterinaria para anotarlo en la historia, o adjunta un Documento.",
     "connectedTrackingSoonTitle": "{{name}} — próximamente",
     "connectedTrackingSoonBody": "El seguimiento con {{name}} todavía no está disponible. Por ahora, el registro manual funciona muy bien.",
+    "connectedTrackingTitle": "Seguimiento conectado",
+    "connectedTrackingSubtitle": "Conectá Apple Health o Apple Watch para que la distancia y el ritmo del paseo sean más precisos.",
+    "trackingAppleHealthName": "Apple Health",
+    "trackingAppleHealthDesc": "Seguimiento automático de distancia y pasos",
+    "trackingAppleWatchName": "Apple Watch",
+    "trackingAppleWatchDesc": "Ritmo y frecuencia cardíaca en tiempo real",
+    "trackingManualName": "Registro manual",
+    "trackingManualDesc": "Ingresá los detalles del paseo a mano",
+    "comingSoonBadge": "PRÓXIMAMENTE",
+    "connectedTrackingTipLabel": "Tip:",
+    "connectedTrackingTipBody": "El seguimiento con Apple Health y Watch va a estar disponible pronto. Por ahora, ¡el registro manual funciona genial!",
     "generalCheck": {
       "title": "Chequeo rápido",
       "progress": "{{current}} de {{total}}",
@@ -2386,6 +2406,8 @@
     "providerNew": "Nuevo",
     "errorSaveTitle": "Error",
     "errorSaveBody": "No pudimos guardar. Probá de nuevo.",
+    "dailyMomentTag": "Momento diario",
+    "momentTag": "Momento",
     "captionPlaceholder": "Escribí una descripción…",
     "saveFailedTitle": "No se pudo guardar",
     "saveFailedBody": "Probá de nuevo.",
@@ -2442,10 +2464,10 @@
     "celebrateBody": "El perfil de {{petName}} ya está completo.",
     "items": {
       "profile": "Completá el perfil de tu perro",
-      "reminder": "Crea tu primer recordatorio",
+      "reminder": "Creá tu primer recordatorio",
       "meal": "Registrá su primera comida",
       "post": "Compartí tu primera publicación",
-      "notifications": "Activa las notificaciones"
+      "notifications": "Activá las notificaciones"
     }
   },
   "createWalk": {
