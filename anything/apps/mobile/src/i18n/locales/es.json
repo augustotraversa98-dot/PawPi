@@ -2062,6 +2062,7 @@
     "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾",
     "ageApprox": "Una edad aproximada alcanza — podés actualizarla después.",
     "stepOf": "Paso {{current}} de {{total}}",
+    "back": "Atrás",
     "next": "Siguiente",
     "skip": "Omitir",
     "createProfile": "Crear el perfil de {{name}}",

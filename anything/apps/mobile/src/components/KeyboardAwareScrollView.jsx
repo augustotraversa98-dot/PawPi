@@ -14,21 +14,29 @@ export const KEYBOARD_INPUT_MARGIN = 16;
 /**
  * Extra bottom content padding needed so everything in the scroll view can be
  * scrolled above the keyboard. Both arguments are window coordinates.
+ *
+ * Returns 0 (not NaN) when a measurement is missing/non-finite: a native
+ * measureInWindow callback can hand back `undefined` coords for a node that
+ * isn't laid out yet, and feeding NaN into a paddingBottom style is a Yoga
+ * crash on the New Architecture — so the guard here keeps the layout safe.
  */
 export function computeKeyboardPadding(scrollViewBottomY, keyboardTopY) {
-  return Math.max(0, Math.round(scrollViewBottomY - keyboardTopY));
+  const pad = Math.round(scrollViewBottomY - keyboardTopY);
+  return Number.isFinite(pad) ? Math.max(0, pad) : 0;
 }
 
 /**
  * How far the scroll offset must increase for the focused input to clear the
- * keyboard. Both arguments are window coordinates. 0 means already visible.
+ * keyboard. Both arguments are window coordinates. 0 means already visible
+ * (and 0 for any non-finite input, so a NaN never reaches scrollTo).
  */
 export function computeScrollDelta(
   inputBottomY,
   keyboardTopY,
   margin = KEYBOARD_INPUT_MARGIN,
 ) {
-  return Math.max(0, Math.round(inputBottomY + margin - keyboardTopY));
+  const delta = Math.round(inputBottomY + margin - keyboardTopY);
+  return Number.isFinite(delta) ? Math.max(0, delta) : 0;
 }
 
 /**
@@ -64,27 +72,50 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   useImperativeHandle(ref, () => scrollRef.current);
 
   useEffect(() => {
+    // The whole sequence is guarded: it runs inside native measureInWindow
+    // callbacks that can fire after the focused input (or this scroll view) has
+    // unmounted — e.g. tapping the name field on the first onboarding step,
+    // where the keyboard opens as the wizard is still settling. Measuring or
+    // scrolling against a stale node there crashed the app on device, so every
+    // native call is behind a type guard and a try/catch. A skipped adjustment
+    // just means the keyboard-avoidance is a no-op that once; it never throws.
     const adjustForKeyboard = (event) => {
-      const keyboardTopY = event?.endCoordinates?.screenY;
-      const scrollView = scrollRef.current;
-      if (scrollView == null || typeof keyboardTopY !== "number") return;
+      try {
+        const keyboardTopY = event?.endCoordinates?.screenY;
+        const scrollView = scrollRef.current;
+        if (scrollView == null || typeof keyboardTopY !== "number") return;
 
-      const scrollHost = scrollView.getNativeScrollRef?.() ?? scrollView;
-      scrollHost.measureInWindow?.((sx, sy, sw, sh) => {
-        setKeyboardPadding(computeKeyboardPadding(sy + sh, keyboardTopY));
+        const scrollHost = scrollView.getNativeScrollRef?.() ?? scrollView;
+        if (typeof scrollHost?.measureInWindow !== "function") return;
 
-        const input = TextInput.State.currentlyFocusedInput?.();
-        if (input == null) return;
-        input.measureInWindow((ix, iy, iw, ih) => {
-          const delta = computeScrollDelta(iy + ih, keyboardTopY);
-          if (delta > 0) {
-            scrollView.scrollTo({
-              y: scrollOffsetYRef.current + delta,
-              animated: true,
+        scrollHost.measureInWindow((sx, sy, sw, sh) => {
+          try {
+            setKeyboardPadding(computeKeyboardPadding(sy + sh, keyboardTopY));
+
+            const input = TextInput.State.currentlyFocusedInput?.();
+            if (input == null || typeof input.measureInWindow !== "function") {
+              return;
+            }
+            input.measureInWindow((ix, iy, iw, ih) => {
+              try {
+                const delta = computeScrollDelta(iy + ih, keyboardTopY);
+                if (delta > 0 && typeof scrollView.scrollTo === "function") {
+                  scrollView.scrollTo({
+                    y: scrollOffsetYRef.current + delta,
+                    animated: true,
+                  });
+                }
+              } catch {
+                // stale node during the scroll — ignore, keyboard still works
+              }
             });
+          } catch {
+            // stale node during measure — ignore, keyboard still works
           }
         });
-      });
+      } catch {
+        // never let keyboard-avoidance bookkeeping crash the screen
+      }
     };
     const resetForKeyboard = () => setKeyboardPadding(0);
 

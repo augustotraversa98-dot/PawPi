@@ -117,12 +117,16 @@ export default function OnboardingScreen() {
         const savedProfile = await AsyncStorage.getItem("onboarding_progress");
         if (savedProfile) {
           const parsed = JSON.parse(savedProfile);
-          // onboarding_pet_photo is the source of truth for the photo (a data:
-          // URL on web, a file:// uri on native). Don't let a stale photo in
-          // onboarding_progress — e.g. a revoked blob: URL from an earlier
-          // session — overwrite it.
-          const { photo: _ignore, ...rest } = parsed;
-          setFormData((prev) => ({ ...prev, ...rest }));
+          // Only merge a real object — a malformed/partial value (null, a bare
+          // string/number, or an array) would otherwise throw when destructured.
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            // onboarding_pet_photo is the source of truth for the photo (a data:
+            // URL on web, a file:// uri on native). Don't let a stale photo in
+            // onboarding_progress — e.g. a revoked blob: URL from an earlier
+            // session — overwrite it.
+            const { photo: _ignore, ...rest } = parsed;
+            setFormData((prev) => ({ ...prev, ...rest }));
+          }
         }
       } catch (error) {
         console.error("Error loading saved data:", error);
@@ -188,6 +192,16 @@ export default function OnboardingScreen() {
   const prevStep = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      return;
+    }
+    // Step 0 (name) is the first wizard step, so there's no earlier step to go
+    // to — but the user still needs a way back to the photo screen they came
+    // from (previously the arrow was disabled here, stranding them). Pop to it
+    // when there's history; fall back to an explicit navigation otherwise.
+    if (router.canGoBack?.()) {
+      router.back();
+    } else {
+      router.replace("/onboarding-photo");
     }
   };
 
@@ -584,7 +598,10 @@ export default function OnboardingScreen() {
             }}
           >
             <PressableScale
+              testID="onboarding-back"
               onPress={prevStep}
+              accessibilityRole="button"
+              accessibilityLabel={t("onboarding.back")}
               style={{
                 width: 40,
                 height: 40,
@@ -593,12 +610,10 @@ export default function OnboardingScreen() {
                 justifyContent: "center",
                 alignItems: "center",
               }}
-              disabled={currentStep === 0}
             >
-              <ChevronLeft
-                size={24}
-                color={currentStep === 0 ? COLORS.mutedBrown : COLORS.warmBrown}
-              />
+              {/* Always enabled: on step 0 it returns to the photo screen, on
+                  later steps it goes to the previous wizard step. */}
+              <ChevronLeft size={24} color={COLORS.warmBrown} />
             </PressableScale>
 
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>

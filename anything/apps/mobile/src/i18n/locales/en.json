@@ -2062,6 +2062,7 @@
     "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾",
     "ageApprox": "An approximate age is fine — you can update it later.",
     "stepOf": "Step {{current}} of {{total}}",
+    "back": "Back",
     "next": "Next",
     "skip": "Skip",
     "createProfile": "Create {{name}}'s profile",
