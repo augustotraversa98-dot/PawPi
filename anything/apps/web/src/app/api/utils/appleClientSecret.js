@@ -22,6 +22,29 @@ function base64url(input) {
   return Buffer.from(input).toString("base64url");
 }
 
+// Normalize PEM key material that arrived through an env var. Railway (and most PaaS
+// dashboards / `.env` loaders) store multi-line secrets as a single line with the newlines
+// written as the two literal characters backslash-n. node:crypto's PEM parser needs REAL
+// newlines, so a flattened value fails with `error:1E08010C:DECODER routines::unsupported`
+// — the exact break we hit in production. Convert the escaped forms back to real newlines and
+// strip any wrapping quotes a copy-paste may have left. A key that already contains real
+// newlines is unchanged (no literal `\n` to replace), so this is safe either way.
+export function normalizePem(key) {
+  if (typeof key !== "string") return key;
+  let out = key.trim();
+  // Strip a single pair of wrapping quotes ("...") or ('...') if present.
+  if (
+    (out.startsWith('"') && out.endsWith('"')) ||
+    (out.startsWith("'") && out.endsWith("'"))
+  ) {
+    out = out.slice(1, -1);
+  }
+  // Turn escaped CRLF / LF sequences into real newlines. Order matters: handle the
+  // escaped-carriage-return + escaped-newline pair before the lone escaped newline.
+  out = out.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n");
+  return out;
+}
+
 // teamId: Apple Developer Team ID (10 chars). keyId: the Sign in with Apple key's Key ID
 // (10 chars). privateKey: the full .p8 file contents (PEM, "-----BEGIN PRIVATE KEY-----...").
 // clientId: the Services ID (same value as AUTH_APPLE_ID). now: unix seconds, injectable for
@@ -49,8 +72,9 @@ export function buildAppleClientSecret({
 
   // Apple's .p8 key is PKCS#8 PEM — node:crypto parses it directly. `dsaEncoding:
   // "ieee-p1363"` is required: JOSE's ES256 wants the raw fixed-length r||s signature, not
-  // the DER encoding node:crypto produces by default.
-  const key = createPrivateKey(privateKey);
+  // the DER encoding node:crypto produces by default. normalizePem() first repairs a
+  // flattened env value (literal "\n") so a single-line secret can't silently break parsing.
+  const key = createPrivateKey(normalizePem(privateKey));
   const signature = cryptoSign("sha256", Buffer.from(signingInput), {
     key,
     dsaEncoding: "ieee-p1363",

@@ -2593,7 +2593,13 @@
     "tagline": "Your pet's daily care, moments, and community — all in one place.",
     "createAccount": "Create account",
     "logIn": "Log in",
-    "forgotPassword": "Forgot password?"
+    "forgotPassword": "Forgot password?",
+    "social": {
+      "dividerOr": "or",
+      "continueGoogle": "Continue with Google",
+      "errorTitle": "Sign-in failed",
+      "errorBody": "We couldn't sign you in. Please try again."
+    }
   },
   "trackers": {
     "anythingDifferentPlaceholder": "Anything different from usual?",

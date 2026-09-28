@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
-import { socialProviders, enabledSocialProviderIds } from "./oauthProviders";
+import {
+  socialProviders,
+  enabledSocialProviderIds,
+  googleProvider,
+  appleNativeProvider,
+  socialEnabled,
+} from "./oauthProviders";
 
 const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
 const TEST_APPLE_PRIVATE_KEY = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
@@ -104,5 +110,109 @@ describe("socialProviders gating", () => {
     expect(google.options.allowDangerousEmailAccountLinking).toBe(true);
     expect(google.options.clientId).toBe("gid");
     expect(google.type).toBe("oidc"); // Google is an OIDC provider in @auth/core
+  });
+});
+
+describe("googleProvider", () => {
+  it("returns [] without both Google keys", () => {
+    expect(googleProvider({})).toEqual([]);
+    expect(googleProvider({ AUTH_GOOGLE_ID: "x" })).toEqual([]);
+  });
+  it("returns the single Google provider when both keys are present", () => {
+    const [google] = googleProvider({ AUTH_GOOGLE_ID: "gid", AUTH_GOOGLE_SECRET: "gsecret" });
+    expect(google.id).toBe("google");
+    expect(google.options.clientId).toBe("gid");
+  });
+});
+
+describe("socialEnabled", () => {
+  it("reports google only when both Google keys are set", () => {
+    expect(socialEnabled({})).toEqual({ google: false, apple: false });
+    expect(socialEnabled({ AUTH_GOOGLE_ID: "g" })).toEqual({ google: false, apple: false });
+    expect(socialEnabled({ AUTH_GOOGLE_ID: "g", AUTH_GOOGLE_SECRET: "s" })).toEqual({
+      google: true,
+      apple: false,
+    });
+  });
+  it("reports apple whenever AUTH_APPLE_ID is set (native audience needs no client secret)", () => {
+    expect(socialEnabled({ AUTH_APPLE_ID: "com.pawpi.app" })).toEqual({
+      google: false,
+      apple: true,
+    });
+  });
+});
+
+describe("appleNativeProvider", () => {
+  const fakeAdapter = () => ({
+    getUserByAccount: vi.fn().mockResolvedValue(null),
+    getUserByEmail: vi.fn().mockResolvedValue(null),
+    createUser: vi.fn(async (u) => ({ id: 42, ...u })),
+    linkAccount: vi.fn().mockResolvedValue(undefined),
+  });
+
+  it("returns [] when AUTH_APPLE_ID is absent", () => {
+    expect(appleNativeProvider({ env: {}, adapter: fakeAdapter() })).toEqual([]);
+  });
+  it("returns [] when no adapter is provided", () => {
+    expect(appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" } })).toEqual([]);
+  });
+  it("registers an 'apple-native' credentials provider when gated on", () => {
+    const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter: fakeAdapter() });
+    // The @auth/core Credentials factory keeps the custom id under .options.id.
+    expect(p.options.id).toBe("apple-native");
+    expect(p.type).toBe("credentials");
+  });
+
+  it("HAPPY: verifies, creates the user, links the apple account, returns the user", async () => {
+    const adapter = fakeAdapter();
+    const verify = vi.fn().mockResolvedValue({ sub: "apple-sub-1", email: "a@privaterelay.appleid.com" });
+    const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter, verify });
+
+    const user = await p.options.authorize({
+      identityToken: "tok",
+      rawNonce: "raw",
+      name: "Ada Lovelace",
+    });
+
+    expect(verify).toHaveBeenCalledWith({ identityToken: "tok", rawNonce: "raw", clientId: "com.pawpi.app" });
+    expect(adapter.getUserByAccount).toHaveBeenCalledWith({ provider: "apple", providerAccountId: "apple-sub-1" });
+    expect(adapter.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "a@privaterelay.appleid.com", name: "Ada Lovelace" }),
+    );
+    expect(adapter.linkAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "apple", providerAccountId: "apple-sub-1", userId: 42 }),
+    );
+    expect(user.id).toBe(42);
+  });
+
+  it("RETURNING: reuses the linked user and does not create a new one", async () => {
+    const adapter = fakeAdapter();
+    adapter.getUserByAccount.mockResolvedValue({ id: 7, email: "known@x.com" });
+    const verify = vi.fn().mockResolvedValue({ sub: "apple-sub-1" });
+    const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter, verify });
+
+    const user = await p.options.authorize({ identityToken: "tok", rawNonce: "raw" });
+    expect(user.id).toBe(7);
+    expect(adapter.createUser).not.toHaveBeenCalled();
+    expect(adapter.linkAccount).not.toHaveBeenCalled();
+  });
+
+  it("BLOCKED: returns null (no user created) when verification throws", async () => {
+    const adapter = fakeAdapter();
+    const verify = vi.fn().mockRejectedValue(new Error("nonce mismatch"));
+    const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter, verify });
+
+    const user = await p.options.authorize({ identityToken: "tok", rawNonce: "wrong" });
+    expect(user).toBeNull();
+    expect(adapter.createUser).not.toHaveBeenCalled();
+    expect(adapter.linkAccount).not.toHaveBeenCalled();
+  });
+
+  it("BLOCKED: returns null when identityToken is missing (no verify call)", async () => {
+    const adapter = fakeAdapter();
+    const verify = vi.fn();
+    const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter, verify });
+    expect(await p.options.authorize({ rawNonce: "raw" })).toBeNull();
+    expect(verify).not.toHaveBeenCalled();
   });
 });

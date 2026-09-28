@@ -30,6 +30,9 @@ const API_ROOT = __dirname; // this file lives at src/app/api/
 const ALLOWLIST = new Set([
   'auth/token/route.js', // mints the Expo session JWT; no DB, runs around auth
   'auth/expo-web-success/route.js', // off-platform auth bridge; no DB
+  'auth/mobile-return/route.js', // reads the session JWT, 302s to the pawpi:// deep link; no DB
+  'auth/mobile-start/route.js', // renders the CSRF auto-submit page to start web OAuth; no DB
+  'auth/social-enabled/route.js', // reports which social providers are configured (env only); no DB
   'upload/route.js', // proxies bytes to Supabase Storage; no DB
   '__create/ssr-test/route.js', // scaffolding SSR probe; no DB
   '__create/check-social-secrets/route.js', // env-var diagnostic; no DB

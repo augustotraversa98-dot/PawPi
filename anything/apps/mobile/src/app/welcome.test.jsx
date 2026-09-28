@@ -7,8 +7,17 @@ import { render, fireEvent } from "@testing-library/react-native";
 const mockOpen = jest.fn();
 jest.mock("@/utils/auth/store", () => ({
   useAuthModal: () => ({ open: mockOpen }),
+  useAuthStore: (selector) => selector({ setAuth: jest.fn() }),
 }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+// Social sign-in is exercised in its own tests; here we only need Welcome to render without
+// pulling native modules (expo-apple-authentication) or firing the /api/auth/social-enabled probe.
+jest.mock("@/utils/auth/useSocialProviders", () => ({
+  useSocialProviders: () => ({ showGoogle: false, showApple: false, loaded: true }),
+}));
+jest.mock("@/components/auth/SocialSignInButtons", () => ({
+  SocialSignInButtons: () => null,
+}));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }) }));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));

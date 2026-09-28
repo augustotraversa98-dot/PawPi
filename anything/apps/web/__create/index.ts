@@ -18,6 +18,12 @@ import NeonAdapter from './adapter';
 import { getHTMLForErrorPage } from './get-html-for-error-page';
 import { isAuthAction } from './is-auth-action';
 import { API_BASENAME, api } from './route-builder';
+// Env-gated social sign-in providers for the REAL auth handler. googleProvider is the standard
+// web OAuth Google provider (opened from mobile in the system browser); appleNativeProvider is a
+// Credentials-style provider whose authorize() verifies a NATIVE Sign in with Apple identity
+// token. Both return [] when their env keys are absent, so with no keys the providers array is
+// byte-for-byte unchanged and email/password login is untouched. See oauthProviders.js.
+import { googleProvider, appleNativeProvider } from '../src/app/api/utils/oauthProviders.js';
 
 const { Pool } = pg;
 
@@ -227,6 +233,18 @@ if (process.env.AUTH_SECRET) {
         };
       })(),
       providers: [
+        // Real, env-gated social sign-in. These were the missing wiring: the env-gated
+        // socialProviders() lived only in src/auth.js (the session-reader), never in THIS
+        // handler that actually serves /api/auth/*, so Google/Apple never registered as OAuth
+        // endpoints even with all keys set. Adding them here makes GET /api/auth/providers list
+        // "google" + "apple-native". Both are [] without their keys → additive, never lock
+        // anyone out, email/password unchanged. Apple is the NATIVE provider (audience = the
+        // bundle id AUTH_APPLE_ID); the WEB Apple provider is intentionally NOT added (it needs a
+        // Services ID). The adapter is the same NeonAdapter the rest of auth uses, so an OAuth
+        // user's auth_users/auth_accounts rows are created in one place and the user_profiles row
+        // is still created lazily on the first authenticated API call.
+        ...googleProvider(process.env),
+        ...appleNativeProvider({ env: process.env, adapter }),
         // Dev-only provider for simulated social sign-in (Google, Facebook, etc.)
         // Creates or finds a user by email without requiring a password.
         ...(process.env.NEXT_PUBLIC_CREATE_ENV === 'DEVELOPMENT'

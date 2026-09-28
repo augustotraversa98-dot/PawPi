@@ -2,10 +2,12 @@ import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useAuthModal } from "@/utils/auth/store";
+import { useAuthModal, useAuthStore } from "@/utils/auth/store";
 import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { Button, PressableScale, PawMark } from "@/components/ui";
+import { useSocialProviders } from "@/utils/auth/useSocialProviders";
+import { SocialSignInButtons } from "@/components/auth/SocialSignInButtons";
 import {
   didForceStartupFallback,
   didLastBootStall,
@@ -17,6 +19,16 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { open } = useAuthModal();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const { showGoogle, showApple } = useSocialProviders();
+
+  // Native Apple / system-browser Google both resolve to { jwt, user }; store it exactly like the
+  // email/password path, then hand off to the EntryPoint (via the auth-success screen) which owns
+  // the new-account→onboarding vs returning→feed decision.
+  const handleSocialAuthenticated = ({ jwt, user }) => {
+    setAuth({ jwt, user });
+    router.replace("/auth/expo-web-success");
+  };
 
   // Startup diagnostic (boot breadcrumbs): only visible when this launch
   // needed the hard fallback or the previous launch stalled. A milestone code
@@ -135,6 +147,13 @@ export default function WelcomeScreen() {
             variant="secondary"
             size="lg"
             onPress={handleLogin}
+          />
+
+          {/* Social sign-in (only rendered when a provider is actually configured + supported) */}
+          <SocialSignInButtons
+            showGoogle={showGoogle}
+            showApple={showApple}
+            onAuthenticated={handleSocialAuthenticated}
           />
 
           {/* Forgot password */}
