@@ -46,12 +46,22 @@ const KeyboardAvoidingAnimatedView = (props, ref) => {
       bottomRef.current = 0;
     };
 
-    Keyboard.addListener('keyboardWillShow', onKeyboardShow);
-    Keyboard.addListener('keyboardWillHide', onKeyboardHide);
+    // Keep this instance's own subscriptions and .remove() them individually
+    // on cleanup. Keyboard.addListener shares one app-wide listener registry
+    // per event name (it is not scoped to this component), so
+    // Keyboard.removeAllListeners(eventName) here would also tear down any
+    // other mounted listener for the same event (e.g. KeyboardAwareScrollView's)
+    // without it knowing — when that other component then also calls its own
+    // .remove(), native is told to remove more listeners than were added,
+    // crashing with "Attempted to remove more RCTKeyboardObserver listeners
+    // than added" (reliable on a full-stack teardown like Reset App Data /
+    // logout, where several keyboard-aware components unmount together).
+    const showSubscription = Keyboard.addListener('keyboardWillShow', onKeyboardShow);
+    const hideSubscription = Keyboard.addListener('keyboardWillHide', onKeyboardHide);
 
     return () => {
-      Keyboard.removeAllListeners('keyboardWillShow');
-      Keyboard.removeAllListeners('keyboardWillHide');
+      showSubscription.remove();
+      hideSubscription.remove();
     };
   }, [keyboardVerticalOffset, enabled, bottomHeight]);
 
