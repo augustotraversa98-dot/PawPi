@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateKeyPairSync, verify as cryptoVerify } from "node:crypto";
-import { buildAppleClientSecret } from "./appleClientSecret";
+import { buildAppleClientSecret, normalizePem } from "./appleClientSecret";
 
 // Throwaway ES256 (P-256) test keypair — never used for anything real.
 const { privateKey, publicKey } = generateKeyPairSync("ec", {
@@ -72,6 +72,47 @@ describe("buildAppleClientSecret", () => {
       signature,
     );
     expect(isValid).toBe(true);
+  });
+
+  it("builds successfully from a FLATTENED key with literal \\n (env-var round-trip)", () => {
+    // Railway/.env stores multi-line secrets as a single line with the newlines written as the
+    // two literal characters backslash-n. Without normalization this throws
+    // error:1E08010C DECODER unsupported. With it, the key parses and a valid JWT is produced.
+    const flattened = TEST_PRIVATE_KEY_PEM.replace(/\n/g, "\\n");
+    expect(flattened).not.toContain("\n"); // truly single-line now
+    const jwt = buildAppleClientSecret({
+      teamId: "TEAM123456",
+      keyId: "KEY1234567",
+      privateKey: flattened,
+      clientId: "com.pawpi.app.signin",
+    });
+    expect(jwt.split(".")).toHaveLength(3);
+  });
+
+  it("builds successfully from a quote-wrapped flattened key", () => {
+    const wrapped = `"${TEST_PRIVATE_KEY_PEM.replace(/\n/g, "\\n")}"`;
+    const jwt = buildAppleClientSecret({
+      teamId: "TEAM123456",
+      keyId: "KEY1234567",
+      privateKey: wrapped,
+      clientId: "com.pawpi.app.signin",
+    });
+    expect(jwt.split(".")).toHaveLength(3);
+  });
+
+  describe("normalizePem", () => {
+    it("turns literal \\n into real newlines and strips wrapping quotes", () => {
+      expect(normalizePem("a\\nb\\nc")).toBe("a\nb\nc");
+      expect(normalizePem('"a\\nb"')).toBe("a\nb");
+      expect(normalizePem("a\\r\\nb")).toBe("a\nb");
+    });
+    it("leaves a key that already has real newlines unchanged", () => {
+      expect(normalizePem("a\nb\nc")).toBe("a\nb\nc");
+    });
+    it("passes non-strings through untouched", () => {
+      expect(normalizePem(undefined)).toBe(undefined);
+      expect(normalizePem(null)).toBe(null);
+    });
   });
 
   it("regenerating produces a fresh iat/exp each time (no staleness possible)", () => {

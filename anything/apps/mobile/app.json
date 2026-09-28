@@ -22,6 +22,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.pawpi.app",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleLocalizations": ["en", "es"],
@@ -109,7 +110,8 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-apple-authentication"
     ],
     "web": {
       "bundler": "metro",

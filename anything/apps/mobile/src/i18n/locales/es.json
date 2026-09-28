@@ -2593,7 +2593,13 @@
     "tagline": "El cuidado diario de tu mascota, sus momentos y la comunidad — todo en un lugar.",
     "createAccount": "Crear cuenta",
     "logIn": "Iniciar sesión",
-    "forgotPassword": "¿Olvidaste tu contraseña?"
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "social": {
+      "dividerOr": "o",
+      "continueGoogle": "Continuar con Google",
+      "errorTitle": "No se pudo iniciar sesión",
+      "errorBody": "No pudimos iniciar tu sesión. Probá de nuevo."
+    }
   },
   "trackers": {
     "anythingDifferentPlaceholder": "¿Algo distinto a lo habitual?",

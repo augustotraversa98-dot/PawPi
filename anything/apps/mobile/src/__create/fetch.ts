@@ -4,6 +4,15 @@ import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
 
 const originalFetch = fetch;
 
+// React Native's built-in fetch, captured before polyfills.ts overrides global.fetch with the
+// wrapper below. Unlike expo/fetch (the wrapper's default impl), this is backed by the platform's
+// native networking (NSURLSession / OkHttp) and its SHARED COOKIE JAR — so cookies set by one
+// call are sent on the next. The native "Sign in with Apple" exchange needs that: it GETs the
+// @auth/core CSRF token (which sets a cookie), POSTs the credentials callback with it, then reads
+// the freshly-set session cookie back via /api/auth/token. Use this ONLY for that cookie-coupled
+// auth handshake; everything else must go through the wrapped global fetch.
+export const nativeFetch = originalFetch;
+
 const getURLFromArgs = (...args: Parameters<typeof fetch>) => {
   const [urlArg] = args;
   let url: string | null;
