@@ -15,7 +15,13 @@ import { render, fireEvent } from "@testing-library/react-native";
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
 );
-jest.mock("expo-router", () => ({ useRouter: () => ({ replace: jest.fn() }) }));
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  back: jest.fn(),
+  canGoBack: jest.fn(() => true),
+};
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
@@ -186,5 +192,38 @@ describe("OnboardingScreen — required-field gating (step 0: name)", () => {
     fireEvent.press(screen.getByTestId("onboarding-next"));
     // Step 1 (handle) is now on screen.
     expect(screen.getByText("Choose Buddy's pet handle")).toBeTruthy();
+  });
+});
+
+// BUG 2: the header back arrow was disabled on step 0 (the name step), leaving
+// the user no way back to the photo screen. It's now always enabled and returns
+// to /onboarding-photo from step 0.
+describe("OnboardingScreen — step-0 back arrow returns to the photo screen", () => {
+  beforeEach(() => {
+    mockRouter.back.mockClear();
+    mockRouter.replace.mockClear();
+    mockRouter.canGoBack.mockClear().mockReturnValue(true);
+  });
+
+  test("the back arrow is enabled on the name step and pops back to the photo screen", () => {
+    const screen = render(<OnboardingScreen />);
+    // Step 0 (name) is showing.
+    expect(screen.getByText("What's your dog's name?")).toBeTruthy();
+
+    const back = screen.getByTestId("onboarding-back");
+    expect(back.props.accessibilityState?.disabled).toBeFalsy();
+
+    fireEvent.press(back);
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  test("falls back to an explicit navigation to /onboarding-photo with no history", () => {
+    mockRouter.canGoBack.mockReturnValue(false);
+    const screen = render(<OnboardingScreen />);
+
+    fireEvent.press(screen.getByTestId("onboarding-back"));
+    expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(mockRouter.replace).toHaveBeenCalledWith("/onboarding-photo");
   });
 });
