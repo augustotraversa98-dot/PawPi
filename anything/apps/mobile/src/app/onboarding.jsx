@@ -23,8 +23,10 @@ import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 import { postOnboardingWelcome } from "@/utils/onboardingWelcome";
+import { useDebouncedValue } from "@/hooks/useSearch";
 import {
   TAKEN_HANDLES,
+  normalizeHandle,
   validateHandleFormat,
   handleErrorMessage,
   isHandleAcceptable,
@@ -100,6 +102,15 @@ export default function OnboardingScreen() {
   });
   const [suggestedHandles, setSuggestedHandles] = useState([]);
   const [handleError, setHandleError] = useState("");
+  // Ticket: validate handle uniqueness at step 2, not just at the final review
+  // step. `handleApiChecking` drives the "Checking availability…" hint;
+  // `handleApiConfirmedFor` is the normalized handle the LIVE /api/pets
+  // handle-availability check most recently cleared — Next only unlocks when
+  // it matches the handle currently on screen, so a stale "available" from a
+  // prior value (or the in-flight debounce window) can never let a taken
+  // handle through.
+  const [handleApiChecking, setHandleApiChecking] = useState(false);
+  const [handleApiConfirmedFor, setHandleApiConfirmedFor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // E6: the "ring started" payoff shown on the success screen (streak day 1 + welcome paw).
   const [welcome, setWelcome] = useState(null);
@@ -148,6 +159,49 @@ export default function OnboardingScreen() {
       generateHandleSuggestions(formData.name);
     }
   }, [formData.name, currentStep]);
+
+  // Live handle-uniqueness check (debounced) against the real /api/pets
+  // uniqueness source, mirroring the mock TAKEN_HANDLES check above so a
+  // handle that's free in the mock list but already taken on the backend
+  // still gets caught here at step 2 instead of at final "Create profile".
+  const debouncedHandle = useDebouncedValue(formData.handle, 400);
+  useEffect(() => {
+    if (currentStep !== 1) return;
+    const normalized = normalizeHandle(debouncedHandle);
+    // Format/mock-list problems are already caught synchronously by
+    // checkHandleUniqueness; skip the network round-trip for a handle we
+    // already know is unacceptable.
+    if (validateHandleFormat(debouncedHandle) || TAKEN_HANDLES.includes(normalized)) {
+      setHandleApiChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    setHandleApiChecking(true);
+    fetch(`/api/pets/handle-availability?handle=${encodeURIComponent(normalized)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("check failed"))))
+      .then(({ available }) => {
+        if (cancelled) return;
+        if (available) {
+          setHandleApiConfirmedFor(normalized);
+        } else {
+          setHandleError(t("onboarding.handleTaken"));
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fail OPEN on a network hiccup — POST /api/pets is still the
+        // authoritative backstop, and a flaky connection shouldn't trap the
+        // user on this step.
+        setHandleApiConfirmedFor(normalized);
+      })
+      .finally(() => {
+        if (!cancelled) setHandleApiChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedHandle, currentStep, t]);
 
   const generateHandleSuggestions = (name) => {
     const cleanName = name.toLowerCase().trim().replace(/\s+/g, "");
@@ -488,6 +542,7 @@ export default function OnboardingScreen() {
             suggestedHandles={suggestedHandles}
             handleError={handleError}
             checkHandleUniqueness={checkHandleUniqueness}
+            handleApiChecking={handleApiChecking}
           />
         );
       case 2:
@@ -526,7 +581,13 @@ export default function OnboardingScreen() {
       case 0:
         return formData.name.trim().length > 0;
       case 1:
-        return isHandleAcceptable(formData.handle);
+        // Local format + mock-list check, AND the live backend check must have
+        // cleared THIS exact handle (blocks the debounce window + a taken
+        // result, and re-locks the instant the text changes again).
+        return (
+          isHandleAcceptable(formData.handle) &&
+          handleApiConfirmedFor === normalizeHandle(formData.handle)
+        );
       case 2:
         return formData.breed.trim().length > 0;
       case 3:
@@ -851,6 +912,7 @@ const StepHandle = ({
   suggestedHandles,
   handleError,
   checkHandleUniqueness,
+  handleApiChecking,
 }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
@@ -962,6 +1024,7 @@ const StepHandle = ({
                 : MATERIALS.hairline,
           },
         ]}
+        testID="onboarding-handle-input"
         placeholder={t("onboarding.handlePlaceholder")}
         placeholderTextColor={COLORS.mutedBrown}
         value={formData.handle}
@@ -973,9 +1036,29 @@ const StepHandle = ({
         autoCapitalize="none"
       />
       {handleError ? (
-        <Text style={[TYPE.callout, { color: "#FF4444", marginTop: SPACING.sm }]}>
+        <Text
+          testID="onboarding-handle-error"
+          style={[TYPE.callout, { color: "#FF4444", marginTop: SPACING.sm }]}
+        >
           {handleError}
         </Text>
+      ) : handleApiChecking ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: SPACING.xs,
+            marginTop: SPACING.sm,
+          }}
+        >
+          <ActivityIndicator size="small" color={COLORS.mutedBrown} />
+          <Text
+            testID="onboarding-handle-checking"
+            style={[TYPE.callout, { color: COLORS.mutedBrown }]}
+          >
+            {t("onboarding.handleChecking")}
+          </Text>
+        </View>
       ) : null}
     </View>
   );
