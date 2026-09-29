@@ -83,7 +83,9 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
         </View>
         <View style={{ alignItems: "flex-end", gap: 4 }}>
           <View style={[styles.tag, { backgroundColor: tagStyle.bg }]}>
-            <Text style={[styles.tagText, { color: tagStyle.text }]}>{DAILY_TAG}</Text>
+            <Text style={[styles.tagText, { color: tagStyle.text }]}>
+              {t("feed.dailyMomentTag")}
+            </Text>
           </View>
           {timeAgo ? (
             <Text testID="day-card-time" style={styles.time}>

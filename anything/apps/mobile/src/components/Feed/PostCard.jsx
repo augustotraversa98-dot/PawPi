@@ -136,9 +136,17 @@ export const PostCard = memo(function PostCard({
   const useSolidFallback = reduceTransparency || !lockedMediaUri;
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
+  // `tag` stays the canonical English string — it's the TAG_COLORS lookup key
+  // (@/constants/colors.js) — while `tagLabel` is what actually renders.
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
 
   const { t } = useTranslation();
+  const tagLabel =
+    tag === "Daily moment"
+      ? t("feed.dailyMomentTag")
+      : tag === "Moment"
+        ? t("feed.momentTag")
+        : tag;
   // Name-aware copy for the locked variant. The headline names the pet; the
   // subline rotates the FOMO/reciprocity line by card position (feed polish #4)
   // so a wall of teases never reads as one repeated line.
@@ -242,7 +250,7 @@ export const PostCard = memo(function PostCard({
             }}
           >
             <Text style={[TYPE.caption, { color: tagStyle.text }]}>
-              {tag}
+              {tagLabel}
             </Text>
           </View>
           <Text style={[TYPE.caption, { color: COLORS.mutedBrown }]}>

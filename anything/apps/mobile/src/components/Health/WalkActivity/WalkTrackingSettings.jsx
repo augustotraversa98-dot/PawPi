@@ -67,24 +67,24 @@ export default function WalkTrackingSettings() {
   const trackingOptions = [
     {
       id: "apple_health",
-      name: "Apple Health",
-      description: "Automatic distance and step tracking",
+      name: t("health.trackingAppleHealthName"),
+      description: t("health.trackingAppleHealthDesc"),
       icon: Heart,
       available: true, // Always show, but indicate if not yet implemented
       comingSoon: !healthKitAvailable,
     },
     {
       id: "apple_watch",
-      name: "Apple Watch",
-      description: "Real-time pace and heart rate",
+      name: t("health.trackingAppleWatchName"),
+      description: t("health.trackingAppleWatchDesc"),
       icon: Watch,
       available: true,
       comingSoon: !watchConnected,
     },
     {
       id: "manual",
-      name: "Manual tracking",
-      description: "Enter walk details yourself",
+      name: t("health.trackingManualName"),
+      description: t("health.trackingManualDesc"),
       icon: Edit3,
       available: true,
       comingSoon: false,
@@ -102,11 +102,10 @@ export default function WalkTrackingSettings() {
             marginBottom: 6,
           }}
         >
-          Connected tracking
+          {t("health.connectedTrackingTitle")}
         </Text>
         <Text style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 18 }}>
-          Connect Apple Health or Apple Watch to make walk distance and pace
-          more accurate.
+          {t("health.connectedTrackingSubtitle")}
         </Text>
       </View>
 
@@ -181,7 +180,7 @@ export default function WalkTrackingSettings() {
                           color: C.coral,
                         }}
                       >
-                        COMING SOON
+                        {t("health.comingSoonBadge")}
                       </Text>
                     </View>
                   )}
@@ -233,9 +232,11 @@ export default function WalkTrackingSettings() {
             lineHeight: 18,
           }}
         >
-          💡 <Text style={{ fontWeight: "600" }}>Tip:</Text> Apple Health and
-          Watch tracking will be available soon. For now, manual tracking works
-          great!
+          💡{" "}
+          <Text style={{ fontWeight: "600" }}>
+            {t("health.connectedTrackingTipLabel")}
+          </Text>{" "}
+          {t("health.connectedTrackingTipBody")}
         </Text>
       </View>
     </View>

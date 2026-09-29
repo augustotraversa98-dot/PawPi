@@ -21,7 +21,7 @@ import {
 } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useGroomSessions } from "@/hooks/useGroomSessions";
-import { getDisplayAge } from "@/utils/petAge";
+import { getDisplayAgeParts } from "@/utils/petAge";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import {
@@ -33,6 +33,11 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 import { formatLocalDate } from "@/utils/localeDateTime";
+
+// The canonical value BreedPicker persists for its pinned "Mixed breed" option
+// (BreedPicker.jsx's own MIXED_VALUE) — real breed names stay canonical English
+// by design (dogBreeds.js), but this placeholder gets a localized label here too.
+const MIXED_BREED_VALUE = "Mixed Breed";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -54,10 +59,27 @@ export default function ProfileScreen() {
     return `${weight} ${weightUnit || "lbs"}`;
   };
 
-  // Helper to format gender
+  // Helper to format gender — localized for the two values the picker offers;
+  // anything else (legacy/free-form data) falls back to a capitalized raw value.
   const formatGender = (gender) => {
     if (!gender) return null;
+    if (gender === "male") return t("profileEdit.genderMale");
+    if (gender === "female") return t("profileEdit.genderFemale");
     return gender.charAt(0).toUpperCase() + gender.slice(1);
+  };
+
+  // Localized age string ("2 años", "1 año, 3 meses", "~6 meses"). Mirrors
+  // pet-profile.jsx's formatAge; getDisplayAge stays English-only for its
+  // other callers/tests.
+  const formatAge = (parts) => {
+    if (!parts) return null;
+    const segs = [];
+    if (parts.years > 0)
+      segs.push(`${parts.years} ${t(parts.years === 1 ? "petProfile.ageYear" : "petProfile.ageYears")}`);
+    if (parts.months > 0)
+      segs.push(`${parts.months} ${t(parts.months === 1 ? "petProfile.ageMonth" : "petProfile.ageMonths")}`);
+    const s = segs.length ? segs.join(", ") : t("petProfile.ageUnderMonth");
+    return parts.approximate ? `~${s}` : s;
   };
 
   const InfoRow = ({ label, value, icon: Icon }) => (
@@ -95,7 +117,7 @@ export default function ProfileScreen() {
             { fontWeight: "700", color: value ? COLORS.warmBrown : COLORS.mutedBrown, marginTop: 1 },
           ]}
         >
-          {value || "Not set"}
+          {value || t("onboarding.reviewNotSet")}
         </Text>
       </View>
     </View>
@@ -121,8 +143,11 @@ export default function ProfileScreen() {
 
   // Use database values instead of AsyncStorage
   const petName = currentPet?.name || "My Dog";
-  const petBreed = currentPet?.breed;
-  const petAge = getDisplayAge(currentPet);
+  const petBreed =
+    currentPet?.breed === MIXED_BREED_VALUE
+      ? t("breedPicker.mixed")
+      : currentPet?.breed;
+  const petAge = formatAge(currentPet ? getDisplayAgeParts(currentPet) : null);
   const petGender = formatGender(currentPet?.gender);
   const petWeight = formatWeight(currentPet?.weight, currentPet?.weight_unit);
   const petBirthday = formatDisplayDate(currentPet?.birthday) || null;
@@ -150,7 +175,7 @@ export default function ProfileScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-          Dog Profile 🐾
+          {t("dogProfile.title")} 🐾
         </Text>
         <PressableScale
           onPress={() => {
@@ -230,7 +255,7 @@ export default function ProfileScreen() {
           <Text
             style={[TYPE.overline, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}
           >
-            PET INFORMATION
+            {t("dogProfile.petInformation")}
           </Text>
           <Card level="sm" style={{ paddingHorizontal: SPACING.lg }}>
             <InfoRow label={t("dogProfile.breed")} value={petBreed} icon={Dog} />
@@ -240,10 +265,10 @@ export default function ProfileScreen() {
             <InfoRow
               label={
                 petBirthday
-                  ? "Birthday"
+                  ? t("profileEdit.fieldBirthday")
                   : petAdoptionDate
-                    ? "Adoption Date"
-                    : "Birthday / Adoption Date"
+                    ? t("profileEdit.fieldAdoption")
+                    : t("dogProfile.birthdayOrAdoption")
               }
               value={petDate}
               icon={Calendar}
@@ -256,14 +281,13 @@ export default function ProfileScreen() {
               { color: COLORS.mutedBrown, marginTop: SPACING.xxl - 2, marginBottom: SPACING.md },
             ]}
           >
-            NOTES & PREFERENCES
+            {t("dogProfile.notesPreferences")}
           </Text>
           <Card level="none" style={{ padding: SPACING.lg + 2 }}>
             <Text
               style={[TYPE.callout, { color: petNotes ? COLORS.warmBrown : COLORS.mutedBrown, lineHeight: 22 }]}
             >
-              {petNotes ||
-                "No extra notes yet. Add information about allergies, food preferences, or medical conditions."}
+              {petNotes || t("dogProfile.notesEmpty")}
             </Text>
           </Card>
 
@@ -276,7 +300,7 @@ export default function ProfileScreen() {
               { color: COLORS.mutedBrown, marginTop: SPACING.xxl - 2, marginBottom: SPACING.md },
             ]}
           >
-            GROOMING
+            {t("dogProfile.grooming")}
           </Text>
           <GroomingSection sessions={groomSessions} />
         </View>
@@ -289,6 +313,7 @@ export default function ProfileScreen() {
 // the before/after photo strips, and the coat/skin note. Empty → a friendly empty state
 // (no fake data); the coat/skin notes also appear in the pet's Health timeline.
 function GroomingSection({ sessions }) {
+  const { t } = useTranslation();
   const list = Array.isArray(sessions) ? sessions : [];
 
   if (list.length === 0) {
@@ -304,8 +329,7 @@ function GroomingSection({ sessions }) {
       >
         <Scissors size={20} color={COLORS.mutedBrown} />
         <Text style={[TYPE.callout, { flex: 1, color: COLORS.mutedBrown, lineHeight: 20 }]}>
-          No grooming sessions yet. Book a groomer from Services → Grooming; their
-          before/after photos and coat notes will show up here.
+          {t("dogProfile.groomingEmpty")}
         </Text>
       </Card>
     );
@@ -349,7 +373,7 @@ function GroomSessionCard({ session }) {
           style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}
           numberOfLines={1}
         >
-          {session.provider_name || "Groomer"}
+          {session.provider_name || t("dogProfile.groomerFallback")}
         </Text>
         {dateLabel ? (
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>{dateLabel}</Text>
@@ -373,7 +397,7 @@ function GroomSessionCard({ session }) {
 
       {session.products_used ? (
         <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: SPACING.xs + 2 }]}>
-          Products: {session.products_used}
+          {t("dogProfile.productsUsed", { products: session.products_used })}
         </Text>
       ) : null}
     </Card>

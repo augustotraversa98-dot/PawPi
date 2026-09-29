@@ -87,7 +87,15 @@ export const PostDetailModal = memo(function PostDetailModal({
   const timestamp = formatRelativeTime(post.created_at, { t });
   const pawsCount = post.paw_count ?? post.paws ?? 0;
   const barksCount = post.bark_count ?? post.barks ?? 0;
+  // `tag` stays the canonical English string — it's the TAG_COLORS lookup key
+  // (@/constants/colors.js) — while `tagLabel` is what actually renders.
   const tag = post.is_daily_update ? "Daily moment" : post.tag || "Moment";
+  const tagLabel =
+    tag === "Daily moment"
+      ? t("feed.dailyMomentTag")
+      : tag === "Moment"
+        ? t("feed.momentTag")
+        : tag;
 
   // Double-tap the photo to Paw (ticket 2.64): paw only when not already pawed
   // (never un-paws on double-tap); reuses the same toggle the paw button uses so
@@ -224,7 +232,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               }}
             >
               <Text style={[TYPE.caption, { color: tagStyle.text }]}>
-                {tag}
+                {tagLabel}
               </Text>
             </View>
           </TouchableOpacity>
