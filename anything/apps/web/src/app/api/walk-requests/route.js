@@ -229,15 +229,22 @@ async function POST(request) {
         const staff = await sql`
           SELECT app_provider_active_staff_ids(${recipientProviderIds}::int[]) AS user_profile_id
         `;
-        for (const s of staff) {
-          await safeNotify({
-            recipient: s.user_profile_id,
-            actor: userId,
-            type: notifyType,
-            subjectRef: String(created[0].id),
-            body: walkRequestNotifyBody({ when_type: resolvedWhen, note }),
-          });
-        }
+        // Fan out concurrently instead of one-at-a-time: each safeNotify() pays several DB
+        // round-trips plus a blocking Expo push HTTP call (see utils/push.js), so awaiting them
+        // sequentially for a broadcast (up to BROADCAST_FANOUT_CAP=25 recipients) serialized that
+        // whole chain onto the POST response — a HighLatencyP95 contributor. safeNotify() never
+        // throws (internally try/catched), so Promise.all is safe here.
+        await Promise.all(
+          staff.map((s) =>
+            safeNotify({
+              recipient: s.user_profile_id,
+              actor: userId,
+              type: notifyType,
+              subjectRef: String(created[0].id),
+              body: walkRequestNotifyBody({ when_type: resolvedWhen, note }),
+            }),
+          ),
+        );
       }
     } catch (notifyErr) {
       console.error("[POST /api/walk-requests] notify (non-fatal):", notifyErr?.message);
