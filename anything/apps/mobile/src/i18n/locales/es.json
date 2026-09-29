@@ -2096,6 +2096,8 @@
     "handleSuggested": "Usuarios sugeridos:",
     "handleCreateOwn": "O creá el tuyo:",
     "handlePlaceholder": "usuario_personalizado",
+    "handleChecking": "Verificando disponibilidad…",
+    "handleTaken": "Este usuario ya está en uso",
     "breedTitle": "¿Qué raza es {{name}}?",
     "breedSubtitle": "Esto nos ayuda a personalizar las recomendaciones de cuidado",
     "breedMixed": "Mestizo",

@@ -2096,6 +2096,8 @@
     "handleSuggested": "Suggested handles:",
     "handleCreateOwn": "Or create your own:",
     "handlePlaceholder": "custom_handle",
+    "handleChecking": "Checking availability…",
+    "handleTaken": "This handle is already taken",
     "breedTitle": "What breed is {{name}}?",
     "breedSubtitle": "This helps us personalize care recommendations",
     "breedMixed": "Mixed Breed",

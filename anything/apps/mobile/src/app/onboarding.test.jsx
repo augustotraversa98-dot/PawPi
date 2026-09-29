@@ -10,7 +10,7 @@
 //      the step's required field is valid.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -225,5 +225,150 @@ describe("OnboardingScreen — step-0 back arrow returns to the photo screen", (
     fireEvent.press(screen.getByTestId("onboarding-back"));
     expect(mockRouter.back).not.toHaveBeenCalled();
     expect(mockRouter.replace).toHaveBeenCalledWith("/onboarding-photo");
+  });
+});
+
+// Ticket: validate pet-handle uniqueness at step 2 (where it's chosen), not only
+// at the final review step. A handle can be free in the client's mock
+// TAKEN_HANDLES list (checkHandleUniqueness) yet already exist on a real pet, so
+// step 2 also debounces a call to GET /api/pets/handle-availability — the same
+// uniqueness source POST /api/pets already enforces at creation.
+describe("OnboardingScreen — live handle-availability check (step 2)", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  function goToHandleStep() {
+    const screen = render(<OnboardingScreen />);
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    return screen;
+  }
+
+  test("Next stays blocked and shows the checking hint while the live check is in flight", async () => {
+    let resolveFetch;
+    global.fetch = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const screen = goToHandleStep();
+
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "brandnewhandle",
+    );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(global.fetch.mock.calls[0][0]).toContain(
+      "/api/pets/handle-availability?handle=brandnewhandle",
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("onboarding-handle-checking")).toBeTruthy(),
+    );
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(true);
+
+    // Resolve the in-flight request so the test doesn't leak a pending timer/promise.
+    resolveFetch({ ok: true, json: async () => ({ available: true }) });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
+  });
+
+  test("a handle the backend reports as taken blocks Next with an inline error", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: false }) });
+    const screen = goToHandleStep();
+
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "reallypopular",
+    );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByTestId("onboarding-handle-error").props.children).toBe(
+        "This handle is already taken",
+      ),
+    );
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(true);
+
+    // The disabled Next never advances past the handle step.
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    expect(screen.getByText("Choose Buddy's pet handle")).toBeTruthy();
+  });
+
+  test("a handle the backend confirms as free unlocks Next and advances to the breed step", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: true }) });
+    const screen = goToHandleStep();
+
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "rex_rescue",
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
+
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    expect(screen.getByText("What breed is Buddy?")).toBeTruthy();
+  });
+
+  test("editing the handle again after a confirmed check re-locks Next until it's re-checked", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: true }) });
+    const screen = goToHandleStep();
+
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "rex_rescue",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
+
+    // A further edit must re-lock Next immediately — the just-confirmed
+    // availability was for the OLD text, not this one.
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "rex_rescue2",
+    );
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(true);
+  });
+
+  test("a network error while checking fails OPEN (backstop is the final POST /api/pets check)", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("network down"));
+    const screen = goToHandleStep();
+
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "rex_rescue",
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
   });
 });
