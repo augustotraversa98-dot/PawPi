@@ -18,18 +18,26 @@ export default function OnboardingPhotoScreen() {
   const isPickingImage = useRef(false);
 
   useEffect(() => {
-    // Check existing permissions on mount
+    // Check existing permissions on mount. Guarded so a throw here (an
+    // unsupported permissions API on some platform/build) can't surface as an
+    // unhandled promise rejection — openCamera/openGallery already treat a
+    // null permission as "not granted yet" and request it on tap, so leaving
+    // the state unset on failure degrades gracefully rather than blocking.
     (async () => {
-      const cameraStatus = await ExpoCamera.Camera.getCameraPermissionsAsync();
-      const galleryStatus = await ImagePicker.getMediaLibraryPermissionsAsync();
-      setCameraPermission(cameraStatus.status);
-      setGalleryPermission(galleryStatus.status);
-      console.log(
-        "[OnboardingPhoto] Initial permissions - Camera:",
-        cameraStatus.status,
-        "Gallery:",
-        galleryStatus.status,
-      );
+      try {
+        const cameraStatus = await ExpoCamera.Camera.getCameraPermissionsAsync();
+        const galleryStatus = await ImagePicker.getMediaLibraryPermissionsAsync();
+        setCameraPermission(cameraStatus.status);
+        setGalleryPermission(galleryStatus.status);
+        console.log(
+          "[OnboardingPhoto] Initial permissions - Camera:",
+          cameraStatus.status,
+          "Gallery:",
+          galleryStatus.status,
+        );
+      } catch (error) {
+        console.error("[OnboardingPhoto] Error reading permissions:", error);
+      }
     })();
   }, []);
 
