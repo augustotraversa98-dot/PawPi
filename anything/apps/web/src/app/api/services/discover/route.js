@@ -131,12 +131,16 @@ async function GET(request) {
             WHERE p.status = 'published'
               -- Exclude demo/seed providers (0111) from real discovery.
               AND p.is_demo IS NOT TRUE
-              AND (
-                ${capability}::text IS NULL
-                OR EXISTS (
-                  SELECT 1 FROM provider_capabilities pc
-                  WHERE pc.provider_id = p.id AND pc.capability = ${capability}
-                )
+              -- Require an actual pet-care capability (vet/grooming/walking/etc.) — this is
+              -- what keeps capability-less directory rows (e.g. provider_type='pet_friendly'
+              -- dog-friendly cafes/restaurants seeded by 0124/load_master.mjs, which
+              -- deliberately carry NO provider_capabilities row) out of the unfiltered "All"
+              -- merge. When ?category picks a specific capability, only that one must match;
+              -- when unfiltered, ANY capability qualifies (i.e. any real pet-care provider).
+              AND EXISTS (
+                SELECT 1 FROM provider_capabilities pc
+                WHERE pc.provider_id = p.id
+                  AND (${capability}::text IS NULL OR pc.capability = ${capability})
               )
               AND (${qLike}::text IS NULL OR p.name ILIKE ${qLike})
               AND (
