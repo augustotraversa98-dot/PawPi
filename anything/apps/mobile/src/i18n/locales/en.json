@@ -111,6 +111,10 @@
     "additionalNotesPlaceholder": "Additional notes...",
     "couldNotSave": "Could not save. Please try again."
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "We hit a snag loading this screen. Your data is safe — let's give it another try."
+  },
   "settings": {
     "title": "Settings",
     "language": "Language",

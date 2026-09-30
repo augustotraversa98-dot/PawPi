@@ -111,6 +111,10 @@
     "additionalNotesPlaceholder": "Notas adicionales...",
     "couldNotSave": "No se pudo guardar. Probá de nuevo."
   },
+  "errorBoundary": {
+    "title": "Algo salió mal",
+    "message": "Tuvimos un problema al cargar esta pantalla. Tu información está a salvo — probá de nuevo."
+  },
   "settings": {
     "title": "Ajustes",
     "language": "Idioma",
