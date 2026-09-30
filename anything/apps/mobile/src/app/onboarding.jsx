@@ -40,6 +40,7 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale, PawMark } from "@/components/ui";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const TOTAL_STEPS = 9;
 
@@ -82,7 +83,7 @@ export function computeAgeYears(formData) {
   return null;
 }
 
-export default function OnboardingScreen() {
+function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
@@ -1942,3 +1943,14 @@ const StepSuccess = ({ formData, welcome, goToRoutines, goToFeed }) => {
     </View>
   );
 };
+
+// Wrapped so a throw anywhere in the wizard drops the user to the recoverable
+// fallback instead of a dead screen (AUDIT proposal #1), independent of the
+// app-root boundary in _layout.jsx.
+export default function OnboardingScreenWithBoundary(props) {
+  return (
+    <ErrorBoundary>
+      <OnboardingScreen {...props} />
+    </ErrorBoundary>
+  );
+}
