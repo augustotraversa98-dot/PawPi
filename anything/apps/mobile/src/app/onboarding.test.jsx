@@ -11,6 +11,7 @@
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { act } from "react-test-renderer";
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -370,5 +371,206 @@ describe("OnboardingScreen — live handle-availability check (step 2)", () => {
         screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
       ).toBe(false),
     );
+  });
+});
+
+// Audit 2026-09-29 (docs/ONBOARDING_CODE_AUDIT_2026-09-29.md): QA sweep D reported
+// onboarding "freezing" at step 5 (gender) with Next staying disabled after a
+// tap. Traced in code: StepGender's onPress writes formData.gender from the
+// SAME GENDER_VALUES list canGoNext()/firstIncompleteRequiredStep() check
+// against, so a valid tap can never leave the gate disabled. These tests drive
+// the real rendered gender step (not just the pure helper) to prove it end to
+// end, and that the two-card selection can be changed freely without ever
+// getting stuck.
+describe("OnboardingScreen — gender step (Step 5 QA concern) cannot wedge Next", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function goToGenderStep() {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: true }) });
+    const screen = render(<OnboardingScreen />);
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "buddy_the_dog",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.press(screen.getByTestId("breed-option-mixed"));
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    expect(screen.getByText("What's Buddy's gender?")).toBeTruthy();
+    return screen;
+  }
+
+  test("Next is disabled until a gender card is tapped", async () => {
+    const screen = await goToGenderStep();
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(true);
+    expect(screen.getByText("Pick male or female to continue")).toBeTruthy();
+  });
+
+  test('tapping "Female" writes the exact value the gate checks for and unlocks Next', async () => {
+    const screen = await goToGenderStep();
+    fireEvent.press(screen.getByTestId("onboarding-gender-female"));
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(false);
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    expect(screen.getByText("How much does Buddy weigh?")).toBeTruthy();
+  });
+
+  test('tapping "Male" writes the exact value the gate checks for and unlocks Next', async () => {
+    const screen = await goToGenderStep();
+    fireEvent.press(screen.getByTestId("onboarding-gender-male"));
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(false);
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    expect(screen.getByText("How much does Buddy weigh?")).toBeTruthy();
+  });
+
+  test("switching the selection back and forth never leaves Next stuck disabled", async () => {
+    const screen = await goToGenderStep();
+    fireEvent.press(screen.getByTestId("onboarding-gender-female"));
+    fireEvent.press(screen.getByTestId("onboarding-gender-male"));
+    fireEvent.press(screen.getByTestId("onboarding-gender-female"));
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(false);
+  });
+});
+
+// Drives every required step end to end with valid input, proving no step's
+// Next gate wedges — the general claim behind the gender-step-specific tests
+// above (Part 1 of the audit: "a valid selection at every required step makes
+// canGoNext() true").
+describe("OnboardingScreen — full 9-step walk with valid input never wedges", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  test("valid input at every required step reaches the review screen (9 of 9)", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: true }) });
+    const screen = render(<OnboardingScreen />);
+
+    // Step 1 of 9: name.
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 2 of 9: @handle.
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "buddy_the_dog",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+      ).toBe(false),
+    );
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 3 of 9: breed.
+    fireEvent.press(screen.getByTestId("breed-option-mixed"));
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 4 of 9: age.
+    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 5 of 9: gender — the QA-reported freeze point.
+    fireEvent.press(screen.getByTestId("onboarding-gender-female"));
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 6 of 9: weight.
+    fireEvent.changeText(screen.getByTestId("onboarding-weight"), "12");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+
+    // Step 7 of 9: birthday/gotcha day (optional) — skip.
+    expect(screen.getByText("When are Buddy's special days?")).toBeTruthy();
+    fireEvent.press(screen.getByText("Skip"));
+
+    // Step 8 of 9: notes (optional) — skip.
+    expect(
+      screen.getByText("Anything important we should remember about Buddy?"),
+    ).toBeTruthy();
+    fireEvent.press(screen.getByText("Skip"));
+
+    // Step 9 of 9: review — reached with no step ever wedging Next.
+    expect(screen.getByText("Buddy's profile")).toBeTruthy();
+  });
+});
+
+// PART 1 of the audit: the live handle-availability check must never hold the
+// gate open indefinitely. Before this fix, a request that never settles (a
+// dropped connection, a backgrounded app, a captive portal) left
+// handleApiChecking stuck true forever, since neither .then nor .catch would
+// ever run — an "async gate that never resolves". The bounded timeout aborts
+// the stale request and routes it through the same fail-OPEN path as a
+// network error.
+describe("OnboardingScreen — handle-availability check times out and fails OPEN", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.useRealTimers();
+  });
+
+  function goToHandleStep(screen) {
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+  }
+
+  test("a request that never settles unlocks Next once the bounded timeout trips, instead of wedging forever", async () => {
+    jest.useFakeTimers();
+    // Never resolves or rejects on its own — only reacts to the AbortController
+    // the component's timeout fires, exactly like a hung connection.
+    global.fetch = jest.fn(
+      (url, opts) =>
+        new Promise((_, reject) => {
+          opts?.signal?.addEventListener("abort", () =>
+            reject(Object.assign(new Error("Aborted"), { name: "AbortError" })),
+          );
+        }),
+    );
+
+    const screen = render(<OnboardingScreen />);
+    goToHandleStep(screen);
+    fireEvent.changeText(
+      screen.getByTestId("onboarding-handle-input"),
+      "brandnewhandle",
+    );
+
+    // Let the 400ms debounce settle so the request actually fires.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(400);
+    });
+    expect(global.fetch).toHaveBeenCalled();
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(true);
+
+    // Advance past the bounded timeout — this must NOT still be disabled after
+    // any finite amount of time, which is the actual "can it wedge?" claim.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(8000);
+    });
+
+    expect(
+      screen.getByTestId("onboarding-next").props.accessibilityState?.disabled,
+    ).toBe(false);
   });
 });

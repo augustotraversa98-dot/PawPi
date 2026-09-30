@@ -43,6 +43,13 @@ import { Card, PressableScale, PawMark } from "@/components/ui";
 
 const TOTAL_STEPS = 9;
 
+// The only two real gender values onboarding accepts (no "unknown" — see
+// StepGender). Single source of truth shared by the gate (below), the review
+// step, and StepGender's option list, so a value StepGender can write and the
+// value the gate checks for can never drift apart — that drift is exactly the
+// shape of bug that would permanently disable Next after a valid tap.
+export const GENDER_VALUES = ["female", "male"];
+
 // The first required onboarding step whose field is still missing/invalid, or
 // null when every required field (name, @handle, breed, age, gender, weight) is
 // filled. Kept pure + exported so the gating is unit-testable and so the review
@@ -60,7 +67,7 @@ export function firstIncompleteRequiredStep(formData) {
   ) {
     return 3;
   }
-  if (formData.gender !== "male" && formData.gender !== "female") return 4;
+  if (!GENDER_VALUES.includes(formData.gender)) return 4;
   if (!(parseFloat(formData.weight) > 0)) return 5;
   return null;
 }
@@ -146,11 +153,21 @@ export default function OnboardingScreen() {
     loadSavedData();
   }, []);
 
-  // Save progress on every step change
+  // Save progress, debounced so typing in a field (name, weight, notes, a
+  // custom handle) writes to disk once per pause instead of once per
+  // keystroke — a JSON.stringify + AsyncStorage write on every character was
+  // needless I/O on the hot path of every text field in the wizard.
+  // .catch keeps a storage failure (e.g. disk full) from surfacing as an
+  // unhandled promise rejection — this is a best-effort resume cache, never
+  // required for onboarding to keep working.
   useEffect(() => {
-    if (currentStep > 0 && formData.name) {
-      AsyncStorage.setItem("onboarding_progress", JSON.stringify(formData));
-    }
+    if (currentStep === 0 || !formData.name) return;
+    const id = setTimeout(() => {
+      AsyncStorage.setItem("onboarding_progress", JSON.stringify(formData)).catch(
+        (error) => console.error("Error saving onboarding progress:", error),
+      );
+    }, 400);
+    return () => clearTimeout(id);
   }, [currentStep, formData]);
 
   // Generate handle suggestions when name changes
@@ -177,8 +194,20 @@ export default function OnboardingScreen() {
     }
 
     let cancelled = false;
+    // Bound how long the gate can be held open by this request. Without a
+    // timeout, a request that never settles (dropped connection, backgrounded
+    // app, captive portal) would leave handleApiChecking stuck true forever —
+    // exactly the "async gate that never resolves" wedge class — since
+    // neither .then nor .catch would ever run. Aborting past the deadline
+    // routes into the same catch below, which fails OPEN.
+    const HANDLE_CHECK_TIMEOUT_MS = 8000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HANDLE_CHECK_TIMEOUT_MS);
     setHandleApiChecking(true);
-    fetch(`/api/pets/handle-availability?handle=${encodeURIComponent(normalized)}`)
+    fetch(
+      `/api/pets/handle-availability?handle=${encodeURIComponent(normalized)}`,
+      { signal: controller.signal },
+    )
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("check failed"))))
       .then(({ available }) => {
         if (cancelled) return;
@@ -190,16 +219,19 @@ export default function OnboardingScreen() {
       })
       .catch(() => {
         if (cancelled) return;
-        // Fail OPEN on a network hiccup — POST /api/pets is still the
-        // authoritative backstop, and a flaky connection shouldn't trap the
-        // user on this step.
+        // Fail OPEN on a network hiccup OR a timeout — POST /api/pets is
+        // still the authoritative backstop, and a flaky connection shouldn't
+        // trap the user on this step.
         setHandleApiConfirmedFor(normalized);
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         if (!cancelled) setHandleApiChecking(false);
       });
     return () => {
       cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
     };
   }, [debouncedHandle, currentStep, t]);
 
@@ -599,7 +631,7 @@ export default function OnboardingScreen() {
           !!formData.birthday
         );
       case 4:
-        return formData.gender === "male" || formData.gender === "female";
+        return GENDER_VALUES.includes(formData.gender);
       case 5:
         return parseFloat(formData.weight) > 0;
       default:
@@ -1232,11 +1264,17 @@ const StepGender = ({ formData, setFormData }) => {
   const dogName = formData.name || t("onboarding.yourDog");
 
   // Gender must be a real value — the "Set up your dog's profile" checklist
-  // excludes "unknown", so onboarding offers only male/female.
-  const genderOptions = [
-    { value: "female", label: t("onboarding.genderFemale"), emoji: "♀️" },
-    { value: "male", label: t("onboarding.genderMale"), emoji: "♂️" },
-  ];
+  // excludes "unknown", so onboarding offers only the GENDER_VALUES the gate
+  // checks for (built from that shared list, not re-typed here, so the two
+  // can never disagree on casing/spelling).
+  const GENDER_META = {
+    female: { label: t("onboarding.genderFemale"), emoji: "♀️" },
+    male: { label: t("onboarding.genderMale"), emoji: "♂️" },
+  };
+  const genderOptions = GENDER_VALUES.map((value) => ({
+    value,
+    ...GENDER_META[value],
+  }));
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.md }}>
