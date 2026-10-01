@@ -24,7 +24,15 @@ export const CSP_DIRECTIVES = {
   imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
   fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
   connectSrc: ["'self'", 'https:'],
-  formAction: ["'self'"],
+  // WebKit (Safari, and therefore every iOS WebView / ASWebAuthenticationSession)
+  // enforces `form-action` across redirects; Chrome does not. The mobile sign-in
+  // start page (/api/auth/mobile-start) submits a form to /api/auth/signin/<provider>,
+  // and @auth/core answers with a 302 to the provider's authorize endpoint. With
+  // `form-action 'self'` WebKit silently blocks that redirect: the auth sheet hangs
+  // on "Signing in…", never reaches Google, and no further request hits the server.
+  // Every web-OAuth provider origin must therefore be listed here. Apple is native
+  // on mobile (no browser form post), so it is intentionally absent.
+  formAction: ["'self'", 'https://accounts.google.com'],
 };
 
 export function securityHeaders() {

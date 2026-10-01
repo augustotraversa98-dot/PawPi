@@ -23,4 +23,15 @@ describe('securityHeaders (AUDIT A-28)', () => {
     expect(CSP_DIRECTIVES.scriptSrc).toContain("'unsafe-inline'");
     expect(CSP_DIRECTIVES.scriptSrc).toContain("'unsafe-eval'");
   });
+
+  // Regression: WebKit enforces form-action across redirects. /api/auth/mobile-start
+  // form-POSTs to /api/auth/signin/google, which 302s to Google's authorize endpoint.
+  // Drop this origin and iOS sign-in hangs on "Signing in…" with no server-side error.
+  it('CSP form-action allows the Google OAuth authorize endpoint (iOS sign-in)', async () => {
+    expect(CSP_DIRECTIVES.formAction).toContain('https://accounts.google.com');
+    const res = await app.request('/');
+    expect(res.headers.get('content-security-policy')).toContain(
+      "form-action 'self' https://accounts.google.com",
+    );
+  });
 });
