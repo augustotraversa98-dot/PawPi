@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import UseDifferentAccountLink from "@/components/onboarding/UseDifferentAccountLink";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
@@ -711,12 +712,15 @@ function OnboardingScreen() {
               <ChevronLeft size={24} color={COLORS.warmBrown} />
             </PressableScale>
 
-            <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
-              {t("onboarding.stepOf", {
-                current: currentStep + 1,
-                total: TOTAL_STEPS,
-              })}
-            </Text>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[TYPE.subhead, { color: COLORS.mutedBrown }]}>
+                {t("onboarding.stepOf", {
+                  current: currentStep + 1,
+                  total: TOTAL_STEPS,
+                })}
+              </Text>
+              <UseDifferentAccountLink style={{ paddingVertical: 2 }} />
+            </View>
           </View>
 
           {/* Progress bar */}
