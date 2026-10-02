@@ -3,7 +3,7 @@
 // the role-aware destination — and must never fetch or route to onboarding on its own.
 
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, fireEvent } from "@testing-library/react-native";
 
 let mockAuth;
 const mockReplace = jest.fn();
@@ -51,4 +51,15 @@ test("waits for the auth store before routing anywhere", () => {
 
   expect(mockReplace).not.toHaveBeenCalled();
   expect(getByText("Setting up your account…")).toBeTruthy();
+});
+
+test("back arrow signs out and returns to Welcome (never strands the user)", () => {
+  const setAuth = jest.fn();
+  mockAuth = { isReady: false, isAuthenticated: false, setAuth };
+
+  const { getByLabelText } = render(<AuthSuccessRedirect />);
+  fireEvent.press(getByLabelText("Back"));
+
+  expect(setAuth).toHaveBeenCalledWith(null);
+  expect(mockReplace).toHaveBeenCalledWith("/welcome");
 });

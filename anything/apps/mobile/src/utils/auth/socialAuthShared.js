@@ -48,6 +48,20 @@ export function parseAuthReturnUrl(url) {
   return { jwt, user: { id, email, name } };
 }
 
+// The error code a failed return carries (e.g. "unauthorized" when the server could not read a
+// session), or null when the URL has none. Lets the caller show a Google-specific message instead
+// of treating it like a dismissed browser.
+export function parseAuthReturnError(url) {
+  if (!url || typeof url !== "string") return null;
+  const qIndex = url.search(/[?#]/);
+  if (qIndex === -1) return null;
+  try {
+    return new URLSearchParams(url.slice(qIndex + 1)).get("error") || null;
+  } catch {
+    return null;
+  }
+}
+
 // Decide which social buttons to render. Google shows when the backend has it enabled. Apple
 // shows only on iOS AND when both the backend has it enabled and the device supports native
 // Sign in with Apple (iOS 13+ — appleNativeAvailable). No "coming soon": a provider that isn't

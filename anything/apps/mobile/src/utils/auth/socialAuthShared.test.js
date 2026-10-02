@@ -2,6 +2,7 @@ import {
   AUTH_RETURN_URL,
   buildGoogleStartUrl,
   parseAuthReturnUrl,
+  parseAuthReturnError,
   decideSocialButtons,
 } from "./socialAuthShared";
 
@@ -93,5 +94,37 @@ describe("decideSocialButtons (provider gating)", () => {
       showGoogle: false,
       showApple: false,
     });
+  });
+});
+
+describe("token round-trip through mobile-return's encoding", () => {
+  // mirrors web/src/app/api/auth/mobile-return: new URLSearchParams({ token: raw, ... }).toString()
+  const encode = (token, extra = {}) => {
+    const p = new URLSearchParams({ token });
+    for (const [k, v] of Object.entries(extra)) p.set(k, v);
+    return `${AUTH_RETURN_URL}?${p.toString()}`;
+  };
+  // A real @auth/core JWE is 5 base64url segments; also cover '+', '/', '=' and spaces, which
+  // URLSearchParams percent-encodes (and encodes space as '+').
+  const tokens = [
+    "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIn0..Zs_-9aQ.k8-_Xy0Zz.tAg-_9",
+    "head.pay+load/with=equals.sig+na/ture==",
+    "a b.c%d&e=f.g",
+  ];
+  it.each(tokens)("is byte-identical after the round trip: %s", (raw) => {
+    const out = parseAuthReturnUrl(encode(raw, { uid: "42", email: "a+b@c.com", name: "Ada L" }));
+    expect(out.jwt).toBe(raw);
+    expect(out.user).toEqual({ id: "42", email: "a+b@c.com", name: "Ada L" });
+  });
+});
+
+describe("parseAuthReturnError", () => {
+  it("returns the error code", () => {
+    expect(parseAuthReturnError(`${AUTH_RETURN_URL}?error=unauthorized`)).toBe("unauthorized");
+  });
+  it("returns null for a success return or no query", () => {
+    expect(parseAuthReturnError(`${AUTH_RETURN_URL}?token=x`)).toBeNull();
+    expect(parseAuthReturnError(AUTH_RETURN_URL)).toBeNull();
+    expect(parseAuthReturnError(null)).toBeNull();
   });
 });

@@ -17,6 +17,7 @@ import { nativeFetch } from "@/__create/fetch";
 import {
   AUTH_RETURN_URL,
   buildGoogleStartUrl,
+  parseAuthReturnError,
   parseAuthReturnUrl,
 } from "./socialAuthShared";
 
@@ -138,6 +139,14 @@ export async function signInWithGoogle() {
   }
   const parsed = parseAuthReturnUrl(result.url);
   if (!parsed) {
+    // The server redirected back with ?error=… — surface it distinctly so the UI can say
+    // "couldn't sign in with Google" rather than a generic failure.
+    const code = parseAuthReturnError(result.url);
+    if (code) {
+      const err = new Error(`Google sign-in was rejected (${code})`);
+      err.code = "GOOGLE_AUTH_REJECTED";
+      throw err;
+    }
     throw new Error("Google sign-in returned without a session token");
   }
   return parsed;

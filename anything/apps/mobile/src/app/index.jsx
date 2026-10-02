@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { View, ActivityIndicator, Text, Pressable } from "react-native";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
+import { isUsableToken, startOver } from "@/utils/auth/recovery";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
 import { markNavigationReady } from "@/utils/notificationDeepLink";
 import { PawMark } from "@/components/ui";
@@ -15,6 +18,8 @@ export default function EntryPoint() {
   const [destination, setDestination] = useState(null);
   const [error, setError] = useState(false);
   const { auth, isReady, setAuth } = useAuth();
+  const router = useRouter();
+  const { t } = useTranslation();
 
   const determineRoute = useCallback(async () => {
     setError(false);
@@ -29,6 +34,15 @@ export default function EntryPoint() {
     if (!auth) {
       console.log("[EntryPoint] No auth, redirecting to /welcome");
       markBootStep("entrypoint:no-auth-welcome");
+      setDestination("/welcome");
+      setLoading(false);
+      return;
+    }
+    // A stored token that is not even a well-formed Bearer value makes header construction
+    // throw on every fetch (→ "couldn't reach" forever). It is dead — clear it, don't retry.
+    if (!isUsableToken(auth.jwt)) {
+      console.log("[EntryPoint] Stored token is malformed, clearing session");
+      setAuth(null);
       setDestination("/welcome");
       setLoading(false);
       return;
@@ -113,6 +127,16 @@ export default function EntryPoint() {
           paddingHorizontal: 32,
         }}
       >
+        {/* Back = start over: a post-login failure must never strand the user. */}
+        <Pressable
+          onPress={() => startOver({ setAuth, router })}
+          accessibilityRole="button"
+          accessibilityLabel={t("welcome.back")}
+          hitSlop={12}
+          style={{ position: "absolute", top: 60, left: 20, padding: 8 }}
+        >
+          <ArrowLeft size={24} color="#3B241B" />
+        </Pressable>
         <PawMark size={72} color={COLORS.coral} style={{ marginBottom: 20 }} />
         <Text
           style={{
@@ -123,7 +147,7 @@ export default function EntryPoint() {
             marginBottom: 24,
           }}
         >
-          We couldn't reach PawPi. Check your connection and try again.
+          {t("welcome.couldntReach")}
         </Text>
         <Pressable
           onPress={determineRoute}
@@ -135,7 +159,16 @@ export default function EntryPoint() {
           }}
         >
           <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
-            Try Again
+            {t("welcome.tryAgain")}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => startOver({ setAuth, router })}
+          accessibilityRole="button"
+          style={{ marginTop: 16, paddingHorizontal: 32, paddingVertical: 12 }}
+        >
+          <Text style={{ color: "#7A6254", fontSize: 16, fontWeight: "600" }}>
+            {t("welcome.startOver")}
           </Text>
         </Pressable>
       </View>
