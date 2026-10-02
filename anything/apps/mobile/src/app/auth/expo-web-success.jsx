@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Pressable } from "react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/utils/auth/useAuth";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PawMark } from "@/components/ui";
+import { startOver } from "@/utils/auth/recovery";
 
 /**
  * Post-authentication hand-off.
@@ -27,7 +29,7 @@ export default function AuthSuccessRedirect() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
-  const { isAuthenticated, isReady } = useAuth();
+  const { isAuthenticated, isReady, setAuth } = useAuth();
 
   useEffect(() => {
     if (!isReady) return;
@@ -46,6 +48,16 @@ export default function AuthSuccessRedirect() {
         paddingHorizontal: SPACING.xxl,
       }}
     >
+      {/* Cancel out of the hand-off without having to kill the app. */}
+      <Pressable
+        onPress={() => startOver({ setAuth, router })}
+        accessibilityRole="button"
+        accessibilityLabel={t("welcome.back")}
+        hitSlop={12}
+        style={{ position: "absolute", top: insets.top + 12, left: SPACING.lg, padding: 8 }}
+      >
+        <ArrowLeft size={24} color={COLORS.warmBrown} />
+      </Pressable>
       <View style={{ alignItems: "center", gap: SPACING.xl }}>
         <PawMark size={72} color={COLORS.coral} />
         <ActivityIndicator size="large" color={COLORS.coral} />

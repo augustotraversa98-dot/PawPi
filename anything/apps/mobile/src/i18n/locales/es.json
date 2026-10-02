@@ -2617,6 +2617,10 @@
   },
   "welcome": {
     "settingUp": "Preparando tu cuenta…",
+    "back": "Atrás",
+    "startOver": "Empezar de nuevo",
+    "tryAgain": "Probar de nuevo",
+    "couldntReach": "No pudimos conectarnos con PawPi. Revisá tu conexión y probá de nuevo.",
     "oneMoment": "Esto tomará solo un momento…",
     "vetAccessLink": "Acceso para veterinarias y negocios",
     "tagline": "El cuidado diario de tu mascota, sus momentos y la comunidad — todo en un lugar.",
@@ -2627,7 +2631,8 @@
       "dividerOr": "o",
       "continueGoogle": "Continuar con Google",
       "errorTitle": "No se pudo iniciar sesión",
-      "errorBody": "No pudimos iniciar tu sesión. Probá de nuevo."
+      "errorBody": "No pudimos iniciar tu sesión. Probá de nuevo.",
+      "googleDeniedBody": "No pudimos iniciar tu sesión con Google. Probá de nuevo o usá tu email."
     }
   },
   "trackers": {

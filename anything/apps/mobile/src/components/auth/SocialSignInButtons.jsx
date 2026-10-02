@@ -31,7 +31,12 @@ export function SocialSignInButtons({ showGoogle, showApple, onAuthenticated }) 
       }
     } catch (err) {
       console.error(`[social] ${which} sign-in failed:`, err?.message);
-      Alert.alert(t("welcome.social.errorTitle"), t("welcome.social.errorBody"));
+      Alert.alert(
+        t("welcome.social.errorTitle"),
+        err?.code === "GOOGLE_AUTH_REJECTED"
+          ? t("welcome.social.googleDeniedBody")
+          : t("welcome.social.errorBody"),
+      );
     } finally {
       setBusy(null);
     }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Modal, View } from "react-native";
+import { Modal, View, Pressable, Platform } from "react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { create } from "zustand";
 import { useCallback, useMemo } from "react";
 import { AuthWebView } from "./AuthWebView";
@@ -43,6 +44,23 @@ export const AuthModal = () => {
         }}
       >
         <AuthWebView mode={mode} proxyURL={proxyURL} baseURL={baseURL} />
+        {/* Back out of the auth WebView to Welcome (the modal's onRequestClose is Android-only). */}
+        <Pressable
+          onPress={close}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={12}
+          style={{
+            position: "absolute",
+            top: Platform.OS === "ios" ? 54 : 16,
+            left: 12,
+            padding: 8,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.9)",
+          }}
+        >
+          <ArrowLeft size={22} color="#3B241B" />
+        </Pressable>
       </View>
     </Modal>
   );

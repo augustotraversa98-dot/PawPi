@@ -2617,6 +2617,10 @@
   },
   "welcome": {
     "settingUp": "Setting up your account…",
+    "back": "Back",
+    "startOver": "Start over",
+    "tryAgain": "Try again",
+    "couldntReach": "We couldn't reach PawPi. Check your connection and try again.",
     "oneMoment": "This will only take a moment…",
     "vetAccessLink": "Access for vets & businesses",
     "tagline": "Your pet's daily care, moments, and community — all in one place.",
@@ -2627,7 +2631,8 @@
       "dividerOr": "or",
       "continueGoogle": "Continue with Google",
       "errorTitle": "Sign-in failed",
-      "errorBody": "We couldn't sign you in. Please try again."
+      "errorBody": "We couldn't sign you in. Please try again.",
+      "googleDeniedBody": "We couldn't sign you in with Google. Please try again, or use email instead."
     }
   },
   "trackers": {
