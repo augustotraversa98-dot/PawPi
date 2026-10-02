@@ -7,6 +7,7 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -739,17 +740,25 @@ function OnboardingScreen() {
 
         {/* Step content — KeyboardAwareScrollView keeps the focused input above
             the keyboard so no field is hidden behind it (ticket 2.35). */}
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingHorizontal: SPACING.xxl,
-            paddingBottom: SPACING.xxl,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {renderStep()}
-        </KeyboardAwareScrollView>
+        {currentStep === 2 ? (
+          // Breed step: the picker owns its own results FlatList, so it must
+          // not sit inside the scroll view (nested same-axis scroll collapses).
+          <View style={{ flex: 1, paddingHorizontal: SPACING.xxl }}>
+            {renderStep()}
+          </View>
+        ) : (
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: SPACING.xxl,
+              paddingBottom: SPACING.xxl,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {renderStep()}
+          </KeyboardAwareScrollView>
+        )}
 
         {/* Bottom buttons — a normal flex-column child (NOT absolutely pinned) so
             the outer KeyboardAvoidingView lifts the whole footer, keeping
@@ -880,12 +889,12 @@ const StepName = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
       <Text
         style={{
-          fontSize: 44,
+          fontSize: 32,
           textAlign: "center",
-          marginBottom: SPACING.md,
+          marginBottom: SPACING.sm,
         }}
       >
         🐕
@@ -893,7 +902,7 @@ const StepName = ({ formData, setFormData }) => {
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.nameTitle")}
@@ -904,8 +913,9 @@ const StepName = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -919,7 +929,8 @@ const StepName = ({ formData, setFormData }) => {
           {
             backgroundColor: MATERIALS.surfaceSunken,
             borderRadius: RADIUS.control,
-            padding: SPACING.xl,
+            padding: SPACING.lg,
+            fontSize: 22,
             fontWeight: "600",
             color: COLORS.warmBrown,
             borderWidth: 2,
@@ -951,14 +962,14 @@ const StepHandle = ({
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         @
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.handleTitle", { name: dogName })}
@@ -969,8 +980,9 @@ const StepHandle = ({
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -1101,36 +1113,52 @@ const StepHandle = ({
 const StepBreed = ({ formData, setFormData }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
+  // While typing, drop the paw mark + subtitle so the matches get the room.
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvt, () => setKeyboardUp(true));
+    const hide = Keyboard.addListener(hideEvt, () => setKeyboardUp(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <PawMark size={44} color={COLORS.warmBrown} style={{ alignSelf: "center", marginBottom: SPACING.md }} />
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      {keyboardUp ? null : (
+        <PawMark size={32} color={COLORS.warmBrown} style={{ alignSelf: "center", marginBottom: SPACING.sm }} />
+      )}
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.breedTitle", { name: dogName })}
       </Text>
-      <Text
+      {keyboardUp ? <View style={{ height: SPACING.sm }} /> : <Text
         style={[
           TYPE.headline,
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
         {t("onboarding.breedSubtitle")}
-      </Text>
+      </Text>}
 
       {/* Searchable breed picker (canonical list + Mixed breed + type-your-own).
           Constrains breed to consistent values while still allowing a rare
           breed/cross to be saved deliberately. Breed stays required to continue. */}
       <BreedPicker
+        scrollable
         value={formData.breed}
         onChange={(value) =>
           setFormData((prev) => ({ ...prev, breed: value }))
@@ -1146,14 +1174,14 @@ const StepAge = ({ formData, setFormData }) => {
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         🎂
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.ageTitle", { name: dogName })}
@@ -1164,85 +1192,91 @@ const StepAge = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
         {t("onboarding.ageSubtitle")}
       </Text>
 
-      <View style={{ gap: SPACING.lg }}>
-        <View>
-          <Text
-            style={[
-              TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
-            ]}
-          >
-            {t("onboarding.ageYearsLabel")}
-          </Text>
-          <TextInput
-            style={[
-              TYPE.title,
-              {
-                backgroundColor: MATERIALS.surfaceSunken,
-                borderRadius: RADIUS.control,
-                padding: SPACING.lg,
-                fontWeight: "600",
-                color: COLORS.warmBrown,
-                borderWidth: 2,
-                borderColor: formData.ageYears ? COLORS.coral : MATERIALS.hairline,
-              },
-            ]}
-            placeholder="0"
-            placeholderTextColor={COLORS.mutedBrown}
-            value={formData.ageYears}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                ageYears: text.replace(/[^0-9]/g, ""),
-              }))
-            }
-            keyboardType="number-pad"
-            testID="onboarding-age-years"
-          />
-        </View>
+      <View style={{ gap: SPACING.md }}>
+        {/* Years + Months side by side so both stay above the numeric keyboard. */}
+        <View style={{ flexDirection: "row", gap: SPACING.md }}>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                TYPE.callout,
+                { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
+              ]}
+            >
+              {t("onboarding.ageYearsLabel")}
+            </Text>
+            <TextInput
+              style={[
+                TYPE.title,
+                {
+                  backgroundColor: MATERIALS.surfaceSunken,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.md,
+                  textAlign: "center",
+                  fontWeight: "600",
+                  color: COLORS.warmBrown,
+                  borderWidth: 2,
+                  borderColor: formData.ageYears ? COLORS.coral : MATERIALS.hairline,
+                },
+              ]}
+              placeholder="0"
+              placeholderTextColor={COLORS.mutedBrown}
+              value={formData.ageYears}
+              onChangeText={(text) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  ageYears: text.replace(/[^0-9]/g, ""),
+                }))
+              }
+              keyboardType="number-pad"
+              testID="onboarding-age-years"
+            />
+          </View>
 
-        <View>
-          <Text
-            style={[
-              TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
-            ]}
-          >
-            {t("onboarding.ageMonthsLabel")}
-          </Text>
-          <TextInput
-            style={[
-              TYPE.title,
-              {
-                backgroundColor: MATERIALS.surfaceSunken,
-                borderRadius: RADIUS.control,
-                padding: SPACING.lg,
-                fontWeight: "600",
-                color: COLORS.warmBrown,
-                borderWidth: 2,
-                borderColor: formData.ageMonths ? COLORS.coral : MATERIALS.hairline,
-              },
-            ]}
-            placeholder="0"
-            placeholderTextColor={COLORS.mutedBrown}
-            value={formData.ageMonths}
-            onChangeText={(text) =>
-              setFormData((prev) => ({
-                ...prev,
-                ageMonths: text.replace(/[^0-9]/g, ""),
-              }))
-            }
-            keyboardType="number-pad"
-            testID="onboarding-age-months"
-          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                TYPE.callout,
+                { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
+              ]}
+            >
+              {t("onboarding.ageMonthsLabel")}
+            </Text>
+            <TextInput
+              style={[
+                TYPE.title,
+                {
+                  backgroundColor: MATERIALS.surfaceSunken,
+                  borderRadius: RADIUS.control,
+                  padding: SPACING.md,
+                  textAlign: "center",
+                  fontWeight: "600",
+                  color: COLORS.warmBrown,
+                  borderWidth: 2,
+                  borderColor: formData.ageMonths ? COLORS.coral : MATERIALS.hairline,
+                },
+              ]}
+              placeholder="0"
+              placeholderTextColor={COLORS.mutedBrown}
+              value={formData.ageMonths}
+              onChangeText={(text) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  ageMonths: text.replace(/[^0-9]/g, ""),
+                }))
+              }
+              keyboardType="number-pad"
+              testID="onboarding-age-months"
+            />
+          </View>
         </View>
 
         {/* Rescue/adopted dogs: an approximate age is enough to continue. */}
@@ -1278,14 +1312,14 @@ const StepGender = ({ formData, setFormData }) => {
   }));
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         💙
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.genderTitle", { name: dogName })}
@@ -1296,8 +1330,9 @@ const StepGender = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -1361,14 +1396,14 @@ const StepWeight = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         ⚖️
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.weightTitle", { name: dogName })}
@@ -1379,8 +1414,9 @@ const StepWeight = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -1395,7 +1431,8 @@ const StepWeight = ({ formData, setFormData }) => {
           {
             backgroundColor: MATERIALS.surfaceSunken,
             borderRadius: RADIUS.control,
-            padding: SPACING.lg,
+            padding: SPACING.md,
+            fontSize: 26,
             color: COLORS.warmBrown,
             borderWidth: 2,
             borderColor: formData.weight ? COLORS.coral : MATERIALS.hairline,
@@ -1475,14 +1512,14 @@ const StepBirthday = ({ formData, setFormData }) => {
   });
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         📅
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.birthdayTitle", { name: dogName })}
@@ -1493,8 +1530,9 @@ const StepBirthday = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -1506,7 +1544,7 @@ const StepBirthday = ({ formData, setFormData }) => {
           <Text
             style={[
               TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
             ]}
           >
             {t("onboarding.birthdayLabel")}
@@ -1527,7 +1565,7 @@ const StepBirthday = ({ formData, setFormData }) => {
           <Text
             style={[
               TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.sm },
+              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
             ]}
           >
             {t("onboarding.gotchaLabel")}
@@ -1559,14 +1597,14 @@ const StepNotes = ({ formData, setFormData }) => {
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.md }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
         📝
       </Text>
       <Text
         style={[
           TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.sm, lineHeight: 34 },
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
         ]}
       >
         {t("onboarding.notesTitle", { name: dogName })}
@@ -1577,8 +1615,9 @@ const StepNotes = ({ formData, setFormData }) => {
           {
             color: COLORS.mutedBrown,
             fontWeight: "500",
-            marginBottom: SPACING.lg,
-            lineHeight: 22,
+            marginBottom: SPACING.md,
+            fontSize: 15,
+            lineHeight: 20,
           },
         ]}
       >
@@ -1633,8 +1672,8 @@ const StepReview = ({ formData, goToStep }) => {
         : t("onboarding.reviewNotSpecified");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.xl }}>
-      <Text style={{ fontSize: 72, textAlign: "center", marginBottom: SPACING.xxl }}>
+    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
+      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
         ✨
       </Text>
       <Text
@@ -1642,8 +1681,9 @@ const StepReview = ({ formData, goToStep }) => {
           TYPE.largeTitle,
           {
             color: COLORS.warmBrown,
-            marginBottom: SPACING.md,
-            lineHeight: 40,
+            marginBottom: SPACING.sm,
+            fontSize: 26,
+            lineHeight: 31,
             textAlign: "center",
           },
         ]}

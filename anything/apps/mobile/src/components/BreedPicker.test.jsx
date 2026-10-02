@@ -74,4 +74,16 @@ describe("BreedPicker", () => {
     expect(getByTestId("breed-option-Beagle")).toBeTruthy();
     expect(queryByTestId("breed-option-custom")).toBeNull();
   });
+
+  test("scrollable mode: matches render in a keyboard-tap-safe FlatList and are selectable", () => {
+    const onChange = jest.fn();
+    const { getByTestId } = render(
+      <BreedPicker scrollable value="" onChange={onChange} />,
+    );
+    fireEvent.changeText(getByTestId("breed-search"), "golden");
+    const list = getByTestId("breed-results");
+    expect(list.props.keyboardShouldPersistTaps).toBe("handled");
+    fireEvent.press(getByTestId("breed-option-Golden Retriever"));
+    expect(onChange).toHaveBeenCalledWith("Golden Retriever");
+  });
 });
