@@ -19,6 +19,7 @@
 
 import sql, { getActiveTx, runWithTx } from './sql';
 import { resolveUserId } from './currentUser';
+import { isValidAuthUserId } from './authUserId';
 
 /**
  * Run `fn` inside a SAVEPOINT on the active request transaction, so a query error
@@ -80,7 +81,8 @@ async function applyIdentity() {
     const { auth } = await import('@/auth');
     const session = await auth();
     const authUserId = session?.user?.id;
-    if (!authUserId) return;
+    // A non-integer sub must never reach a query (22P02 aborts the whole request tx).
+    if (!isValidAuthUserId(authUserId)) return;
     const userId = await resolveUserId(authUserId);
     await setCurrentUserId(userId);
   } catch {

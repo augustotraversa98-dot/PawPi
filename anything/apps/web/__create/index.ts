@@ -1,7 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import nodeConsole from 'node:console';
 import Credentials from '@auth/core/providers/credentials';
-import { authHandler, initAuthConfig, getAuthUser } from '@hono/auth-js';
+import { authHandler, initAuthConfig } from '@hono/auth-js';
+import { getToken } from '@auth/core/jwt';
+import { isValidAuthUserId } from '../src/app/api/utils/authUserId.js';
 import pg from 'pg';
 import { hash, verify } from 'argon2';
 import { Hono } from 'hono';
@@ -429,15 +431,33 @@ app.use('/api/auth/*', async (c, next) => {
 // per-route auth still gates them) so a DB blip can never lock everyone out.
 app.use('/api/*', async (c, next) => {
   if (c.req.path.startsWith('/api/auth/')) return next();
+  let sub: string | undefined;
+  let iat: number | undefined;
   try {
-    const authUser = await getAuthUser(c);
-    const sub =
-      (authUser?.session?.user as { id?: string } | undefined)?.id ??
-      (authUser?.token as { sub?: string } | undefined)?.sub;
-    const iat =
-      (authUser?.session as unknown as { iat?: number } | undefined)?.iat ??
-      (authUser?.token as { iat?: number } | undefined)?.iat;
-    if (sub != null && typeof iat === 'number') {
+    // Read the token exactly as the per-route auth() shim does (Bearer header OR cookie),
+    // so a mobile Bearer ghost token can't slip past a guard that reads a different source.
+    const token = await getToken({
+      req: c.req.raw,
+      secret: process.env.AUTH_SECRET,
+      secureCookie:
+        process.env.AUTH_URL?.startsWith('https') ||
+        c.req.header('x-forwarded-proto') === 'https',
+    });
+    sub = token?.sub ?? undefined;
+    iat = typeof token?.iat === 'number' ? token.iat : undefined;
+  } catch {
+    // undecodable token → unauthenticated; the per-route auth() will 401 it
+  }
+  // Ghost session (non-integer/UUID sub): FAIL CLOSED with 401 before any handler or query
+  // touches the id (a 22P02 would abort the request tx and 500). Independent of iat.
+  if (sub != null && !isValidAuthUserId(sub)) {
+    return c.json(
+      { error: 'Your session has expired. Please sign in again.' },
+      401
+    );
+  }
+  if (sub != null && iat != null) {
+    try {
       const { isTokenRevoked } = await import(
         '../src/app/api/utils/tokenRevocation.js'
       );
@@ -447,9 +467,9 @@ app.use('/api/*', async (c, next) => {
           401
         );
       }
+    } catch {
+      // revocation lookup is fail-open — a DB blip must never lock everyone out
     }
-  } catch {
-    // fail open — the per-route auth() still enforces access
   }
   return next();
 });
