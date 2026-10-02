@@ -148,6 +148,15 @@ if (process.env.AUTH_SECRET) {
     '*',
     initAuthConfig((c) => ({
       secret: c.env.AUTH_SECRET,
+      // The database adapter MUST be on the handler config. Without it @auth/core's
+      // handleLoginOrRegister takes its "no adapter" branch for OAuth: it creates NO
+      // auth_users/auth_accounts rows and mints the session with sub = a random UUID
+      // (crypto.randomUUID()), which every integer-keyed query then rejects (22P02) —
+      // "Continue with Google" signed in, then every /api/* call 500'd. Credentials and
+      // Apple-native were unaffected (they pass the adapter / look users up themselves).
+      // Credentials sign-in never touches the adapter under the JWT strategy, so email/
+      // password is unchanged.
+      adapter,
       // Auth routes are mounted at /api/auth (see app.use('/api/auth/*') below),
       // so basePath is always /api/auth. Pin it explicitly instead of letting
       // @auth/core derive it from new URL(AUTH_URL).pathname: off-platform,

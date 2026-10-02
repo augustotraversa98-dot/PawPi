@@ -43,6 +43,15 @@ describe("isTokenRevoked (AUDIT A-05)", () => {
     sql.mockRejectedValueOnce(new Error("column does not exist"));
     expect(await isTokenRevoked(7, 1_700_000_000)).toBe(false);
   });
+  it("treats a non-numeric sub (ghost UUID session) as revoked WITHOUT querying", async () => {
+    expect(await isTokenRevoked("eb5e3d2e-339e-4ebd-83c6-54fbcf3700ba", 1_700_000_000)).toBe(true);
+    expect(sql).not.toHaveBeenCalled();
+  });
+  it("accepts a numeric-string sub (how @auth/core stringifies the id)", async () => {
+    sql.mockResolvedValueOnce([{ token_invalidated_at: null }]);
+    expect(await isTokenRevoked("42", 1_700_000_000)).toBe(false);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
   it("false on missing inputs", async () => {
     expect(await isTokenRevoked(null, 123)).toBe(false);
     expect(await isTokenRevoked(7, undefined)).toBe(false);
