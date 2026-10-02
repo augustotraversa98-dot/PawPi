@@ -8,6 +8,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { Button, PressableScale } from "@/components/ui";
+import UseDifferentAccountLink from "@/components/onboarding/UseDifferentAccountLink";
 
 export default function OnboardingPhotoScreen() {
   const insets = useSafeAreaInsets();
@@ -310,6 +311,8 @@ export default function OnboardingPhotoScreen() {
       >
         {t("onboarding.photoChangeLater")}
       </Text>
+
+      <UseDifferentAccountLink style={{ marginTop: SPACING.sm }} />
     </View>
   );
 }
