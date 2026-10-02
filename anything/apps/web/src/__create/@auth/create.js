@@ -1,5 +1,6 @@
 import { getToken } from '@auth/core/jwt';
 import { getContext } from 'hono/context-storage';
+import { isValidAuthUserId } from '../../app/api/utils/authUserId.js';
 
 export default function CreateAuth() {
 	const auth = async () => {
@@ -14,7 +15,9 @@ export default function CreateAuth() {
 			secureCookie:
 				process.env.AUTH_URL?.startsWith('https') || c.req.header('x-forwarded-proto') === 'https',
 		});
-		if (token) {
+		// Ghost session (non-integer/UUID sub): treat as signed-out so every route 401s instead of
+		// casting the sub to an integer and 500ing. Checked before any DB query.
+		if (token && isValidAuthUserId(token.sub)) {
 			return {
 				user: {
 					id: token.sub,
