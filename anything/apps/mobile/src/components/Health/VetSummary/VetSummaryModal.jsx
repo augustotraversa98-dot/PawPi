@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState, useMemo } from "react";
 import {
   View,
@@ -196,9 +197,9 @@ export default function VetSummaryModal({ visible, onClose }) {
                   <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
                     {t("health.vetSummary.weightSummary", {
                       first: summary.weight.series[0].weight,
-                      firstUnit: summary.weight.series[0].unit,
+                      firstUnit: normalizeWeightUnit(summary.weight.series[0].unit),
                       last: summary.weight.series[summary.weight.series.length - 1].weight,
-                      lastUnit: summary.weight.series[summary.weight.series.length - 1].unit,
+                      lastUnit: normalizeWeightUnit(summary.weight.series[summary.weight.series.length - 1].unit),
                       count: summary.weight.series.length,
                     })}
                   </Text>

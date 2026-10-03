@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -118,7 +119,7 @@ export default function ProfileEditScreen() {
         gender: currentPet.gender || "",
         weight: currentPet.weight?.toString() || "",
         weightUnit:
-          currentPet.weight_unit ||
+          normalizeWeightUnit(currentPet.weight_unit) ||
           (currentPet.weight ? "lbs" : defaultWeightUnit()),
         birthday: canonicalizeDateValue(currentPet.birthday),
         adoptionDate: canonicalizeDateValue(currentPet.adoption_date),

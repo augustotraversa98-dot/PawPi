@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import {
@@ -74,7 +75,7 @@ async function GET(request) {
       return {
         ...pet,
         weight: latest ? latest.weight : pet.weight,
-        weight_unit: latest ? latest.weight_unit : pet.weight_unit,
+        weight_unit: normalizeWeightUnit(latest ? latest.weight_unit : pet.weight_unit),
       };
     });
 

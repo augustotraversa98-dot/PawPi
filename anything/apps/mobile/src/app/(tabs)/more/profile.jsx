@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState } from "react";
 import {
   View,
@@ -56,7 +57,7 @@ export default function ProfileScreen() {
   // Helper to format weight
   const formatWeight = (weight, weightUnit) => {
     if (!weight) return null;
-    return `${weight} ${weightUnit || "lbs"}`;
+    return `${weight} ${normalizeWeightUnit(weightUnit) || "lbs"}`;
   };
 
   // Helper to format gender — localized for the two values the picker offers;
