@@ -67,3 +67,8 @@ describe("24-hour everywhere (no AM/PM)", () => {
     }
   });
 });
+
+it("a caller-supplied hour12:true cannot reintroduce AM/PM", () => {
+  const d = new Date(2026, 5, 9, 20, 5, 0);
+  expect(formatLocalTime(d, { hour12: true })).toBe("20:05");
+});
