@@ -1,3 +1,4 @@
+import { formatLocalTime } from "@/utils/localeDateTime";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -23,15 +24,7 @@ import useUpload from "@/utils/useUpload";
 // Owner↔owner conversation on REAL data (ticket 2.27). Messages come from the API
 // (newest-first → reversed for display); a message isMine when its sender isn't the
 // other participant. Mark-read on open; short-poll while open.
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
-  return `${displayHours}:${displayMinutes} ${ampm}`;
-};
+const formatTime = (timestamp) => formatLocalTime(timestamp);
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();

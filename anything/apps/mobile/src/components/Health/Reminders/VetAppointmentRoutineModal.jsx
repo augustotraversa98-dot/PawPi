@@ -1,3 +1,4 @@
+import { formatDisplayTime } from "@/utils/canonicalDateTime";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -419,15 +420,7 @@ export default function VetAppointmentRoutineModal({
 
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
-    try {
-      const [hours, minutes] = timeStr.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    } catch {
-      return timeStr;
-    }
+    return formatDisplayTime(timeStr) || timeStr;
   };
 
   const isEditing = editingAppointmentId !== null;

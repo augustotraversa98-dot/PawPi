@@ -8,7 +8,7 @@ import {
   buildMonthMatrix,
   slotZonedParts,
 } from "@/utils/providerSlots";
-import { formatDisplayTime, uses12HourClock } from "@/utils/canonicalDateTime";
+import { formatDisplayTime } from "@/utils/canonicalDateTime";
 
 // OSDE-style slot picker (PR-2): a month calendar where only days WITH availability are
 // selectable, then discrete time-slot chips for the chosen day. Consumes PR-1's
@@ -73,7 +73,6 @@ export default function BookingSlotPicker({
 
   const weeks = buildMonthMatrix(visible.year, visible.month);
   const daySlots = day ? byDay.get(day) ?? [] : [];
-  const hour12 = uses12HourClock();
 
   const goMonth = (delta) => {
     onSelect?.(null, timeZone); // a slot from the old month no longer applies
@@ -225,10 +224,7 @@ export default function BookingSlotPicker({
             {daySlots.map((slot) => {
               const isSel = selected?.start === slot.start;
               const label = timeZone
-                ? formatDisplayTime(
-                    slotZonedParts(slot.start, timeZone).time,
-                    hour12,
-                  )
+                ? formatDisplayTime(slotZonedParts(slot.start, timeZone).time)
                 : "";
               return (
                 <TouchableOpacity

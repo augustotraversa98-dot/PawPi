@@ -1,3 +1,4 @@
+import { formatLocalDateTime } from "@/utils/localeDateTime";
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -39,12 +40,7 @@ function fmtWhen(startsAt) {
   if (!startsAt) return "";
   const d = new Date(startsAt);
   if (Number.isNaN(d.getTime())) return String(startsAt);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatLocalDateTime(d, { year: undefined });
 }
 
 function openDirections(e) {

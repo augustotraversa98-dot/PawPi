@@ -206,7 +206,7 @@ export function resolveReminderTiming(reminder, routine) {
  *   prefixed so it doesn't read as a do-it-now task, and the body names the real
  *   due day/time via formatScheduledTime(eventTime, triggerTime) — "Tomorrow" is
  *   thus computed relative to the day the alert fires, never derived from the id.
- *   e.g. body "Time for breakfast\nDue Tomorrow 9:00 AM".
+ *   e.g. body "Time for breakfast\nDue Tomorrow 09:00".
  *
  * @param {Object} reminder
  * @param {{eventTime: Date, triggerTime: Date, leadMs: number}} timing

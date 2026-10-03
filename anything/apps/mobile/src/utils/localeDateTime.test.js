@@ -47,3 +47,23 @@ describe("localeDateTime (AUDIT A-34)", () => {
     expect(() => formatLocalTime("2026-03-05T15:07:00")).not.toThrow();
   });
 });
+
+describe("24-hour everywhere (no AM/PM)", () => {
+  const { formatScheduledTime } = require("./scheduledTimeFormat");
+  const { formatDisplayTime } = require("./canonicalDateTime");
+  const evening = new Date(2026, 5, 9, 20, 5, 0);
+
+  it("shared helpers render 20:05 with no AM/PM", () => {
+    expect(formatLocalTime(evening)).toMatch(/^20:05$/);
+    expect(formatDisplayTime("20:05")).toBe("20:05");
+    expect(formatScheduledTime(evening.toISOString(), new Date(2026, 5, 9, 9, 0))).toBe("20:05");
+  });
+
+  it("never contains AM/PM for any hour", () => {
+    for (let h = 0; h < 24; h++) {
+      const d = new Date(2026, 5, 9, h, 0, 0);
+      expect(formatLocalTime(d)).not.toMatch(/am|pm/i);
+      expect(formatLocalTime(d)).toMatch(/^\d{2}:00$/);
+    }
+  });
+});

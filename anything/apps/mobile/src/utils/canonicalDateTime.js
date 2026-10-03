@@ -8,7 +8,7 @@
  *
  * Display formats (what the user sees — never shown raw):
  *   dates: "21 April 2025"
- *   times: device 12/24h preference, e.g. "8:00 PM" or "20:00"
+ *   times: 24-hour "HH:MM" (never AM/PM)
  *
  * Parsing is tolerant of legacy stored values: "MM/DD/YYYY" (old typed
  * inputs), ISO datetime strings (date columns serialized through JSON),
@@ -167,17 +167,16 @@ export function uses12HourClock() {
 }
 
 /**
- * Display format for a canonical/legacy time string, honoring the device
- * 12/24h preference: "8:00 PM" or "20:00". "" for empty/unparseable values.
+ * Display format for a canonical/legacy time string: always 24-hour "HH:MM", no
+ * AM/PM, regardless of the device clock (the app is 24h under es-AR / en-GB).
+ * "" for empty/unparseable values. The optional 2nd arg is accepted for backwards
+ * compatibility and ignored — a stray `true` cannot reintroduce AM/PM.
  */
-export function formatDisplayTime(value, hour12 = uses12HourClock()) {
+// eslint-disable-next-line no-unused-vars
+export function formatDisplayTime(value, _legacyHour12) {
   const time = parseTimeValue(value);
   if (!time) return "";
-  const mm = String(time.minutes).padStart(2, "0");
-  if (!hour12) return `${String(time.hours).padStart(2, "0")}:${mm}`;
-  const suffix = time.hours < 12 ? "AM" : "PM";
-  const h = time.hours % 12 === 0 ? 12 : time.hours % 12;
-  return `${h}:${mm} ${suffix}`;
+  return `${String(time.hours).padStart(2, "0")}:${String(time.minutes).padStart(2, "0")}`;
 }
 
 /** Date the time picker should open on: the field's value if set, else now. */

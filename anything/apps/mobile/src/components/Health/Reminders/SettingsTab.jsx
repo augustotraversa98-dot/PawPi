@@ -423,7 +423,7 @@ export default function SettingsTab() {
           <Text style={{ fontSize: 12, color: "#0369A1" }}>
             {t(
               "reminderSettings.quietHoursDefault",
-              "Default: 10:00 PM - 7:00 AM · Tap to customize",
+              "Default: 22:00 - 07:00 · Tap to customize",
             )}
           </Text>
         </TouchableOpacity>
