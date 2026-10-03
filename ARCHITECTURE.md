@@ -123,6 +123,8 @@ Resolved from SQL in `anything/apps/web/src/app/api/**` (28 app tables) and `any
 ## 3. Identity / ID Model  ⚠️ (known bug area)
 
 ### How auth works
+> Apple + Google sign-in no longer use the WebView — see **§3a**. The description below is the email/password path.
+
 WebView-based login wrapping the web app's Auth.js (credentials provider) with a **JWT session strategy**.
 1. Mobile `useAuth().signIn/signUp` opens a modal that renders a WebView at the web app's `/account/{signin|signup}` — `anything/apps/mobile/src/utils/auth/useAuth.js:43-48`, `AuthWebView.jsx:13-14, 71`.
 2. On success the web side sets a session cookie; the app exchanges it for a token:
@@ -164,6 +166,50 @@ Concrete trace in `pets/route.js`: `authUserId = session.user.id` (`:129`) → `
 - **Naming footgun:** `owner_user_id` *sounds* like it should hold an auth/user id, but it holds `user_profiles.id`. Behavior is uniform, but the name invites the exact mistake below.
 - **Evidence of a historical mismatch + built-in repair tool.** `pets/route.js` contains diagnostics and a `PATCH` "repair" handler (`:289-558`) whose sole purpose is to find pets created with `owner_user_id = auth_user_id` (the *wrong* value) and rewrite them to `user_profiles.id`. See `:80` (`// check if pets exist with auth_user_id instead (wrong mapping)`), `:90`, `:351`, `:366` (`WHERE owner_user_id = ${authUserId}`), `:493` (`SET owner_user_id = ${correctUserId}`). This means an earlier version inserted the auth id into `owner_user_id`; **existing DB rows may still hold either value until repaired.** Code is settled on `user_profiles.id`; the data may not be.
 - **Cosmetic variation only:** the owner variable is named `userProfileId` in some routes and `ownerUserId`/`userId` in others, but all derive from `userProfile[0].id`.
+
+---
+
+## 3a. Social login / auth (added 2026-10-03; supersedes the "WebView-only" description in §3 for Apple + Google)
+
+Email + password still uses the WebView credentials flow described in §3. Sign in with **Apple** and **Google**
+(shipped in #567, hardened in #580–#587) bypass the WebView and both end in the **same place**: a raw `@auth/core`
+session JWT that the app stores via `useAuthStore.setAuth({ jwt, user })` and sends as a Bearer — so nothing
+downstream of login changes.
+
+- **Apple — native.** `expo-apple-authentication` shows the OS sheet and returns a signed `identityToken`
+  (`mobile/src/utils/auth/socialAuth.js`). The app generates a random raw nonce, sends `sha256(rawNonce)` to Apple
+  and the raw value to the server, then completes an `@auth/core` Credentials sign-in over the RN cookie jar
+  (`/api/auth/csrf` → `POST /api/auth/callback/apple-native` → `GET /api/auth/token`). On the server the
+  **`apple-native` credentials provider** (`web/src/app/api/utils/oauthProviders.js`, `appleNativeProvider`)
+  verifies the token against **Apple's JWKS** (issuer, audience = bundle id, expiry, **nonce = sha256(rawNonce)**),
+  upserts the user + `auth_accounts` row (handling Apple's first-login-only name and private-relay email), and
+  returns it so the handler mints the session JWT.
+- **Google — system browser.** Google blocks OAuth in embedded WebViews, so the app calls
+  `WebBrowser.openAuthSessionAsync` on `/api/auth/mobile-start?provider=google` (a tiny self-submitting page that
+  fetches the CSRF token and POSTs to `/api/auth/signin/google` *inside the browser*, so the PKCE/state cookies live
+  in the same browser that gets the callback). After Google, `@auth/core` lands on **`/api/auth/mobile-return`**,
+  which reads the session JWT and 302s to the **`pawpi://auth-callback`** deep link carrying the token; the
+  browser session resolves with that URL and the app parses it. `mobile-return` only ever redirects to the
+  `pawpi://` scheme (no open redirect).
+- **Registration.** Both providers are registered in the `providers` array of the real auth handler in
+  **`web/__create/index.ts`** (not `src/auth.js`). They are **env-gated** (`googleProvider` / `appleNativeProvider`
+  return `[]` without their keys, e.g. `AUTH_APPLE_ID`), and the Welcome screen only shows a button when
+  `GET /api/auth/social-enabled` reports that provider as configured — no "coming soon" buttons.
+- **DB adapter → real users.** The handler is wired to the DB adapter (`NeonAdapter`, `web/__create/adapter`;
+  #582). Without it `@auth/core` mints OAuth sessions with a random-UUID `sub` and creates no rows. With it,
+  `createUser` / `linkAccount` produce real **integer-id `auth_users` + `auth_accounts`** rows, so
+  `token.sub` = `auth_users.id` exactly as §3 describes, and `user_profiles` is created lazily as usual.
+- **Fail-closed on ghost sessions.** The request middleware in `web/__create/index.ts` validates `token.sub` with
+  `isValidAuthUserId` *before* any handler or query runs. A **non-integer `sub`** (e.g. a leftover UUID session
+  from before #582) gets **`401 "Your session has expired. Please sign in again."`** instead of a Postgres `22P02`
+  that aborts the request transaction and 500s. The check runs ahead of the token-revocation check and is
+  independent of `iat`.
+- **Recovery UX (mobile).** A failed sign-in never strands the user: "Start over" + back (#583), and inside
+  onboarding a "Use a different account" log-out escape (#587). A top-level error boundary (#578) catches render
+  crashes.
+
+> §3 above is otherwise unchanged. Other parts of this inventory (e.g. §2 "Neon, not Supabase", the table list) predate the
+> Supabase migration — see `supabase/SCHEMA_NOTES.md` and `PawPi_instructions.md` for current status.
 
 ---
 
