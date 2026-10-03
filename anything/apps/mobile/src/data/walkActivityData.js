@@ -1,3 +1,5 @@
+import { formatLocalDate } from "@/utils/localeDateTime";
+
 // Mock data and state for Walk, Activity, and Mobility tracking
 // In a production app, this would be connected to a database
 
@@ -376,7 +378,7 @@ export const formatSocialWalkDate = (dateString) => {
   } else if (date.toDateString() === tomorrow.toDateString()) {
     return "Tomorrow";
   } else {
-    return date.toLocaleDateString("en-US", {
+    return formatLocalDate(date, {
       weekday: "short",
       month: "short",
       day: "numeric",

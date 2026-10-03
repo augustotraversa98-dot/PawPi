@@ -99,7 +99,7 @@ export default function UpcomingTab() {
 
   const handleComplete = (reminder) => {
     completeReminder(reminder.id);
-    Alert.alert(t("reminders.upcoming.doneTitle"), t("reminders.upcoming.doneBody", { title: reminder.title }));
+    Alert.alert(t("health.reminders.upcoming.doneTitle"), t("health.reminders.upcoming.doneBody", { title: reminder.title }));
   };
 
   const handleSnooze = (reminder) => {
@@ -111,8 +111,8 @@ export default function UpcomingTab() {
     if (selectedReminder) {
       snoozeReminder(selectedReminder.id, option);
       Alert.alert(
-        t("reminders.upcoming.snoozedTitle"),
-        t("reminders.upcoming.snoozedBody", { title: selectedReminder.title, duration: option.label.toLowerCase() }),
+        t("health.reminders.upcoming.snoozedTitle"),
+        t("health.reminders.upcoming.snoozedBody", { title: selectedReminder.title, duration: option.label.toLowerCase() }),
       );
     }
     setSnoozeModalVisible(false);
@@ -121,8 +121,8 @@ export default function UpcomingTab() {
 
   const handleDelete = (reminder) => {
     Alert.alert(
-      t("reminders.upcoming.deleteTitle"),
-      t("reminders.upcoming.deleteBody", { title: reminder.title }),
+      t("health.reminders.upcoming.deleteTitle"),
+      t("health.reminders.upcoming.deleteBody", { title: reminder.title }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -130,7 +130,7 @@ export default function UpcomingTab() {
           style: "destructive",
           onPress: () => {
             deleteReminder(reminder.id);
-            Alert.alert(t("reminders.upcoming.deletedTitle"), t("reminders.upcoming.deletedBody", { title: reminder.title }));
+            Alert.alert(t("health.reminders.upcoming.deletedTitle"), t("health.reminders.upcoming.deletedBody", { title: reminder.title }));
           },
         },
       ],
@@ -354,19 +354,19 @@ export default function UpcomingTab() {
         )}
 
         {/* Grouped Reminders */}
-        <ReminderGroup title={t("reminders.upcoming.groupNow")} reminders={grouped.now} emoji="🔔" />
-        <ReminderGroup title={t("reminders.upcoming.groupToday")} reminders={grouped.today} emoji="📅" />
+        <ReminderGroup title={t("health.reminders.upcoming.groupNow")} reminders={grouped.now} emoji="🔔" />
+        <ReminderGroup title={t("health.reminders.upcoming.groupToday")} reminders={grouped.today} emoji="📅" />
         <ReminderGroup
-          title={t("reminders.upcoming.groupTomorrow")}
+          title={t("health.reminders.upcoming.groupTomorrow")}
           reminders={grouped.tomorrow}
           emoji="🌅"
         />
         <ReminderGroup
-          title={t("reminders.upcoming.groupThisWeek")}
+          title={t("health.reminders.upcoming.groupThisWeek")}
           reminders={grouped.thisWeek}
           emoji="📆"
         />
-        <ReminderGroup title={t("reminders.upcoming.groupLater")} reminders={grouped.later} emoji="🗓️" />
+        <ReminderGroup title={t("health.reminders.upcoming.groupLater")} reminders={grouped.later} emoji="🗓️" />
 
         {/* Empty State */}
         {activeReminders.length === 0 && (

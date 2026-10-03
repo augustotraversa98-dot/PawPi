@@ -4,6 +4,7 @@
  */
 
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 export const ROUTINE_TYPES = {
   FEEDING: "feeding",
@@ -958,10 +959,9 @@ function formatReminderPreview(label, nextOccurrence, now) {
     nextOccurrence.toDateString() ===
     new Date(now.getTime() + 86400000).toDateString();
 
-  const timeStr = nextOccurrence.toLocaleTimeString("en-US", {
+  const timeStr = formatLocalTime(nextOccurrence, {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   });
 
   if (isToday) {
@@ -970,7 +970,7 @@ function formatReminderPreview(label, nextOccurrence, now) {
   } else if (isTomorrow) {
     return `${label} tomorrow at ${timeStr}`;
   } else {
-    const dayStr = nextOccurrence.toLocaleDateString("en-US", {
+    const dayStr = formatLocalDate(nextOccurrence, {
       weekday: "long",
       month: "short",
       day: "numeric",

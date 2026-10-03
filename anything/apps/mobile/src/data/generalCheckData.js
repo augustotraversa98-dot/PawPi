@@ -1,3 +1,5 @@
+import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
+
 // General Check Data & Helper Functions
 // This module manages general health check data
 
@@ -340,7 +342,7 @@ export function formatCheckDate(timestamp) {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return "Yesterday";
   } else {
-    return date.toLocaleDateString("en-US", {
+    return formatLocalDate(date, {
       month: "short",
       day: "numeric",
       year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
@@ -351,10 +353,9 @@ export function formatCheckDate(timestamp) {
 // Format timestamp for time display
 export function formatCheckTime(timestamp) {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString("en-US", {
+  return formatLocalTime(date, {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   });
 }
 

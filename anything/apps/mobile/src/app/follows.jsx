@@ -232,6 +232,7 @@ export default function FollowsScreen() {
 
       <FlatList
         data={filtered}
+        keyboardShouldPersistTaps="handled"
         keyExtractor={(item) => String(item.id)}
         renderItem={renderRow}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}

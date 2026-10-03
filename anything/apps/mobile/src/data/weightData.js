@@ -1,3 +1,5 @@
+import { formatLocalDate } from "@/utils/localeDateTime";
+
 // Weight and Body Condition Tracking Data
 // Helps owners and vets monitor long-term changes
 
@@ -309,7 +311,7 @@ export function getMuscleConditionLabel(scoreKey) {
 export function formatDate(timestamp) {
   if (!timestamp) return "";
   const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
+  return formatLocalDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -324,13 +326,13 @@ export function formatDateShort(timestamp) {
   const isCurrentYear = date.getFullYear() === now.getFullYear();
 
   if (isCurrentYear) {
-    return date.toLocaleDateString("en-US", {
+    return formatLocalDate(date, {
       month: "short",
       day: "numeric",
     });
   }
 
-  return date.toLocaleDateString("en-US", {
+  return formatLocalDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",

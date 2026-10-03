@@ -1,3 +1,5 @@
+import { formatLocalTime } from "@/utils/localeDateTime";
+
 // ─────────────────────────────────────────────
 // REMINDERS DATA MODEL & MOCK DATA
 // ─────────────────────────────────────────────
@@ -107,7 +109,7 @@ export function getTimeDisplay(reminder) {
     const hours = Math.floor(diffMinutes / 60);
     return `in ${hours} ${hours === 1 ? "hour" : "hours"}`;
   }
-  return triggerTime.toLocaleTimeString("en-US", {
+  return formatLocalTime(triggerTime, {
     hour: "numeric",
     minute: "2-digit",
   });

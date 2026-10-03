@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Switch,
@@ -14,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import TimeField from "@/components/TimeField";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -383,7 +383,7 @@ export default function FeedingRoutineModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
@@ -781,7 +781,7 @@ export default function FeedingRoutineModal({
               Add Another Meal
             </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Save Button - Fixed at bottom */}
         <View

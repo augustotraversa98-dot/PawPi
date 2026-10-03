@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TextInput,
   Platform,
   ActivityIndicator,
@@ -30,6 +29,8 @@ import {
   MATERIALS,
 } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { defaultWeightUnit } from "@/utils/weightUnit";
 
 // Shared form field styling (Liquid Glass, ticket 2.77): sunken well + hairline
 // edge + body type. Behavior of each input (value/onChange/keyboard) is unchanged.
@@ -67,7 +68,7 @@ export default function ProfileEditScreen() {
     birthdayUnknown: false,
     gender: "",
     weight: "",
-    weightUnit: "lbs",
+    weightUnit: defaultWeightUnit(),
     birthday: "",
     adoptionDate: "",
     notes: "",
@@ -116,7 +117,9 @@ export default function ProfileEditScreen() {
         birthdayUnknown: !currentPet.birthday,
         gender: currentPet.gender || "",
         weight: currentPet.weight?.toString() || "",
-        weightUnit: currentPet.weight_unit || "lbs",
+        weightUnit:
+          currentPet.weight_unit ||
+          (currentPet.weight ? "lbs" : defaultWeightUnit()),
         birthday: canonicalizeDateValue(currentPet.birthday),
         adoptionDate: canonicalizeDateValue(currentPet.adoption_date),
         notes: currentPet.notes || "",
@@ -312,7 +315,7 @@ export default function ProfileEditScreen() {
         </View>
 
         {/* Form */}
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 20,
@@ -465,7 +468,7 @@ export default function ProfileEditScreen() {
               />
             </View>
             <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-              {["lbs", "kg"].map((unit) => (
+              {["kg", "lbs"].map((unit) => (
                 <PressableScale
                   key={unit}
                   onPress={() =>
@@ -561,7 +564,7 @@ export default function ProfileEditScreen() {
             }
             multiline
           />
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Save Button */}
         <View

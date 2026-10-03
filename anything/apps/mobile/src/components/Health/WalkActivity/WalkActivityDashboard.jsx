@@ -22,6 +22,7 @@ import {
   formatSocialWalkDate,
 } from "@/data/walkActivityData";
 import WalkActivityModal from "./WalkActivityModal";
+import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -50,10 +51,9 @@ export default function WalkActivityDashboard() {
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString("en-US", {
+    return formatLocalTime(date, {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
     });
   };
 
@@ -68,7 +68,7 @@ export default function WalkActivityDashboard() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return t("trackers.walk.dateYesterday");
     } else {
-      return date.toLocaleDateString("en-US", {
+      return formatLocalDate(date, {
         month: "short",
         day: "numeric",
       });

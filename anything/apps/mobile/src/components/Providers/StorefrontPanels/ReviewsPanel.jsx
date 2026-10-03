@@ -6,6 +6,7 @@ import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { Section } from "./primitives";
+import { formatLocalDate } from "@/utils/localeDateTime";
 
 // Reviews section (moved verbatim from app/service/provider.jsx). Presentational: takes the
 // already-fetched reviews plus the owner's eligible completed booking (the leave-a-review
@@ -59,7 +60,7 @@ export default function ReviewsPanel({
 
 function ReviewCard({ review }) {
   const date = review.created_at
-    ? new Date(review.created_at).toLocaleDateString("en-US", {
+    ? formatLocalDate(new Date(review.created_at), {
         month: "short",
         day: "numeric",
         year: "numeric",

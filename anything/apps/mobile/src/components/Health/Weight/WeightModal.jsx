@@ -25,6 +25,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { defaultWeightUnit } from "@/utils/weightUnit";
+import { formatLocalDate } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -49,7 +51,7 @@ const BODY_SHAPES = [
 
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
+  return formatLocalDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -70,6 +72,8 @@ export default function WeightModal({ visible, onClose }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
+  // Log in the pet's own unit (set at onboarding); metric unless the device locale is US.
+  const weightUnit = currentPet?.weight_unit || defaultWeightUnit();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("add"); // add, history
   const [isSaving, setIsSaving] = useState(false);
@@ -133,7 +137,7 @@ export default function WeightModal({ visible, onClose }) {
         body: JSON.stringify({
           petId: currentPet.id,
           weight: parseFloat(weight),
-          weightUnit: "lbs",
+          weightUnit,
           bodyShapeEstimate: bodyShape,
           photoUrl: null,
           notes: notes || "",
@@ -384,7 +388,7 @@ export default function WeightModal({ visible, onClose }) {
                             marginBottom: 8,
                           }}
                         >
-                          {t("trackers.weight.modal.currentLbs")}
+                          {t("trackers.weight.modal.currentWeight", { unit: weightUnit })}
                         </Text>
                         <TextInput
                           value={weight}

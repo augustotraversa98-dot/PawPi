@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Alert,
@@ -14,6 +13,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import { formatLocalTime } from "@/utils/localeDateTime";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -162,7 +162,7 @@ export default function FeedingIssueModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -374,7 +374,7 @@ export default function FeedingIssueModal({
               </Text>
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Save Button - Fixed at bottom */}
         <View

@@ -22,6 +22,7 @@ import {
   validateWellnessForm,
   buildWellnessLogPayload,
 } from "@/utils/wellnessLog";
+import { formatLocalDate } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -38,7 +39,7 @@ const C = {
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", {
+  return formatLocalDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",

@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Linking,
   Alert,
 } from "react-native";
@@ -20,6 +19,7 @@ import {
   useRecallMatches,
   useDismissRecall,
 } from "@/hooks/useNutrition";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 // Nutrition + food-recall alerts (ticket 2.75). Owner records a per-pet nutrition plan (brand/product/
 // portion/calories/notes) with a NON-DIAGNOSTIC disclaimer; food-recall alerts matching the pet's food
@@ -114,7 +114,7 @@ export default function NutritionScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
         {/* Recall alerts */}
         {myRecalls.map((r) => (
           <View
@@ -213,7 +213,7 @@ export default function NutritionScreen() {
             {existing ? t("nutrition.update") : t("nutrition.save")}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

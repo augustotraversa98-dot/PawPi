@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 } from "react-native";
@@ -20,6 +19,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { GlassSurface, PressableScale } from "@/components/ui";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 // Categories minus the "All" pseudo-filter.
 const CATEGORIES = FORUM_CATEGORIES.filter((c) => c !== "All");
@@ -72,7 +72,7 @@ export default function ForumComposeScreen() {
         </Text>
       </GlassSurface>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
@@ -156,7 +156,7 @@ export default function ForumComposeScreen() {
             </Text>
           )}
         </PressableScale>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

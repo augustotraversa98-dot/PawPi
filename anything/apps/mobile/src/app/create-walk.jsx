@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import { useCreateSocialWalk } from "@/hooks/useSocialWalks";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 import { visibilityForToggle, isValidCoord } from "@/utils/walkBuddies";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -133,7 +133,7 @@ export default function CreateWalkPage() {
         </Text>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
@@ -302,7 +302,7 @@ export default function CreateWalkPage() {
             </Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

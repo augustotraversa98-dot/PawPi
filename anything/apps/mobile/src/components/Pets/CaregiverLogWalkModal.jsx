@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, PawPrint } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
+import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 // FF2 — a compact "Log a walk" sheet a FAMILY caregiver opens for a pet SHARED with them (from the
 // "Shared with me" tab). Posts to /api/health/walk-logs for the given petId; the server anchors the
@@ -55,7 +56,7 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}>
+      <KeyboardAvoidingAnimatedView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}>
         <View
           style={{
             backgroundColor: COLORS.cream,
@@ -136,7 +137,7 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
             )}
           </PressableScale>
         </View>
-      </View>
+      </KeyboardAvoidingAnimatedView>
     </Modal>
   );
 }

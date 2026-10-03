@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Modal,
@@ -22,17 +21,19 @@ import useUpload from "@/utils/useUpload";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { defaultWeightUnit } from "@/utils/weightUnit";
 
-const EMPTY = {
+const makeEmpty = () => ({
   photo: null,
   name: "",
   breed: "",
   gender: "",
   weight: "",
-  weightUnit: "lbs",
+  weightUnit: defaultWeightUnit(),
   birthday: "",
   notes: "",
-};
+});
 
 // Lightweight "add a dog" form. Creates ONE pets row for the current owner via
 // POST /api/pets (owner_user_id resolved server-side), makes the new dog active
@@ -44,13 +45,13 @@ export function AddDogModal({ visible, onClose }) {
   const { setCurrentPet } = useCurrentPet();
   const [upload, { loading: uploading }] = useUpload();
 
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState(makeEmpty);
   const [submitting, setSubmitting] = useState(false);
 
   const setField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
 
   const close = () => {
-    setForm(EMPTY);
+    setForm(makeEmpty());
     onClose();
   };
 
@@ -182,7 +183,7 @@ export function AddDogModal({ visible, onClose }) {
           <View style={{ width: 22 }} />
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 20,
@@ -314,7 +315,7 @@ export function AddDogModal({ visible, onClose }) {
               />
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              {["lbs", "kg"].map((unit) => {
+              {["kg", "lbs"].map((unit) => {
                 const selected = form.weightUnit === unit;
                 return (
                   <TouchableOpacity
@@ -370,7 +371,7 @@ export function AddDogModal({ visible, onClose }) {
             onChangeText={(v) => setField("notes", v)}
             multiline
           />
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Save */}
         <View

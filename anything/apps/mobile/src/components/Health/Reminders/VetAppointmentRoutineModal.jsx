@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Switch,
@@ -23,6 +22,7 @@ import {
   updateVetAppointmentInCalendar,
   deleteVetAppointmentFromCalendar,
 } from "@/utils/calendarIntegration";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -481,7 +481,7 @@ export default function VetAppointmentRoutineModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
@@ -1275,7 +1275,7 @@ export default function VetAppointmentRoutineModal({
               )}
             </>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Close Button - Fixed at bottom */}
         <View

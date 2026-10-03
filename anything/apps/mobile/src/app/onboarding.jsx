@@ -12,7 +12,7 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import * as Localization from "expo-localization";
+import { defaultWeightUnit } from "@/utils/weightUnit";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -52,16 +52,7 @@ const TOTAL_STEPS = 9;
 const STEP_TITLE = { fontSize: 22, lineHeight: 27 };
 const STEP_SUBTITLE = { fontSize: 14, lineHeight: 19 };
 
-// Metric by default (Argentina and most of the world use kg). Only locales whose
-// measurement system is "us" start on lbs; lbs stays selectable on the step.
-export function defaultWeightUnit() {
-  try {
-    const system = Localization.getLocales?.()?.[0]?.measurementSystem;
-    return system === "us" ? "lbs" : "kg";
-  } catch {
-    return "kg";
-  }
-}
+export { defaultWeightUnit };
 
 // True while the software keyboard is up. The steps use it to drop decorative
 // chrome (icon + subtitle) and the wizard uses it to move the footer into the
