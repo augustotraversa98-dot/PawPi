@@ -222,14 +222,56 @@ export function normalizeBreed(str) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-// Filter the canonical list by a query, case/accent-insensitive substring match.
-// An empty query returns the full list. `limit` (optional) caps the result count
-// so the picker can render a bounded, non-scrolling list.
+// Short, tidy default shown before the user types (the full A–Z list reads busy).
+// Order is the display order; every entry must also exist in DOG_BREEDS.
+export const COMMON_BREEDS = [
+  "Labrador Retriever",
+  "Golden Retriever",
+  "German Shepherd Dog",
+  "Poodle",
+  "French Bulldog",
+  "Bulldog",
+  "Beagle",
+  "Dachshund",
+  "Chihuahua",
+  "Yorkshire Terrier",
+  "Shih Tzu",
+  "Border Collie",
+  "Siberian Husky",
+];
+
+// Relevance of a breed for a normalized query: 0 = name starts with it,
+// 1 = a word in the name starts with it, 2 = appears elsewhere, -1 = no match.
+function breedRank(breed, q) {
+  const name = normalizeBreed(breed);
+  if (name.startsWith(q)) return 0;
+  if (name.split(/[\s-]+/).some((w) => w.startsWith(q))) return 1;
+  return name.includes(q) ? 2 : -1;
+}
+
+// Filter the canonical list by a query, case/accent-insensitive. Results are
+// ranked by relevance (prefix > word-start > substring), then popular breeds
+// first, then A–Z — so "gold" puts Golden Retriever / Golden Doodle on top.
+// An empty query returns the full list in A–Z order. `limit` (optional) caps
+// the result count so the picker can render a bounded list.
 export function filterBreeds(query, limit) {
   const q = normalizeBreed(query);
-  const matches = q
-    ? DOG_BREEDS.filter((b) => normalizeBreed(b).includes(q))
-    : DOG_BREEDS;
+  let matches = DOG_BREEDS;
+  if (q) {
+    const popular = (b) => {
+      const idx = COMMON_BREEDS.indexOf(b);
+      return idx === -1 ? COMMON_BREEDS.length : idx;
+    };
+    matches = DOG_BREEDS.map((b) => ({ b, r: breedRank(b, q) }))
+      .filter((x) => x.r >= 0)
+      .sort(
+        (x, y) =>
+          x.r - y.r ||
+          popular(x.b) - popular(y.b) ||
+          x.b.localeCompare(y.b),
+      )
+      .map((x) => x.b);
+  }
   return typeof limit === "number" ? matches.slice(0, limit) : matches;
 }
 

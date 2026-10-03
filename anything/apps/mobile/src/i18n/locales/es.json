@@ -2193,7 +2193,9 @@
     "mixed": "Mestizo",
     "useCustom": "Usar “{{query}}”",
     "empty": "Ninguna raza coincide — igual podés usar lo que escribiste.",
-    "keepTyping": "Seguí escribiendo para acotar la lista…"
+    "keepTyping": "Seguí escribiendo para acotar la lista…",
+    "commonHeading": "Razas comunes",
+    "searchHint": "¿No ves la tuya? Buscá arriba — hay {{count}} razas para encontrar."
   },
   "packStreaks": {
     "title": "Rachas en manada 🐾",

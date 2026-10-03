@@ -12,6 +12,7 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as Localization from "expo-localization";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -45,6 +46,83 @@ import { Card, PressableScale, PawMark } from "@/components/ui";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const TOTAL_STEPS = 9;
+
+// One compact type scale for every onboarding step so titles never wrap into
+// huge multi-line blocks and a field + the keyboard coexist on small phones.
+const STEP_TITLE = { fontSize: 22, lineHeight: 27 };
+const STEP_SUBTITLE = { fontSize: 14, lineHeight: 19 };
+
+// Metric by default (Argentina and most of the world use kg). Only locales whose
+// measurement system is "us" start on lbs; lbs stays selectable on the step.
+export function defaultWeightUnit() {
+  try {
+    const system = Localization.getLocales?.()?.[0]?.measurementSystem;
+    return system === "us" ? "lbs" : "kg";
+  } catch {
+    return "kg";
+  }
+}
+
+// True while the software keyboard is up. The steps use it to drop decorative
+// chrome (icon + subtitle) and the wizard uses it to move the footer into the
+// scroll content so it can never float over the focused field.
+function useKeyboardVisible() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvt, () => setVisible(true));
+    const hide = Keyboard.addListener(hideEvt, () => setVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return visible;
+}
+
+// Shared step heading: small icon, title, optional subtitle. Icon + subtitle
+// collapse while typing so the input keeps the room.
+const StepHeader = ({ icon, title, subtitle }) => {
+  const keyboardUp = useKeyboardVisible();
+  return (
+    <View>
+      {keyboardUp || !icon ? null : typeof icon === "string" ? (
+        <Text style={{ fontSize: 24, textAlign: "center", marginBottom: SPACING.xs }}>
+          {icon}
+        </Text>
+      ) : (
+        <View style={{ alignItems: "center", marginBottom: SPACING.xs }}>{icon}</View>
+      )}
+      <Text
+        style={[
+          TYPE.largeTitle,
+          STEP_TITLE,
+          { color: COLORS.warmBrown, marginBottom: SPACING.xs },
+        ]}
+      >
+        {title}
+      </Text>
+      {keyboardUp || !subtitle ? (
+        <View style={{ height: SPACING.sm }} />
+      ) : (
+        <Text
+          style={[
+            TYPE.headline,
+            STEP_SUBTITLE,
+            {
+              color: COLORS.mutedBrown,
+              fontWeight: "500",
+              marginBottom: SPACING.md,
+            },
+          ]}
+        >
+          {subtitle}
+        </Text>
+      )}
+    </View>
+  );
+};
 
 // The only two real gender values onboarding accepts (no "unknown" — see
 // StepGender). Single source of truth shared by the gate (below), the review
@@ -87,6 +165,8 @@ export function computeAgeYears(formData) {
 
 function OnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
+  const scrollRef = useRef(null);
   const router = useRouter();
   const { t } = useTranslation();
   const { data: user } = useUser();
@@ -103,7 +183,7 @@ function OnboardingScreen() {
     ageMonths: "",
     gender: "",
     weight: "",
-    weightUnit: "lbs",
+    weightUnit: defaultWeightUnit(),
     // E6: capture BOTH the birthday and the gotcha/adoption day inline (both optional) so E3
     // milestone moments can fire for either later.
     birthday: "",
@@ -367,7 +447,7 @@ function OnboardingScreen() {
         age_months: formData.ageMonths ? parseInt(formData.ageMonths) : null,
         gender: formData.gender || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
-        weight_unit: formData.weightUnit || "lbs",
+        weight_unit: formData.weightUnit || defaultWeightUnit(),
         birthday: formData.birthday || null,
         adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
@@ -589,7 +669,13 @@ function OnboardingScreen() {
       case 5:
         return <StepWeight formData={formData} setFormData={setFormData} />;
       case 6:
-        return <StepBirthday formData={formData} setFormData={setFormData} />;
+        return (
+          <StepBirthday
+            formData={formData}
+            setFormData={setFormData}
+            scrollTo={(y) => scrollRef.current?.scrollTo?.({ y, animated: true })}
+          />
+        );
       case 7:
         return <StepNotes formData={formData} setFormData={setFormData} />;
       case 8:
@@ -670,6 +756,128 @@ function OnboardingScreen() {
     // Success screen - full screen, no navigation
     return renderStep();
   }
+
+  const footerInScroll = keyboardVisible && currentStep !== 2 && currentStep !== 8;
+  const footer = (
+    <View
+      style={
+        footerInScroll
+          ? { paddingTop: SPACING.lg, paddingBottom: SPACING.md }
+          : {
+              backgroundColor: COLORS.cream,
+              paddingHorizontal: SPACING.xxl,
+              paddingTop: keyboardVisible ? SPACING.sm : SPACING.lg,
+              // Keyboard covers the home-indicator inset, so don't reserve it.
+              paddingBottom: keyboardVisible ? SPACING.sm : insets.bottom + SPACING.lg,
+              borderTopWidth: 1,
+              borderTopColor: MATERIALS.hairline,
+            }
+      }
+    >
+      {currentStep === 8 ? (
+        // Review step - show "Create Profile" button
+        <PressableScale
+          onPress={handleComplete}
+          disabled={isSubmitting}
+          style={{
+            backgroundColor: COLORS.coral,
+            borderRadius: RADIUS.control,
+            height: 56,
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            shadowColor: COLORS.coral,
+            ...ELEVATION.sm,
+            gap: SPACING.sm,
+          }}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <>
+              <Text style={[TYPE.headline, { color: "#FFF" }]}>
+                {t("onboarding.createProfile", {
+                  name: formData.name || t("onboarding.yourDog"),
+                })}
+              </Text>
+              <Check size={22} color="#FFF" />
+            </>
+          )}
+        </PressableScale>
+      ) : (
+        <>
+          {/* Inline validation — explains what's missing before the CTA. */}
+          {validationMessage() ? (
+            <Text
+              testID="onboarding-validation"
+              style={[
+                TYPE.callout,
+                {
+                  color: COLORS.coral,
+                  fontWeight: "700",
+                  textAlign: "center",
+                  marginBottom: SPACING.md,
+                },
+              ]}
+            >
+              {validationMessage()}
+            </Text>
+          ) : null}
+
+          {/* Next button */}
+          <PressableScale
+            testID="onboarding-next"
+            onPress={nextStep}
+            disabled={!canGoNext()}
+            style={{
+              backgroundColor: canGoNext()
+                ? COLORS.coral
+                : MATERIALS.surfaceSunken,
+              borderRadius: RADIUS.control,
+              height: 56,
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: canGoNext() ? COLORS.coral : "transparent",
+              ...(canGoNext() ? ELEVATION.sm : ELEVATION.none),
+              marginBottom: isOptionalStep ? SPACING.md : 0,
+            }}
+          >
+            <Text
+              style={[
+                TYPE.headline,
+                { color: canGoNext() ? "#FFF" : COLORS.mutedBrown },
+              ]}
+            >
+              {t("onboarding.next")}
+            </Text>
+          </PressableScale>
+
+          {/* Skip button for optional steps */}
+          {isOptionalStep && (
+            <TouchableOpacity
+              onPress={skipStep}
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={[
+                  TYPE.headline,
+                  {
+                    color: COLORS.mutedBrown,
+                    textDecorationLine: "underline",
+                  },
+                ]}
+              >
+                {t("onboarding.skip")}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+  );
 
   return (
     // Full-screen route (not a pageSheet), so RN's standard KeyboardAvoidingView
@@ -752,6 +960,7 @@ function OnboardingScreen() {
           </View>
         ) : (
           <KeyboardAwareScrollView
+            ref={scrollRef}
             style={{ flex: 1 }}
             contentContainerStyle={{
               paddingHorizontal: SPACING.xxl,
@@ -761,125 +970,14 @@ function OnboardingScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {renderStep()}
+            {footerInScroll ? footer : null}
           </KeyboardAwareScrollView>
         )}
 
-        {/* Bottom buttons — a normal flex-column child (NOT absolutely pinned) so
-            the outer KeyboardAvoidingView lifts the whole footer, keeping
-            "Continue" reachable above the keyboard while a field is focused. */}
-        <View
-          style={{
-            backgroundColor: COLORS.cream,
-            paddingHorizontal: SPACING.xxl,
-            paddingTop: SPACING.lg,
-            paddingBottom: insets.bottom + SPACING.lg,
-            borderTopWidth: 1,
-            borderTopColor: MATERIALS.hairline,
-          }}
-        >
-          {currentStep === 8 ? (
-            // Review step - show "Create Profile" button
-            <PressableScale
-              onPress={handleComplete}
-              disabled={isSubmitting}
-              style={{
-                backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.control,
-                height: 56,
-                flexDirection: "row",
-                justifyContent: "center",
-                alignItems: "center",
-                shadowColor: COLORS.coral,
-                ...ELEVATION.sm,
-                gap: SPACING.sm,
-              }}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Text style={[TYPE.headline, { color: "#FFF" }]}>
-                    {t("onboarding.createProfile", {
-                      name: formData.name || t("onboarding.yourDog"),
-                    })}
-                  </Text>
-                  <Check size={22} color="#FFF" />
-                </>
-              )}
-            </PressableScale>
-          ) : (
-            <>
-              {/* Inline validation — explains what's missing before the CTA. */}
-              {validationMessage() ? (
-                <Text
-                  testID="onboarding-validation"
-                  style={[
-                    TYPE.callout,
-                    {
-                      color: COLORS.coral,
-                      fontWeight: "700",
-                      textAlign: "center",
-                      marginBottom: SPACING.md,
-                    },
-                  ]}
-                >
-                  {validationMessage()}
-                </Text>
-              ) : null}
-
-              {/* Next button */}
-              <PressableScale
-                testID="onboarding-next"
-                onPress={nextStep}
-                disabled={!canGoNext()}
-                style={{
-                  backgroundColor: canGoNext()
-                    ? COLORS.coral
-                    : MATERIALS.surfaceSunken,
-                  borderRadius: RADIUS.control,
-                  height: 56,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: canGoNext() ? COLORS.coral : "transparent",
-                  ...(canGoNext() ? ELEVATION.sm : ELEVATION.none),
-                  marginBottom: isOptionalStep ? SPACING.md : 0,
-                }}
-              >
-                <Text
-                  style={[
-                    TYPE.headline,
-                    { color: canGoNext() ? "#FFF" : COLORS.mutedBrown },
-                  ]}
-                >
-                  {t("onboarding.next")}
-                </Text>
-              </PressableScale>
-
-              {/* Skip button for optional steps */}
-              {isOptionalStep && (
-                <TouchableOpacity
-                  onPress={skipStep}
-                  style={{
-                    paddingVertical: 14,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={[
-                      TYPE.headline,
-                      {
-                        color: COLORS.mutedBrown,
-                        textDecorationLine: "underline",
-                      },
-                    ]}
-                  >
-                    {t("onboarding.skip")}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-        </View>
+        {/* Bottom buttons — pinned below the content while no keyboard is up.
+            With the keyboard open the same footer moves INTO the scroll content
+            (below) so it scrolls with the field instead of floating over it. */}
+        {!footerInScroll ? footer : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -893,38 +991,12 @@ const StepName = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text
-        style={{
-          fontSize: 32,
-          textAlign: "center",
-          marginBottom: SPACING.sm,
-        }}
-      >
-        🐕
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.nameTitle")}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.nameSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="🐕"
+        title={t("onboarding.nameTitle")}
+        subtitle={t("onboarding.nameSubtitle")}
+      />
       <TextInput
         ref={inputRef}
         testID="onboarding-name"
@@ -966,32 +1038,12 @@ const StepHandle = ({
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        @
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.handleTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.handleSubtitle", { name: dogName })}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="@"
+        title={t("onboarding.handleTitle", { name: dogName })}
+        subtitle={t("onboarding.handleSubtitle", { name: dogName })}
+      />
 
       {/* Suggested handles — compact rows so all suggestions AND the
           "Or create your own" input stay visible on one screen (iPhone SE). */}
@@ -1117,46 +1169,14 @@ const StepHandle = ({
 const StepBreed = ({ formData, setFormData }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
-  // While typing, drop the paw mark + subtitle so the matches get the room.
-  const [keyboardUp, setKeyboardUp] = useState(false);
-  useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvt, () => setKeyboardUp(true));
-    const hide = Keyboard.addListener(hideEvt, () => setKeyboardUp(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      {keyboardUp ? null : (
-        <PawMark size={32} color={COLORS.warmBrown} style={{ alignSelf: "center", marginBottom: SPACING.sm }} />
-      )}
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.breedTitle", { name: dogName })}
-      </Text>
-      {keyboardUp ? <View style={{ height: SPACING.sm }} /> : <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.breedSubtitle")}
-      </Text>}
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon={<PawMark size={24} color={COLORS.warmBrown} />}
+        title={t("onboarding.breedTitle", { name: dogName })}
+        subtitle={t("onboarding.breedSubtitle")}
+      />
 
       {/* Searchable breed picker (canonical list + Mixed breed + type-your-own).
           Constrains breed to consistent values while still allowing a rare
@@ -1178,32 +1198,12 @@ const StepAge = ({ formData, setFormData }) => {
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        🎂
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.ageTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.ageSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="🎂"
+        title={t("onboarding.ageTitle", { name: dogName })}
+        subtitle={t("onboarding.ageSubtitle")}
+      />
 
       <View style={{ gap: SPACING.md }}>
         {/* Years + Months side by side so both stay above the numeric keyboard. */}
@@ -1316,32 +1316,12 @@ const StepGender = ({ formData, setFormData }) => {
   }));
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        💙
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.genderTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.genderSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="💙"
+        title={t("onboarding.genderTitle", { name: dogName })}
+        subtitle={t("onboarding.genderSubtitle")}
+      />
 
       <View style={{ gap: SPACING.md }}>
         {genderOptions.map((option) => {
@@ -1400,32 +1380,12 @@ const StepWeight = ({ formData, setFormData }) => {
   // Ticket 2.63: no auto-focus — the field is tappable; the keyboard opens on tap.
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        ⚖️
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.weightTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.weightSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="⚖️"
+        title={t("onboarding.weightTitle", { name: dogName })}
+        subtitle={t("onboarding.weightSubtitle")}
+      />
 
       <TextInput
         ref={inputRef}
@@ -1436,7 +1396,7 @@ const StepWeight = ({ formData, setFormData }) => {
             backgroundColor: MATERIALS.surfaceSunken,
             borderRadius: RADIUS.control,
             padding: SPACING.md,
-            fontSize: 26,
+            fontSize: 24,
             color: COLORS.warmBrown,
             borderWidth: 2,
             borderColor: formData.weight ? COLORS.coral : MATERIALS.hairline,
@@ -1464,7 +1424,7 @@ const StepWeight = ({ formData, setFormData }) => {
           justifyContent: "center",
         }}
       >
-        {["lbs", "kg"].map((unit) => (
+        {["kg", "lbs"].map((unit) => (
           <PressableScale
             key={unit}
             onPress={() =>
@@ -1499,7 +1459,7 @@ const StepWeight = ({ formData, setFormData }) => {
 // Step 7: Birthday + Gotcha/Adoption day (both optional).
 // E6: we capture BOTH dates inline (not one-or-the-other) so E3 milestone moments can celebrate a
 // birthday AND a gotcha day later. Both are optional — nothing is required to finish onboarding.
-const StepBirthday = ({ formData, setFormData }) => {
+const StepBirthday = ({ formData, setFormData, scrollTo }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
 
@@ -1507,44 +1467,38 @@ const StepBirthday = ({ formData, setFormData }) => {
   // Birthday and vice-versa, so the two pickers never overlap/sprawl.
   const [openField, setOpenField] = useState(null); // "birthday" | "gotcha" | null
 
+  // Y of each field inside the scroll content, so opening a calendar scrolls
+  // that field to the top and the whole inline calendar lands in view.
+  const fieldY = useRef({});
+  const fieldsY = useRef(0);
+  const toggleField = (name) => (next) => {
+    setOpenField(next ? name : null);
+    if (next) {
+      setTimeout(() => scrollTo?.(Math.max(0, fieldsY.current + (fieldY.current[name] ?? 0) - 8)), 60);
+    }
+  };
+
   const dateFieldStyle = (filled) => ({
     backgroundColor: MATERIALS.surfaceSunken,
     borderRadius: RADIUS.control,
-    padding: SPACING.lg,
+    padding: SPACING.md,
     borderWidth: 2,
     borderColor: filled ? COLORS.coral : MATERIALS.hairline,
   });
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        📅
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.birthdayTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.birthdaySubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="📅"
+        title={t("onboarding.birthdayTitle", { name: dogName })}
+        subtitle={t("onboarding.birthdaySubtitle")}
+      />
 
-      <View style={{ gap: SPACING.lg }}>
-        <View>
+      <View
+        style={{ gap: SPACING.md }}
+        onLayout={(e) => (fieldsY.current = e.nativeEvent.layout.y)}
+      >
+        <View onLayout={(e) => (fieldY.current.birthday = e.nativeEvent.layout.y)}>
           <Text
             style={[
               TYPE.callout,
@@ -1561,11 +1515,11 @@ const StepBirthday = ({ formData, setFormData }) => {
             fieldStyle={dateFieldStyle(!!formData.birthday)}
             textStyle={[TYPE.title2, { fontWeight: "600" }]}
             open={openField === "birthday"}
-            onToggle={(next) => setOpenField(next ? "birthday" : null)}
+            onToggle={toggleField("birthday")}
           />
         </View>
 
-        <View>
+        <View onLayout={(e) => (fieldY.current.gotcha = e.nativeEvent.layout.y)}>
           <Text
             style={[
               TYPE.callout,
@@ -1582,7 +1536,7 @@ const StepBirthday = ({ formData, setFormData }) => {
             fieldStyle={dateFieldStyle(!!formData.adoptionDate)}
             textStyle={[TYPE.title2, { fontWeight: "600" }]}
             open={openField === "gotcha"}
-            onToggle={(next) => setOpenField(next ? "gotcha" : null)}
+            onToggle={toggleField("gotcha")}
           />
         </View>
       </View>
@@ -1590,7 +1544,7 @@ const StepBirthday = ({ formData, setFormData }) => {
       {/* When a calendar is open, reserve extra scroll room so its last week
           row + the fixed footer stay reachable (the inline iOS calendar is
           ~320pt tall and would otherwise sit behind the footer). */}
-      {openField ? <View style={{ height: 340 }} /> : null}
+      {openField ? <View style={{ height: SPACING.lg }} /> : null}
     </View>
   );
 };
@@ -1601,32 +1555,12 @@ const StepNotes = ({ formData, setFormData }) => {
   const dogName = formData.name || t("onboarding.yourDog");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 32, textAlign: "center", marginBottom: SPACING.sm }}>
-        📝
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          { color: COLORS.warmBrown, marginBottom: SPACING.xs, fontSize: 26, lineHeight: 31 },
-        ]}
-      >
-        {t("onboarding.notesTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.md,
-            fontSize: 15,
-            lineHeight: 20,
-          },
-        ]}
-      >
-        {t("onboarding.notesSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="📝"
+        title={t("onboarding.notesTitle", { name: dogName })}
+        subtitle={t("onboarding.notesSubtitle")}
+      />
 
       <TextInput
         style={[
@@ -1638,7 +1572,7 @@ const StepNotes = ({ formData, setFormData }) => {
             color: COLORS.warmBrown,
             borderWidth: 2,
             borderColor: formData.notes ? COLORS.coral : MATERIALS.hairline,
-            minHeight: 160,
+            minHeight: 120,
             textAlignVertical: "top",
           },
         ]}
@@ -1676,38 +1610,13 @@ const StepReview = ({ formData, goToStep }) => {
         : t("onboarding.reviewNotSpecified");
 
   return (
-    <View style={{ flex: 1, paddingTop: SPACING.sm }}>
-      <Text style={{ fontSize: 44, textAlign: "center", marginBottom: SPACING.md }}>
-        ✨
-      </Text>
-      <Text
-        style={[
-          TYPE.largeTitle,
-          {
-            color: COLORS.warmBrown,
-            marginBottom: SPACING.sm,
-            fontSize: 26,
-            lineHeight: 31,
-            textAlign: "center",
-          },
-        ]}
-      >
-        {t("onboarding.reviewTitle", { name: dogName })}
-      </Text>
-      <Text
-        style={[
-          TYPE.headline,
-          {
-            color: COLORS.mutedBrown,
-            fontWeight: "500",
-            marginBottom: SPACING.xxxl,
-            lineHeight: 24,
-            textAlign: "center",
-          },
-        ]}
-      >
-        {t("onboarding.reviewSubtitle")}
-      </Text>
+    <View style={{ flex: 1, paddingTop: SPACING.xs }}>
+      <StepHeader
+        icon="✨"
+        title={t("onboarding.reviewTitle", { name: dogName })}
+        subtitle={t("onboarding.reviewSubtitle")}
+      />
+      <View style={{ height: SPACING.md }} />
 
       {/* Profile card */}
       <Card

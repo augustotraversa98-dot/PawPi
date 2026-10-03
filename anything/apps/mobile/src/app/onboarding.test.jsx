@@ -574,3 +574,21 @@ describe("OnboardingScreen — handle-availability check times out and fails OPE
     ).toBe(false);
   });
 });
+
+describe("defaultWeightUnit", () => {
+  const { defaultWeightUnit } = require("./onboarding");
+  const Localization = require("expo-localization");
+
+  test("metric locales default to kg, US to lbs, failure to kg", () => {
+    const spy = jest.spyOn(Localization, "getLocales");
+    spy.mockReturnValue([{ measurementSystem: "metric" }]);
+    expect(defaultWeightUnit()).toBe("kg");
+    spy.mockReturnValue([{ measurementSystem: "us" }]);
+    expect(defaultWeightUnit()).toBe("lbs");
+    spy.mockImplementation(() => {
+      throw new Error("boom");
+    });
+    expect(defaultWeightUnit()).toBe("kg");
+    spy.mockRestore();
+  });
+});

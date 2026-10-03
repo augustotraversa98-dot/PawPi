@@ -2193,7 +2193,9 @@
     "mixed": "Mixed breed",
     "useCustom": "Use “{{query}}”",
     "empty": "No breeds match — you can still use what you typed.",
-    "keepTyping": "Keep typing to narrow the list…"
+    "keepTyping": "Keep typing to narrow the list…",
+    "commonHeading": "Common breeds",
+    "searchHint": "Don’t see yours? Search above — {{count}} breeds to find."
   },
   "packStreaks": {
     "title": "Pack streaks 🐾",
