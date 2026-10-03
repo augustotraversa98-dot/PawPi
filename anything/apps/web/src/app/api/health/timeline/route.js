@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -293,7 +294,7 @@ async function GET(request) {
         id: log.id,
         time: log.event_time,
         title: "Weight logged",
-        summary: `${log.weight} ${log.weight_unit}${
+        summary: `${log.weight} ${normalizeWeightUnit(log.weight_unit)}${
           log.body_shape_estimate ? ` • ${log.body_shape_estimate}` : ""
         }`,
         icon: "⚖️",

@@ -1,3 +1,4 @@
+import { normalizeWeightUnit, withNormalizedWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -41,7 +42,7 @@ async function GET(request) {
       LIMIT ${limit}
     `;
 
-    return Response.json({ logs });
+    return Response.json({ logs: withNormalizedWeightUnit(logs) });
   } catch (error) {
     console.error("Error fetching weight logs:", error);
     return Response.json(
@@ -103,7 +104,7 @@ async function POST(request) {
         ${parseInt(petId)},
         ${ownerUserId},
         ${parseFloat(weight)},
-        ${weightUnit || "lbs"},
+        ${normalizeWeightUnit(weightUnit) || "lbs"},
         ${bodyShapeEstimate || null},
         ${photoUrl || null},
         ${notes || null}
