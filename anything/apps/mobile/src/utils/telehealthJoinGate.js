@@ -64,7 +64,7 @@ export function isTelehealthJoinTooEarly(booking, { sessionStatus, now = new Dat
 }
 
 /**
- * Friendly copy for the "not time yet" state, e.g. "Your consult starts at 10:15 AM — you
+ * Friendly copy for the "not time yet" state, e.g. "Your consult starts at 10:15 — you
  * can join in 12 minutes, or once your vet starts the call."
  */
 export function describeTelehealthJoinWait(booking, now = new Date()) {

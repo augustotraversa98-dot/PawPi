@@ -139,11 +139,12 @@ describe("toCanonicalTime", () => {
 });
 
 describe("formatDisplayTime", () => {
-  it("formats 12h with AM/PM", () => {
-    expect(formatDisplayTime("20:00", true)).toBe("8:00 PM");
-    expect(formatDisplayTime("08:05", true)).toBe("8:05 AM");
-    expect(formatDisplayTime("00:30", true)).toBe("12:30 AM");
-    expect(formatDisplayTime("12:00", true)).toBe("12:00 PM");
+  it("never emits AM/PM, even when a caller passes hour12=true", () => {
+    expect(formatDisplayTime("20:00", true)).toBe("20:00");
+    expect(formatDisplayTime("08:05", true)).toBe("08:05");
+    expect(formatDisplayTime("00:30", true)).toBe("00:30");
+    expect(formatDisplayTime("12:00", true)).toBe("12:00");
+    expect(formatDisplayTime("20:00")).not.toMatch(/AM|PM/i);
   });
 
   it("formats 24h as HH:MM", () => {
@@ -152,10 +153,10 @@ describe("formatDisplayTime", () => {
   });
 
   it("tolerates legacy HH:MM:SS values (drops the seconds)", () => {
-    expect(formatDisplayTime("20:00:00", true)).toBe("8:00 PM");
+    expect(formatDisplayTime("20:00:00", true)).toBe("20:00");
     // The exact Postgres `time`-column shape that leaked seconds into the UI.
     expect(formatDisplayTime("22:59:00", false)).toBe("22:59");
-    expect(formatDisplayTime("22:59:00", true)).toBe("10:59 PM");
+    expect(formatDisplayTime("22:59:00", true)).toBe("22:59");
   });
 
   it("returns empty string for empty/unparseable values", () => {

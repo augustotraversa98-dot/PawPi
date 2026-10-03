@@ -27,7 +27,7 @@ const C = {
  * Opens on the current value if set, otherwise on now.
  *
  * `value` accepts canonical "HH:MM" plus legacy "HH:MM:SS". Displays per
- * the device 12/24h preference, e.g. "8:00 PM".
+ * 24-hour HH:MM, e.g. "20:00".
  * `onChange` ALWAYS receives canonical "HH:MM" (24h).
  */
 export default function TimeField({

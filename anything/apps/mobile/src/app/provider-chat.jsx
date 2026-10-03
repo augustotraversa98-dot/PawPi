@@ -1,3 +1,4 @@
+import { formatLocalTime } from "@/utils/localeDateTime";
 import React, { useEffect, useRef, useState } from "react";
 import {
   View,
@@ -35,13 +36,7 @@ import useUpload from "@/utils/useUpload";
 // `mineId` prefers meUserId; falls back to ownerUserId so the owner surface is unchanged.
 function formatTime(ts) {
   if (!ts) return "";
-  const d = new Date(ts);
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hh = h % 12 || 12;
-  const mm = m < 10 ? `0${m}` : m;
-  return `${hh}:${mm} ${ampm}`;
+  return formatLocalTime(ts);
 }
 
 export default function ProviderChatScreen() {

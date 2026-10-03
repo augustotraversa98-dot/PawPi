@@ -1,12 +1,10 @@
 import { formatScheduledTime } from "./scheduledTimeFormat";
 
-// The time-of-day part comes from the device locale (12h vs 24h), so tests
-// compute the expected time part with the SAME Intl call and assert the day
-// qualifier logic around it — deterministic on any CI locale/timezone, since
-// all fixture dates are built with local-time constructors.
+// The time-of-day part is always 24-hour HH:MM (no AM/PM). Fixture dates are built
+// with local-time constructors, so this is deterministic on any CI locale/timezone.
 
 const timePart = (d) =>
-  d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
 // Tue Jun 9 2026, 14:00 local.
 const NOW = new Date(2026, 5, 9, 14, 0, 0);

@@ -3,13 +3,13 @@
 //
 // Output is the instance's LOCAL scheduled time plus a day qualifier when the
 // scheduled day isn't today:
-//   today              → "8:00 PM"
-//   yesterday/tomorrow → "Yesterday 8:00 PM" / "Tomorrow 8:00 PM"
-//   within ±6 days     → "Mon 8:00 PM"
-//   further out        → "Jun 3, 8:00 PM"
+//   today              → "20:00"
+//   yesterday/tomorrow → "Yesterday 20:00" / "Tomorrow 20:00"
+//   within ±6 days     → "Mon 20:00"
+//   further out        → "Jun 3, 20:00"
 //
-// The time part uses the device locale (`toLocaleTimeString([], ...)`), so the
-// 12/24-hour form follows the system setting. Day comparison is by LOCAL
+// The time part is always 24-hour HH:MM via the shared formatLocalTime (no AM/PM,
+// whatever the device clock says). Day comparison is by LOCAL
 // calendar day — never derive this from a reminder id (ids embed the UTC date;
 // see the id-convention note in reminderGenerator.js).
 
@@ -19,16 +19,15 @@ function startOfLocalDay(d) {
   return copy;
 }
 
+import { formatLocalTime } from "@/utils/localeDateTime";
+
 export function formatScheduledTime(scheduledAt, now = new Date()) {
   const t = new Date(scheduledAt ?? NaN);
   if (Number.isNaN(t.getTime())) return "";
   const nowDate = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(nowDate.getTime())) return "";
 
-  const time = t.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const time = formatLocalTime(t);
 
   // Whole local-calendar-day offset; rounding absorbs DST-shifted day lengths.
   const dayDiff = Math.round(

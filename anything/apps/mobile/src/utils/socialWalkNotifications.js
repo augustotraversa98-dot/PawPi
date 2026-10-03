@@ -1,3 +1,4 @@
+import { formatLocalTime } from "@/utils/localeDateTime";
 // Social walk notification generators
 export const SOCIAL_WALK_NOTIFICATION_TYPES = {
   FRIEND_WALK_INVITE: "friend_walk_invite",
@@ -137,12 +138,7 @@ export function createWalkStartingSoonNotification(socialWalk, participants) {
 
 // Helper functions
 function formatWalkTime(isoString) {
-  const date = new Date(isoString);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+  return formatLocalTime(isoString);
 }
 
 function formatPace(pace) {
