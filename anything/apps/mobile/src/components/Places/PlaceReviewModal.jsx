@@ -9,13 +9,13 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
-  ScrollView,
 } from "react-native";
 import { X, Star } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { PET_WELCOME_LEVELS, PLACE_AMENITIES } from "@/constants/placeReviews";
 import { useSubmitPlaceReview } from "@/hooks/usePlaceReviews";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 // Two-dimension PLACE review composer (drill-in from the place detail). Star picker mirrors the
 // provider WriteReviewModal; adds a single-select pet-welcome tier (icon + label) and multi-select
@@ -131,7 +131,7 @@ export default function PlaceReviewModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             {place?.name ? (
               <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
                 {place.name}
@@ -271,7 +271,7 @@ export default function PlaceReviewModal({
                 marginBottom: 18,
               }}
             />
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <TouchableOpacity
             testID="place-review-submit"

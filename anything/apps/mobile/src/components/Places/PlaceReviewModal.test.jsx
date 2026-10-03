@@ -17,6 +17,7 @@ jest.mock("@/hooks/usePlaceReviews", () => ({
 }));
 
 import PlaceReviewModal from "./PlaceReviewModal";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const PLACE = { id: "curated-x", name: "Cafe X", category: "cafe" };
 
@@ -89,4 +90,13 @@ test("prefills from an existing review", () => {
   expect(body.overall_rating).toBe(3);
   expect(body.pet_welcome_level).toBe("allowed");
   expect(body.amenities).toEqual(["pet_menu"]);
+});
+
+test("the form scrolls in the shared KeyboardAwareScrollView, with the comment field inside it", () => {
+  const { UNSAFE_getByType, getByTestId } = renderModal();
+  const scroller = UNSAFE_getByType(KeyboardAwareScrollView);
+  expect(scroller.findByProps({ testID: "place-review-comment" })).toBeTruthy();
+  // Submit stays outside the scroller (pinned, always reachable).
+  expect(() => scroller.findByProps({ testID: "place-review-submit" })).toThrow();
+  expect(getByTestId("place-review-submit")).toBeTruthy();
 });
