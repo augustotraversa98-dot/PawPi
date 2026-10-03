@@ -44,6 +44,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
+import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 // Dog Walking discovery + live (ticket 2.7) — browse PUBLISHED walker providers (real
 // data, no mocks) and watch the active pet's LIVE walk / read past reports. Discovery is
@@ -605,7 +606,7 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "#00000055" }}>
+      <KeyboardAvoidingAnimatedView style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "#00000055" }}>
         <View
           style={{
             backgroundColor: COLORS.cream,
@@ -700,7 +701,7 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
             </Text>
           </PressableScale>
         </View>
-      </View>
+      </KeyboardAvoidingAnimatedView>
     </Modal>
   );
 }

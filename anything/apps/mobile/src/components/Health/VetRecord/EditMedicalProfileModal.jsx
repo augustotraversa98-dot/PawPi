@@ -17,6 +17,7 @@ import DateField from "@/components/DateField";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { defaultWeightUnit } from "@/utils/weightUnit";
 
 export default function EditMedicalProfileModal({
   visible,
@@ -63,7 +64,8 @@ export default function EditMedicalProfileModal({
     initialData?.currentWeight?.weight?.toString() || "",
   );
   const [weightUnit, setWeightUnit] = useState(
-    initialData?.currentWeight?.weight_unit || "lbs",
+    initialData?.currentWeight?.weight_unit ||
+      (initialData?.currentWeight?.weight ? "lbs" : defaultWeightUnit()),
   );
 
   // Medical-only fields (from pet_medical_profiles)
@@ -396,7 +398,7 @@ export default function EditMedicalProfileModal({
         {t("editMedicalProfile.fieldWeightUnit")}
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {["lbs", "kg"].map((unit) => (
+        {["kg", "lbs"].map((unit) => (
           <PressableScale
             key={unit}
             onPress={() => setWeightUnit(unit)}

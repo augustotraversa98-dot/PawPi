@@ -55,6 +55,7 @@ import {
   PLACE_CATEGORY_KEYS,
   resolveInitialCategory,
 } from "@/constants/servicesCategories";
+import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 // See the PR description for the filter/map overhaul overview (compact pickers, multi-select,
 // location search, live viewport filtering, pin select-to-top).
@@ -1159,7 +1160,7 @@ function GroupHeader({ testID, label, count, expanded, onPress }) {
 function PickerModal({ visible, testID, title, onClose, insets, children }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+      <KeyboardAvoidingAnimatedView style={{ flex: 1, justifyContent: "flex-end" }}>
         <TouchableOpacity
           testID={testID ? `${testID}-backdrop` : undefined}
           style={{
@@ -1205,7 +1206,7 @@ function PickerModal({ visible, testID, title, onClose, insets, children }) {
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingAnimatedView>
     </Modal>
   );
 }

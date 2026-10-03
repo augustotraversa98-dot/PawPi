@@ -6,7 +6,6 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  ScrollView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { BadgeCheck, X, Clock, Check } from "lucide-react-native";
@@ -18,6 +17,7 @@ import {
   useMyClaimForProvider,
   useOpenClaim,
 } from "@/hooks/useProviderClaims";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 // "¿Es tu negocio? Reclamalo" call-to-action shown on an UNCLAIMED provider
 // storefront (claim_status='unclaimed'). Renders nothing when the provider is
@@ -188,7 +188,7 @@ function ClaimModal({ visible, providerId, onClose }) {
             <X size={22} color={COLORS.brown} />
           </PressableScale>
         </View>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: SPACING.md, gap: SPACING.lg }}
           keyboardShouldPersistTaps="handled"
         >
@@ -291,7 +291,7 @@ function ClaimModal({ visible, providerId, onClose }) {
           >
             {t("claim.reviewNote")}
           </Text>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );

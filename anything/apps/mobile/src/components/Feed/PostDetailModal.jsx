@@ -2,7 +2,6 @@ import React, { memo, useEffect, useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Image,
@@ -30,6 +29,7 @@ import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
 import { FeedVideo } from "./FeedVideo";
 import { formatRelativeTime } from "@/utils/relativeTime";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -180,7 +180,7 @@ export const PostDetailModal = memo(function PostDetailModal({
           </View>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >
@@ -479,7 +479,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               </Text>
             </PressableScale>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );

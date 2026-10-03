@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +22,7 @@ import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import LocationField from "@/components/Map/LocationField";
 import { useCreateEvent } from "@/hooks/useEvents";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 // Create an event / meetup (ticket 2.74). Title + description + date/time (canonical DateField/
 // TimeField) + location via the 2.68 LocationField (Apple map) + optional capacity. The host is the
@@ -98,7 +98,7 @@ export default function EventCreateScreen() {
         </Text>
       </GlassSurface>
 
-      <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 60 }}>
         <TextInput
           testID="event-title"
           value={title}
@@ -162,7 +162,7 @@ export default function EventCreateScreen() {
             {t("events.publish")}
           </Text>
         </PressableScale>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

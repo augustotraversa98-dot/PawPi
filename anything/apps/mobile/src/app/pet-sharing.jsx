@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -31,6 +30,7 @@ import {
   useRevokeGrant,
 } from "@/hooks/usePetSharing";
 import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -130,7 +130,7 @@ export default function PetSharingScreen() {
         ))}
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
@@ -291,7 +291,7 @@ export default function PetSharingScreen() {
             ))}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* FF2: family caregiver quick "Log a walk" for a shared pet. */}
       <CaregiverLogWalkModal

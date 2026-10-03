@@ -33,6 +33,7 @@ import { usePlaceDetail, usePlaceReviews } from "@/hooks/usePlaceReviews";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useSavedPlaces, useSavePlace, useUnsavePlace } from "@/hooks/usePlaces";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { formatLocalDate } from "@/utils/localeDateTime";
 
 // Place DETAIL — the drill-in target of the unified Services discovery. Reads PawPi's OWN place
 // data (GET /api/places/[id]) + community reviews (GET .../reviews), NEVER Google.
@@ -506,7 +507,7 @@ function PlaceTabBar({ tabs, activeKey, onSelect }) {
 
 function ReviewCard({ review, t }) {
   const date = review.created_at
-    ? new Date(review.created_at).toLocaleDateString("en-US", {
+    ? formatLocalDate(new Date(review.created_at), {
         month: "short",
         day: "numeric",
         year: "numeric",

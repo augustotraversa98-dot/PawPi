@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -27,6 +26,7 @@ import {
   DISCLAIMER,
 } from "@/utils/healthInsights";
 import { summaryToText } from "@/utils/vetSummaryText";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -126,7 +126,7 @@ export default function VetSummaryModal({ visible, onClose }) {
           ))}
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+        <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
           {isLoading && <ActivityIndicator color={C.coral} style={{ marginTop: 30 }} />}
           {error && (
             <Text testID="vetsummary-error" style={{ color: C.mutedBrown, marginTop: 20 }}>
@@ -267,7 +267,7 @@ export default function VetSummaryModal({ visible, onClose }) {
               </PressableScale>
             </>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );

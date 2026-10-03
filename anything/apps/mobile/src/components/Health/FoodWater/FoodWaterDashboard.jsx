@@ -19,6 +19,7 @@ import {
   getNextFeedingTime,
 } from "@/data/foodWaterData";
 import FoodWaterTrackerModal from "./FoodWaterTrackerModal";
+import { formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
   cream: "#FFF7EF",
@@ -46,10 +47,9 @@ export default function FoodWaterDashboard() {
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString("en-US", {
+    return formatLocalTime(date, {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
     });
   };
 

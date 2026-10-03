@@ -26,6 +26,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { Card, GlassSurface, PressableScale, PawMark } from "@/components/ui";
+import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 export default function ForumThreadScreen() {
   const { t } = useTranslation();
@@ -82,6 +83,7 @@ export default function ForumThreadScreen() {
         </Text>
       </GlassSurface>
 
+      <KeyboardAvoidingAnimatedView style={{ flex: 1 }} behavior="padding">
       <RefreshableScrollView
         refetch={refetch}
         style={{ flex: 1 }}
@@ -270,6 +272,7 @@ export default function ForumThreadScreen() {
           </PressableScale>
         </GlassSurface>
       )}
+      </KeyboardAvoidingAnimatedView>
     </View>
   );
 }

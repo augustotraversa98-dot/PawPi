@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Switch,
   Share,
   Alert,
@@ -27,6 +26,7 @@ import {
   tagUrl,
   cardUrl,
 } from "@/hooks/useEmergencyCard";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const contactModes = (t) => [
   { key: "relay", label: t("emergencyCard.contactRelay") },
@@ -162,7 +162,7 @@ export default function EmergencyCardScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
         {isLoading ? (
           <Text style={{ color: COLORS.mutedBrown, textAlign: "center", marginTop: 24 }}>{t("common.loading")}</Text>
         ) : (
@@ -350,7 +350,7 @@ export default function EmergencyCardScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

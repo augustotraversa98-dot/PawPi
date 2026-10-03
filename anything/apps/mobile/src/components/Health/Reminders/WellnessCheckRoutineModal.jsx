@@ -22,6 +22,8 @@ import { CADENCE_LABELS } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 import useRoutinesStore from "@/store/routinesStore";
 import { useTranslation } from "react-i18next";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { defaultWeightUnit } from "@/utils/weightUnit";
 
 const C = {
   cream: "#FFF7EF",
@@ -198,7 +200,7 @@ export default function WellnessCheckRoutineModal({
               reminderEnabled: editingRoutine.notificationEnabled ?? true,
               timeSensitive: editingRoutine.timeSensitive ?? false,
               notes: editingRoutine.notes || "",
-              weightUnit: "lbs",
+              weightUnit: defaultWeightUnit(),
               areasToInclude: [],
               observations: [],
               description: "",
@@ -259,7 +261,7 @@ export default function WellnessCheckRoutineModal({
         reminderEnabled: true,
         timeSensitive: false,
         notes: "",
-        weightUnit: "lbs",
+        weightUnit: defaultWeightUnit(),
         areasToInclude: [],
         observations: [],
         description: "",
@@ -577,7 +579,7 @@ export default function WellnessCheckRoutineModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
@@ -783,7 +785,7 @@ export default function WellnessCheckRoutineModal({
                                 marginBottom: 12,
                               }}
                             >
-                              {["lbs", "kg"].map((unit) => (
+                              {["kg", "lbs"].map((unit) => (
                                 <TouchableOpacity
                                   key={unit}
                                   onPress={() =>
@@ -978,7 +980,7 @@ export default function WellnessCheckRoutineModal({
               Add check item
             </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Save Button - Fixed at bottom */}
         <View

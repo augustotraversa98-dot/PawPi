@@ -1,10 +1,12 @@
 import React from "react";
-import { ScrollView, RefreshControl } from "react-native";
+import { RefreshControl } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { COLORS } from "@/constants/colors";
 import { useRefresh } from "@/hooks/useRefresh";
 
 /**
- * A ScrollView pre-wired with pull-to-refresh. Swap a plain `<ScrollView>` for
+ * A KeyboardAwareScrollView (a ScrollView that keeps the focused TextInput above
+ * the keyboard) pre-wired with pull-to-refresh. Swap a plain `<ScrollView>` for
  * `<RefreshableScrollView refetch={fn}>` to opt a screen in — all other
  * ScrollView props are forwarded unchanged.
  *
@@ -19,7 +21,7 @@ export function RefreshableScrollView({
 }) {
   const { refreshing, onRefresh } = useRefresh(refetch);
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       {...scrollViewProps}
       refreshControl={
         <RefreshControl
@@ -31,6 +33,6 @@ export function RefreshableScrollView({
       }
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }

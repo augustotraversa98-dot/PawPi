@@ -25,6 +25,7 @@ import {
   useReportSighting,
   useResolveLost,
 } from "@/hooks/useLostFound";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
   cream: "#FFF7EF",
@@ -272,7 +273,7 @@ function SightingModal({ report, onClose, insets }) {
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <KeyboardAwareScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14 }}>
             {t("lostFound.sightingHint", { name: report?.pet_name || "" })}
           </Text>
@@ -300,7 +301,7 @@ function SightingModal({ report, onClose, insets }) {
               </>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );
@@ -339,7 +340,7 @@ function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>{t("lostFound.lastSeenLocation")}</Text>
           <WalkMapPicker coord={coord} onPick={setCoord} testID="lost-map-picker" />
           <TextInput
@@ -384,7 +385,7 @@ function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
               </>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );
