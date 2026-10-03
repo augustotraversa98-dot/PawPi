@@ -18,7 +18,69 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 📍 CURRENT STATE (2026-08-01)
+## 🚀 LAUNCH + v1.0.1 RELEASE LINE (2026-10-03) — newest status; everything below this block is history
+
+**PawPi is LIVE in the App Store.** v1.0.0 (build 21) was accepted 2026-09-27 (built + submitted 2026-09-22;
+the 2.5.4 `UIBackgroundModes=audio` rejection was fixed by #566 — dropped the unused `expo-audio` plugin and
+stopped shipping a stale committed `ios/`). Production = Railway web/API at `https://www.pawpi.info`, Supabase DB.
+
+**v1.0.1 (build 24) is being cut now.** Marketing version bumped by #579; EAS `appVersionSource: remote` +
+`autoIncrement` owns the build number. Status: ⏳ pending the owner's on-device pass
+(checklist: [`test-backlog.md`](test-backlog.md) → "To test — build 24") and then **Submit for Review**
+in App Store Connect (manual step).
+
+**No new migrations in the #567–#592 run** — nothing under `supabase/` changed since #566; the latest migration
+is still **0130** (0128/0129 remain file-only, hand-apply tracked in `test-backlog.md` ACTION 1).
+
+### ✅ #567–#592 — done (all merged, CI-green)
+Status mirror (✅ merged). Grouped by theme; PR numbers link to `augustotraversa98-dot/PawPi`.
+
+**Social login + auth hardening**
+- ✅ **#567 — Sign in with Apple (native) + Google (system browser), end-to-end.** Apple via
+  `expo-apple-authentication` → the `apple-native` credentials provider (JWKS + nonce verification); Google via
+  `WebBrowser.openAuthSessionAsync` → `/api/auth/mobile-start` → `/api/auth/mobile-return` → `pawpi://` deep link.
+  See `ARCHITECTURE.md` → "Social login / auth".
+- ✅ (no PR #) `f3bc1a37` — allow Google's authorize endpoint in the form-action CSP.
+- ✅ **#580 — app base URL → `https://www.pawpi.info`** (was the Railway host).
+- ✅ **#582 — auth DB adapter wired into the handler**, so Google OAuth creates a real integer-id `auth_users` row
+  instead of minting a random-UUID `sub`.
+- ✅ **#585 — fail-closed 401 for ghost sessions** (non-integer `sub`) instead of a 500 (22P02 aborting the
+  request tx).
+- ✅ **#583 / #586 / #587 — sign-in recovery UX:** never strand a user after a failed sign-in ("Start over" +
+  back, #583); onboarding steps no longer clip behind the keyboard/footer (#586); "Use a different account"
+  log-out escape inside onboarding (#587).
+- ✅ **#578 — top-level error boundary** for render/effect crashes.
+- ✅ **#577 — onboarding Next-gate hardening** against the async-wedge risk (not a gender-casing bug).
+
+**Onboarding + first-run polish**
+- ✅ **#588 — onboarding UX pass:** keyboard-safe footer, compact type scale, breed ranking, **kg default**.
+- ✅ **#568** crash-proof keyboard on the name step + a working step-0 back arrow · **#573** pet-handle
+  uniqueness validated at step 2, not only on review · **#570** keyboard-listener crash on app-data
+  reset/logout · **#571** Profile tab's nav stack resets when switching away (not just on re-tap) ·
+  **#572** es-AR translation leaks closed (Dog Profile, Settings tracking card, Feed daily-moment tag) ·
+  **#574** web `services/discover` "All" scoped to providers with a real capability.
+- ✅ **#569 / #575** simulator QA sweeps C + D (docs only) · **#576** autofix: HighLatencyP95 investigation.
+
+**App-wide UX audit + consistency (the build-24 content)**
+- ✅ **#589 — app-wide UX audit:** restored ~126 dropped `trackers.*` i18n keys EN+ES (Track + Reminders →
+  Upcoming were showing raw keys) with a **guard test** so they can't silently drop again; keyboard-aware
+  scroll across ~45 screens; metric / 24h locale defaults.
+- ✅ **#590 — weight-unit consistency:** the wellness-check now saves `"lbs"`; legacy `"lb"` is **read-aliased**
+  to `"lbs"` across the endpoints + mobile. **No rows migrated** (read-side alias only).
+- ✅ **#591 — uniform 24-hour time everywhere** (`hourCycle: "h23"`, so midnight renders `00:00`, no AM/PM).
+- ✅ **#592 — Place review sheet is keyboard-aware** (`KeyboardAwareScrollView`) so the comment field clears
+  the keyboard.
+- ✅ **#579 — version bumped to 1.0.1.**
+
+### ⏭ Deferred (noted, not scheduled)
+- **Pinned-footer redesign for long routine forms** — a design change rather than a bug fix, so it was left
+  out of v1.0.1. Revisit after the build-24 device pass.
+- Older open items (go-live env keys, A-35 hardcoded-string remainder, etc.) are unchanged — see the open list
+  in `PawPi_instructions.md`.
+
+---
+
+## 📍 CURRENT STATE (2026-08-01) — history; superseded by the 2026-10-03 block above
 
 ### 🐾 WAVE — Pet Owner engagement (E0–E10) — IN PROGRESS
 

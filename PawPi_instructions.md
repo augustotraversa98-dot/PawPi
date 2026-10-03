@@ -757,7 +757,40 @@ not a hand-maintained log here:
 - `ARCHITECTURE.md`, `supabase/SCHEMA_NOTES.md`, `docs/rls-hardening.md` — architecture / schema /
   RLS orientation (Code-maintained).
 
-### Snapshot (2026-07-29) — CURRENT
+### Snapshot (2026-10-03) — CURRENT
+
+**PawPi is LIVE in the App Store.** v1.0.0 (build 21) was accepted **2026-09-27** (built + submitted
+2026-09-22 after #566 fixed the 2.5.4 `UIBackgroundModes=audio` rejection). **v1.0.1 (build 24) is being cut
+now** and is pending the owner's on-device pass + **Submit for Review** in App Store Connect (a manual step).
+
+- **Where things live:** web/API on Railway behind `https://www.pawpi.info` (the mobile app was repointed from the
+  Railway host by #580); database on Supabase (RLS live, app connects as `pawpi_app`). **No new migrations since
+  #566** — the latest migration is **0130** (0128/0129 remain file-only; hand-apply status is tracked in
+  `docs/test-backlog.md` ACTION 1).
+- **Shipped since #566 (#567–#592, all merged CI-green)** — full list in `docs/roadmap.md` → "LAUNCH + v1.0.1
+  RELEASE LINE":
+  - **Social login** — Sign in with Apple (native) + Google (system browser) (#567); base URL → pawpi.info (#580);
+    auth DB adapter so Google OAuth creates a real user (#582); fail-closed 401 for ghost (non-integer-`sub`)
+    sessions (#585); recovery UX — Start over / back / "Use a different account" (#583, #586, #587); top-level error
+    boundary (#578); onboarding Next-gate hardening (#577). How it works: `ARCHITECTURE.md` → "Social login / auth".
+  - **Onboarding UX pass** (#588) — keyboard-safe footer, compact type, breed ranking, kg default.
+  - **App-wide UX audit** (#589) — restored ~126 dropped `trackers.*` i18n keys EN+ES (Track + Reminders → Upcoming
+    were showing raw keys; now guarded by a test), keyboard-aware scroll across ~45 screens, metric/24h locale
+    defaults.
+  - **Weight-unit consistency** (#590) — wellness-check saves `"lbs"`; legacy `"lb"` read-aliased to `"lbs"`
+    (no rows migrated). **Uniform 24-hour time** everywhere (#591; `hourCycle: h23`, midnight = `00:00`). **Place
+    review sheet** keyboard-aware (#592). Version bumped to 1.0.1 (#579).
+- **Device-test queue:** the build-24 on-device checklist in `docs/test-backlog.md` ("To test — build 24"): sign-in
+  from scratch via Google + Apple, onboarding, keyboard on all input screens, Track/Reminders real text, lbs + kg
+  default, 24h incl. `00:00`.
+- **Deferred:** pinned-footer redesign for long routine forms.
+- **Still true from earlier snapshots:** go-live env keys and the `pawpi_app` password items in "Open (non-code)"
+  below apply as written there (that list was last hand-refreshed before launch — trust `docs/test-backlog.md` where
+  they differ). Live status stays in `docs/`, not a hand-kept log here.
+
+---
+
+### Snapshot (2026-07-29) — historical, superseded by the 2026-10-03 block above
 
 > **Latest (2026-08-14): ✅ WAVE 2 FIX-PACK (BX2·BX1·FF1·FF2·FF3) — BUILT & MERGED.** One autonomous
 > Claude Code run closed the three deferred Wave 2 niceties + two on-device bugs — 5 PRs, all CI-green +
