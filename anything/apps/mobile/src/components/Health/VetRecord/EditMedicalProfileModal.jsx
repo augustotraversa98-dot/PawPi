@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState } from "react";
 import {
   View,
@@ -64,7 +65,7 @@ export default function EditMedicalProfileModal({
     initialData?.currentWeight?.weight?.toString() || "",
   );
   const [weightUnit, setWeightUnit] = useState(
-    initialData?.currentWeight?.weight_unit ||
+    normalizeWeightUnit(initialData?.currentWeight?.weight_unit) ||
       (initialData?.currentWeight?.weight ? "lbs" : defaultWeightUnit()),
   );
 

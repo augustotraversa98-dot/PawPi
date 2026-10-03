@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
@@ -189,7 +190,7 @@ async function GET(request) {
         series: weight.map((r) => ({
           date: (r.logged_at instanceof Date ? r.logged_at.toISOString() : String(r.logged_at)).slice(0, 10),
           weight: Number(r.weight),
-          unit: r.weight_unit || "lbs",
+          unit: normalizeWeightUnit(r.weight_unit) || "lbs",
         })),
       },
       meds: Object.values(medMap),

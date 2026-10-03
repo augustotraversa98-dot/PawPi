@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -73,7 +74,7 @@ export default function WeightModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const { data: currentPet } = useCurrentPet();
   // Log in the pet's own unit (set at onboarding); metric unless the device locale is US.
-  const weightUnit = currentPet?.weight_unit || defaultWeightUnit();
+  const weightUnit = normalizeWeightUnit(currentPet?.weight_unit) || defaultWeightUnit();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("add"); // add, history
   const [isSaving, setIsSaving] = useState(false);
@@ -635,7 +636,7 @@ export default function WeightModal({ visible, onClose }) {
                                 marginBottom: 2,
                               }}
                             >
-                              {entry.weight} {entry.weight_unit}
+                              {entry.weight} {normalizeWeightUnit(entry.weight_unit)}
                             </Text>
                             <View
                               style={{

@@ -37,3 +37,8 @@ it("is empty-safe", () => {
   const text = summaryToText({ pet: { name: "X" }, range: { from: "a", to: "b" } }, [], []);
   expect(text).toContain("PawPi Vet Summary — X");
 });
+
+it("shows a legacy \"lb\" weigh-in as lbs", () => {
+  const legacy = { ...summary, weight: { series: [{ weight: 50, unit: "lb" }, { weight: 46, unit: "lbs" }] } };
+  expect(summaryToText(legacy)).toContain("Weight: 50lbs → 46lbs");
+});

@@ -159,10 +159,27 @@ describe("wellnessLog — initialFormValues", () => {
       unit: "kg",
       note: "",
     });
-    expect(initialFormValues("weight").unit).toBe("lb");
+    expect(initialFormValues("weight").unit).toBe("lbs");
+    expect(getWellnessSchema("weight").units).toEqual(["kg", "lbs"]);
   });
 
   it("starts non-weight checks with an empty selection", () => {
     expect(initialFormValues("mobility")).toEqual({ value: null, note: "" });
+  });
+});
+
+describe("legacy \"lb\" weight unit alias", () => {
+  test("a last-used legacy \"lb\" seeds the form as \"lbs\"", () => {
+    expect(initialFormValues("weight", { lastUnit: "lb" }).unit).toBe("lbs");
+  });
+
+  test("new wellness weight saves as \"lbs\" (default and legacy form value)", () => {
+    const reminder = { ...baseReminder, checkType: "weight", petId: 5 };
+    const def = buildWellnessLogPayload(reminder, { value: "40", note: "" });
+    expect(def.body.weightUnit).toBe("lbs");
+    const legacy = buildWellnessLogPayload(reminder, { value: "40", unit: "lb", note: "" });
+    expect(legacy.body.weightUnit).toBe("lbs");
+    const kg = buildWellnessLogPayload(reminder, { value: "18", unit: "kg", note: "" });
+    expect(kg.body.weightUnit).toBe("kg");
   });
 });

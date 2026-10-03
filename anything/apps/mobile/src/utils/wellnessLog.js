@@ -11,6 +11,8 @@
 //     owner scope, the routine/item reference, and the scheduled date it satisfies
 //     carried inside values_json (jsonb).
 
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
+
 export const WELLNESS_CHECK_TYPES = {
   WEIGHT: "weight",
   BODY_CONDITION: "body_condition",
@@ -29,8 +31,8 @@ export const WELLNESS_FIELD_SCHEMA = {
     label: "Weight",
     kind: "weight",
     valueKey: "weight",
-    units: ["kg", "lb"],
-    defaultUnit: "lb",
+    units: ["kg", "lbs"],
+    defaultUnit: "lbs",
   },
   body_condition: {
     label: "Body condition",
@@ -126,7 +128,7 @@ export function toDateStr(iso) {
 export function initialFormValues(checkType, { lastUnit } = {}) {
   const schema = getWellnessSchema(checkType);
   if (schema.kind === "weight") {
-    return { value: "", unit: lastUnit || schema.defaultUnit, note: "" };
+    return { value: "", unit: normalizeWeightUnit(lastUnit) || schema.defaultUnit, note: "" };
   }
   return { value: null, note: "" };
 }
@@ -180,7 +182,7 @@ export function buildWellnessLogPayload(reminder, form, { now } = {}) {
       body: {
         petId: reminder.petId,
         weight: Number(form.value),
-        weightUnit: form.unit || schema.defaultUnit,
+        weightUnit: normalizeWeightUnit(form.unit) || schema.defaultUnit,
         notes: note,
       },
     };

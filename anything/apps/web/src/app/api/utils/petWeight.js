@@ -16,6 +16,7 @@
 // expected to have already scoped the pet row to the caller (owner_user_id).
 
 import sql from './sql';
+import { normalizeWeightUnit } from './weightUnitAlias';
 
 export async function getCurrentWeight(
   petId,
@@ -32,7 +33,7 @@ export async function getCurrentWeight(
   `;
 
   return latestWeight.length > 0
-    ? { weight: latestWeight[0].weight, weight_unit: latestWeight[0].weight_unit }
+    ? { weight: latestWeight[0].weight, weight_unit: normalizeWeightUnit(latestWeight[0].weight_unit) }
     : { weight: fallbackWeight, weight_unit: fallbackWeightUnit };
 }
 

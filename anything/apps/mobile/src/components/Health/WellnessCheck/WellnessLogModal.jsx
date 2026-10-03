@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -87,7 +88,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
   // weight unit from the most recent weight log if one exists.
   useEffect(() => {
     if (!visible) return;
-    const lastUnit = isWeight ? entries[0]?.weight_unit : undefined;
+    const lastUnit = isWeight ? normalizeWeightUnit(entries[0]?.weight_unit) : undefined;
     setForm(initialFormValues(checkType, { lastUnit }));
     setActiveTab("add");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -514,7 +515,7 @@ function HistoryList({ isWeight, schema, entries, isLoading, t }) {
     <View style={{ gap: 12 }}>
       {entries.map((entry) => {
         const headline = isWeight
-          ? `${entry.weight} ${entry.weight_unit || ""}`.trim()
+          ? `${entry.weight} ${normalizeWeightUnit(entry.weight_unit) || ""}`.trim()
           : describeWellnessEntry(schema, entry);
         return (
           <View

@@ -1,3 +1,4 @@
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -141,7 +142,7 @@ export default function WellnessCheckRoutineModal({
           reminderEnabled: item.reminderEnabled ?? true,
           timeSensitive: item.timeSensitive ?? false,
           notes: item.notes || "",
-          weightUnit: item.unit || "lbs",
+          weightUnit: normalizeWeightUnit(item.unit) || "lbs",
           areasToInclude: item.areasToInclude || [],
           observations: item.observations || [],
           description: item.description || "",
@@ -180,7 +181,7 @@ export default function WellnessCheckRoutineModal({
             reminderEnabled: item.reminderEnabled ?? true,
             timeSensitive: item.timeSensitive ?? false,
             notes: item.notes || "",
-            weightUnit: item.weightUnit || "lbs",
+            weightUnit: normalizeWeightUnit(item.weightUnit) || "lbs",
             areasToInclude: item.areasToInclude || [],
             observations: item.observations || [],
             description: item.description || "",

@@ -1,6 +1,7 @@
 // Pure text export of a Vet Summary (ticket 2.50). Produces a clean, shareable plain-text
 // block (the "Share with vet" / "Export" payload) from the real aggregation + flags +
 // owner's questions. Empty-safe. Non-diagnostic — it's a tracking summary, not a diagnosis.
+import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import { DISCLAIMER, quickCheckAreaLabel } from "./healthInsights";
 
 function fmtRange(range) {
@@ -31,7 +32,7 @@ export function summaryToText(summary, flags = [], questions = []) {
   L.push(`• Vomiting episodes: ${summary.vomit?.episodes || 0}`);
   if (summary.weight?.series?.length) {
     const s = summary.weight.series;
-    L.push(`• Weight: ${s[0].weight}${s[0].unit} → ${s[s.length - 1].weight}${s[s.length - 1].unit} (${s.length} weigh-in${s.length > 1 ? "s" : ""})`);
+    L.push(`• Weight: ${s[0].weight}${normalizeWeightUnit(s[0].unit)} → ${s[s.length - 1].weight}${normalizeWeightUnit(s[s.length - 1].unit)} (${s.length} weigh-in${s.length > 1 ? "s" : ""})`);
   }
   L.push(`• Walks: ${summary.walks?.count || 0} (${summary.walks?.totalMinutes || 0} min)`);
   L.push(`• Photo checks: ${summary.photoChecks?.count || 0}`);
