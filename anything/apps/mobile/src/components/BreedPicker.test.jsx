@@ -86,4 +86,29 @@ describe("BreedPicker", () => {
     fireEvent.press(getByTestId("breed-option-Golden Retriever"));
     expect(onChange).toHaveBeenCalledWith("Golden Retriever");
   });
+
+  test("default view is tidy: Mixed breed + a short common list, not the full A–Z", () => {
+    const { getByTestId, queryByTestId, getByText } = render(
+      <BreedPicker value="" onChange={() => {}} />,
+    );
+    expect(getByTestId("breed-option-mixed")).toBeTruthy();
+    expect(getByTestId("breed-option-Labrador Retriever")).toBeTruthy();
+    expect(getByTestId("breed-search-hint")).toBeTruthy();
+    expect(getByText("Common breeds")).toBeTruthy();
+    // A rare breed only appears once the user searches.
+    expect(queryByTestId("breed-option-Xoloitzcuintli")).toBeNull();
+  });
+
+  test("searching puts real matches first, then 'Use X'; Mixed breed is not pinned on top", () => {
+    const { getByTestId, queryByTestId, getAllByTestId } = render(
+      <BreedPicker value="" onChange={() => {}} />,
+    );
+    fireEvent.changeText(getByTestId("breed-search"), "gold");
+    expect(queryByTestId("breed-option-mixed")).toBeNull();
+    const ids = getAllByTestId(/^breed-option-/).map((n) => n.props.testID);
+    expect(ids[0]).toMatch(/Golden/);
+    expect(ids.indexOf("breed-option-custom")).toBeGreaterThan(
+      ids.indexOf("breed-option-Golden Retriever"),
+    );
+  });
 });

@@ -106,3 +106,16 @@ describe("hasExactBreedMatch", () => {
     expect(hasExactBreedMatch("")).toBe(false);
   });
 });
+
+describe("filterBreeds ranking + COMMON_BREEDS", () => {
+  const { filterBreeds, COMMON_BREEDS, DOG_BREEDS } = require("./dogBreeds");
+
+  test("prefix matches outrank substring matches", () => {
+    const out = filterBreeds("gold");
+    expect(out.slice(0, 2).sort()).toEqual(["Golden Doodle", "Golden Retriever"]);
+  });
+
+  test("every COMMON_BREEDS entry is a real catalog breed", () => {
+    COMMON_BREEDS.forEach((b) => expect(DOG_BREEDS).toContain(b));
+  });
+});

@@ -11,6 +11,8 @@ import {
 } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import {
+  COMMON_BREEDS,
+  DOG_BREEDS,
   filterBreeds,
   hasExactBreedMatch,
   normalizeBreed,
@@ -70,8 +72,9 @@ function BreedRow({ label, selected, onPress, testID }) {
  *     content that a parent ScrollView scrolls (profile-edit / add-dog modal).
  *
  * Behaviour: a case/accent-insensitive search filters the canonical list; a
- * pinned "Mixed breed" option sits at the top; when the typed text has no exact
- * match a "Use "{typed}"" row lets a rare breed/cross be saved deliberately.
+ * default view is "Mixed breed" + a short list of common breeds; typing ranks real
+ * matches first (prefix > word > substring), then a "Use "{typed}"" row lets a
+ * rare breed/cross be saved deliberately.
  * Breed NAMES stay canonical English; only the surrounding UI strings localize.
  */
 export default function BreedPicker({
@@ -89,11 +92,30 @@ export default function BreedPicker({
   );
 
   const trimmed = query.trim();
+  const searching = trimmed.length > 0;
   const matches = useMemo(() => filterBreeds(query, MAX_RESULTS), [query]);
   const totalMatches = useMemo(() => filterBreeds(query).length, [query]);
-  const showCustom = trimmed.length > 0 && !hasExactBreedMatch(query);
-  const truncated = totalMatches > matches.length;
-  const showEmpty = trimmed.length > 0 && totalMatches === 0;
+  const showCustom = searching && !hasExactBreedMatch(query);
+  const truncated = searching && totalMatches > matches.length;
+  const showEmpty = searching && totalMatches === 0;
+  // Default (not searching): a tidy short list; the full catalog appears as the
+  // user types. While searching, real matches come first.
+  const data = searching ? matches : COMMON_BREEDS;
+
+  // "Mixed breed" leads the default view, but while searching it only shows
+  // (below the real matches) when the typed text actually points at it.
+  const mixedLabel = t("breedPicker.mixed");
+  const showMixedBelow =
+    searching && normalizeBreed(mixedLabel).includes(normalizeBreed(trimmed));
+
+  const mixedRow = (
+    <BreedRow
+      testID="breed-option-mixed"
+      label={mixedLabel}
+      selected={value === MIXED_VALUE}
+      onPress={() => onChange?.(MIXED_VALUE)}
+    />
+  );
 
   const renderMatch = ({ item: breed }) => (
     <BreedRow
@@ -104,14 +126,29 @@ export default function BreedPicker({
     />
   );
 
-  const header = (
+  const header = searching ? null : (
     <View>
-      <BreedRow
-        testID="breed-option-mixed"
-        label={t("breedPicker.mixed")}
-        selected={value === MIXED_VALUE}
-        onPress={() => onChange?.(MIXED_VALUE)}
-      />
+      {mixedRow}
+      <Text
+        style={[
+          TYPE.footnote,
+          {
+            color: COLORS.mutedBrown,
+            fontWeight: "700",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+            marginTop: SPACING.xs,
+            marginBottom: SPACING.sm,
+          },
+        ]}
+      >
+        {t("breedPicker.commonHeading")}
+      </Text>
+    </View>
+  );
+
+  const trailing = (
+    <View>
       {showCustom ? (
         <BreedRow
           testID="breed-option-custom"
@@ -123,6 +160,7 @@ export default function BreedPicker({
           onPress={() => onChange?.(trimmed)}
         />
       ) : null}
+      {showMixedBelow ? mixedRow : null}
       {showEmpty ? (
         <Text
           style={[
@@ -135,6 +173,21 @@ export default function BreedPicker({
           ]}
         >
           {t("breedPicker.empty")}
+        </Text>
+      ) : null}
+      {!searching ? (
+        <Text
+          testID="breed-search-hint"
+          style={[
+            TYPE.footnote,
+            {
+              color: COLORS.mutedBrown,
+              textAlign: "center",
+              paddingVertical: SPACING.sm,
+            },
+          ]}
+        >
+          {t("breedPicker.searchHint", { count: DOG_BREEDS.length })}
         </Text>
       ) : null}
     </View>
@@ -199,11 +252,16 @@ export default function BreedPicker({
         <FlatList
           testID="breed-results"
           style={{ flex: 1 }}
-          data={matches}
+          data={data}
           keyExtractor={(breed) => breed}
           renderItem={renderMatch}
           ListHeaderComponent={header}
-          ListFooterComponent={keepTyping}
+          ListFooterComponent={
+            <View>
+              {keepTyping}
+              {trailing}
+            </View>
+          }
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -220,10 +278,11 @@ export default function BreedPicker({
     <View>
       {searchBox}
       {header}
-      {matches.map((breed) => (
+      {data.map((breed) => (
         <React.Fragment key={breed}>{renderMatch({ item: breed })}</React.Fragment>
       ))}
       {keepTyping}
+      {trailing}
     </View>
   );
 }
