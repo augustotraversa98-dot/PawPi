@@ -78,7 +78,7 @@ export function lintRule({ file, groupName, rule, contract }) {
   if (!groupName || !groupName.startsWith('pawpi-')) at(`group "${groupName}" must start with pawpi-`);
 
   // safety switches
-  if (rule.isPaused !== true) at('isPaused must be true (the run never creates a live alert; the owner un-pauses by hand)');
+  if (typeof rule.isPaused !== 'boolean') at('isPaused must be true (paused / keep the live state) or false (explicit, reviewed resume)');
   if (rule.noDataState !== 'OK') at(`noDataState must be "OK" so an idle or not-yet-reporting service never pages (got ${rule.noDataState})`);
   if (!EXEC_ERR.has(rule.execErrState)) at(`execErrState must be one of OK|Alerting|Error (got ${rule.execErrState})`);
   if (typeof rule.for !== 'string' || !DURATION.test(rule.for)) at(`"for" (pending period) is required, like "5m" (got ${JSON.stringify(rule.for)})`);

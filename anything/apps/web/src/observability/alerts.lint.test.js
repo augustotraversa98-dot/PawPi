@@ -23,6 +23,8 @@ const P1 = [
   'pawpi-p1-signup-collapse', 'pawpi-p1-payments-failures', 'pawpi-p1-db-errors', 'pawpi-p1-client-crash-rate',
   'pawpi-p1-client-api-5xx', 'pawpi-p1-route-4xx-burst',
 ];
+// Server rules resumed as code in night run 3; any further rule must be resumed in its own reviewed change (update this list with it).
+const ACTIVE = ['pawpi-p1-server-silent', 'pawpi-p1-http-5xx-rate', 'pawpi-p1-db-errors', 'pawpi-p1-health-deep-failing'];
 const P2 = [
   'pawpi-p2-slow-routes', 'pawpi-p2-activation-funnel-drop', 'pawpi-p2-nav-unexpected-redirect', 'pawpi-p2-telemetry-silent',
   'pawpi-p2-free-tier-usage',
@@ -40,10 +42,10 @@ describe('alert rules as code (real files)', () => {
     expect(lintAlerts(entries, { contract })).toEqual([]);
   });
 
-  it('every rule is PAUSED, no-data is OK, has a pending period, severity label, area and a "What to do:" line', () => {
+  it('only the four server rules are declared active (isPaused:false); every other rule is PAUSED, no-data is OK, has a pending period, severity label, area and a "What to do:" line', () => {
     expect(rules).toHaveLength(15);
     for (const { rule } of rules) {
-      expect(rule.isPaused, rule.uid).toBe(true);
+      expect(rule.isPaused, rule.uid).toBe(!ACTIVE.includes(rule.uid));
       expect(rule.noDataState, rule.uid).toBe('OK');
       expect(rule.for, rule.uid).toMatch(/^\d+[smhd]$/);
       expect(['P1', 'P2'], rule.uid).toContain(rule.labels.severity);
@@ -108,8 +110,9 @@ describe('alert lint negative fixtures', () => {
   });
 
   it('safety switches', () => {
-    expect(lint((r) => { r.isPaused = false; })).toMatch(/isPaused must be true/);
+    expect(lint((r) => { r.isPaused = false; })).toBe(''); // an explicit resume is allowed (the allow-list test above pins which rules)
     expect(lint((r) => { delete r.isPaused; })).toMatch(/isPaused must be true/);
+    expect(lint((r) => { r.isPaused = 'no'; })).toMatch(/isPaused must be true/);
     expect(lint((r) => { r.noDataState = 'Alerting'; })).toMatch(/noDataState must be "OK"/);
     expect(lint((r) => { r.noDataState = 'NoData'; })).toMatch(/noDataState must be "OK"/);
     expect(lint((r) => { delete r.for; })).toMatch(/"for" \(pending period\) is required/);

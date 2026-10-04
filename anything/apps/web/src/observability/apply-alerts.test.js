@@ -43,29 +43,32 @@ async function run(args, env = {}) {
   return { code, out: out.join('\n'), err: err.join('\n') };
 }
 const ruleCount = loadAlerts(ALERTS_DIR).length;
+// The only rules the repo declares ACTIVE (isPaused:false): the four server rules resumed in night run 3. Everything else stays paused.
+const ACTIVE_UIDS = ['pawpi-p1-server-silent', 'pawpi-p1-http-5xx-rate', 'pawpi-p1-db-errors', 'pawpi-p1-health-deep-failing'].sort();
 const SECTIONS = ['--sections', 'alerts,policies'];
 
 describe('alerts section: repo files', () => {
-  it('loads every rule, all paused, all pawpi- uids', () => {
+  it('loads every rule, all pawpi- uids; exactly the four server rules are declared active, the rest paused', () => {
     const rules = loadAlerts(ALERTS_DIR);
     expect(rules).toHaveLength(15);
     for (const r of rules) {
       expect(r.uid.startsWith('pawpi-')).toBe(true);
-      expect(r.rule.isPaused).toBe(true);
+      expect(r.rule.isPaused, r.uid).toBe(!ACTIVE_UIDS.includes(r.uid));
     }
+    expect(rules.filter((r) => r.rule.isPaused === false).map((r) => r.uid).sort()).toEqual(ACTIVE_UIDS);
   });
 
-  it('refuses unpaused rules, foreign uids and a missing folder declaration (exit 1)', async () => {
+  it('refuses a non-boolean isPaused, foreign uids and a missing folder declaration (exit 1)', async () => {
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR || '/tmp'), 'pawpi-alerts-'));
     const good = JSON.parse(fs.readFileSync(path.join(ALERTS_DIR, 'p1-critical.json'), 'utf8'));
     const rule = good.groups[0].rules[0];
-    fs.writeFileSync(path.join(dir, 'bad.json'), JSON.stringify({ apiVersion: 1, groups: [{ name: 'someone-elses', folder: 'Other', rules: [{ ...rule, uid: 'legacy-rule', isPaused: false }] }] }));
+    fs.writeFileSync(path.join(dir, 'bad.json'), JSON.stringify({ apiVersion: 1, groups: [{ name: 'someone-elses', folder: 'Other', rules: [{ ...rule, uid: 'legacy-rule', isPaused: 'no' }] }] }));
     const r = await run([...SECTIONS, '--alerts-dir', dir]);
     expect(r.code).toBe(EXIT.USAGE);
     expect(r.err).toMatch(/group "someone-elses" must start with "pawpi-"/);
     expect(r.err).toMatch(/must declare folder "PawPi"/);
     expect(r.err).toMatch(/rule uid "legacy-rule" must start with "pawpi-"/);
-    expect(r.err).toMatch(/isPaused must be true/);
+    expect(r.err).toMatch(/isPaused must be true \(paused \/ keep live state\) or false/);
   });
 });
 
@@ -121,8 +124,8 @@ describe('dry run', () => {
   });
 });
 
-describe('--apply: rules are created paused, routing is merged, everything idempotent', () => {
-  it('creates every rule PAUSED with provenance header, resolved datasources, in the PawPi folder', async () => {
+describe('--apply: rules are created paused (unless declared active), routing is merged, everything idempotent', () => {
+  it('creates every rule PAUSED (except the four declared isPaused:false) with provenance header, resolved datasources, in the PawPi folder', async () => {
     const mock = await startGrafana();
     const r = await run([...SECTIONS, '--apply'], envFor(mock, { ALERT_DIGEST_EMAIL: EMAILS }));
     expect(r.code).toBe(EXIT.OK);
@@ -131,7 +134,7 @@ describe('--apply: rules are created paused, routing is merged, everything idemp
     for (const w of posts) {
       expect(w.method).toBe('POST');
       expect(w.headers['x-disable-provenance']).toBe('true');
-      expect(w.body.isPaused).toBe(true);
+      expect(w.body.isPaused).toBe(!ACTIVE_UIDS.includes(w.body.uid));
       expect(w.body.uid.startsWith('pawpi-')).toBe(true);
       expect(w.body.folderUID).toBe('f-pawpi');
       expect(w.body.ruleGroup).toMatch(/^pawpi-p[12]-/);
@@ -148,7 +151,7 @@ describe('--apply: rules are created paused, routing is merged, everything idemp
     expect(mock.state.requests.some((q) => q.method === 'DELETE')).toBe(false);
     expect(r.out + r.err).not.toContain(TOKEN);
     expect(r.out + r.err).not.toContain('owner@example.invalid'); // addresses are never printed
-    expect([...mock.state.rules.values()].every((x) => x.isPaused === true)).toBe(true);
+    expect([...mock.state.rules.values()].filter((x) => x.isPaused === false).map((x) => x.uid).sort()).toEqual(ACTIVE_UIDS);
   });
 
   it('writes only to pawpi- paths: rules, contact point pawpi-digest, the policy tree (never Augusto)', async () => {
@@ -184,45 +187,85 @@ describe('--apply: rules are created paused, routing is merged, everything idemp
     expect(second.out).toContain('nothing to write');
   });
 
-  it('PAUSE SEMANTICS: an update keeps the live pause state, an un-paused unchanged rule is left alone', async () => {
+  it('PAUSE SEMANTICS: an update keeps the live pause state, an un-paused unchanged rule is left alone (rules whose repo file says isPaused:true)', async () => {
     const mock = await startGrafana();
     const env = envFor(mock, { ALERT_DIGEST_EMAIL: EMAILS });
     await run([...SECTIONS, '--apply'], env);
 
     // the owner resumes two rules by hand; one of them (and one paused rule) drifts from the repo
-    const resumedDrifted = mock.state.rules.get('pawpi-p1-http-5xx-rate');
+    const resumedDrifted = mock.state.rules.get('pawpi-p1-signin-failure-spike');
     resumedDrifted.isPaused = false;
     resumedDrifted.for = '1m';
-    const resumedSame = mock.state.rules.get('pawpi-p1-db-errors');
+    const resumedSame = mock.state.rules.get('pawpi-p1-signup-collapse');
     resumedSame.isPaused = false;
     const pausedDrifted = mock.state.rules.get('pawpi-p2-slow-routes');
     pausedDrifted.annotations = { ...pausedDrifted.annotations, summary: 'edited in the UI' };
 
     const dry = await run(SECTIONS, env);
-    expect(dry.out).toMatch(/update\s+pawpi-p1-http-5xx-rate .*for differs.*keeps live pause state: ACTIVE/);
+    expect(dry.out).toMatch(/update\s+pawpi-p1-signin-failure-spike .*for differs.*keeps live pause state: ACTIVE/);
     expect(dry.out).toMatch(/update\s+pawpi-p2-slow-routes .*annotations differ.*keeps live pause state: paused/);
-    expect(dry.out).toMatch(/unchanged\s+pawpi-p1-db-errors/);
-    expect(dry.out).toMatch(/2 managed rule\(s\) are currently un-paused/);
+    expect(dry.out).toMatch(/unchanged\s+pawpi-p1-signup-collapse/);
+    expect(dry.out).toMatch(/6 managed rule\(s\) are currently un-paused/);
 
     const before = mock.writes().length;
     const applied = await run([...SECTIONS, '--apply'], env);
     expect(applied.code).toBe(EXIT.OK);
     const puts = mock.writes().slice(before);
     expect(puts.map((w) => `${w.method} ${w.path}`).sort()).toEqual([
-      'PUT /api/v1/provisioning/alert-rules/pawpi-p1-http-5xx-rate',
+      'PUT /api/v1/provisioning/alert-rules/pawpi-p1-signin-failure-spike',
       'PUT /api/v1/provisioning/alert-rules/pawpi-p2-slow-routes',
     ]);
-    const active = puts.find((w) => w.path.endsWith('pawpi-p1-http-5xx-rate'));
+    const active = puts.find((w) => w.path.endsWith('pawpi-p1-signin-failure-spike'));
     expect(active.body.isPaused).toBe(false); // NOT re-paused
-    expect(active.body.for).toBe('5m'); // content restored from the repo
+    expect(active.body.for).toBe('10m'); // content restored from the repo
     const paused = puts.find((w) => w.path.endsWith('pawpi-p2-slow-routes'));
     expect(paused.body.isPaused).toBe(true); // NOT un-paused
-    expect(mock.state.rules.get('pawpi-p1-http-5xx-rate').isPaused).toBe(false);
-    expect(mock.state.rules.get('pawpi-p1-db-errors').isPaused).toBe(false);
+    expect(mock.state.rules.get('pawpi-p1-signin-failure-spike').isPaused).toBe(false);
+    expect(mock.state.rules.get('pawpi-p1-signup-collapse').isPaused).toBe(false);
     expect(mock.state.rules.get('pawpi-p2-slow-routes').isPaused).toBe(true);
     expect(mock.state.rules.get('pawpi-p2-slow-routes').annotations.summary).not.toBe('edited in the UI');
     // and the following dry run is clean again (pause state is not part of the comparison)
     expect((await run(SECTIONS, env)).out).toContain(`Plan: 0 create, 0 update, ${ruleCount + 3} unchanged`);
+  });
+
+  it('EXPLICIT RESUME: a rule the repo declares isPaused:false is resumed (dry run shows it, apply does it once, then 0 changes); every other rule stays paused', async () => {
+    const mock = await startGrafana();
+    const env = envFor(mock, { ALERT_DIGEST_EMAIL: EMAILS });
+    await run([...SECTIONS, '--apply'], env);
+    // simulate the pre-run-3 live state: the four rules exist but are paused
+    for (const uid of ACTIVE_UIDS) mock.state.rules.get(uid).isPaused = true;
+
+    const dry = await run([...SECTIONS, '--exit-code'], env);
+    expect(dry.code).toBe(EXIT.PENDING);
+    expect(dry.out).toContain(`Plan: 0 create, ${ACTIVE_UIDS.length} update, ${ruleCount + 3 - ACTIVE_UIDS.length} unchanged`);
+    for (const uid of ACTIVE_UIDS) expect(dry.out).toMatch(new RegExp(`update\\s+${uid} .*resumes the rule \\(repo declares isPaused:false\\)`));
+    expect(dry.out).not.toMatch(/keeps live pause state/);
+
+    const before = mock.writes().length;
+    const applied = await run([...SECTIONS, '--apply'], env);
+    expect(applied.code).toBe(EXIT.OK);
+    const puts = mock.writes().slice(before);
+    expect(puts.map((w) => `${w.method} ${w.path}`).sort()).toEqual(ACTIVE_UIDS.map((u) => `PUT /api/v1/provisioning/alert-rules/${u}`).sort());
+    for (const w of puts) expect(w.body.isPaused).toBe(false);
+    expect([...mock.state.rules.values()].filter((x) => x.isPaused === false).map((x) => x.uid).sort()).toEqual(ACTIVE_UIDS);
+    expect([...mock.state.rules.values()].filter((x) => x.isPaused === true)).toHaveLength(ruleCount - ACTIVE_UIDS.length);
+
+    const again = await run([...SECTIONS, '--exit-code'], env);
+    expect(again.code).toBe(EXIT.OK);
+    expect(again.out).toContain(`Plan: 0 create, 0 update, ${ruleCount + 3} unchanged`);
+    expect(mock.writes().length).toBe(before + ACTIVE_UIDS.length);
+  });
+
+  it('a paused rule the owner resumed in the UI is never re-paused by an isPaused:true file', async () => {
+    const mock = await startGrafana();
+    const env = envFor(mock, { ALERT_DIGEST_EMAIL: EMAILS });
+    await run([...SECTIONS, '--apply'], env);
+    mock.state.rules.get('pawpi-p1-signin-failure-spike').isPaused = false; // owner resumed by hand
+    const before = mock.writes().length;
+    const r = await run([...SECTIONS, '--apply'], env);
+    expect(r.code).toBe(EXIT.OK);
+    expect(mock.writes().length).toBe(before);
+    expect(mock.state.rules.get('pawpi-p1-signin-failure-spike').isPaused).toBe(false);
   });
 
   it('never touches rules it does not own (legacy rules are never even fetched)', async () => {
