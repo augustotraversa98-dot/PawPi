@@ -225,6 +225,66 @@ Explore -> Loki `{job="pawpi-client"}` shows two lines (needs the three `GRAFANA
 **Kill switch drill:** set `TELEMETRY_INGEST_ENABLED=false` on Railway, redeploy, confirm `config` -> `"enabled":false` and the POST above still returns 204 but
 `accepted` stops growing.
 
+## 5e. Dashboards (night-run Step C)
+
+Eleven dashboards live in the repo as JSON (`observability/grafana/dashboards/*.json`, folder **PawPi** in Grafana) and are pushed
+by `scripts/observability/apply-grafana.mjs`. They chart ONLY metrics from the telemetry contract and the Loki streams
+`job="pawpi-client"` / `job="pawpi-web"`; every panel has a one-line description saying what a bad value means and what to do.
+Panels read "No data" until the servers/clients actually report (client panels need app build 25+; `job="pawpi-web"` panels need
+server logs shipped to Loki). The old dashboard "PawPi - API health (RED)" (`docs/observability/dashboard.json`) is untouched.
+
+| uid | Purpose |
+|---|---|
+| `pawpi-overview` | Start here: availability (deep health + request success), 5xx rate, p95, sessions, active installs (Loki), deploy annotations (Grafana annotations tagged `deploy`) |
+| `pawpi-auth-onboarding` | Sign-in/up success by method, activation funnel + step-to-step drop-off, unexpected redirects (`nav_unexpected_redirect`), onboarding form steps |
+| `pawpi-pets-feed-social` | Pets + feed areas: RED per route, `pet_created`/`post_created`, phone view of the same areas, taps/features/forms |
+| `pawpi-health-reminders` | Health area, health logs + routines, health_logging and routines funnels |
+| `pawpi-services-bookings-providers` | Services/providers/booking/telehealth/...: RED, `booking_created`, services funnel |
+| `pawpi-payments-shop` | Payments + shop: checkout 5xx, orders, booking conversion, checkout p95 |
+| `pawpi-walks-messaging-forum` | Walks, messages, forum, notifications: RED, `walk_logged`, push tokens |
+| `pawpi-mobile-client-health` | Errors by app version/kind/screen, crash-free sessions, API failures seen by phones vs server, startup + slow screens, ingest quality |
+| `pawpi-behaviour` | Anonymous: top screens/taps, entry screens, session path explorer, feature usage, all funnels, D1/D7/D30 return, active installs |
+| `pawpi-database-infra` | DB latency/errors/slow share, process memory, event loop lag, uptime/restarts, server error logs |
+| `pawpi-bottlenecks` | Routes by p95 x volume, slowest screens, API calls per screen view outliers, slow-DB-op share, slow requests in logs |
+
+**Apply** (needs a Grafana service-account token with dashboards + folders write and datasources read; never printed or stored):
+```bash
+GRAFANA_URL=https://<stack>.grafana.net GRAFANA_SA_TOKEN=glsa_... node scripts/observability/apply-grafana.mjs            # DRY RUN: validates, shows create/update/unchanged per dashboard, writes nothing
+GRAFANA_URL=... GRAFANA_SA_TOKEN=... node scripts/observability/apply-grafana.mjs --apply                                # writes folder "PawPi" (if missing) + dashboards
+GRAFANA_URL=... GRAFANA_SA_TOKEN=... node scripts/observability/apply-grafana.mjs --apply --only pawpi-overview          # one dashboard
+```
+Without the env vars a dry run still validates the files and lists the dashboards ("live diff skipped"). Run it again after `--apply`:
+every dashboard must read `unchanged` (idempotent). Exit codes: 0 ok, 1 usage/invalid files, 2 `--apply` without env, 3 Grafana
+unreachable/rejected/datasource missing, 4 pending changes with `--exit-code`. Datasources are resolved at runtime by type
+(preferring names like `grafanacloud-*-prom` / `*-logs`; override with `GRAFANA_PROM_DS` / `GRAFANA_LOKI_DS`): the JSON only holds the
+placeholders `${DS_PROMETHEUS}` / `${DS_LOKI}`.
+
+**Safety rules (enforced in code + tests):** only uids starting with `pawpi-` are ever written; **nothing is ever deleted** (the HTTP
+helper refuses DELETE; to remove a dashboard do it by hand in Grafana, and delete its JSON here); an existing folder named "PawPi"
+(it holds the three alert rules) is reused and never modified; existing dashboards/alerts/contact points are never touched.
+Editing a dashboard in the Grafana UI is fine for exploring, but the next `--apply` overwrites it: copy the JSON back into the repo.
+
+**Add a panel or dashboard:** edit the JSON (or "Export > Export as JSON" a panel/dashboard you built in the UI, then paste it in), keeping
+`datasource` = `{"type":"prometheus","uid":"${DS_PROMETHEUS}"}` or `{"type":"loki","uid":"${DS_LOKI}"}`, a unique panel `id`, a one-line
+`description` ("Bad: ...; do: ..."), and `uid` = `pawpi-<file name>`. A new metric must be added to the contract first (it is the lint's
+source of truth). For a new dashboard add its name to `EXPECTED_DASHBOARDS` in `anything/apps/web/src/observability/dashboardLint.js`.
+Then `cd anything/apps/web && npx vitest run src/observability` (lint: contract metrics + labels, descriptions, unique ids, placeholders only,
+Loki jobs, no identifier as a metric label; failures name dashboard + panel + offender), dry-run, `--apply`. The PromQL check is
+conservative (balanced brackets, known functions, contract metric/label names), not a full parser; for a deeper check the lezer
+grammars `@prometheus-io/lezer-promql` / `@grafana/lezer-logql` parse every expression (all 273 did when the dashboards were written).
+
+**Behaviour dashboard caveats (be honest with yourself reading it):**
+- *Paths:* LogQL cannot join consecutive events, so there is no screen -> screen Sankey. The dashboard shows entry screens (first `screen_view`
+  with `t < 3 s`), a session path explorer (paste one `session_id` into the variable), exact from -> to pairs for unexpected redirects, and top
+  screens. Real transition counts need an external job over the Loki lines.
+- *D1/D7/D30 return* = share of installs active N days ago that are active again today, computed as
+  `count(A and A offset Nd) / count(A offset Nd)` with `A = sum by (install_id) (count_over_time({job="pawpi-client", event="session_start"} | json install_id="install_id" [1d]))`.
+  It is rolling-activity retention (LogQL cannot find an install's first event), not a first-seen cohort. It needs Loki to hold N+1 days:
+  Grafana Cloud free keeps roughly 14 days, so D1 and D7 work and **D30 stays blank until Loki retention is raised**. Loki also caps a query at
+  ~500 series by default, so distinct-install counts (`count by install_id`, active installs, distinct-session crash-free) stop being exact above
+  ~500 active installs per window: shorten the range or move the calculation to a recording rule.
+- Client durations are bucket-resolution (see 5d); `app_version` is capped at 20 values then `other`.
+
 ## 6. Maintenance
 
 - This repo's `docs/*.md` are version‑controlled — when the observability setup changes,

@@ -1,0 +1,1877 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "target": {
+          "type": "tags",
+          "tags": [
+            "deploy"
+          ],
+          "limit": 100,
+          "matchAny": false
+        }
+      }
+    ]
+  },
+  "description": "How people use the app: screens, taps, paths, features, funnels and return rates. Anonymous (random install_id only). Needs app build 25+.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Top screens and taps",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "bargauge",
+      "title": "Top screens",
+      "description": "Bad: a screen you expect to be popular with few views is hard to reach, or a surprising one dominates; review navigation.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "topk(15, sum by (screen) (increase(pawpi_client_screen_views_total{app_version=~\"$app_version\"}[$__range])))",
+          "legendFormat": "{{screen}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": 3,
+      "type": "bargauge",
+      "title": "Top taps",
+      "description": "Bad: key actions with few taps are not discoverable; move or relabel them. Only registry taps are counted.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "topk(15, sum by (target) (count_over_time({job=\"pawpi-client\", event=\"tap\"} | json target=\"props.target\" [$__range])))",
+          "queryType": "instant",
+          "legendFormat": "{{target}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      }
+    },
+    {
+      "id": 4,
+      "type": "bargauge",
+      "title": "Feature usage",
+      "description": "Bad: a feature nobody uses may be hidden or broken; check its entry point and error rate.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "topk(15, sum by (feature) (count_over_time({job=\"pawpi-client\", event=\"feature_used\"} | json feature=\"props.feature\" [$__range])))",
+          "queryType": "instant",
+          "legendFormat": "{{feature}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Screen views over time (top 8)",
+      "description": "Bad: a screen whose views collapse after a release became unreachable; check navigation and unexpected redirects.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "topk(8, sum by (screen) (increase(pawpi_client_screen_views_total{app_version=~\"$app_version\"}[$__rate_interval])))",
+          "legendFormat": "{{screen}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Paths between screens (Loki; see the note)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "title": "How paths are computed",
+      "description": "Bad: not a metric; LogQL cannot join consecutive events, so there is no screen->screen Sankey. Use the panels below as approximations and see OPERATIONS.md.",
+      "options": {
+        "mode": "markdown",
+        "content": "**Paths: honest limits.** LogQL cannot join one event to the next, so true screen -> screen counts need an external job.\n\n- *Entry screens*: first `screen_view` of a session (t < 3 s) - where people land.\n- *Session path explorer*: paste one `session_id` into the variable above to read that session's screens in order.\n- *Unexpected redirects*: exact from -> to pairs (they are explicit events).\n- *Screens per session*: depth of use, bucketed."
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      }
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "Entry screens (first screen of a session)",
+      "description": "Bad: if a deep screen is the main entry, deep links or the home tab are not doing their job; review the first-run path.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "topk(10, sum by (screen) (count_over_time({job=\"pawpi-client\", event=\"screen_view\"} | json screen=\"screen\", t=\"t\" | t < 3000 [$__range])))",
+          "queryType": "instant",
+          "legendFormat": "{{screen}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Unexpected redirects: from -> to",
+      "description": "Bad: any row is a user bounced to the wrong place (e.g. Services -> onboarding); fix the guard named by the reason.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "sum by (from, to, reason) (count_over_time({job=\"pawpi-client\", event=\"nav_unexpected_redirect\"} | json from=\"props.from\", to=\"props.to\", reason=\"props.reason\" [$__range]))",
+          "queryType": "instant",
+          "legendFormat": "{{from}} -> {{to}} {{reason}}",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      }
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Session path explorer (screens in order)",
+      "description": "Bad: a path that bounces back and forth or stops at an error is the pattern to fix; paste a session_id above (empty shows recent sessions).",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{job=\"pawpi-client\", event=\"screen_view\"} | json session_id=\"session_id\", screen=\"screen\" | session_id=~\"${session}.*\" | line_format \"{{.session_id}} {{.screen}}\"",
+          "queryType": "range",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Ascending"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "Funnels",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "bargauge",
+      "title": "Funnel: activation (users reaching each step)",
+      "description": "Bad: a step far below the one before it is where people give up (activation steps count once per install); open that screen/flow and fix the friction.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"welcome_view\"}[$__range]))",
+          "legendFormat": "welcome_view",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"signup_or_oauth_start\"}[$__range]))",
+          "legendFormat": "signup_or_oauth_start",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"auth_done\"}[$__range]))",
+          "legendFormat": "auth_done",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_photo\"}[$__range]))",
+          "legendFormat": "onboarding_photo",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_dog_details\"}[$__range]))",
+          "legendFormat": "onboarding_dog_details",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_done\"}[$__range]))",
+          "legendFormat": "onboarding_done",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"first_post\"}[$__range]))",
+          "legendFormat": "first_post",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"first_health_log\"}[$__range]))",
+          "legendFormat": "first_health_log",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      }
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "Funnel: activation (step-to-step conversion %)",
+      "description": "Bad: a low % means most people stop between those two steps (above 100% = the step repeats per user); fix the screen between them first.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"signup_or_oauth_start\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"welcome_view\"}[$__range]))",
+          "legendFormat": "welcome_view -> signup_or_oauth_start",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"auth_done\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"signup_or_oauth_start\"}[$__range]))",
+          "legendFormat": "signup_or_oauth_start -> auth_done",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_photo\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"auth_done\"}[$__range]))",
+          "legendFormat": "auth_done -> onboarding_photo",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_dog_details\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_photo\"}[$__range]))",
+          "legendFormat": "onboarding_photo -> onboarding_dog_details",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_done\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_dog_details\"}[$__range]))",
+          "legendFormat": "onboarding_dog_details -> onboarding_done",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"first_post\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"onboarding_done\"}[$__range]))",
+          "legendFormat": "onboarding_done -> first_post",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"first_health_log\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"activation\", step=\"first_post\"}[$__range]))",
+          "legendFormat": "first_post -> first_health_log",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          },
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      }
+    },
+    {
+      "id": 14,
+      "type": "bargauge",
+      "title": "Funnel: services (users reaching each step)",
+      "description": "Bad: a step far below the one before it is where people give up (activation steps count once per install); open that screen/flow and fix the friction.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"services_tab\"}[$__range]))",
+          "legendFormat": "services_tab",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"discover_view\"}[$__range]))",
+          "legendFormat": "discover_view",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"provider_view\"}[$__range]))",
+          "legendFormat": "provider_view",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"booking_start\"}[$__range]))",
+          "legendFormat": "booking_start",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"booking_done\"}[$__range]))",
+          "legendFormat": "booking_done",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 53
+      }
+    },
+    {
+      "id": 15,
+      "type": "bargauge",
+      "title": "Funnel: services (step-to-step conversion %)",
+      "description": "Bad: a low % means most people stop between those two steps (above 100% = the step repeats per user); fix the screen between them first.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"discover_view\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"services_tab\"}[$__range]))",
+          "legendFormat": "services_tab -> discover_view",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"provider_view\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"discover_view\"}[$__range]))",
+          "legendFormat": "discover_view -> provider_view",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"booking_start\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"provider_view\"}[$__range]))",
+          "legendFormat": "provider_view -> booking_start",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"booking_done\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"services\", step=\"booking_start\"}[$__range]))",
+          "legendFormat": "booking_start -> booking_done",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          },
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 53
+      }
+    },
+    {
+      "id": 16,
+      "type": "bargauge",
+      "title": "Funnel: health_logging (users reaching each step)",
+      "description": "Bad: a step far below the one before it is where people give up (activation steps count once per install); open that screen/flow and fix the friction.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"health_tab\"}[$__range]))",
+          "legendFormat": "health_tab",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"track_open\"}[$__range]))",
+          "legendFormat": "track_open",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"log_saved\"}[$__range]))",
+          "legendFormat": "log_saved",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 61
+      }
+    },
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "Funnel: health_logging (step-to-step conversion %)",
+      "description": "Bad: a low % means most people stop between those two steps (above 100% = the step repeats per user); fix the screen between them first.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"track_open\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"health_tab\"}[$__range]))",
+          "legendFormat": "health_tab -> track_open",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"log_saved\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"health_logging\", step=\"track_open\"}[$__range]))",
+          "legendFormat": "track_open -> log_saved",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          },
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 61
+      }
+    },
+    {
+      "id": 18,
+      "type": "bargauge",
+      "title": "Funnel: routines (users reaching each step)",
+      "description": "Bad: a step far below the one before it is where people give up (activation steps count once per install); open that screen/flow and fix the friction.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routines_open\"}[$__range]))",
+          "legendFormat": "routines_open",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routine_form_open\"}[$__range]))",
+          "legendFormat": "routine_form_open",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routine_saved\"}[$__range]))",
+          "legendFormat": "routine_saved",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 69
+      }
+    },
+    {
+      "id": 19,
+      "type": "bargauge",
+      "title": "Funnel: routines (step-to-step conversion %)",
+      "description": "Bad: a low % means most people stop between those two steps (above 100% = the step repeats per user); fix the screen between them first.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routine_form_open\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routines_open\"}[$__range]))",
+          "legendFormat": "routines_open -> routine_form_open",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "100 * sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routine_saved\"}[$__range])) / sum(increase(pawpi_funnel_step_total{funnel=\"routines\", step=\"routine_form_open\"}[$__range]))",
+          "legendFormat": "routine_form_open -> routine_saved",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          },
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 69
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Return rate and active installs (Loki)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "D1 return",
+      "description": "Bad: below 20% means few of yesterday's users come back today; improve reminders and first-run value. Needs 2 days of Loki retention.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "100 * count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d])) and sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 1d))) / count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 1d)))",
+          "queryType": "instant",
+          "legendFormat": "D1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 15
+              },
+              {
+                "color": "green",
+                "value": 30
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "justifyMode": "auto"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 78
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "D7 return",
+      "description": "Bad: low means few people active 7 day(s) ago are active now; improve habit loops (reminders, digest). Needs 8+ days of Loki retention, so free-tier Loki cannot show it.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "100 * count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d])) and sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 7d))) / count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 7d)))",
+          "queryType": "instant",
+          "legendFormat": "D7"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 8
+              },
+              {
+                "color": "green",
+                "value": 15
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "justifyMode": "auto"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 78
+      }
+    },
+    {
+      "id": 23,
+      "type": "stat",
+      "title": "D30 return",
+      "description": "Bad: low means few people active 30 day(s) ago are active now; improve habit loops (reminders, digest). Needs 31+ days (paid Loki retention) of Loki retention, so free-tier Loki cannot show it.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "100 * count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d])) and sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 30d))) / count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d] offset 30d)))",
+          "queryType": "instant",
+          "legendFormat": "D30"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 4
+              },
+              {
+                "color": "green",
+                "value": 10
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "justifyMode": "auto"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 78
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "title": "Active installs in range",
+      "description": "Bad: a shrinking number means fewer people use the app; distinct anonymous installs, capped near 500 by Loki series limits.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [$__range])))",
+          "queryType": "instant",
+          "legendFormat": "installs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "justifyMode": "auto"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 78
+      }
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Daily active installs (rolling 24 h)",
+      "description": "Bad: a steady decline means shrinking use; compare with releases (annotations) and the funnel above.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "count(sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d])))",
+          "queryType": "range",
+          "legendFormat": "DAU",
+          "step": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 84
+      }
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Sessions by platform",
+      "description": "Bad: one platform collapsing means a platform-specific break; check that platform's latest build.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (platform) (increase(pawpi_client_events_total{event=\"session_start\", app_version=~\"$app_version\"}[$__rate_interval]))",
+          "legendFormat": "{{platform}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 84
+      }
+    },
+    {
+      "id": 27,
+      "type": "text",
+      "title": "How D1/D7/D30 are computed",
+      "description": "Bad: not a metric; return rate is only as good as Loki retention, so a blank D7/D30 usually means retention, not zero return.",
+      "options": {
+        "mode": "markdown",
+        "content": "**Return rate = share of installs active N days ago that are active again today.**\n\nLogQL: `count(A and A offset Nd) / count(A offset Nd)` where `A = sum by (install_id) (count_over_time({job=\"pawpi-client\", event=\"session_start\"} | json install_id=\"install_id\" [1d]))`.\n\nLimits: it is rolling-activity retention, not a first-seen install cohort (LogQL cannot find an install's first event). It needs Loki to hold N+1 days of logs (Grafana Cloud free keeps about 14 days: D1 and D7 work, **D30 needs longer retention**). Loki caps a query at ~500 series by default, so above ~500 active installs per day use shorter ranges or move the calculation to a recording rule."
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      }
+    }
+  ],
+  "refresh": "15m",
+  "schemaVersion": 39,
+  "tags": [
+    "pawpi"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "app_version",
+        "label": "App version",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(pawpi_client_screen_views_total, app_version)",
+        "definition": "label_values(pawpi_client_screen_views_total, app_version)",
+        "refresh": 2,
+        "sort": 3,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "hide": 0,
+        "options": [],
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "session",
+        "label": "Session id (paths)",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "PawPi — Behaviour (anonymous)",
+  "uid": "pawpi-behaviour",
+  "version": 1,
+  "weekStart": ""
+}
