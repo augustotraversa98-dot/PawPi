@@ -19,3 +19,20 @@ export function resolveCallbackUrl(search, fallback = "/provider") {
     return fallback;
   }
 }
+
+// True when the page was opened by the mobile auth webview. The bridge always passes one of
+// these two callbackUrl targets (AuthWebView.jsx: /api/auth/expo-web-success; the device
+// token handoff: /api/auth/token). Standalone web never carries them, so a stray
+// ?callbackUrl=/provider/... from a protected-page redirect still gets social buttons.
+const MOBILE_BRIDGE_CALLBACKS = ["/api/auth/expo-web-success", "/api/auth/token"];
+
+export function isMobileAuthWebview(search) {
+  try {
+    const incoming = new URLSearchParams(search || "").get("callbackUrl");
+    if (!incoming) return false;
+    const path = incoming.trim().split(/[?#]/)[0].replace(/^https?:\/\/[^/]+/i, "");
+    return MOBILE_BRIDGE_CALLBACKS.includes(path);
+  } catch {
+    return false;
+  }
+}

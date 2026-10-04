@@ -51,6 +51,14 @@ afterEach(() => {
   Object.defineProperty(window, "location", { value: origLocation, writable: true, configurable: true });
 });
 
+describe("SignUpPage — no social placeholders", () => {
+  it("renders no 'Coming soon' text or divider of its own (social UI lives in SocialSignInButtons)", () => {
+    render(<SignUpPage />);
+    expect(document.body.textContent).not.toMatch(/coming soon/i);
+    expect(screen.queryByText("Or continue with")).toBeNull();
+  });
+});
+
 describe("SignUpPage — Terms acceptance gate", () => {
   it("renders the required Terms/Privacy checkbox", () => {
     render(<SignUpPage />);
