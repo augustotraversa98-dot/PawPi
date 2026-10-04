@@ -126,18 +126,7 @@ export default function SignInPage() {
             {loading ? "Signing in..." : "Log in"}
           </button>
 
-          {/* Social Login Placeholders */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#FFD9B3]"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-[#7A6254]">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
+          {/* Divider + buttons render only when a provider is available (and never in the mobile webview) */}
           <SocialSignInButtons callbackUrl="/provider" />
 
           {/* Sign Up Link */}

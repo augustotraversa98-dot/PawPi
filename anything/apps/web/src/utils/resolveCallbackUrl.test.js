@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveCallbackUrl } from "./resolveCallbackUrl";
+import { resolveCallbackUrl, isMobileAuthWebview } from "./resolveCallbackUrl";
 
 describe("resolveCallbackUrl", () => {
   it("defaults to /provider for standalone-web (no callbackUrl param)", () => {
@@ -32,5 +32,22 @@ describe("resolveCallbackUrl", () => {
   it("falls back when callbackUrl is present but empty/blank", () => {
     expect(resolveCallbackUrl("?callbackUrl=")).toBe("/provider");
     expect(resolveCallbackUrl("?callbackUrl=%20")).toBe("/provider");
+  });
+});
+
+describe("isMobileAuthWebview", () => {
+  it("is true for the two mobile bridge callback targets", () => {
+    expect(isMobileAuthWebview("?callbackUrl=/api/auth/expo-web-success")).toBe(true);
+    expect(isMobileAuthWebview("?callbackUrl=/api/auth/token")).toBe(true);
+    expect(isMobileAuthWebview("?callbackUrl=%2Fapi%2Fauth%2Ftoken")).toBe(true);
+    expect(isMobileAuthWebview("?callbackUrl=https://www.pawpi.info/api/auth/token")).toBe(true);
+  });
+
+  it("is false for standalone web", () => {
+    expect(isMobileAuthWebview("")).toBe(false);
+    expect(isMobileAuthWebview(undefined)).toBe(false);
+    expect(isMobileAuthWebview("?callbackUrl=")).toBe(false);
+    expect(isMobileAuthWebview("?callbackUrl=/provider")).toBe(false);
+    expect(isMobileAuthWebview("?callbackUrl=/provider/api/auth/token")).toBe(false);
   });
 });
