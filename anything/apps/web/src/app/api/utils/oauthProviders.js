@@ -31,6 +31,7 @@ import Apple from "@auth/core/providers/apple";
 import Credentials from "@auth/core/providers/credentials";
 import { buildAppleClientSecret } from "./appleClientSecret.js";
 import { verifyAppleIdentityToken } from "./appleIdentityToken.js";
+import { observeAuthorize, recordBusinessEvent } from "../../../lib/telemetry/business.js";
 
 // Resolves what to pass as Apple's `clientSecret`, preferring the self-generating key-material
 // path over a static secret. Never throws — malformed key material just disables Apple for
@@ -130,7 +131,9 @@ export function appleNativeProvider({
         name: { label: "Name", type: "text" },
         email: { label: "Email", type: "text" },
       },
-      authorize: async (credentials) => {
+      // observeAuthorize only COUNTS the outcome (pawpi_business_events_total signin/apple ok|fail);
+      // it returns/throws exactly what the inner function does.
+      authorize: observeAuthorize("signin", "apple", async (credentials) => {
         const { identityToken, rawNonce, name, email: emailFromClient } = credentials || {};
         if (!identityToken || typeof identityToken !== "string") {
           return null;
@@ -185,6 +188,7 @@ export function appleNativeProvider({
             email,
             name: typeof name === "string" && name.length > 0 ? name : undefined,
           });
+          recordBusinessEvent("signup", "ok", "apple");
         }
 
         await adapter.linkAccount({
@@ -196,7 +200,7 @@ export function appleNativeProvider({
         });
 
         return user;
-      },
+      }),
     }),
   ];
 }

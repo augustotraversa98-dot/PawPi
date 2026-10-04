@@ -8,6 +8,7 @@ import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { isVideoEligible } from "@/app/api/utils/videoEligibility";
 import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -560,6 +561,7 @@ async function POST(request) {
     `;
 
 
+    recordBusinessEvent("post_created");
     return Response.json({ post: fullPost[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/posts] ========================================");

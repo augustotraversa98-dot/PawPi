@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 async function GET(request) {
   try {
@@ -114,6 +115,7 @@ async function POST(request) {
       RETURNING *
     `;
 
+    recordBusinessEvent("health_log_created");
     return Response.json({ log: result[0] }, { status: 201 });
   } catch (error) {
     console.error("Error creating pee log:", error);

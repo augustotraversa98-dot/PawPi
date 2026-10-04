@@ -3,6 +3,7 @@ import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 async function GET(request) {
   const session = await auth();
@@ -158,6 +159,7 @@ async function POST(request) {
       RETURNING *
     `;
 
+    recordBusinessEvent("health_log_created");
     return Response.json({ log: result[0] });
   } catch (error) {
     console.error("[wellness-logs POST] Error:", error);

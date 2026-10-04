@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 const UNDEFINED_COLUMN = "42703"; // pre-0118 DB lacks health_general_checks.areas → degrade cleanly
 
@@ -99,6 +100,7 @@ async function POST(request) {
       `;
     }
 
+    recordBusinessEvent("health_log_created");
     return Response.json({ check: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[health/general-checks] Error creating check:", error);

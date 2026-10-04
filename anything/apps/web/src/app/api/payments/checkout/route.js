@@ -12,6 +12,7 @@ import {
   ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
 import { paymentAttempt } from "@/lib/metrics";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // POST /api/payments/checkout — the OWNER starts a payment (ticket 2.3). Creates an
 // `orders` row for a (kind, provider, amount) plus, via the provider-agnostic payment
@@ -380,6 +381,7 @@ async function POST(request) {
       });
     }
 
+    recordBusinessEvent("order_created");
     return Response.json(
       {
         order,

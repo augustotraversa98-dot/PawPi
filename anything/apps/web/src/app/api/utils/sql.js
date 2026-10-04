@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from 'postgres';
+import { observeQuery } from '../../../lib/telemetry/dbMetrics.js';
 
 const NullishQueryFunction = () => {
   throw new Error(
@@ -79,13 +80,24 @@ function active() {
 // Each is forwarded to active() (the live transaction or the pool), so a single
 // import works identically inside and outside a request context. Methods are
 // bound to the instance so porsager's internal `this` stays correct.
+//
+// Metrics (pawpi_db_*): the Query porsager returns is passed through observeQuery, which only adds a
+// duration/error observer to the SAME object (op label from the first SQL keyword, never the text or
+// params) — behaviour, laziness, .values()/.cancel()/.execute() and error propagation are unchanged, and
+// it can never throw. The query is built OUTSIDE any try so a porsager/stub error still propagates as before.
 const sql = new Proxy(function sqlProxy() {}, {
   apply(_target, _thisArg, args) {
-    return active()(...args);
+    return observeQuery(active()(...args), args[0]);
   },
   get(_target, prop) {
-    const value = active()[prop];
-    return typeof value === 'function' ? value.bind(active()) : value;
+    const instance = active();
+    const value = instance[prop];
+    if (typeof value !== 'function') return value;
+    const bound = value.bind(instance);
+    if (prop === 'unsafe') {
+      return (...args) => observeQuery(bound(...args), args[0]);
+    }
+    return bound;
   },
 });
 

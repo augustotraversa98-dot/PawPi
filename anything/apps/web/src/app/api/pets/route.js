@@ -6,6 +6,7 @@ import {
   setCurrentUserId,
 } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -211,6 +212,7 @@ async function POST(request) {
       RETURNING *
     `;
 
+    recordBusinessEvent("pet_created");
     return Response.json({ pet: pet[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/pets] Error:", error.message);

@@ -29,11 +29,17 @@ independently. If a step needs a new metric/event, add it HERE first (same PR).
 | pawpi_db_errors_total | counter | op |
 | pawpi_business_events_total | counter | event, outcome (ok/fail), method |
 | pawpi_health_deep_ok | gauge | - |
+| pawpi_process_memory_bytes | gauge | kind (rss/heap_used/heap_total/external) |
+| pawpi_process_event_loop_lag_seconds | gauge (p99 since previous export) | - |
+| pawpi_process_uptime_seconds | gauge | - |
 | pawpi_telemetry_ingest_total | counter | result (accepted/dropped/invalid/rate_limited) |
 
 `area` in: auth, pets, feed, health, services, providers, booking, payments, shop, forum, walks, messages,
 training, adoption, insurance, telehealth, notifications, admin, telemetry, other.
-`route` = route TEMPLATE (e.g. /api/pets/:id/profile), never a concrete path.
+`route` = route TEMPLATE (e.g. /api/pets/:id/profile), never a concrete path. Every path parameter is spelled `:id`.
+Non-API traffic (SPA pages, assets) is bucketed to `/__page`; unmatched `/api/...` (404/405) to `unmatched`; a
+safety valve `overflow` caps the fallback normalizer. `method` is one of GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/OTHER;
+`status_class` is `1xx`..`5xx` (or `unknown`). Source of truth for `area`: `anything/apps/web/src/lib/telemetry/areas.js`.
 Business `event` in: signup, signin, pet_created, post_created, health_log_created, routine_created,
 booking_created, order_created, push_token_registered, walk_logged. `method` in: credentials, google, apple, none.
 

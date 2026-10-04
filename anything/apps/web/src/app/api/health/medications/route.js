@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // NR4 — owner-scoped CRUD for a pet's medications (pet_medications, 0117). Own-row RLS
 // (owner_user_id = current_app_user_id()) enforces isolation; every handler also filters
@@ -79,6 +80,7 @@ async function POST(request) {
       )
       RETURNING *
     `;
+    recordBusinessEvent("health_log_created");
     return Response.json({ medication: rows[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/health/medications] Error:", error?.message);
