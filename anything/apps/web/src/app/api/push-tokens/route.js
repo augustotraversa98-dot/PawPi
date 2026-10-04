@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // /api/push-tokens — the caller's device Expo push-token registry (BN2 PR1).
 // Owner-scoped (device_push_tokens is own-row FOR ALL under FORCE RLS, 0109). The
@@ -52,6 +53,7 @@ async function POST(request) {
       }
       throw e;
     }
+    recordBusinessEvent("push_token_registered");
     return Response.json({ ok: true, id: rows[0]?.id ?? null }, { status: 201 });
   } catch (e) {
     console.error("[POST /api/push-tokens] Error:", e?.message);

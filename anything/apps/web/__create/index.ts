@@ -26,6 +26,12 @@ import { API_BASENAME, api } from './route-builder';
 // token. Both return [] when their env keys are absent, so with no keys the providers array is
 // byte-for-byte unchanged and email/password login is untouched. See oauthProviders.js.
 import { googleProvider, appleNativeProvider } from '../src/app/api/utils/oauthProviders.js';
+// Server metrics (docs/observability/OPERATIONS.md "Server metrics"). All no-ops without an OTel SDK and
+// all wrapped so they can never throw into a request.
+import { recordHttpRequest } from '../src/lib/telemetry/httpMetrics.js';
+import { startProcessMetrics } from '../src/lib/telemetry/process.js';
+import { observeAuthorize } from '../src/lib/telemetry/business.js';
+import { instrumentAuthAdapter } from '../src/lib/telemetry/authMetrics.js';
 
 const { Pool } = pg;
 
@@ -48,7 +54,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
-const adapter = NeonAdapter(pool);
+// instrumentAuthAdapter only COUNTS Google sign-ins around the real adapter (same args/results/errors).
+const adapter = instrumentAuthAdapter(NeonAdapter(pool));
 
 const app = new Hono();
 
@@ -68,6 +75,8 @@ app.use('*', (c, next) => {
   return als.run({ requestId }, () => next());
 });
 
+startProcessMetrics();
+
 app.use('*', async (c, next) => {
   const start = Date.now();
   try {
@@ -80,6 +89,16 @@ app.use('*', async (c, next) => {
         http_response_status_code: String(c.res?.status ?? 0),
       });
     } catch {}
+    // pawpi_http_requests_total / pawpi_http_request_duration_seconds (contract names). The route label is
+    // the matched route TEMPLATE, bucketed for non-API/unmatched paths — never a raw URL. Keep the
+    // http.server.request.duration record above: live alert rules depend on it until they are re-pointed.
+    recordHttpRequest({
+      method: c.req.method,
+      path: c.req.path,
+      matchedRoutes: c.req.matchedRoutes,
+      status: c.res?.status ?? 0,
+      seconds: (Date.now() - start) / 1000,
+    });
   }
 });
 
@@ -312,7 +331,7 @@ if (process.env.AUTH_SECRET) {
               type: 'password',
             },
           },
-          authorize: async (credentials) => {
+          authorize: observeAuthorize('signin', 'credentials', async (credentials: Partial<Record<string, unknown>>) => {
             const { email, password } = credentials;
             if (!email || !password) {
               return null;
@@ -341,7 +360,7 @@ if (process.env.AUTH_SECRET) {
 
             // return user object with the their profile data
             return user;
-          },
+          }),
         }),
         Credentials({
           id: 'credentials-signup',
@@ -358,7 +377,7 @@ if (process.env.AUTH_SECRET) {
             name: { label: 'Name', type: 'text' },
             image: { label: 'Image', type: 'text', required: false },
           },
-          authorize: async (credentials) => {
+          authorize: observeAuthorize('signup', 'credentials', async (credentials: Partial<Record<string, unknown>>) => {
             const { email, password, name, image } = credentials;
             if (!email || !password) {
               return null;
@@ -388,7 +407,7 @@ if (process.env.AUTH_SECRET) {
               return newUser;
             }
             return null;
-          },
+          }),
         }),
       ],
     }))

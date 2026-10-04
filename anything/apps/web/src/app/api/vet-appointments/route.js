@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // GET - Fetch all non-deleted vet appointments for the current pet
 async function GET(request) {
@@ -178,6 +179,7 @@ async function POST(request) {
       RETURNING *
     `;
 
+    recordBusinessEvent("booking_created");
     return Response.json({ appointment: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/vet-appointments] Error:", error);

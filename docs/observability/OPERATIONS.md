@@ -4,7 +4,7 @@
 fixes for your approval (Claude → PR). Nothing auto‑deploys. This doc is the single
 source of truth for operating it.
 
-_Last updated: 2026‑08‑03._
+_Last updated: 2026‑10‑04._
 
 ---
 
@@ -129,6 +129,50 @@ reaches an onboarding screen (`where: "mount"`) or is about to create one (`wher
 app had just restarted; a large one means a navigation did it**), `trail` (last ≤15 screens with how many
 seconds ago each was shown, e.g. `/services` → `/onboarding-photo`), `platform`, `os_version`, `app_version`,
 `build`. Ids and screen paths only — never add PII to this beacon.
+
+---
+
+## 5c. Server metrics (night-run Step A)
+
+Emitted by the web/API process over the same OTLP pipe as the legacy metrics (no-op without
+`OTEL_EXPORTER_OTLP_ENDPOINT`; every metric call is wrapped so it can never throw into a request).
+Names/labels are the contract in `docs/observability/night-run/01-TELEMETRY-CONTRACT.md`; label values are
+**bounded** (no ids, query strings, emails, raw paths) and a test (`src/lib/telemetry/labels.test.js`) fails if
+any label looks unbounded. In Grafana/Prometheus, counters appear with `_total` and histograms as
+`_bucket/_sum/_count`.
+
+| Metric | Type | Labels | Where it is emitted |
+|---|---|---|---|
+| `pawpi_http_requests_total` | counter | `area`, `route`, `method`, `status_class` | Hono middleware, `__create/index.ts` |
+| `pawpi_http_request_duration_seconds` | histogram (s) | `area`, `route`, `method` | same |
+| `pawpi_db_query_duration_seconds` | histogram (s) | `op` (select/insert/update/delete/other) | shared `sql` helper, `src/app/api/utils/sql.js` |
+| `pawpi_db_errors_total` | counter | `op` | same |
+| `pawpi_business_events_total` | counter | `event`, `outcome` (ok/fail), `method` (credentials/google/apple/none) | real code sites, see below |
+| `pawpi_health_deep_ok` | gauge | - | updated on every `GET /api/health/deep` (absent until the first call) |
+| `pawpi_process_memory_bytes` | gauge | `kind` (rss/heap_used/heap_total/external) | `src/lib/telemetry/process.js` |
+| `pawpi_process_event_loop_lag_seconds` | gauge | - | p99 event-loop delay since the previous export |
+| `pawpi_process_uptime_seconds` | gauge | - | drops to ~0 on a restart/deploy |
+
+- `route` is the matched Hono route template with every parameter as `:id` (`/api/pets/:id/profile`). SPA pages/assets
+  are `/__page`, unmatched `/api/...` is `unmatched`. `area` comes from `src/lib/telemetry/areas.js` (the one prefix map).
+- The **legacy** `http.server.request.duration` histogram and `pawpi.payment.*` counters are unchanged: the 3 live alert
+  rules still read them until Step D re-points them.
+- DB metrics label the operation only (first SQL keyword), never SQL text or params. Queries issued on a raw
+  `sql.begin(tx => ...)` handle (not through the shared `sql` import) and the health probe are not counted.
+- Business events (`recordBusinessEvent` in `src/lib/telemetry/business.js`; unknown values are dropped):
+  `signup`/`signin` (credentials `authorize` callbacks ok/fail; Apple-native `authorize`; Google via the auth adapter,
+  ok only), `pet_created` (POST /api/pets), `post_created` (POST /api/posts), `health_log_created` (POST on every
+  `/api/health/*` log/record route except walk-logs), `walk_logged` (POST /api/health/walk-logs), `routine_created`
+  (POST /api/routines), `booking_created` (POST /api/providers/:id/book and POST /api/vet-appointments),
+  `order_created` (POST /api/payments/checkout and POST /api/pets/:id/shop-checkout), `push_token_registered`
+  (POST /api/push-tokens). Creation events count successful creations (`ok`); creation failures show up as 5xx in the
+  HTTP metrics by `area`.
+- `service.version` on every series = `RAILWAY_GIT_COMMIT_SHA` first 7 chars (`dev` locally), set in `instrumentation.mjs`.
+
+**`GET /api/health/deep`** — public, no auth, `Cache-Control: no-store`. Runs a bare `select 1` on the DB pool
+(3s timeout) and returns `{ "ok": true, "db_ms": 4, "version": "abc1234" }`, or **503** `{ "ok": false, ... }` if the
+database is unreachable/slow. The body never contains error text or config. Use it for uptime/synthetic checks and as the
+deploy signal (it returns JSON only once the new build is live; before that the SPA catch-all answers with HTML).
 
 ---
 

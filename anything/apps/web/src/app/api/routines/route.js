@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // GET - Fetch all routines for the authenticated user
 async function GET(request) {
@@ -186,6 +187,7 @@ async function POST(request) {
       RETURNING *
     `;
 
+    recordBusinessEvent("routine_created");
     return Response.json({ routine: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[routines] Error creating routine:", error);

@@ -35,6 +35,7 @@ const ALLOWLIST = new Set([
   'auth/social-enabled/route.js', // reports which social providers are configured (env only); no DB
   'upload/route.js', // proxies bytes to Supabase Storage; no DB
   'client-diagnostics/route.js', // authenticated beacon: writes ONE log line, no DB (deliberately must not depend on the DB)
+  'health/deep/route.js', // public uptime probe; `select 1` on the global pool via lib/telemetry/healthDeep (no table, no identity; a request tx would turn a DB outage into a generic 500)
   '__create/ssr-test/route.js', // scaffolding SSR probe; no DB
   '__create/check-social-secrets/route.js', // env-var diagnostic; no DB
 ]);

@@ -3,6 +3,7 @@ import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 async function POST(request) {
   try {
@@ -131,6 +132,7 @@ async function POST(request) {
       // Don't fail the whole request if timeline fails
     }
 
+    recordBusinessEvent("walk_logged");
     return Response.json({ log: walkLog }, { status: 201 });
   } catch (error) {
     console.error("[health/walk-logs] Error creating log:", error);

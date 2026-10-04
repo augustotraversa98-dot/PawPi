@@ -14,6 +14,7 @@ import {
   timeToMinutes,
   DEFAULT_TIME_ZONE,
 } from "@/app/api/utils/availability";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 /** Add `n` days to a 'YYYY-MM-DD' string, returning a 'YYYY-MM-DD' string. */
 function addDays(dateStr, n) {
@@ -635,6 +636,7 @@ async function POST(request, { params }) {
       }),
     });
 
+    recordBusinessEvent("booking_created");
     return Response.json({ appointment: created[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/providers/[id]/book] Error:", error.message);

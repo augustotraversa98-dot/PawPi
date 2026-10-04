@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // NR4 — owner-scoped CRUD for a pet's preventive treatments (pet_preventive_treatments,
 // 0117): flea/tick/heartworm prevention, dewormers, supplements. Own-row RLS enforces
@@ -75,6 +76,7 @@ async function POST(request) {
       )
       RETURNING *
     `;
+    recordBusinessEvent("health_log_created");
     return Response.json({ treatment: rows[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/health/preventive-treatments] Error:", error?.message);

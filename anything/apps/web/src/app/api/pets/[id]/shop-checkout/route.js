@@ -10,6 +10,7 @@ import {
   PaymentsNotConfiguredError,
   ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // POST /api/pets/[id]/shop-checkout — the OWNER turns a CART into a paid 'product' order.
 // Phase 2 ticket 2.11 (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -222,6 +223,7 @@ async function POST(request, { params }) {
       }),
     });
 
+    recordBusinessEvent("order_created");
     return Response.json(
       {
         order,

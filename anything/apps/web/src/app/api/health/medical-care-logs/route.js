@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { recordBusinessEvent } from "@/lib/telemetry/business";
 
 // POST - Save a medical care log entry (mark as given / completed / issue reported)
 async function POST(request) {
@@ -120,6 +121,7 @@ async function POST(request) {
       SELECT * FROM new_log
     `;
 
+    recordBusinessEvent("health_log_created");
     return Response.json({ log: result[0] }, { status: 201 });
   } catch (error) {
     console.error("[health/medical-care-logs] Error creating log:", error);
