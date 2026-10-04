@@ -10,6 +10,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as ExpoCamera from "expo-camera";
 import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { useLeaveOnboardingIfHasPets } from "@/utils/onboardingGuard";
 
 // On web, expo-image-picker returns a transient blob: URL (URL.createObjectURL)
 // that is revoked on page reload and can't be turned into an upload file. Convert
@@ -32,6 +33,7 @@ async function toPersistentPhotoUri(uri) {
 export default function OnboardingPhotoPreviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  useLeaveOnboardingIfHasPets();
   const { t } = useTranslation();
   const params = useLocalSearchParams();
   const [photoUri, setPhotoUri] = useState(params.photoUri);

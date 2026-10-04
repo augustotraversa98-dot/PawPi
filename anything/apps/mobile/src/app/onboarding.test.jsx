@@ -38,6 +38,15 @@ jest.mock("@/components/DateField", () => ({
   default: () => null,
 }));
 jest.mock("expo-image", () => ({ Image: () => null }));
+// The has-pets guard is covered on its own (utils/onboardingGuard.test.jsx + the cases at the bottom
+// of this file); stubbing it here keeps the existing tests' fetch-call-order assertions about the
+// handle-availability check meaningful.
+const mockHasPets = jest.fn(() => Promise.resolve(false));
+jest.mock("@/utils/onboardingGuard", () => ({
+  APP_HOME: "/(tabs)",
+  useLeaveOnboardingIfHasPets: jest.fn(),
+  accountAlreadyHasPets: (...args) => mockHasPets(...args),
+}));
 jest.mock("@/utils/auth/useUser", () => ({
   __esModule: true,
   default: () => ({ data: null }),
@@ -590,5 +599,78 @@ describe("defaultWeightUnit", () => {
     });
     expect(defaultWeightUnit()).toBe("kg");
     spy.mockRestore();
+  });
+});
+
+// ── An account that already has a dog never creates another one from the wizard ──────────────
+// (santiagoallende96: thrown back into onboarding after finishing it, re-filled it, got 3× "Mila".)
+describe("OnboardingScreen — never creates a duplicate dog for an existing owner", () => {
+  const originalFetch = global.fetch;
+  beforeEach(() => {
+    mockHasPets.mockReset();
+    mockHasPets.mockResolvedValue(false);
+    mockRouter.replace.mockClear();
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function walkToReview(screen) {
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.changeText(screen.getByTestId("onboarding-handle-input"), "buddy_the_dog");
+    await waitFor(() =>
+      expect(screen.getByTestId("onboarding-next").props.accessibilityState?.disabled).toBe(false),
+    );
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.press(screen.getByTestId("breed-option-mixed"));
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.press(screen.getByTestId("onboarding-gender-female"));
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.changeText(screen.getByTestId("onboarding-weight"), "12");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    fireEvent.press(screen.getByText("Skip"));
+    fireEvent.press(screen.getByText("Skip"));
+    expect(screen.getByText("Buddy's profile")).toBeTruthy();
+  }
+
+  const postsToPets = () =>
+    global.fetch.mock.calls.filter(([url, init]) => url === "/api/pets" && init?.method === "POST");
+
+  test("Create profile with a pet already on the account → NO POST /api/pets, back to the app", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ available: true }) });
+    const screen = render(<OnboardingScreen />);
+    await walkToReview(screen);
+
+    mockHasPets.mockResolvedValue(true); // the account turned out to have a dog already
+    fireEvent.press(screen.getByText("Create Buddy's profile"));
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)"));
+    expect(postsToPets()).toHaveLength(0);
+  });
+
+  test("Create profile for a genuinely new owner still creates the pet", async () => {
+    global.fetch = jest.fn((url, init) =>
+      Promise.resolve({
+        ok: true,
+        status: init?.method === "POST" ? 201 : 200,
+        json: async () =>
+          url === "/api/pets" && init?.method === "POST"
+            ? { pet: { id: 1, name: "Buddy" } }
+            : { available: true },
+      }),
+    );
+    const screen = render(<OnboardingScreen />);
+    await walkToReview(screen);
+
+    mockHasPets.mockResolvedValue(false);
+    fireEvent.press(screen.getByText("Create Buddy's profile"));
+
+    await waitFor(() => expect(postsToPets()).toHaveLength(1));
+    expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
   });
 });
