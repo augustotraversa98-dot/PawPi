@@ -45,7 +45,7 @@ Production checks after each merge (all passed first time): `/api/health/deep` -
 **5c. Re-run dry run** (`dashboards,alerts,policies,synthetics`): **0 create, 0 update, 27 unchanged, 2 skipped** (the two intentional digest skips). `--exit-code` run exits 0.
 
 **5d. Read-only data checks (Grafana datasource proxy)**
-- Prometheus: 14 `pawpi_*` series names present (`pawpi_http_requests_total`, `pawpi_http_request_duration_seconds_*`, `pawpi_db_*`, `pawpi_business_events_total`, `pawpi_health_deep_ok` = 1, `pawpi_process_*`, `pawpi_telemetry_ingest_total`). Server data is flowing. `pawpi_client_*` and `pawpi_funnel_*`: no series, as expected before build 25. `pawpi_telemetry_ingest_total` exists (my probe/garbage requests), no accepted client events.
+- Prometheus: 14 `pawpi_*` series names present (`pawpi_http_requests_total`, `pawpi_http_request_duration_seconds_*`, `pawpi_db_*`, `pawpi_business_events_total`, `pawpi_health_deep_ok` = 1, `pawpi_process_*`, `pawpi_telemetry_ingest_total`). Server data is flowing. `pawpi_client_*` and `pawpi_funnel_*`: no series, as expected before build 25. `pawpi_telemetry_ingest_total` is listed in the metric names but has no current series; no client events have been accepted.
 - Histogram `le` renders as `"1"` (not `"1.0"`), so the dashboards' `le=~"1|1.0"` slow-share matcher works; other `le`: 0.005 … 10, +Inf.
 - Loki: `{job="pawpi-web"}` has access-log lines (labels `job, level, area` + auto `service_name`, `detected_level`), e.g. `GET /api/auth/* -> 200`. `{job="pawpi-client"}`: empty, as expected.
 - All 15 alert queries were run live against their datasource: every one executes without error. Server rules return no series (nothing breaching, guards hold) except `min(pawpi_health_deep_ok)` = 1.
