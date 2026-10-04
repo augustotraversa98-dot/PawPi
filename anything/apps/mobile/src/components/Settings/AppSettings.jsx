@@ -45,6 +45,7 @@ import {
 import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
 import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
+import { clearAccountStorage } from "@/utils/accountStorage";
 
 const C = {
   coral: "#FF6F61",
@@ -477,9 +478,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || t("settings.deleteFailed"));
       }
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
-      await AsyncStorage.clear();
+      await clearAccountStorage(); // account data only; language / notification prefs / telemetry opt-out stay
       if (setAuth) setAuth(null);
       markExpectedNavigation(); // anonymous telemetry: this landing on Welcome is a user action
       router.replace("/welcome");

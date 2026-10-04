@@ -132,11 +132,25 @@ test("Log out confirms, then clears the session and returns to welcome", () => {
   expect(spy).toHaveBeenCalledTimes(1);
   const buttons = spy.mock.calls[0][2];
   const logoutBtn = buttons.find((b) => b.style === "destructive");
-  return Promise.resolve(logoutBtn.onPress()).then(() => {
-    expect(mockSetAuth).toHaveBeenCalledWith(null);
-    expect(mockReplace).toHaveBeenCalledWith("/welcome");
-    spy.mockRestore();
-  });
+  const AsyncStorage = (() => { const m = require("@react-native-async-storage/async-storage"); return m.default ?? m; })();
+  return AsyncStorage.multiSet([
+    ["pawpi:locale", "es"],
+    ["pawpi.notifPrefs.v1", "{}"],
+    ["pawpi.telemetry.enabled", "0"],
+    ["pet_profile", "{}"],
+    ["pawpi:activeProviderId", "7"],
+  ])
+    .then(() => logoutBtn.onPress())
+    .then(async () => {
+      expect(mockSetAuth).toHaveBeenCalledWith(null);
+      expect(mockReplace).toHaveBeenCalledWith("/welcome");
+      // Account data removed; language / notification prefs / telemetry opt-out kept.
+      expect((await AsyncStorage.getAllKeys()).sort()).toEqual(
+        ["pawpi.notifPrefs.v1", "pawpi.telemetry.enabled", "pawpi:locale"].sort(),
+      );
+      await AsyncStorage.clear();
+      spy.mockRestore();
+    });
 });
 
 test("'Switch to Pet app' shows only when the account also owns pets", () => {

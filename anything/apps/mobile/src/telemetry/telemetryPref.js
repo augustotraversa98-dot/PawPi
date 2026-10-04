@@ -1,8 +1,9 @@
 // The user's "Help improve PawPi (anonymous)" choice. Default ON when unset.
 //
 // Stored under `pawpi.telemetry.enabled` in AsyncStorage ("1" / "0"). An OPT-OUT is also mirrored into the
-// secure store, because other parts of the app call AsyncStorage.clear() (sign-out, account deletion) and that
-// must not silently turn telemetry back on for someone who switched it off. Reading fails CLOSED: if neither
+// secure store, so that a wipe of AsyncStorage (sign-out and account deletion now keep `pawpi.telemetry.*` via
+// utils/accountStorage, but an OS-level clear or a future regression could still drop it) must not silently turn
+// telemetry back on for someone who switched it off. Reading fails CLOSED: if neither
 // store can be read, telemetry stays off for the session.
 //
 // PURE (kv adapters injected, see storage.js).

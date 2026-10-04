@@ -3,7 +3,7 @@
 // owner-level is orphaned once the Profile tab becomes the pet social profile.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
@@ -12,11 +12,13 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockSetAuth = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 jest.mock("@/utils/auth/useAuth", () => ({
-  useAuth: () => ({ setAuth: jest.fn() }),
+  useAuth: () => ({ setAuth: mockSetAuth }),
 }));
 jest.mock("@/components/Pets/PetSwitcher", () => {
   const { Text } = require("react-native");
@@ -36,6 +38,8 @@ import { OwnerMenu } from "./OwnerMenu";
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockReplace.mockReset();
+  mockSetAuth.mockReset();
   providersState.data = [];
 });
 
@@ -79,4 +83,41 @@ test("an account that is ALSO provider staff gets a Business entry → Business 
   expect(item).toBeTruthy();
   fireEvent.press(item);
   expect(mockPush).toHaveBeenCalledWith("/business");
+});
+
+test("logout removes account storage but keeps language, notification prefs and the telemetry opt-out", async () => {
+  const AsyncStorage = (() => { const m = require("@react-native-async-storage/async-storage"); return m.default ?? m; })();
+  await AsyncStorage.clear();
+  await AsyncStorage.multiSet([
+    ["pawpi:locale", "es"],
+    ["pawpi.notifPrefs.v1", '{"walks":false}'],
+    ["pawpi.telemetry.enabled", "0"],
+    ["pet_profile", '{"name":"Rex"}'],
+    ["has_completed_onboarding", "true"],
+    ["pawpi:selectedPetId", "7"],
+  ]);
+
+  const { getByLabelText, getByText } = render(<OwnerMenu />);
+  fireEvent.press(getByLabelText("Open menu"));
+  fireEvent.press(getByText("Reset App Data"));
+
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
+  expect(mockSetAuth).toHaveBeenCalledWith(null);
+  expect((await AsyncStorage.getAllKeys()).sort()).toEqual(
+    ["pawpi.notifPrefs.v1", "pawpi.telemetry.enabled", "pawpi:locale"].sort(),
+  );
+  await AsyncStorage.clear();
+});
+
+test("logout still drops the session when storage fails", async () => {
+  const AsyncStorage = (() => { const m = require("@react-native-async-storage/async-storage"); return m.default ?? m; })();
+  const spy = jest.spyOn(AsyncStorage, "getAllKeys").mockRejectedValueOnce(new Error("disk"));
+
+  const { getByLabelText, getByText } = render(<OwnerMenu />);
+  fireEvent.press(getByLabelText("Open menu"));
+  fireEvent.press(getByText("Reset App Data"));
+
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
+  expect(mockSetAuth).toHaveBeenCalledWith(null);
+  spy.mockRestore();
 });
