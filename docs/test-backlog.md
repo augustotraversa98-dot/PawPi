@@ -411,6 +411,21 @@ go-live checklist in `PawPi_instructions.md`.
 
 ---
 
+## ⚙️ ACTION 4 — Observability go-live (2026-10-04 night run; human steps, none are automated)
+
+The code for metrics, dashboards, alerts, logs and deploy markers is merged; this is what only you can do. Full detail + order: `docs/observability/OPERATIONS.md` (sections 7, 8, 14).
+
+- [ ] **Railway env vars:** `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (a service-account token limited to annotations write). Redeploy. Check: `{job="pawpi-web"}` shows lines in Grafana Explore → Loki after a few requests, and `pawpi-overview` shows a deploy marker after the next deploy.
+- [ ] **Apply to Grafana** (`GRAFANA_URL` + `GRAFANA_SA_TOKEN`; dry run first, then `--apply`; a second dry run must read all `unchanged`):
+  `node scripts/observability/apply-grafana.mjs` / `--apply` (dashboards) · `--sections alerts,policies` with `ALERT_DIGEST_EMAIL=you@…` (rules arrive PAUSED) · `--sections synthetics` with `GRAFANA_SM_URL` + `GRAFANA_SM_TOKEN`.
+- [ ] **Ship app build 25** (client telemetry). Before submitting: update **App Store Connect → App Privacy** (Diagnostics / Usage Data, not linked to the user, not used for tracking — answers drafted in `docs/privacy/telemetry.md`); update the **live privacy policy** text and `docs/app-store-privacy-data-map.md` at that time (they still say no Diagnostics/Usage).
+- [ ] **Un-pause alerts after data flows** (Alerting → Alert rules → folder PawPi → Resume evaluation; run each query in Explore first): server rules first (`P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`), then business/route rules, then P2 **only after** `pawpi-digest` exists, client rules only after build 25 has been live a few days. Verify `grafanacloud_instance_active_series` before `P2-FreeTierUsage`.
+- [ ] *(optional)* **Grafana mobile push for P1** on contact point `Augusto` (IRM integration; 2 minutes, `OPERATIONS.md` 5.3).
+- [ ] *(optional)* **Scripted sign-in journey** with one clearly labelled test account in an isolated project (never sign-UP; `OPERATIONS.md` 5.6).
+- [ ] *(monthly)* the 15-minute review in `OPERATIONS.md` section 15.
+
+---
+
 ## 🧪 Pre-launch backend quality pass (2026-06-19, deepens 2.78)
 
 A pure-backend hardening + test-deepening sweep over the Wave 7 surfaces and the sensitive systems

@@ -80,6 +80,27 @@ Status mirror (✅ merged). Grouped by theme; PR numbers link to `augustotravers
 
 ---
 
+## 📈 OBSERVABILITY NIGHT RUN (2026-10-04) — Grafana becomes the main instrument (A–D merged, E in review)
+
+Plan + contract: [`docs/observability/night-run/`](observability/night-run/README.md); runbook: [`docs/observability/OPERATIONS.md`](observability/OPERATIONS.md).
+Everything below is **code merged to `main`**; nothing is live in Grafana until the human actions list is done (no Grafana/Loki credentials existed in the run).
+
+- ✅ **#599 — Step A: server metrics for every feature area** (`pawpi_http_*`, DB, process, business events, `GET /api/health/deep`).
+- ✅ **#600 — Step B: anonymous client telemetry** — ingest endpoints + mobile SDK (allowlist registry, Settings opt-out "Help improve PawPi", kill switch). Reaches users only with **app build 25**.
+- ✅ **#601 — Step C: 11 Grafana dashboards as code** + `apply-grafana.mjs` (dry-run by default, `pawpi-` uids only, never deletes).
+- ✅ **#602 — Step D: 15 alert rules (all created PAUSED), P1/P2 routing, 5 synthetic checks, richer autofix relay payload.**
+- 🟡 **Step E (this PR): structured redacted access logs -> Loki `job="pawpi-web"`, deploy annotation per start, CI coverage guard** ("a new route/screen/funnel step/dashboard/alert without coverage fails the build"), `OPERATIONS.md` rewritten, monthly review checklist.
+
+**Human actions owed (not automatable; tracked as ACTION 4 in [`test-backlog.md`](test-backlog.md)):**
+1. Ship **app build 25** (client telemetry) — before submit: update **App Store Connect → App Privacy** per [`docs/privacy/telemetry.md`](privacy/telemetry.md); update the **live privacy policy** text and [`docs/app-store-privacy-data-map.md`](app-store-privacy-data-map.md) at that time.
+2. Add the Railway env vars: `GRAFANA_LOKI_URL` / `GRAFANA_LOKI_USER` / `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (annotations-write service account).
+3. Run `scripts/observability/apply-grafana.mjs` — dry run, then `--apply`, for dashboards, alerts + policies (set `ALERT_DIGEST_EMAIL`) and synthetics (`GRAFANA_SM_*`).
+4. **Un-pause alerts after data flows** (server rules first; client rules only after build 25; P2 only after the digest exists) — order in `OPERATIONS.md` section 8.
+5. Optional: Grafana mobile push for P1 on `Augusto`; a scripted sign-in journey with a clearly labelled test account.
+- Found, not fixed (product bugs, see PROGRESS.md): unknown `/api/...` paths return 200 + HTML (SPA catch-all) instead of a JSON 404.
+
+---
+
 ## 📍 CURRENT STATE (2026-08-01) — history; superseded by the 2026-10-03 block above
 
 ### 🐾 WAVE — Pet Owner engagement (E0–E10) — IN PROGRESS

@@ -26,12 +26,16 @@ import { API_BASENAME, api } from './route-builder';
 // token. Both return [] when their env keys are absent, so with no keys the providers array is
 // byte-for-byte unchanged and email/password login is untouched. See oauthProviders.js.
 import { googleProvider, appleNativeProvider } from '../src/app/api/utils/oauthProviders.js';
-// Server metrics (docs/observability/OPERATIONS.md "Server metrics"). All no-ops without an OTel SDK and
+// Server metrics (docs/observability/OPERATIONS.md section 3.1 "Server metrics"). All no-ops without an OTel SDK and
 // all wrapped so they can never throw into a request.
 import { recordHttpRequest } from '../src/lib/telemetry/httpMetrics.js';
 import { startProcessMetrics } from '../src/lib/telemetry/process.js';
 import { observeAuthorize } from '../src/lib/telemetry/business.js';
 import { instrumentAuthAdapter } from '../src/lib/telemetry/authMetrics.js';
+// Step E: structured access logs -> Loki (job="pawpi-web") and the deploy annotation. Both are no-ops without their env,
+// never throw and never touch the request/response.
+import { logHttpRequest } from '../src/lib/telemetry/serverLogs.js';
+import { scheduleDeployAnnotation } from '../src/lib/telemetry/deployAnnotation.js';
 
 const { Pool } = pg;
 
@@ -76,6 +80,10 @@ app.use('*', (c, next) => {
 });
 
 startProcessMetrics();
+try {
+  // One Grafana "deploy" annotation per server start (needs RAILWAY_GIT_COMMIT_SHA + GRAFANA_URL + token). Timer is unref'd, not awaited.
+  scheduleDeployAnnotation();
+} catch {}
 
 app.use('*', async (c, next) => {
   const start = Date.now();
@@ -99,6 +107,17 @@ app.use('*', async (c, next) => {
       status: c.res?.status ?? 0,
       seconds: (Date.now() - start) / 1000,
     });
+    // One structured access-log line (route template, status, request_id, duration_ms; never path/query/body/headers).
+    try {
+      logHttpRequest({
+        method: c.req.method,
+        path: c.req.path,
+        matchedRoutes: c.req.matchedRoutes,
+        status: c.res?.status ?? 0,
+        durationMs: Date.now() - start,
+        requestId: c.get('requestId'),
+      });
+    } catch {}
   }
 });
 
