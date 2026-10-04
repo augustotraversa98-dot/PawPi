@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, ActivityIndicator, Text, Pressable } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,21 @@ export default function EntryPoint() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  const determineRoute = useCallback(async () => {
+  // The session (JWT) a destination has already been issued for — `undefined` until the first
+  // decision. EntryPoint is the app's one-shot launch/sign-in gate: once it has routed a session
+  // it must not re-run, because a re-run that sees a different answer (e.g. a transient empty
+  // pets list) would redirect a user who is already inside the app back to onboarding/welcome.
+  // Keyed on the JWT, not the `auth` object: the store can hand us a new object for the same
+  // session (re-hydration, a user-info refresh) and that is not a new session. A real change —
+  // logout (null), "Use a different account", a fresh sign-in — changes the key and routes again.
+  const routedForSession = useRef(undefined);
+  const sessionKey = auth?.jwt ?? null;
+
+  const determineRoute = useCallback(async ({ force = false } = {}) => {
+    if (isReady && !force && routedForSession.current === sessionKey) {
+      return;
+    }
+
     setError(false);
     setLoading(true);
 
@@ -34,6 +48,7 @@ export default function EntryPoint() {
     if (!auth) {
       console.log("[EntryPoint] No auth, redirecting to /welcome");
       markBootStep("entrypoint:no-auth-welcome");
+      routedForSession.current = sessionKey;
       setDestination("/welcome");
       setLoading(false);
       return;
@@ -43,6 +58,7 @@ export default function EntryPoint() {
     if (!isUsableToken(auth.jwt)) {
       console.log("[EntryPoint] Stored token is malformed, clearing session");
       setAuth(null);
+      routedForSession.current = sessionKey;
       setDestination("/welcome");
       setLoading(false);
       return;
@@ -107,9 +123,10 @@ export default function EntryPoint() {
       return;
     }
 
+    routedForSession.current = sessionKey;
     setDestination(result.destination);
     setLoading(false);
-  }, [isReady, auth, setAuth]);
+  }, [isReady, auth, sessionKey, setAuth]);
 
   useEffect(() => {
     determineRoute();
@@ -150,7 +167,7 @@ export default function EntryPoint() {
           {t("welcome.couldntReach")}
         </Text>
         <Pressable
-          onPress={determineRoute}
+          onPress={() => determineRoute({ force: true })}
           style={{
             backgroundColor: "#FF6F61",
             paddingHorizontal: 32,

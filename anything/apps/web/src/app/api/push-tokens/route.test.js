@@ -5,11 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST, DELETE } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
+vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn(), resolveOrCreateUserId: vi.fn() }));
 // withRequestContext just needs to pass the handler through in unit tests.
 vi.mock("@/app/api/utils/requestContext", () => ({
   withRequestContext: (fn) => fn,
@@ -36,19 +36,19 @@ describe("POST /api/push-tokens", () => {
 
   it("no profile → 404", async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValue(null);
+    resolveOrCreateUserId.mockResolvedValue(null);
     expect((await POST(req("POST", { token: "x" }))).status).toBe(404);
   });
 
   it("missing token → 400", async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValue(7);
+    resolveOrCreateUserId.mockResolvedValue(7);
     expect((await POST(req("POST", { platform: "ios" }))).status).toBe(400);
   });
 
   it("upserts the caller's token → 201 with id", async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValue(7);
+    resolveOrCreateUserId.mockResolvedValue(7);
     sql.mockResolvedValueOnce([{ id: 3, platform: "ios" }]);
     const res = await POST(req("POST", { token: "ExponentPushToken[x]", platform: "ios" }));
     expect(res.status).toBe(201);
@@ -57,7 +57,7 @@ describe("POST /api/push-tokens", () => {
 
   it("defaults an unknown platform to ios", async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValue(7);
+    resolveOrCreateUserId.mockResolvedValue(7);
     sql.mockResolvedValueOnce([{ id: 3, platform: "ios" }]);
     await POST(req("POST", { token: "t", platform: "windows" }));
     // The platform bound into the query is the second interpolated value.
@@ -67,7 +67,7 @@ describe("POST /api/push-tokens", () => {
 
   it("unmigrated table (42P01) → friendly 503", async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValue(7);
+    resolveOrCreateUserId.mockResolvedValue(7);
     sql.mockRejectedValueOnce({ code: "42P01" });
     expect((await POST(req("POST", { token: "t" }))).status).toBe(503);
   });
@@ -81,6 +81,16 @@ describe("DELETE /api/push-tokens", () => {
     const res = await DELETE(req("DELETE", { token: "t" }));
     expect(res.status).toBe(200);
     expect((await res.json())).toEqual({ ok: true });
+  });
+
+  it("no profile → ok no-op (nothing registered; never creates a profile)", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolveUserId.mockResolvedValue(null);
+    const res = await DELETE(req("DELETE", { token: "t" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(resolveOrCreateUserId).not.toHaveBeenCalled();
+    expect(sql).not.toHaveBeenCalled();
   });
 
   it("missing token → 400", async () => {

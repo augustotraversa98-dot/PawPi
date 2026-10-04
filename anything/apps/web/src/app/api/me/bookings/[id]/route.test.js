@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // GET /api/me/bookings/[id] — the OWNER's single booking detail (booking summary screen). An
 // owner-scoped read (WHERE owner_user_id = me), never requireProviderRole; another owner's id
-// matches no row → 404. auth() + `sql` + resolveUserId are mocked at the module boundary, like
+// matches no row → 404. auth() + `sql` + resolveOrCreateUserId are mocked at the module boundary, like
 // /api/me/bookings. Asserts anon→401, no-profile→404, owner-scoping + the payment(approved)
 // join, amount present when approved, `paid: null` when unpaid, and 404 for another owner.
 
 import { GET } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
-import { resolveUserId } from '@/app/api/utils/currentUser';
+import { resolveOrCreateUserId } from '@/app/api/utils/currentUser';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
-vi.mock('@/app/api/utils/currentUser', () => ({ resolveUserId: vi.fn() }));
+vi.mock('@/app/api/utils/currentUser', () => ({ resolveOrCreateUserId: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const ctx = (id = 'bk-1') => ({ params: { id } });
@@ -24,7 +24,7 @@ const boundValues = () => sql.mock.calls.flatMap((c) => c.slice(1));
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  resolveUserId.mockResolvedValue(7);
+  resolveOrCreateUserId.mockResolvedValue(7);
 });
 
 describe('GET /api/me/bookings/[id]', () => {
@@ -37,7 +37,7 @@ describe('GET /api/me/bookings/[id]', () => {
 
   it('404 when the caller has no profile', async () => {
     auth.mockResolvedValue(SESSION);
-    resolveUserId.mockResolvedValueOnce(null);
+    resolveOrCreateUserId.mockResolvedValueOnce(null);
     const res = await GET(req(), ctx());
     expect(res.status).toBe(404);
   });
