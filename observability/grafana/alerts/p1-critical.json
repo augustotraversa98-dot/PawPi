@@ -103,7 +103,7 @@
           "noDataState": "OK",
           "execErrState": "OK",
           "for": "3m",
-          "isPaused": true,
+          "isPaused": false,
           "labels": {
             "area": "platform",
             "severity": "P1",
@@ -213,7 +213,7 @@
           "noDataState": "OK",
           "execErrState": "OK",
           "for": "5m",
-          "isPaused": true,
+          "isPaused": false,
           "labels": {
             "area": "platform",
             "severity": "P1",
@@ -323,7 +323,7 @@
           "noDataState": "OK",
           "execErrState": "OK",
           "for": "5m",
-          "isPaused": true,
+          "isPaused": false,
           "labels": {
             "severity": "P1",
             "pawpi_managed": "true"
@@ -761,7 +761,7 @@
           "noDataState": "OK",
           "execErrState": "OK",
           "for": "5m",
-          "isPaused": true,
+          "isPaused": false,
           "labels": {
             "area": "database",
             "severity": "P1",

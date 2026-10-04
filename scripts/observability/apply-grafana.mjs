@@ -28,9 +28,10 @@
 //   * the existing folder "PawPi" is reused (found by title); only a missing one is created (uid `pawpi-folder`);
 //   * the token is never printed (errors carry method + path + status only);
 //   * datasources are resolved at runtime by type/name; repo files only carry ${DS_PROMETHEUS} / ${DS_LOKI} / ${DS_USAGE};
-//   * ALERT PAUSE SEMANTICS: a rule that does not exist yet is created with isPaused=true. An update of an existing rule
-//     keeps the LIVE isPaused value (paused stays paused, un-paused stays un-paused) - re-applying never re-pauses and never
-//     un-pauses. The owner resumes rules by hand in the Grafana UI;
+//   * ALERT PAUSE SEMANTICS: `isPaused: true` in the repo file (the default for every rule) means "created paused; an update
+//     keeps the LIVE value" - re-applying never re-pauses and never un-pauses. `isPaused: false` is an EXPLICIT, reviewed
+//     "resume this rule" declaration (a commit on main): the apply creates the rule active / resumes a paused one, and the dry
+//     run shows it as an update until live matches. Pausing stays a UI action (the repo never forces a live rule back to paused);
 //   * NOTIFICATION POLICIES are one shared tree: we GET it, add/refresh ONLY our two child routes (matchers
 //     pawpi_managed="true" + severity P1|P2, placed in front so they win over a generic folder route), assert every other
 //     route is byte-identical and in the same order, then PUT it back. Contact point `Augusto` is never written; only
@@ -114,7 +115,7 @@ export const USAGE = `Usage: node scripts/observability/apply-grafana.mjs [--app
   (no flags)        dry run: validate repo files and show the plan against live Grafana (writes nothing)
   --apply           create/update through the Grafana HTTP APIs (never deletes)
   --sections LIST   dashboards (default) | alerts | policies | synthetics | all   (comma separated)
-                    alerts: rules are created PAUSED; an update keeps the live pause state
+                    alerts: rules are created PAUSED unless the repo file says isPaused:false (explicit resume); an update keeps the live pause state otherwise
                     policies: merges P1/P2 child routes into the shared policy tree + contact point pawpi-digest
                     synthetics: no-op unless GRAFANA_SM_URL and GRAFANA_SM_TOKEN are set
   --only UID        limit to uids (dashboard / alert rule uids, SM job names; comma separated or repeated)
@@ -473,7 +474,7 @@ export function loadAlerts(dir = DEFAULT_ALERTS_DIR) {
         if (seen.has(r.uid)) problems.push(`${at}: duplicate uid`);
         seen.add(r.uid);
         if (!r.title) problems.push(`${at}: missing title`);
-        if (r.isPaused !== true) problems.push(`${at}: isPaused must be true in the repo file (rules are only ever created paused)`);
+        if (typeof r.isPaused !== 'boolean') problems.push(`${at}: isPaused must be true (paused / keep live state) or false (explicit resume) in the repo file`);
         if (!Array.isArray(r.data) || !r.data.length || !r.condition) problems.push(`${at}: missing data/condition`);
         if (typeof r.for !== 'string') problems.push(`${at}: missing "for"`);
         if (!['P1', 'P2'].includes(r.labels?.severity)) problems.push(`${at}: labels.severity must be P1 or P2`);
@@ -498,7 +499,10 @@ export function buildAlertRule(entry, { folderUid, datasources, usage }) {
   return substituteDatasources(withMeta, { ...datasources, usage });
 }
 
-/** Why the live rule differs from the desired one ([] = identical). isPaused is deliberately NOT compared (owner-controlled). */
+/**
+ * Why the live rule differs from the desired one ([] = identical). The live pause state is NOT compared, except for the one
+ * explicit declaration: the repo says isPaused:false and the live rule is still paused (= a pending resume).
+ */
 export function diffAlertRule(desired, live) {
   const reasons = [];
   for (const k of ['title', 'condition', 'noDataState', 'execErrState', 'for', 'folderUID', 'ruleGroup']) {
@@ -507,6 +511,7 @@ export function diffAlertRule(desired, live) {
   if (!sameMap(desired.labels, live.labels)) reasons.push('labels differ');
   if (!sameMap(desired.annotations, live.annotations)) reasons.push('annotations differ');
   if (!subsetEqual(desired.data, live.data)) reasons.push('queries/threshold differ');
+  if (desired.isPaused === false && live.isPaused) reasons.push('resumes the rule (repo declares isPaused:false)');
   return reasons;
 }
 
@@ -525,7 +530,7 @@ export const alertsSection = {
     }));
     const notes = [];
     if (!ctx.http) {
-      notes.push('live diff skipped (set GRAFANA_URL and GRAFANA_SA_TOKEN). Rules are created PAUSED and an update keeps the live pause state');
+      notes.push('live diff skipped (set GRAFANA_URL and GRAFANA_SA_TOKEN). Rules are created PAUSED (unless the file declares isPaused:false) and an update keeps the live pause state');
       return { items, notes };
     }
     const dsRes = expectOk(await ctx.http.get('/api/datasources'), 'datasource list');
@@ -543,7 +548,7 @@ export const alertsSection = {
       const res = await ctx.http.get(`/api/v1/provisioning/alert-rules/${encodeURIComponent(it.uid)}`);
       if (res.status === 404) {
         it.action = 'create';
-        it.reasons = ['not found in Grafana (will be created PAUSED)'];
+        it.reasons = [`not found in Grafana (will be created ${it.entry.rule.isPaused === false ? 'ACTIVE: repo declares isPaused:false' : 'PAUSED'})`];
         continue;
       }
       expectOk(res, `alert rule ${it.uid} fetch`);
@@ -551,9 +556,9 @@ export const alertsSection = {
       if (!it.live.isPaused) unpaused += 1;
       it.reasons = diffAlertRule(desired, it.live);
       it.action = it.reasons.length ? 'update' : 'unchanged';
-      if (it.action === 'update') it.reasons.push(`keeps live pause state: ${it.live.isPaused ? 'paused' : 'ACTIVE'}`);
+      if (it.action === 'update' && it.entry.rule.isPaused !== false) it.reasons.push(`keeps live pause state: ${it.live.isPaused ? 'paused' : 'ACTIVE'}`);
     }
-    if (unpaused) notes.push(`${unpaused} managed rule(s) are currently un-paused (owner decision): they stay un-paused, apply never changes the pause state of an existing rule`);
+    if (unpaused) notes.push(`${unpaused} managed rule(s) are currently un-paused (owner decision): they stay un-paused; apply only ever resumes a rule the repo declares isPaused:false, it never pauses one`);
     return { items, notes };
   },
   async apply(ctx, plan) {
@@ -562,11 +567,11 @@ export const alertsSection = {
       if (it.action !== 'create' && it.action !== 'update') continue;
       assertPawpiUid(it.uid, 'alert rule');
       if (it.action === 'create') {
-        // New rules are ALWAYS created paused, whatever the file says.
-        expectOk(await ctx.http.post('/api/v1/provisioning/alert-rules', { ...it.desired, isPaused: true }, PROVISION_HEADERS), `alert rule ${it.uid} create`, [200, 201]);
+        // New rules are created paused unless the file explicitly declares isPaused:false.
+        expectOk(await ctx.http.post('/api/v1/provisioning/alert-rules', { ...it.desired, isPaused: it.entry.rule.isPaused !== false }, PROVISION_HEADERS), `alert rule ${it.uid} create`, [200, 201]);
       } else {
-        // Existing rule: keep the live pause state (never re-pause, never un-pause).
-        const body = { ...it.desired, isPaused: Boolean(it.live.isPaused) };
+        // Existing rule: resume only on an explicit isPaused:false; otherwise keep the live state (never re-pause).
+        const body = { ...it.desired, isPaused: it.entry.rule.isPaused === false ? false : Boolean(it.live.isPaused) };
         if (it.live.orgID !== undefined) body.orgID = it.live.orgID;
         expectOk(await ctx.http.put(`/api/v1/provisioning/alert-rules/${encodeURIComponent(it.uid)}`, body, PROVISION_HEADERS), `alert rule ${it.uid} update`, [200]);
       }
