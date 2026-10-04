@@ -10,11 +10,16 @@ import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { Button, PressableScale } from "@/components/ui";
 import UseDifferentAccountLink from "@/components/onboarding/UseDifferentAccountLink";
 import { useLeaveOnboardingIfHasPets } from "@/utils/onboardingGuard";
+import { trackFunnel } from "@/telemetry/track";
 
 export default function OnboardingPhotoScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   useLeaveOnboardingIfHasPets("onboarding-photo");
+  // Anonymous funnel: activation / onboarding_photo (once per install).
+  useEffect(() => {
+    trackFunnel("activation", "onboarding_photo", { once: true });
+  }, []);
   const { t } = useTranslation();
   const [cameraPermission, setCameraPermission] = useState(null);
   const [galleryPermission, setGalleryPermission] = useState(null);

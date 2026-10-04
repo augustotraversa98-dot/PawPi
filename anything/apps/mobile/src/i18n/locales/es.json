@@ -138,6 +138,8 @@
     "privacyDataSection": "PRIVACIDAD Y DATOS",
     "accountPrivacy": "Privacidad de la cuenta",
     "accountPublic": "Pública",
+    "telemetryTitle": "Ayudar a mejorar PawPi (anónimo)",
+    "telemetryHint": "Compartí datos anónimos de uso y errores (pantallas, toques, tiempos) para que podamos corregir problemas y mejorar la app. Nunca tu nombre, mascotas, fotos, mensajes ni ubicación. Podés desactivarlo cuando quieras.",
     "supportSection": "SOPORTE",
     "helpCenter": "Centro de ayuda",
     "accountSection": "CUENTA",

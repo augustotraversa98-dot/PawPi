@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "./usePetProfile";
 import { invalidateHealthGraph } from "./useHealthReinforcement";
+import { trackHealthLogSaved } from "@/telemetry/track";
 
 // Food logging
 export function useLogFood() {
@@ -40,6 +41,7 @@ export function useLogFood() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "food-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // A food log is a Care action — fill the Care Ring's Care segment live.
@@ -90,6 +92,7 @@ export function useLogPoo() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "poo-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
@@ -139,6 +142,7 @@ export function useLogWalk() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "walk-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // Fill the Care Ring's Walk segment live (E1).
@@ -193,6 +197,7 @@ export function useLogGeneralCheck() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "general-checks"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // A completed Quick Check is a Care action — fill the Care Ring's Care segment live
@@ -239,6 +244,7 @@ export function useLogPhotoCheck() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "photo-checks"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
@@ -289,6 +295,7 @@ export function useLogPee() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "pee-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
@@ -338,6 +345,7 @@ export function useLogVomit() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "vomit-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.
@@ -384,6 +392,7 @@ export function useLogWeight() {
       return response.json();
     },
     onSuccess: () => {
+      trackHealthLogSaved(); // anonymous funnel (never throws)
       queryClient.invalidateQueries({ queryKey: ["health", "weight-logs"] });
       queryClient.invalidateQueries({ queryKey: ["health", "timeline"] });
       // AUDIT A-24: also refresh the Care Ring + vet-summary readiness.

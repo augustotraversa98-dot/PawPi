@@ -59,7 +59,8 @@ booking_created, order_created, push_token_registered, walk_logged. `method` in:
 ## Client event taxonomy (batched POST /api/telemetry/events, Loki line per event)
 Envelope: { install_id, session_id, app_version, build, platform, os_major, locale, sent_at, events: [...] }
 Event: { name, t (ms since session start), props }
-- session_start { cold: bool }, session_end { duration_s_bucket }
+- session_start { cold: bool }, session_end { duration_s_bucket }   (mobile: `session_start` leads the first event of a launch and of every new session (>= 30 min in background);
+  `session_end` is sent at EVERY transition to background with the length of that foreground stretch, so a session can have several)
 - screen_view { screen }
 - tap { target, screen }                      (target = registry key, never visible text)
 - form_step { form, step, action: view|complete|abandon|error }

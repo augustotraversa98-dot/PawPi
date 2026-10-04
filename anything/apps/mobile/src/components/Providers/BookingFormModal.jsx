@@ -20,6 +20,8 @@ import {
 } from "@/utils/calendarIntegration";
 import BookingSlotPicker from "@/components/Providers/BookingSlotPicker";
 import { formatMoney } from "@/utils/money";
+import { trackFunnel, trackFeature } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 import {
   isSlotCapability,
   IN_PERSON_SLOT_CAPABILITIES,
@@ -112,6 +114,13 @@ export default function BookingFormModal({
   const book = useBookProvider();
   const checkout = useBookingCheckout();
   const { t } = useTranslation();
+
+  // Anonymous telemetry (additive): the booking form (view / complete / abandon / error) and the services
+  // funnel's booking_start / booking_done. Never reads what the owner typed.
+  const formTelemetry = useFormTelemetry("booking", { active: !!visible });
+  useEffect(() => {
+    if (visible) trackFunnel("services", "booking_start");
+  }, [visible]);
 
   // The capability this booking is for: explicit prop, else the provider's primary
   // type, else 'vet' (the pre-2.4 default). Drives the copy + the booking payload.
@@ -325,6 +334,9 @@ export default function BookingFormModal({
         // Pay-with-credit walk (B4): the credit is charged at pickup, not now.
         pay_with_credit: payWithCredit ? true : undefined,
       });
+      formTelemetry.complete();
+      trackFunnel("services", "booking_done");
+      trackFeature("booking");
       resetAndClose();
       if (payWithCredit) {
         Alert.alert(
@@ -355,6 +367,7 @@ export default function BookingFormModal({
         );
       }
     } catch (err) {
+      formTelemetry.error();
       // Surface backend 400/403/404 messages instead of swallowing them.
       Alert.alert(t("booking.couldntBook"), err?.message || t("common.pleaseTryAgain"));
     }

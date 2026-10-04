@@ -19,6 +19,7 @@ import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
 import { recordRoute } from "@/utils/navTrail";
+import { useTelemetryLifecycle } from "@/telemetry/TelemetryProvider";
 
 SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
@@ -28,6 +29,11 @@ wireQueryConnectivity();
 export default function RootLayout() {
   const { initiate, isReady, isAuthenticated } = useAuth();
   markBootStep("layout:render");
+
+  // Anonymous, allowlisted usage telemetry (docs/privacy/telemetry.md). A hook (not a child
+  // component) so it is mounted exactly once for the life of the app, even across the
+  // `!isReady` early return. Never throws; opt-out lives in Settings.
+  useTelemetryLifecycle();
 
   // Screen breadcrumb for client diagnostics (memory only; see utils/navTrail).
   const pathname = usePathname();

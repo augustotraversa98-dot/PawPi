@@ -21,6 +21,15 @@ Anonymous product-analytics events, only while "Help improve PawPi" is ON (the d
   errors (kind, screen, short code), unexpected navigation redirects (from, to, reason), startup and screen-ready timings (buckets),
   feature usage (registered feature key), funnel steps (registered funnel + step), and a single `opt_out` event.
 - Each event carries `t` (milliseconds since the session started) and the server receive time.
+- Client behaviour (mobile, build 25): events are validated against the allowlist ON THE DEVICE before they are queued (anything the server
+  would drop never leaves the phone); `session_end` is sent each time the app goes to the background and carries the length of that
+  foreground stretch (a new `session_id` starts after 30 minutes in the background); API calls are recorded as a feature area, a route
+  TEMPLATE taken from a fixed list of the server's routes (an unlisted path is reported as `unknown`, never a path with an id/handle),
+  the status class and a latency bucket, and calls to the telemetry endpoints themselves are not recorded; errors carry only the error
+  CLASS name (e.g. `TypeError`), never the message or stack; the telemetry request carries no account token, no cookies and no
+  platform identity headers (it uses the platform's original `fetch`, not the app's authenticated one).
+- Nothing is sent until the app has read `GET /api/telemetry/config` successfully and it says `enabled: true` (fail closed: while the
+  config cannot be read, events wait in a bounded in-memory queue of at most 200 events, oldest dropped); `sampleRate` is applied once per session.
 
 ## 2. What is NOT collected
 
@@ -50,7 +59,10 @@ cannot be joined to account data.
 
 Settings -> **Help improve PawPi (anonymous)** -> switch OFF. Effect: no further events are sent, the offline queue is cleared, the
 `install_id` is deleted from the device, and one final `opt_out` event is sent. Switching it back on creates a fresh random
-`install_id` (no link to the old one). Deleting the app removes the local id as well.
+`install_id` (no link to the old one). The OFF choice is stored in two places (app storage and the device secure store) so that signing
+out or deleting the account, which clears app storage, does not silently turn collection back on.
+HUMAN NOTE: the `install_id` lives in the iOS Keychain / Android Keystore-backed secure store; on iOS the Keychain can outlive an app
+uninstall, so "delete the app" is NOT a guaranteed way to drop the id on iOS: the in-app switch is. Say this accurately in the policy/support copy.
 
 ## 5. Drafted privacy-policy paragraph (HUMAN ACTION: legal review, then add to the live policy in both languages)
 

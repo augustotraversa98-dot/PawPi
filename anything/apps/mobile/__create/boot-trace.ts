@@ -106,6 +106,20 @@ export function markBootComplete(): void {
   }
 }
 
+/**
+ * Milliseconds from the first boot milestone to `boot:complete` for THIS launch, or null while the boot is
+ * not complete. Read-only: used by anonymous telemetry (perf_startup).
+ */
+export function getBootElapsedMs(): number | null {
+  try {
+    if (!trace || !trace.completed) return null;
+    const done = trace.steps.find((s) => s.step === 'boot:complete');
+    return done ? done.ms : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
 /** The previous launch's trail (null on first launch or if unreadable). */
 export function getLastBootTrace(): BootTrace | null {
   try {

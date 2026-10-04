@@ -24,6 +24,8 @@ import VaccineRoutineModal from "./VaccineRoutineModal";
 import VetAppointmentRoutineModal from "./VetAppointmentRoutineModal";
 import MedicalCareRoutineModal from "./MedicalCareRoutineModal";
 import WellnessCheckRoutineModal from "./WellnessCheckRoutineModal";
+import { trackFunnel, trackFeature, trackTap } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 const C = {
   cream: "#FFF7EF",
@@ -81,6 +83,18 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   // Tracks which deep-link editRoutineId we've already auto-opened, so the edit
   // modal opens once (not on every render) and re-opens if the param changes.
   const [handledEditRoutineId, setHandledEditRoutineId] = useState(null);
+
+  // Anonymous telemetry (additive): routines funnel + the routine form (view / complete / abandon / error).
+  const formTelemetry = useFormTelemetry("routine", { active: selectedType !== null });
+  useEffect(() => {
+    trackFunnel("routines", "routines_open");
+  }, []);
+  useEffect(() => {
+    if (selectedType !== null && !editingRoutine) {
+      trackFunnel("routines", "routine_form_open");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedType]);
 
   // Load routines when pet is available
   useEffect(() => {
@@ -170,6 +184,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   };
 
   const handleCreateRoutine = () => {
+    trackTap("routine_add");
     setEditingRoutine(null);
     setTypeSelectorVisible(true);
   };
@@ -202,10 +217,14 @@ export default function RoutinesTab({ editRoutineId } = {}) {
         invalidateRoutinesExist(); // tick Home's "Set your first reminder" item
         Alert.alert(t("routines.toast.created"));
       }
+      formTelemetry.complete();
+      trackFunnel("routines", "routine_saved");
+      trackFeature("routine");
       setSelectedType(null);
       setEditingRoutine(null);
     } catch (error) {
       console.error("[RoutinesTab] Error saving routine:", error);
+      formTelemetry.error();
       Alert.alert(t("routines.errors.saveFailed"));
     }
   };

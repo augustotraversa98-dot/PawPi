@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import { PressableScale, GlassSurface } from "@/components/ui";
 import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
 import MyActivity from "@/components/Services/MyActivity";
 import { useUnreadCount } from "@/hooks/useProviders";
+import { trackFunnel } from "@/telemetry/track";
 
 // Services TAB SHELL: a two-pane surface with a segmented [Discover | My Activity] toggle
 // pinned in a safe-area header. Discover = the unified provider discovery (headerless — the
@@ -18,6 +19,10 @@ export default function ServicesScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [pane, setPane] = useState("discover"); // "discover" | "activity"
+  // Anonymous funnel: services / services_tab (the Services tab opened).
+  useEffect(() => {
+    trackFunnel("services", "services_tab");
+  }, []);
   const { data: unreadCount = 0 } = useUnreadCount();
 
   const segments = [
