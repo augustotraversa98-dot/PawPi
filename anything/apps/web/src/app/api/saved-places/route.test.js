@@ -5,11 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
+vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn(), resolveOrCreateUserId: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const post = (body) =>
@@ -22,6 +22,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
   resolveUserId.mockResolvedValue(7);
+  resolveOrCreateUserId.mockResolvedValue(7);
 });
 
 describe("GET /api/saved-places", () => {

@@ -9,6 +9,10 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/app/api/utils/requestContext', () => ({
+  withRequestContext: (fn) => fn,
+  setCurrentUserId: vi.fn(),
+}));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
 vi.mock('@/app/api/utils/providerAuth', () => {
   class ProviderAuthError extends Error {

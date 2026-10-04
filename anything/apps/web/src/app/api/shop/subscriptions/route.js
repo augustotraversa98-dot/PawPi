@@ -1,6 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import {
   nextChargeAt,
@@ -27,7 +27,7 @@ async function GET(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = await resolveUserId(session.user.id);
+    const userId = await resolveOrCreateUserId(session);
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }

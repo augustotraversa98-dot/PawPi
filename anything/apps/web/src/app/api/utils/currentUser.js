@@ -12,6 +12,7 @@
 // gotcha): the query is a tagged template; the param binds via `${}`.
 
 import sql from './sql';
+import { isValidAuthUserId } from './authUserId';
 
 export async function resolveUserId(authUserId) {
   const userProfile = await sql`
@@ -84,4 +85,78 @@ export async function ensureUserProfile(authUserId, { fullName, email } = {}) {
   await setCurrentUserId(newId);
 
   return newId;
+}
+
+// resolveOrCreateUserId — get-or-create the caller's user_profiles.id from an AUTHENTICATED
+// session, for the owner routes the app calls BEFORE any pet exists (launch + Services tab).
+//
+// Why: profiles are created lazily (pets POST / providers POST), so a fresh Google/Apple
+// account has no row until it finishes onboarding. Those routes used resolveUserId and
+// answered 404 "User profile not found" for it — a missing profile read as an error instead
+// of "nothing yet". With this helper such an account gets the normal empty answer.
+//
+// Safety:
+//   - NEVER creates for an unauthenticated / ghost session: returns null unless the session
+//     carries a valid integer auth id AND that auth_users row exists (callers keep their 401
+//     guard first; the null path is only the "auth user vanished" edge → their old 404).
+//   - Concurrency: the app fires several of these routes at once on launch, so two requests can
+//     race to create the same profile. INSERT … ON CONFLICT DO NOTHING (+ re-select) means the
+//     loser never raises 23505 — a unique violation would abort the whole request transaction
+//     and 500 it.
+//   - RLS (#108): always stamps the request identity with the resolved id, including when a
+//     concurrent request created the row after this request's start-of-request lookup found
+//     none, so own-row policies (e.g. device_push_tokens) see the caller.
+//
+// ensureUserProfile (above) is deliberately left as-is for the provider flows.
+export async function resolveOrCreateUserId(session) {
+  const authUserId = session?.user?.id;
+  if (!isValidAuthUserId(authUserId)) return null;
+
+  const { setCurrentUserId } = await import('./requestContext');
+  const stamp = async (id) => {
+    await setCurrentUserId(id);
+    return id;
+  };
+
+  const lookup = async () => {
+    const rows = await sql`
+      SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
+    `;
+    return rows.length > 0 ? rows[0].id : null;
+  };
+
+  const existing = await lookup();
+  if (existing !== null) return stamp(existing);
+
+  // Only ever create for a real auth user (a ghost/deleted id must not hit the FK).
+  const authRows = await sql`SELECT 1 FROM auth_users WHERE id = ${authUserId} LIMIT 1`;
+  if (authRows.length === 0) return null;
+
+  const email = session.user.email;
+  const fullName = session.user.name;
+  const baseUsername =
+    email?.split('@')[0] ||
+    fullName?.toLowerCase().replace(/\s+/g, '') ||
+    `user_${Date.now()}`;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const username = await uniqueUsername(baseUsername, async (candidate) => {
+      const taken = await sql`
+        SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1
+      `;
+      return taken.length > 0;
+    });
+    const created = await sql`
+      INSERT INTO user_profiles (auth_user_id, full_name, username, role)
+      VALUES (${authUserId}, ${fullName || null}, ${username}, 'pet_owner')
+      ON CONFLICT DO NOTHING
+      RETURNING id
+    `;
+    if (created.length > 0) return stamp(created[0].id);
+    // Conflict: a concurrent request created this profile (re-select finds it), or the
+    // username was taken in the race (loop and pick another).
+    const raced = await lookup();
+    if (raced !== null) return stamp(raced);
+  }
+  return null;
 }

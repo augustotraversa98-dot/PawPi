@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { resolveUserId } from "@/app/api/utils/currentUser";
+import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // /api/push-tokens — the caller's device Expo push-token registry (BN2 PR1).
@@ -20,7 +20,7 @@ async function POST(request) {
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = await resolveUserId(session.user.id);
+    const userId = await resolveOrCreateUserId(session);
     if (userId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
@@ -65,9 +65,11 @@ async function DELETE(request) {
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Read-only lookup — a delete must never CREATE a profile. No profile means no token
+    // was ever registered, so there is nothing to remove: succeed (idempotent).
     const userId = await resolveUserId(session.user.id);
     if (userId === null) {
-      return Response.json({ error: "User profile not found" }, { status: 404 });
+      return Response.json({ ok: true });
     }
     const body = (await request.json().catch(() => ({}))) ?? {};
     const token = typeof body.token === "string" ? body.token.trim() : "";

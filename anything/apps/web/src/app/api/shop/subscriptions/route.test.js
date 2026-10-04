@@ -8,6 +8,10 @@ import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/app/api/utils/requestContext", () => ({
+  withRequestContext: (fn) => fn,
+  setCurrentUserId: vi.fn(),
+}));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
