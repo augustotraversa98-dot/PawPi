@@ -13,6 +13,7 @@
 //   GITHUB_REPO            defaults to "augustotraversa98-dot/PawPi"
 
 import crypto from 'node:crypto';
+import { buildClientPayload } from '@/lib/alertRelayPayload.js';
 
 const REPO = process.env.GITHUB_REPO || 'augustotraversa98-dot/PawPi';
 
@@ -51,22 +52,9 @@ async function POST(request) {
     return Response.json({ ok: true, dispatched: false, reason: 'no firing alerts' });
   }
 
-  const first = firing[0] || {};
-  const clientPayload = {
-    source: 'grafana',
-    status: payload.status || 'firing',
-    alertname: first.labels?.alertname || payload.title || 'unknown',
-    severity: first.labels?.severity || 'warning',
-    summary:
-      first.annotations?.summary ||
-      first.annotations?.description ||
-      payload.message ||
-      '',
-    value: first.valueString || '',
-    labels: first.labels || {},
-    generatorURL: first.generatorURL || '',
-    panelURL: first.panelURL || '',
-  };
+  // client_payload: max 10 top-level properties (GitHub 422s otherwise). Area / route / app_version travel inside the
+  // single sanitised `labels` object; the fixed key set and the caps live in lib/alertRelayPayload.js (unit-tested).
+  const clientPayload = buildClientPayload(payload, firing);
 
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) {

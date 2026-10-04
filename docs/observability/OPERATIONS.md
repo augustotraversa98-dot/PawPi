@@ -15,7 +15,7 @@ _Last updated: 2026‑10‑04._
     │  OpenTelemetry (instrumentation.mjs, loaded via the start script)
     │  + Hono middleware for HTTP metrics + payment counters
     ▼
-  Grafana Cloud (FREE tier)  ── dashboards + 3 alert rules
+  Grafana Cloud (FREE tier)  ── dashboards + 3 live alert rules (+ 15 paused P1/P2 rules, section 5f)
     │        (alert fires → emails you AND ↓)
     ▼
   App relay: POST /api/internal/grafana-alert  (Bearer secret)
@@ -109,7 +109,7 @@ an alert actually fires.
 |---|---|---|
 | Deploy fails: `Cannot find module '/app/instrumentation.mjs'` | `NODE_OPTIONS` poisons the *build* toolchain | Load `--import` in the **start script**, not `NODE_OPTIONS` (0ad3496) |
 | Metric not in Grafana dropdown, no `http_*` metrics | Bundling blocks auto HTTP instrumentation | Hono middleware emits the metric (027a319) |
-| Relay returns 502, GitHub 422 "No more than 10 properties" | `client_payload` had 11 keys (max 10) | Trimmed to 9 (b6ae96a) |
+| Relay returns 502, GitHub 422 "No more than 10 properties" | `client_payload` had 11 keys (max 10) | Trimmed to 9 (b6ae96a); since Step D exactly 10 fixed keys, enforced by `grafana-alert/route.test.js` |
 | Workflow green but no Issue/PR; log `Header … invalid value` | Claude token saved with a newline/space | Re‑paste `CLAUDE_CODE_OAUTH_TOKEN` as one clean line |
 | Log `Resource not accessible by personal access token (createIssue)` | PAT missing Issues permission | Add **Issues: Read and write** to the fine‑grained PAT |
 | Alert flips to "NoData" and emails you when idle | Query returns empty with no traffic | Set the rule's **no‑data → Normal** |
@@ -156,7 +156,7 @@ any label looks unbounded. In Grafana/Prometheus, counters appear with `_total` 
 - `route` is the matched Hono route template with every parameter as `:id` (`/api/pets/:id/profile`). SPA pages/assets
   are `/__page`, unmatched `/api/...` is `unmatched`. `area` comes from `src/lib/telemetry/areas.js` (the one prefix map).
 - The **legacy** `http.server.request.duration` histogram and `pawpi.payment.*` counters are unchanged: the 3 live alert
-  rules still read them until Step D re-points them.
+  rules still read them; Step D leaves those rules untouched (section 5f says when they could be re-pointed).
 - DB metrics label the operation only (first SQL keyword), never SQL text or params. Queries issued on a raw
   `sql.begin(tx => ...)` handle (not through the shared `sql` import) and the health probe are not counted.
 - Business events (`recordBusinessEvent` in `src/lib/telemetry/business.js`; unknown values are dropped):
@@ -284,6 +284,161 @@ grammars `@prometheus-io/lezer-promql` / `@grafana/lezer-logql` parse every expr
   ~500 series by default, so distinct-install counts (`count by install_id`, active installs, distinct-session crash-free) stop being exact above
   ~500 active installs per window: shorten the range or move the calculation to a recording rule.
 - Client durations are bucket-resolution (see 5d); `app_version` is capped at 20 values then `other`.
+
+## 5f. Alerts, routing and synthetic checks (night-run Step D)
+
+Fifteen new alert rules live in the repo (`observability/grafana/alerts/p1-critical.json`, `p2-digest.json`, Grafana file-provisioning
+format) and are pushed by `scripts/observability/apply-grafana.mjs --sections alerts,policies`. **Every rule is created PAUSED**
+(`isPaused: true`); nothing can page until you resume it by hand. They read ONLY telemetry-contract metrics (plus one
+`grafanacloud_*` usage metric for the free-tier rule), and `noDataState` is `OK` on all of them so an idle service, or clients that do
+not exist yet, can never page. `execErrState` is `OK` too (a Grafana/Prometheus hiccup does not page; run each query once in Explore before
+resuming it). Each rule carries labels `severity` (P1/P2), `area`, `pawpi_managed="true"` (the routing key) and, through the query's
+`by (...)`, `route` / `app_version` / `method` where relevant; annotations `summary`, `description` and `runbook` (always a single line
+starting `What to do:`). Rule titles (= the alertname the autofix loop sees) contain no spaces on purpose: they end up in a git branch name.
+
+**Tiers.** P1 = page now (email + autofix webhook via contact point `Augusto`, plus phone push once you add it, see below). P2 = one
+digest email per day.
+
+**P1 rules** (file `p1-critical.json`, group `pawpi-p1-critical`)
+
+| uid | Tier | Threshold | `for` | What to do (annotation `runbook`) |
+|---|---|---|---|---|
+| `pawpi-p1-health-deep-failing` | P1 | `min(pawpi_health_deep_ok) < 1` | 3m | What to do: curl -s https://www.pawpi.info/api/health/deep; if 503, check Supabase status/pooler and Railway deploy logs for the DB error. |
+| `pawpi-p1-server-silent` | P1 | no `pawpi_process_uptime_seconds` samples for 10m (addition: closes the "dead server leaves a stale gauge" gap) | 5m | What to do: open Railway -> pawpi-web deployments (crashed or stuck deploy?), then curl https://www.pawpi.info/api/health/deep; if it answers, check OTEL_EXPORTER_OTLP_* variables. |
+| `pawpi-p1-http-5xx-rate` | P1 | 5xx share **> 5%** per area over 5m, only above 0.02 req/s | 5m | What to do: open dashboard pawpi-overview (5xx by area) then pawpi-bottlenecks; find the failing route with pawpi_http_requests_total{status_class="5xx"} by route, then read the Railway logs for that route. |
+| `pawpi-p1-signin-failure-spike` | P1 | sign-in fail share **> 50%** per method over 15m, >= 5 failures | 10m | What to do: dashboard pawpi-auth-onboarding (sign-in by method), then curl /api/auth/social-enabled and /api/auth/providers; check the provider env vars (GOOGLE_/APPLE_*) and recent deploys. |
+| `pawpi-p1-signup-collapse` | P1 | ok sign-ups last 6h **< 0.2x** the 7-day 6h average (baseline >= 3 per 6h) | 30m | What to do: try signing up yourself in the app (use a throwaway email you own), check dashboard pawpi-auth-onboarding (signup ok vs fail, activation funnel), and /api/auth/providers. |
+| `pawpi-p1-payments-failures` | P1 | 5xx share of POSTs in payments/shop **> 20%** over 15m, >= 3 requests | 10m | What to do: dashboard pawpi-payments-shop (checkout 5xx), then Railway logs for /api/payments/checkout and the MercadoPago status page. |
+| `pawpi-p1-db-errors` | P1 | **> 5** DB errors per `op` in 10m | 5m | What to do: dashboard pawpi-database-infra (DB errors by op, latency), then Railway logs around the spike and Supabase status/connection count. |
+| `pawpi-p1-client-crash-rate` | P1 | js/promise/render errors per session **> 0.2** per `app_version` over 30m, >= 5 errors | 15m | What to do: dashboard pawpi-mobile-client-health (errors by app version/kind/screen) to find the screen, then Loki {job="pawpi-client", event="error"} for the error code. |
+| `pawpi-p1-client-api-5xx` | P1 | phone-side API 5xx share **> 10%** per area + `app_version` over 15m, >= 10 calls | 10m | What to do: compare with the server side in dashboard pawpi-mobile-client-health (API failures: phone vs server) and pawpi-overview; if the server shows nothing, suspect Railway/proxy; else read the area route logs. |
+| `pawpi-p1-route-4xx-burst` | P1 | **> 90%** 4xx on one route template over 10m, >= 30 4xx (excludes unmatched/overflow//__page) | 10m | What to do: find which status it is in Railway logs for that route template; a 404 on a route the app calls = missing/renamed endpoint (check the latest mobile and web deploys), a 401 = broken auth/session on that route. |
+
+**P2 rules** (file `p2-digest.json`, group `pawpi-p2-digest`)
+
+| uid | Tier | Threshold | `for` | What to do (annotation `runbook`) |
+|---|---|---|---|---|
+| `pawpi-p2-slow-routes` | P2 | top 5 routes by p95 **> 3s** over 15m (> 0.02 req/s) | 15m | What to do: dashboard pawpi-bottlenecks (routes by p95 x volume) and pawpi-database-infra (slow-DB-op share); check whether the route is DB-bound. |
+| `pawpi-p2-activation-funnel-drop` | P2 | step events last 24h **< 0.7x** the 7-day daily average (drop > 30%; baseline >= 5/day) | 1h | What to do: dashboard pawpi-auth-onboarding (activation funnel and step-to-step drop-off) and pawpi-behaviour; check which release changed and the screens around that step. |
+| `pawpi-p2-nav-unexpected-redirect` | P2 | `nav_unexpected_redirect` **> 0** in every 10m window, sustained 30m | 30m | What to do: dashboard pawpi-auth-onboarding (unexpected redirects), then Loki {job="pawpi-client", event="nav_unexpected_redirect"} \| json to read from/to/reason. |
+| `pawpi-p2-telemetry-silent` | P2 | **0** accepted client events for 6h while the previous 7 days had >= 10 sessions | 30m | What to do: curl -s https://www.pawpi.info/api/telemetry/config (enabled:true?), check TELEMETRY_INGEST_ENABLED on Railway, and pawpi_telemetry_ingest_total by result (rate_limited/invalid). |
+| `pawpi-p2-free-tier-usage` | P2 | active series **> 70%** of the 10k free tier (usage datasource) | 1h | What to do: Grafana Cloud -> Usage (metrics, logs, traces) and Explore topk(10, count by (__name__)({__name__=~"pawpi_.+"})); drop or relabel the noisiest metric or raise the trace sampler. |
+
+Notes on the rules:
+- Thresholds not fixed by the plan (sign-in 50%, signup 0.2x, payments 20%, DB 5 errors, client 0.2 errors/session, route 90%, slow route 3s)
+  are starting points; tune the number in the JSON, run `apply`, done. Minimum-volume guards (`and ... >= N`) keep one failed request at
+  idle from paging.
+- `status_class` cannot tell a 404 from a 401, so the route burst rule is "4xx burst"; the runbook line says to look up which status in the logs.
+- Payments use the HTTP metrics of the `payments` and `shop` areas because the contract has no payment counters (the legacy
+  `pawpi.payment.*` metrics keep feeding the legacy `PaymentFailuresSpike`).
+- `P2-TelemetrySilent` only becomes meaningful after **app build 25** ships. Before that there are no client series, the query is
+  empty and the rule stays Normal (no-data -> OK). It needs at least 10 sessions in the previous 7 days to exist at all.
+- `P2-FreeTierUsage` reads `grafanacloud_instance_active_series` from the `grafanacloud-usage` datasource (placeholder `${DS_USAGE}`,
+  resolved by name; the apply script SKIPS the rule with a message if no such datasource exists). The metric name comes from Grafana's
+  docs and was not queried live: verify it in Explore on that datasource before resuming. Logs (50 GB/month) and traces (50 GB/month) have no
+  rule: check Grafana Cloud -> Usage by hand now and then.
+- `P1-ServerMetricsSilent` is an addition to the list in the plan: `pawpi_health_deep_ok` goes stale (not 0) when the process is dead, so
+  without it a full outage with no probe would never alert from metrics.
+
+**The three legacy rules stay exactly as they are** (`HighServerErrorRate`, `HighLatencyP95`, `PaymentFailuresSpike`, folder `PawPi`,
+group `PawPi`): the script never lists, reads, updates or deletes anything it does not own (uid prefix `pawpi-`). They could be re-pointed
+later, but only when strictly equivalent: `pawpi_http_requests_total{status_class="5xx"}` over all requests is the same ratio as
+`HighServerErrorRate`'s `http_server_request_duration_seconds_count{http_response_status_code=~"5.."}`, so that one is equivalent once you
+trust the new series; `HighLatencyP95` would need `pawpi_http_request_duration_seconds_bucket` (bucket boundaries differ, so p95 values are not
+identical) and `PaymentFailuresSpike` has no equivalent in the contract. Until you decide, they stay on the legacy metrics. The new P1 5xx
+rule overlaps with `HighServerErrorRate` on purpose; once you resume it and are happy, you can pause the legacy one yourself.
+
+### Routing (notification policies)
+
+The policy tree is ONE shared object, so the script MERGES: it reads the tree, adds (or refreshes) only its own two child routes, asserts
+that every other route is byte-identical and in the same order and that the root is untouched, then writes the tree back. Our routes
+are put IN FRONT of the existing children (an older "PawPi folder -> Augusto" route would otherwise match the P2 alerts first); they only
+match `pawpi_managed="true"`, so the three legacy rules route exactly as before. Writes send `X-Disable-Provenance: true`, so the tree and the
+rules stay editable in the Grafana UI.
+
+| Route | Matches | Receiver | Group by | group_wait / group_interval / repeat |
+|---|---|---|---|---|
+| P1 | `pawpi_managed="true"`, `severity="P1"` | `Augusto` (email + autofix webhook; unchanged, never written by the script) | `area`, `alertname` | 30s / 5m / 4h |
+| P2 digest | `pawpi_managed="true"`, `severity="P2"` | `pawpi-digest` (email, created by the script) | `area` | 10m / **24h** / 24h |
+
+P1 groups by area **and** alertname so each rule reaches the autofix relay as its own dispatch (the relay opens one workflow per
+notification and only reads the first firing alert; when several are in one group it names the others in the summary).
+
+**`pawpi-digest` needs `ALERT_DIGEST_EMAIL`** (`;`- or `,`-separated addresses) in the environment of the apply run. Without it the script skips
+the contact point AND the P2 route and says so. **Do not resume P2 rules until the digest exists**, otherwise they would match an older generic
+route. Addresses are never printed.
+
+**Phone push for P1 (2-minute manual step, cannot be scripted: it needs a stack-specific IRM integration).** (1) Install the Grafana IRM /
+Grafana mobile app and log in to the stack (Profile -> notifications on). (2) Grafana -> Alerts & IRM -> IRM -> Integrations -> New integration
+-> "Grafana Alerting" -> create. (3) In the IRM integration set an escalation chain that notifies you by **push (important)**. (4) Alerting ->
+Contact points -> **Augusto** -> Add contact point integration -> type "Grafana OnCall" / IRM -> pick that integration -> Save. Augusto
+is the receiver of the P1 route, so every P1 now also pushes; the apply script never writes `Augusto`, so it will not undo this. Test with the
+contact point's "Test" button.
+
+### Apply
+
+```bash
+# dry run first (writes nothing; second run after --apply must read all `unchanged`)
+GRAFANA_URL=https://<stack>.grafana.net GRAFANA_SA_TOKEN=glsa_... ALERT_DIGEST_EMAIL='you@example.com' \
+  node scripts/observability/apply-grafana.mjs --sections alerts,policies
+... --sections alerts,policies --apply          # rules created PAUSED, routes merged, pawpi-digest created
+... --sections all --apply                      # dashboards + alerts + routing + synthetics (synthetics only with GRAFANA_SM_*)
+... --sections alerts --only pawpi-p1-http-5xx-rate --apply
+```
+The service-account token needs, on top of the Step C permissions, alert rules + notification policies + contact points write. A plain
+`apply-grafana.mjs` (no `--sections`) still does exactly what it did in Step C (dashboards only).
+**Pause semantics (tested):** a rule that does not exist is created with `isPaused: true`; for an existing rule the live `isPaused` is kept on update
+(paused stays paused, resumed stays resumed), so re-applying never re-pauses a rule you resumed and never resumes one you did not. The comparison
+ignores `isPaused`. Evaluation interval: new rule groups get Grafana's default (1m); change it in the UI if you want. Nothing is ever deleted:
+to retire a rule, delete it in Grafana by hand and delete its JSON here.
+
+### Un-pausing (after data flows; per rule, in the UI)
+
+Alerting -> Alert rules -> folder **PawPi** -> group `pawpi-p1-critical` / `pawpi-p2-digest` -> the rule's menu -> **Resume evaluation**. Check
+the rule's query in "View" / Explore first (it must return data or be legitimately empty). Suggested order:
+1. Server data (flowing since Step A): `P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`. Watch a day for flaps.
+2. Business/route rules once there is real traffic: `P1-SigninFailureSpike`, `P1-SignupCollapse` (needs 7 days of history), `P1-PaymentsFailureSpike`, `P1-Route4xxBurst`.
+3. Create `pawpi-digest` (set `ALERT_DIGEST_EMAIL`, apply), then the P2 server rules: `P2-SlowRoutesP95`, and `P2-FreeTierUsage` after checking its metric.
+4. After app build 25 has been live for a few days: `P1-ClientCrashRate`, `P1-ClientApi5xxShare`, `P2-NavUnexpectedRedirect`, `P2-ActivationFunnelDrop`, and last `P2-TelemetrySilent`.
+If a rule is noisy: raise its threshold/`for` in the JSON and re-apply (the resume state survives), or pause it again in the UI.
+
+### Autofix relay payload
+
+`POST /api/internal/grafana-alert` dispatches `client_payload` with exactly these ten top-level keys (GitHub allows 10; a test pins it, also with
+hundreds of labels): `source`, `status`, `alertname`, `severity`, `summary`, `value`, `labels`, `generatorURL`, `panelURL`, `runbook`. `labels` is ONE
+object holding the allow-listed alert labels (`area`, `route`, `app_version`, `method`, `status_class`, `op`, `event`, `kind`, `funnel`, `step`,
+`platform`, `screen`, `alertname`, `severity`, `grafana_folder`; values capped at 80 characters, restricted to `A-Za-z0-9_.-/:@ `). Text fields have
+control characters removed and are length-capped. The workflow prompt now tells Claude the area/route and points it at the telemetry contract.
+
+### Synthetic Monitoring checks
+
+Five HTTP checks in `observability/grafana/synthetics/*.json`, every 5 min (`frequency: 300000`), each from two regions (EMEA + AMER; one online public
+probe per region chosen at creation), timeout 10s, basic metrics only, labels `service`/`area`/`managed_by`:
+
+| job | URL | passes when |
+|---|---|---|
+| `pawpi-health-deep` | `/api/health/deep` | 200 and body contains `"ok":true` |
+| `pawpi-auth-social-enabled` | `/api/auth/social-enabled` | 200 and body contains `"google":true` and `"apple":true` |
+| `pawpi-auth-providers` | `/api/auth/providers` | 200 and body contains the `google` and `apple-native` providers |
+| `pawpi-account-signin` | `/account/signin` | 200, body does NOT match `Coming soon`, and contains `account/signin/page` |
+| `pawpi-account-signup` | `/account/signup` | 200, body does NOT match `Coming soon`, and contains `account/signup/page` |
+
+The account pages are client-rendered: the SSR HTML (checked with curl against production) contains none of the visible text ("Log in", "Sign in",
+"Create"), only the React Router bootstrap. What IS in the HTML, and only on the real page, is the matched route module id (`account/signin/page`,
+`account/signup/page`); an unknown `/account/...` URL (also HTTP 200) lacks it, so the check catches a missing page or a "Coming soon" placeholder.
+It cannot see a page that renders blank in the browser. Budget: 5 checks x 2 probes x 288 runs/day = about 89k executions in a 31-day month, under the
+100k free-tier limit (a third probe would exceed it; a test enforces the budget).
+
+Apply: `GRAFANA_SM_URL=https://synthetic-monitoring-api-<region>.grafana.net GRAFANA_SM_TOKEN=<SM access token> node scripts/observability/apply-grafana.mjs --sections synthetics [--apply]`.
+Without both variables the section is a documented no-op. It lists checks, matches by job prefix `pawpi-`, adds missing ones (`/api/v1/check/add`), updates
+drifted ones (`/api/v1/check/update`, keeping the live probes) and never deletes. Checks only probe: **no alert is built on them in this step.** Quick
+manual option for the total-outage gap: in Synthetic Monitoring set the checks' "alert sensitivity" (it creates `sm_check` alerts); route them like
+any other rule.
+
+**Scripted sign-up journey: intentionally NOT implemented.** It would create real production accounts on every run, which the night-run rules forbid
+(and each new account is real user data we would have to clean up). Morning proposal: create one clearly labelled test account
+(e.g. `synthetic+pawpi@<your domain>`, name "PawPi Synthetic") in an isolated Supabase project or with a dedicated test flag, then add a scripted check that
+signs IN (not up) with it and reads a protected endpoint; keep the credential in the SM check's secret store, never in the repo.
 
 ## 6. Maintenance
 

@@ -1,0 +1,560 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "name": "pawpi-p2-digest",
+      "folder": "PawPi",
+      "rules": [
+        {
+          "uid": "pawpi-p2-slow-routes",
+          "title": "P2-SlowRoutesP95",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "topk(5, histogram_quantile(0.95, sum by (le, area, route) (rate(pawpi_http_request_duration_seconds_bucket{route!~\"unmatched|overflow|/__page\"}[15m]))) and on (area, route) (sum by (area, route) (rate(pawpi_http_requests_total{route!~\"unmatched|overflow|/__page\"}[15m])) > 0.02))",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        3
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "15m",
+          "isPaused": true,
+          "labels": {
+            "severity": "P2",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "p95 of {{ $labels.route }} ({{ $labels.area }}) is {{ printf \"%.1f\" $values.B.Value }}s",
+            "description": "The 5 slowest route templates by p95 latency over 15m (only routes above 0.02 req/s). Threshold: p95 > 3s for 15m. Same threshold as the legacy HighLatencyP95 but per route instead of global.",
+            "runbook": "What to do: dashboard pawpi-bottlenecks (routes by p95 x volume) and pawpi-database-infra (slow-DB-op share); check whether the route is DB-bound."
+          }
+        },
+        {
+          "uid": "pawpi-p2-activation-funnel-drop",
+          "title": "P2-ActivationFunnelDrop",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 900,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "((sum by (funnel, step) (increase(pawpi_funnel_step_total{funnel=\"activation\"}[1d])) or (0 * sum by (funnel, step) (increase(pawpi_funnel_step_total{funnel=\"activation\"}[7d] offset 1d)))) / (sum by (funnel, step) (increase(pawpi_funnel_step_total{funnel=\"activation\"}[7d] offset 1d)) / 7)) and ((sum by (funnel, step) (increase(pawpi_funnel_step_total{funnel=\"activation\"}[7d] offset 1d)) / 7) >= 5)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        0.7
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "1h",
+          "isPaused": true,
+          "labels": {
+            "area": "client",
+            "severity": "P2",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "Activation step {{ $labels.step }} is at {{ printf \"%.2f\" $values.B.Value }}x of its 7-day daily average (drop > 30%)",
+            "description": "Per activation funnel step: events in the last 24h divided by the average day of the previous 7 days. Threshold: ratio < 0.7 (a drop of more than 30%) for 1h, only when the 7-day daily average is at least 5. The value is the ratio. Needs app build 25+ and some weeks of data to be meaningful.",
+            "runbook": "What to do: dashboard pawpi-auth-onboarding (activation funnel and step-to-step drop-off) and pawpi-behaviour; check which release changed and the screens around that step."
+          }
+        },
+        {
+          "uid": "pawpi-p2-nav-unexpected-redirect",
+          "title": "P2-NavUnexpectedRedirect",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (app_version, platform) (increase(pawpi_client_events_total{event=\"nav_unexpected_redirect\"}[10m]))",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "30m",
+          "isPaused": true,
+          "labels": {
+            "area": "client",
+            "severity": "P2",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "Users keep being redirected unexpectedly (app {{ $labels.app_version }}, {{ $labels.platform }})",
+            "description": "nav_unexpected_redirect events (landing on onboarding/welcome from a screen outside the pre-auth flow) in each 10m window. Threshold: > 0 continuously for 30m, i.e. sustained, not a single event. This is the signal of the Services -> onboarding bug.",
+            "runbook": "What to do: dashboard pawpi-auth-onboarding (unexpected redirects), then Loki {job=\"pawpi-client\", event=\"nav_unexpected_redirect\"} | json to read from/to/reason."
+          }
+        },
+        {
+          "uid": "pawpi-p2-telemetry-silent",
+          "title": "P2-TelemetrySilent",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 900,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(sum(increase(pawpi_telemetry_ingest_total{result=\"accepted\"}[6h])) or vector(0)) and (sum(increase(pawpi_client_sessions_total[7d] offset 6h)) >= 10)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        1
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "30m",
+          "isPaused": true,
+          "labels": {
+            "area": "telemetry",
+            "severity": "P2",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "No client telemetry accepted for 6h although the app had sessions in the previous 7 days",
+            "description": "Accepted telemetry events in the last 6h is 0 while the previous 7 days had at least 10 sessions. Threshold: 0 accepted for 6h (pending 30m). NO DATA never alerts (noDataState OK): before app build 25 ships there are no client series, the rule stays Normal and only becomes meaningful once clients report. Also true while TELEMETRY_INGEST_ENABLED=false (kill switch).",
+            "runbook": "What to do: curl -s https://www.pawpi.info/api/telemetry/config (enabled:true?), check TELEMETRY_INGEST_ENABLED on Railway, and pawpi_telemetry_ingest_total by result (rate_limited/invalid)."
+          }
+        },
+        {
+          "uid": "pawpi-p2-free-tier-usage",
+          "title": "P2-FreeTierUsage",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 3600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_USAGE}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_USAGE}"
+                },
+                "editorMode": "code",
+                "expr": "100 * max(grafanacloud_instance_active_series) / 10000",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        70
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "1h",
+          "isPaused": true,
+          "labels": {
+            "area": "platform",
+            "severity": "P2",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "Grafana Cloud active series are at {{ printf \"%.0f\" $values.B.Value }}% of the 10k free tier",
+            "description": "grafanacloud_instance_active_series (grafanacloud-usage datasource) as a share of the free-tier 10,000 active series. Threshold: > 70% for 1h. Only the metrics quota is queryable here; logs (50 GB/month) and traces (50 GB/month) are a manual check in Grafana Cloud -> Usage. Verify the metric in Explore on grafanacloud-usage before un-pausing. Skipped by apply if no usage datasource exists.",
+            "runbook": "What to do: Grafana Cloud -> Usage (metrics, logs, traces) and Explore topk(10, count by (__name__)({__name__=~\"pawpi_.+\"})); drop or relabel the noisiest metric or raise the trace sampler."
+          }
+        }
+      ]
+    }
+  ]
+}

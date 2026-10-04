@@ -1,0 +1,1107 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "name": "pawpi-p1-critical",
+      "folder": "PawPi",
+      "rules": [
+        {
+          "uid": "pawpi-p1-health-deep-failing",
+          "title": "P1-HealthDeepFailing",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "min(pawpi_health_deep_ok)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        1
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "3m",
+          "isPaused": true,
+          "labels": {
+            "area": "platform",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "/api/health/deep reports the database is unreachable or slow (pawpi_health_deep_ok = {{ printf \"%.0f\" $values.B.Value }})",
+            "description": "GET /api/health/deep runs select 1 with a 3s timeout and sets pawpi_health_deep_ok to 0 on failure. Threshold: < 1 for 3m. The gauge only updates when the endpoint is called (Synthetic Monitoring probes it every 5 min).",
+            "runbook": "What to do: curl -s https://www.pawpi.info/api/health/deep; if 503, check Supabase status/pooler and Railway deploy logs for the DB error."
+          }
+        },
+        {
+          "uid": "pawpi-p1-server-silent",
+          "title": "P1-ServerMetricsSilent",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "absent_over_time(pawpi_process_uptime_seconds[10m])",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "5m",
+          "isPaused": true,
+          "labels": {
+            "area": "platform",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "No server metrics from PawPi for 10+ minutes (service down, crash loop, or OTLP export broken)",
+            "description": "pawpi_process_uptime_seconds has no samples for 10m. pawpi_health_deep_ok goes stale (not 0) when the process is dead, so this closes that blind spot. Addition to the step list; threshold: absent for 10m, pending 5m.",
+            "runbook": "What to do: open Railway -> pawpi-web deployments (crashed or stuck deploy?), then curl https://www.pawpi.info/api/health/deep; if it answers, check OTEL_EXPORTER_OTLP_* variables."
+          }
+        },
+        {
+          "uid": "pawpi-p1-http-5xx-rate",
+          "title": "P1-Http5xxRate",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(100 * sum by (area) (rate(pawpi_http_requests_total{status_class=\"5xx\"}[5m])) / clamp_min(sum by (area) (rate(pawpi_http_requests_total[5m])), 0.0001)) and (sum by (area) (rate(pawpi_http_requests_total[5m])) > 0.02)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "5m",
+          "isPaused": true,
+          "labels": {
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "5xx rate is {{ printf \"%.1f\" $values.B.Value }}% in area {{ $labels.area }}",
+            "description": "Share of HTTP responses with status_class 5xx per area over 5m. Threshold: > 5% for 5m, only when the area serves more than 0.02 req/s (about 6 requests per 5 min) so one failed request at idle cannot page. Equivalent to the legacy HighServerErrorRate, split by area.",
+            "runbook": "What to do: open dashboard pawpi-overview (5xx by area) then pawpi-bottlenecks; find the failing route with pawpi_http_requests_total{status_class=\"5xx\"} by route, then read the Railway logs for that route."
+          }
+        },
+        {
+          "uid": "pawpi-p1-signin-failure-spike",
+          "title": "P1-SigninFailureSpike",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(100 * sum by (method) (rate(pawpi_business_events_total{event=\"signin\",outcome=\"fail\"}[15m])) / clamp_min(sum by (method) (rate(pawpi_business_events_total{event=\"signin\"}[15m])), 0.0001)) and (sum by (method) (increase(pawpi_business_events_total{event=\"signin\",outcome=\"fail\"}[15m])) >= 5)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        50
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "10m",
+          "isPaused": true,
+          "labels": {
+            "area": "auth",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "{{ printf \"%.0f\" $values.B.Value }}% of {{ $labels.method }} sign-ins are failing",
+            "description": "Sign-in failure share per method (credentials/google/apple) over 15m. Threshold: > 50% for 10m with at least 5 failures in the window. A few wrong passwords are normal; a majority failing means a broken provider/config or credential stuffing. Google has no fail outcome (a failed attempt never reaches the adapter).",
+            "runbook": "What to do: dashboard pawpi-auth-onboarding (sign-in by method), then curl /api/auth/social-enabled and /api/auth/providers; check the provider env vars (GOOGLE_/APPLE_*) and recent deploys."
+          }
+        },
+        {
+          "uid": "pawpi-p1-signup-collapse",
+          "title": "P1-SignupCollapse",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "((sum(increase(pawpi_business_events_total{event=\"signup\",outcome=\"ok\"}[6h])) or vector(0)) / (sum(increase(pawpi_business_events_total{event=\"signup\",outcome=\"ok\"}[7d] offset 6h)) / 28)) and ((sum(increase(pawpi_business_events_total{event=\"signup\",outcome=\"ok\"}[7d] offset 6h)) / 28) >= 3)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        0.2
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "30m",
+          "isPaused": true,
+          "labels": {
+            "area": "auth",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "Successful sign-ups in the last 6h are {{ printf \"%.2f\" $values.B.Value }}x of the 7-day 6h average (collapse)",
+            "description": "Successful sign-ups in the last 6h divided by the average 6h count of the previous 7 days. Threshold: ratio < 0.2 (an 80% collapse) for 30m, only when the 7-day average is at least 3 per 6h (below that the ratio is noise). Value shown is the ratio, not a percentage.",
+            "runbook": "What to do: try signing up yourself in the app (use a throwaway email you own), check dashboard pawpi-auth-onboarding (signup ok vs fail, activation funnel), and /api/auth/providers."
+          }
+        },
+        {
+          "uid": "pawpi-p1-payments-failures",
+          "title": "P1-PaymentsFailureSpike",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(100 * sum by (area) (rate(pawpi_http_requests_total{area=~\"payments|shop\",method=\"POST\",status_class=\"5xx\"}[15m])) / clamp_min(sum by (area) (rate(pawpi_http_requests_total{area=~\"payments|shop\",method=\"POST\"}[15m])), 0.0001)) and (sum by (area) (increase(pawpi_http_requests_total{area=~\"payments|shop\",method=\"POST\"}[15m])) >= 3)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        20
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "10m",
+          "isPaused": true,
+          "labels": {
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "{{ printf \"%.0f\" $values.B.Value }}% of POST requests in {{ $labels.area }} are failing with 5xx",
+            "description": "Share of 5xx among POST requests in the payments and shop areas over 15m. Threshold: > 20% for 10m, at least 3 requests in the window. Uses HTTP metrics because the contract has no payment counters (4xx declines are not counted). The legacy PaymentFailuresSpike keeps reading pawpi.payment.* and stays as is.",
+            "runbook": "What to do: dashboard pawpi-payments-shop (checkout 5xx), then Railway logs for /api/payments/checkout and the MercadoPago status page."
+          }
+        },
+        {
+          "uid": "pawpi-p1-db-errors",
+          "title": "P1-DbErrors",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (op) (increase(pawpi_db_errors_total[10m]))",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "5m",
+          "isPaused": true,
+          "labels": {
+            "area": "database",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "{{ printf \"%.0f\" $values.B.Value }} database errors in 10m on {{ $labels.op }} queries",
+            "description": "Failed database queries per operation (select/insert/update/delete/other) over 10m. Threshold: > 5 for 5m. Counted at the shared sql helper only (raw sql.begin handles are not counted).",
+            "runbook": "What to do: dashboard pawpi-database-infra (DB errors by op, latency), then Railway logs around the spike and Supabase status/connection count."
+          }
+        },
+        {
+          "uid": "pawpi-p1-client-crash-rate",
+          "title": "P1-ClientCrashRate",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(sum by (app_version) (increase(pawpi_client_errors_total{kind=~\"js|promise|render\"}[30m])) / clamp_min(sum by (app_version) (increase(pawpi_client_sessions_total[30m])), 1)) and (sum by (app_version) (increase(pawpi_client_errors_total{kind=~\"js|promise|render\"}[30m])) >= 5)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.2
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "15m",
+          "isPaused": true,
+          "labels": {
+            "area": "client",
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "App {{ $labels.app_version }} reports {{ printf \"%.2f\" $values.B.Value }} JS/render errors per session",
+            "description": "JS, promise and render errors per session by app_version over 30m (kinds network/api are excluded; they are covered by the API 5xx rule). Threshold: > 0.2 errors per session for 15m with at least 5 errors. Meaningful only after app build 25 ships (no client data before).",
+            "runbook": "What to do: dashboard pawpi-mobile-client-health (errors by app version/kind/screen) to find the screen, then Loki {job=\"pawpi-client\", event=\"error\"} for the error code."
+          }
+        },
+        {
+          "uid": "pawpi-p1-client-api-5xx",
+          "title": "P1-ClientApi5xxShare",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(100 * sum by (area, app_version) (increase(pawpi_client_api_calls_total{status_class=\"5xx\"}[15m])) / clamp_min(sum by (area, app_version) (increase(pawpi_client_api_calls_total[15m])), 1)) and (sum by (area, app_version) (increase(pawpi_client_api_calls_total[15m])) >= 10)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        10
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "10m",
+          "isPaused": true,
+          "labels": {
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "{{ printf \"%.0f\" $values.B.Value }}% of app API calls to {{ $labels.area }} return 5xx (app {{ $labels.app_version }})",
+            "description": "Share of API calls seen by phones that returned 5xx, per area and app_version, over 15m. Threshold: > 10% for 10m with at least 10 calls. Catches failures the server metrics may miss (proxy errors, gateway 5xx). Needs app build 25+.",
+            "runbook": "What to do: compare with the server side in dashboard pawpi-mobile-client-health (API failures: phone vs server) and pawpi-overview; if the server shows nothing, suspect Railway/proxy; else read the area route logs."
+          }
+        },
+        {
+          "uid": "pawpi-p1-route-4xx-burst",
+          "title": "P1-Route4xxBurst",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "(100 * sum by (area, route) (rate(pawpi_http_requests_total{status_class=\"4xx\",route!~\"unmatched|overflow|/__page\"}[10m])) / clamp_min(sum by (area, route) (rate(pawpi_http_requests_total{route!~\"unmatched|overflow|/__page\"}[10m])), 0.0001)) and (sum by (area, route) (increase(pawpi_http_requests_total{status_class=\"4xx\",route!~\"unmatched|overflow|/__page\"}[10m])) >= 30)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "dropNN"
+                },
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        90
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "OK",
+          "for": "10m",
+          "isPaused": true,
+          "labels": {
+            "severity": "P1",
+            "pawpi_managed": "true"
+          },
+          "annotations": {
+            "summary": "{{ printf \"%.0f\" $values.B.Value }}% of requests to {{ $labels.route }} ({{ $labels.area }}) are 4xx",
+            "description": "One route template answering almost only 4xx (404/401/403...) over 10m. Threshold: > 90% for 10m with at least 30 4xx in the window. status_class cannot tell 404 from 401, so the first step is to find out which. Catches bugs like the /api/me/bookings 404s. The buckets unmatched, overflow and /__page are excluded (bot noise).",
+            "runbook": "What to do: find which status it is in Railway logs for that route template; a 404 on a route the app calls = missing/renamed endpoint (check the latest mobile and web deploys), a 401 = broken auth/session on that route."
+          }
+        }
+      ]
+    }
+  ]
+}
