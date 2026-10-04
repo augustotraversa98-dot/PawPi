@@ -1,9 +1,10 @@
 # PawPi — Observability & Self-Healing Operations Runbook
 
 PawPi watches itself (Grafana Cloud free tier), alerts you (email, plus phone push once you add it), and drafts fixes for your
-approval (Claude -> PR). **Nothing auto-deploys.** This is the single source of truth for operating it.
+approval (Claude -> PR). Since night run 3 a small, gated class of fixes can **merge and deploy automatically** (section 17); everything else
+still waits for you. This is the single source of truth for operating it.
 
-_Last updated: 2026-10-04 (night run steps A-E)._
+_Last updated: 2026-10-04 (night run steps A-E; night run 3: server rules resumed as code, automatic fix loop)._
 
 **What is live vs. what still needs you.** Server metrics, client-telemetry ingest, the alert relay and the autofix loop are live in
 production. The dashboards, 15 new alert rules, routing, synthetic checks, structured logs and deploy markers are merged **as code**
@@ -12,7 +13,7 @@ rules (section 5.4) have been live since before the night run.
 
 Contents: 1 Architecture - 2 Tiers and alerts - 3 Signals - 4 Dashboards - 5 Alert rules, routing, synthetics - 6 Environment variables -
 7 Applying to Grafana - 8 Un-pausing - 9 Kill switches - 10 Free-tier limits and cardinality - 11 Keeping it covered - 12 Known limitations -
-13 Troubleshooting - 14 Morning/human checklist - 15 Monthly 15-minute review - 16 Autofix loop and maintenance.
+13 Troubleshooting - 14 Morning/human checklist - 15 Monthly 15-minute review - 16 Autofix loop and maintenance - 17 Automatic fix loop (safety gate, kill switch).
 
 ---
 
@@ -421,8 +422,12 @@ check that signs IN (not up) with it and reads a protected endpoint; keep the cr
 ### 6.2 GitHub (repository secrets)
 | Name | Purpose |
 |---|---|
-| `AUTOFIX_PAT` | Bot opens PR/Issue (fine-grained: Contents + Pull requests + Issues read/write). Has an expiry. |
+| `AUTOFIX_PAT` | **Required** for the loop to open and merge PRs (a PR from the default token does not trigger CI). Fine-grained: Contents + Pull requests + Issues read/write. Has an expiry. Without it the loop opens `needs-human` issues instead. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude auth in CI (your Max plan, $0 extra). |
+| `ANTHROPIC_API_KEY` | Alternative to the OAuth token (pay per use). |
+| `GRAFANA_URL`, `GRAFANA_TOKEN` | Optional: Claude can query Grafana while investigating. |
+| `GRAFANA_ANNOTATION_TOKEN` | Optional (with `GRAFANA_URL`): annotation posted when an automatic merge is reverted (section 17.3). Repository **secret**, separate from the Railway variable of the same name. |
+| _variable_ `AUTOFIX_ENABLED` | Repository **variable** (not a secret): `false` switches the whole automatic fix loop off (section 17.4). |
 
 ### 6.3 Your shell (only for the apply script, never stored)
 | Name | Purpose |
@@ -458,8 +463,8 @@ Exit codes: 0 ok, 1 usage/invalid files, 2 `--apply` without env, 3 Grafana unre
 Datasources are resolved at runtime by type (preferring names like `grafanacloud-*-prom` / `*-logs`; override with `GRAFANA_PROM_DS` / `GRAFANA_LOKI_DS`): the JSON only holds the placeholders
 `${DS_PROMETHEUS}` / `${DS_LOKI}` / `${DS_USAGE}`.
 
-**Pause semantics (tested):** a rule that does not exist is created with `isPaused: true`; for an existing rule the live `isPaused` is kept on update (paused stays paused, resumed stays resumed), so
-re-applying never re-pauses a rule you resumed and never resumes one you did not. The comparison ignores `isPaused`. Evaluation interval: new rule groups get Grafana's default (1m); change it in the UI
+**Pause semantics (tested):** `isPaused: true` in the repo file (every rule's default) means: a rule that does not exist is created paused, and for an existing rule the live `isPaused` is kept on update (paused stays paused, resumed stays resumed), so
+re-applying never re-pauses a rule you resumed and never resumes one you did not. `isPaused: false` is an **explicit, reviewed "resume this rule" declaration** (a commit on main): `--apply` creates the rule active / resumes it, and the dry run lists it as an `update` until live matches (so after `--apply` the next dry run is 0 changes). The script **never pauses** a rule: pausing stays a UI action. Exactly four rules are declared `false` (night run 3; a test pins the list), see section 8. Evaluation interval: new rule groups get Grafana's default (1m); change it in the UI
 if you want. Nothing is ever deleted: to retire a rule or check, delete it in Grafana by hand and delete its JSON here.
 
 **Synthetics:** the section lists checks, matches by job prefix `pawpi-`, adds missing ones (`/api/v1/check/add`), updates drifted ones (`/api/v1/check/update`, keeping the live probes) and never deletes.
@@ -470,12 +475,12 @@ if you want. Nothing is ever deleted: to retire a rule or check, delete it in Gr
 
 Alerting -> Alert rules -> folder **PawPi** -> group `pawpi-p1-critical` / `pawpi-p2-digest` -> the rule's menu -> **Resume evaluation**. Check the rule's query in "View" / Explore first (it must return data or be
 legitimately empty). Order:
-1. **Server rules first** (data flowing since Step A): `P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`. Watch a day for flaps.
+1. **Server rules first** (data flowing since Step A): `P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`. **Done as code on 2026-10-04 (night run 3, #610): `isPaused: false` in `p1-critical.json`, applied, live state verified.** They are the alerts that can start the automatic fix loop (section 17). Watch a day for flaps.
 2. **Business/route rules once there is real traffic:** `P1-SigninFailureSpike`, `P1-SignupCollapse` (needs 7 days of history), `P1-PaymentsFailureSpike`, `P1-Route4xxBurst`.
 3. **P2 only after the digest exists:** apply with `ALERT_DIGEST_EMAIL` set (creates `pawpi-digest` + the P2 route), then `P2-SlowRoutesP95`, and `P2-FreeTierUsage` after checking its metric.
 4. **Client rules only after app build 25** has been live for a few days: `P1-ClientCrashRate`, `P1-ClientApi5xxShare`, `P2-NavUnexpectedRedirect`, `P2-ActivationFunnelDrop`, and last `P2-TelemetrySilent`.
 
-If a rule is noisy: raise its threshold/`for` in the JSON and re-apply (the resume state survives), or pause it again in the UI.
+If a rule is noisy: raise its threshold/`for` in the JSON and re-apply (the resume state survives), or pause it again in the UI. To resume another rule **as code**, set its `isPaused` to `false` in a PR (and add it to the allow-list in `alerts.lint.test.js` / `apply-alerts.test.js`), merge, dry-run, `--apply --sections alerts`, dry-run again (0 changes). To stop a rule paused by the repo file from being resumed again, change the file back to `true` **and** pause it in the UI (`true` never pauses a live rule).
 
 ---
 
@@ -488,6 +493,7 @@ If a rule is noisy: raise its threshold/`for` in the JSON and re-apply (the resu
 | Log volume only | Railway `LOG_SAMPLE_2XX=0` and/or lower `LOG_MAX_LINES_PER_SEC` | Keeps 4xx/5xx/slow lines, drops routine 2xx/3xx. |
 | Deploy annotation | Railway `GRAFANA_ANNOTATE_DEPLOY=false` (or remove `GRAFANA_URL`) | No annotation at the next start. |
 | OTel metrics/traces entirely | Remove `OTEL_EXPORTER_OTLP_ENDPOINT` | Whole OTel bootstrap is a no-op. |
+| Autofix loop (fastest, also stops in-flight runs before they merge) | GitHub repo variable `AUTOFIX_ENABLED` = `false` (section 17.4) | Set `true` / delete it. |
 | Autofix loop | GitHub -> Actions -> "Claude autofix" -> ... -> **Disable workflow**; or remove `GITHUB_DISPATCH_TOKEN` in Railway (the relay stops firing) | Re-enable anytime. |
 | One alert rule | Grafana -> Alerting -> rule menu -> **Pause evaluation** | The next `apply` keeps it paused. |
 | All new rules | Pause each, or delete the P1/P2 groups by hand | Never auto-resumed by the script. |
@@ -607,7 +613,7 @@ The guard is proven by negative tests on temp-dir fixtures (a new route / screen
 
 ## 16. Autofix loop and maintenance
 
-**When an alert fires:** you get an email, and the loop opens either a **PR** (Claude found a safe, tested fix) or an **Issue** (diagnosis only, no change). Review it like any PR/issue. PRs are gated by CI; merging
+**When an alert fires:** you get an email, and the loop opens either a **PR** (Claude found a safe, tested fix) or an **Issue** (diagnosis only, no change). A PR that passes the safety gate of section 17 is merged by the loop itself; any other PR/issue carries `needs-human`: review it like any PR/issue. PRs are gated by CI; merging
 one triggers a Railway deploy. **Reviewing an autofix PR:** read Claude's incident summary in the PR body, check the diff, let CI go green, merge if you agree. Close it if you disagree — nothing is lost.
 **Test issues:** the two from setup (`ManualTest`, `TestAlert`) can be closed as "not planned." Filter all loop output by the `autofix` label.
 
@@ -619,3 +625,88 @@ one triggers a Railway deploy. **Reviewing an autofix PR:** read Claude's incide
 - This repo's `docs/*.md` are version-controlled — when the observability setup changes, update the relevant doc in the same commit so the repo stays the source of truth.
 - Tokens have expirations (the GitHub PAT). Regenerate before expiry and update both `AUTOFIX_PAT` (GitHub) and `GITHUB_DISPATCH_TOKEN` (Railway) with the new value.
 - Related docs: `docs/observability/GRAFANA_SETUP.md` (legacy alert setup), `docs/observability/PawPi_Observability_and_SelfHealing_Loop.md` (original design plan), `docs/observability/night-run/` (contract, step prompts, PROGRESS.md with every decision), `observability/README.md`, `docs/privacy/telemetry.md`.
+
+---
+
+## 17. Automatic fix loop
+
+_Added in night run 3. Source of truth for the rules: `scripts/autofix/gate.mjs` (unit-tested). Workflow: `.github/workflows/claude-autofix.yml`._
+
+A **P1 alert fires -> Claude investigates -> a fix PR is opened -> the safety gate decides -> checks -> squash-merge -> Railway deploys -> production is verified -> auto-revert if it is not healthy.** A person is only needed when the gate says "no" (label `needs-human`) or when something was reverted.
+
+### 17.1 The flow
+
+```
+Grafana P1 rule fires (contact point Augusto webhook)
+  -> POST /api/internal/grafana-alert (app relay, Bearer ALERT_WEBHOOK_SECRET)
+  -> GitHub repository_dispatch "grafana-alert"
+  -> workflow "Claude autofix (Grafana alert)"
+       1. preflight    kill switch? duplicate open autofix PR for this alert? ensure labels
+       2. investigate  Claude (read-only token, no PAT) reads the alert + code, writes /tmp/incident.md and maybe a patch
+       3. deliver      issue-only | PR -> merge gate -> wait for the 3 required checks -> sha-pinned squash merge
+                       -> verify production (<= 15 min) -> OK: done | FAIL: revert PR (merged when green) + issue + annotation
+       4. outcome      one comment on the PR / issue: merged | left for human | reverted
+```
+
+Only the four server rules are live today (`P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`, `P1-HealthDeepFailing`; see 17.5), so those are the only alerts that can start the loop.
+
+### 17.2 The safety gate (ALL must hold to auto-merge; otherwise the PR gets `needs-human` and the loop stops)
+
+| # | Rule | Where it is enforced |
+|---|---|---|
+| 1 | The PR was opened **by this workflow run** (its own branch `autofix/<alert>-<runId>`, same repo, label `autofix`, open, not draft, base `main`) | `checkProvenance` |
+| 2 | The three required checks are `success` on the **head sha**: `mobile (jest)`, `web (vitest)`, `web (integration / real Postgres)` (REST check-runs, polled up to **25 min**; a failed check stops immediately; a timeout is "left for human") | `evaluateChecks` |
+| 3 | Changed files are **only under `anything/apps/web/src/`** and none matches `payment`, `mercadopago`, `auth`, `session`, `migrations` or `supabase/` | `pathProblems` |
+| 4 | No `package*.json`, lockfile, `.github/**`, `app.json`, `eas.json`; no deleted, renamed or binary/mode-only files | `pathProblems`, `evaluateFiles` |
+| 5 | **At most 5 files and 80 changed lines** (additions + deletions) | `evaluateFiles` |
+| 6 | `/tmp/incident.md` has the exact line `CONFIDENCE: high` (and no other CONFIDENCE line). Claude may write `high` only if it reproduced the problem or clearly traced the cause **and** the web tests pass | `isHighConfidence` + the prompt |
+| 7 | **Rate limit:** fewer than 3 autofix PRs merged in the last 24 h, and no autofix **revert** merged in the last 24 h | `rateLimit` |
+| 8 | The kill switch is still off, and the PR head is unchanged, immediately before merging | `deliver.sh` |
+| 9 | The merge is `PUT /pulls/{n}/merge` with `merge_method=squash` and `sha=<head sha>` (GitHub refuses if anything was pushed in between) | `deliver.sh` |
+
+Never auto-merged, whatever the checks say: alerts `P1-ServerMetricsSilent` and `P1-HealthDeepFailing` (**issue only**: the app itself may be down, so any patch is discarded), and **manual** runs (`workflow_dispatch`) unless you pass `allow_merge=true`.
+
+**Dedupe:** if an open PR labelled `autofix` already exists for the same alertname, the run does nothing (see its run summary). A re-fire of an alert whose diagnosis issue is still open comments on that issue.
+
+### 17.3 After the merge: verification and automatic revert
+
+Within **15 min** of the merge: `GET https://www.pawpi.info/api/health/deep` must return `ok:true` **and** `version` equal to the merge commit's 7-char sha (proves the new build is the one serving), then `/api/auth/session` and `/api/telemetry/config` must both return 200.
+
+If that fails the workflow: (1) opens a **revert PR** (`git revert` of the merge commit, label `autofix-revert`), (2) merges it once its three checks are green (sha-pinned), (3) opens an issue **`🚨 Autofix reverted: <alert> (PR #n)`** labelled `autofix` + `needs-human` containing the incident report, (4) posts a Grafana annotation if `GRAFANA_ANNOTATION_TOKEN` and `GRAFANA_URL` are GitHub secrets. If the revert itself cannot be applied or its checks do not go green, the issue says **URGENT** and the revert PR stays open: merge it by hand. A merged revert pauses auto-merge for 24 h (rule 7).
+
+### 17.4 Kill switch and how to disable it
+
+| Goal | How | Undo |
+|---|---|---|
+| **Stop everything now** (no investigation, no PR, no merge; in-flight runs stop before merging) | GitHub -> Settings -> Secrets and variables -> Actions -> **Variables** -> `AUTOFIX_ENABLED` = `false` | set it to `true` or delete it |
+| Stop the alerts reaching GitHub at all | Railway: remove `GITHUB_DISPATCH_TOKEN` (the relay stops dispatching) | add it back |
+| Stop merging but keep investigating | Remove the `AUTOFIX_PAT` secret: the loop then opens a `needs-human` issue (with the patch) instead of a PR | add it back |
+| Disable the workflow | GitHub -> Actions -> "Claude autofix" -> **Disable workflow** (does not cancel a run already in progress; use the variable for that) | Enable workflow |
+| Stop one noisy alert | Grafana: pause the rule (the next `apply-grafana.mjs` never re-pauses or resumes it unless the repo file says `isPaused:false`) | Resume evaluation |
+
+### 17.5 Pause state as code
+
+`observability/grafana/alerts/*.json`: `isPaused: true` = created paused, and an update keeps the live state (you can resume or pause in the UI). `isPaused: false` = an explicit, reviewed "resume this rule": `apply-grafana.mjs --apply --sections alerts` resumes it (the dry run lists it as an update until live matches). The script **never pauses** a rule. Currently `false` for exactly four rules (a test pins the list).
+
+### 17.6 What a human must review
+
+- **Every `needs-human` PR / issue** (filter by label): the gate said no, or nothing was fixable. Read the incident summary, then merge, fix or close.
+- **Every merged autofix PR, the next morning** (label `autofix`, state merged): the loop merged it without a person. Confirm the change is sensible; revert it if not. Merged PRs are small by construction (<= 5 files, <= 80 lines, web `src/` only, no payments / auth / session / migrations).
+- **Every `🚨 Autofix reverted` issue**: something that passed CI broke production. Find out why the checks did not catch it and add a test.
+- **The rate limit and revert pause**: if auto-merge keeps stopping with "rate limit", the same problem is probably recurring: fix the root cause by hand.
+- **Weekly:** the gate itself (`scripts/autofix/gate.mjs`) is part of the safety system: any PR that touches `scripts/autofix/` or `.github/workflows/claude-autofix.yml` needs a human review (the loop can never change them: they are outside the allowed path).
+
+### 17.7 Secrets and variables (names only)
+
+| Where | Name | Needed for |
+|---|---|---|
+| GitHub secret | `AUTOFIX_PAT` | **Required** to open / merge PRs (fine-grained: Contents + Pull requests + Issues read/write). Without it the loop opens `needs-human` issues. |
+| GitHub secret | `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` | The investigation |
+| GitHub secret (optional) | `GRAFANA_URL`, `GRAFANA_TOKEN` | Claude can query Grafana while investigating |
+| GitHub secret (optional) | `GRAFANA_ANNOTATION_TOKEN` (+ `GRAFANA_URL`) | Annotation when a merge is reverted |
+| GitHub variable | `AUTOFIX_ENABLED` | `false` = kill switch |
+| Railway | `ALERT_WEBHOOK_SECRET`, `GITHUB_DISPATCH_TOKEN` | Grafana -> app -> GitHub relay |
+
+### 17.8 Testing the loop safely
+
+Actions -> "Claude autofix (Grafana alert)" -> Run workflow with `alertname = ManualTest`, `summary = loop test - no code change expected`. A manual run **never merges** (unless you tick `allow_merge`): expect a `needs-human` issue. Do not tick `allow_merge` unless you want the change deployed.
