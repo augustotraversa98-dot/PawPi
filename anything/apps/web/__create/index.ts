@@ -14,6 +14,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
+import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
@@ -513,6 +514,10 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.route(API_BASENAME, api);
+
+// Unknown /api/* paths answer a JSON 404, not the SPA's HTML 200. Must stay AFTER the real routes above (first
+// match wins). The '/api/*' pattern is a wildcard, so the telemetry route label for these stays 'unmatched'.
+app.all('/api/*', apiNotFound);
 
 const serverPromise = createHonoServer({
   app,
