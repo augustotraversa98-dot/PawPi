@@ -116,6 +116,22 @@ an alert actually fires.
 
 ---
 
+## 5b. Client diagnostics (`[client-diagnostics]` log line)
+
+The mobile app can report "something that should never happen" via `POST /api/client-diagnostics`
+(authenticated, allow‑listed event names, no DB, per‑user cap of 5/min per instance). The only effect is
+**one structured line in the Railway deploy logs** — search for `[client-diagnostics]`.
+
+Event `onboarding_wizard_for_existing_owner` (added after an owner who had finished onboarding was thrown
+back into the wizard after tapping Services — see PR #596): fired when an account that already has a dog
+reaches an onboarding screen (`where: "mount"`) or is about to create one (`where: "submit"`). Fields:
+`auth_user_id`, `screen`, `session_age_s` (seconds since the app's JS session started — **a tiny value means the
+app had just restarted; a large one means a navigation did it**), `trail` (last ≤15 screens with how many
+seconds ago each was shown, e.g. `/services` → `/onboarding-photo`), `platform`, `os_version`, `app_version`,
+`build`. Ids and screen paths only — never add PII to this beacon.
+
+---
+
 ## 6. Maintenance
 
 - This repo's `docs/*.md` are version‑controlled — when the observability setup changes,

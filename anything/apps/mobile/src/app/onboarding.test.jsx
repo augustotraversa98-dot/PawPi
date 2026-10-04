@@ -42,9 +42,11 @@ jest.mock("expo-image", () => ({ Image: () => null }));
 // of this file); stubbing it here keeps the existing tests' fetch-call-order assertions about the
 // handle-availability check meaningful.
 const mockHasPets = jest.fn(() => Promise.resolve(false));
+const mockNoteBounce = jest.fn();
 jest.mock("@/utils/onboardingGuard", () => ({
   APP_HOME: "/(tabs)",
   useLeaveOnboardingIfHasPets: jest.fn(),
+  noteWizardForExistingOwner: (...args) => mockNoteBounce(...args),
   accountAlreadyHasPets: (...args) => mockHasPets(...args),
 }));
 jest.mock("@/utils/auth/useUser", () => ({
@@ -609,6 +611,7 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
   beforeEach(() => {
     mockHasPets.mockReset();
     mockHasPets.mockResolvedValue(false);
+    mockNoteBounce.mockClear();
     mockRouter.replace.mockClear();
   });
   afterEach(() => {
@@ -651,6 +654,7 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
 
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)"));
     expect(postsToPets()).toHaveLength(0);
+    expect(mockNoteBounce).toHaveBeenCalledWith("submit", "onboarding");
   });
 
   test("Create profile for a genuinely new owner still creates the pet", async () => {
@@ -672,5 +676,6 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
 
     await waitFor(() => expect(postsToPets()).toHaveLength(1));
     expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
+    expect(mockNoteBounce).not.toHaveBeenCalled();
   });
 });

@@ -34,6 +34,7 @@ const ALLOWLIST = new Set([
   'auth/mobile-start/route.js', // renders the CSRF auto-submit page to start web OAuth; no DB
   'auth/social-enabled/route.js', // reports which social providers are configured (env only); no DB
   'upload/route.js', // proxies bytes to Supabase Storage; no DB
+  'client-diagnostics/route.js', // authenticated beacon: writes ONE log line, no DB (deliberately must not depend on the DB)
   '__create/ssr-test/route.js', // scaffolding SSR probe; no DB
   '__create/check-social-secrets/route.js', // env-var diagnostic; no DB
 ]);

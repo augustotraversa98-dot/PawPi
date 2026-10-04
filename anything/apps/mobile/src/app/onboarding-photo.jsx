@@ -14,7 +14,7 @@ import { useLeaveOnboardingIfHasPets } from "@/utils/onboardingGuard";
 export default function OnboardingPhotoScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  useLeaveOnboardingIfHasPets();
+  useLeaveOnboardingIfHasPets("onboarding-photo");
   const { t } = useTranslation();
   const [cameraPermission, setCameraPermission] = useState(null);
   const [galleryPermission, setGalleryPermission] = useState(null);

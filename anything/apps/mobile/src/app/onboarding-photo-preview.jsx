@@ -33,7 +33,7 @@ async function toPersistentPhotoUri(uri) {
 export default function OnboardingPhotoPreviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  useLeaveOnboardingIfHasPets();
+  useLeaveOnboardingIfHasPets("onboarding-photo-preview");
   const { t } = useTranslation();
   const params = useLocalSearchParams();
   const [photoUri, setPhotoUri] = useState(params.photoUri);

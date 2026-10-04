@@ -6,10 +6,16 @@ import { render, waitFor } from "@testing-library/react-native";
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace }) }));
+const mockReport = jest.fn();
+jest.mock("./clientDiagnostics", () => ({
+  EVENT_WIZARD_FOR_EXISTING_OWNER: "onboarding_wizard_for_existing_owner",
+  reportClientDiagnostic: (...a) => mockReport(...a),
+}));
 
 import {
   accountAlreadyHasPets,
   useLeaveOnboardingIfHasPets,
+  noteWizardForExistingOwner,
   APP_HOME,
 } from "./onboardingGuard";
 
@@ -45,7 +51,7 @@ describe("accountAlreadyHasPets", () => {
 });
 
 function Probe() {
-  useLeaveOnboardingIfHasPets();
+  useLeaveOnboardingIfHasPets("onboarding-photo");
   return null;
 }
 
@@ -53,6 +59,7 @@ describe("useLeaveOnboardingIfHasPets", () => {
   const originalFetch = global.fetch;
   beforeEach(() => {
     mockReplace.mockClear();
+    mockReport.mockClear();
     jest.spyOn(console, "warn").mockImplementation(() => {});
   });
   afterEach(() => {
@@ -65,6 +72,12 @@ describe("useLeaveOnboardingIfHasPets", () => {
     render(<Probe />);
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(APP_HOME));
     expect(mockReplace).toHaveBeenCalledTimes(1);
+    // …and leaves a server breadcrumb saying which check fired on which screen.
+    expect(mockReport).toHaveBeenCalledTimes(1);
+    expect(mockReport).toHaveBeenCalledWith("onboarding_wizard_for_existing_owner", {
+      where: "mount",
+      screen: "onboarding-photo",
+    });
   });
 
   test("a brand-new owner (no pets) stays in the wizard", async () => {
@@ -73,6 +86,7 @@ describe("useLeaveOnboardingIfHasPets", () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 20));
     expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockReport).not.toHaveBeenCalled();
   });
 
   test("a failed check never redirects (fail-open)", async () => {
@@ -82,6 +96,14 @@ describe("useLeaveOnboardingIfHasPets", () => {
     render(<Probe />);
     await new Promise((r) => setTimeout(r, 20));
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test("noteWizardForExistingOwner reports where/screen (submit path)", () => {
+    noteWizardForExistingOwner("submit", "onboarding");
+    expect(mockReport).toHaveBeenCalledWith("onboarding_wizard_for_existing_owner", {
+      where: "submit",
+      screen: "onboarding",
+    });
   });
 
   test("a late answer after unmount does not navigate", async () => {
