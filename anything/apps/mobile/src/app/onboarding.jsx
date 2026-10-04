@@ -50,6 +50,8 @@ import {
   APP_HOME,
 } from "@/utils/onboardingGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { trackFunnel, trackTap } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 const TOTAL_STEPS = 9;
 
@@ -166,12 +168,23 @@ function OnboardingScreen() {
   const scrollRef = useRef(null);
   const router = useRouter();
   useLeaveOnboardingIfHasPets("onboarding");
+  // Anonymous telemetry: the wizard is the "onboarding" form (steps step_0..step_8) and the activation funnel's
+  // onboarding_dog_details step. Additive only.
+  const formTelemetry = useFormTelemetry("onboarding", { step: "step_0" });
+  useEffect(() => {
+    trackFunnel("activation", "onboarding_dog_details", { once: true });
+  }, []);
   const { t } = useTranslation();
   const { data: user } = useUser();
   const [upload, { loading: uploading }] = useUpload();
   const queryClient = useQueryClient();
 
   const [currentStep, setCurrentStep] = useState(0);
+  useEffect(() => {
+    if (currentStep > 0 && currentStep < TOTAL_STEPS) {
+      formTelemetry.step(`step_${currentStep}`);
+    }
+  }, [currentStep, formTelemetry]);
   const [formData, setFormData] = useState({
     photo: null,
     name: "",
@@ -569,6 +582,7 @@ function OnboardingScreen() {
             );
           } else {
             const postData = await postResponse.json();
+            trackFunnel("activation", "first_post", { once: true });
             console.log(
               "[Onboarding] ✅ First daily moment created successfully",
             );
@@ -609,6 +623,10 @@ function OnboardingScreen() {
       console.log("[Onboarding] ✅ ONBOARDING COMPLETE!");
       console.log("[Onboarding] ========================================");
 
+      // Anonymous telemetry: the wizard finished and the dog exists.
+      formTelemetry.complete("done");
+      trackFunnel("activation", "onboarding_done", { once: true });
+
       // Show success screen
       setCurrentStep(TOTAL_STEPS);
     } catch (error) {
@@ -617,6 +635,7 @@ function OnboardingScreen() {
       console.error("[Onboarding] Error message:", error.message);
       console.error("[Onboarding] Error stack:", error.stack);
       console.error("[Onboarding] ========================================");
+      formTelemetry.error("step_8");
       alert(error.message || t("onboarding.saveProfileError"));
     } finally {
       setIsSubmitting(false);
@@ -783,6 +802,7 @@ function OnboardingScreen() {
       {currentStep === 8 ? (
         // Review step - show "Create Profile" button
         <PressableScale
+          trackId="onboarding_done"
           onPress={handleComplete}
           disabled={isSubmitting}
           style={{
@@ -861,7 +881,10 @@ function OnboardingScreen() {
           {/* Skip button for optional steps */}
           {isOptionalStep && (
             <TouchableOpacity
-              onPress={skipStep}
+              onPress={() => {
+                trackTap("onboarding_skip");
+                skipStep();
+              }}
               style={{
                 paddingVertical: 14,
                 alignItems: "center",

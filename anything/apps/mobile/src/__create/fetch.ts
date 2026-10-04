@@ -91,6 +91,13 @@ const handleSessionExpired = () => {
     if (useAuthStore.getState().auth) {
       useAuthStore.getState().setAuth(null);
     }
+    // Anonymous telemetry only: tag the coming landing on Welcome as "session_expired" (annotation, no
+    // navigation change; it can never throw into the session handling below).
+    try {
+      require('@/telemetry/navExpect').markNavigationReason('session_expired');
+    } catch {
+      // ignore
+    }
     const { router } = require('expo-router');
     router.replace('/welcome');
   } catch {
@@ -222,4 +229,40 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   return response;
 };
 
-export default fetchToWeb;
+// Anonymous API telemetry (api_call + error api|network): observes only the URL, the status and the elapsed
+// time. It never reads a response body, never alters the request/response and never throws. /api/telemetry/*
+// is skipped inside recordApiCall (no feedback loop). The module is required lazily so this entry-file module
+// keeps the telemetry import graph out of startup. A response without a numeric status (never the case for a
+// real fetch) is not recorded.
+const recordApiTelemetry = (
+  input: Params[0],
+  status: number | null,
+  startedAt: number,
+  error?: unknown,
+) => {
+  try {
+    const url = getURLFromArgs(input as Parameters<typeof fetch>[0]);
+    if (!url) return;
+    const { recordApiCall } = require('@/telemetry/apiTelemetry');
+    recordApiCall({ url, status, startedAt, error });
+  } catch {
+    // telemetry must never affect a request
+  }
+};
+
+const fetchWithTelemetry = async function fetchWithTelemetry(...args: Params) {
+  const startedAt = Date.now();
+  let response: Awaited<ReturnType<typeof fetchToWeb>>;
+  try {
+    response = await fetchToWeb(...args);
+  } catch (error) {
+    recordApiTelemetry(args[0], null, startedAt, error);
+    throw error;
+  }
+  if (typeof response?.status === 'number') {
+    recordApiTelemetry(args[0], response.status, startedAt);
+  }
+  return response;
+};
+
+export default fetchWithTelemetry;

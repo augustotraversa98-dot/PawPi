@@ -32,6 +32,8 @@ import {
 import { PressableScale } from "@/components/ui";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { trackFeature } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 // Shared form field styling (Liquid Glass, ticket 2.77): sunken well + hairline
 // edge + body type. Behavior of each input (value/onChange/keyboard) is unchanged.
@@ -76,6 +78,8 @@ export default function ProfileEditScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Anonymous telemetry (additive): the Edit Profile form (view / complete / abandon / error).
+  const formTelemetry = useFormTelemetry("edit_profile");
 
   // Pick a new pet photo from the library (the save handler uploads it). Replaces the previous
   // "coming soon" placeholder (App Store readiness 2.78 — no no-op buttons).
@@ -239,12 +243,15 @@ export default function ProfileEditScreen() {
       console.log("[Profile Edit] ✅ Profile update complete!");
       console.log("[Profile Edit] ========================================");
 
+      formTelemetry.complete();
+      trackFeature("edit_profile");
       Alert.alert(t("profileEdit.successTitle"), t("profileEdit.successBody"));
       router.back();
     } catch (error) {
       console.error("[Profile Edit] ========================================");
       console.error("[Profile Edit] ERROR:", error.message);
       console.error("[Profile Edit] ========================================");
+      formTelemetry.error();
       Alert.alert(
         t("common.error"),
         error.message || t("profileEdit.couldNotSave"),
@@ -583,6 +590,7 @@ export default function ProfileEditScreen() {
           }}
         >
           <PressableScale
+            trackId="edit_profile_save"
             onPress={handleSave}
             disabled={isSubmitting || !formData.name.trim()}
             accessibilityRole="button"

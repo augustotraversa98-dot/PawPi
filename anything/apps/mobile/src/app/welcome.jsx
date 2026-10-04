@@ -13,6 +13,7 @@ import {
   didLastBootStall,
   lastBootSummary,
 } from "../../__create/boot-trace";
+import { trackFunnel } from "@/telemetry/track";
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
@@ -22,11 +23,17 @@ export default function WelcomeScreen() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const { showGoogle, showApple } = useSocialProviders();
 
+  // Anonymous funnel: activation / welcome_view (once per install).
+  React.useEffect(() => {
+    trackFunnel("activation", "welcome_view", { once: true });
+  }, []);
+
   // Native Apple / system-browser Google both resolve to { jwt, user }; store it exactly like the
   // email/password path, then hand off to the EntryPoint (via the auth-success screen) which owns
   // the new-account→onboarding vs returning→feed decision.
   const handleSocialAuthenticated = ({ jwt, user }) => {
     setAuth({ jwt, user });
+    trackFunnel("activation", "auth_done", { once: true });
     router.replace("/auth/expo-web-success");
   };
 
@@ -138,6 +145,7 @@ export default function WelcomeScreen() {
             title={t("welcome.createAccount")}
             variant="primary"
             size="lg"
+            trackId="welcome_signup"
             onPress={handleCreateAccount}
           />
 
@@ -146,6 +154,7 @@ export default function WelcomeScreen() {
             title={t("welcome.logIn")}
             variant="secondary"
             size="lg"
+            trackId="welcome_signin"
             onPress={handleLogin}
           />
 

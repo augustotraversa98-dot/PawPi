@@ -22,6 +22,7 @@ import { useProviderProfile } from "@/hooks/useProviders";
 import { usePetProfile } from "@/hooks/usePetProfile";
 import { useAuth } from "@/utils/auth/useAuth";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
+import { markExpectedNavigation } from "@/telemetry/navExpect";
 
 // Business mode v2 → Profile tab. The business's PUBLIC storefront/profile as followers see it,
 // reusing the existing storefront-by-slug read (useProviderProfile) + the SAME shared components
@@ -72,6 +73,7 @@ export default function BusinessProfile() {
       // ignore — still clear the session below
     }
     if (setAuth) setAuth(null);
+    markExpectedNavigation(); // anonymous telemetry: a user action, not an unexpected redirect
     router.replace("/welcome");
   }, [setAuth, router]);
 

@@ -36,6 +36,8 @@ const ALLOWLIST = new Set([
   'upload/route.js', // proxies bytes to Supabase Storage; no DB
   'client-diagnostics/route.js', // authenticated beacon: writes ONE log line, no DB (deliberately must not depend on the DB)
   'health/deep/route.js', // public uptime probe; `select 1` on the global pool via lib/telemetry/healthDeep (no table, no identity; a request tx would turn a DB outage into a generic 500)
+  'telemetry/events/route.js', // anonymous client-telemetry ingest: no auth, NO DB at all (in-memory limiter + metrics + Loki push)
+  'telemetry/config/route.js', // public kill switch/sample-rate read (env only); no DB
   '__create/ssr-test/route.js', // scaffolding SSR probe; no DB
   '__create/check-social-secrets/route.js', // env-var diagnostic; no DB
 ]);

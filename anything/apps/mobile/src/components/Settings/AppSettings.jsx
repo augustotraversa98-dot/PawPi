@@ -43,6 +43,8 @@ import {
   setBusinessCategoryEnabled,
 } from "@/utils/businessNotificationPrefs";
 import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
+import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
+import { markExpectedNavigation } from "@/telemetry/navExpect";
 
 const C = {
   coral: "#FF6F61",
@@ -97,6 +99,75 @@ function LanguageSelector() {
           {pref === o.value ? <Check size={18} color="#FF6F61" /> : null}
         </TouchableOpacity>
       ))}
+    </View>
+  );
+}
+
+// "Help improve PawPi (anonymous)": the anonymous usage-telemetry switch (docs/privacy/telemetry.md). Default ON.
+// Turning it OFF runs the opt-out flow (queue cleared, ONE opt_out event, random install id deleted, nothing
+// more is sent); turning it back ON starts over with a NEW random id.
+function TelemetryToggle() {
+  const { t } = useTranslation();
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    readTelemetryEnabled()
+      .then((value) => {
+        if (alive) setEnabled(value);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const onChange = (value) => {
+    setEnabled(value); // optimistic
+    setTelemetryEnabled(value);
+  };
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: C.peach,
+      }}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: C.sand,
+          justifyContent: "center",
+          alignItems: "center",
+          marginRight: 14,
+          borderWidth: 1,
+          borderColor: C.peach,
+        }}
+      >
+        <Activity size={18} color={C.mutedBrown} />
+      </View>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
+          {t("settings.telemetryTitle")}
+        </Text>
+        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+          {t("settings.telemetryHint")}
+        </Text>
+      </View>
+      <Switch
+        testID="telemetry-toggle"
+        accessibilityLabel={t("settings.telemetryTitle")}
+        value={enabled}
+        onValueChange={onChange}
+        trackColor={{ false: C.peach, true: C.coral }}
+        thumbColor="#FFF"
+      />
     </View>
   );
 }
@@ -410,6 +481,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         require("@react-native-async-storage/async-storage").default;
       await AsyncStorage.clear();
       if (setAuth) setAuth(null);
+      markExpectedNavigation(); // anonymous telemetry: this landing on Welcome is a user action
       router.replace("/welcome");
     } catch (e) {
       setDeleting(false);
@@ -627,6 +699,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         </Text>
         <SectionCard>
           <SettingRow label={t("settings.accountPrivacy")} icon={Lock} value={t("settings.accountPublic")} />
+          <TelemetryToggle />
         </SectionCard>
 
         <Text

@@ -7,6 +7,7 @@ import { ChevronRight, LogOut, Menu, X } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProviders } from "@/hooks/useProviders";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+import { markExpectedNavigation } from "@/telemetry/navExpect";
 
 const C = {
   coral: "#FF6F61",
@@ -50,8 +51,10 @@ export function OwnerMenu() {
         require("@react-native-async-storage/async-storage").default;
       await AsyncStorage.clear();
       if (setAuth) setAuth(null);
+      markExpectedNavigation(); // anonymous telemetry: a user action, not an unexpected redirect
       router.replace("/welcome");
     } catch (error) {
+      markExpectedNavigation();
       router.replace("/welcome");
     }
   };

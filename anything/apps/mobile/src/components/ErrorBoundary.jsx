@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PawMark, Button } from "@/components/ui";
+import { trackRenderError } from "@/telemetry/track";
 
 // Fallback UI is a function component (not the class below) so it can use the
 // useTranslation hook for EN/ES copy.
@@ -46,6 +47,8 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("[ErrorBoundary] caught render error:", error, errorInfo);
+    // Anonymous telemetry (additive): only the error class name is recorded, never the message/stack.
+    trackRenderError(error);
   }
 
   handleReset = () => {

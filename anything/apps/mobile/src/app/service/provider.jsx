@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { trackFunnel } from "@/telemetry/track";
 import {
   View,
   Text,
@@ -116,6 +117,10 @@ export default function ProviderScreen() {
   const capabilityStr = Array.isArray(capability) ? capability[0] : capability;
 
   const { data, isLoading, isError, refetch } = useProviderProfile(slugStr);
+  // Anonymous funnel: services / provider_view (a provider page opened; the slug is never sent).
+  useEffect(() => {
+    trackFunnel("services", "provider_view");
+  }, [slugStr]);
   const [showBooking, setShowBooking] = useState(false);
   const [detailId, setDetailId] = useState(null); // inline storefront product detail (P4b/3b)
   const [showCapChooser, setShowCapChooser] = useState(false);

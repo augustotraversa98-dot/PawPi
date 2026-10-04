@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { computePostingStreak } from "@/utils/feedDelight";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import { trackFunnel, trackFeature } from "@/telemetry/track";
 
 // Posting streak for one pet (ticket 2.37). The server returns the pet's recent
 // daily-post days; we compute the consecutive-day run against the VIEWER's local
@@ -75,6 +76,9 @@ export function useCreatePost() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Anonymous telemetry (never throws): activation / first_post (once per install) + feature.
+      trackFunnel("activation", "first_post", { once: true });
+      trackFeature("post");
       console.log(
         "[useCreatePost] Post created successfully, invalidating queries...",
       );

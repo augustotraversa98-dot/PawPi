@@ -23,6 +23,8 @@ import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { trackFeature } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 const makeEmpty = () => ({
   photo: null,
@@ -47,6 +49,8 @@ export function AddDogModal({ visible, onClose }) {
 
   const [form, setForm] = useState(makeEmpty);
   const [submitting, setSubmitting] = useState(false);
+  // Anonymous telemetry (additive): view when the modal opens, abandon if it closes unsaved.
+  const formTelemetry = useFormTelemetry("add_dog", { active: visible });
 
   const setField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
 
@@ -139,10 +143,13 @@ export function AddDogModal({ visible, onClose }) {
 
       const newPetId = result?.pet?.id;
       if (newPetId) setCurrentPet(newPetId);
+      formTelemetry.complete();
+      trackFeature("add_dog");
 
       Alert.alert(t("addDog.savedTitle"), t("addDog.savedBody", { name: form.name.trim() }));
       close();
     } catch (error) {
+      formTelemetry.error();
       Alert.alert(t("addDog.errorTitle"), t("addDog.errorBody"));
     } finally {
       setSubmitting(false);

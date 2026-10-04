@@ -56,6 +56,7 @@ import {
   resolveInitialCategory,
 } from "@/constants/servicesCategories";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import { trackFunnel } from "@/telemetry/track";
 
 // See the PR description for the filter/map overhaul overview (compact pickers, multi-select,
 // location search, live viewport filtering, pin select-to-top).
@@ -180,6 +181,11 @@ export default function ServicesDiscovery({
   const { height: winHeight } = useWindowDimensions();
   const isWide = useIsWideScreen();
   const isLanding = variant === "landing";
+
+  // Anonymous funnel: services / discover_view (the discovery UI is on screen).
+  useEffect(() => {
+    trackFunnel("services", "discover_view");
+  }, []);
 
   // The category chips this hub renders (ticket D1/D2): Stores & Vets by default, Care in D2. Split
   // into the service group + the place group, with a Set of allowed keys for deep-link scoping.

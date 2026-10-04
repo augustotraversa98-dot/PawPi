@@ -5,6 +5,8 @@ import { create } from "zustand";
 import { useCallback, useMemo } from "react";
 import { AuthWebView } from "./AuthWebView";
 import { useAuthStore, useAuthModal } from "./store";
+import { trackFunnel } from "@/telemetry/track";
+import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 /**
  * This component renders a modal for authentication purposes.
@@ -18,12 +20,27 @@ export const AuthModal = () => {
   const proxyURL = process.env.EXPO_PUBLIC_PROXY_BASE_URL;
   const baseURL = process.env.EXPO_PUBLIC_BASE_URL;
 
+  // Anonymous telemetry (additive): the sign-in / sign-up entry is a form (view / complete / abandon), and
+  // opening it is the activation funnel's signup_or_oauth_start.
+  const isCredentialsMode = mode === "signup" || mode === "signin";
+  const formTelemetry = useFormTelemetry(mode === "signin" ? "sign_in" : "sign_up", {
+    active: isOpen && isCredentialsMode,
+    step: "entry",
+  });
+  useEffect(() => {
+    if (isOpen && isCredentialsMode) {
+      trackFunnel("activation", "signup_or_oauth_start", { once: true });
+    }
+  }, [isOpen, isCredentialsMode]);
+
   // Close modal when authentication succeeds
   useEffect(() => {
     if (auth && isOpen) {
+      formTelemetry.complete();
+      trackFunnel("activation", "auth_done", { once: true });
       close();
     }
-  }, [auth, isOpen, close]);
+  }, [auth, isOpen, close, formTelemetry]);
 
   if (!proxyURL && !baseURL) {
     return null;

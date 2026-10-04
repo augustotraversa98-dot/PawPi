@@ -17,6 +17,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { SPRINGS, SCALE, DURATIONS } from "@/constants/theme";
 import { useReducedMotion } from "@/hooks/useAccessibilityPrefs";
+import { trackTap } from "@/telemetry/track";
+import { tapTargetKey } from "@/telemetry/tapTarget";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -28,6 +30,7 @@ export function PressableScale({
   disabled = false,
   scaleTo = SCALE.pressed,
   style,
+  trackId, // optional anonymous-telemetry tap key (a registry TAP_TARGETS key); never visible text
   ...rest
 }) {
   const reduceMotion = useReducedMotion();
@@ -56,9 +59,23 @@ export function PressableScale({
     onPressOut?.(e);
   };
 
+  // Anonymous tap telemetry: only when the control resolves to a registry key (an explicit `trackId`, else a
+  // testID / accessibilityLabel that IS a key). Otherwise onPress is passed through exactly as before.
+  const tapTarget = tapTargetKey({
+    trackId,
+    testID: rest.testID,
+    accessibilityLabel: rest.accessibilityLabel,
+  });
+  const handlePress = tapTarget
+    ? (e) => {
+        trackTap(tapTarget);
+        onPress?.(e);
+      }
+    : onPress;
+
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}

@@ -59,7 +59,8 @@ booking_created, order_created, push_token_registered, walk_logged. `method` in:
 ## Client event taxonomy (batched POST /api/telemetry/events, Loki line per event)
 Envelope: { install_id, session_id, app_version, build, platform, os_major, locale, sent_at, events: [...] }
 Event: { name, t (ms since session start), props }
-- session_start { cold: bool }, session_end { duration_s_bucket }
+- session_start { cold: bool }, session_end { duration_s_bucket }   (mobile: `session_start` leads the first event of a launch and of every new session (>= 30 min in background);
+  `session_end` is sent at EVERY transition to background with the length of that foreground stretch, so a session can have several)
 - screen_view { screen }
 - tap { target, screen }                      (target = registry key, never visible text)
 - form_step { form, step, action: view|complete|abandon|error }
@@ -71,6 +72,30 @@ Event: { name, t (ms since session start), props }
 - funnel_step { funnel, step }
 - opt_out {}   (sent once, then everything stops)
 Buckets for durations: <100, <300, <1000, <3000, <10000, >=10000 ms.
+
+### Registry detail (Step B; authoritative file: `anything/apps/web/src/lib/telemetry/registry.js`, mirrored byte-for-byte as `anything/apps/mobile/src/telemetry/registry.js`)
+- Bucket LABELS: `ms_bucket` in `lt100|lt300|lt1000|lt3000|lt10000|gte10000`; `session_end.duration_s_bucket` in
+  `lt10|lt60|lt300|lt900|lt3600|gte3600` (seconds). Client durations are recorded in the `*_seconds` histograms as a
+  representative value per bucket (geometric mean of the edges; open top bucket = 15 s), so quantiles are bucket-resolution.
+- `screen` / `from` / `to` = a ROUTE TEMPLATE from the registry `SCREENS` (file `src/app/(tabs)/health.jsx` -> `/health`,
+  `index.jsx` -> `/`, `[id].jsx` -> `/:id`; groups `(x)` dropped) or the bounded value `unknown`. Never a concrete URL.
+- `tap.target` must be in `TAP_TARGETS` (keys match `^[a-z][a-z0-9_]{0,39}$`); `feature_used.feature` in `FEATURES`;
+  `form_step.form` in `FORMS`, `form_step.step` a short key `^[a-z][a-z0-9_]{0,39}$`, `action` in `view|complete|abandon|error`;
+  `funnel_step` funnel + step must be a pair from the named funnels above. Unknown values => the event is dropped.
+- `api_call.route` = route template (`/api/pets/:id/profile`) or `unknown|unmatched|overflow`; never an id/query. `status_class` in
+  `1xx..5xx|unknown`; `error.code` = short machine code `^[A-Za-z0-9_.-]{1,32}$` (HTTP status / error class), never a message.
+- `nav_unexpected_redirect.reason` in `onboarding_guard|welcome_guard|session_expired|deeplink|other`.
+- `error.kind` in `js|promise|render|network|api`. Event props are strings (or `cold: bool`); nothing else.
+- Envelope patterns: `install_id` UUIDv4, `session_id` UUID, `app_version` `1.2[.3[.4]][-tag]`, `build` `[A-Za-z0-9._-]{1,16}`,
+  `os_major` 1-3 digits (number or string), `locale` `xx` or `xx-XX`, `sent_at` ISO string or epoch ms. Limits: body <= 32 KB,
+  <= 50 events per request. Rate limit (in memory, per instance): 30 requests/min per `install_id`, 300/min per client IP (hashed, never stored).
+- `app_version` is the only client-influenced metric label: it must match the pattern and at most 20 distinct values are kept per
+  process, everything else is `other`.
+- Ingest result semantics (`pawpi_telemetry_ingest_total{result}`): `accepted` / `dropped` (well-formed but not on the allowlist, or the
+  kill switch is on; counted per request when the kill switch is on) / `invalid` (malformed, PII-looking prop key, bad envelope; the
+  envelope case counts 1 per request) per event; `rate_limited` per request.
+- Server env: `TELEMETRY_INGEST_ENABLED` (kill switch, `false` = accept-and-discard), `TELEMETRY_SAMPLE_RATE` (0..1, default 1),
+  `GRAFANA_LOKI_URL` / `GRAFANA_LOKI_USER` / `GRAFANA_LOKI_TOKEN` (all three or Loki shipping is a no-op).
 
 ## Named funnels (steps in order)
 - activation: welcome_view, signup_or_oauth_start, auth_done, onboarding_photo, onboarding_dog_details, onboarding_done, first_post, first_health_log

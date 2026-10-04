@@ -9,6 +9,7 @@ import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { isUsableToken, startOver } from "@/utils/auth/recovery";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
 import { markNavigationReady } from "@/utils/notificationDeepLink";
+import { reportStartup } from "@/telemetry/startup";
 import { PawMark } from "@/components/ui";
 import { COLORS } from "@/constants/theme";
 
@@ -222,6 +223,8 @@ export default function EntryPoint() {
   console.log("[EntryPoint] Redirecting to:", destination);
   markBootStep("entrypoint:redirect");
   markBootComplete();
+  // Anonymous telemetry: perf_startup from the boot trace (once per launch; never throws).
+  reportStartup();
   // The redirect is now in place; a notification tap that launched the app (parked by
   // registerNotificationTapRouting) can be delivered on top of it.
   setTimeout(markNavigationReady, 0);

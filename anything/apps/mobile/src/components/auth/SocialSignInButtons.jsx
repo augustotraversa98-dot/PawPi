@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { signInWithApple, signInWithGoogle } from "@/utils/auth/socialAuth";
+import { trackFunnel } from "@/telemetry/track";
 
 // The social sign-in buttons shown on the Welcome screen. Each button appears only when its
 // provider is actually available (see useSocialProviders) — there is no "coming soon".
@@ -23,6 +24,7 @@ export function SocialSignInButtons({ showGoogle, showApple, onAuthenticated }) 
 
   const run = async (which, fn) => {
     if (busy) return;
+    trackFunnel("activation", "signup_or_oauth_start", { once: true }); // anonymous funnel
     setBusy(which);
     try {
       const result = await fn();
@@ -63,6 +65,7 @@ export function SocialSignInButtons({ showGoogle, showApple, onAuthenticated }) 
 
       {showGoogle ? (
         <PressableScale
+          trackId="auth_google"
           onPress={() => run("google", signInWithGoogle)}
           accessibilityRole="button"
           accessibilityLabel={t("welcome.social.continueGoogle")}

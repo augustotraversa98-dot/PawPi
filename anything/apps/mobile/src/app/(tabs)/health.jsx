@@ -21,6 +21,7 @@ import {
 } from "@/constants/theme";
 import { GlassSurface, PressableScale } from "@/components/ui";
 import { useTranslation } from "react-i18next";
+import { trackFunnel } from "@/telemetry/track";
 
 // Section strip (+ the Insights gate) lives in @/constants/healthSections.
 const SECTIONS = HEALTH_SECTIONS;
@@ -45,6 +46,14 @@ export default function HealthScreen() {
       ? params.section
       : null;
   const [activeSection, setActiveSection] = useState(paramSection || "today");
+
+  // Anonymous funnel: health_logging / health_tab (Health opened) and track_open (the Track section shown).
+  useEffect(() => {
+    trackFunnel("health_logging", "health_tab");
+  }, []);
+  useEffect(() => {
+    if (activeSection === "track") trackFunnel("health_logging", "track_open");
+  }, [activeSection]);
 
   // Sync when the deep-link param changes while the screen is already mounted
   // (navigating to the Health tab from elsewhere doesn't remount it).

@@ -98,6 +98,19 @@ describe('markBootComplete', () => {
     expect(trace.completed).toBe(true);
     expect(trace.steps[trace.steps.length - 1].step).toBe('boot:complete');
   });
+
+  it('getBootElapsedMs is null until the boot completes, then the boot:complete time', () => {
+    const { markBootStep, markBootComplete, getBootElapsedMs } = loadModule();
+
+    markBootStep('entrypoint:redirect');
+    expect(getBootElapsedMs()).toBeNull();
+
+    markBootComplete();
+    const complete = currentTrace().steps.find(
+      (s: { step: string }) => s.step === 'boot:complete',
+    );
+    expect(getBootElapsedMs()).toBe(complete.ms);
+  });
 });
 
 describe('previous-launch rotation', () => {
