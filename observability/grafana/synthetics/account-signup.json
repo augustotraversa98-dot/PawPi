@@ -1,0 +1,44 @@
+{
+  "job": "pawpi-account-signup",
+  "target": "https://www.pawpi.info/account/signup",
+  "frequency": 300000,
+  "timeout": 10000,
+  "enabled": true,
+  "labels": [
+    {
+      "name": "service",
+      "value": "pawpi-web"
+    },
+    {
+      "name": "area",
+      "value": "auth"
+    },
+    {
+      "name": "managed_by",
+      "value": "pawpi_repo"
+    }
+  ],
+  "settings": {
+    "http": {
+      "method": "GET",
+      "ipVersion": "V4",
+      "noFollowRedirects": false,
+      "validStatusCodes": [
+        200
+      ],
+      "failIfNotSSL": true,
+      "failIfBodyNotMatchesRegexp": [
+        "account/signup/page"
+      ],
+      "failIfBodyMatchesRegexp": [
+        "Coming soon"
+      ]
+    }
+  },
+  "probeRegions": [
+    "EMEA",
+    "AMER"
+  ],
+  "alertSensitivity": "none",
+  "basicMetricsOnly": true
+}
