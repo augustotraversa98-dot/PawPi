@@ -46,6 +46,7 @@ import { Card, PressableScale, PawMark } from "@/components/ui";
 import {
   accountAlreadyHasPets,
   useLeaveOnboardingIfHasPets,
+  noteWizardForExistingOwner,
   APP_HOME,
 } from "@/utils/onboardingGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -164,7 +165,7 @@ function OnboardingScreen() {
   const keyboardVisible = useKeyboardVisible();
   const scrollRef = useRef(null);
   const router = useRouter();
-  useLeaveOnboardingIfHasPets();
+  useLeaveOnboardingIfHasPets("onboarding");
   const { t } = useTranslation();
   const { data: user } = useUser();
   const [upload, { loading: uploading }] = useUpload();
@@ -389,7 +390,7 @@ function OnboardingScreen() {
 
     // Never create a (duplicate) dog for an account that already has one — see onboardingGuard.
     if (await accountAlreadyHasPets()) {
-      console.warn("[Onboarding] pet already exists for this account — skipping create");
+      noteWizardForExistingOwner("submit", "onboarding");
       setIsSubmitting(false);
       router.replace(APP_HOME);
       return;

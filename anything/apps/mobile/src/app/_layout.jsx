@@ -1,5 +1,5 @@
 import { useAuth } from "@/utils/auth/useAuth";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
+import { recordRoute } from "@/utils/navTrail";
 
 SplashScreen.preventAutoHideAsync();
 markBootStep("layout:module-evaluated");
@@ -27,6 +28,12 @@ wireQueryConnectivity();
 export default function RootLayout() {
   const { initiate, isReady, isAuthenticated } = useAuth();
   markBootStep("layout:render");
+
+  // Screen breadcrumb for client diagnostics (memory only; see utils/navTrail).
+  const pathname = usePathname();
+  useEffect(() => {
+    recordRoute(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     markBootStep("layout:initiate-effect");

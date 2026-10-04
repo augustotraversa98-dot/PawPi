@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
+import { reportClientDiagnostic, EVENT_WIZARD_FOR_EXISTING_OWNER } from "./clientDiagnostics";
 
 export const APP_HOME = "/(tabs)";
 
@@ -30,16 +31,26 @@ export async function accountAlreadyHasPets(fetchImpl = fetch) {
 }
 
 /**
+ * Record that the wizard was reached by an account that already has a dog: a local warning plus a
+ * best-effort server breadcrumb (screen trail + session age) so a recurrence is diagnosable.
+ * `where` is "mount" (screen opened) or "submit" (about to create a pet).
+ */
+export function noteWizardForExistingOwner(where, screen) {
+  console.warn(`[Onboarding] account already has a dog (${where}) — leaving the wizard`);
+  reportClientDiagnostic(EVENT_WIZARD_FOR_EXISTING_OWNER, { where, screen });
+}
+
+/**
  * Mount-time check for the onboarding screens: if the account already has a dog, leave the
  * wizard for the app. Runs once; the (fire-and-forget) result is ignored after unmount.
  */
-export function useLeaveOnboardingIfHasPets() {
+export function useLeaveOnboardingIfHasPets(screen) {
   const router = useRouter();
   useEffect(() => {
     let cancelled = false;
     accountAlreadyHasPets().then((has) => {
       if (has && !cancelled) {
-        console.warn("[Onboarding] account already has a dog — leaving the wizard");
+        noteWizardForExistingOwner("mount", screen);
         router.replace(APP_HOME);
       }
     });
