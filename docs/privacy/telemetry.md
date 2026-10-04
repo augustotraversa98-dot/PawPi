@@ -2,7 +2,7 @@
 
 Status: **draft for the owner to review**. Ships to users only with app build 25 (the server endpoints are live earlier and idle).
 Technical contract: `docs/observability/night-run/01-TELEMETRY-CONTRACT.md`. Allowlist in code: `anything/apps/web/src/lib/telemetry/registry.js`.
-Operations: `docs/observability/OPERATIONS.md` section 5d.
+Operations: `docs/observability/OPERATIONS.md` section 3.4 (client telemetry ingest).
 
 > **HUMAN ACTIONS (nothing in this file is applied automatically).** Sections 4, 5 and 6 are drafts for a person to paste into the
 > live privacy policy and into App Store Connect. The night run did NOT edit the live policy page, `docs/legal/*`, or

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AREAS, areaForPath, KNOWN_API_PREFIXES } from './areas.js';
+import { ALLOWED_OTHER_API_DIRS } from '../../observability/coverageGuard.js';
 
 const API_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../app/api');
 
@@ -13,11 +14,8 @@ const CONTRACT_AREAS = [
   'telemetry', 'other',
 ];
 
-// Top-level /api dirs that are deliberately 'other', each with the reason.
-const ALLOWED_OTHER = {
-  upload: 'generic file-upload proxy; belongs to no single feature',
-  __create: 'platform scaffolding probes (ssr-test, check-social-secrets)',
-};
+// Top-level /api dirs that are deliberately 'other' (each with its reason) live in ONE place, shared with the Step E coverage guard.
+const ALLOWED_OTHER = ALLOWED_OTHER_API_DIRS;
 
 function routeDirs() {
   // every top-level dir under src/app/api that contains at least one route.js

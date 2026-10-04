@@ -2,7 +2,7 @@
 // (src/app/api/internal/grafana-alert/route.js).
 //
 // HARD LIMIT: GitHub rejects a repository_dispatch whose client_payload has more than 10 TOP-LEVEL properties with
-// 422 "No more than 10 properties" (it already bit this relay once: see OPERATIONS.md section 5). Nested objects count
+// 422 "No more than 10 properties" (it already bit this relay once: see the OPERATIONS.md troubleshooting table). Nested objects count
 // as ONE property, so everything variable (area, route, app_version, ...) lives inside the single `labels` object and
 // the top-level key set is fixed below. Every value is length-capped and stripped of control characters, because the
 // workflow pastes this JSON into an LLM prompt and uses `alertname` in a git branch name.

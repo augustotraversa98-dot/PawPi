@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import * as R from './registry.js';
 import { AREAS } from './areas.js';
 import { PII_KEY_RE } from './ingestSchema.js';
+// The screen derivation + screen-file filter live in ONE place (shared with the Step E coverage guard).
+import { screenForFile, isScreenFile } from '../../observability/coverageGuard.js';
+
+export { screenForFile };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../../../../../..');
@@ -23,23 +27,13 @@ const CONTRACT_FUNNELS = {
   routines: ['routines_open', 'routine_form_open', 'routine_saved'],
 };
 
-/** file under mobile src/app -> screen template (the documented rule in registry.js). */
-export function screenForFile(rel) {
-  const segs = rel
-    .replace(/\.(jsx|tsx|js|ts)$/, '')
-    .split('/')
-    .filter((s) => !/^\(.*\)$/.test(s)); // drop (group) segments
-  if (segs[segs.length - 1] === 'index') segs.pop();
-  return '/' + segs.map((s) => (/^\[.*\]$/.test(s) ? ':id' : s)).join('/');
-}
-
 function mobileScreenFiles() {
   const out = [];
   (function walk(dir, rel) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const r = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) walk(path.join(dir, e.name), r);
-      else if (/\.(jsx|tsx|js|ts)$/.test(e.name) && !/\.test\./.test(e.name) && !/^_layout\./.test(e.name) && r !== '(tabs)/tabsConfig.js') out.push(r);
+      else if (isScreenFile(r)) out.push(r);
     }
   })(MOBILE_APP, '');
   return out;

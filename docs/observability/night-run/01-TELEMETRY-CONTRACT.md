@@ -105,5 +105,9 @@ Buckets for durations: <100, <300, <1000, <3000, <10000, >=10000 ms.
 - retention helpers (from install_id in Loki): D1/D7/D30 return.
 
 ## Logs (Loki)
-- job="pawpi-web": structured JSON server logs (level, msg, route, status, request_id, duration_ms). Redacted.
+- job="pawpi-web": ONE structured JSON access-log line per HTTP request (Step E, `src/lib/telemetry/serverLogs.js`). Stream labels ONLY
+  `{job, level, area}`; line fields exactly `{ts, level, msg, route, status, request_id, duration_ms, method}` (`route` = the same bounded
+  template as `pawpi_http_*`, never the raw path; `level`: 5xx error, 4xx warn, else info). Never contains request bodies, query strings,
+  headers, cookies, tokens, emails or user ids (msg is scrubbed of email/Bearer/JWT/long-token substrings). Env: `LOG_LEVEL` (default info),
+  `LOG_SHIP_ENABLED=false` (kill switch), `LOG_SAMPLE_2XX`, `LOG_MAX_LINES_PER_SEC`, `LOG_MAX_ERROR_LINES_PER_SEC`, `LOG_STDOUT`.
 - job="pawpi-client": one JSON line per accepted client event. Labels: event, app_version, platform (only these).

@@ -323,6 +323,15 @@ ENABLE+FORCE RLS and pass the completeness guard (`test/integration/rls-gap-clos
 
 ---
 
+## Observability (added 2026-10-04)
+
+Full runbook: [docs/observability/OPERATIONS.md](docs/observability/OPERATIONS.md); metric/event/log names: [docs/observability/night-run/01-TELEMETRY-CONTRACT.md](docs/observability/night-run/01-TELEMETRY-CONTRACT.md).
+- **Server** (`anything/apps/web`): one Hono middleware (`__create/index.ts`) records bounded-label `pawpi_http_*` metrics and one redacted JSON access-log line per request (`src/lib/telemetry/`), shipped via OpenTelemetry (metrics) and Loki (logs) to Grafana Cloud; every path is a no-op without its env vars and never touches a response. `GET /api/health/deep` is the liveness/deploy probe; one Grafana "deploy" annotation is posted per start.
+- **Mobile** (`anything/apps/mobile/src/telemetry/`): anonymous, allowlisted behaviour events (registry mirrored byte-for-byte from `src/lib/telemetry/registry.js`), batched to `POST /api/telemetry/events`, with a Settings opt-out and a server kill switch; ships with app build 25.
+- **Grafana as code** (`observability/grafana/`, applied by `scripts/observability/apply-grafana.mjs`): 11 dashboards, 15 alert rules (created paused), routing, 5 synthetic checks. A vitest coverage guard (`anything/apps/web/src/observability/coverageGuard.test.js`) fails CI when a new API route, mobile screen, funnel step, dashboard or alert is not covered.
+
+---
+
 ## Top 5 things I'm least sure about (please verify)
 
 1. **Live DB schema vs. code-inferred schema.** No migration/DDL files exist in the repo; the 32 table names and all column mappings (incl. `pets.owner_user_id → user_profiles.id`) are inferred from queries only. Whether the actual Neon DB has these tables, columns, and FK constraints — and whether existing `pets` rows still carry the *wrong* `owner_user_id` (auth id) that the repair handler targets — needs to be checked against the real database.

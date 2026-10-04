@@ -12,4 +12,4 @@ Grafana objects for PawPi, kept as code. Nothing here runs in the app.
   a hard-coded datasource uid or a Loki query outside the two pawpi jobs.
 - The pre-existing dashboard `docs/observability/dashboard.json` and the live alert rules are not managed here and are never modified.
 
-Full guide (dashboard list, how to apply, how to add a panel, behaviour-dashboard caveats): `docs/observability/OPERATIONS.md`, section 5e.
+Full guide (dashboard list, how to apply, how to add a panel, behaviour-dashboard caveats): `docs/observability/OPERATIONS.md`, section 4 (Dashboards) and section 11 (how to add one; the coverage guard).
