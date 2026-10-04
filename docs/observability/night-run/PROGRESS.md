@@ -19,6 +19,7 @@ Run date: 2026-10-04 (unattended). Runbook: `02-RUNBOOK-NIGHT-RUN.md`; decisions
 | Step | PR | Merged | Deployed + verified |
 |---|---|---|---|
 | A — server metrics | [#599](https://github.com/augustotraversa98-dot/PawPi/pull/599) | yes (squash `e448f8a`, all 3 required checks green on head `780b0ef`) | yes — `/api/health/deep` -> `{"ok":true,"db_ms":1220,"version":"e448f8a"}` after ~1.5 min; smoke (social-enabled, providers, signin/signup pages, session) all PASS |
+| B — telemetry ingest + mobile SDK | [#600](https://github.com/augustotraversa98-dot/PawPi/pull/600) | yes (squash `8989741`, 3 required checks green on head `77da221`) | yes — `/api/health/deep` version `8989741`; smoke PASS; `/api/telemetry/config` 200 `{enabled:true,sampleRate:1}`, bad/garbage POST -> 400 (no 5xx). Client code reaches users only with app build 25 |
 
 - Step A decisions (branch `obs/A-server-metrics`):
   - `route` label = matched Hono template with ALL params normalised to `:id` (so matched and fallback routes share one vocabulary). Non-`/api` -> `/__page`; unmatched `/api` (404/405) -> `unmatched`; the digit/uuid/hex normalizer is only a fallback for a served-but-untemplated path, restricted to known top-level prefixes and capped at 100 distinct values (`overflow`) so a hostile path space can never mint unbounded series.
