@@ -7,7 +7,8 @@ import { Alert, Linking } from "react-native";
 
 const mockReplace = jest.fn();
 const mockSetAuth = jest.fn();
-const mockClear = jest.fn().mockResolvedValue();
+const mockGetAllKeys = jest.fn();
+const mockMultiRemove = jest.fn().mockResolvedValue();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), replace: mockReplace }),
@@ -24,7 +25,10 @@ jest.mock("@/i18n/localePreference", () => ({
 }));
 jest.mock("@/components/Health/WalkActivity/WalkTrackingSettings", () => () => null);
 jest.mock("@react-native-async-storage/async-storage", () => ({
-  default: { clear: (...a) => mockClear(...a) },
+  default: {
+    getAllKeys: (...a) => mockGetAllKeys(...a),
+    multiRemove: (...a) => mockMultiRemove(...a),
+  },
 }));
 
 import SettingsScreen from "./settings";
@@ -32,6 +36,14 @@ import SettingsScreen from "./settings";
 beforeEach(() => {
   jest.clearAllMocks();
   global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+  mockMultiRemove.mockResolvedValue();
+  mockGetAllKeys.mockResolvedValue([
+    "pet_profile",
+    "has_completed_onboarding",
+    "pawpi:locale",
+    "pawpi.notifPrefs.v1",
+    "pawpi.telemetry.enabled",
+  ]);
 });
 
 it("renders a Delete account control", () => {
@@ -53,7 +65,8 @@ it("two-step confirm deletes the account, clears auth, and returns to welcome", 
     expect(global.fetch).toHaveBeenCalledWith("/api/account", { method: "DELETE" }),
   );
   await waitFor(() => expect(mockSetAuth).toHaveBeenCalledWith(null));
-  expect(mockClear).toHaveBeenCalled();
+  // Account data goes; language, notification prefs and the telemetry opt-out stay.
+  expect(mockMultiRemove).toHaveBeenCalledWith(["pet_profile", "has_completed_onboarding"]);
   expect(mockReplace).toHaveBeenCalledWith("/welcome");
 });
 

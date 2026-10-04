@@ -8,6 +8,7 @@ import { useAuth } from "@/utils/auth/useAuth";
 import { useMyProviders } from "@/hooks/useProviders";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
+import { clearAccountStorage } from "@/utils/accountStorage";
 
 const C = {
   coral: "#FF6F61",
@@ -45,11 +46,9 @@ export function OwnerMenu() {
 
   const handleLogout = async () => {
     try {
-      // Lazy-require so merely importing OwnerMenu doesn't pull the native
-      // AsyncStorage module into unrelated test renders.
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
-      await AsyncStorage.clear();
+      // Removes account/session data only; language, notification prefs and the telemetry opt-out
+      // stay (see utils/accountStorage). Never throws.
+      await clearAccountStorage();
       if (setAuth) setAuth(null);
       markExpectedNavigation(); // anonymous telemetry: a user action, not an unexpected redirect
       router.replace("/welcome");

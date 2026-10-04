@@ -23,6 +23,7 @@ import { usePetProfile } from "@/hooks/usePetProfile";
 import { useAuth } from "@/utils/auth/useAuth";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
+import { clearAccountStorage } from "@/utils/accountStorage";
 
 // Business mode v2 → Profile tab. The business's PUBLIC storefront/profile as followers see it,
 // reusing the existing storefront-by-slug read (useProviderProfile) + the SAME shared components
@@ -63,15 +64,9 @@ export default function BusinessProfile() {
   }, [router]);
 
   // Log out — mirrors the pet-owner OwnerMenu logout exactly: clear local
-  // storage, drop the auth session, and return to the auth/welcome screen.
+  // account storage (device prefs stay), drop the auth session, and return to the auth/welcome screen.
   const doLogout = useCallback(async () => {
-    try {
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
-      await AsyncStorage.clear();
-    } catch {
-      // ignore — still clear the session below
-    }
+    await clearAccountStorage(); // never throws; the session is dropped below regardless
     if (setAuth) setAuth(null);
     markExpectedNavigation(); // anonymous telemetry: a user action, not an unexpected redirect
     router.replace("/welcome");
