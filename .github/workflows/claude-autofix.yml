@@ -66,6 +66,12 @@ jobs:
 
           ${ALERT_JSON}
 
+          Where to look: labels.area is the API area, labels.route the route template
+          and labels.app_version the mobile build (when present); "runbook" is the first
+          thing to check. Metric and label names are defined in
+          docs/observability/night-run/01-TELEMETRY-CONTRACT.md - read it before
+          reasoning about any pawpi_* metric.
+
           Investigate and, IF you find a clear, low-risk root cause, apply the SMALLEST
           possible fix. Hard rules:
           - Only edit files under anything/apps/. Never touch secrets, .env, CI, or infra.
@@ -95,7 +101,8 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTOFIX_PAT || secrets.GITHUB_TOKEN }}
         run: |
           ALERT_NAME=$(node -e "console.log(require('/tmp/alert.json').alertname||'alert')")
-          BRANCH="autofix/${ALERT_NAME}-${{ github.run_id }}"
+          SLUG=$(printf '%s' "$ALERT_NAME" | tr -c 'A-Za-z0-9._-' '-')
+          BRANCH="autofix/${SLUG}-${{ github.run_id }}"
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "pawpi-autofix[bot]"
             git config user.email "autofix@pawpi.app"
