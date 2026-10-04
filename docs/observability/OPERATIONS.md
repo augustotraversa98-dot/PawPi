@@ -176,6 +176,55 @@ deploy signal (it returns JSON only once the new build is live; before that the 
 
 ---
 
+## 5d. Client telemetry ingest (night-run Step B)
+
+Anonymous behaviour telemetry from the mobile app (ships with app build 25; the endpoints are live earlier and simply idle).
+Full privacy/retention description: `docs/privacy/telemetry.md`. Names/labels/events are the contract in
+`docs/observability/night-run/01-TELEMETRY-CONTRACT.md`; the allowlist is `src/lib/telemetry/registry.js`.
+
+**Endpoints** (both public, no auth, no database)
+- `POST /api/telemetry/events` — batched events. Body <= 32 KB and <= 50 events (else 413 / 400), strict registry validation,
+  per-`install_id` (30/min) and per-IP (300/min) in-memory rate limit (429), `204` on success even if some events were dropped,
+  `400` for a bad envelope, never 5xx. The client IP is hashed in memory for the limiter only and is never stored, logged or emitted.
+- `GET /api/telemetry/config` — `{ "enabled": true, "sampleRate": 1 }`, `Cache-Control: public, max-age=300`. The app reads it
+  to honour the kill switch and sampling.
+
+**Env vars** (Railway, web service)
+| Var | Effect |
+|---|---|
+| `TELEMETRY_INGEST_ENABLED` | `false` = KILL SWITCH: ingest answers 204 and discards, config reports `enabled:false` (apps stop sending within ~5 min). Unset/anything else = on. |
+| `TELEMETRY_SAMPLE_RATE` | 0..1 (default 1), returned by the config endpoint; the app samples sessions with it. |
+| `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_LOKI_TOKEN` | Loki push (Grafana Cloud). URL may be the base (`https://logs-prod-XXX.grafana.net`) or the full `/loki/api/v1/push`. All three or no Loki shipping (metrics still work). |
+
+**What it emits**
+- Metrics (via the existing OTLP pipe): `pawpi_client_events_total`, `pawpi_client_screen_views_total`, `pawpi_client_errors_total`,
+  `pawpi_client_api_calls_total`, `pawpi_client_api_duration_seconds`, `pawpi_client_screen_ready_seconds`,
+  `pawpi_client_startup_seconds`, `pawpi_client_sessions_total`, `pawpi_funnel_step_total`, and
+  `pawpi_telemetry_ingest_total{result=accepted|dropped|invalid|rate_limited}` (watch `invalid`/`rate_limited` spikes: a client bug or abuse).
+  Durations arrive as buckets, so the histograms are bucket-resolution. `app_version` is validated and capped at 20 distinct values per
+  process (then `other`); a flood of fake versions can push a genuinely new release into `other` until the next deploy/restart.
+- Loki: ONE JSON line per accepted event, stream labels ONLY `{job="pawpi-client", event, app_version, platform}`; the line holds
+  `install_id`, `session_id`, `event`, `props`, `t`, `screen`, `os_major`, `locale`, `build`, `app_version`, `platform`, `sent_at`.
+  Batched (5 s / 100 lines), queue capped at 2000 lines (oldest dropped), 5 s timeout, errors swallowed. The shipper
+  (`src/lib/telemetry/loki.js`) is generic so server logs can reuse it with `job="pawpi-web"`.
+- Caveat: requests are counted per instance (limiter state is in memory). No state survives a restart.
+
+**Verify with curl** (replace the host; a fresh uuid per run):
+```bash
+H=https://YOUR-HOST
+curl -s -i $H/api/telemetry/config                       # 200 {"enabled":true,"sampleRate":1}
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $H/api/telemetry/events -H 'content-type: application/json' -d '{
+  "install_id":"3f2b8c1e-9a4d-4e7b-8c55-0d1f2a3b4c5d","session_id":"0b9a3d1f-6c2e-4d8a-9f10-2a3b4c5d6e7f",
+  "app_version":"1.4.2","build":"25","platform":"ios","os_major":"17","locale":"en-US","sent_at":"2026-10-04T12:00:00Z",
+  "events":[{"name":"session_start","t":0,"props":{"cold":true}},{"name":"screen_view","t":40,"props":{"screen":"/health"}}]}'   # 204
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $H/api/telemetry/events -d 'nope'     # 400
+```
+Then in Grafana: Explore -> Prometheus `pawpi_telemetry_ingest_total` (accepted +2) and `pawpi_client_screen_views_total{screen="/health"}`;
+Explore -> Loki `{job="pawpi-client"}` shows two lines (needs the three `GRAFANA_LOKI_*` vars). An event with a PII-looking key
+(e.g. `"props":{"email":"x"}`) must show up under `result="invalid"` and never in Loki.
+**Kill switch drill:** set `TELEMETRY_INGEST_ENABLED=false` on Railway, redeploy, confirm `config` -> `"enabled":false` and the POST above still returns 204 but
+`accepted` stops growing.
+
 ## 6. Maintenance
 
 - This repo's `docs/*.md` are version‑controlled — when the observability setup changes,
