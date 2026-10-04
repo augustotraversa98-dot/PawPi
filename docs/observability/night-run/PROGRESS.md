@@ -16,7 +16,9 @@ Run date: 2026-10-04 (unattended). Runbook: `02-RUNBOOK-NIGHT-RUN.md`; decisions
 - Pre-run production baseline (2026-10-04): `/api/health/deep` returns **200 + SPA HTML** (React Router catch-all), not 404. So the Step A deploy signal is "returns JSON `{ok:true,version}`", not the status code.
 
 ## Steps
-(filled in as the run proceeds)
+| Step | PR | Merged | Deployed + verified |
+|---|---|---|---|
+| A — server metrics | [#599](https://github.com/augustotraversa98-dot/PawPi/pull/599) | yes (squash `e448f8a`, all 3 required checks green on head `780b0ef`) | yes — `/api/health/deep` -> `{"ok":true,"db_ms":1220,"version":"e448f8a"}` after ~1.5 min; smoke (social-enabled, providers, signin/signup pages, session) all PASS |
 
 - Step A decisions (branch `obs/A-server-metrics`):
   - `route` label = matched Hono template with ALL params normalised to `:id` (so matched and fallback routes share one vocabulary). Non-`/api` -> `/__page`; unmatched `/api` (404/405) -> `unmatched`; the digit/uuid/hex normalizer is only a fallback for a served-but-untemplated path, restricted to known top-level prefixes and capped at 100 distinct values (`overflow`) so a hostile path space can never mint unbounded series.
@@ -34,7 +36,7 @@ Run date: 2026-10-04 (unattended). Runbook: `02-RUNBOOK-NIGHT-RUN.md`; decisions
 - (low) Unknown `/api/...` paths are answered by the React Router SPA catch-all with **HTTP 200 + HTML** instead of a JSON 404 (seen on the production build: `GET /api/nope/12345` -> 200). API clients/monitors can't tell a wrong URL from success; it also makes the HTTP metrics see these as 2xx (they are bucketed by the capped fallback normalizer, never by raw path). Evidence: local `node build/server/index.js`, `curl -i /api/nope/12345`. Not fixed (out of scope for an observability PR). Same root cause as the Step A pre-run baseline note for `/api/health/deep`.
 
 ## Skipped (needs human)
-(filled in as the run proceeds)
+- Branch deletion: the proxy rejects both `DELETE /git/refs/heads/*` (403) and `git push --delete` for this run, so merged branches (`obs/A-server-metrics`, ...) are left on origin. Delete them manually.
 
 ## Morning checklist
 (filled in at the end)
