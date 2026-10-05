@@ -15,6 +15,7 @@ import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
+import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
@@ -127,6 +128,12 @@ app.use(contextStorage());
 // AUDIT A-28 — baseline security headers (HSTS, X-Frame-Options, nosniff,
 // Referrer-Policy, CSP) on every response. CORS is configured separately below.
 app.use('*', securityHeaders());
+
+// Scanner probes (/.env, /Dockerfile, /docker-compose.yml, /core/.env, /wp-*, *.php, *.sql, *.bak, trailing ~)
+// get a plain 404 here instead of falling through to the React Router catch-all (HTTP 200 + app HTML). Runs
+// after the metrics middleware above (still counted) and before auth/static/SPA handlers. /api/* and
+// /.well-known/* are never touched. See src/app/api/utils/probePaths.js.
+app.use('*', blockProbePaths());
 
 app.onError((err, c) => {
   // Always log the full error server-side (the console override above tags it
