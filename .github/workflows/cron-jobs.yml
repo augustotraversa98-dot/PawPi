@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 6 * * *'   # 06:00 UTC daily — subscription auto-charge
     - cron: '15 6 * * *'  # 06:15 UTC daily — calendar import sync
+    - cron: '0 * * * *'   # hourly :00 — weekly digest (matches each owner's Sunday-evening local time)
+    - cron: '30 13 * * *' # 13:30 UTC daily — win-back (daytime in the Americas)
+    - cron: '20 * * * *'  # hourly :20 — Expo push receipts (prune dead device tokens)
   workflow_dispatch: {}   # lets you trigger manually from the Actions tab, for testing
 
 jobs:
@@ -23,4 +26,35 @@ jobs:
       - name: Run calendar import sync
         run: |
           curl -sf -X POST https://pawpi-production.up.railway.app/api/providers/calendar/sync \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+
+  # Notifications v2 (docs/notifications-v2-design.md). All three endpoints answer {"skipped":"disabled"} and do
+  # nothing until the server variable NOTIF_V2_ENABLED is on, so these jobs are safe to run (and to merge) before
+  # that. They use the same x-cron-secret as the jobs above; no new secret is introduced. Unlike the jobs above they
+  # run only on their schedule (not on workflow_dispatch), so a manual test of one job cannot trigger a send.
+  weekly-digest:
+    if: github.event.schedule == '0 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run weekly digest
+        run: |
+          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/engagement/weekly-digest/run \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+
+  winback:
+    if: github.event.schedule == '30 13 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run win-back
+        run: |
+          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/engagement/reengagement/run \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+
+  push-receipts:
+    if: github.event.schedule == '20 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process Expo push receipts
+        run: |
+          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/notifications/push-receipts/run \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

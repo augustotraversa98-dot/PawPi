@@ -236,6 +236,16 @@ function NotificationToggles() {
   // Server-backed owner preferences (shown only when the server offers them): promotional => default OFF.
   const OWNER_ROWS = [
     {
+      key: "weekly_digest_push",
+      label: t("notifPrefs.weeklyDigestPush"),
+      hint: t("notifPrefs.weeklyDigestPushHint"),
+    },
+    {
+      key: "winback_push",
+      label: t("notifPrefs.winbackPush"),
+      hint: t("notifPrefs.winbackPushHint"),
+    },
+    {
       key: "winback_email",
       label: t("notifPrefs.winbackEmail"),
       hint: t("notifPrefs.winbackEmailHint"),

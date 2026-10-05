@@ -158,3 +158,20 @@ it("rolls the win-back email switch back when the server refuses the change", as
     expect((await findByTestId("notif-owner-toggle-winback_email")).props.value).toBe(false),
   );
 });
+
+it("shows the opt-in PUSH rows (digest, win-back) OFF by default when the server offers them, and PUTs the opt-in", async () => {
+  mockGetOwnerPrefs.mockResolvedValue({ weekly_digest_push: false, winback_push: false, winback_email: false });
+  const { findByTestId } = render(<AppSettings />);
+  for (const key of ["weekly_digest_push", "winback_push", "winback_email"]) {
+    expect((await findByTestId(`notif-owner-toggle-${key}`)).props.value).toBe(false);
+  }
+  fireEvent(await findByTestId("notif-owner-toggle-weekly_digest_push"), "valueChange", true);
+  await waitFor(() => expect(mockSetOwnerCategory).toHaveBeenCalledWith("weekly_digest_push", true));
+});
+
+it("only renders owner rows for categories the server actually returned", async () => {
+  mockGetOwnerPrefs.mockResolvedValue({ winback_email: true });
+  const { findByTestId, queryByTestId } = render(<AppSettings />);
+  expect((await findByTestId("notif-owner-toggle-winback_email")).props.value).toBe(true);
+  expect(queryByTestId("notif-owner-toggle-winback_push")).toBeNull();
+});

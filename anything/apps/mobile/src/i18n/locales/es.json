@@ -2089,7 +2089,11 @@
     "care": "Recordatorios de cuidado",
     "careHint": "Tus propios recordatorios de comida, paseos y salud, y un aviso amable para crear el primero",
     "winbackEmail": "Emails de PawPi de vez en cuando",
-    "winbackEmailHint": "Un mensajito amable cuando pasó un tiempo desde tu última visita. Está apagado hasta que lo actives, y cada email trae un enlace para darte de baja."
+    "winbackEmailHint": "Un mensajito amable cuando pasó un tiempo desde tu última visita. Está apagado hasta que lo actives, y cada email trae un enlace para darte de baja.",
+    "weeklyDigestPush": "Notificación del resumen semanal",
+    "weeklyDigestPushHint": "Un resumen lindo de la semana de tu mascota, una vez por semana. Está apagada hasta que la actives.",
+    "winbackPush": "Notificaciones amables de vez en cuando",
+    "winbackPushHint": "Un saludo de vez en cuando con algo lindo para retomar. Están apagadas hasta que las actives."
   },
   "onboarding": {
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",

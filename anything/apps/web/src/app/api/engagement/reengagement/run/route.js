@@ -5,6 +5,7 @@ import { winbackPushBody, winbackEmail } from "../message";
 import { secretEquals } from "@/app/api/utils/secretCompare";
 import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
 import { buildUnsubscribeUrl, unsubscribeFooter } from "@/app/api/utils/emailUnsubscribe";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
 // POST /api/engagement/reengagement/run — the win-back SENDER (unit E12).
 //
@@ -15,6 +16,11 @@ import { buildUnsubscribeUrl, unsubscribeFooter } from "@/app/api/utils/emailUns
 // it CLAIMS the send (an ON CONFLICT ... WHERE cap guard on reengagement_state → a concurrent/re-run is
 // a no-op), then sends a warm push ('winback', localized client-side) + email (preferred). Never
 // fabricates a hook — falls back to the pet's own memory.
+//
+// NOTIFICATIONS V2 (PR 3b): scheduled daily by .github/workflows/cron-jobs.yml and does NOTHING unless the server
+// flag NOTIF_V2_ENABLED is on (secret check first, then the flag; no query when off). The in-app bell row is
+// unchanged; a real PHONE push goes only to owners who opted in (`winback_push`, default OFF), and the email
+// needs `winback_email` consent plus an unsubscribe link (PR 3a).
 //
 // WARM, never guilt. Escalation-free (at most one send per cap window). Degrades cleanly: no CRON_SECRET
 // → disabled; schema not applied → clean 200 no-op; a per-pet failure is recorded, never aborts the run.
@@ -62,6 +68,10 @@ async function POST(request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isNotifV2Enabled()) {
+    return Response.json({ skipped: "disabled" });
+  }
+
   const body = await request.json().catch(() => ({}));
   const nowExpr = typeof body?.now === "string" && body.now ? body.now : null;
   const lapsedDays = Number.isInteger(body?.lapsed_days) ? body.lapsed_days : 7;
@@ -90,20 +100,16 @@ async function POST(request) {
     const today = toDayStr(row.today); // owner-tz today, computed by the enumerator
     const milestone = pickMilestone(toDayStr(row.birthday), toDayStr(row.adoption_date), today, 14);
     const hook = pickHook({ milestone, friendName: row.friend_name, petName: row.pet_name });
-    // Notifications v2 (flag): NO email without explicit consent AND a working unsubscribe link. Absent consent
-    // row = OFF (promotional, App Store 4.5.4). With the flag off this block is skipped entirely (legacy).
-    let unsubscribeUrl = null;
-    let emailAllowed = true;
-    if (isNotifV2Enabled()) {
-      const consent = row.email
-        ? await softV2(async () => {
-            const r = await sql`SELECT app_notification_pref_enabled(${ownerUserId}, 'winback_email') AS enabled`;
-            return r?.[0]?.enabled === true;
-          }, false)
-        : false;
-      unsubscribeUrl = consent ? buildUnsubscribeUrl(ownerUserId, "winback_email") : null;
-      emailAllowed = consent && unsubscribeUrl !== null;
-    }
+    // Notifications v2: NO email without explicit consent (`winback_email`, absent = OFF; promotional, App Store
+    // 4.5.4) AND a working unsubscribe link (no signing key => no email).
+    const consent = row.email
+      ? await softV2(async () => {
+          const r = await sql`SELECT app_notification_pref_enabled(${ownerUserId}, 'winback_email') AS enabled`;
+          return r?.[0]?.enabled === true;
+        }, false)
+      : false;
+    const unsubscribeUrl = consent ? buildUnsubscribeUrl(ownerUserId, "winback_email") : null;
+    const emailAllowed = consent && unsubscribeUrl !== null;
     const channel = row.email && emailAllowed ? "email+push" : "push";
 
     try {
@@ -143,6 +149,14 @@ async function POST(request) {
         continue;
       }
 
+      // Phone push (opt-in only), outside the transaction: the bell row above is already committed.
+      await pushForOwnerNotification({
+        recipient: ownerUserId,
+        type: "winback",
+        subjectRef: String(petId),
+        petName: hook.petName,
+      });
+
       // Email preferred, outside the transaction (sendEmail never throws).
       if (row.email && emailAllowed) {
         // FF1: render in the recipient's stored locale ('en'|'es'); es-AR when null/absent
@@ -153,24 +167,20 @@ async function POST(request) {
           hook: hook.hook, petName: hook.petName, friendName: hook.friendName ?? null,
           milestoneKind: hook.milestoneKind ?? null, inDays: hook.inDays ?? null,
         });
-        if (unsubscribeUrl) {
-          const result = await sendEmail({
-            to: row.email,
-            subject,
-            text: text + unsubscribeFooter(locale, unsubscribeUrl),
-            headers: {
-              "List-Unsubscribe": `<${unsubscribeUrl}>`,
-              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-            },
-          });
-          if (result?.sent) {
-            await softV2(
-              () => sql`SELECT app_log_notification_send(${ownerUserId}, 'winback', 'winback_email', 'email', ${String(petId)}, 'sent')`,
-              null,
-            );
-          }
-        } else {
-          await sendEmail({ to: row.email, subject, text });
+        const result = await sendEmail({
+          to: row.email,
+          subject,
+          text: text + unsubscribeFooter(locale, unsubscribeUrl),
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        });
+        if (result?.sent) {
+          await softV2(
+            () => sql`SELECT app_log_notification_send(${ownerUserId}, 'winback', 'winback_email', 'email', ${String(petId)}, 'sent')`,
+            null,
+          );
         }
       }
       sent += 1;

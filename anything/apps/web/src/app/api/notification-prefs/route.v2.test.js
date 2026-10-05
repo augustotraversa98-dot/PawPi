@@ -31,25 +31,25 @@ describe("GET — owner_prefs", () => {
     expect(Object.keys(json)).toEqual(["prefs"]);
   });
 
-  it("flag ON: win-back email is OFF by default (promotional → explicit opt-in)", async () => {
+  it("flag ON: every promotional category (win-back email, digest push, win-back push) is OFF by default → explicit opt-in", async () => {
     process.env.NOTIF_V2_ENABLED = "true";
     sql.mockResolvedValueOnce([{ id: 7 }]);
     sql.mockResolvedValueOnce([]);
     const json = await (await GET()).json();
-    expect(json.owner_prefs).toEqual({ winback_email: false });
+    expect(json.owner_prefs).toEqual({ winback_email: false, weekly_digest_push: false, winback_push: false });
   });
 
   it("flag ON: reflects a stored opt-in", async () => {
     process.env.NOTIF_V2_ENABLED = "true";
     sql.mockResolvedValueOnce([{ id: 7 }]);
     sql.mockResolvedValueOnce([{ category: "winback_email", enabled: true }]);
-    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: true });
+    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: true, weekly_digest_push: false, winback_push: false });
   });
 
   it("flag ON, no profile yet: still defaults OFF", async () => {
     process.env.NOTIF_V2_ENABLED = "true";
     sql.mockResolvedValueOnce([]);
-    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: false });
+    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: false, weekly_digest_push: false, winback_push: false });
   });
 });
 
