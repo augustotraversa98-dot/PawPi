@@ -6,6 +6,11 @@ import {
   isBusinessNotificationCategory,
   categoryDefaultEnabled,
 } from "@/app/api/utils/notificationCategories";
+import { isNotifV2Enabled } from "@/app/api/utils/notifV2";
+import {
+  isOwnerNotificationCategory,
+  resolveOwnerPrefs,
+} from "@/app/api/utils/ownerNotificationCategories";
 
 // /api/notification-prefs — the caller's SERVER-SIDE notification preferences (BX4).
 // Owner-scoped (notification_prefs is own-row FOR ALL under FORCE RLS, 0108). These
@@ -34,7 +39,10 @@ async function GET() {
     const ownerUserId = await resolveOwner(session);
     if (ownerUserId === null) {
       // No profile yet => no stored prefs => every category is at its fail-open default.
-      return Response.json({ prefs: defaultPrefs() });
+      return Response.json({
+        prefs: defaultPrefs(),
+        ...(isNotifV2Enabled() ? { owner_prefs: resolveOwnerPrefs(new Map()) } : {}),
+      });
     }
 
     const rows = await sql`
@@ -48,7 +56,12 @@ async function GET() {
     for (const c of BUSINESS_NOTIFICATION_CATEGORIES) {
       prefs[c] = stored.has(c) ? stored.get(c) : categoryDefaultEnabled(c);
     }
-    return Response.json({ prefs });
+    // Notifications v2: pet-owner categories (email consent today; push categories in PR 3c). Absent from the
+    // payload while the flag is off, which is how the app knows to hide the controls.
+    return Response.json({
+      prefs,
+      ...(isNotifV2Enabled() ? { owner_prefs: resolveOwnerPrefs(stored) } : {}),
+    });
   } catch (e) {
     console.error("[GET /api/notification-prefs] Error:", e?.message);
     return Response.json({ error: "Failed to load notification preferences" }, { status: 500 });
@@ -64,7 +77,8 @@ async function PUT(request) {
     const body = (await request.json().catch(() => ({}))) ?? {};
     const { category } = body;
     const enabled = body.enabled;
-    if (!isBusinessNotificationCategory(category)) {
+    const isOwnerCategory = isNotifV2Enabled() && isOwnerNotificationCategory(category);
+    if (!isOwnerCategory && !isBusinessNotificationCategory(category)) {
       return Response.json({ error: "Unknown notification category" }, { status: 400 });
     }
     if (typeof enabled !== "boolean") {

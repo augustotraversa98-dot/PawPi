@@ -57,6 +57,7 @@ import { getScheduledNotifications } from "@/utils/notifications";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
 import { syncLocaleToServer } from "@/i18n/localePreference";
+import { syncTimezoneToServer } from "@/i18n/timezoneSync";
 
 // popToTopOnBlur (ticket 2.19) only applies to the Android JS bar. On iOS the
 // native tab bar uses Apple's standard behavior (re-tap an active tab to pop its
@@ -181,6 +182,8 @@ export default function TabLayout() {
   // app's resolved locale to the server so digest/win-back emails match. Best-effort.
   useEffect(() => {
     syncLocaleToServer();
+    // Notifications v2: tell the server the device time zone (no-op server-side until its flag is on).
+    syncTimezoneToServer();
   }, []);
   useEffect(() => {
     // Initialize reminders from routines on app start

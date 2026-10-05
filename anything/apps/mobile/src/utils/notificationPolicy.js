@@ -24,6 +24,14 @@ export const NOTIF_CATEGORIES = {
 
 export const ALL_CATEGORIES = Object.values(NOTIF_CATEGORIES);
 
+// Categories that a scheduler actually reads today, i.e. whose Settings toggle is REAL:
+//   • STREAK — shouldSendStreakSave (the end-of-day streak-save nudge)
+//   • CARE   — shouldArmReminderSetupNudge (the first-reminder setup tip) + the user's own reminders
+// SOCIAL and MILESTONE gate nothing (their copy builders have no caller and no server scheduler exists), so
+// Settings does NOT show them (notifications v2, docs/notifications-v2-design.md: no fake controls). Their
+// stored values are kept and the constants stay, so the toggles can return the day a scheduler is wired.
+export const SCHEDULED_CATEGORIES = [NOTIF_CATEGORIES.STREAK, NOTIF_CATEGORIES.CARE];
+
 // Defaults: everything on, a gentle daily cap, evening send fallback.
 export const DEFAULT_PREFS = {
   social: true,

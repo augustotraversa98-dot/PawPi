@@ -2087,7 +2087,9 @@
     "streak": "Streak reminder",
     "streakHint": "One friendly evening nudge when your ring is almost closed",
     "care": "Care reminders",
-    "careHint": "Your own feeding, walk and health reminders, plus a gentle tip to set your first one up"
+    "careHint": "Your own feeding, walk and health reminders, plus a gentle tip to set your first one up",
+    "winbackEmail": "Occasional emails from PawPi",
+    "winbackEmailHint": "A friendly note when it has been a while since your last visit. Off unless you turn it on, and every email has an unsubscribe link."
   },
   "onboarding": {
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",

@@ -36,7 +36,8 @@ import {
   getNotificationPrefs,
   setCategoryEnabled,
 } from "@/utils/notificationPreferences";
-import { NOTIF_CATEGORIES } from "@/utils/notificationPolicy";
+import { NOTIF_CATEGORIES, SCHEDULED_CATEGORIES } from "@/utils/notificationPolicy";
+import { getOwnerNotificationPrefs, setOwnerCategoryEnabled } from "@/utils/ownerNotificationPrefs";
 import {
   BUSINESS_NOTIF_CATEGORIES,
   BUSINESS_NOTIF_INFO_CATEGORIES,
@@ -182,17 +183,34 @@ function TelemetryToggle() {
   );
 }
 
-// E5 notification rewrite: real, persisted per-category toggles (Friends & social /
-// Milestones / Streak reminder / Care reminders). Each gates the wanted-trigger schedulers
-// + in-app category filters via notificationPreferences (AsyncStorage). No guilt/chore
-// categories exist anymore.
+// E5 notification rewrite: real, persisted per-category toggles. Only categories that a scheduler really
+// reads are shown (SCHEDULED_CATEGORIES: Streak reminder, Care reminders) — Friends & social and Milestones
+// gate nothing yet, so they are hidden rather than faked. They gate the wanted-trigger schedulers via
+// notificationPreferences (AsyncStorage). No guilt/chore categories exist anymore.
+//
+// Notifications v2: when the server offers owner preferences (its flag is on) a server-backed row for the
+// win-back email consent is added below the local toggles. Default OFF; absent from the UI otherwise.
 function NotificationToggles() {
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState(null);
+  const [ownerPrefs, setOwnerPrefs] = useState(null);
 
   useEffect(() => {
     getNotificationPrefs().then(setPrefs);
+    let alive = true;
+    getOwnerNotificationPrefs().then((p) => {
+      if (alive) setOwnerPrefs(p);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  const toggleOwner = async (category, value) => {
+    setOwnerPrefs((p) => ({ ...(p || {}), [category]: value })); // optimistic
+    const ok = await setOwnerCategoryEnabled(category, value);
+    if (!ok) setOwnerPrefs((p) => ({ ...(p || {}), [category]: !value })); // roll back: never show a false state
+  };
 
   const toggle = async (category, value) => {
     setPrefs((p) => ({ ...(p || {}), [category]: value })); // optimistic
@@ -200,19 +218,7 @@ function NotificationToggles() {
     setPrefs(next);
   };
 
-  const ROWS = [
-    {
-      key: NOTIF_CATEGORIES.SOCIAL,
-      icon: PawPrint,
-      label: t("notifPrefs.social"),
-      hint: t("notifPrefs.socialHint"),
-    },
-    {
-      key: NOTIF_CATEGORIES.MILESTONE,
-      icon: Bell,
-      label: t("notifPrefs.milestone"),
-      hint: t("notifPrefs.milestoneHint"),
-    },
+  const ALL_ROWS = [
     {
       key: NOTIF_CATEGORIES.STREAK,
       icon: Activity,
@@ -224,6 +230,15 @@ function NotificationToggles() {
       icon: Check,
       label: t("notifPrefs.care"),
       hint: t("notifPrefs.careHint"),
+    },
+  ];
+  const ROWS = ALL_ROWS.filter((r) => SCHEDULED_CATEGORIES.includes(r.key));
+  // Server-backed owner preferences (shown only when the server offers them): promotional => default OFF.
+  const OWNER_ROWS = [
+    {
+      key: "winback_email",
+      label: t("notifPrefs.winbackEmail"),
+      hint: t("notifPrefs.winbackEmailHint"),
     },
   ];
 
@@ -276,6 +291,45 @@ function NotificationToggles() {
           </View>
         );
       })}
+      {OWNER_ROWS.filter((r) => ownerPrefs && typeof ownerPrefs[r.key] === "boolean").map((row) => (
+        <View
+          key={row.key}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 14,
+            borderTopWidth: 1,
+            borderTopColor: C.peach,
+          }}
+        >
+          <View
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              backgroundColor: C.sand,
+              justifyContent: "center",
+              alignItems: "center",
+              marginRight: 14,
+              borderWidth: 1,
+              borderColor: C.peach,
+            }}
+          >
+            <Bell size={18} color={C.mutedBrown} />
+          </View>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>{row.label}</Text>
+            <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>{row.hint}</Text>
+          </View>
+          <Switch
+            testID={`notif-owner-toggle-${row.key}`}
+            value={ownerPrefs[row.key] === true}
+            onValueChange={(v) => toggleOwner(row.key, v)}
+            trackColor={{ false: C.peach, true: C.coral }}
+            thumbColor="#FFF"
+          />
+        </View>
+      ))}
     </View>
   );
 }
