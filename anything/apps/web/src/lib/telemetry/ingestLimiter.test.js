@@ -51,7 +51,11 @@ describe('ipKey', () => {
     expect(a).toMatch(/^[0-9a-f]{16}$/);
     expect(a).toBe(ipKey(req({ 'x-forwarded-for': '203.0.113.7' }))); // first hop only
     expect(a).not.toBe(ipKey(req({ 'x-forwarded-for': '203.0.113.8' })));
-    expect(a).not.toContain('203');
+    // The raw address can never appear in the key: it has dots, a hex digest cannot. (Do NOT assert
+    // `not.toContain('203')` -- the salt is random per process, so a 16-hex-char key contains any given
+    // 3-char substring ~0.34% of the time, which made this test flaky.)
+    expect(a).not.toContain('203.0.113.7');
+    expect(a).not.toContain('.');
     expect(ipKey(req({ 'x-real-ip': '198.51.100.2' }))).toMatch(/^[0-9a-f]{16}$/);
   });
 
