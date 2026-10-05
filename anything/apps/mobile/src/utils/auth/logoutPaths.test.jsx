@@ -63,7 +63,7 @@ jest.mock("@/utils/auth/useAuth", () => {
     },
   };
 });
-jest.mock("@/utils/queryClient", () => ({ queryClient: { clear: jest.fn() } }));
+// (the real shared QueryClient is used: other code in the app reads from it, e.g. routinesStore.loadRoutines)
 jest.mock("../../../__create/boot-trace", () => ({ markBootStep: jest.fn(), markBootComplete: jest.fn() }));
 jest.mock("@/utils/notificationDeepLink", () => ({ markNavigationReady: jest.fn() }));
 jest.mock("@/telemetry/navExpect", () => ({ markExpectedNavigation: jest.fn(), markNavigationReason: jest.fn() }));

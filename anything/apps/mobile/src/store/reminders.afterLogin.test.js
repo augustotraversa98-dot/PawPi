@@ -27,7 +27,7 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(async () => {}),
   AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: "afu",
 }));
-jest.mock("@/utils/queryClient", () => ({ queryClient: { clear: jest.fn() } }));
+// (the real shared QueryClient is used: other code in the app reads from it, e.g. routinesStore.loadRoutines)
 
 import useRoutinesStore from "./routinesStore";
 import useRemindersStore from "./remindersStore";
