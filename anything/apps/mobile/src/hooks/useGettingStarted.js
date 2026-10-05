@@ -12,6 +12,7 @@ import {
   requestNotificationPermissions,
   ensureDailyReturnReminder,
 } from "@/utils/notifications";
+import { maybeArmReminderSetupNudge } from "@/utils/engagementNotifications";
 
 // One flat existence read for "≥1 reminder": the pet's routines (the persisted entity behind
 // reminders). Empty / no pet → false.
@@ -111,6 +112,20 @@ export function useGettingStarted() {
       }),
     );
   }, [notificationsGranted, pet?.name, t]);
+
+  // First-reminder nudge: an owner with a pet and NO reminder yet gets (at most) two gentle local
+  // nudges, cancelled the moment a reminder exists. `hasReminder` is undefined until the read lands,
+  // so a loading state can never arm (or cancel) anything. See utils/engagementNotifications.
+  useEffect(() => {
+    if (petId == null) return;
+    maybeArmReminderSetupNudge({
+      t,
+      petId,
+      petName: pet?.name,
+      hasReminder,
+      permissionGranted: notificationsGranted,
+    });
+  }, [petId, pet?.name, hasReminder, notificationsGranted, t]);
 
   const enableNotifications = useCallback(async () => {
     const granted = await requestNotificationPermissions();

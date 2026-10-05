@@ -18,6 +18,9 @@ import { ROUTINE_TYPES } from "@/data/routinesData";
 
 const HEALTH_ROUTE = "/(tabs)/health";
 const INBOX_ROUTE = "/notifications";
+// Where an owner creates routines/reminders (the same screen the "Set your first reminder" checklist
+// item opens).
+const REMINDERS_ROUTE = "/(tabs)/more/reminders";
 
 // Reminder types whose home is the Vet Record section; everything else lands on Today,
 // where the reminder itself is listed with its action button.
@@ -43,6 +46,8 @@ export function reminderTapRoute(notification) {
  */
 export function pushTapRoute(data) {
   if (!data || typeof data !== "object") return { pathname: INBOX_ROUTE };
+  // The "set up your first reminder" nudge opens the screen where a reminder is created.
+  if (data.nudge === "reminder_setup") return { pathname: REMINDERS_ROUTE };
   if (data.reminderId != null) return reminderTapRoute(data);
   return { pathname: INBOX_ROUTE };
 }

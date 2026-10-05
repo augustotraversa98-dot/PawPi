@@ -134,3 +134,49 @@ function clampHour(h) {
   if (!Number.isInteger(h)) return EVENING_HOUR;
   return Math.min(23, Math.max(0, h));
 }
+
+// ── First-reminder setup nudge ─────────────────────────────────────────────────
+// For an owner who has a pet but NO routine/reminder yet. A local, positive "want a hand setting
+// one up?" — never a guilt message — armed once per pet and cancelled the moment a reminder
+// exists. Decision logic only; the scheduling lives in engagementNotifications.
+
+// Days after the nudge is armed that each (at most two) notification lands. Day 1 = tomorrow.
+export const REMINDER_NUDGE_DAY_OFFSETS = [1, 4];
+
+// Never at night: the learned open hour is clamped into this daytime window for THIS nudge
+// (quiet hours do not exist yet — see docs/notifications-audit.md).
+export const NUDGE_EARLIEST_HOUR = 9;
+export const NUDGE_LATEST_HOUR = 20;
+
+/** Clamp an hour into the daytime window a setup nudge may land in. */
+export function clampToDaytimeHour(hour) {
+  if (!Number.isInteger(hour)) return EVENING_HOUR;
+  return Math.min(NUDGE_LATEST_HOUR, Math.max(NUDGE_EARLIEST_HOUR, hour));
+}
+
+/**
+ * Should the first-reminder nudge be armed for this pet right now?
+ *
+ * True ONLY when ALL hold:
+ *   • the `care` category is enabled (the user's own care reminders toggle)
+ *   • there is an active pet
+ *   • we KNOW there is no reminder yet (`hasReminder === false` — never while it is still loading,
+ *     never when the read failed, so a loading state can't trigger a nudge)
+ *   • OS notification permission is granted
+ *   • it has not already been armed / finished for this pet (once per pet, ever)
+ *
+ * @param {object} state
+ * @param {boolean} [state.hasPet]
+ * @param {boolean|undefined} state.hasReminder
+ * @param {boolean} [state.permissionGranted]
+ * @param {boolean} [state.alreadyArmed]
+ * @param {object} [prefs]
+ */
+export function shouldArmReminderSetupNudge(state = {}, prefs = DEFAULT_PREFS) {
+  if (!isCategoryEnabled(prefs, NOTIF_CATEGORIES.CARE)) return false;
+  if (!state.hasPet) return false;
+  if (state.hasReminder !== false) return false;
+  if (!state.permissionGranted) return false;
+  if (state.alreadyArmed) return false;
+  return true;
+}

@@ -220,7 +220,40 @@ The product wants more owners to **set up reminders**; the audit says the channe
   quiet hours, receipts) are larger, need migrations and a decision on who calls the cron endpoints; they are
   listed as follow-ups, not done here.
 
-Part B of this branch (see the PR) implements the local first-reminder nudge only.
+Part B of this branch implements the local first-reminder nudge only (below).
+
+---
+
+## 6. Part B — what shipped: the first-reminder nudge
+
+**Reading of the brief.** The brief's Part B text was cut off, so this is the most reasonable reading of
+"engagement nudges … getting users to set up reminders are the priority": one nudge, aimed at the owner who
+has a pet and **no routine yet**, built only from channels that exist today (local), with the controls the
+audit found missing made real for it. **No migration** and no server change were needed, so nothing for a
+human to apply.
+
+| | |
+|---|---|
+| Who | an owner with an active pet, notification permission granted, and a **confirmed** empty routines list (`hasReminder === false`; unknown/loading never arms or cancels) |
+| What | at most **two** local notifications per pet, ever: tomorrow and +4 days, at the owner's usual open hour **clamped to 09:00-20:00** (never at night; no quiet-hours feature exists yet) |
+| Copy | `engageNotif.reminderSetupTitle1/2` + `reminderSetupBody1/2`, EN + ES (es-AR voseo), positive, names the pet, no guilt, no health claims; the existing guilt-copy test scans these keys |
+| Tap | opens `/(tabs)/more/reminders` (where a routine is created — the same screen the "Set your first reminder" checklist item opens) via `notificationDeepLink.pushTapRoute` (`data.nudge === "reminder_setup"`) |
+| Stops | cancelled **as soon as a reminder exists** (the Feed's routines read flips to `true`); never re-armed for that pet after that, or after both slots have passed |
+| Respects | the **Care reminders** toggle (`care`, previously read by nothing); the toggle hint now says it includes this tip. Not counted in the E5 per-day log: that log stores only one day and is written by streak-save, so a future-dated write would erase today's count |
+| Survives | the OS list being cleared (the #617 logout cleanup): future slots missing from the OS pending list are re-armed at the **same** times; fired slots are never repeated |
+| Scoping | state key `pawpi.reminderNudge.v1.<petId>`; arming/cancelling one pet never touches another; cleared with the rest of the account's storage on owner logout |
+| Code | `utils/notificationPolicy.js` (pure decision), `utils/engagementNotifications.js` (`maybeArmReminderSetupNudge`, `cancelReminderSetupNudges`, `buildReminderSetupContent`), `hooks/useGettingStarted.js` (the trigger), `utils/notificationDeepLink.js` |
+| Tests | `reminderSetupNudge.test.js`, `notificationPolicy.test.js`, `notificationDeepLink.test.js`, `useGettingStarted.reminderNudge.test.jsx` |
+
+**Limits.** It needs the app to have been opened with the pet and no routine at least once (that is when the
+slots are armed) and notification permission to be granted at that moment; an owner who has not granted
+permission is still served by the Getting-started card's "Enable notifications" item. It cannot reach
+someone who reinstalls. It is local, so it is invisible to the server and to analytics.
+
+**Follow-ups this audit recommends (not done; they need a decision or a migration):** write
+`user_profiles.timezone` from the client; schedule the digest and win-back endpoints (or remove them); a
+server send log + per-user frequency cap; push for pet-owner events; Expo push receipts and invalid-token
+pruning; quiet hours; make the `social` / `milestone` toggles real; localize reminder copy.
 
 ---
 

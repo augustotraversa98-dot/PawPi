@@ -2070,7 +2070,11 @@
     "dormantTitle": "{{name}} would love to see you 🐾",
     "dormantBody": "Come share a little moment together today",
     "dormantFriendTitle": "{{friend}} misses {{name}} 🐾",
-    "dormantFriendBody": "{{friend}} has been posting — come say hi"
+    "dormantFriendBody": "{{friend}} has been posting — come say hi",
+    "reminderSetupTitle1": "A little help with {{name}}'s routine 🐾",
+    "reminderSetupBody1": "Pick a time for meals or walks and PawPi will remind you. It takes about 30 seconds.",
+    "reminderSetupTitle2": "Make {{name}}'s day a bit easier 🐾",
+    "reminderSetupBody2": "Set a feeding, walk or vet reminder in a few taps — we'll take care of the rest."
   },
   "notifPrefs": {
     "social": "Friends & social",
@@ -2080,7 +2084,7 @@
     "streak": "Streak reminder",
     "streakHint": "One friendly evening nudge when your ring is almost closed",
     "care": "Care reminders",
-    "careHint": "Your own feeding, walk and health reminders"
+    "careHint": "Your own feeding, walk and health reminders, plus a gentle tip to set your first one up"
   },
   "onboarding": {
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",

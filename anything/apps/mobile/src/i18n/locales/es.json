@@ -2070,7 +2070,11 @@
     "dormantTitle": "A {{name}} le encantaría verte 🐾",
     "dormantBody": "Vení a compartir un momentito juntos hoy",
     "dormantFriendTitle": "{{friend}} extraña a {{name}} 🐾",
-    "dormantFriendBody": "{{friend}} estuvo publicando — vení a saludar"
+    "dormantFriendBody": "{{friend}} estuvo publicando — vení a saludar",
+    "reminderSetupTitle1": "Una mano con la rutina de {{name}} 🐾",
+    "reminderSetupBody1": "Elegí un horario para las comidas o los paseos y PawPi te avisa. Lleva unos 30 segundos.",
+    "reminderSetupTitle2": "Hacé el día de {{name}} un poco más fácil 🐾",
+    "reminderSetupBody2": "Configurá un recordatorio de comida, paseo o veterinario en unos toques y nosotros nos encargamos del resto."
   },
   "notifPrefs": {
     "social": "Amigos y social",
@@ -2080,7 +2084,7 @@
     "streak": "Recordatorio de racha",
     "streakHint": "Un aviso amable a la tarde cuando tu anillo está casi cerrado",
     "care": "Recordatorios de cuidado",
-    "careHint": "Tus propios recordatorios de comida, paseos y salud"
+    "careHint": "Tus propios recordatorios de comida, paseos y salud, y un aviso amable para crear el primero"
   },
   "onboarding": {
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",
