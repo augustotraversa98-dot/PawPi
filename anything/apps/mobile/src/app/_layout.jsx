@@ -84,10 +84,13 @@ export default function RootLayout() {
 
   // Schedule/cancel local "video consult starts in 5 minutes" reminders for upcoming
   // telehealth bookings, independent of which screen the owner is on.
+  // Only once the session is ready AND signed in: before that it fired GET /api/me/bookings
+  // at +1.5 s regardless — a guaranteed 401 for a signed-out user, and a request racing the
+  // auth hydration for a signed-in one. Signing out stops the polling; signing in starts it.
   useEffect(() => {
-    const cleanup = startTelehealthReminderSync();
-    return cleanup;
-  }, []);
+    if (!isAuthenticated) return undefined;
+    return startTelehealthReminderSync();
+  }, [isAuthenticated]);
 
   // Social data (notifications, DMs, discover) is fetched live from the API
   // (tickets 2.25–2.27) — no mock seeding at startup.

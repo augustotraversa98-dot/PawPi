@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
+import { queryClient } from "@/utils/queryClient";
+import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 
 const useRoutinesStore = create((set, get) => ({
   // State
@@ -14,15 +16,16 @@ const useRoutinesStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const url = petId ? `/api/routines?petId=${petId}` : "/api/routines";
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load routines: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      // Always a LIVE read (staleTime 0: callers rely on it after edits and on pull-to-refresh), but
+      // through the shared ["routines", petId] entry so a request already in flight for this pet —
+      // e.g. the Feed's "first reminder" checklist read at launch — is joined, not repeated, and
+      // its result refreshes that checklist too. No retry: a failure surfaces as before.
+      const data = await queryClient.fetchQuery({
+        queryKey: routinesQueryKey(petId),
+        queryFn: () => fetchRoutinesRaw(petId),
+        staleTime: 0,
+        retry: false,
+      });
       const routines = data.routines || [];
 
       // Transform database routines to app format

@@ -28,8 +28,8 @@ jest.mock("@/hooks/useFetchHealthData", () => ({
   useFoodLogs: () => ({ data: { logs: [] } }),
 }));
 jest.mock("@/hooks/usePetSocialProfile", () => ({
-  usePetSocialProfile: (petId) => {
-    mockSocialProfileSpy(petId);
+  usePetSocialProfile: (petId, viewerPetId) => {
+    mockSocialProfileSpy(petId, viewerPetId);
     // A pet that DOES have posts — the item must reflect this.
     return { data: { stats: { totalPosts: 3 } } };
   },
@@ -64,9 +64,10 @@ test("activation reads run for the active pet even when the account is celebrate
   const { result } = renderHook(() => useGettingStarted(), { wrapper });
 
   // The social-profile read is called with the REAL active pet id (7), never the
-  // null that the old `celebrated`-gate forced.
-  await waitFor(() => expect(mockSocialProfileSpy).toHaveBeenCalledWith(7));
-  expect(mockSocialProfileSpy).not.toHaveBeenCalledWith(null);
+  // null that the old `celebrated`-gate forced. Same (String id, viewer id) arguments as the
+  // Profile tab's own-pet read, so both share one cache entry (launch dedupe).
+  await waitFor(() => expect(mockSocialProfileSpy).toHaveBeenCalledWith("7", 7));
+  expect(mockSocialProfileSpy).not.toHaveBeenCalledWith(null, expect.anything());
 
   // And the derived items reflect reality: post done (totalPosts>0) and reminder
   // done (routine exists), instead of being frozen unticked.

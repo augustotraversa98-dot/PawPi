@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { useNavigation } from "expo-router";
 import PetProfileScreen from "@/app/pet-profile";
+import { FirstFocusGate } from "@/components/FirstFocusGate";
+import { COLORS } from "@/constants/colors";
 
 // The bottom-right "Profile" tab (ticket 2.60) IS the active pet's social
 // profile. We reuse the pet-profile screen in `embedded` mode: it falls back to
@@ -38,5 +40,11 @@ export default function ProfileTab() {
     });
   }, [navigation]);
 
-  return <PetProfileScreen embedded />;
+  // The profile (and the owner menu / share cards it hosts) mounts on first open of this tab, not at
+  // launch — the nav wiring above stays mounted either way.
+  return (
+    <FirstFocusGate backgroundColor={COLORS.cream}>
+      <PetProfileScreen embedded />
+    </FirstFocusGate>
+  );
 }

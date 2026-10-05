@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
+import { FirstFocusGate } from "@/components/FirstFocusGate";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { PressableScale, GlassSurface } from "@/components/ui";
 import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
@@ -15,7 +16,7 @@ import { trackFunnel } from "@/telemetry/track";
 // toggle replaces its internal header). My Activity = the consolidated owner surface
 // (bookings, reservations, appointments, messages, shopping). Default pane = Discover; the
 // My Activity segment carries the owner's unread-message badge.
-export default function ServicesScreen() {
+function ServicesScreenContent() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [pane, setPane] = useState("discover"); // "discover" | "activity"
@@ -118,5 +119,15 @@ export default function ServicesScreen() {
         )}
       </View>
     </View>
+  );
+}
+
+// Mounted (and so fetching) only once the tab has been opened for the first time — see
+// hooks/useHasBeenFocused. Keeps this tab's reads out of the app-launch burst.
+export default function ServicesScreen() {
+  return (
+    <FirstFocusGate backgroundColor={COLORS.cream}>
+      <ServicesScreenContent />
+    </FirstFocusGate>
   );
 }

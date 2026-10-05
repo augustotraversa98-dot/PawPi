@@ -50,6 +50,33 @@ afterEach(() => {
   mockUseCurrentPet.mockReset();
 });
 
+describe("useFeedPosts — launch request (no wasted unscoped read)", () => {
+  test("waits for the pets list: nothing is fetched while it loads, then exactly ONE scoped request", async () => {
+    mockUseCurrentPet.mockReturnValue({ data: null, isLoading: true });
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ posts: [{ id: 1 }] }) }));
+
+    const client = makeClient();
+    const { result, rerender } = renderHook(() => useFeedPosts(), { wrapper: makeWrapper(client) });
+    await act(async () => {});
+    // Before: an UNSCOPED GET /api/posts (no viewerPetId) went out here and was discarded.
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    mockUseCurrentPet.mockReturnValue({ data: { id: 4 }, isLoading: false });
+    rerender({});
+    await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(lastFetchUrl()).toContain("viewerPetId=4");
+  });
+
+  test("a pet-less account (loaded, no pet) still gets the global fallback feed", async () => {
+    mockUseCurrentPet.mockReturnValue({ data: null, isLoading: false });
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ posts: [] }) }));
+    const { result } = renderHook(() => useFeedPosts(), { wrapper: makeWrapper(makeClient()) });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(lastFetchUrl()).not.toContain("viewerPetId");
+  });
+});
+
 describe("useFeedPosts", () => {
   test("sends viewerPetId from the active pet and returns posts in endpoint order", async () => {
     mockUseCurrentPet.mockReturnValue({ data: { id: 4, name: "Phoebe" } });

@@ -1,41 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import useSelectedPetStore from "@/store/selectedPetStore";
+import { PETS_QUERY_KEY, PETS_STALE_MS, fetchPets } from "@/utils/launchQueries";
 
 // Get all pets for the current user
 export function usePetProfile() {
   const query = useQuery({
-    queryKey: ["pets"],
-    queryFn: async () => {
-      console.log("[usePetProfile] Fetching pets from database...");
-      const response = await fetch("/api/pets");
-
-      console.log("[usePetProfile] Response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[usePetProfile] ERROR: Failed to fetch pets");
-        console.error("[usePetProfile] Status:", response.status);
-        console.error("[usePetProfile] Response:", errorText);
-        throw new Error("Failed to fetch pets");
-      }
-
-      const data = await response.json();
-      console.log("[usePetProfile] Pets data:", data);
-      console.log("[usePetProfile] Number of pets:", data.pets?.length || 0);
-
-      if (data.pets && data.pets.length > 0) {
-        console.log(
-          "[usePetProfile] ✅ Found pets:",
-          data.pets.map((p) => ({ id: p.id, name: p.name })),
-        );
-      } else {
-        console.log("[usePetProfile] ⚠️ No pets found for this user");
-      }
-
-      return data.pets;
-    },
-    staleTime: 1000 * 45, // 45s — shared by ~20 sites; create still invalidates ["pets"] to refetch immediately
+    queryKey: PETS_QUERY_KEY,
+    queryFn: () => fetchPets(),
+    staleTime: PETS_STALE_MS, // shared by ~20 sites + the EntryPoint's launch read (utils/launchQueries)
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });

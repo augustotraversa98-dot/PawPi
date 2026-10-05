@@ -9,8 +9,11 @@ import { useQuery } from "@tanstack/react-query";
 // places.category; "all" (or omitted) returns both sources. `neighborhood` filters PLACES only
 // (providers are city-wide). lat/lng attach distance_km + nearest-first ordering. Every param is
 // part of the query key so distinct filters cache independently.
-export function useServicesDiscover({ q, category, neighborhood, lat, lng, radius, limit, offset } = {}) {
+// `enabled` (default true) lets the Discover pane wait for the device location so it fires ONE request
+// with the final lat/lng instead of an unlocated one that is replaced a moment later.
+export function useServicesDiscover({ q, category, neighborhood, lat, lng, radius, limit, offset, enabled = true } = {}) {
   return useQuery({
+    enabled,
     queryKey: [
       "services-discover",
       { q, category, neighborhood, lat, lng, radius, limit, offset },

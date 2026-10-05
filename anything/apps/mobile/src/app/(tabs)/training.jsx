@@ -15,6 +15,7 @@ import {
   Footprints,
 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { FirstFocusGate } from "@/components/FirstFocusGate";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { PressableScale, GlassSurface } from "@/components/ui";
 import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
@@ -65,7 +66,7 @@ const DIFF_COLORS = {
   Advanced: { bg: "#FBE9E7", text: "#BF360C" },
 };
 
-export default function TrainingScreen() {
+function TrainingScreenContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -569,5 +570,15 @@ export default function TrainingScreen() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+// Mounted (and so fetching) only once the tab has been opened for the first time — see
+// hooks/useHasBeenFocused. Keeps this tab's reads out of the app-launch burst.
+export default function TrainingScreen() {
+  return (
+    <FirstFocusGate backgroundColor={COLORS.cream}>
+      <TrainingScreenContent />
+    </FirstFocusGate>
   );
 }

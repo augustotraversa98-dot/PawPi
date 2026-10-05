@@ -27,13 +27,18 @@ export function useFeedPosts(limit = 20, offset = 0) {
   // Scope the feed to the active pet so the backend can order it
   // Following-first then Suggested (web Prompt 4). With no active pet we omit
   // viewerPetId entirely and the backend serves its global fallback.
-  const { data: currentPet } = useCurrentPet();
+  const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
   const viewerPetId = currentPet?.id ?? null;
 
   return useQuery({
     // viewerPetId is part of the key so switching pets refetches + re-scopes,
     // same as the other pet-scoped reads.
     queryKey: ["posts", "feed", limit, offset, viewerPetId],
+    // Wait for the pets list: firing while it is still loading sent an UNSCOPED request
+    // (no viewerPetId) whose result was thrown away the moment the pet resolved and the key
+    // changed — a wasted call at every launch. (useFeedData already shows the loading state
+    // while the pet loads, so there is no empty-feed flash.)
+    enabled: !loadingPet,
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(limit),
