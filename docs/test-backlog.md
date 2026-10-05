@@ -415,7 +415,8 @@ go-live checklist in `PawPi_instructions.md`.
 
 The code for metrics, dashboards, alerts, logs and deploy markers is merged; this is what only you can do. Full detail + order: `docs/observability/OPERATIONS.md` (sections 7, 8, 14).
 
-- [ ] **Railway env vars:** `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (a service-account token limited to annotations write). Redeploy. Check: `{job="pawpi-web"}` shows lines in Grafana Explore → Loki after a few requests, and `pawpi-overview` shows a deploy marker after the next deploy.
+- [x] **Railway env vars** *(done 2026-10-05: the `GRAFANA_LOKI_*` variables are set in production and event logs reach Grafana, verified by the owner in Grafana; the deploy-marker check was not separately reported)*: `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (a service-account token limited to annotations write). Redeploy. Check: `{job="pawpi-web"}` shows lines in Grafana Explore → Loki after a few requests, and `pawpi-overview` shows a deploy marker after the next deploy.
+- **Traces (2026-10-05):** spans are now scrubbed by `SpanScrubber` (#622) before export (no client IPs, user-agents coarsened, no query strings or raw id paths). Spans still carry a connection-level `peer.ipv4` that is Grafana's own server (the OTLP endpoint), not user data.
 - [ ] **Apply to Grafana** (`GRAFANA_URL` + `GRAFANA_SA_TOKEN`; dry run first, then `--apply`; a second dry run must read all `unchanged`):
   `node scripts/observability/apply-grafana.mjs` / `--apply` (dashboards) · `--sections alerts,policies` with `ALERT_DIGEST_EMAIL=you@…` (rules arrive PAUSED) · `--sections synthetics` with `GRAFANA_SM_URL` + `GRAFANA_SM_TOKEN`.
 - [ ] **Ship app build 25** (client telemetry). Before submitting: update **App Store Connect → App Privacy** (Diagnostics / Usage Data, not linked to the user, not used for tracking — answers drafted in `docs/privacy/telemetry.md`); update the **live privacy policy** text and `docs/app-store-privacy-data-map.md` at that time (they still say no Diagnostics/Usage).
@@ -423,6 +424,15 @@ The code for metrics, dashboards, alerts, logs and deploy markers is merged; thi
 - [ ] *(optional)* **Grafana mobile push for P1** on contact point `Augusto` (IRM integration; 2 minutes, `OPERATIONS.md` 5.3).
 - [ ] *(optional)* **Scripted sign-in journey** with one clearly labelled test account in an isolated project (never sign-UP; `OPERATIONS.md` 5.6).
 - [ ] *(monthly)* the 15-minute review in `OPERATIONS.md` section 15.
+
+---
+
+## Follow-up (not scheduled): web catch-all 404 route
+
+The web catch-all route (`anything/apps/web/src/app/__create/not-found.tsx`) runs a filesystem glob (`fast-glob`) on **every
+unknown URL**. Consider caching the glob result (it only changes on deploy) and returning a real `404` status for unknown paths
+instead of the rendered fallback page. Scanner probes were already short-circuited with a plain 404 in #623; this is the
+remaining general case.
 
 ---
 

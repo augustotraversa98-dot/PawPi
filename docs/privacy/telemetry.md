@@ -121,4 +121,5 @@ App Store "Privacy Nutrition Label" shows Usage Data + Diagnostics as "Data Not 
 - [ ] Legal review of section 5, then publish in EN + ES on the live privacy policy.
 - [ ] Update `docs/app-store-privacy-data-map.md` and App Store Connect (section 6) with build 25.
 - [ ] Confirm Grafana Cloud retention on the current plan (published Free tier: metrics 14 days, logs 14 days); only then consider stating a figure in sections 3 and 5.
-- [ ] Set `GRAFANA_LOKI_URL/USER/TOKEN` on Railway for event log lines (metrics work without them).
+- [x] Set `GRAFANA_LOKI_URL/USER/TOKEN` on Railway for event log lines (metrics work without them). *Done: the variables are set in production and event logs reach Grafana (verified in Grafana by the owner, 2026-10-05).*
+- **Traces (note, 2026-10-05):** trace spans are scrubbed by `SpanScrubber` (#622) before export — no client IPs, user-agents (coarsened), query strings or raw id paths. Spans still carry a connection-level `peer.ipv4` that is the address of **Grafana's own server** (the OTLP endpoint), not a user address, so it is not user data.
