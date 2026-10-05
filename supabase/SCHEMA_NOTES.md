@@ -324,6 +324,18 @@ ACTION 1).
 > `vet-record-attribution.integration.test.ts`. **✅ APPLIED + VERIFIED on Supabase 2026-08-18**
 > (verify_0121 all 4 PASS).
 
+> **0131** is notifications v2, PR 3a (`docs/notifications-v2-design.md`). ADDITIVE; **HARNESS-ONLY, hand-applied after
+> merge** and inert until the server flag `NOTIF_V2_ENABLED` is on (every caller is flag-gated and fails soft on
+> 42P01/42883/42703). `device_push_tokens` += `invalid_since` / `last_seen`; new `push_tickets` (Expo ticket per
+> send, for the receipts job) and `notification_send_log` (one row per push/email attempt; the per-user daily-cap
+> source) — both ENABLE+FORCE RLS with an **own-row SELECT policy only** and **no write policy** (same stance as
+> 0113's `rate_limit_hits`): the 11 DEFINER helpers (`app_recipient_valid_push_tokens`, `app_mark_push_token_invalid`,
+> `app_record_push_ticket`, `app_pending_push_tickets`, `app_resolve_push_tickets`, `app_user_day_start`,
+> `app_notification_sends_today`, `app_reserve_notification_send` [atomic cap via advisory lock, owner-local day],
+> `app_log_notification_send`, `app_notification_send_log_gc`, `app_set_email_consent` [only `winback_email`]) are the
+> only writers. The 0109 readers are untouched. Verify: `supabase/verify_0131.sql` (all PASS). Proven in
+> `notifications-v2-foundation.integration.test.ts` (incl. idempotent re-apply).
+
 Still deferred: **no seed data.**
 
 ---

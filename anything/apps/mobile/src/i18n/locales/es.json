@@ -2087,7 +2087,9 @@
     "streak": "Recordatorio de racha",
     "streakHint": "Un aviso amable a la tarde cuando tu anillo está casi cerrado",
     "care": "Recordatorios de cuidado",
-    "careHint": "Tus propios recordatorios de comida, paseos y salud, y un aviso amable para crear el primero"
+    "careHint": "Tus propios recordatorios de comida, paseos y salud, y un aviso amable para crear el primero",
+    "winbackEmail": "Emails de PawPi de vez en cuando",
+    "winbackEmailHint": "Un mensajito amable cuando pasó un tiempo desde tu última visita. Está apagado hasta que lo actives, y cada email trae un enlace para darte de baja."
   },
   "onboarding": {
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",

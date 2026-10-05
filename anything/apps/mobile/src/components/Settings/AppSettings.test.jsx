@@ -43,9 +43,20 @@ jest.mock("@/utils/businessNotificationPrefs", () => ({
   setBusinessCategoryEnabled: (...a) => mockSetBizCategory(...a),
 }));
 
+const mockGetOwnerPrefs = jest.fn().mockResolvedValue(null);
+const mockSetOwnerCategory = jest.fn().mockResolvedValue(true);
+jest.mock("@/utils/ownerNotificationPrefs", () => ({
+  getOwnerNotificationPrefs: (...a) => mockGetOwnerPrefs(...a),
+  setOwnerCategoryEnabled: (...a) => mockSetOwnerCategory(...a),
+}));
+
 import AppSettings from "./AppSettings";
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockGetOwnerPrefs.mockResolvedValue(null);
+  mockSetOwnerCategory.mockResolvedValue(true);
+});
 
 it("renders the settings surface (delete-account control + language options)", () => {
   const { getByTestId } = render(<AppSettings />);
@@ -65,7 +76,8 @@ it("header back arrow returns to the host that pushed it (router.back)", () => {
 
 it("pet mode (default) shows the pet-owner categories + Walk tracking, not business ones", () => {
   const { getByTestId, queryByTestId, queryByText } = render(<AppSettings />);
-  expect(getByTestId("notif-toggle-social")).toBeTruthy();
+  expect(getByTestId("notif-toggle-streak")).toBeTruthy();
+  expect(getByTestId("notif-toggle-care")).toBeTruthy();
   expect(queryByText("WALK TRACKING")).toBeTruthy();
   expect(queryByTestId("biz-notif-toggle-walk_requests")).toBeNull();
   expect(mockGetBizPrefs).not.toHaveBeenCalled();
@@ -108,4 +120,41 @@ it("business mode groups categories: Notify my phone / Optional push / In-app on
   // …the in-app-only category is shown as info, NEVER a toggle.
   expect(getByTestId("biz-notif-info-biz_follow")).toBeTruthy();
   expect(() => getByTestId("biz-notif-toggle-biz_follow")).toThrow();
+});
+
+// ── Notifications v2: no fake controls ───────────────────────────────────────────
+
+it("hides the Friends & social + Milestones toggles (no scheduler reads them) and keeps the real ones", () => {
+  const { getByTestId, queryByTestId } = render(<AppSettings />);
+  expect(queryByTestId("notif-toggle-social")).toBeNull();
+  expect(queryByTestId("notif-toggle-milestone")).toBeNull();
+  expect(getByTestId("notif-toggle-streak")).toBeTruthy();
+  expect(getByTestId("notif-toggle-care")).toBeTruthy();
+});
+
+it("shows NO win-back email row when the server does not offer owner preferences (flag off)", async () => {
+  const { queryByTestId } = render(<AppSettings />);
+  await waitFor(() => expect(mockGetOwnerPrefs).toHaveBeenCalled());
+  expect(queryByTestId("notif-owner-toggle-winback_email")).toBeNull();
+});
+
+it("shows the win-back email row OFF by default when offered, and PUTs the opt-in", async () => {
+  mockGetOwnerPrefs.mockResolvedValue({ winback_email: false });
+  const { findByTestId } = render(<AppSettings />);
+  const toggle = await findByTestId("notif-owner-toggle-winback_email");
+  expect(toggle.props.value).toBe(false);
+  fireEvent(toggle, "valueChange", true);
+  await waitFor(() => expect(mockSetOwnerCategory).toHaveBeenCalledWith("winback_email", true));
+});
+
+it("rolls the win-back email switch back when the server refuses the change", async () => {
+  mockGetOwnerPrefs.mockResolvedValue({ winback_email: false });
+  mockSetOwnerCategory.mockResolvedValue(false);
+  const { findByTestId } = render(<AppSettings />);
+  const toggle = await findByTestId("notif-owner-toggle-winback_email");
+  fireEvent(toggle, "valueChange", true);
+  await waitFor(() => expect(mockSetOwnerCategory).toHaveBeenCalled());
+  await waitFor(async () =>
+    expect((await findByTestId("notif-owner-toggle-winback_email")).props.value).toBe(false),
+  );
 });

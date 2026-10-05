@@ -5,6 +5,7 @@ import {
   channelClassForType,
   businessCategoryForType,
 } from "@/app/api/utils/notificationCategories";
+import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
 
 // BN2 PR1 — the server→phone REMOTE PUSH layer (expo-server-sdk).
 //
@@ -40,6 +41,11 @@ function getExpo() {
   return expoClient;
 }
 
+/** The shared Expo client (also used by the receipts job). */
+export function getExpoClient() {
+  return getExpo();
+}
+
 // Test seam: reset the memoized client (env changes between cases).
 export function __resetExpoClientForTests() {
   expoClient = null;
@@ -66,12 +72,98 @@ export async function resolveRecipientTokens(recipient) {
     .filter((t) => Expo.isExpoPushToken(t));
 }
 
+// ── Notifications v2 (flag NOTIF_V2_ENABLED; docs/notifications-v2-design.md) ─────────────────────────────
+// Same contract as the legacy path (never throws, no tokens = no-op) plus:
+//   • tokens come from app_recipient_valid_push_tokens, which SKIPS tokens Expo reported as dead (0131);
+//   • each send is recorded in notification_send_log, and an optional per-user daily cap is enforced
+//     atomically by app_reserve_notification_send (`opts.cap`; null = log only);
+//   • Expo tickets are stored (push_tickets) so the receipts job can prune dead tokens; a ticket that already
+//     says DeviceNotRegistered marks the token invalid immediately.
+// Every v2 query goes through softV2 (savepoint + try/catch): with the migration not applied it returns the
+// fallback and we degrade to the legacy token reader, i.e. today's behaviour.
+async function resolveValidTokens(recipient) {
+  const rows = await softV2(
+    () => sql`SELECT token, platform FROM app_recipient_valid_push_tokens(${recipient})`,
+    null,
+  );
+  if (rows === null) return null; // v2 schema unavailable -> caller falls back to the legacy reader
+  return (rows ?? []).map((r) => r.token).filter((t) => Expo.isExpoPushToken(t));
+}
+
+async function sendPushV2(recipient, { title, body, data } = {}, opts = {}) {
+  let tokens = await resolveValidTokens(recipient);
+  const v2Schema = tokens !== null;
+  if (!v2Schema) tokens = await resolveRecipientTokens(recipient); // legacy reader (fail soft)
+  if (tokens.length === 0) {
+    console.log(`[sendPush] no push tokens for recipient ${recipient} — no-op`);
+    return { sent: 0, skipped: "no-tokens" };
+  }
+
+  // Reserve a send slot only now that we know something will really be attempted.
+  if (v2Schema && opts.type) {
+    const reserved = await softV2(async () => {
+      const rows = await sql`
+        SELECT app_reserve_notification_send(
+          ${recipient}, ${opts.type}, ${opts.category ?? null}, 'push', ${opts.subjectRef ?? null}, ${opts.cap ?? null}
+        ) AS ok
+      `;
+      return rows?.[0]?.ok === true;
+    }, true); // schema/DB trouble while reserving: fail OPEN (send), exactly like v1
+    if (!reserved) return { sent: 0, skipped: "cap" };
+  }
+
+  const messages = tokens.map((to) => ({
+    to,
+    title: title ?? "PawPi",
+    body: body ?? "",
+    data: data ?? {},
+    sound: "default",
+  }));
+  const expo = getExpo();
+  const chunks = expo.chunkPushNotifications(messages);
+  let sent = 0;
+  for (const chunk of chunks) {
+    try {
+      const tickets = await expo.sendPushNotificationsAsync(chunk);
+      sent += chunk.length;
+      if (v2Schema && Array.isArray(tickets)) {
+        await processTickets(recipient, chunk, tickets);
+      }
+    } catch (err) {
+      console.error("[sendPush] chunk send failed (non-fatal):", err?.message);
+    }
+  }
+  return { sent };
+}
+
+// Tickets are aligned 1:1 with the messages of the chunk. ok -> remember the id for the receipts job;
+// error DeviceNotRegistered -> the token is dead, stop sending to it right away.
+async function processTickets(recipient, chunk, tickets) {
+  for (let i = 0; i < chunk.length; i++) {
+    const ticket = tickets[i];
+    const token = chunk[i]?.to;
+    if (!ticket || !token) continue;
+    if (ticket.status === "ok" && ticket.id) {
+      await softV2(
+        () => sql`SELECT app_record_push_ticket(${recipient}, ${token}, ${ticket.id})`,
+        null,
+      );
+    } else if (ticket.status === "error" && ticket.details?.error === "DeviceNotRegistered") {
+      await softV2(() => sql`SELECT app_mark_push_token_invalid(${token})`, null);
+    }
+  }
+}
+
 /**
  * Send an Expo push to every registered device of `recipient`. Never throws.
+ * `opts` ({type, category, subjectRef, cap}) only matters when NOTIF_V2_ENABLED is on.
  * @returns {Promise<{sent:number, skipped?:string}>}
  */
-export async function sendPush(recipient, { title, body, data } = {}) {
+export async function sendPush(recipient, { title, body, data } = {}, opts = {}) {
   try {
+    if (isNotifV2Enabled()) {
+      return await sendPushV2(recipient, { title, body, data }, opts);
+    }
     const tokens = await resolveRecipientTokens(recipient);
     if (tokens.length === 0) {
       // No device token (or unmigrated) — nothing to deliver. This is the normal
@@ -149,11 +241,16 @@ export async function pushForNotification({ recipient, actor, type, subjectRef, 
 
     const locale = await resolveRecipientLocale(recipient);
     const { title, message } = renderPushContent(type, body, locale);
-    const result = await sendPush(recipient, {
-      title,
-      body: message,
-      data: { type, subjectRef: subjectRef ?? null },
-    });
+    const result = await sendPush(
+      recipient,
+      {
+        title,
+        body: message,
+        data: { type, subjectRef: subjectRef ?? null },
+      },
+      // v2 only (ignored while NOTIF_V2_ENABLED is off): log the send; business pushes are not capped.
+      { type, category: category ?? null, subjectRef: subjectRef ?? null, cap: null },
+    );
     return { pushed: (result?.sent ?? 0) > 0, ...result };
   } catch (e) {
     console.error("[pushForNotification] non-fatal:", e?.message);

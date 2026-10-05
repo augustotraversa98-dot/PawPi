@@ -31,7 +31,7 @@ export function redactEmail(addr) {
  * Resend adapter: one authenticated JSON POST. https://resend.com/docs/api-reference/emails
  * Returns the vendor message id on success.
  */
-async function sendViaResend(cfg, { to, subject, text, html }) {
+async function sendViaResend(cfg, { to, subject, text, html, headers }) {
   const res = await fetch(`${cfg.baseUrl}/emails`, {
     signal: thirdPartySignal(), method: "POST",
     headers: {
@@ -47,6 +47,7 @@ async function sendViaResend(cfg, { to, subject, text, html }) {
       subject,
       ...(text ? { text } : {}),
       ...(html ? { html } : {}),
+      ...(headers && Object.keys(headers).length ? { headers } : {}),
     }),
   });
 
@@ -63,10 +64,10 @@ async function sendViaResend(cfg, { to, subject, text, html }) {
 /**
  * Send one transactional email.
  *
- * @param {{ to: string, subject: string, text?: string, html?: string }} message
+ * @param {{ to: string, subject: string, text?: string, html?: string, headers?: Record<string,string> }} message
  * @returns {Promise<{ sent: boolean, reason?: string, id?: string|null }>} never rejects
  */
-export async function sendEmail({ to, subject, text, html }) {
+export async function sendEmail({ to, subject, text, html, headers }) {
   const cfg = emailConfig();
 
   if (!cfg) {
@@ -85,7 +86,7 @@ export async function sendEmail({ to, subject, text, html }) {
       console.error(`[email] unknown EMAIL_PROVIDER "${cfg.provider}" — not sending`);
       return { sent: false, reason: "unknown_provider" };
     }
-    const id = await sendViaResend(cfg, { to, subject, text, html });
+    const id = await sendViaResend(cfg, { to, subject, text, html, headers });
     return { sent: true, id };
   } catch (error) {
     console.error("[email] send failed:", error?.message);

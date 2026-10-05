@@ -3,6 +3,8 @@ import { withTransaction, setCurrentUserId } from "@/app/api/utils/requestContex
 import { sendEmail } from "@/app/api/utils/email";
 import { winbackPushBody, winbackEmail } from "../message";
 import { secretEquals } from "@/app/api/utils/secretCompare";
+import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
+import { buildUnsubscribeUrl, unsubscribeFooter } from "@/app/api/utils/emailUnsubscribe";
 
 // POST /api/engagement/reengagement/run — the win-back SENDER (unit E12).
 //
@@ -88,7 +90,21 @@ async function POST(request) {
     const today = toDayStr(row.today); // owner-tz today, computed by the enumerator
     const milestone = pickMilestone(toDayStr(row.birthday), toDayStr(row.adoption_date), today, 14);
     const hook = pickHook({ milestone, friendName: row.friend_name, petName: row.pet_name });
-    const channel = row.email ? "email+push" : "push";
+    // Notifications v2 (flag): NO email without explicit consent AND a working unsubscribe link. Absent consent
+    // row = OFF (promotional, App Store 4.5.4). With the flag off this block is skipped entirely (legacy).
+    let unsubscribeUrl = null;
+    let emailAllowed = true;
+    if (isNotifV2Enabled()) {
+      const consent = row.email
+        ? await softV2(async () => {
+            const r = await sql`SELECT app_notification_pref_enabled(${ownerUserId}, 'winback_email') AS enabled`;
+            return r?.[0]?.enabled === true;
+          }, false)
+        : false;
+      unsubscribeUrl = consent ? buildUnsubscribeUrl(ownerUserId, "winback_email") : null;
+      emailAllowed = consent && unsubscribeUrl !== null;
+    }
+    const channel = row.email && emailAllowed ? "email+push" : "push";
 
     try {
       const claimed = await withTransaction(async () => {
@@ -128,7 +144,7 @@ async function POST(request) {
       }
 
       // Email preferred, outside the transaction (sendEmail never throws).
-      if (row.email) {
+      if (row.email && emailAllowed) {
         // FF1: render in the recipient's stored locale ('en'|'es'); es-AR when null/absent
         // (pre-0107 the enumerator omits preferred_locale → undefined → the es fallback).
         const locale = row.preferred_locale === "en" ? "en" : "es";
@@ -137,7 +153,25 @@ async function POST(request) {
           hook: hook.hook, petName: hook.petName, friendName: hook.friendName ?? null,
           milestoneKind: hook.milestoneKind ?? null, inDays: hook.inDays ?? null,
         });
-        await sendEmail({ to: row.email, subject, text });
+        if (unsubscribeUrl) {
+          const result = await sendEmail({
+            to: row.email,
+            subject,
+            text: text + unsubscribeFooter(locale, unsubscribeUrl),
+            headers: {
+              "List-Unsubscribe": `<${unsubscribeUrl}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+          });
+          if (result?.sent) {
+            await softV2(
+              () => sql`SELECT app_log_notification_send(${ownerUserId}, 'winback', 'winback_email', 'email', ${String(petId)}, 'sent')`,
+              null,
+            );
+          }
+        } else {
+          await sendEmail({ to: row.email, subject, text });
+        }
       }
       sent += 1;
     } catch (error) {

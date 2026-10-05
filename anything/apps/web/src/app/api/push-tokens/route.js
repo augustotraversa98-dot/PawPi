@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { resolveUserId, resolveOrCreateUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
 
 // /api/push-tokens — the caller's device Expo push-token registry (BN2 PR1).
 // Owner-scoped (device_push_tokens is own-row FOR ALL under FORCE RLS, 0109). The
@@ -37,6 +38,25 @@ async function POST(request) {
     // UNIQUE(user_id, token) drives the conflict so a re-register is idempotent.
     let rows;
     try {
+      // Notifications v2 (flag + migration 0131): a (re-)registration proves the device is using this token, so
+      // stamp last_seen and clear invalid_since. Soft: with the columns absent this returns null and we fall
+      // through to the unchanged legacy upsert below.
+      if (isNotifV2Enabled()) {
+        rows = await softV2(
+          () => sql`
+            INSERT INTO device_push_tokens (user_id, token, platform, last_seen, invalid_since)
+            VALUES (${userId}, ${token}, ${platform}, now(), NULL)
+            ON CONFLICT (user_id, token)
+            DO UPDATE SET platform = EXCLUDED.platform, updated_at = now(), last_seen = now(), invalid_since = NULL
+            RETURNING id, platform
+          `,
+          null,
+        );
+      }
+      if (rows) {
+        recordBusinessEvent("push_token_registered");
+        return Response.json({ ok: true, id: rows[0]?.id ?? null }, { status: 201 });
+      }
       rows = await sql`
         INSERT INTO device_push_tokens (user_id, token, platform)
         VALUES (${userId}, ${token}, ${platform})
