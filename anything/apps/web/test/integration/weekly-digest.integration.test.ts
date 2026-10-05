@@ -48,6 +48,8 @@ beforeAll(async () => {
   process.env.DATABASE_URL = url.toString();
   process.env.DATABASE_SSL = "disable";
   process.env.CRON_SECRET = "test-secret";
+  // Notifications v2 (PR 3b): the cron endpoints do nothing unless the server flag is on.
+  process.env.NOTIF_V2_ENABLED = "true";
   ({ api } = (await import("../../__create/route-builder")) as any);
 });
 afterAll(async () => { await raw.end(); });
@@ -185,6 +187,19 @@ describe("E11 — weekly digest sender (cron)", () => {
 
   it("rejects a missing/bad secret", async () => {
     expect((await apiReq(`/engagement/weekly-digest/run`, "POST", { now: SUNDAY_EVENING })).status).toBe(401);
+  });
+
+  it("flag NOTIF_V2_ENABLED off → does NOTHING (no notification, week not claimed)", async () => {
+    delete process.env.NOTIF_V2_ENABLED;
+    try {
+      const r = await runAt(SUNDAY_EVENING);
+      expect(r.status).toBe(200);
+      expect(await r.json()).toEqual({ skipped: "disabled" });
+      expect((await digestNotifs(OWNER.profileId)).length).toBe(0);
+      expect((await raw`select count(*)::int n from weekly_digest_state`)[0].n).toBe(0);
+    } finally {
+      process.env.NOTIF_V2_ENABLED = "true";
+    }
   });
 
   it("sends a weekly_digest push to a Sunday-evening owner, and is idempotent", async () => {

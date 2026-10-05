@@ -39,6 +39,8 @@ beforeAll(async () => {
   process.env.DATABASE_URL = url.toString();
   process.env.DATABASE_SSL = "disable";
   process.env.CRON_SECRET = "test-secret";
+  // Notifications v2 (PR 3b): the cron endpoints do nothing unless the server flag is on.
+  process.env.NOTIF_V2_ENABLED = "true";
   ({ api } = (await import("../../__create/route-builder")) as any);
 });
 afterAll(async () => { await raw.end(); });
@@ -122,6 +124,20 @@ describe("E12 — win-back sender (cron)", () => {
 
   it("rejects a bad secret", async () => {
     expect((await apiReq(`/engagement/reengagement/run`, "POST", { now: NOW })).status).toBe(401);
+  });
+
+  it("flag NOTIF_V2_ENABLED off → does NOTHING (no notification, no claim) even for a lapsed pet", async () => {
+    await seedWalk(OWNER.petId, OWNER.profileId, "2026-08-01 12:00:00+00");
+    delete process.env.NOTIF_V2_ENABLED;
+    try {
+      const r = await runAt(NOW);
+      expect(r.status).toBe(200);
+      expect(await r.json()).toEqual({ skipped: "disabled" });
+      expect((await winbacks(OWNER.profileId)).length).toBe(0);
+      expect((await raw`select count(*)::int n from reengagement_state`)[0].n).toBe(0);
+    } finally {
+      process.env.NOTIF_V2_ENABLED = "true";
+    }
   });
 
   it("fires a winback for a lapsed pet, once per cap window", async () => {
