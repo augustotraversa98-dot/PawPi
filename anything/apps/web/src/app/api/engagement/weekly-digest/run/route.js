@@ -3,6 +3,8 @@ import { withTransaction, setCurrentUserId, withSavepoint } from "@/app/api/util
 import { sendEmail } from "@/app/api/utils/email";
 import { digestPushBody, digestEmail } from "../message";
 import { secretEquals } from "@/app/api/utils/secretCompare";
+import { isNotifV2Enabled } from "@/app/api/utils/notifV2";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
 // POST /api/engagement/weekly-digest/run — the "Rex's Week" weekly SENDER (unit E11).
 //
@@ -13,6 +15,11 @@ import { secretEquals } from "@/app/api/utils/secretCompare";
 // DEFINER, exactly like app_due_subscriptions/0039). For each due pet it CLAIMS the week by inserting
 // a weekly_digest_state row (UNIQUE(pet_id, week_start) → a concurrent/re-run is a no-op), then sends a
 // push (an in-app 'weekly_digest' notification via app_notify) and, if the owner opted in, an email.
+//
+// NOTIFICATIONS V2 (PR 3b): scheduled hourly by .github/workflows/cron-jobs.yml and does NOTHING unless the server
+// flag NOTIF_V2_ENABLED is on (secret check first, then the flag; no query when off). The in-app bell row is
+// unchanged; a real PHONE push additionally goes only to owners who opted in (`weekly_digest_push`, default OFF —
+// App Store guideline 4.5.4) and who have not switched the digest's own push channel off.
 //
 // Idempotent (claim-then-send). Degrades cleanly: no CRON_SECRET → disabled; schema not applied
 // (42P01/42883) → a clean 200 no-op; a per-pet failure is recorded, never aborts the run.
@@ -40,6 +47,10 @@ async function POST(request) {
   }
   if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isNotifV2Enabled()) {
+    return Response.json({ skipped: "disabled" });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -133,19 +144,31 @@ async function POST(request) {
         const state = decideState({ walks, ringDays, moments, hasStreak: streakCurrent > 0 });
 
         // Push: an in-app 'weekly_digest' notification (system actor = null). Localized client-side.
+        let notified = false;
         if (wantPush) {
-          await sql`
+          const [n] = await sql`
             SELECT app_notify(${ownerUserId}, NULL, 'weekly_digest', ${String(petId)},
-              ${digestPushBody({ petName: row.pet_name, walks, ringDays, streak: streakCurrent, state, weekStart })})
+              ${digestPushBody({ petName: row.pet_name, walks, ringDays, streak: streakCurrent, state, weekStart })}) AS id
           `;
+          notified = n?.id != null;
         }
 
-        return { state, walks, ringDays, moments, streak: streakCurrent };
+        return { state, walks, ringDays, moments, streak: streakCurrent, notified };
       });
 
       if (outcome?.skip) {
         skipped.push({ petId, reason: outcome.skip });
         continue;
+      }
+
+      // Phone push (opt-in only), OUTSIDE the transaction: the bell row above is already committed.
+      if (outcome.notified) {
+        await pushForOwnerNotification({
+          recipient: ownerUserId,
+          type: "weekly_digest",
+          subjectRef: String(petId),
+          petName: row.pet_name,
+        });
       }
 
       // Email is OUTSIDE the transaction (sendEmail never throws; a slow vendor must not hold the tx).

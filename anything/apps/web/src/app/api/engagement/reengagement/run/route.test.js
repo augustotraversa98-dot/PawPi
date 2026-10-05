@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// POST /api/engagement/reengagement/run — win-back sender. Notifications v2 adds: NO email without explicit
-// consent and a working unsubscribe link (flag ON). With the flag OFF the legacy behaviour is untouched.
+// POST /api/engagement/reengagement/run — win-back sender. Notifications v2: does NOTHING unless NOTIF_V2_ENABLED is
+// on (PR 3b); with it on there is NO email without explicit consent + a working unsubscribe link (PR 3a) and a phone
+// push only for owners who opted in (`winback_push`, PR 3b).
 
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
 vi.mock("@/app/api/utils/requestContext", () => ({
@@ -10,10 +11,12 @@ vi.mock("@/app/api/utils/requestContext", () => ({
   withSavepoint: (fn) => fn(),
 }));
 vi.mock("@/app/api/utils/email", () => ({ sendEmail: vi.fn() }));
+vi.mock("@/app/api/utils/ownerNotifications", () => ({ pushForOwnerNotification: vi.fn().mockResolvedValue({ pushed: false }) }));
 
 import { POST } from "./route";
 import sql from "@/app/api/utils/sql";
 import { sendEmail } from "@/app/api/utils/email";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 import { __resetNotifV2SchemaStateForTests } from "@/app/api/utils/notifV2";
 
 const ROW = {
@@ -55,6 +58,7 @@ beforeEach(() => {
   process.env.AUTH_SECRET = "test-auth-secret-123456";
   delete process.env.NOTIF_V2_ENABLED;
   sendEmail.mockResolvedValue({ sent: true, id: "m1" });
+  pushForOwnerNotification.mockResolvedValue({ pushed: false });
 });
 afterEach(() => {
   delete process.env.CRON_SECRET;
@@ -62,15 +66,22 @@ afterEach(() => {
   delete process.env.NOTIF_V2_ENABLED;
 });
 
-describe("flag OFF — legacy behaviour", () => {
-  it("emails any account with an address (as today), asks no consent question, adds no footer", async () => {
-    routeSql({ consent: undefined });
-    const body = await (await POST(run())).json();
-    expect(body.sent).toBe(1);
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    expect(sendEmail.mock.calls[0][0].text).not.toContain("api/notification-prefs/email-unsubscribe");
-    expect(sendEmail.mock.calls[0][0].headers).toBeUndefined();
-    expect(sql.mock.calls.some((c) => /pref_enabled|send_log/.test(text(c)))).toBe(false);
+describe("flag OFF — does nothing", () => {
+  it("authorised caller, flag off → {skipped}, no query, no email, no push", async () => {
+    routeSql({ consent: true });
+    const res = await POST(run());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ skipped: "disabled" });
+    expect(sql).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(pushForOwnerNotification).not.toHaveBeenCalled();
+  });
+  it("the secret is still checked first (503 unset / 401 wrong)", async () => {
+    delete process.env.CRON_SECRET;
+    expect((await POST(run())).status).toBe(503);
+    process.env.CRON_SECRET = "s3cret";
+    const bad = new Request("http://localhost/x", { method: "POST", headers: { "x-cron-secret": "nope" } });
+    expect((await POST(bad)).status).toBe(401);
   });
 });
 
@@ -127,5 +138,29 @@ describe("flag ON — consent required", () => {
     });
     await POST(run());
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("asks the owner push pipeline (opt-in decided there) AFTER the in-app win-back is written, with the pet name", async () => {
+    routeSql({ consent: false });
+    await POST(run());
+    expect(pushForOwnerNotification).toHaveBeenCalledTimes(1);
+    expect(pushForOwnerNotification).toHaveBeenCalledWith({
+      recipient: 7,
+      type: "winback",
+      subjectRef: "5",
+      petName: "Rex",
+    });
+  });
+
+  it("a capped / opted-out pet gets no push attempt at all", async () => {
+    sql.mockImplementation(async (strings) => {
+      const q = strings.join("?");
+      if (q.includes("app_reengagement_due")) return [ROW];
+      if (q.includes("INSERT INTO reengagement_state")) return []; // cap guard says no
+      return [{ enabled: false }];
+    });
+    const body = await (await POST(run())).json();
+    expect(body.skipped).toHaveLength(1);
+    expect(pushForOwnerNotification).not.toHaveBeenCalled();
   });
 });

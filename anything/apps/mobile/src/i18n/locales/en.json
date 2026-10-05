@@ -2089,7 +2089,11 @@
     "care": "Care reminders",
     "careHint": "Your own feeding, walk and health reminders, plus a gentle tip to set your first one up",
     "winbackEmail": "Occasional emails from PawPi",
-    "winbackEmailHint": "A friendly note when it has been a while since your last visit. Off unless you turn it on, and every email has an unsubscribe link."
+    "winbackEmailHint": "A friendly note when it has been a while since your last visit. Off unless you turn it on, and every email has an unsubscribe link.",
+    "weeklyDigestPush": "Weekly summary notification",
+    "weeklyDigestPushHint": "A friendly recap of your pet's week, once a week. Off unless you turn it on.",
+    "winbackPush": "Occasional friendly notifications",
+    "winbackPushHint": "A gentle hello now and then with something nice to come back to. Off unless you turn it on."
   },
   "onboarding": {
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",

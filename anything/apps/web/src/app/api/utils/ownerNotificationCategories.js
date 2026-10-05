@@ -11,6 +11,9 @@
 
 export const OWNER_NOTIFICATION_CATALOG = [
   { key: "winback_email", channel: "email", promotional: true, defaultEnabled: false },
+  // PR 3b — the weekly digest and the win-back become a real PHONE push only for owners who opt in.
+  { key: "weekly_digest_push", channel: "push", promotional: true, defaultEnabled: false },
+  { key: "winback_push", channel: "push", promotional: true, defaultEnabled: false },
 ];
 
 export const OWNER_NOTIFICATION_CATEGORIES = OWNER_NOTIFICATION_CATALOG.map((c) => c.key);
