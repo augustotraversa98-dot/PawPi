@@ -144,9 +144,8 @@ cannot tell which person an install belongs to.
 Only to fix bugs and improve the app. We do not use it for advertising, we do not sell it, and we do
 not track you across other companies' apps or websites. We do not use a third-party analytics or
 advertising SDK for this: the app sends the data to our own servers, and we process it with
-**Grafana Cloud** (Grafana Labs), a monitoring service (see Section 8). The record of each event
-(which includes the random identifiers) is kept for a short time, about 14 days; the aggregated
-statistics we chart (counts and timings) do not contain those identifiers.
+**Grafana Cloud** (Grafana Labs), a hosting and monitoring service (see Section 8). The aggregated
+statistics we chart (counts and timings) do not contain the random identifiers.
 
 **Your control**
 
@@ -199,7 +198,7 @@ contract, only as needed:
 - **Resend** — Purpose: Transactional email (e.g. password reset, digests); Data involved: Your email address, message content
 - **Uploadcare / the app's media upload service** — Purpose: Image and document upload/storage; Data involved: Photos, documents, media you upload
 - **Google Maps Platform** — Purpose: Maps and place data; Data involved: Approximate/precise location when you use map features
-- **Grafana Cloud** (Grafana Labs) — Purpose: Monitoring and diagnostics; Data involved: Anonymous usage and diagnostics events and technical performance statistics (see Section 5); no account data
+- **Grafana Cloud** (Grafana Labs) — Purpose: Hosting and monitoring of the anonymous usage and diagnostics data described in Section 5; Data involved: Anonymous usage and diagnostics events and statistics, tied only to random identifiers — no name, email, account, pet, content, or location data
 
 We keep this list current as our vendors change. We do not permit these vendors to use your data for
 their own purposes.

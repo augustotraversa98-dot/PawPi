@@ -161,9 +161,8 @@ instalación.
 Solo para corregir errores y mejorar la app. No lo usamos para publicidad, no lo vendemos y no te
 rastreamos entre apps o sitios web de otras empresas. Para esto no usamos ningún SDK de analítica ni
 de publicidad de terceros: la app envía los datos a nuestros propios servidores y los procesamos con
-**Grafana Cloud** (Grafana Labs), un servicio de monitoreo (ver Sección 8). El registro de cada
-evento (que incluye los identificadores aleatorios) se conserva por poco tiempo, unos 14 días; las
-estadísticas agregadas que graficamos (conteos y tiempos) no contienen esos identificadores.
+**Grafana Cloud** (Grafana Labs), un servicio de alojamiento y monitoreo (ver Sección 8). Las
+estadísticas agregadas que graficamos (conteos y tiempos) no contienen los identificadores aleatorios.
 
 **Tu control**
 
@@ -217,7 +216,7 @@ nombre bajo contrato, solo según sea necesario:
 - **Resend** — Finalidad: Correos transaccionales (p. ej. restablecer contraseña, resúmenes); Datos involucrados: Tu correo, contenido del mensaje
 - **Uploadcare / el servicio de subida de medios de la app** — Finalidad: Subida/almacenamiento de imágenes y documentos; Datos involucrados: Fotos, documentos y medios que subís
 - **Google Maps Platform** — Finalidad: Mapas y datos de lugares; Datos involucrados: Ubicación aproximada/precisa cuando usás funciones de mapa
-- **Grafana Cloud** (Grafana Labs) — Finalidad: Monitoreo y diagnóstico; Datos involucrados: Eventos anónimos de uso y diagnóstico y estadísticas técnicas de rendimiento (ver Sección 5); sin datos de cuenta
+- **Grafana Cloud** (Grafana Labs) — Finalidad: Alojamiento y monitoreo de los datos anónimos de uso y diagnóstico descritos en la Sección 5; Datos involucrados: Eventos y estadísticas anónimos de uso y diagnóstico, asociados solo a identificadores aleatorios — sin nombre, correo, cuenta, mascotas, contenido ni ubicación
 
 Mantenemos esta lista actualizada a medida que cambian nuestros proveedores. No les permitimos usar
 tus datos para sus propios fines.
