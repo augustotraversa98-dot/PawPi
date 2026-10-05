@@ -15,6 +15,28 @@ export function useNotifications() {
   });
 }
 
+// How many of the caller's DB notifications are unread (drives the Feed header bell badge). The server returns
+// `unread_count` only while its NOTIF_V2_ENABLED flag is on; otherwise this is 0 and the badge is unchanged.
+// Shares the ["notifications"] prefix, so marking read invalidates it too. Never throws (a failed poll = 0).
+export function useUnreadNotificationCount() {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/notifications?limit=1");
+        if (!res.ok) return 0;
+        const data = await res.json();
+        return Number.isInteger(data?.unread_count) && data.unread_count > 0 ? data.unread_count : 0;
+      } catch {
+        return 0;
+      }
+    },
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 60,
+    retry: false,
+  });
+}
+
 // Mark notifications read: { ids: [..] } or { all: true }.
 export function useMarkNotificationsRead() {
   const queryClient = useQueryClient();

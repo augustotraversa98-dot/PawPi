@@ -10,6 +10,8 @@ import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { StreakChip } from "@/components/Health/StreakChip";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
+import { bellBadgeCount, bellBadgeLabel } from "@/utils/bellBadge";
 
 // A small glassy icon button used for the header actions (search/messages/bell).
 function HeaderIconButton({ onPress, children }) {
@@ -44,7 +46,13 @@ export function FeedHeader() {
   const pendingAccessCount = (careGrants || []).filter(
     (g) => g.status === "pending",
   ).length;
-  const unreadNotificationCount = unreadReminderCount + pendingAccessCount;
+  // Real server notifications (bookings, adoption decisions, lost-pet alerts...) count too (notifications v2).
+  const { data: dbUnreadCount } = useUnreadNotificationCount();
+  const unreadNotificationCount = bellBadgeCount({
+    reminders: unreadReminderCount,
+    pendingAccess: pendingAccessCount,
+    dbUnread: dbUnreadCount,
+  });
 
   return (
     <GlassSurface
@@ -103,7 +111,7 @@ export function FeedHeader() {
                 }}
               >
                 <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "800" }}>
-                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  {bellBadgeLabel(unreadNotificationCount)}
                 </Text>
               </View>
             )}

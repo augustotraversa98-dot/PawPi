@@ -21,7 +21,7 @@ Written in PR 3a; PR 3b and 3c update the "status" lines as they land.
 
 ## What each PR does
 
-### PR 3a — design + foundation (this doc; migration `0131`)
+### PR 3a — design + foundation (this doc; migration `0131`) — status: built
 
 | Piece | What | Flag-OFF behaviour |
 |---|---|---|
@@ -32,7 +32,7 @@ Written in PR 3a; PR 3b and 3c update the "status" lines as they land.
 | Win-back email consent | consent = `notification_prefs` row `winback_email` (**absent = OFF**); signed unsubscribe link (`/api/notification-prefs/email-unsubscribe?t=…`, HMAC of `{profile id, category}`, GET page + POST one-click, DEFINER `app_set_email_consent`); `List-Unsubscribe` headers; **no email without consent AND a working link** (no signing key ⇒ no email) | win-back emails go out exactly as before |
 | Settings toggles | `social` and `milestone` have no scheduler → **hidden** (no fake controls); `streak` and `care` are real (read by `shouldSendStreakSave` / the reminder-setup nudge). A server-backed "Occasional emails from PawPi" row (default OFF) appears only when the server returns `owner_prefs` (flag ON) | row absent |
 
-### PR 3b — schedule what exists
+### PR 3b — schedule what exists — status: built
 
 - `.github/workflows/cron-jobs.yml`: hourly weekly-digest, daily win-back and hourly push-receipts calls, all with the
   existing `x-cron-secret` pattern against the production host.
@@ -42,7 +42,7 @@ Written in PR 3a; PR 3b and 3c update the "status" lines as they land.
   categories, default OFF); everyone else keeps the in-app bell row only.
 - Needs no setting to merge. Secrets/variables to set later are listed under "Human steps".
 
-### PR 3c — owner events reach the phone (migration `0132`)
+### PR 3c — owner events reach the phone (migration `0132`) — status: built
 
 - Push for pet-owner transactional events: booking confirmed / declined / cancelled, adoption decisions, walk request
   accepted, lost-pet alerts nearby.
@@ -50,7 +50,18 @@ Written in PR 3a; PR 3b and 3c update the "status" lines as they land.
 - Quiet hours stored per owner (`notification_settings`, default 22:00–08:00 **owner-local**, using the 3a timezone)
   and **enforced server-side**; the daily cap (default 3, `NOTIF_V2_DAILY_CAP`) is enforced for owner pushes.
 - EN/ES push copy keyed on `user_profiles.preferred_locale`.
-- The in-app unread badge counts DB notifications (`unread_count` on `GET /api/notifications`).
+- The in-app unread badge counts DB notifications (`unread_count` on `GET /api/notifications`, present only with the
+  flag on; mobile `useUnreadNotificationCount` + `bellBadgeCount`).
+- Mobile Settings (flag ON only): per-category rows (bookings, adoption, walker confirmations, lost-pet alerts —
+  default ON; weekly summary push, occasional friendly push, occasional email — default OFF) and a quiet-hours
+  control (switch + from/until in 24-hour steps, saved to `PUT /api/notification-prefs/quiet-hours`).
+- Pipeline order in `pushForOwnerNotification`: flag → category preference (promotional = opt-in) → quiet hours
+  (owner-local, DST-correct) → valid token → atomic daily cap → send. The in-app bell row is always written first.
+- **Lost-pet alerts**: today's audience is the *followers of the pet* (what `lost-reports` already notifies), not a
+  geographic radius. At most 100 followers get the phone push per activation (everyone still gets the in-app alert).
+  A true "nearby" radius needs owner locations, which PawPi deliberately does not store — flagged, not built.
+- Promotional pushes count toward the same daily cap as transactional ones (default 3); raise `NOTIF_V2_DAILY_CAP` if
+  that ever starves a booking update (it will not at the default: digest is weekly, win-back every 14 days).
 
 ## Decisions worth knowing
 

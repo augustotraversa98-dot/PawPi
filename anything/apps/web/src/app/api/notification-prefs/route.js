@@ -6,7 +6,8 @@ import {
   isBusinessNotificationCategory,
   categoryDefaultEnabled,
 } from "@/app/api/utils/notificationCategories";
-import { isNotifV2Enabled } from "@/app/api/utils/notifV2";
+import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
+import { normalizeQuietSettings } from "@/app/api/utils/quietHours";
 import {
   isOwnerNotificationCategory,
   resolveOwnerPrefs,
@@ -41,7 +42,9 @@ async function GET() {
       // No profile yet => no stored prefs => every category is at its fail-open default.
       return Response.json({
         prefs: defaultPrefs(),
-        ...(isNotifV2Enabled() ? { owner_prefs: resolveOwnerPrefs(new Map()) } : {}),
+        ...(isNotifV2Enabled()
+          ? { owner_prefs: resolveOwnerPrefs(new Map()), quiet_hours: normalizeQuietSettings(null) }
+          : {}),
       });
     }
 
@@ -58,10 +61,20 @@ async function GET() {
     }
     // Notifications v2: pet-owner categories (email consent today; push categories in PR 3c). Absent from the
     // payload while the flag is off, which is how the app knows to hide the controls.
-    return Response.json({
-      prefs,
-      ...(isNotifV2Enabled() ? { owner_prefs: resolveOwnerPrefs(stored) } : {}),
-    });
+    if (isNotifV2Enabled()) {
+      const quiet = await softV2(async () => {
+        const rows = await sql`
+          SELECT quiet_hours_enabled, quiet_start, quiet_end FROM notification_settings WHERE owner_user_id = ${ownerUserId}
+        `;
+        return rows[0] ?? null;
+      }, null);
+      return Response.json({
+        prefs,
+        owner_prefs: resolveOwnerPrefs(stored),
+        quiet_hours: normalizeQuietSettings(quiet),
+      });
+    }
+    return Response.json({ prefs });
   } catch (e) {
     console.error("[GET /api/notification-prefs] Error:", e?.message);
     return Response.json({ error: "Failed to load notification preferences" }, { status: 500 });

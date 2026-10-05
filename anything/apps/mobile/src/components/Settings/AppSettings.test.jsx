@@ -45,9 +45,14 @@ jest.mock("@/utils/businessNotificationPrefs", () => ({
 
 const mockGetOwnerPrefs = jest.fn().mockResolvedValue(null);
 const mockSetOwnerCategory = jest.fn().mockResolvedValue(true);
+const mockGetQuiet = jest.fn().mockResolvedValue(null);
+const mockSetQuiet = jest.fn();
 jest.mock("@/utils/ownerNotificationPrefs", () => ({
   getOwnerNotificationPrefs: (...a) => mockGetOwnerPrefs(...a),
   setOwnerCategoryEnabled: (...a) => mockSetOwnerCategory(...a),
+  getQuietHours: (...a) => mockGetQuiet(...a),
+  setQuietHours: (...a) => mockSetQuiet(...a),
+  formatHour: (h) => `${String(h).padStart(2, "0")}:00`,
 }));
 
 import AppSettings from "./AppSettings";
@@ -56,6 +61,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockGetOwnerPrefs.mockResolvedValue(null);
   mockSetOwnerCategory.mockResolvedValue(true);
+  mockGetQuiet.mockResolvedValue(null);
+  mockSetQuiet.mockImplementation(async (patch) => ({ enabled: true, start: 22, end: 8, ...patch }));
 });
 
 it("renders the settings surface (delete-account control + language options)", () => {
@@ -174,4 +181,64 @@ it("only renders owner rows for categories the server actually returned", async 
   const { findByTestId, queryByTestId } = render(<AppSettings />);
   expect((await findByTestId("notif-owner-toggle-winback_email")).props.value).toBe(true);
   expect(queryByTestId("notif-owner-toggle-winback_push")).toBeNull();
+});
+
+// ── Notifications v2 PR 3c: transactional rows + quiet hours ───────────────────────────────────
+
+it("shows the transactional owner rows ON by default when the server offers them", async () => {
+  mockGetOwnerPrefs.mockResolvedValue({
+    owner_bookings: true, owner_adoption: true, owner_walk_requests: true, owner_lost_alerts: true,
+    weekly_digest_push: false, winback_push: false, winback_email: false,
+  });
+  const { findByTestId } = render(<AppSettings />);
+  for (const key of ["owner_bookings", "owner_adoption", "owner_walk_requests", "owner_lost_alerts"]) {
+    expect((await findByTestId(`notif-owner-toggle-${key}`)).props.value).toBe(true);
+  }
+  fireEvent(await findByTestId("notif-owner-toggle-owner_bookings"), "valueChange", false);
+  await waitFor(() => expect(mockSetOwnerCategory).toHaveBeenCalledWith("owner_bookings", false));
+});
+
+it("hides quiet hours entirely when the server does not offer them (flag off)", async () => {
+  const { queryByTestId } = render(<AppSettings />);
+  await waitFor(() => expect(mockGetQuiet).toHaveBeenCalled());
+  expect(queryByTestId("quiet-hours-toggle")).toBeNull();
+});
+
+it("shows the stored quiet hours (22:00 → 08:00) and saves a change", async () => {
+  mockGetQuiet.mockResolvedValue({ enabled: true, start: 22, end: 8 });
+  const { findByTestId } = render(<AppSettings />);
+  expect((await findByTestId("quiet-start-value")).props.children).toBe("22:00");
+  expect((await findByTestId("quiet-end-value")).props.children).toBe("08:00");
+  fireEvent.press(await findByTestId("quiet-start-inc"));
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalledWith({ start: 23 }));
+  fireEvent.press(await findByTestId("quiet-end-dec"));
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalledWith({ end: 7 }));
+});
+
+it("wraps the hour around midnight when stepping", async () => {
+  mockGetQuiet.mockResolvedValue({ enabled: true, start: 23, end: 0 });
+  // the server echoes the saved window: it must keep the untouched field
+  mockSetQuiet.mockImplementation(async (patch) => ({ enabled: true, start: 23, end: 0, ...patch }));
+  const { findByTestId } = render(<AppSettings />);
+  fireEvent.press(await findByTestId("quiet-start-inc"));
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalledWith({ start: 0 }));
+  fireEvent.press(await findByTestId("quiet-end-dec"));
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalledWith({ end: 23 }));
+});
+
+it("the quiet-hours switch turns them off and hides the hour pickers", async () => {
+  mockGetQuiet.mockResolvedValue({ enabled: true, start: 22, end: 8 });
+  const { findByTestId, queryByTestId } = render(<AppSettings />);
+  fireEvent(await findByTestId("quiet-hours-toggle"), "valueChange", false);
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalledWith({ enabled: false }));
+  await waitFor(() => expect(queryByTestId("quiet-start-value")).toBeNull());
+});
+
+it("a failed quiet-hours save rolls back to what the server had", async () => {
+  mockGetQuiet.mockResolvedValue({ enabled: true, start: 22, end: 8 });
+  mockSetQuiet.mockResolvedValue(null);
+  const { findByTestId } = render(<AppSettings />);
+  fireEvent.press(await findByTestId("quiet-start-inc"));
+  await waitFor(() => expect(mockSetQuiet).toHaveBeenCalled());
+  await waitFor(async () => expect((await findByTestId("quiet-start-value")).props.children).toBe("22:00"));
 });

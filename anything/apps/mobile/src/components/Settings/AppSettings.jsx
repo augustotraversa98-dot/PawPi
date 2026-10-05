@@ -37,7 +37,13 @@ import {
   setCategoryEnabled,
 } from "@/utils/notificationPreferences";
 import { NOTIF_CATEGORIES, SCHEDULED_CATEGORIES } from "@/utils/notificationPolicy";
-import { getOwnerNotificationPrefs, setOwnerCategoryEnabled } from "@/utils/ownerNotificationPrefs";
+import {
+  getOwnerNotificationPrefs,
+  setOwnerCategoryEnabled,
+  getQuietHours,
+  setQuietHours,
+  formatHour,
+} from "@/utils/ownerNotificationPrefs";
 import {
   BUSINESS_NOTIF_CATEGORIES,
   BUSINESS_NOTIF_INFO_CATEGORIES,
@@ -194,12 +200,16 @@ function NotificationToggles() {
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState(null);
   const [ownerPrefs, setOwnerPrefs] = useState(null);
+  const [quiet, setQuiet] = useState(null);
 
   useEffect(() => {
     getNotificationPrefs().then(setPrefs);
     let alive = true;
     getOwnerNotificationPrefs().then((p) => {
       if (alive) setOwnerPrefs(p);
+    });
+    getQuietHours().then((q) => {
+      if (alive) setQuiet(q);
     });
     return () => {
       alive = false;
@@ -211,6 +221,15 @@ function NotificationToggles() {
     const ok = await setOwnerCategoryEnabled(category, value);
     if (!ok) setOwnerPrefs((p) => ({ ...(p || {}), [category]: !value })); // roll back: never show a false state
   };
+
+  // Quiet hours: optimistic, then the server's saved value (roll back when the save failed).
+  const changeQuiet = async (patch) => {
+    const before = quiet;
+    setQuiet((q) => ({ ...(q || {}), ...patch }));
+    const saved = await setQuietHours(patch);
+    setQuiet(saved || before);
+  };
+  const stepHour = (field, delta) => changeQuiet({ [field]: (quiet[field] + delta + 24) % 24 });
 
   const toggle = async (category, value) => {
     setPrefs((p) => ({ ...(p || {}), [category]: value })); // optimistic
@@ -235,6 +254,12 @@ function NotificationToggles() {
   const ROWS = ALL_ROWS.filter((r) => SCHEDULED_CATEGORIES.includes(r.key));
   // Server-backed owner preferences (shown only when the server offers them): promotional => default OFF.
   const OWNER_ROWS = [
+    // transactional (default ON)
+    { key: "owner_bookings", label: t("notifPrefs.ownerBookings"), hint: t("notifPrefs.ownerBookingsHint") },
+    { key: "owner_adoption", label: t("notifPrefs.ownerAdoption"), hint: t("notifPrefs.ownerAdoptionHint") },
+    { key: "owner_walk_requests", label: t("notifPrefs.ownerWalkRequests"), hint: t("notifPrefs.ownerWalkRequestsHint") },
+    { key: "owner_lost_alerts", label: t("notifPrefs.ownerLostAlerts"), hint: t("notifPrefs.ownerLostAlertsHint") },
+    // promotional (opt-in, default OFF)
     {
       key: "weekly_digest_push",
       label: t("notifPrefs.weeklyDigestPush"),
@@ -340,6 +365,57 @@ function NotificationToggles() {
           />
         </View>
       ))}
+      {quiet && (
+        <View style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: C.peach }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>{t("notifPrefs.quietHours")}</Text>
+              <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>{t("notifPrefs.quietHoursHint")}</Text>
+            </View>
+            <Switch
+              testID="quiet-hours-toggle"
+              accessibilityLabel={t("notifPrefs.quietHours")}
+              value={quiet.enabled}
+              onValueChange={(v) => changeQuiet({ enabled: v })}
+              trackColor={{ false: C.peach, true: C.coral }}
+              thumbColor="#FFF"
+            />
+          </View>
+          {quiet.enabled && (
+            <View style={{ flexDirection: "row", marginTop: 10, gap: 12 }}>
+              {[
+                { field: "start", label: t("notifPrefs.quietFrom") },
+                { field: "end", label: t("notifPrefs.quietUntil") },
+              ].map(({ field, label }) => (
+                <View key={field} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: C.sand, borderRadius: 12, borderWidth: 1, borderColor: C.peach, paddingHorizontal: 10, paddingVertical: 8 }}>
+                  <TouchableOpacity
+                    testID={`quiet-${field}-dec`}
+                    accessibilityLabel={`${label} -1`}
+                    onPress={() => stepHour(field, -1)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={{ fontSize: 20, color: C.warmBrown, fontWeight: "700" }}>−</Text>
+                  </TouchableOpacity>
+                  <View style={{ alignItems: "center" }}>
+                    <Text style={{ fontSize: 11, color: C.mutedBrown }}>{label}</Text>
+                    <Text testID={`quiet-${field}-value`} style={{ fontSize: 15, color: C.warmBrown, fontWeight: "700" }}>
+                      {formatHour(quiet[field])}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    testID={`quiet-${field}-inc`}
+                    accessibilityLabel={`${label} +1`}
+                    onPress={() => stepHour(field, 1)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={{ fontSize: 20, color: C.warmBrown, fontWeight: "700" }}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
