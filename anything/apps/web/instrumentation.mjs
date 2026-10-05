@@ -24,13 +24,14 @@
 //                                 (NodeSDK reads these standard env vars automatically.)
 
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   // Not configured (dev / test / CI) — do nothing.
   console.log('[otel] OTEL_EXPORTER_OTLP_ENDPOINT not set — telemetry disabled');
 } else {
   try {
-    const { NodeSDK } = await import('@opentelemetry/sdk-node');
+    const { NodeSDK, tracing } = await import('@opentelemetry/sdk-node');
     const { getNodeAutoInstrumentations } = await import(
       '@opentelemetry/auto-instrumentations-node'
     );
@@ -48,6 +49,22 @@ if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       ATTR_SERVICE_NAME,
       ATTR_SERVICE_VERSION,
     } = await import('@opentelemetry/semantic-conventions');
+
+    // TRACES ARE SCRUBBED BEFORE EXPORT (privacy): the http/undici/net auto-instrumentations record raw URL paths,
+    // query strings, client IPs and user-agents. SpanScrubber (src/lib/telemetry/spanScrubber.js) strips or coarsens
+    // all of that and is registered BEFORE the exporter. If it cannot be loaded we export NO traces at all (an empty
+    // spanProcessors list stops the SDK from falling back to a default, unscrubbed OTLP exporter); metrics are unaffected.
+    let spanProcessors = [];
+    try {
+      const { SpanScrubber, listApiRouteTemplates } = await import('./src/lib/telemetry/spanScrubber.js');
+      const templates = listApiRouteTemplates(fileURLToPath(new URL('./src/app/api', import.meta.url)));
+      spanProcessors = [
+        new SpanScrubber({ templates }),
+        new tracing.BatchSpanProcessor(new OTLPTraceExporter()),
+      ];
+    } catch (err) {
+      console.error('[otel] span scrubber unavailable, NOT exporting traces:', err);
+    }
 
     const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'pawpi-web',
@@ -70,7 +87,7 @@ if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 
     const sdk = new NodeSDK({
       resource,
-      traceExporter: new OTLPTraceExporter(),
+      spanProcessors, // [SpanScrubber, BatchSpanProcessor(OTLP)] -- see above
       metricReader: new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter(),
         exportIntervalMillis: 30_000,
