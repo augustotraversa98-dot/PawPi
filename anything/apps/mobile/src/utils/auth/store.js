@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { queryClient } from '@/utils/queryClient';
 import { authKey, secureStoreOptions } from './secureStore';
+import { cleanUpAfterIdentityChange, isIdentityChange } from './sessionCleanup';
 
 // Re-exported for the existing importers (useAuth, tests). The definitions live
 // in ./secureStore so the global fetch wrapper can share them without pulling
@@ -11,10 +12,24 @@ export { authKey, secureStoreOptions };
 /**
  * This store manages the authentication state of the application.
  */
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   isReady: false,
   auth: null,
   setAuth: (auth) => {
+    // Identity change (logout, session expiry, account deletion, switching account): anything on
+    // this device that belongs to the user going away — scheduled notifications, the push-token
+    // association, their in-memory routines/reminders — is cleaned up HERE, the one place every
+    // such path passes through. Runs BEFORE the stored jwt is dropped below (the push-token
+    // unregister captures the old jwt synchronously). A first sign-in (no previous auth) and a
+    // same-user token refresh are not identity changes. Never throws.
+    const previous = get().auth;
+    if (isIdentityChange(previous, auth)) {
+      try {
+        cleanUpAfterIdentityChange(previous);
+      } catch {
+        // a logout must always complete
+      }
+    }
     if (auth) {
       SecureStore.setItemAsync(
         authKey,

@@ -27,7 +27,11 @@ markBootStep("layout:module-evaluated");
 wireQueryConnectivity();
 
 export default function RootLayout() {
-  const { initiate, isReady, isAuthenticated } = useAuth();
+  const { initiate, isReady, isAuthenticated, auth } = useAuth();
+  // Identity of the signed-in user (null when signed out). A direct switch to another account
+  // changes this without `isAuthenticated` ever flipping false, so effects that must run once
+  // PER USER (push-token registration) key on it.
+  const authUserId = auth?.user?.id ?? null;
   markBootStep("layout:render");
 
   // Anonymous, allowlisted usage telemetry (docs/privacy/telemetry.md). A hook (not a child
@@ -61,7 +65,7 @@ export default function RootLayout() {
     if (isAuthenticated) {
       registerPushTokenAsync();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authUserId]);
 
   // Route OS notification taps (local reminders + BN2 server pushes) to a real screen —
   // a tap while running navigates at once; the tap that LAUNCHED the app is parked until

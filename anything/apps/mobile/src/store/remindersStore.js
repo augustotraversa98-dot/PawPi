@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getReminderStatus, REMINDER_STATUS } from "@/data/remindersData";
 import useSocialPetStore from "./socialPetStore";
 import useRoutinesStore from "./routinesStore";
+import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 import {
   scheduleReminderNotification,
   cancelNotification,
@@ -95,6 +96,9 @@ const useRemindersStore = create(
   // above did one set() per reminder, so loading N routines' reminders fired N store
   // commits — N re-renders of every subscriber (HealthToday) per pet switch.
   addRemindersFromRoutines: async (reminders) => {
+    // Identity this batch is for (see utils/auth/sessionEpoch): if the user logs out / switches
+    // account while we are awaiting the OS scheduler, undo what was scheduled and commit nothing.
+    const epoch = getSessionEpoch();
     const existingIds = new Set(get().reminders.map((r) => r.id));
     const toAdd = [];
     for (const reminder of reminders) {
@@ -113,6 +117,16 @@ const useRemindersStore = create(
           reminder,
           reminderTiming,
         );
+      }
+      if (epoch !== getSessionEpoch()) {
+        // The user this reminder was for is gone — do not leave their alert armed.
+        if (scheduledNotificationId) await cancelNotification(scheduledNotificationId);
+        for (const added of toAdd) {
+          if (added.scheduledNotificationId) {
+            await cancelNotification(added.scheduledNotificationId);
+          }
+        }
+        return [];
       }
       toAdd.push({ ...reminder, scheduledNotificationId });
     }
