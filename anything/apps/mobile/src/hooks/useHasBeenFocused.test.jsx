@@ -65,3 +65,51 @@ test("FirstFocusGate does not mount its children until the first focus", () => {
   expect(queryByText("CHILD")).toBeTruthy();
   expect(queryByText("first-focus-placeholder")).toBeNull();
 });
+
+test("backstop: a navigator that never emits 'focus' still releases the screen (within the poll interval)", () => {
+  jest.useFakeTimers();
+  try {
+    const fake = makeFakeNavigation({ focused: false });
+    const { getByText } = render(
+      <NavigationContext.Provider value={fake.navigation}>
+        <Probe />
+      </NavigationContext.Provider>,
+    );
+    expect(getByText("false")).toBeTruthy();
+    fake.setFocusedSilently(true); // focus changes, but no event is delivered
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(getByText("true")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("no timers are left running once focused or unmounted", () => {
+  jest.useFakeTimers();
+  try {
+    const fake = makeFakeNavigation({ focused: false });
+    const view = render(
+      <NavigationContext.Provider value={fake.navigation}>
+        <Probe />
+      </NavigationContext.Provider>,
+    );
+    expect(jest.getTimerCount()).toBe(1);
+    act(() => fake.focus());
+    expect(jest.getTimerCount()).toBe(0);
+
+    const other = makeFakeNavigation({ focused: false });
+    const second = render(
+      <NavigationContext.Provider value={other.navigation}>
+        <Probe />
+      </NavigationContext.Provider>,
+    );
+    expect(jest.getTimerCount()).toBe(1);
+    second.unmount();
+    expect(jest.getTimerCount()).toBe(0);
+    view.unmount();
+  } finally {
+    jest.useRealTimers();
+  }
+});

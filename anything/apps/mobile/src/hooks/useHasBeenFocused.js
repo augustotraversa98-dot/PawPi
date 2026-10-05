@@ -10,6 +10,11 @@ import { NavigationContext } from "@react-navigation/native";
 //
 // Outside a navigator (unit tests, a screen rendered on its own) there is no navigation context and
 // the screen counts as focused, so nothing is ever withheld there.
+//
+// The 'focus' event is the fast path. A cheap in-memory poll of `isFocused()` is the backstop, so a
+// navigator that did not emit the event could delay a tab by at most POLL_MS — never leave it blank.
+const POLL_MS = 400;
+
 export function useHasBeenFocused() {
   const navigation = useContext(NavigationContext);
   const [hasBeenFocused, setHasBeenFocused] = useState(
@@ -22,7 +27,14 @@ export function useHasBeenFocused() {
       setHasBeenFocused(true);
       return undefined;
     }
-    return navigation.addListener("focus", () => setHasBeenFocused(true));
+    const unsubscribe = navigation.addListener("focus", () => setHasBeenFocused(true));
+    const poll = setInterval(() => {
+      if (navigation.isFocused()) setHasBeenFocused(true);
+    }, POLL_MS);
+    return () => {
+      clearInterval(poll);
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, [navigation, hasBeenFocused]);
 
   return hasBeenFocused;

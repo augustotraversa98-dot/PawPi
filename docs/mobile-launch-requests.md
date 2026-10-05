@@ -61,6 +61,9 @@ the user is actually looking at.
 - **No request before auth is ready.** The EntryPoint only reads after `isReady` + a usable token (unchanged);
   the telehealth poll no longer starts at mount (it was unconditional). Telemetry config/events are anonymous
   and still start at mount.
+- **No stuck tab.** The first-focus gate reacts to the navigator's `focus` event and also polls `isFocused()` every
+  400 ms as a backstop, so a navigator that did not emit the event delays a tab by at most 0.4 s instead of leaving it blank
+  (this could not be verified on a real iPhone tab bar from here).
 - **No flicker.** The pet-scoped feed read waits for the pets list (`useFeedData` already shows its loading
   state while the pet loads); the Discover pane shows its loading state (not an empty list) while it waits for
   the location answer, and never waits more than 3 s; a deferred tab renders a blank cream placeholder that is

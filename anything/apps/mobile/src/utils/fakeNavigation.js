@@ -17,6 +17,10 @@ export function makeFakeNavigation({ focused = false } = {}) {
       isFocused = true;
       [...listeners].forEach((cb) => cb());
     },
+    // Flip the focus state WITHOUT delivering the event (to prove the polling backstop).
+    setFocusedSilently(value) {
+      isFocused = value;
+    },
     listenerCount: () => listeners.size,
   };
 }
