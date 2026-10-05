@@ -13,8 +13,14 @@
 
 import sql from './sql';
 import { isValidAuthUserId } from './authUserId';
+import { recallRequestIdentity } from './requestIdentity';
 
 export async function resolveUserId(authUserId) {
+  // withRequestContext already ran this exact lookup for the caller at the top of the request
+  // transaction; reuse it instead of paying another cross-region round trip (see requestIdentity.js).
+  // Outside a request scope (or for a different auth id) this is null and the lookup below runs.
+  const remembered = recallRequestIdentity(authUserId);
+  if (remembered !== null) return remembered;
   const userProfile = await sql`
     SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
   `;
@@ -53,8 +59,8 @@ async function uniqueUsername(base, exists) {
 // would otherwise see NULL and be DENIED. setCurrentUserId is no-op-safe outside a
 // request context. resolveUserId stays read-only and unchanged.
 //
-// setCurrentUserId is imported lazily to avoid a static import cycle: requestContext
-// imports resolveUserId from this module.
+// setCurrentUserId is imported lazily (requestContext is a heavier module that many unit tests
+// replace with a partial mock, and it used to import resolveUserId from this file).
 export async function ensureUserProfile(authUserId, { fullName, email } = {}) {
   const existing = await sql`
     SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
@@ -111,6 +117,13 @@ export async function ensureUserProfile(authUserId, { fullName, email } = {}) {
 export async function resolveOrCreateUserId(session) {
   const authUserId = session?.user?.id;
   if (!isValidAuthUserId(authUserId)) return null;
+
+  // applyIdentity already resolved this caller AND stamped app.current_user_id at the top level of
+  // the request transaction, so both the lookup and the re-stamp below would be pure repeats
+  // (two more cross-region round trips). Only a profile that already existed at request start is
+  // ever remembered, so the lazy-create path below is untouched.
+  const remembered = recallRequestIdentity(authUserId);
+  if (remembered !== null) return remembered;
 
   const { setCurrentUserId } = await import('./requestContext');
   const stamp = async (id) => {

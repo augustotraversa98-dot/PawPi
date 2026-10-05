@@ -24,8 +24,14 @@ import { fileURLToPath } from 'node:url';
 // ---------------------------------------------------------------- policy constants (changing one is a reviewed commit)
 /** Must equal the three job names in .github/workflows/ci.yml (a test pins this). */
 export const REQUIRED_CHECKS = Object.freeze(['mobile (jest)', 'web (vitest)', 'web (integration / real Postgres)']);
-/** Alerts where the app itself may be down: investigate and open an issue, never a code change. */
-export const ISSUE_ONLY_ALERTS = Object.freeze(['P1-ServerMetricsSilent', 'P1-HealthDeepFailing']);
+/**
+ * Alerts that investigate and open an issue, never a code change. Two kinds:
+ *  - the app itself may be down (P1-ServerMetricsSilent, P1-HealthDeepFailing);
+ *  - HighLatencyP95 (the legacy live rule): p95 is a tail statistic over very few requests at PawPi's current
+ *    traffic, so one app-launch burst moves it, and past autofix runs chased that noise with speculative N+1 edits.
+ *    The cause is infrastructure (cross-region DB round trips + pool queueing), so a human decides.
+ */
+export const ISSUE_ONLY_ALERTS = Object.freeze(['P1-ServerMetricsSilent', 'P1-HealthDeepFailing', 'HighLatencyP95']);
 export const ALLOWED_PREFIX = 'anything/apps/web/src/';
 /** Anything whose path matches is human-only (payments, auth/session, DB). Applied to the whole path, case-insensitive. */
 export const SENSITIVE_PATH = /payment|mercadopago|auth|session|migrations|supabase\//i;
