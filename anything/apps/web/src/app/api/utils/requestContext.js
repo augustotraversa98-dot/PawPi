@@ -18,8 +18,8 @@
 // current scale; revisit before adopting long-lived/streaming responses.
 
 import sql, { getActiveTx, runWithTx } from './sql';
-import { resolveUserId } from './currentUser';
 import { isValidAuthUserId } from './authUserId';
+import { runWithIdentityScope, rememberRequestIdentity } from './requestIdentity';
 
 /**
  * Run `fn` inside a SAVEPOINT on the active request transaction, so a query error
@@ -83,8 +83,21 @@ async function applyIdentity() {
     const authUserId = session?.user?.id;
     // A non-integer sub must never reach a query (22P02 aborts the whole request tx).
     if (!isValidAuthUserId(authUserId)) return;
-    const userId = await resolveUserId(authUserId);
-    await setCurrentUserId(userId);
+    const tx = getActiveTx();
+    if (!tx) return;
+    // ONE round trip: look the profile up and stamp the GUC in the same statement. This used to be a
+    // SELECT followed by a separate set_config(), i.e. two sequential cross-region round trips on
+    // every request. set_config sits in the select list, so it runs only for the (at most one) row
+    // returned — no profile means no stamp, exactly as before. Stamped at the transaction's top
+    // level (not inside a savepoint), so it lasts until COMMIT/ROLLBACK like the old two-step did.
+    const rows = await tx`
+      select id, set_config('app.current_user_id', id::text, true) as stamped
+      from user_profiles
+      where auth_user_id = ${authUserId}
+      limit 1
+    `;
+    // Let resolveUserId / resolveOrCreateUserId reuse this result instead of repeating the lookup.
+    if (rows.length > 0) rememberRequestIdentity(authUserId, rows[0].id);
   } catch {
     // Identity is non-enforcing in R1; never let resolution failure break the route.
   }
@@ -111,10 +124,12 @@ export function withRequestContext(handler) {
     try {
       // No tx is active here, so the proxy's `begin` runs on the global pool.
       return await sql.begin((tx) =>
-        runWithTx(tx, async () => {
-          await applyIdentity();
-          return handler(request, ctx);
-        })
+        runWithTx(tx, () =>
+          runWithIdentityScope(async () => {
+            await applyIdentity();
+            return handler(request, ctx);
+          })
+        )
       );
     } catch (error) {
       // A query error the handler's own try/catch already caught-and-handled

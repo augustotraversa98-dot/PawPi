@@ -57,12 +57,15 @@ describe('names, kill switch, issue-only, dedupe', () => {
     for (const v of ['true', '', undefined, null, '0', 'no', 'off']) expect(isKillSwitchOn(v)).toBe(false);
   });
 
-  it('issue-only alerts are exactly the two where the app itself may be down', () => {
-    expect([...ISSUE_ONLY_ALERTS].sort()).toEqual(['P1-HealthDeepFailing', 'P1-ServerMetricsSilent']);
+  it('issue-only alerts are exactly the two where the app itself may be down, plus the legacy HighLatencyP95', () => {
+    expect([...ISSUE_ONLY_ALERTS].sort()).toEqual(['HighLatencyP95', 'P1-HealthDeepFailing', 'P1-ServerMetricsSilent']);
     expect(isIssueOnly('P1-ServerMetricsSilent')).toBe(true);
     expect(isIssueOnly('P1-HealthDeepFailing')).toBe(true);
+    expect(isIssueOnly('HighLatencyP95')).toBe(true);
     expect(isIssueOnly('P1-Http5xxRate')).toBe(false);
     expect(isIssueOnly('P1-ServerMetricsSilent2')).toBe(false);
+    expect(isIssueOnly('HighLatencyP95b')).toBe(false);
+    expect(isIssueOnly('highlatencyp95')).toBe(false);
   });
 
   it('slugOfBranch parses autofix/<slug>-<runId> only', () => {

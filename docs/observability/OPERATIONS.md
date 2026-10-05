@@ -114,7 +114,7 @@ branch name. Minimum-volume guards (`and ... >= N`) keep one failed request at i
 | `pawpi-p2-free-tier-usage` | P2 | active series **> 70%** of the 10k free tier (usage datasource) | 1h | What to do: Grafana Cloud -> Usage (metrics, logs, traces) and Explore topk(10, count by (__name__)({__name__=~"pawpi_.+"})); drop or relabel the noisiest metric or raise the trace sampler. |
 
 Plus the **three legacy rules** (live, folder `PawPi`, group `PawPi`, no-data -> Normal): `HighServerErrorRate` (5xx rate > 5% for 5m),
-`HighLatencyP95` (p95 > 3s for 10m), `PaymentFailuresSpike` (failure rate > 20% over 15m; populates on the first real checkout).
+`HighLatencyP95` (p95 > 3s for 10m today; the tuned definition, 15m plus a minimum-traffic guard, is in section 18 and is applied by hand in the Grafana UI), `PaymentFailuresSpike` (failure rate > 20% over 15m; populates on the first real checkout).
 
 Notes on the rules:
 - Thresholds not fixed by the plan (sign-in 50%, signup 0.2x, payments 20%, DB 5 errors, client 0.2 errors/session, route 90%, slow route 3s)
@@ -350,6 +350,7 @@ several are in one group it names the others in the summary).
 **Do not resume P2 rules until the digest exists**, otherwise they would match an older generic route. Addresses are never printed.
 
 ### 5.2 The three legacy rules stay exactly as they are
+(Exception in waiting: the live `HighLatencyP95` has a tuned definition in section 18 that a human applies in the Grafana UI; it is also issue-only for the autofix loop.)
 `HighServerErrorRate`, `HighLatencyP95`, `PaymentFailuresSpike` (folder `PawPi`, group `PawPi`): the script never lists, reads, updates or deletes anything it does not own (uid prefix `pawpi-`). They
 could be re-pointed later, but only when strictly equivalent: `pawpi_http_requests_total{status_class="5xx"}` over all requests is the same ratio as `HighServerErrorRate`'s
 `http_server_request_duration_seconds_count{http_response_status_code=~"5.."}`, so that one is equivalent once you trust the new series; `HighLatencyP95` would need
@@ -664,7 +665,7 @@ Only the four server rules are live today (`P1-ServerMetricsSilent`, `P1-Http5xx
 | 8 | The kill switch is still off, and the PR head is unchanged, immediately before merging | `deliver.sh` |
 | 9 | The merge is `PUT /pulls/{n}/merge` with `merge_method=squash` and `sha=<head sha>` (GitHub refuses if anything was pushed in between) | `deliver.sh` |
 
-Never auto-merged, whatever the checks say: alerts `P1-ServerMetricsSilent` and `P1-HealthDeepFailing` (**issue only**: the app itself may be down, so any patch is discarded), and **manual** runs (`workflow_dispatch`) unless you pass `allow_merge=true`.
+Never auto-merged, whatever the checks say: alerts `P1-ServerMetricsSilent` and `P1-HealthDeepFailing` (**issue only**: the app itself may be down, so any patch is discarded), the legacy `HighLatencyP95` (**issue only** since 2026-10-05: at current traffic its p95 is moved by a single app-launch burst and the cause is DB round-trip latency, not a code defect a patch can safely guess at; see section 18), and **manual** runs (`workflow_dispatch`) unless you pass `allow_merge=true`.
 
 **Dedupe:** if an open PR labelled `autofix` already exists for the same alertname, the run does nothing (see its run summary). A re-fire of an alert whose diagnosis issue is still open comments on that issue.
 
@@ -710,3 +711,25 @@ If that fails the workflow: (1) opens a **revert PR** (`git revert` of the merge
 ### 17.8 Testing the loop safely
 
 Actions -> "Claude autofix (Grafana alert)" -> Run workflow with `alertname = ManualTest`, `summary = loop test - no code change expected`. A manual run **never merges** (unless you tick `allow_merge`): expect a `needs-human` issue. Do not tick `allow_merge` unless you want the change deployed.
+
+## 18. HighLatencyP95: stall investigation and tuned rule (2026-10-05)
+
+**Symptom.** Grafana showed API-wide p95 of 5-10 s for 5-13 minutes (2026-09-29 19:20-19:33 UTC, 2026-10-03 19:25-19:31 and 20:16-20:21 UTC), on every route at once, with no deploy and almost no traffic.
+
+**Cause (from Railway HTTP logs, per request).** Not a stall: no restarts, no 5xx, no upstream errors, no pool or timeout log lines, and static assets were still served in 2-12 ms in the middle of the slow minutes (event loop alive). In every window one client IP produced the whole burst: one phone opening the app fires about 37-61 API calls in 2-3 seconds. The server answers one idle request in a constant ~1.4 s (`GET /api/threads/unread-count`, a single trivial query, took 1.43-1.51 s on all 15 isolated calls in the 09-29 window), and a burst of N requests finishes in waves of 10 because the pool holds `max` = 10 connections, one per request, for the whole request (37 requests = 4 waves x 1.4 s = the observed 5.0-5.4 s maximum). The 1.4 s floor is round trips, not query time (app queries are fast in `pg_stat_statements`: `app_leaderboard` averages 58 ms, the slowest are the provider-discover SELECTs at 100-250 ms, AUDIT A-14; nothing near 1.4 s): Railway runs in `us-east4`, Supabase in `sa-east-1`, so each sequential statement is a cross-continent round trip, and by reading the code a request paid about 8 of them (token-revocation check, `BEGIN`, profile lookup, `set_config`, the same profile lookup and `set_config` again in the handler, the real query, `COMMIT`). The p95 alert looks at a window holding only the burst, so a handful of launch-burst requests IS the whole distribution.
+
+**Fix in code.** `withRequestContext` resolves and stamps the caller in one statement (was two) and `resolveUserId` / `resolveOrCreateUserId` reuse that result instead of repeating the lookup and the stamp: about 8 -> 5 round trips per request (by count; expect roughly a third off the latency floor on the 209 routes that use the helpers; measure after deploy). `utils/requestIdentity.js` has the safety argument. Not changed: `isTokenRevoked` (auth), pool size, anything in migrations or payments.
+
+**Not changed, needs a human decision.**
+- `postgres()` in `utils/sql.js` uses porsager defaults: `max` 10, no acquire timeout (a request waits in the queue indefinitely), `idle_timeout` 0. Raising `max` (for example 20) halves burst queueing, but only if `DATABASE_URL` is the Supavisor **transaction** pooler (port 6543); on the session pooler or a direct connection the limit is the pooler pool size / `max_connections` (60 on this project) and a larger `max` risks "max clients reached". Check the port in Railway before changing it.
+- Co-locating the web service with the database (a Railway region near `sa-east-1`, or a Supabase region near `us-east4`) removes most of the floor and is worth more than any code change.
+- The app fires duplicate calls at launch (`/api/pets`, `/api/providers`, `/api/services/discover` twice within one second); de-duplicating them in the mobile client is a separate ticket.
+
+**Tuned `HighLatencyP95` (the live legacy rule; edit it in the Grafana UI, the apply script never touches non-`pawpi-` rules, see 5.2).** Pending period 15m (was 10m) and a minimum-traffic guard:
+
+```
+histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) > 3
+and on() sum(rate(http_server_request_duration_seconds_count[5m])) > 0.07
+```
+
+`0.07` req/s is about 21 requests per 5 minutes. Be aware of what it does and does not filter: a single launch burst (37-61 requests) is above it, so on its own the guard would not have silenced these three events. The `for: 15m` is what does: every observed event lasted 5-13 minutes. The rule is `issue only` for the autofix loop (section 17.2): it opens a diagnosis issue, never a patch and never an auto-merge. The earlier `HighLatencyP95` autofix PRs (#562 household N+1, #576 walk-requests fan-out) were speculative edits driven by the same noise.
