@@ -7,6 +7,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useFoodLogs } from "@/hooks/useFetchHealthData";
 import { usePetSocialProfile } from "@/hooks/usePetSocialProfile";
 import { computeActivation } from "@/utils/gettingStarted";
+import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 import {
   getNotificationPermissionGranted,
   requestNotificationPermissions,
@@ -17,17 +18,15 @@ import {
 // reminders). Empty / no pet → false.
 function useHasReminder(petId) {
   return useQuery({
-    queryKey: ["routines", "exist", petId],
+    // Shared with routinesStore.loadRoutines (utils/routinesQuery): one cache entry + one
+    // in-flight request per pet, not an "existence" copy of the same GET.
+    queryKey: routinesQueryKey(petId),
     enabled: !!petId,
     // (AUDIT A-30) 30 s staleTime so remounting the Feed doesn't re-hit this
     // existence check on every mount.
     staleTime: 30 * 1000,
-    queryFn: async () => {
-      const res = await fetch(`/api/routines?petId=${petId}`);
-      if (!res.ok) throw new Error("Failed to load routines");
-      const data = await res.json();
-      return (data.routines ?? []).length > 0;
-    },
+    queryFn: () => fetchRoutinesRaw(petId),
+    select: (data) => (data?.routines ?? []).length > 0,
   });
 }
 
@@ -72,7 +71,13 @@ export function useGettingStarted() {
   const activationPetId = petId;
 
   const { data: foodLogs } = useFoodLogs();
-  const { data: profile } = usePetSocialProfile(activationPetId);
+  // Same arguments as the Profile tab's own-pet read (pet-profile.jsx: String id + the viewer pet), so
+  // the two share ONE cache entry / request. Only stats.totalPosts is used here and it does not
+  // depend on the viewer.
+  const { data: profile } = usePetSocialProfile(
+    activationPetId != null ? String(activationPetId) : activationPetId,
+    activationPetId,
+  );
   const { data: hasReminder } = useHasReminder(activationPetId);
 
   const hasMeal = (foodLogs?.logs?.length ?? 0) > 0;

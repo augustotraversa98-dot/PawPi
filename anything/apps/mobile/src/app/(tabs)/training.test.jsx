@@ -139,3 +139,20 @@ test("a legacy care deep-link (?category=walker) opens the Hire segment pre-scop
   const { getByTestId } = render(<TrainingScreen />);
   expect(getByTestId("care-discovery")).toBeTruthy();
 });
+
+// Launch dedupe: this tab is mounted at launch on iOS but must not mount (fetch) until first opened.
+test("is withheld until the tab is first opened, then mounts", () => {
+  const { NavigationContext } = require("@react-navigation/native");
+  const { makeFakeNavigation } = require("@/utils/fakeNavigation");
+  const { act } = require("@testing-library/react-native");
+  const fake = makeFakeNavigation({ focused: false });
+  const screen = render(
+    <NavigationContext.Provider value={fake.navigation}>
+      <TrainingScreen />
+    </NavigationContext.Provider>,
+  );
+  expect(screen.getByTestId("first-focus-placeholder")).toBeTruthy();
+  expect(screen.queryByText(new RegExp(firstProgram.title))).toBeNull();
+  act(() => fake.focus());
+  expect(screen.getByText(new RegExp(firstProgram.title))).toBeTruthy();
+});

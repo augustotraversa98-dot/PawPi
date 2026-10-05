@@ -149,3 +149,22 @@ test("no unread → no badge on either segment", async () => {
   await waitFor(() => expect(getByTestId("discover-card-1")).toBeTruthy());
   expect(queryByTestId("services-seg-activity-badge")).toBeNull();
 });
+
+// Launch dedupe: this tab is mounted at launch on iOS but must not mount (fetch) until first opened.
+test("is withheld until the tab is first opened, then mounts", () => {
+  const { NavigationContext } = require("@react-navigation/native");
+  const { makeFakeNavigation } = require("@/utils/fakeNavigation");
+  const { act } = require("@testing-library/react-native");
+  const fake = makeFakeNavigation({ focused: false });
+  mockReq.mockClear();
+  const screen = render(
+    <NavigationContext.Provider value={fake.navigation}>
+      <ServicesScreen />
+    </NavigationContext.Provider>,
+  );
+  expect(screen.getByTestId("first-focus-placeholder")).toBeTruthy();
+  expect(screen.queryByTestId("services-segments")).toBeNull();
+  expect(mockReq).not.toHaveBeenCalled(); // no location prompt at launch
+  act(() => fake.focus());
+  expect(screen.getByTestId("services-segments")).toBeTruthy();
+});

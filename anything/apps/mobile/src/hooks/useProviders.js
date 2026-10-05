@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
+import { MY_PROVIDERS_QUERY_KEY, fetchMyProviders } from "@/utils/launchQueries";
 
 // Owner-facing provider discovery + booking (docs/provider-design.md §4 items 5–6).
 // These wrap the public/owner routes shipped in T5/T6:
@@ -665,15 +666,8 @@ export function useProviderUnreadCount(providerId) {
 // walker workspace to find the walker-capable businesses they work for. Empty → [].
 export function useMyProviders() {
   return useQuery({
-    queryKey: ["providers", "mine"],
-    queryFn: async () => {
-      const response = await fetch("/api/providers");
-      if (!response.ok) {
-        throw new Error("Failed to fetch your providers");
-      }
-      const data = await response.json();
-      return data.providers ?? [];
-    },
+    queryKey: MY_PROVIDERS_QUERY_KEY,
+    queryFn: () => fetchMyProviders(),
   });
 }
 

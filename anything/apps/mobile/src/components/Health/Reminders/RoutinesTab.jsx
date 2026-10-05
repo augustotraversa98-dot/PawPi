@@ -25,6 +25,7 @@ import VetAppointmentRoutineModal from "./VetAppointmentRoutineModal";
 import MedicalCareRoutineModal from "./MedicalCareRoutineModal";
 import WellnessCheckRoutineModal from "./WellnessCheckRoutineModal";
 import { trackFunnel, trackFeature, trackTap } from "@/telemetry/track";
+import { routinesQueryKey } from "@/utils/routinesQuery";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 const C = {
@@ -65,13 +66,13 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   }, [currentPet?.id, queryClient]);
 
   // The Home "Getting started" card derives its "Set your first reminder" item
-  // from the ["routines","exist",petId] existence query (useHasReminder), which
+  // from the shared ["routines", petId] query (useHasReminder), which
   // has a 30s staleTime. Creating/deleting a routine here must refresh it so the
   // checklist item ticks (or un-ticks) without waiting out the stale window.
   const invalidateRoutinesExist = useCallback(() => {
     if (currentPet?.id != null) {
       queryClient.invalidateQueries({
-        queryKey: ["routines", "exist", currentPet.id],
+        queryKey: routinesQueryKey(currentPet.id),
       });
     }
   }, [currentPet?.id, queryClient]);

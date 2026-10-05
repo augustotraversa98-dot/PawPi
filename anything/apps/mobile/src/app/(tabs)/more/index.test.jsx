@@ -84,3 +84,20 @@ test("does nothing if there is no parent navigator (e.g. not yet mounted in a ta
   expect(() => render(<ProfileTab />)).not.toThrow();
   expect(mockAddListener).not.toHaveBeenCalled();
 });
+
+// Launch dedupe: this tab is mounted at launch on iOS but must not mount (fetch) until first opened.
+test("is withheld until the tab is first opened, then mounts", () => {
+  const { NavigationContext } = require("@react-navigation/native");
+  const { makeFakeNavigation } = require("@/utils/fakeNavigation");
+  const { act } = require("@testing-library/react-native");
+  const fake = makeFakeNavigation({ focused: false });
+  const screen = render(
+    <NavigationContext.Provider value={fake.navigation}>
+      <ProfileTab />
+    </NavigationContext.Provider>,
+  );
+  expect(screen.getByTestId("first-focus-placeholder")).toBeTruthy();
+  expect(screen.queryByText("PET_PROFILE")).toBeNull();
+  act(() => fake.focus());
+  expect(screen.getByText("PET_PROFILE")).toBeTruthy();
+});

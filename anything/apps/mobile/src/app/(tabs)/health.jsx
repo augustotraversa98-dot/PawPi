@@ -11,6 +11,7 @@ import HealthTrack from "../../components/Health/HealthTrack";
 import HealthInsights from "../../components/Health/HealthInsights";
 import HealthVetRecord from "../../components/Health/HealthVetRecord";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+import { FirstFocusGate } from "@/components/FirstFocusGate";
 import {
   COLORS,
   TYPE,
@@ -34,7 +35,7 @@ const SECTION_IDS = HEALTH_SECTION_IDS;
 // re-enable the header button once the feature is connected.
 const SHOW_NUTRITION = false;
 
-export default function HealthScreen() {
+function HealthScreenContent() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -224,5 +225,15 @@ export default function HealthScreen() {
         </ScrollView>
       )}
     </View>
+  );
+}
+
+// Mounted (and so fetching) only once the tab has been opened for the first time — see
+// hooks/useHasBeenFocused. Keeps this tab's reads out of the app-launch burst.
+export default function HealthScreen() {
+  return (
+    <FirstFocusGate backgroundColor={COLORS.cream}>
+      <HealthScreenContent />
+    </FirstFocusGate>
   );
 }

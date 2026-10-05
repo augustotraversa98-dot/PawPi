@@ -72,3 +72,20 @@ test("Insights is not offered in the strip and ?section=insights falls back to T
   expect(queryByText("INSIGHTS_SECTION")).toBeNull();
   expect(queryByText("Insights")).toBeNull();
 });
+
+// Launch dedupe: the Health tab is mounted at launch on iOS but must not mount (fetch) until opened.
+test("is withheld until the tab is first opened, then mounts the Today section", () => {
+  const { NavigationContext } = require("@react-navigation/native");
+  const { makeFakeNavigation } = require("@/utils/fakeNavigation");
+  const { act } = require("@testing-library/react-native");
+  const fake = makeFakeNavigation({ focused: false });
+  const { queryByText, getByTestId, getByText } = render(
+    <NavigationContext.Provider value={fake.navigation}>
+      <HealthScreen />
+    </NavigationContext.Provider>,
+  );
+  expect(getByTestId("first-focus-placeholder")).toBeTruthy();
+  expect(queryByText("TODAY_SECTION")).toBeNull();
+  act(() => fake.focus());
+  expect(getByText("TODAY_SECTION")).toBeTruthy();
+});

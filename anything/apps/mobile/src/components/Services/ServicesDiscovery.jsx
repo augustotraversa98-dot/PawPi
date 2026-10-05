@@ -100,6 +100,8 @@ const STORES_VETS_ALLOWED = [...STORES_VETS_CATEGORIES, ...PLACE_CATEGORIES];
 // When the user searches a free-text LOCATION, bound results to this radius (km) around it so the
 // list shows what's near that place (device/near-me geo stays unbounded).
 const LOCATION_SEARCH_RADIUS_KM = 25;
+// How long the first discover read waits for the device-location answer before loading unlocated.
+const LOCATION_PATIENCE_MS = 3000;
 
 // PERF (crash fix): the seeded directory can surface thousands of located items, and plotting every
 // one as a native react-native-maps pin freezes/crashes the JS+UI thread (esp. on the New
@@ -210,6 +212,10 @@ export default function ServicesDiscovery({
   const [openNow, setOpenNow] = useState(false);
   const [coord, setCoord] = useState(null);
   const [denied, setDenied] = useState(false);
+  // true once the one-time device-location attempt has produced an answer (coords, denied/failed) or
+  // run out of patience. The discover read waits for it so it fires ONCE with the final lat/lng
+  // instead of an unlocated request that is replaced a moment later by a located one.
+  const [locationSettled, setLocationSettled] = useState(false);
   const [mode, setMode] = useState("list"); // narrow-screen toggle: "list" | "map" (list default)
   const [selectedId, setSelectedId] = useState(null);
   const [catPickerOpen, setCatPickerOpen] = useState(false);
@@ -227,11 +233,19 @@ export default function ServicesDiscovery({
   // Ask for location once. Denied → the list still works; distance/Nearest turn off.
   useEffect(() => {
     let active = true;
+    // Never hold the list hostage to a slow GPS fix / an unanswered permission prompt: after this
+    // long, load the unlocated list (a located one still follows if the fix arrives later).
+    const patience = setTimeout(() => {
+      if (active) setLocationSettled(true);
+    }, LOCATION_PATIENCE_MS);
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          if (active) setDenied(true);
+          if (active) {
+            setDenied(true);
+            setLocationSettled(true);
+          }
           return;
         }
         const pos = await Location.getCurrentPositionAsync({});
@@ -240,23 +254,38 @@ export default function ServicesDiscovery({
         if (active && Number.isFinite(la) && Number.isFinite(ln)) {
           setCoord({ lat: la, lng: ln });
         }
+        if (active) setLocationSettled(true);
       } catch {
-        if (active) setDenied(true);
+        if (active) {
+          setDenied(true);
+          setLocationSettled(true);
+        }
       }
     })();
     return () => {
       active = false;
+      clearTimeout(patience);
     };
   }, []);
 
   // Categories are MULTI-SELECT and filtered CLIENT-side (see categoryFiltered), so we fetch the BASE
   // set (category 'all' = both sources) once and let the union filter drive the list AND the map pins
   // instantly. lat/lng attach distance_km + nearest ordering.
-  const { data: items, isLoading, isError, refetch } = useServicesDiscover({
+  const {
+    data: items,
+    isLoading: discoverLoading,
+    isError,
+    refetch,
+  } = useServicesDiscover({
+    enabled: locationSettled,
     ...(coord ? { lat: coord.lat, lng: coord.lng } : {}),
     // A searched location bounds results to its radius; device/near-me geo stays unbounded.
     ...(locationLabel && coord ? { radius: LOCATION_SEARCH_RADIUS_KM } : {}),
   });
+
+  // While we wait for the location answer the query is idle (isLoading false, no data) — that must
+  // read as "loading", never as an empty list.
+  const isLoading = discoverLoading || !locationSettled;
 
   const raw = useMemo(() => items ?? [], [items]);
 

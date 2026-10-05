@@ -9,6 +9,13 @@ import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { isUsableToken, startOver } from "@/utils/auth/recovery";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
 import { markNavigationReady } from "@/utils/notificationDeepLink";
+import { queryClient } from "@/utils/queryClient";
+import {
+  PETS_QUERY_KEY,
+  MY_PROVIDERS_QUERY_KEY,
+  fetchPets,
+  fetchMyProviders,
+} from "@/utils/launchQueries";
 import { reportStartup } from "@/telemetry/startup";
 import { PawMark } from "@/components/ui";
 import { COLORS } from "@/constants/theme";
@@ -77,30 +84,41 @@ export default function EntryPoint() {
     // timeout-guarded; this startup fetch was not.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
-    // Role-aware entry: also ask which providers this account is active STAFF of.
-    // Best-effort — a business account must never be forced into pet onboarding,
-    // but a failed/slow providers read must never block the pet flow either, so
-    // it degrades to [] (not a business) and is only consulted on the empty-pets
-    // branch inside determinePetsRoute.
+    // The pets read goes through the shared React Query cache (key ["pets"], utils/launchQueries):
+    // the tabs that mount right after this redirect find it fresh and do NOT fetch it again.
+    // staleTime 0 + retry false keep the routing decision on a live read with no hidden retry.
+    //
+    // Role-aware entry: which providers this account is active STAFF of is only consulted on the
+    // empty-pets branch (a business account must never be forced into pet onboarding), so it is
+    // fetched ONLY there — an account that has pets never pays for it at launch. Best-effort: a
+    // failed/slow providers read degrades to [] (not a business) and never blocks the pet flow.
     let providers = [];
     try {
-      const [petsResponse, providersResult] = await Promise.all([
-        fetch("/api/pets", { signal: controller.signal }),
-        fetch("/api/providers", { signal: controller.signal })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => (Array.isArray(d?.providers) ? d.providers : []))
-          .catch(() => []),
-      ]);
-      providers = providersResult;
-      if (petsResponse.ok) {
-        const { pets } = await petsResponse.json();
-        outcome = { ok: true, status: petsResponse.status, pets, providers };
-      } else {
-        outcome = { ok: false, status: petsResponse.status };
+      const pets = await queryClient.fetchQuery({
+        queryKey: PETS_QUERY_KEY,
+        queryFn: () => fetchPets({ signal: controller.signal }),
+        staleTime: 0,
+        retry: false,
+      });
+      if (!pets || pets.length === 0) {
+        providers = await queryClient
+          .fetchQuery({
+            queryKey: MY_PROVIDERS_QUERY_KEY,
+            queryFn: () => fetchMyProviders({ signal: controller.signal }),
+            staleTime: 0,
+            retry: false,
+          })
+          .catch(() => []);
       }
+      outcome = { ok: true, status: 200, pets, providers };
     } catch (apiError) {
-      console.error("[EntryPoint] Pets fetch failed:", apiError);
-      outcome = { networkError: true };
+      if (typeof apiError?.status === "number") {
+        // The server answered with a non-OK status (401/403 → login, 5xx → retry screen).
+        outcome = { ok: false, status: apiError.status };
+      } else {
+        console.error("[EntryPoint] Pets fetch failed:", apiError);
+        outcome = { networkError: true };
+      }
     } finally {
       clearTimeout(timeoutId);
     }
