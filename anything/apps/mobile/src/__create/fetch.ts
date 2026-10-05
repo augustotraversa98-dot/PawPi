@@ -89,6 +89,9 @@ const handleSessionExpired = () => {
   try {
     const { useAuthStore } = require('@/utils/auth/store');
     if (useAuthStore.getState().auth) {
+      // The server already rejected this session: the cleanup in setAuth must not try to
+      // unregister the push token as that (dead) user.
+      require('@/utils/auth/sessionEpoch').markSessionExpired();
       useAuthStore.getState().setAuth(null);
     }
     // Anonymous telemetry only: tag the coming landing on Welcome as "session_expired" (annotation, no

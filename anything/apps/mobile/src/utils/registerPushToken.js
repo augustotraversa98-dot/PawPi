@@ -33,6 +33,8 @@ function resolveProjectId() {
 }
 
 let registerOncePromise = null;
+// The token this session registered (or last resolved), so a logout can unregister it.
+let lastKnownToken = null;
 
 /**
  * Fetch the device's Expo push token (respecting the existing permission state) and
@@ -59,6 +61,7 @@ export async function registerPushTokenAsync(fetchImpl = fetch) {
       );
       const token = tokenResp?.data;
       if (!token) return null;
+      lastKnownToken = token;
 
       const platform = Platform.OS === "android" ? "android" : "ios";
       await fetchImpl("/api/push-tokens", {
@@ -75,7 +78,61 @@ export async function registerPushTokenAsync(fetchImpl = fetch) {
   return registerOncePromise;
 }
 
+/**
+ * Forget this session's registration so the NEXT signed-in user registers the device again.
+ * The once-per-session memo is otherwise process-wide: without this, user B signing in after
+ * user A (no app restart) would get A's cached promise back and never send their own POST.
+ */
+export function resetPushTokenRegistration() {
+  registerOncePromise = null;
+}
+
+/**
+ * Remove this device's push-token association for the user who is signing out
+ * (DELETE /api/push-tokens {token} — deletes by token for the CALLER only). It must go out with
+ * the signing-out user's own jwt, passed explicitly: the auth store drops the stored jwt in the
+ * same tick as the logout, and the endpoint is 401 without one. Never throws; resolves true when
+ * the server acknowledged, false on any no-op / failure (no token, no jwt, permission declined,
+ * simulator, network error, dead session).
+ *
+ * @param {{ jwt?: string, fetchImpl?: Function }} [options]
+ * @returns {Promise<boolean>}
+ */
+export async function unregisterPushTokenAsync({ jwt, fetchImpl = fetch } = {}) {
+  try {
+    if (!jwt) return false; // nobody to authenticate as (the session is already dead)
+    let token = lastKnownToken;
+    if (!token) {
+      // Registered in an earlier process, or never this session: the Expo token is stable per
+      // install, so resolve it the same way registration does (no permission prompt).
+      if (Device.isDevice === false) return false;
+      const perms = await Notifications.getPermissionsAsync();
+      if (!isNotificationPermissionGranted(perms)) return false;
+      const projectId = resolveProjectId();
+      const tokenResp = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined,
+      );
+      token = tokenResp?.data ?? null;
+    }
+    if (!token) return false;
+    const response = await fetchImpl("/api/push-tokens", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+    lastKnownToken = null;
+    return !!response?.ok;
+  } catch (error) {
+    console.log("[registerPushToken] unregister non-fatal:", error?.message);
+    return false;
+  }
+}
+
 /** Test-only: clear the once-guard so each case starts fresh. */
 export function __resetRegisterPushTokenForTests() {
   registerOncePromise = null;
+  lastKnownToken = null;
 }

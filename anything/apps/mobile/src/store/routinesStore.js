@@ -1,3 +1,4 @@
+import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 import { create } from "zustand";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
@@ -11,6 +12,9 @@ const useRoutinesStore = create((set, get) => ({
 
   // Load routines from database
   loadRoutines: async (petId) => {
+    // The signed-in identity this load is FOR. If it changes mid-flight (logout / account switch)
+    // the result belongs to a user who is gone: never put it in the store or schedule from it.
+    const epoch = getSessionEpoch();
     try {
       set({ loading: true, error: null });
 
@@ -88,6 +92,9 @@ const useRoutinesStore = create((set, get) => ({
         deletedAt: routine.deleted_at ?? null,
       }));
 
+      // The user this load was for may have logged out / switched while we awaited the network: drop it.
+      if (epoch !== getSessionEpoch()) return [];
+
       set({ routines: transformedRoutines, loading: false, initialized: true });
 
       // Generate reminders from active routines. (AUDIT A-17) Commit them in ONE
@@ -102,6 +109,7 @@ const useRoutinesStore = create((set, get) => ({
 
       return transformedRoutines;
     } catch (error) {
+      if (epoch !== getSessionEpoch()) return [];
       console.error("[routinesStore] Error loading routines:", error);
       // No mock fallback (AUDIT_2026-09 A-13): a failed load must surface as an error +
       // empty state, never as phantom sample routines generating phantom reminders.
