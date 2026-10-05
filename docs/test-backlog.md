@@ -470,6 +470,12 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ---
 
+## To test — build 25 (v1.0.2) — see `docs/release-build-25.md`
+
+The version/build setup is verified there (`app.json` 1.0.2, build number from EAS remote `autoIncrement`). The device
+checklist for build 25 (telemetry opt-out, logout leak, launch behaviour, first-reminder nudge, regressions) is §5 of
+that document; run it on a real iPhone with the TestFlight install before **Submit for Review**.
+
 ## To test — build 24 (v1.0.1) on-device checklist (2026-10-03)
 
 **Scope.** v1.0.0 (build 21) is LIVE in the App Store (accepted 2026-09-27). v1.0.1 (**build 24**) carries
