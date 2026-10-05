@@ -1,7 +1,7 @@
+import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 import { create } from "zustand";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
-import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 
 const useRoutinesStore = create((set, get) => ({
   // State
@@ -27,7 +27,6 @@ const useRoutinesStore = create((set, get) => ({
       }
 
       const data = await response.json();
-      if (epoch !== getSessionEpoch()) return [];
       const routines = data.routines || [];
 
       // Transform database routines to app format
@@ -92,6 +91,9 @@ const useRoutinesStore = create((set, get) => ({
         // can defensively skip any soft-deleted routine that ever reaches state.
         deletedAt: routine.deleted_at ?? null,
       }));
+
+      // The user this load was for may have logged out / switched while we awaited the network: drop it.
+      if (epoch !== getSessionEpoch()) return [];
 
       set({ routines: transformedRoutines, loading: false, initialized: true });
 
