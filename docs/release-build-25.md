@@ -43,8 +43,9 @@ Mobile changes merged since the v1.0.1 bump (#579), from `git log 44a7764..origi
 | #618 | launch requests 40 → 18 (shared pets/routines cache, tabs mount on first open, Discover waits for location) | first open of Health/Training/Services/More now mounts the screen at that moment (blank cream placeholder for one frame) |
 | #619 | notifications audit doc + first-reminder setup nudge (local, ≤2 per pet) | new local notifications; copy EN + ES |
 
-#617 and #618 both edit `store/routinesStore.js` in adjacent hunks, so the second to merge needs a trivial conflict
-resolution. #619 reads best after #617 (the nudge re-arms after the logout cleanup).
+Checked in a scratch worktree: #617, #618, #619 and #620 merge together with **no conflicts** in the orders tried
+(617→618→619→620 and three others), and the combined tree passes the full mobile suite (319 suites / 2482 tests).
+#619 reads best after #617 (the nudge re-arms after the logout cleanup).
 
 ## 3. Human actions before submitting (none are automated)
 
