@@ -55,18 +55,20 @@ Checked in a scratch worktree: #617, #618, #619 and #620 merge together with **n
    cd anything/apps/mobile && npm test
    cd anything/apps/web && npm test && npm run test:integration
    ```
-3. **App Store Connect → App Privacy**: add Diagnostics / Usage Data — not linked to the user, not used for tracking
+3. **App Store Connect → Privacy Policy URL**: it must be changed to `https://www.pawpi.info/privacy` on the **1.0.2 version
+   page** (the policy URL can only change with a new version).
+4. **App Store Connect → App Privacy**: add Diagnostics / Usage Data — not linked to the user, not used for tracking
    (answers drafted in `docs/privacy/telemetry.md`). Do this **before** submitting, not after.
-4. **Live privacy policy** text and `docs/app-store-privacy-data-map.md`: both still say "no Diagnostics/Usage" — update
+5. **Live privacy policy** text and `docs/app-store-privacy-data-map.md`: both still say "no Diagnostics/Usage" — update
    at the same time (`docs/test-backlog.md` ACTION 4).
-5. **Railway/Grafana** (`docs/observability/OPERATIONS.md` §14, `docs/test-backlog.md` ACTION 4): env vars, Grafana apply,
+6. **Railway/Grafana** (`docs/observability/OPERATIONS.md` §14, `docs/test-backlog.md` ACTION 4): env vars, Grafana apply,
    and keep client alert rules **paused** until build 25 has been live a few days.
-6. **APNs `.p8` key** (`docs/LAUNCH-CHECKLIST.md`) is still the gate for iOS remote push; it does not block this build
+7. **APNs `.p8` key** (`docs/LAUNCH-CHECKLIST.md`) is still the gate for iOS remote push; it does not block this build
    (owner reminders are local), but business pushes stay dark without it.
-7. **Release notes** for App Store Connect (EN + ES): `docs/app-store-connect-content.md` / `-es.md`. Suggested "What's new"
+8. **Release notes** for App Store Connect (EN + ES): `docs/app-store-connect-content.md` / `-es.md`. Suggested "What's new"
    if #617-#619 are in: *"Faster launch, reminders no longer carry over between accounts on a shared device, and a
    gentle prompt to set up your first reminder."* — keep health wording non-diagnostic.
-8. **Build and submit** (from `anything/apps/mobile`, per `docs/app-store-submission-runbook.md` §2-§3):
+9. **Build and submit** (from `anything/apps/mobile`, per `docs/app-store-submission-runbook.md` §2-§3):
    ```bash
    eas build --platform ios --profile production
    eas submit --platform ios --profile production
@@ -96,6 +98,9 @@ separate decision.
 - [ ] **Reminder nudge (#619):** new account, one pet, no routine, notifications allowed → after arming, two local
   notifications arrive (tomorrow / +4 days) in the daytime; creating any routine **before** they fire cancels them;
   tapping one opens the reminders screen; with *Settings → Care reminders* off, none are scheduled. EN and ES copy.
+- [ ] **Legal links (#621):** Settings shows three new rows — **Privacy Policy**, **Terms of Service** and **End User License Agreement
+  (EULA)** (Spanish: same rows, es-AR copy). Each opens its hosted page on `www.pawpi.info` in the browser (the Privacy Policy row must land on
+  `https://www.pawpi.info/privacy`), and coming back returns to Settings. A row only shows when its URL is configured.
 - [ ] Regression: email + password, Google and Apple sign-in; onboarding; posting a daily moment; Today/Upcoming reminders.
 
 ## 6. After it ships
