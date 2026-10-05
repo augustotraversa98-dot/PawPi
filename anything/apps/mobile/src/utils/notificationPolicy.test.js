@@ -11,6 +11,9 @@ import {
   shouldSendStreakSave,
   isWithinDailyCap,
   resolvePersonalizedSendHour,
+  clampToDaytimeHour,
+  shouldArmReminderSetupNudge,
+  REMINDER_NUDGE_DAY_OFFSETS,
 } from "./notificationPolicy";
 
 describe("countRemainingSegments", () => {
@@ -95,5 +98,38 @@ describe("resolvePersonalizedSendHour", () => {
 
   it("an explicit prefs.sendHour always wins", () => {
     expect(resolvePersonalizedSendHour([8, 8, 8], { sendHour: 20 })).toBe(20);
+  });
+});
+
+describe("first-reminder setup nudge policy", () => {
+  const READY = { hasPet: true, hasReminder: false, permissionGranted: true, alreadyArmed: false };
+
+  it("arms only when there is a pet, we KNOW there is no reminder, permission is granted and it is not armed yet", () => {
+    expect(shouldArmReminderSetupNudge(READY)).toBe(true);
+  });
+
+  it("never while the reminder read is unknown (loading / failed), and never once a reminder exists", () => {
+    expect(shouldArmReminderSetupNudge({ ...READY, hasReminder: undefined })).toBe(false);
+    expect(shouldArmReminderSetupNudge({ ...READY, hasReminder: null })).toBe(false);
+    expect(shouldArmReminderSetupNudge({ ...READY, hasReminder: true })).toBe(false);
+  });
+
+  it("needs a pet, OS permission, and not to be armed already (once per pet)", () => {
+    expect(shouldArmReminderSetupNudge({ ...READY, hasPet: false })).toBe(false);
+    expect(shouldArmReminderSetupNudge({ ...READY, permissionGranted: false })).toBe(false);
+    expect(shouldArmReminderSetupNudge({ ...READY, alreadyArmed: true })).toBe(false);
+  });
+
+  it("is governed by the CARE toggle (the user's own care reminders), not the others", () => {
+    expect(shouldArmReminderSetupNudge(READY, { ...DEFAULT_PREFS, care: false })).toBe(false);
+    expect(shouldArmReminderSetupNudge(READY, { ...DEFAULT_PREFS, streak: false, social: false, milestone: false })).toBe(true);
+  });
+
+  it("lands in the daytime only (09:00-20:00) and is at most two nudges", () => {
+    expect(clampToDaytimeHour(3)).toBe(9);
+    expect(clampToDaytimeHour(23)).toBe(20);
+    expect(clampToDaytimeHour(14)).toBe(14);
+    expect(clampToDaytimeHour(null)).toBe(EVENING_HOUR);
+    expect(REMINDER_NUDGE_DAY_OFFSETS).toEqual([1, 4]);
   });
 });

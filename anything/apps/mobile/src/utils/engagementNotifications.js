@@ -12,12 +12,19 @@
 
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isNotificationPermissionGranted } from "./notifications";
+import {
+  isNotificationPermissionGranted,
+  getNotificationPermissionGranted,
+  getScheduledNotifications,
+} from "./notifications";
 import {
   NOTIF_CATEGORIES,
   shouldSendStreakSave,
+  shouldArmReminderSetupNudge,
   isWithinDailyCap,
   resolvePersonalizedSendHour,
+  clampToDaytimeHour,
+  REMINDER_NUDGE_DAY_OFFSETS,
   EVENING_HOUR,
 } from "./notificationPolicy";
 import {
@@ -175,5 +182,181 @@ async function markStreakSaveSent(dayKey) {
     await AsyncStorage.setItem(STREAK_SAVE_SENT_KEY_PREFIX + dayKey, "1");
   } catch {
     /* best-effort */
+  }
+}
+
+// ── First-reminder setup nudge (local) ─────────────────────────────────────────
+//
+// An owner with a pet but no routine/reminder gets at most TWO gentle local nudges — tomorrow and
+// three days later, in the daytime, at their usual hour — asking if they'd like a hand setting one
+// up. They are armed ONCE per pet and cancelled the moment a reminder exists. Local on purpose: no
+// server scheduler, no timezone dependency, nothing to clean up server-side (docs/notifications-audit.md §5).
+//
+// State per pet (AsyncStorage `pawpi.reminderNudge.v1.<petId>`):
+//   { slots: [{ id, at }], done: boolean }   `at` = ISO time the OS was asked to fire it.
+// "Armed" = the record exists; `done` also stops any future arming (a reminder now exists, or both
+// slots have passed). Every slot still in the future but missing from the OS pending list (cancelled,
+// e.g. by the logout cleanup) is re-armed at the same time, so the nudge survives a re-login.
+// The state key is a plain account key: the owner logout paths clear it with the rest of the account's
+// storage.
+
+const REMINDER_NUDGE_KEY_PREFIX = "pawpi.reminderNudge.v1.";
+export const REMINDER_NUDGE_DATA = { category: NOTIF_CATEGORIES.CARE, nudge: "reminder_setup" };
+
+/** Localized copy. step 0 = the first nudge, 1 = the follow-up. Positive, no guilt, no health claims. */
+export function buildReminderSetupContent(t, { petName, step = 0 } = {}) {
+  const name = petName || t("engageNotif.petFallback");
+  const n = step === 1 ? "2" : "1";
+  return {
+    title: t(`engageNotif.reminderSetupTitle${n}`, { name }),
+    body: t(`engageNotif.reminderSetupBody${n}`, { name }),
+  };
+}
+
+async function readNudgeState(petId) {
+  try {
+    const raw = await AsyncStorage.getItem(REMINDER_NUDGE_KEY_PREFIX + petId);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeNudgeState(petId, state) {
+  try {
+    await AsyncStorage.setItem(REMINDER_NUDGE_KEY_PREFIX + petId, JSON.stringify(state));
+  } catch {
+    /* best-effort */
+  }
+}
+
+function nudgeTime(now, dayOffset, hour) {
+  const at = new Date(now);
+  at.setDate(at.getDate() + dayOffset);
+  at.setHours(hour, 0, 0, 0);
+  return at;
+}
+
+async function scheduleNudgeAt({ content, at, petId }) {
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      sound: true,
+      data: { ...REMINDER_NUDGE_DATA, petId },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: at,
+      channelId: "default",
+    },
+  });
+}
+
+/** Cancel this pet's pending setup nudges and mark the pet done (a reminder now exists). */
+export async function cancelReminderSetupNudges(petId) {
+  if (petId == null) return;
+  const state = await readNudgeState(petId);
+  if (!state || state.done) return;
+  for (const slot of state.slots ?? []) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(slot.id);
+    } catch {
+      /* already fired or gone */
+    }
+  }
+  await writeNudgeState(petId, { slots: [], done: true });
+}
+
+/**
+ * The guarded entry point, called whenever the Feed's activation state is known. It:
+ *   • cancels the pet's pending nudges as soon as a reminder exists (`hasReminder === true`),
+ *   • arms them once when there is no reminder (policy: care toggle, pet, permission, once per pet),
+ *   • re-arms a future slot the OS no longer has.
+ * Does nothing while `hasReminder` is unknown (loading / failed read). Returns the ids it scheduled.
+ *
+ * @param {object} args
+ * @param {function} args.t i18n translator
+ * @param {number|string} args.petId the ACTIVE pet (state and copy are per pet)
+ * @param {string} [args.petName]
+ * @param {boolean|undefined} args.hasReminder true / false / undefined (unknown)
+ * @param {boolean} [args.permissionGranted] defaults to reading the OS permission
+ * @param {Date} [args.now]
+ */
+export async function maybeArmReminderSetupNudge({
+  t,
+  petId,
+  petName,
+  hasReminder,
+  permissionGranted,
+  now = new Date(),
+}) {
+  try {
+    if (petId == null) return [];
+    if (hasReminder === true) {
+      await cancelReminderSetupNudges(petId);
+      return [];
+    }
+    if (hasReminder !== false) return [];
+
+    const state = await readNudgeState(petId);
+    if (state?.done) return [];
+
+    const prefs = await getNotificationPrefs();
+    const granted = permissionGranted ?? (await getNotificationPermissionGranted());
+
+    if (!state) {
+      if (
+        !shouldArmReminderSetupNudge({ hasPet: true, hasReminder, permissionGranted: granted, alreadyArmed: false }, prefs)
+      ) {
+        return [];
+      }
+      const hour = clampToDaytimeHour(resolvePersonalizedSendHour(await getAppOpenHours(), prefs));
+      const slots = [];
+      for (let i = 0; i < REMINDER_NUDGE_DAY_OFFSETS.length; i += 1) {
+        const at = nudgeTime(now, REMINDER_NUDGE_DAY_OFFSETS[i], hour);
+        const id = await scheduleNudgeAt({
+          content: buildReminderSetupContent(t, { petName, step: i }),
+          at,
+          petId,
+        });
+        if (id) slots.push({ id, at: at.toISOString() });
+      }
+      await writeNudgeState(petId, { slots, done: slots.length === 0 });
+      return slots.map((s) => s.id);
+    }
+
+    // Already armed: keep the future slots alive, finish when both have passed. A category the user
+    // has since switched off, or a revoked permission, simply leaves them un-re-armed.
+    if (!shouldArmReminderSetupNudge({ hasPet: true, hasReminder, permissionGranted: granted, alreadyArmed: false }, prefs)) {
+      return [];
+    }
+    const pending = new Set(((await getScheduledNotifications()) ?? []).map((n) => n.identifier));
+    const nextSlots = [];
+    const rearmed = [];
+    for (let i = 0; i < (state.slots ?? []).length; i += 1) {
+      const slot = state.slots[i];
+      const at = new Date(slot.at);
+      if (at.getTime() <= now.getTime()) continue; // already fired (or expired): finished
+      if (pending.has(slot.id)) {
+        nextSlots.push(slot);
+        continue;
+      }
+      const id = await scheduleNudgeAt({
+        content: buildReminderSetupContent(t, { petName, step: i }),
+        at,
+        petId,
+      });
+      if (id) {
+        nextSlots.push({ id, at: slot.at });
+        rearmed.push(id);
+      }
+    }
+    await writeNudgeState(petId, { slots: nextSlots, done: nextSlots.length === 0 });
+    return rearmed;
+  } catch (error) {
+    console.error("[engagementNotifications] reminder-setup nudge failed:", error?.message);
+    return [];
   }
 }

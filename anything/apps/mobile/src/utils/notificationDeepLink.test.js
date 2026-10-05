@@ -99,3 +99,25 @@ describe("registerNotificationTapRouting", () => {
     off();
   });
 });
+
+describe("reminder-setup nudge tap", () => {
+  test("opens the screen where a reminder is created", () => {
+    expect(pushTapRoute({ category: "care", nudge: "reminder_setup", petId: 5 })).toEqual({
+      pathname: "/(tabs)/more/reminders",
+    });
+  });
+
+  test("a normal reminder tap is unchanged", () => {
+    expect(pushTapRoute({ reminderId: "r1", type: "feeding" })).toEqual({
+      pathname: "/(tabs)/health",
+      params: { section: "today" },
+    });
+  });
+
+  test("an OS tap on the nudge navigates there once the app is ready", async () => {
+    markNavigationReady();
+    registerNotificationTapRouting();
+    responseListener(response("n-1", { category: "care", nudge: "reminder_setup", petId: 5 }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/(tabs)/more/reminders" });
+  });
+});
