@@ -47,10 +47,13 @@ cannot be joined to account data.
 
 ## 3. Retention and where it lives
 
-- **Metrics** (counters/histograms by low-cardinality labels such as screen template and app version): Grafana Cloud, retention per
-  Grafana Cloud free-tier defaults, currently about 13 months; verify in the Grafana plan.
-- **Event log lines** (one JSON line per event, with `install_id`/`session_id`): Grafana Cloud Loki, retention per Grafana Cloud
-  free-tier defaults, currently about 14 days for logs; verify in the Grafana plan.
+- **Metrics** (counters/histograms by low-cardinality labels such as screen template and app version; no `install_id`/`session_id`):
+  Grafana Cloud. Grafana's published Free-tier retention for metrics is 14 days (the ~13 months once quoted here is the paid Pro
+  tier, not Free). **Not verified for PawPi's actual plan**: confirm in Grafana Cloud before stating any figure anywhere.
+- **Event log lines** (one JSON line per event, with `install_id`/`session_id`): Grafana Cloud Loki, only when `GRAFANA_LOKI_*` is
+  set on Railway. Grafana's published Free-tier retention for logs is 14 days. **Not verified for PawPi's actual plan.**
+- **No retention period is stated in the live privacy policy** on purpose (the existing general retention wording stays); do not
+  add one until the plan's retention has been confirmed.
 - The server does not keep events anywhere else (no database table).
 - **Remote kill switch:** `GET /api/telemetry/config` -> `{ enabled, sampleRate }`; setting `TELEMETRY_INGEST_ENABLED=false` on the
   server stops collection within minutes and discards anything still sent.
@@ -73,9 +76,8 @@ uninstall, so "delete the app" is NOT a guaranteed way to drop the id on iOS: th
 > take to load, and technical errors) together with the app version, operating-system version, platform and language. These events
 > are linked to a random identifier generated on your device that is not connected to your account, name, email, pets, content,
 > location or advertising identifier, and we do not use them for advertising or to track you across other companies' apps or
-> websites. Event details are kept for a short period (about 14 days) and aggregated statistics for up to about 13 months. You
-> can turn this off at any time in Settings -> "Help improve PawPi (anonymous)"; doing so stops collection and deletes the random
-> identifier from your device.
+> websites. You can turn this off at any time in Settings -> "Help improve PawPi (anonymous)"; doing so stops collection and
+> deletes the random identifier from your device.
 
 **Español**
 
@@ -84,11 +86,11 @@ uninstall, so "delete the app" is NOT a guaranteed way to drop the id on iOS: th
 > las pantallas y errores técnicos) junto con la versión de la app, la versión del sistema operativo, la plataforma y el idioma.
 > Estos eventos se asocian a un identificador aleatorio generado en tu dispositivo que no está vinculado a tu cuenta, nombre,
 > correo, mascotas, contenido, ubicación ni identificador publicitario, y no los usamos para publicidad ni para rastrearte en apps
-> o sitios web de otras empresas. Los detalles de los eventos se conservan por un período corto (unos 14 días) y las estadísticas
-> agregadas hasta unos 13 meses. Puedes desactivarlo en cualquier momento en Ajustes -> "Ayudar a mejorar PawPi (anónimo)"; al
+> o sitios web de otras empresas. Puedes desactivarlo en cualquier momento en Ajustes -> "Ayudar a mejorar PawPi (anónimo)"; al
 > hacerlo se detiene la recopilación y se elimina el identificador aleatorio de tu dispositivo.
 
-(Retention figures must match section 3 and be re-verified against the Grafana Cloud plan before the policy goes live.)
+(This draft deliberately states no retention period. The live policy (section 5 of `privacy.en.md` / `privacy.es.md`, PR #621) also
+states none; if a figure is ever added, it must come from a verified Grafana Cloud plan and match section 3.)
 
 ## 6. App Store Connect "App Privacy" answers (HUMAN ACTION: set when build 25 is submitted)
 
@@ -118,5 +120,5 @@ App Store "Privacy Nutrition Label" shows Usage Data + Diagnostics as "Data Not 
 ## 7. Checklist for the human owner
 - [ ] Legal review of section 5, then publish in EN + ES on the live privacy policy.
 - [ ] Update `docs/app-store-privacy-data-map.md` and App Store Connect (section 6) with build 25.
-- [ ] Confirm Grafana Cloud retention (metrics ~13 months, logs ~14 days) on the current plan; adjust sections 3 and 5 if different.
+- [ ] Confirm Grafana Cloud retention on the current plan (published Free tier: metrics 14 days, logs 14 days); only then consider stating a figure in sections 3 and 5.
 - [ ] Set `GRAFANA_LOKI_URL/USER/TOKEN` on Railway for event log lines (metrics work without them).

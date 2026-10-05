@@ -54,10 +54,15 @@ const components = {
     <p style={{ margin: "0 0 14px", lineHeight: 1.65 }}>{children}</p>
   ),
   ul: ({ children }) => (
-    <ul style={{ margin: "0 0 16px", paddingLeft: 22, lineHeight: 1.65 }}>{children}</ul>
+    // The app's CSS reset sets list-style: none on lists; restore markers for legal copy.
+    <ul style={{ margin: "0 0 16px", paddingLeft: 22, lineHeight: 1.65, listStyleType: "disc" }}>
+      {children}
+    </ul>
   ),
   ol: ({ children }) => (
-    <ol style={{ margin: "0 0 16px", paddingLeft: 22, lineHeight: 1.65 }}>{children}</ol>
+    <ol style={{ margin: "0 0 16px", paddingLeft: 22, lineHeight: 1.65, listStyleType: "decimal" }}>
+      {children}
+    </ol>
   ),
   li: ({ children }) => <li style={{ margin: "4px 0" }}>{children}</li>,
   strong: ({ children }) => (

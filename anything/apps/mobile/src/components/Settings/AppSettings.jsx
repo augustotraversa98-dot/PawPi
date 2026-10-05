@@ -22,6 +22,9 @@ import {
   Star,
   DollarSign,
   UserPlus,
+  ShieldCheck,
+  FileText,
+  ScrollText,
 } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
@@ -42,7 +45,13 @@ import {
   getBusinessNotificationPrefs,
   setBusinessCategoryEnabled,
 } from "@/utils/businessNotificationPrefs";
-import { SUPPORT_EMAIL, HELP_CENTER_URL } from "@/constants/legal";
+import {
+  SUPPORT_EMAIL,
+  HELP_CENTER_URL,
+  PRIVACY_POLICY_URL,
+  TERMS_OF_SERVICE_URL,
+  EULA_URL,
+} from "@/constants/legal";
 import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
@@ -529,6 +538,14 @@ export default function AppSettings({ mode = "petOwner" }) {
     }
   };
 
+  // Privacy Policy / Terms / EULA → the hosted pages on www.pawpi.info (constants/legal.js). A row only
+  // renders when its URL is configured, so there is never a dead link.
+  const openLegalUrl = (url) => {
+    Linking.openURL(url).catch(() =>
+      Alert.alert(t("settings.privacyPolicy"), t("common.pleaseTryAgain")),
+    );
+  };
+
   const SettingRow = ({
     label,
     icon: Icon,
@@ -715,6 +732,30 @@ export default function AppSettings({ mode = "petOwner" }) {
         <SectionCard>
           <SettingRow label={t("settings.helpCenter")} icon={HelpCircle} value="→" onPress={openHelpCenter} />
           <SettingRow label={t("settings.contactUs")} icon={Globe} value="→" onPress={openContactUs} />
+          {PRIVACY_POLICY_URL ? (
+            <SettingRow
+              label={t("settings.privacyPolicy")}
+              icon={ShieldCheck}
+              value="→"
+              onPress={() => openLegalUrl(PRIVACY_POLICY_URL)}
+            />
+          ) : null}
+          {TERMS_OF_SERVICE_URL ? (
+            <SettingRow
+              label={t("settings.termsOfService")}
+              icon={FileText}
+              value="→"
+              onPress={() => openLegalUrl(TERMS_OF_SERVICE_URL)}
+            />
+          ) : null}
+          {EULA_URL ? (
+            <SettingRow
+              label={t("settings.eula")}
+              icon={ScrollText}
+              value="→"
+              onPress={() => openLegalUrl(EULA_URL)}
+            />
+          ) : null}
         </SectionCard>
 
         <Text
