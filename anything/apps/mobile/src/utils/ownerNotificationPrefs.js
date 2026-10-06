@@ -36,3 +36,45 @@ export async function setOwnerCategoryEnabled(category, enabled) {
     return false;
   }
 }
+
+// ── Quiet hours (notifications v2, PR 3c) ──────────────────────────────────────────────────────────────────
+// While the owner's local clock is inside the window the SERVER does not ring their phone (the in-app inbox is
+// unaffected). Default 22:00-08:00, on. The endpoint answers {skipped:"disabled"} while the server flag is off,
+// which is how the app knows to hide the control (null here).
+
+/** @returns {Promise<{enabled:boolean,start:number,end:number}|null>} */
+export async function getQuietHours() {
+  try {
+    const res = await fetch("/api/notification-prefs/quiet-hours");
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d?.enabled !== "boolean" || !Number.isInteger(d.start) || !Number.isInteger(d.end)) return null;
+    return { enabled: d.enabled, start: d.start, end: d.end };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist a partial quiet-hours change ({enabled?, start?, end?}). Resolves the saved settings, or null on failure.
+ */
+export async function setQuietHours(patch) {
+  try {
+    const res = await fetch("/api/notification-prefs/quiet-hours", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d?.enabled !== "boolean") return null;
+    return { enabled: d.enabled, start: d.start, end: d.end };
+  } catch {
+    return null;
+  }
+}
+
+/** "22" -> "22:00" (24-hour clock, as everywhere else in the app). */
+export function formatHour(h) {
+  return `${String(((h % 24) + 24) % 24).padStart(2, "0")}:00`;
+}

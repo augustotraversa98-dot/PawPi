@@ -8,6 +8,10 @@ import sql from "@/app/api/utils/sql";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/requestContext", () => ({
+  withRequestContext: (fn) => fn,
+  withSavepoint: (fn) => fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const put = (body) =>
@@ -23,33 +27,66 @@ afterEach(() => {
   delete process.env.NOTIF_V2_ENABLED;
 });
 
-describe("GET — owner_prefs", () => {
-  it("flag OFF: payload is exactly as before (no owner_prefs key — the app hides the controls)", async () => {
+const DEFAULTS = {
+  // transactional: ON
+  owner_bookings: true,
+  owner_adoption: true,
+  owner_walk_requests: true,
+  owner_lost_alerts: true,
+  // promotional: OFF until the owner opts in
+  weekly_digest_push: false,
+  winback_push: false,
+  winback_email: false,
+};
+
+describe("GET — owner_prefs + quiet_hours", () => {
+  it("flag OFF: payload is exactly as before (no v2 keys — the app hides the controls)", async () => {
     sql.mockResolvedValueOnce([{ id: 7 }]);
     sql.mockResolvedValueOnce([]);
     const json = await (await GET()).json();
     expect(Object.keys(json)).toEqual(["prefs"]);
+    expect(sql).toHaveBeenCalledTimes(2); // owner + prefs only: no notification_settings query
   });
 
-  it("flag ON: every promotional category (win-back email, digest push, win-back push) is OFF by default → explicit opt-in", async () => {
+  it("flag ON: transactional categories default ON, promotional (push + email) default OFF", async () => {
     process.env.NOTIF_V2_ENABLED = "true";
     sql.mockResolvedValueOnce([{ id: 7 }]);
+    sql.mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([]); // notification_settings: no row
+    const json = await (await GET()).json();
+    expect(json.owner_prefs).toEqual(DEFAULTS);
+    expect(json.quiet_hours).toEqual({ enabled: true, start: 22, end: 8 });
+  });
+
+  it("flag ON: reflects stored opt-ins / opt-outs and a stored quiet-hours row", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
+    sql.mockResolvedValueOnce([{ id: 7 }]);
+    sql.mockResolvedValueOnce([
+      { category: "winback_email", enabled: true },
+      { category: "owner_bookings", enabled: false },
+    ]);
+    sql.mockResolvedValueOnce([{ quiet_hours_enabled: false, quiet_start: 23, quiet_end: 7 }]);
+    const json = await (await GET()).json();
+    expect(json.owner_prefs).toEqual({ ...DEFAULTS, winback_email: true, owner_bookings: false });
+    expect(json.quiet_hours).toEqual({ enabled: false, start: 23, end: 7 });
+  });
+
+  it("flag ON, notification_settings missing (0132 not applied): still 200 with the default quiet hours", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
+    sql.mockResolvedValueOnce([{ id: 7 }]);
+    sql.mockResolvedValueOnce([]);
+    sql.mockRejectedValueOnce(Object.assign(new Error("missing"), { code: "42P01" }));
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect((await res.json()).quiet_hours).toEqual({ enabled: true, start: 22, end: 8 });
+  });
+
+  it("flag ON, no profile yet: defaults, nothing queried beyond the lookup", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
     sql.mockResolvedValueOnce([]);
     const json = await (await GET()).json();
-    expect(json.owner_prefs).toEqual({ winback_email: false, weekly_digest_push: false, winback_push: false });
-  });
-
-  it("flag ON: reflects a stored opt-in", async () => {
-    process.env.NOTIF_V2_ENABLED = "true";
-    sql.mockResolvedValueOnce([{ id: 7 }]);
-    sql.mockResolvedValueOnce([{ category: "winback_email", enabled: true }]);
-    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: true, weekly_digest_push: false, winback_push: false });
-  });
-
-  it("flag ON, no profile yet: still defaults OFF", async () => {
-    process.env.NOTIF_V2_ENABLED = "true";
-    sql.mockResolvedValueOnce([]);
-    expect((await (await GET()).json()).owner_prefs).toEqual({ winback_email: false, weekly_digest_push: false, winback_push: false });
+    expect(json.owner_prefs).toEqual(DEFAULTS);
+    expect(json.quiet_hours).toEqual({ enabled: true, start: 22, end: 8 });
   });
 });
 

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
 // Report a sighting on a lost pet (ticket 2.48). Any authed user can submit; RLS pins the
 // reporter to the caller and requires the report to be active. On success, best-effort notify
@@ -47,10 +48,18 @@ async function POST(request, { params }) {
     try {
       const owner = await sql`SELECT owner_user_id FROM lost_reports WHERE id = ${reportId}`;
       if (owner.length > 0 && owner[0].owner_user_id !== userId) {
-        await sql`
+        const [alert] = await sql`
           SELECT app_notify(${owner[0].owner_user_id}, ${userId}, 'lost_alert', ${String(reportId)},
-            'New sighting reported for your lost pet')
+            'New sighting reported for your lost pet') AS id
         `;
+        // Phone push (flag NOTIF_V2_ENABLED; owner prefs / quiet hours / cap) after the bell row.
+        if (alert?.id != null) {
+          await pushForOwnerNotification({
+            recipient: owner[0].owner_user_id,
+            type: "lost_alert",
+            subjectRef: String(reportId),
+          });
+        }
       }
     } catch (notifyErr) {
       console.error("[lost-sightings] owner notify failed (non-blocking):", notifyErr.message);

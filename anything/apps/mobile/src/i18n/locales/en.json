@@ -2093,7 +2093,19 @@
     "weeklyDigestPush": "Weekly summary notification",
     "weeklyDigestPushHint": "A friendly recap of your pet's week, once a week. Off unless you turn it on.",
     "winbackPush": "Occasional friendly notifications",
-    "winbackPushHint": "A gentle hello now and then with something nice to come back to. Off unless you turn it on."
+    "winbackPushHint": "A gentle hello now and then with something nice to come back to. Off unless you turn it on.",
+    "ownerBookings": "Booking updates",
+    "ownerBookingsHint": "When a booking is confirmed, changed or cancelled.",
+    "ownerAdoption": "Adoption updates",
+    "ownerAdoptionHint": "When there's a decision on your adoption application.",
+    "ownerWalkRequests": "Walker confirmations",
+    "ownerWalkRequestsHint": "When a walker accepts your request.",
+    "ownerLostAlerts": "Lost pet alerts",
+    "ownerLostAlertsHint": "News about a lost pet you follow.",
+    "quietHours": "Quiet hours",
+    "quietHoursHint": "No phone notifications while you're resting. Everything still shows up in your inbox in the app.",
+    "quietFrom": "From",
+    "quietUntil": "Until"
   },
   "onboarding": {
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",

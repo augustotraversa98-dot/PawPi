@@ -10,6 +10,12 @@
 // A category is exposed by GET/PUT /api/notification-prefs only while NOTIF_V2_ENABLED is on.
 
 export const OWNER_NOTIFICATION_CATALOG = [
+  // PR 3c — TRANSACTIONAL: a reply to something the owner did or asked for. Default ON.
+  { key: "owner_bookings", channel: "push", promotional: false, defaultEnabled: true },
+  { key: "owner_adoption", channel: "push", promotional: false, defaultEnabled: true },
+  { key: "owner_walk_requests", channel: "push", promotional: false, defaultEnabled: true },
+  { key: "owner_lost_alerts", channel: "push", promotional: false, defaultEnabled: true },
+  // PROMOTIONAL (opt-in, default OFF):
   { key: "winback_email", channel: "email", promotional: true, defaultEnabled: false },
   // PR 3b — the weekly digest and the win-back become a real PHONE push only for owners who opt in.
   { key: "weekly_digest_push", channel: "push", promotional: true, defaultEnabled: false },

@@ -336,6 +336,14 @@ ACTION 1).
 > only writers. The 0109 readers are untouched. Verify: `supabase/verify_0131.sql` (all PASS). Proven in
 > `notifications-v2-foundation.integration.test.ts` (incl. idempotent re-apply).
 
+> **0132** is notifications v2, PR 3c (`docs/notifications-v2-design.md`). ADDITIVE; **HARNESS-ONLY, hand-applied after
+> merge**, inert until `NOTIF_V2_ENABLED` is on. One new table `notification_settings` (PK `owner_user_id` →
+> `user_profiles.id`; `quiet_hours_enabled` default true, `quiet_start` 22, `quiet_end` 8, hours CHECKed 0-23),
+> ENABLE+FORCE RLS with one own-row `FOR ALL` policy; the sender (which runs as the actor / with no identity) reads a
+> recipient's settings + zone through the DEFINER `app_recipient_notification_settings` (defaults when no row).
+> Verify: `supabase/verify_0132.sql` (all PASS). Proven in `notifications-v2-owner-push.integration.test.ts`
+> (idempotent re-apply, RLS, and the acceptance matrix: category off / quiet hours / cap / invalid token ⇒ no push).
+
 Still deferred: **no seed data.**
 
 ---

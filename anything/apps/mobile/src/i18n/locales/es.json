@@ -2093,7 +2093,19 @@
     "weeklyDigestPush": "Notificación del resumen semanal",
     "weeklyDigestPushHint": "Un resumen lindo de la semana de tu mascota, una vez por semana. Está apagada hasta que la actives.",
     "winbackPush": "Notificaciones amables de vez en cuando",
-    "winbackPushHint": "Un saludo de vez en cuando con algo lindo para retomar. Están apagadas hasta que las actives."
+    "winbackPushHint": "Un saludo de vez en cuando con algo lindo para retomar. Están apagadas hasta que las actives.",
+    "ownerBookings": "Novedades de reservas",
+    "ownerBookingsHint": "Cuando una reserva se confirma, cambia o se cancela.",
+    "ownerAdoption": "Novedades de adopción",
+    "ownerAdoptionHint": "Cuando hay una decisión sobre tu solicitud de adopción.",
+    "ownerWalkRequests": "Confirmaciones de paseo",
+    "ownerWalkRequestsHint": "Cuando un paseador acepta tu solicitud.",
+    "ownerLostAlerts": "Alertas de mascota perdida",
+    "ownerLostAlertsHint": "Novedades sobre una mascota perdida que seguís.",
+    "quietHours": "Horas de descanso",
+    "quietHoursHint": "No te enviamos notificaciones al celular mientras descansás. Todo sigue apareciendo en tu bandeja dentro de la app.",
+    "quietFrom": "Desde",
+    "quietUntil": "Hasta"
   },
   "onboarding": {
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",

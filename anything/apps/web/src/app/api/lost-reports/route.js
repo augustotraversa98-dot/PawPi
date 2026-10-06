@@ -3,6 +3,11 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
+
+// Notifications v2 (flag NOTIF_V2_ENABLED): at most this many followers get a PHONE push per activation (everyone
+// still gets the in-app alert). Bounds the work done inside the request transaction.
+const LOST_ALERT_PUSH_LIMIT = 100;
 
 // Lost & Found (ticket 2.48).
 //   GET            → browse ACTIVE alerts (optional lat/lng/radiusKm bounding box)
@@ -131,11 +136,17 @@ async function POST(request) {
         JOIN pets p ON p.id = pf.follower_pet_id
         WHERE pf.followed_pet_id = ${petId} AND p.owner_user_id <> ${userId}
       `;
+      let pushed = 0;
       for (const f of followers) {
-        await sql`
+        const [alert] = await sql`
           SELECT app_notify(${f.uid}, ${userId}, 'lost_alert', ${String(petId)},
-            ${`${petName} is missing${body.lastSeenArea ? ` near ${body.lastSeenArea}` : ""}. Keep an eye out!`})
+            ${`${petName} is missing${body.lastSeenArea ? ` near ${body.lastSeenArea}` : ""}. Keep an eye out!`}) AS id
         `;
+        // The bell row is written first; the phone push (flag-gated, owner prefs / quiet hours / cap) follows.
+        if (alert?.id != null && pushed < LOST_ALERT_PUSH_LIMIT) {
+          pushed += 1;
+          await pushForOwnerNotification({ recipient: f.uid, type: "lost_alert", subjectRef: String(petId) });
+        }
       }
     } catch (notifyErr) {
       console.error("[lost-reports] follower alert failed (non-blocking):", notifyErr.message);

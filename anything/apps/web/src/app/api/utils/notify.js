@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { pushForNotification } from "@/app/api/utils/push";
+import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
 // Fire-and-don't-block notification insert (ticket 2.26). Inserts a row via the
 // app_notify() SECURITY DEFINER helper so the ACTOR can create a notification for a
@@ -31,6 +32,10 @@ export async function safeNotify({ recipient, actor, type, subjectRef, body }) {
     // (self-notify, or a disabled PUSH category) — nothing to ring.
     if (notificationId == null) return;
     await pushForNotification({ recipient, actor, type, subjectRef, body });
+    // Notifications v2 (flag NOTIF_V2_ENABLED): pet-OWNER events (booking confirmed/declined/cancelled, adoption
+    // decisions, walker accepted) reach the phone too, subject to the owner's category pref, quiet hours and daily
+    // cap. A no-op (no query) while the flag is off or for any type that is not an owner push type.
+    await pushForOwnerNotification({ recipient, type, subjectRef });
   } catch (error) {
     // Non-fatal: log and move on so the underlying action still succeeds.
     console.error("[safeNotify] non-fatal:", error?.message);

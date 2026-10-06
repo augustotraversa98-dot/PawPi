@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
 
 // GET /api/notifications — the caller's own notifications, newest first, paginated
 // (ticket 2.26). RECIPIENT-SCOPED: the WHERE filter + the owner RLS policy both bind to
@@ -43,6 +44,20 @@ async function GET(request) {
       ORDER BY n.created_at DESC, n.id DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
+
+    // Notifications v2 (flag): how many of the caller's DB notifications are unread, so the app's bell badge counts
+    // them (it used to count only local reminders + pending access requests). Absent while the flag is off, which is
+    // how the app knows to keep the old badge. Soft: a failed count never fails the list.
+    if (isNotifV2Enabled()) {
+      const unread = await softV2(async () => {
+        const rows = await sql`
+          SELECT count(*)::int AS n FROM notifications
+          WHERE recipient_user_id = ${userId} AND read_at IS NULL
+        `;
+        return rows[0]?.n ?? 0;
+      }, null);
+      if (unread !== null) return Response.json({ notifications, unread_count: unread });
+    }
 
     return Response.json({ notifications });
   } catch (error) {
