@@ -50,12 +50,15 @@ Declared in App Store Connect as **"Data Not Linked to You"** and **not used to 
   store, never tied to the account or any device identifier, and not shared with third parties. If Apple
   review pushes back, the conservative alternative is to also tick **Identifiers → Device ID** (not linked,
   not tracking, purpose Analytics).
+- **Other Diagnostic Data includes client errors:** the app reports JS client errors by **error class name
+  only** (no message, no stack). No native crash logs and no crash-reporting SDK are used, which is why
+  **Crash Data is not declared**.
 - The user can turn it off any time (Settings → "Help improve PawPi (anonymous)"): collection stops and the
   `install_id` is deleted. That choice survives sign-out / account deletion.
 - Never collected by telemetry: account id, email, name, pet data, content, messages, search text, location
   (precise or coarse), IP (used only as a salted hash in memory for rate limiting), IDFA/IDFV.
-- Retention (verify against the Grafana Cloud plan): event lines about 14 days, aggregated metrics about 13
-  months.
+- Retention: no specific period is stated. It is set by the hosting/monitoring provider's plan and is
+  deliberately not stated in the privacy policy (`docs/privacy/telemetry.md`).
 
 ## Explicitly NOT collected / declared
 - **Financial Info (card/wallet):** handled by the payment processors (MercadoPago / Binance /
