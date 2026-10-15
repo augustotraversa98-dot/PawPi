@@ -8,7 +8,7 @@ _Last updated: 2026-10-04 (night run steps A-E; night run 3: server rules resume
 
 **What is live vs. what still needs you.** Server metrics, client-telemetry ingest, the alert relay and the autofix loop are live in
 production. The dashboards, 15 new alert rules, routing, synthetic checks, structured logs and deploy markers are merged **as code**
-but start working only after the human actions in section 14 (Grafana apply, Railway env vars, app build 25). The three original alert
+but start working only after the human actions in section 14 (Grafana apply, Railway env vars, app build 26). The three original alert
 rules (section 5.4) have been live since before the night run.
 
 Contents: 1 Architecture - 2 Tiers and alerts - 3 Signals - 4 Dashboards - 5 Alert rules, routing, synthetics - 6 Environment variables -
@@ -20,7 +20,7 @@ Contents: 1 Architecture - 2 Tiers and alerts - 3 Signals - 4 Dashboards - 5 Ale
 ## 1. Architecture
 
 ```
-  iPhone app (build 25+)                    Railway: PawPi web/API  (React Router + Hono, one instance)
+  iPhone app (build 26+)                    Railway: PawPi web/API  (React Router + Hono, one instance)
    anonymous allowlisted events               instrumentation.mjs: OpenTelemetry SDK (metrics + 20% traces)
         │  POST /api/telemetry/events         Hono middleware (__create/index.ts), after each response:
         ▼                                       - pawpi_http_* metrics (+ the legacy http.server.request.duration)
@@ -70,7 +70,7 @@ or slow a request (fire-and-forget, try/catch, timeouts, bounded queues; contrac
 | Lints + the coverage guard (run in `npm test`) | `anything/apps/web/src/observability/` |
 | Mobile SDK | `anything/apps/mobile/src/telemetry/` |
 
-Paths without a prefix are under `anything/apps/web/`. Everything above is merged to `main` (so deployed by Railway); the mobile SDK reaches users only with app build 25, and the structured logs / deploy annotation are no-ops until the Railway env vars of section 6.1 exist.
+Paths without a prefix are under `anything/apps/web/`. Everything above is merged to `main` (so deployed by Railway); the mobile SDK reaches users only with app build 26, and the structured logs / deploy annotation are no-ops until the Railway env vars of section 6.1 exist.
 
 ---
 
@@ -123,7 +123,7 @@ Notes on the rules:
   (the structured access logs of section 3.2 carry the exact `status` per request once they flow).
 - Payments use the HTTP metrics of the `payments` and `shop` areas because the contract has no payment counters (the legacy
   `pawpi.payment.*` metrics keep feeding the legacy `PaymentFailuresSpike`).
-- `P2-TelemetrySilent` only becomes meaningful after **app build 25** ships. Before that there are no client series, the query is empty and the
+- `P2-TelemetrySilent` only becomes meaningful after **app build 26** ships. Before that there are no client series, the query is empty and the
   rule stays Normal (no-data -> OK). It needs at least 10 sessions in the previous 7 days to exist at all.
 - `P2-FreeTierUsage` reads `grafanacloud_instance_active_series` from the `grafanacloud-usage` datasource (placeholder `${DS_USAGE}`, resolved by
   name; the apply script SKIPS the rule with a message if no such datasource exists). The metric name comes from Grafana's docs and was not queried
@@ -236,7 +236,7 @@ org-wide, and the Deploys annotation query of `pawpi-overview` (built-in Grafana
 
 ### 3.4 Client telemetry ingest (night-run Step B)
 
-Anonymous behaviour telemetry from the mobile app (ships with app build 25; the endpoints are live earlier and simply idle). Full privacy/retention
+Anonymous behaviour telemetry from the mobile app (ships with app build 26; the endpoints are live earlier and simply idle). Full privacy/retention
 description: `docs/privacy/telemetry.md`. Names/labels/events are the contract; the allowlist is `src/lib/telemetry/registry.js`, mirrored byte-for-byte into
 the mobile app (a web test fails if they differ). Mobile client behaviour (anonymous `install_id`/`session_id`, fail-closed until `GET /api/telemetry/config`
 says `enabled`, Settings opt-out, bounded queue) is described in `docs/privacy/telemetry.md` and PROGRESS.md.
@@ -294,7 +294,7 @@ screen paths only — never add PII to this beacon.
 
 Eleven dashboards live in the repo as JSON (`observability/grafana/dashboards/*.json`, folder **PawPi** in Grafana) and are pushed by
 `scripts/observability/apply-grafana.mjs`. They chart ONLY metrics from the telemetry contract and the Loki streams `job="pawpi-client"` / `job="pawpi-web"`; every panel
-has a one-line description saying what a bad value means and what to do. Panels read "No data" until the servers/clients actually report (client panels need app build 25+;
+has a one-line description saying what a bad value means and what to do. Panels read "No data" until the servers/clients actually report (client panels need app build 26+;
 `job="pawpi-web"` panels need server logs shipped to Loki, section 3.2). The old dashboard "PawPi - API health (RED)" (`docs/observability/dashboard.json`) is untouched.
 
 | uid | Purpose |
@@ -479,7 +479,7 @@ legitimately empty). Order:
 1. **Server rules first** (data flowing since Step A): `P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`. **Done as code on 2026-10-04 (night run 3, #610): `isPaused: false` in `p1-critical.json`, applied, live state verified.** They are the alerts that can start the automatic fix loop (section 17). Watch a day for flaps.
 2. **Business/route rules once there is real traffic:** `P1-SigninFailureSpike`, `P1-SignupCollapse` (needs 7 days of history), `P1-PaymentsFailureSpike`, `P1-Route4xxBurst`.
 3. **P2 only after the digest exists:** apply with `ALERT_DIGEST_EMAIL` set (creates `pawpi-digest` + the P2 route), then `P2-SlowRoutesP95`, and `P2-FreeTierUsage` after checking its metric.
-4. **Client rules only after app build 25** has been live for a few days: `P1-ClientCrashRate`, `P1-ClientApi5xxShare`, `P2-NavUnexpectedRedirect`, `P2-ActivationFunnelDrop`, and last `P2-TelemetrySilent`.
+4. **Client rules only after app build 26** has been live for a few days: `P1-ClientCrashRate`, `P1-ClientApi5xxShare`, `P2-NavUnexpectedRedirect`, `P2-ActivationFunnelDrop`, and last `P2-TelemetrySilent`.
 
 If a rule is noisy: raise its threshold/`for` in the JSON and re-apply (the resume state survives), or pause it again in the UI. To resume another rule **as code**, set its `isPaused` to `false` in a PR (and add it to the allow-list in `alerts.lint.test.js` / `apply-alerts.test.js`), merge, dry-run, `--apply --sections alerts`, dry-run again (0 changes). To stop a rule paused by the repo file from being resumed again, change the file back to `true` **and** pause it in the UI (`true` never pauses a live rule).
 
@@ -557,7 +557,7 @@ The guard is proven by negative tests on temp-dir fixtures (a new route / screen
 - **Google sign-in has no `fail` outcome:** a denied/failed Google attempt never reaches the auth adapter, so `pawpi_business_events_total{method="google"}` only counts successes; `P1-SigninFailureSpike` cannot see Google failures.
 - **Creation events only count successes** (`ok`); creation failures are visible as 5xx by `area`.
 - **`status_class` cannot tell a 404 from a 401**, hence "4xx burst"; the exact `status` is in the access logs.
-- **Client telemetry exists only from app build 25**; before that all client panels read "No data" and client rules stay Normal. Native Hermes has no `unhandledrejection`, so `error{kind:promise}` is web-only; the iOS tab bar is native so `tab_*` taps are not emitted (the tab opening is a `screen_view`); the "misrouted API returned HTML" case counts as a `network` error.
+- **Client telemetry exists only from app build 26**; before that all client panels read "No data" and client rules stay Normal. Native Hermes has no `unhandledrejection`, so `error{kind:promise}` is web-only; the iOS tab bar is native so `tab_*` taps are not emitted (the tab opening is a `screen_view`); the "misrouted API returned HTML" case counts as a `network` error.
 - **Client durations are bucket-resolution**; `app_version` is capped at 20 values per process then `other`.
 - **LogQL limits:** no screen -> screen Sankey; D1/D7/D30 are rolling-activity return, D30 needs Loki retention beyond ~14 days; distinct-install counts are exact only below ~500 series per query.
 - **Limiter and sampling state is per process and in memory** (one Railway instance today); nothing survives a restart. The deploy annotation can repeat for a restart of the same commit.
@@ -580,7 +580,7 @@ The guard is proven by negative tests on temp-dir fixtures (a new route / screen
 | Log `Resource not accessible by personal access token (createIssue)` | PAT missing Issues permission | Add **Issues: Read and write** to the fine-grained PAT |
 | Alert flips to "NoData" and emails you when idle | Query returns empty with no traffic | Set the rule's **no-data -> Normal** (all new rules already are) |
 | `{job="pawpi-web"}` is empty in Loki | `GRAFANA_LOKI_*` missing (all three needed), `LOG_SHIP_ENABLED=false`, `LOG_LEVEL` above the traffic, or sampling at 0 | Check the Railway variables; set `LOG_STDOUT=true` temporarily to see the lines in Railway logs; `curl` any route and wait ~5 s for the batch |
-| `{job="pawpi-client"}` empty but ingest returns 204 | Same Loki variables missing, or no app build 25 yet, or `TELEMETRY_INGEST_ENABLED=false` | Section 3.4 verify-with-curl; check `pawpi_telemetry_ingest_total` by result |
+| `{job="pawpi-client"}` empty but ingest returns 204 | Same Loki variables missing, or no app build 26 yet, or `TELEMETRY_INGEST_ENABLED=false` | Section 3.4 verify-with-curl; check `pawpi_telemetry_ingest_total` by result |
 | No deploy line on `pawpi-overview` | `GRAFANA_URL` / token missing, token lacks annotations write, `RAILWAY_GIT_COMMIT_SHA` absent, or the dashboard time range is wrong | Look for `[deploy-annotation]` in the Railway start logs (it prints status only); curl the endpoint with the token by hand |
 | Dry run shows `update` for every dashboard on the second run | Real Grafana normalises stored JSON | Harmless (idempotent); rerun `--apply` if in doubt |
 | `npm test` fails in the coverage guard | A new route/screen/funnel step/dashboard/alert is not covered | Read the failure line: it names the file and the fix (section 11) |
@@ -594,7 +594,7 @@ The guard is proven by negative tests on temp-dir fixtures (a new route / screen
 1. **Railway env vars** (names in 6.1): add `GRAFANA_LOKI_URL` + `GRAFANA_LOKI_USER` + `GRAFANA_LOKI_TOKEN` (Grafana Cloud -> Loki "Send logs" details), `GRAFANA_URL` and `GRAFANA_ANNOTATION_TOKEN` (service-account token limited to annotations write). Redeploy. Verify with 3.2/3.3/3.4.
 2. **Grafana apply:** dry run, then `--apply`, for dashboards, then alerts + policies (with `ALERT_DIGEST_EMAIL`), then synthetics (7). A second dry run must read all `unchanged`.
 3. **Rules stay paused** until data flows; un-pause in the order of section 8; verify `grafanacloud_instance_active_series` before `P2-FreeTierUsage`.
-4. **Ship app build 25** (client telemetry). Before it ships: update **App Store Connect -> App Privacy** per `docs/privacy/telemetry.md`; update the **live privacy policy** text and `docs/app-store-privacy-data-map.md` at that time (they currently say "no Diagnostics/Usage").
+4. **App build 26** (client telemetry) — submitted for App Store review. **App Store Connect -> App Privacy** is published per `docs/privacy/telemetry.md` section 6 (Product Interaction, Performance Data, Other Diagnostic Data; no Crash Data) and `docs/app-store-privacy-data-map.md` matches; confirm the **live privacy policy** carries the matching paragraph.
 5. **Optional:** Grafana mobile push for P1 on Augusto (5.3); scripted sign-in journey with a clearly labelled test account (5.6).
 6. Tracked in `docs/roadmap.md` and `docs/test-backlog.md`.
 

@@ -417,10 +417,11 @@ The code for metrics, dashboards, alerts, logs and deploy markers is merged; thi
 
 - [x] **Railway env vars** *(done 2026-10-05: the `GRAFANA_LOKI_*` variables are set in production and event logs reach Grafana, verified by the owner in Grafana; the deploy-marker check was not separately reported)*: `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (a service-account token limited to annotations write). Redeploy. Check: `{job="pawpi-web"}` shows lines in Grafana Explore → Loki after a few requests, and `pawpi-overview` shows a deploy marker after the next deploy.
 - **Traces (2026-10-05):** spans are now scrubbed by `SpanScrubber` (#622) before export (no client IPs, user-agents coarsened, no query strings or raw id paths). Spans still carry a connection-level `peer.ipv4` that is Grafana's own server (the OTLP endpoint), not user data.
+- [x] **Notifications v2 server side** *(done: migrations `0131` + `0132` applied and verified on production; `NOTIF_V2_ENABLED=true` on Railway; see `docs/notifications-v2-design.md`)*.
 - [ ] **Apply to Grafana** (`GRAFANA_URL` + `GRAFANA_SA_TOKEN`; dry run first, then `--apply`; a second dry run must read all `unchanged`):
   `node scripts/observability/apply-grafana.mjs` / `--apply` (dashboards) · `--sections alerts,policies` with `ALERT_DIGEST_EMAIL=you@…` (rules arrive PAUSED) · `--sections synthetics` with `GRAFANA_SM_URL` + `GRAFANA_SM_TOKEN`.
-- [ ] **Ship app build 25** (client telemetry). Before submitting: update **App Store Connect → App Privacy** (Diagnostics / Usage Data, not linked to the user, not used for tracking — answers drafted in `docs/privacy/telemetry.md`); update the **live privacy policy** text and `docs/app-store-privacy-data-map.md` at that time (they still say no Diagnostics/Usage).
-- [ ] **Un-pause alerts after data flows** (Alerting → Alert rules → folder PawPi → Resume evaluation; run each query in Explore first): server rules first (`P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`), then business/route rules, then P2 **only after** `pawpi-digest` exists, client rules only after build 25 has been live a few days. Verify `grafanacloud_instance_active_series` before `P2-FreeTierUsage`.
+- [x] **Ship app build 26** (client telemetry). *Done 2026-10-14: build 26 submitted for review. App Store Connect → App Privacy published as Product Interaction, Performance Data, Other Diagnostic Data (Analytics, not linked, not tracking; **Crash Data not declared**) per `docs/privacy/telemetry.md` §6; `docs/app-store-privacy-data-map.md` (#608) matches. Privacy policy URL `https://www.pawpi.info/privacy`.*
+- [ ] **Un-pause alerts after data flows** (Alerting → Alert rules → folder PawPi → Resume evaluation; run each query in Explore first): server rules first (`P1-HealthDeepFailing`, `P1-ServerMetricsSilent`, `P1-Http5xxRate`, `P1-DbErrors`), then business/route rules, then P2 **only after** `pawpi-digest` exists, client rules only after build 26 has been live a few days. Verify `grafanacloud_instance_active_series` before `P2-FreeTierUsage`.
 - [ ] *(optional)* **Grafana mobile push for P1** on contact point `Augusto` (IRM integration; 2 minutes, `OPERATIONS.md` 5.3).
 - [ ] *(optional)* **Scripted sign-in journey** with one clearly labelled test account in an isolated project (never sign-UP; `OPERATIONS.md` 5.6).
 - [ ] *(monthly)* the 15-minute review in `OPERATIONS.md` section 15.
@@ -480,11 +481,18 @@ at the start of the pass: **web vitest 1068 · web integration 567 · mobile jes
 
 ---
 
-## To test — build 25 (v1.0.2) — see `docs/release-build-25.md`
+## To test — build 26 (v1.0.2) — see `docs/release-build-26.md`
 
-The version/build setup is verified there (`app.json` 1.0.2, build number from EAS remote `autoIncrement`). The device
-checklist for build 25 (telemetry opt-out, logout leak, launch behaviour, first-reminder nudge, regressions) is §5 of
-that document; run it on a real iPhone with the TestFlight install before **Submit for Review**.
+**Status (2026-10-14): build 26 is SUBMITTED for App Store review** (commit `49a834b1`, includes #617–#629). Build 25 exists in EAS but is
+stale and was never distributed; build 24 (v1.0.1) was the previous TestFlight build. Server side is done: **migrations 0131 + 0132 applied
+and verified** on production and **`NOTIF_V2_ENABLED=true`**; **branch cleanup done** (six branches deleted; `claude/night-3b-notif-v2-schedule`
+and `claude/night-3c-notif-v2-owner-events` are kept for a later decision).
+
+The version/build setup and the full device checklist are in `docs/release-build-26.md` (§1, §5). Run it on a **real iPhone** with the build-26
+install: Settings → **Privacy Policy / Terms of Service / EULA** rows (the Privacy row must land on `https://www.pawpi.info/privacy`); the new
+**notification toggles** persist after reopening Settings; **quiet hours follow the phone's time zone**; a **booking confirmation push** rings
+the phone (and stays silent in quiet hours / with the category off); and the basics (email, Google and Apple sign-in, onboarding, daily moment,
+Today/Upcoming reminders). Carry-over checks (telemetry opt-out, logout leak, launch behaviour, first-reminder nudge) are listed there too.
 
 ## To test — build 24 (v1.0.1) on-device checklist (2026-10-03)
 

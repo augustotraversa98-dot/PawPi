@@ -97,7 +97,7 @@ Applying them does **not** change behaviour while `NOTIF_V2_ENABLED` is off.
 | Email scanners prefetching the unsubscribe link | fail-safe direction (they can only unsubscribe) |
 | Expo receipts job double-processing | tickets are marked `checked_at`; resolve is idempotent |
 | Timezone value Postgres rejects breaking `AT TIME ZONE` consumers | route checks `pg_timezone_names`; DB helpers fall back to Buenos Aires on any bad stored zone |
-| Mobile changes need a new build | the server side is inert until the flag is on; the mobile toggles/timezone sync ship with the next build (build 25 is open) |
+| Mobile changes need a new build | the server side is inert until the flag is on; the mobile toggles/timezone sync ship with build 26 (submitted for review) |
 
 ## Human steps (summary; the night-run report repeats them in order)
 
