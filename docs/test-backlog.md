@@ -428,18 +428,17 @@ The code for metrics, dashboards, alerts, logs and deploy markers is merged; thi
 
 ---
 
-## ⚙️ ACTION 5 — Move scheduled jobs to Railway cron (human steps; full runbook `docs/ops/railway-cron.md`)
+## ⚙️ ACTION 5 — Move scheduled jobs to Railway cron (runbook `docs/ops/railway-cron.md`) — services created; first-run verification pending
 
-GitHub's cron fired the hourly jobs only ~6×/day. The PR adds `scripts/cron/` and strips `schedule:` from `cron-jobs.yml` (manual fallback kept). **Nothing fires on Railway until you create the services:**
+PR #632 merged: `scripts/cron/` added and GitHub cron removed (manual fallback kept). The 5 Railway cron services are created and deploy from `main`:
+`cron-weekly-digest` · `0 * * * *` · `node cron-trigger.mjs weekly-digest`
+`cron-push-receipts` · `20 * * * *` · `node cron-trigger.mjs push-receipts`
+`cron-winback` · `30 13 * * *` · `node cron-trigger.mjs winback`
+`cron-subscriptions` · `0 6 * * *` · `node cron-trigger.mjs subscriptions`
+`cron-calendar-sync` · `15 6 * * *` · `node cron-trigger.mjs calendar-sync`
 
-- [ ] Create 5 Railway services from the PawPi repo, Root Directory `scripts/cron`, Restart Policy *Never*, variables `CRON_SECRET` (= `${{PawPi.CRON_SECRET}}`) + `CRON_BASE_URL` (backend public origin):
-  `cron-weekly-digest` · `0 * * * *` · `node cron-trigger.mjs weekly-digest`
-  `cron-push-receipts` · `20 * * * *` · `node cron-trigger.mjs push-receipts`
-  `cron-winback` · `30 13 * * *` · `node cron-trigger.mjs winback`
-  `cron-subscriptions` · `0 6 * * *` · `node cron-trigger.mjs subscriptions`
-  `cron-calendar-sync` · `15 6 * * *` · `node cron-trigger.mjs calendar-sync`
-- [ ] Create the services on Branch `ops/railway-cron` (the files aren't on `main` yet), get one run each → logs show `status=200 … OK`. Merge the PR (GitHub cron stops at merge), then **immediately switch each service's Branch to `main` + Redeploy** (runbook → Cutover).
-- [ ] After 24 h: hourly services show 24 runs each with no multi-hour gaps; daily ones show 1 run at 13:30 / 06:00 / 06:15 UTC.
+- [x] Services created on `main` (Root Directory `/scripts/cron`, Restart Policy *Never*, `CRON_SECRET` + `CRON_BASE_URL` set).
+- [ ] **24 h check (remaining):** hourly services show 24 runs each with no multi-hour gaps; daily ones show 1 run at 13:30 / 06:00 / 06:15 UTC; logs read `status=200 … OK`.
 - [ ] Don't run the manual `subscriptions` fallback near 06:00 UTC (concurrent runs can create an orphan pending order; guard proposed in the runbook, not built).
 
 ---
