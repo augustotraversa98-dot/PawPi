@@ -28,7 +28,8 @@ All schedules are **UTC** (Railway cron is UTC; minimum interval 5 min; a run is
 Repeat for each row above:
 
 1. **+ New → GitHub Repo →** the PawPi repo (same repo as the `PawPi` backend service).
-2. **Settings → Source → Root Directory:** `scripts/cron`. (The `Dockerfile` there builds a ~50 MB node image holding only the script. Branch: `main`.)
+2. **Settings → Source → Root Directory:** `scripts/cron`. (The `Dockerfile` there builds a ~50 MB node image holding only the script.)
+   **Branch:** `ops/railway-cron` while testing before the PR merges, `main` afterwards — see *Cutover* below.
 3. **Settings → Deploy → Custom Start Command:** the *Start command* from the table.
 4. **Settings → Deploy → Cron Schedule:** the *Cron* expression from the table.
 5. **Settings → Deploy → Restart Policy:** *Never* (the script already retries; a failed run should show as failed, not loop).
@@ -73,11 +74,34 @@ No migration needed (advisory locks are session/transaction-scoped, nothing is s
 
 ## Cutover (zero-gap order)
 
-1. Create the five Railway services above. For each, trigger one run (Deployments → ⋮ → Redeploy) and confirm
-   `status=200 … OK` in its logs. (`{"skipped":"disabled"}` is also a 200 — fine; `NOTIF_V2_ENABLED` is on in prod.)
-2. Merge the PR that removes the GitHub `schedule:` triggers. GitHub cron only runs from the default branch, so this takes
-   effect at merge. Overlap between steps 1 and 2 is harmless (see table; avoid ~06:00 UTC).
-3. Watch the next 24 h (below).
+`scripts/cron/` exists only on the PR branch (`ops/railway-cron`) until the PR merges, so a service pointed at `main`
+**cannot build yet** (Root Directory not found). Test on the branch first, then switch to `main`.
+
+**A. Create + test BEFORE merging (recommended — no gap in scheduling)**
+
+1. Create each service as above, but set **Settings → Source → Branch = `ops/railway-cron`**. GitHub's cron is still
+   running, so nothing is missed while you test; an overlap is harmless (see the idempotency table — just avoid ~06:00 UTC).
+2. Get one real run per service and read its log (Deployments → latest → Logs). It must show
+   `status=200 … OK` (`{"skipped":"disabled"}` is also a 200 — fine; `NOTIF_V2_ENABLED` is on in prod):
+   - Normally the first deploy of a cron service builds and then waits for its schedule. If you don't want to wait,
+     temporarily set the **Cron Schedule** to `*/5 * * * *` (Railway's minimum interval), wait for the next 5-minute mark,
+     confirm the run, then **set the real expression back** (table above). A run is the real job, not a dry run — the
+     endpoints are idempotent, so that's fine. Don't do this for `cron-subscriptions` near 06:00 UTC.
+   - A `Redeploy` also re-runs the start command on some plans/versions; if you see a run after Redeploy, use that.
+3. Merge the PR. GitHub cron stops at merge (it only runs from the default branch).
+4. **Immediately after the merge, for each of the five services: Settings → Source → Branch → `main`, then Redeploy.**
+   Do this promptly — GitHub may auto-delete `ops/railway-cron` on merge, after which a service still pointing at it
+   fails to build and its schedule silently stops. Confirm each service's *next* scheduled run builds from `main`.
+5. Watch the next 24 h (below).
+
+**B. If you merge first and the services already exist**
+
+- Services created on `main` **before** the merge have only failed builds (nothing ran, nothing fired — harmless).
+  After the merge: open each → **Redeploy** (or push any commit to `main`). The build now succeeds; do step 2 above on `main`.
+- Services that were pointed at `ops/railway-cron`: do step 4 (switch Branch to `main`, Redeploy) right away.
+- **There is a scheduling gap between the merge and the first verified Railway run** (GitHub cron is already off).
+  Keep it short by finishing step 2 the same day; if a gap hurts (e.g. the 06:00 charge), run the job by hand:
+  GitHub → Actions → *Cron jobs (manual fallback)* → Run workflow → pick the job.
 
 ## Verify each job fired on time (24 h)
 

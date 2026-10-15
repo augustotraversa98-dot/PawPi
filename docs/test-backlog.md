@@ -438,7 +438,7 @@ GitHub's cron fired the hourly jobs only ~6×/day. The PR adds `scripts/cron/` a
   `cron-winback` · `30 13 * * *` · `node cron-trigger.mjs winback`
   `cron-subscriptions` · `0 6 * * *` · `node cron-trigger.mjs subscriptions`
   `cron-calendar-sync` · `15 6 * * *` · `node cron-trigger.mjs calendar-sync`
-- [ ] Trigger one run per service (Redeploy) → logs show `status=200 … OK`. Then merge the PR (GitHub cron stops at merge).
+- [ ] Create the services on Branch `ops/railway-cron` (the files aren't on `main` yet), get one run each → logs show `status=200 … OK`. Merge the PR (GitHub cron stops at merge), then **immediately switch each service's Branch to `main` + Redeploy** (runbook → Cutover).
 - [ ] After 24 h: hourly services show 24 runs each with no multi-hour gaps; daily ones show 1 run at 13:30 / 06:00 / 06:15 UTC.
 - [ ] Don't run the manual `subscriptions` fallback near 06:00 UTC (concurrent runs can create an orphan pending order; guard proposed in the runbook, not built).
 
