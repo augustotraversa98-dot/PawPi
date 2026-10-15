@@ -18,7 +18,25 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 🚀 LAUNCH + v1.0.1 RELEASE LINE (2026-10-03) — newest status; everything below this block is history
+## 📦 BUILD 26 (v1.0.2) — SUBMITTED FOR APP STORE REVIEW (2026-10-14) — newest status; everything below this block is history
+
+**Build 26** (v1.0.2, commit `49a834b1`, includes **#617–#629**, all merged) is **in App Store review**. Build 25 exists in EAS but is
+stale and was never distributed; build 24 (v1.0.1) is what was on TestFlight before. Details, build history and the device
+checklist: [`release-build-26.md`](release-build-26.md); on-device queue: [`test-backlog.md`](test-backlog.md) → "To test — build 26".
+
+- ✅ **Migrations 0131 + 0132 applied and verified** on production; **`NOTIF_V2_ENABLED=true`** on Railway (notifications v2 is live —
+  [`notifications-v2-design.md`](notifications-v2-design.md)). The mobile toggles / quiet hours / time-zone sync arrive with build 26.
+- ✅ **App Privacy published** (App Store Connect): Product Interaction, Performance Data, Other Diagnostic Data — Analytics, not linked,
+  not tracking; **Crash Data not declared** ([`privacy/telemetry.md`](privacy/telemetry.md) §6, [`app-store-privacy-data-map.md`](app-store-privacy-data-map.md)).
+  Privacy policy: `https://www.pawpi.info/privacy` (EN + ES).
+- ✅ **Branch cleanup done** — six stale branches deleted. **Kept for a later decision:** `claude/night-3b-notif-v2-schedule` and
+  `claude/night-3c-notif-v2-owner-events`.
+- ⏳ **Next:** Apple's review result → release; run the build-26 device checklist; resume Grafana client alert rules a few days after build 26
+  has live data; APNs `.p8` key still gates business pushes.
+
+---
+
+## 🚀 LAUNCH + v1.0.1 RELEASE LINE (2026-10-03) — history; superseded by the build 26 block above
 
 **PawPi is LIVE in the App Store.** v1.0.0 (build 21) was accepted 2026-09-27 (built + submitted 2026-09-22;
 the 2.5.4 `UIBackgroundModes=audio` rejection was fixed by #566 — dropped the unused `expo-audio` plugin and
@@ -86,16 +104,16 @@ Plan + contract: [`docs/observability/night-run/`](observability/night-run/READM
 Everything below is **code merged to `main`**; nothing is live in Grafana until the human actions list is done (no Grafana/Loki credentials existed in the run).
 
 - ✅ **#599 — Step A: server metrics for every feature area** (`pawpi_http_*`, DB, process, business events, `GET /api/health/deep`).
-- ✅ **#600 — Step B: anonymous client telemetry** — ingest endpoints + mobile SDK (allowlist registry, Settings opt-out "Help improve PawPi", kill switch). Reaches users only with **app build 25**.
+- ✅ **#600 — Step B: anonymous client telemetry** — ingest endpoints + mobile SDK (allowlist registry, Settings opt-out "Help improve PawPi", kill switch). Reaches users from **app build 26** (build 25 was never distributed).
 - ✅ **#601 — Step C: 11 Grafana dashboards as code** + `apply-grafana.mjs` (dry-run by default, `pawpi-` uids only, never deletes).
 - ✅ **#602 — Step D: 15 alert rules (all created PAUSED), P1/P2 routing, 5 synthetic checks, richer autofix relay payload.**
 - 🟡 **Step E (this PR): structured redacted access logs -> Loki `job="pawpi-web"`, deploy annotation per start, CI coverage guard** ("a new route/screen/funnel step/dashboard/alert without coverage fails the build"), `OPERATIONS.md` rewritten, monthly review checklist.
 
 **Human actions owed (not automatable; tracked as ACTION 4 in [`test-backlog.md`](test-backlog.md)):**
-1. Ship **app build 25** (client telemetry) — before submit: update **App Store Connect → App Privacy** per [`docs/privacy/telemetry.md`](privacy/telemetry.md); update the **live privacy policy** text and [`docs/app-store-privacy-data-map.md`](app-store-privacy-data-map.md) at that time.
+1. ✅ **App build 26** (client telemetry) is submitted for review; **App Store Connect → App Privacy** is published per [`docs/privacy/telemetry.md`](privacy/telemetry.md) §6 and [`docs/app-store-privacy-data-map.md`](app-store-privacy-data-map.md) (#608) matches it. Live privacy-policy paragraph: see the telemetry checklist (§7).
 2. Add the Railway env vars: `GRAFANA_LOKI_URL` / `GRAFANA_LOKI_USER` / `GRAFANA_LOKI_TOKEN`, `GRAFANA_URL`, `GRAFANA_ANNOTATION_TOKEN` (annotations-write service account).
 3. Run `scripts/observability/apply-grafana.mjs` — dry run, then `--apply`, for dashboards, alerts + policies (set `ALERT_DIGEST_EMAIL`) and synthetics (`GRAFANA_SM_*`).
-4. **Un-pause alerts after data flows** (server rules first; client rules only after build 25; P2 only after the digest exists) — order in `OPERATIONS.md` section 8.
+4. **Un-pause alerts after data flows** (server rules first; client rules only after build 26 has live data; P2 only after the digest exists) — order in `OPERATIONS.md` section 8.
 5. Optional: Grafana mobile push for P1 on `Augusto`; a scripted sign-in journey with a clearly labelled test account.
 - Found, not fixed (product bugs, see PROGRESS.md): unknown `/api/...` paths return 200 + HTML (SPA catch-all) instead of a JSON 404.
 

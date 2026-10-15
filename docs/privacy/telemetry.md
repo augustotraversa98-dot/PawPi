@@ -1,11 +1,11 @@
 # PawPi anonymous usage telemetry — privacy description
 
-Status: **draft for the owner to review**. Ships to users only with app build 25 (the server endpoints are live earlier and idle).
+Status: **draft for the owner to review**. Ships to users from app build 26 (v1.0.2, in App Store review; build 25 was never distributed). The server endpoints went live earlier and idled until then.
 Technical contract: `docs/observability/night-run/01-TELEMETRY-CONTRACT.md`. Allowlist in code: `anything/apps/web/src/lib/telemetry/registry.js`.
 Operations: `docs/observability/OPERATIONS.md` section 3.4 (client telemetry ingest).
 
-> **HUMAN ACTIONS (nothing in this file is applied automatically).** Sections 4, 5 and 6 are drafts for a person to paste into the
-> live privacy policy and into App Store Connect. The night run did NOT edit the live policy page, `docs/legal/*`, or
+> **HUMAN ACTIONS (nothing in this file is applied automatically).** Sections 4 and 5 are drafts for a person to paste into the
+> live privacy policy (section 6 records the App Store Connect declaration as published with build 26). The night run did NOT edit the live policy page, `docs/legal/*`, or
 > `anything/apps/web/src/lib/legal/*`.
 
 ## 1. What is collected
@@ -21,7 +21,7 @@ Anonymous product-analytics events, only while "Help improve PawPi" is ON (the d
   errors (kind, screen, short code), unexpected navigation redirects (from, to, reason), startup and screen-ready timings (buckets),
   feature usage (registered feature key), funnel steps (registered funnel + step), and a single `opt_out` event.
 - Each event carries `t` (milliseconds since the session started) and the server receive time.
-- Client behaviour (mobile, build 25): events are validated against the allowlist ON THE DEVICE before they are queued (anything the server
+- Client behaviour (mobile, build 26): events are validated against the allowlist ON THE DEVICE before they are queued (anything the server
   would drop never leaves the phone); `session_end` is sent each time the app goes to the background and carries the length of that
   foreground stretch (a new `session_id` starts after 30 minutes in the background); API calls are recorded as a feature area, a route
   TEMPLATE taken from a fixed list of the server's routes (an unlisted path is reported as `unknown`, never a path with an id/handle),
@@ -92,34 +92,37 @@ uninstall, so "delete the app" is NOT a guaranteed way to drop the id on iOS: th
 (This draft deliberately states no retention period. The live policy (section 5 of `privacy.en.md` / `privacy.es.md`, PR #621) also
 states none; if a figure is ever added, it must come from a verified Grafana Cloud plan and match section 3.)
 
-## 6. App Store Connect "App Privacy" answers (HUMAN ACTION: set when build 25 is submitted)
+## 6. App Store Connect "App Privacy" answers (PUBLISHED with build 26)
 
-This CHANGES the current map in `docs/app-store-privacy-data-map.md`, which says "Diagnostics / Usage / Crash Data: None (no
-analytics SDK)". Update that file and the App Store Connect answers together with build 25 (not before: builds already in review/production send nothing).
+This is the declaration published in App Store Connect for build 26 (v1.0.2); `docs/app-store-privacy-data-map.md` (#608) mirrors it. It
+replaces the earlier "Diagnostics / Usage / Crash Data: None (no analytics SDK)" answer.
 
 Global: **Do you or your third-party partners use data for tracking?** -> **No** (unchanged; `NSPrivacyTracking: false`, no ATT prompt).
 
-Add these data types, each answered the same way:
+Declared data types, each answered the same way:
 
 | Category | Data type | Collected | Linked to the user's identity? | Used for tracking? | Purpose |
 |---|---|---|---|---|---|
-| Usage Data | **Product Interaction** (screen views, taps, feature and funnel usage) | Yes | **No** | **No** | Analytics; App Functionality (improving the app) |
-| Diagnostics | **Crash Data** (client errors/exceptions reported by the app) | Yes | **No** | **No** | App Functionality; Analytics |
-| Diagnostics | **Performance Data** (startup, screen-ready, API latency buckets) | Yes | **No** | **No** | App Functionality; Analytics |
-| Diagnostics | **Other Diagnostic Data** (app/OS version, platform, language, API status classes, navigation anomalies) | Yes | **No** | **No** | App Functionality; Analytics |
+| Usage Data | **Product Interaction** (screen views, taps, feature and funnel usage) | Yes | **No** | **No** | Analytics |
+| Diagnostics | **Performance Data** (startup, screen-ready, API latency buckets) | Yes | **No** | **No** | Analytics |
+| Diagnostics | **Other Diagnostic Data** (app/OS version, platform, language, API status classes, navigation anomalies, client error class names) | Yes | **No** | **No** | Analytics |
+
+**Crash Data is NOT declared.** The app reports JS client errors by error *class name* only (e.g. `TypeError`; never the message or the
+stack; these fall under Other Diagnostic Data), collects no native crash logs, and ships no crash-reporting SDK (`@sentry/react-native` is a
+no-op shim). Do not add a Crash Data row unless that changes.
 
 Rules for the form: for each type choose "Data is NOT linked to the user's identity" and "Data is NOT used to track the user";
-leave Advertising/Third-party advertising/Developer's advertising unchecked. Not declared (not collected by telemetry): Identifiers
+leave Advertising/Third-party advertising/Developer's advertising unchecked. Not declared (not collected by telemetry): Crash Data (see above), Identifiers
 (the random `install_id` is app-generated, never tied to the account or device identifiers, and not shared with third parties; if
 Apple review pushes back, the conservative alternative is to also tick **Identifiers -> Device ID**, not linked, not tracking, purpose Analytics),
 Location, Contact Info, User Content, Search History, Browsing History.
 
-Also re-check, at submission time: the iOS privacy manifest (`PrivacyInfo.xcprivacy`) declared collected data types for build 25, and the
-App Store "Privacy Nutrition Label" shows Usage Data + Diagnostics as "Data Not Linked to You".
+Also re-check, when reviewing a future build: the iOS privacy manifest (`PrivacyInfo.xcprivacy`) declared collected data types match the table above,
+and the App Store "Privacy Nutrition Label" shows Usage Data + Diagnostics as "Data Not Linked to You".
 
 ## 7. Checklist for the human owner
 - [ ] Legal review of section 5, then publish in EN + ES on the live privacy policy.
-- [ ] Update `docs/app-store-privacy-data-map.md` and App Store Connect (section 6) with build 25.
+- [x] Update `docs/app-store-privacy-data-map.md` (#608) and App Store Connect (section 6) with build 26. *Done: published declaration = Product Interaction, Performance Data, Other Diagnostic Data (Analytics, not linked, not tracking); no Crash Data.*
 - [ ] Confirm Grafana Cloud retention on the current plan (published Free tier: metrics 14 days, logs 14 days); only then consider stating a figure in sections 3 and 5.
 - [x] Set `GRAFANA_LOKI_URL/USER/TOKEN` on Railway for event log lines (metrics work without them). *Done: the variables are set in production and event logs reach Grafana (verified in Grafana by the owner, 2026-10-05).*
 - **Traces (note, 2026-10-05):** trace spans are scrubbed by `SpanScrubber` (#622) before export — no client IPs, user-agents (coarsened), query strings or raw id paths. Spans still carry a connection-level `peer.ipv4` that is the address of **Grafana's own server** (the OTLP endpoint), not a user address, so it is not user data.
