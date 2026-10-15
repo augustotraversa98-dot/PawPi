@@ -31,6 +31,9 @@ checklist: [`release-build-26.md`](release-build-26.md); on-device queue: [`test
   Privacy policy: `https://www.pawpi.info/privacy` (EN + ES).
 - ✅ **Branch cleanup done** — six stale branches deleted. **Kept for a later decision:** `claude/night-3b-notif-v2-schedule` and
   `claude/night-3c-notif-v2-owner-events`.
+- ⏳ **Scheduled jobs moving GitHub cron → Railway cron** (GitHub fired the hourly jobs ~6×/day): PR adds `scripts/cron/cron-trigger.mjs`,
+  turns `cron-jobs.yml` into a manual fallback (no `schedule:`), runbook [`ops/railway-cron.md`](ops/railway-cron.md). **Owner must create the 5
+  Railway cron services** (checklist: `test-backlog.md` → ACTION 5). No migration.
 - ⏳ **Next:** Apple's review result → release; run the build-26 device checklist; resume Grafana client alert rules a few days after build 26
   has live data; APNs `.p8` key still gates business pushes.
 

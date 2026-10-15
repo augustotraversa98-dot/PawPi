@@ -428,6 +428,22 @@ The code for metrics, dashboards, alerts, logs and deploy markers is merged; thi
 
 ---
 
+## ⚙️ ACTION 5 — Move scheduled jobs to Railway cron (human steps; full runbook `docs/ops/railway-cron.md`)
+
+GitHub's cron fired the hourly jobs only ~6×/day. The PR adds `scripts/cron/` and strips `schedule:` from `cron-jobs.yml` (manual fallback kept). **Nothing fires on Railway until you create the services:**
+
+- [ ] Create 5 Railway services from the PawPi repo, Root Directory `scripts/cron`, Restart Policy *Never*, variables `CRON_SECRET` (= `${{PawPi.CRON_SECRET}}`) + `CRON_BASE_URL` (backend public origin):
+  `cron-weekly-digest` · `0 * * * *` · `node cron-trigger.mjs weekly-digest`
+  `cron-push-receipts` · `20 * * * *` · `node cron-trigger.mjs push-receipts`
+  `cron-winback` · `30 13 * * *` · `node cron-trigger.mjs winback`
+  `cron-subscriptions` · `0 6 * * *` · `node cron-trigger.mjs subscriptions`
+  `cron-calendar-sync` · `15 6 * * *` · `node cron-trigger.mjs calendar-sync`
+- [ ] Trigger one run per service (Redeploy) → logs show `status=200 … OK`. Then merge the PR (GitHub cron stops at merge).
+- [ ] After 24 h: hourly services show 24 runs each with no multi-hour gaps; daily ones show 1 run at 13:30 / 06:00 / 06:15 UTC.
+- [ ] Don't run the manual `subscriptions` fallback near 06:00 UTC (concurrent runs can create an orphan pending order; guard proposed in the runbook, not built).
+
+---
+
 ## Follow-up (not scheduled): web catch-all 404 route
 
 The web catch-all route (`anything/apps/web/src/app/__create/not-found.tsx`) runs a filesystem glob (`fast-glob`) on **every
