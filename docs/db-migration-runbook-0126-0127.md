@@ -100,8 +100,8 @@ Both are idempotent and reversible. Rollback SQL is at the bottom.
 2. **Web**: sign in, open a couple of screens that hit the API (bookings, a provider page).
 3. **Uploads still work** (service-role path, must be unaffected by `0126` + Data-API closure): add a
    vet-record document or a health photo → it uploads and re-opens.
-4. **Cron dry-run** (optional): Actions → *Scheduled cron jobs* → **Run workflow** (workflow_dispatch)
-   → both jobs return 2xx.
+4. **Cron dry-run** (optional): Actions → *Cron jobs (manual fallback)* → **Run workflow**, pick `subscriptions` then
+   `calendar-sync` (workflow_dispatch) → each returns 2xx.
 5. **Re-run the Supabase Security advisor** (`get_advisors { type: "security" }` or Dashboard →
    Advisors): the `current_app_user_id` mutable-search_path warning is **gone**, and no new
    over-privileged-role finding. Re-run the Performance advisor to confirm no regression.

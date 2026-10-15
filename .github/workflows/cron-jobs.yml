@@ -1,60 +1,42 @@
-name: Scheduled cron jobs
+name: Cron jobs (manual fallback)
+
+# The schedules now live in Railway cron services (docs/ops/railway-cron.md): GitHub's cron is best-effort and was
+# firing the hourly jobs only ~6x/day. This workflow is a MANUAL FALLBACK only — it has no cron trigger, so
+# it can never double-fire alongside Railway. Run it from the Actions tab and pick a job.
+#
+# ROLLBACK to GitHub scheduling: see "Rollback" in docs/ops/railway-cron.md (pause the Railway services first or
+# the jobs double-fire).
 
 on:
-  schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC daily — subscription auto-charge
-    - cron: '15 6 * * *'  # 06:15 UTC daily — calendar import sync
-    - cron: '0 * * * *'   # hourly :00 — weekly digest (matches each owner's Sunday-evening local time)
-    - cron: '30 13 * * *' # 13:30 UTC daily — win-back (daytime in the Americas)
-    - cron: '20 * * * *'  # hourly :20 — Expo push receipts (prune dead device tokens)
-  workflow_dispatch: {}   # lets you trigger manually from the Actions tab, for testing
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which cron endpoint to trigger now
+        type: choice
+        required: true
+        options:
+          - weekly-digest
+          - winback
+          - push-receipts
+          - subscriptions
+          - calendar-sync
 
 jobs:
-  subscriptions-run:
-    if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+  run:
     runs-on: ubuntu-latest
     steps:
-      - name: Run subscription auto-charge
+      - name: Trigger ${{ inputs.job }}
+        env:
+          JOB: ${{ inputs.job }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -sf -X POST https://pawpi-production.up.railway.app/api/payments/subscriptions/run \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
-
-  calendar-sync:
-    if: github.event.schedule == '15 6 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run calendar import sync
-        run: |
-          curl -sf -X POST https://pawpi-production.up.railway.app/api/providers/calendar/sync \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
-
-  # Notifications v2 (docs/notifications-v2-design.md). All three endpoints answer {"skipped":"disabled"} and do
-  # nothing until the server variable NOTIF_V2_ENABLED is on, so these jobs are safe to run (and to merge) before
-  # that. They use the same x-cron-secret as the jobs above; no new secret is introduced. Unlike the jobs above they
-  # run only on their schedule (not on workflow_dispatch), so a manual test of one job cannot trigger a send.
-  weekly-digest:
-    if: github.event.schedule == '0 * * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run weekly digest
-        run: |
-          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/engagement/weekly-digest/run \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
-
-  winback:
-    if: github.event.schedule == '30 13 * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run win-back
-        run: |
-          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/engagement/reengagement/run \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
-
-  push-receipts:
-    if: github.event.schedule == '20 * * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Process Expo push receipts
-        run: |
-          curl -sf --max-time 120 -X POST https://pawpi-production.up.railway.app/api/notifications/push-receipts/run \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+          case "$JOB" in
+            weekly-digest) path=/api/engagement/weekly-digest/run ;;
+            winback)       path=/api/engagement/reengagement/run ;;
+            push-receipts) path=/api/notifications/push-receipts/run ;;
+            subscriptions) path=/api/payments/subscriptions/run ;;
+            calendar-sync) path=/api/providers/calendar/sync ;;
+            *) echo "unknown job: $JOB"; exit 1 ;;
+          esac
+          curl -sf --max-time 120 -X POST "https://pawpi-production.up.railway.app${path}" \
+            -H "x-cron-secret: ${CRON_SECRET}"

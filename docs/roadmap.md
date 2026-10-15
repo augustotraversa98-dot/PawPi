@@ -31,6 +31,13 @@ checklist: [`release-build-26.md`](release-build-26.md); on-device queue: [`test
   Privacy policy: `https://www.pawpi.info/privacy` (EN + ES).
 - ✅ **Branch cleanup done** — six stale branches deleted. **Kept for a later decision:** `claude/night-3b-notif-v2-schedule` and
   `claude/night-3c-notif-v2-owner-events`.
+- ⏳ **Scheduled jobs moving GitHub cron → Railway cron** (GitHub fired the hourly jobs ~6×/day): PR adds `scripts/cron/cron-trigger.mjs`,
+  turns `cron-jobs.yml` into a manual fallback (no `schedule:`), runbook [`ops/railway-cron.md`](ops/railway-cron.md). **Owner must create the 5
+  Railway cron services** (checklist: `test-backlog.md` → ACTION 5). No migration.
+- ⏳ **Follow-up (low priority, small): advisory-lock guard on `POST /api/payments/subscriptions/run`** — per-subscription
+  `pg_try_advisory_xact_lock` + re-check `next_charge_at`. Why: two *simultaneous* runs (e.g. the manual GitHub fallback fired during the
+  06:00 Railway run) both read the same due set and can each insert an orphan `pending` order; the payment dedupes on its idempotency key, so
+  **no double-charge**. Railway never overlaps itself, so exposure is manual-only. No migration; design in [`ops/railway-cron.md`](ops/railway-cron.md).
 - ⏳ **Next:** Apple's review result → release; run the build-26 device checklist; resume Grafana client alert rules a few days after build 26
   has live data; APNs `.p8` key still gates business pushes.
 

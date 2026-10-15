@@ -4,60 +4,55 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Guards .github/workflows/cron-jobs.yml for notifications v2 (PR 3b): the digest, win-back and receipts jobs
-// exist, hit the right endpoints with the shared x-cron-secret (never an inline secret), run only on their own
-// schedule, and the two pre-existing jobs are untouched.
+// Guards the scheduled-jobs move to Railway cron (docs/ops/railway-cron.md): .github/workflows/cron-jobs.yml is a
+// MANUAL fallback only (no schedule trigger, so it can never double-fire with Railway), it can run each of the five
+// jobs, hits the same endpoints as scripts/cron/cron-trigger.mjs, and the shared secret only ever comes from
+// secrets.CRON_SECRET. The runbook must list every job's cron expression.
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
-const raw = fs.readFileSync(path.join(REPO, ".github/workflows/cron-jobs.yml"), "utf8");
-// Dependency-free parse (no yaml package): schedules from the `on:` block, jobs from the `jobs:` block.
-const crons = [...raw.matchAll(/^\s+- cron: '([^']+)'/gm)].map((m) => m[1]);
-const jobsSrc = raw.slice(raw.indexOf("\njobs:") + 1);
-const heads = [...jobsSrc.matchAll(/^  ([a-z][a-z0-9-]*):[ \t]*$/gm)];
-const jobs = {};
-heads.forEach((h, i) => {
-  const body = jobsSrc.slice(h.index, i + 1 < heads.length ? heads[i + 1].index : undefined);
-  jobs[h[1]] = {
-    if: /^    if: (.*)$/m.exec(body)?.[1]?.trim() ?? "",
-    run: body.slice(body.indexOf("run: |")),
-  };
-});
-const wf = { jobs };
+const read = (p) => fs.readFileSync(path.join(REPO, p), "utf8");
+const raw = read(".github/workflows/cron-jobs.yml");
+const script = read("scripts/cron/cron-trigger.mjs");
+const doc = read("docs/ops/railway-cron.md");
+
+const JOBS = {
+  "weekly-digest": { cron: "0 * * * *", endpoint: "/api/engagement/weekly-digest/run" },
+  winback: { cron: "30 13 * * *", endpoint: "/api/engagement/reengagement/run" },
+  "push-receipts": { cron: "20 * * * *", endpoint: "/api/notifications/push-receipts/run" },
+  subscriptions: { cron: "0 6 * * *", endpoint: "/api/payments/subscriptions/run" },
+  "calendar-sync": { cron: "15 6 * * *", endpoint: "/api/providers/calendar/sync" },
+};
 const HOST = "https://pawpi-production.up.railway.app";
-describe("cron-jobs.yml", () => {
-  it("keeps the two existing jobs exactly (schedules + endpoints + manual trigger)", () => {
-    expect(crons).toContain("0 6 * * *");
-    expect(crons).toContain("15 6 * * *");
-    expect(wf.jobs["subscriptions-run"].if).toBe("github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'");
-    expect(wf.jobs["calendar-sync"].if).toBe("github.event.schedule == '15 6 * * *' || github.event_name == 'workflow_dispatch'");
-    expect(wf.jobs["subscriptions-run"].run).toContain(`${HOST}/api/payments/subscriptions/run`);
-    expect(wf.jobs["calendar-sync"].run).toContain(`${HOST}/api/providers/calendar/sync`);
+
+describe("cron-jobs.yml (manual fallback)", () => {
+  it("has no schedule trigger and offers workflow_dispatch with a job selector", () => {
+    expect(raw).not.toMatch(/^\s*schedule:/m);
+    expect(raw).not.toMatch(/^\s+- cron:/m);
+    expect(raw).toMatch(/^on:\s*\n\s+workflow_dispatch:/m);
+    const options = [...raw.matchAll(/^\s+- ([a-z-]+)\s*$/gm)].map((m) => m[1]);
+    expect(new Set(options)).toEqual(new Set(Object.keys(JOBS)));
   });
 
-  const CASES = [
-    ["weekly-digest", "0 * * * *", "/api/engagement/weekly-digest/run"],
-    ["winback", "30 13 * * *", "/api/engagement/reengagement/run"],
-    ["push-receipts", "20 * * * *", "/api/notifications/push-receipts/run"],
-  ];
-  for (const [job, cron, endpoint] of CASES) {
-    it(`${job}: scheduled '${cron}', POSTs ${endpoint} with the cron secret, schedule-only`, () => {
-      expect(crons).toContain(cron);
-      const j = wf.jobs[job];
-      expect(j.if).toBe(`github.event.schedule == '${cron}'`); // not workflow_dispatch: a manual test never sends
-      const run = j.run;
-      expect(run).toContain("-X POST");
-      expect(run).toContain(`${HOST}${endpoint}`);
-      expect(run).toContain('-H "x-cron-secret: ${{ secrets.CRON_SECRET }}"');
+  for (const [job, { endpoint }] of Object.entries(JOBS)) {
+    it(`${job}: workflow POSTs ${endpoint}; the trigger script targets the same path`, () => {
+      expect(raw).toMatch(new RegExp(`${job}\\)\\s+path=${endpoint} ;;`));
+      expect(script).toContain(`"${endpoint}"`);
     });
   }
 
-  it("every schedule maps to exactly one job and no other secret / literal credential appears", () => {
-    for (const cron of crons) {
-      const jobs = Object.entries(wf.jobs).filter(([, j]) => j.if.includes(`'${cron}'`));
-      expect(jobs.length, cron).toBe(1);
-    }
+  it("POSTs to the production host with the secret from env, never a literal, and uses no other secret", () => {
+    expect(raw).toContain(`-X POST "${HOST}\${path}"`);
+    expect(raw).toContain('-H "x-cron-secret: ${CRON_SECRET}"');
+    expect(raw).toContain("CRON_SECRET: ${{ secrets.CRON_SECRET }}");
     const secrets = [...raw.matchAll(/secrets\.([A-Z0-9_]+)/g)].map((m) => m[1]);
     expect(new Set(secrets)).toEqual(new Set(["CRON_SECRET"]));
-    expect(raw).not.toMatch(/x-cron-secret: [^$"\s]/); // never a literal value
+    expect(raw).not.toMatch(/x-cron-secret: [^$"\s]/);
+  });
+
+  it("the Railway runbook lists every job with its original UTC cron expression and start command", () => {
+    for (const [job, { cron }] of Object.entries(JOBS)) {
+      expect(doc, job).toContain(`| \`${cron}\``);
+      expect(doc, job).toContain(`node cron-trigger.mjs ${job}`);
+    }
   });
 });

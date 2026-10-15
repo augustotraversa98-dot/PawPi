@@ -34,8 +34,9 @@ Written in PR 3a; PR 3b and 3c update the "status" lines as they land.
 
 ### PR 3b — schedule what exists — status: built
 
-- `.github/workflows/cron-jobs.yml`: hourly weekly-digest, daily win-back and hourly push-receipts calls, all with the
-  existing `x-cron-secret` pattern against the production host.
+- Railway cron services (originally `.github/workflows/cron-jobs.yml`, moved because GitHub cron was unreliable; see
+  [`ops/railway-cron.md`](ops/railway-cron.md)): hourly weekly-digest, daily win-back and hourly push-receipts calls, all with the
+  existing `x-cron-secret` pattern.
 - Both engagement endpoints (`/api/engagement/weekly-digest/run`, `/api/engagement/reengagement/run`) **do nothing
   unless `NOTIF_V2_ENABLED` is on** (secret check first, then the flag; no query when off).
 - Digest / win-back become a real **push** only for owners who opted in (`weekly_digest_push` / `winback_push`
@@ -105,6 +106,6 @@ Applying them does **not** change behaviour while `NOTIF_V2_ENABLED` is off.
 2. Apply `0131`, run `verify_0131.sql`; later `0132`, run `verify_0132.sql`.
 3. Railway: set `NOTIF_V2_ENABLED=true` **after** both migrations are applied (optional: `NOTIF_V2_DAILY_CAP`,
    `NOTIF_UNSUBSCRIBE_SECRET`; otherwise `AUTH_SECRET` signs the unsubscribe links).
-4. GitHub → Settings → Secrets: `CRON_SECRET` must exist (it already drives the two existing cron jobs).
+4. `CRON_SECRET` must exist on the Railway backend and the cron services (`docs/ops/railway-cron.md`); the GitHub secret only backs the manual fallback.
 5. Ship a mobile build (the new Settings rows, timezone sync, the badge fix and owner push controls are app code).
 6. Watch `notification_send_log` and the receipts job output for a day before telling anyone.
