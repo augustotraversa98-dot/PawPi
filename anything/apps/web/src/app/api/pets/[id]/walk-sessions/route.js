@@ -54,7 +54,7 @@ async function GET(request, { params }) {
             ws.route, ws.potty_pee, ws.potty_poo, ws.notes, ws.photo_urls,
             ws.created_at,
             p.name AS provider_name,
-            COALESCE(up.full_name, up.username) AS walker_name
+            NULLIF(BTRIM(up.full_name), '') AS walker_name
           FROM walk_sessions ws
           LEFT JOIN providers p ON p.id = ws.provider_id
           LEFT JOIN user_profiles up ON up.id = ws.staff_user_id
@@ -70,7 +70,7 @@ async function GET(request, { params }) {
             ws.route, ws.potty_pee, ws.potty_poo, ws.notes, ws.photo_urls,
             ws.created_at,
             p.name AS provider_name,
-            COALESCE(up.full_name, up.username) AS walker_name
+            NULLIF(BTRIM(up.full_name), '') AS walker_name
           FROM walk_sessions ws
           LEFT JOIN providers p ON p.id = ws.provider_id
           LEFT JOIN user_profiles up ON up.id = ws.staff_user_id

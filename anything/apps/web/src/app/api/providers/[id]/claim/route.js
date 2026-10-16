@@ -41,7 +41,6 @@ async function POST(request, { params }) {
 
     const userId = await ensureUserProfile(session.user.id, {
       fullName: session.user.name,
-      email: session.user.email,
     });
 
     let body = null;

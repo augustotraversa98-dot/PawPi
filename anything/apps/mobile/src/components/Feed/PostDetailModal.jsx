@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { PawPrint, Megaphone, Trash2, X, Pencil } from "lucide-react-native";
 import {
   COLORS,
@@ -219,7 +220,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                   </Text>
                 ) : null}
                 <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                  by {ownerName} · {timestamp}
+                  {ownerName ? `by ${ownerName} · ` : ""}{timestamp}
                 </Text>
               </View>
             </View>
@@ -452,7 +453,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     }}
                   >
                     <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.coral, marginBottom: 3 }]}>
-                      {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
+                      {bark.pet_handle ? `@${bark.pet_handle}` : ownerDisplayName(bark.username, t)}
                     </Text>
                     <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "500", lineHeight: 19 }]}>
                       {bark.text}

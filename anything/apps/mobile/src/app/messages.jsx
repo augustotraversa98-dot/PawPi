@@ -43,7 +43,7 @@ function dmToItem(th, t) {
   return {
     key: `dm-${th.id}`,
     kind: "people",
-    name: th.other_name || th.other_username || t("messagesScreen.petParent"),
+    name: th.other_name || t("messagesScreen.petParent"),
     avatar: th.other_avatar_url || "",
     body: th.last_message_body,
     imagePreview: th.last_message_image_url,
@@ -55,7 +55,7 @@ function dmToItem(th, t) {
         params: {
           threadId: String(th.id),
           otherUserId: String(th.other_user_id),
-          otherName: th.other_name || th.other_username || t("messagesScreen.petParent"),
+          otherName: th.other_name || t("messagesScreen.petParent"),
           otherAvatar: th.other_avatar_url || "",
         },
       }),
@@ -137,7 +137,7 @@ export default function MessagesScreen() {
         params: {
           threadId: String(thread.id),
           otherUserId: String(owner.id),
-          otherName: owner.full_name || owner.username || t("messagesScreen.petParent"),
+          otherName: owner.full_name || t("messagesScreen.petParent"),
           otherAvatar: owner.avatar_url || "",
         },
       });
@@ -316,7 +316,7 @@ export default function MessagesScreen() {
                         { fontWeight: "700", color: COLORS.warmBrown },
                       ]}
                     >
-                      {owner.full_name || owner.username || t("messagesScreen.petParent")}
+                      {owner.full_name || t("messagesScreen.petParent")}
                     </Text>
                   </Card>
                 </PressableScale>

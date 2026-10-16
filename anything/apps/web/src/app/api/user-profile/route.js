@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { usernameBaseFor, uniqueUsername } from "@/app/api/utils/ownerDisplay";
 
 // Get or create user profile
 async function GET(request) {
@@ -21,13 +22,22 @@ async function GET(request) {
     `;
 
     if (profile.length === 0) {
-      // Create new user profile
+      // Create new user profile (username from the name / a neutral handle, never the e-mail).
+      const username = await uniqueUsername(
+        usernameBaseFor(session.user.name),
+        async (candidate) => {
+          const taken = await sql`
+            SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1
+          `;
+          return taken.length > 0;
+        },
+      );
       profile = await sql`
         INSERT INTO user_profiles (auth_user_id, full_name, username, role)
         VALUES (
           ${authUserId},
           ${session.user.name || null},
-          ${session.user.email?.split("@")[0] || null},
+          ${username},
           'pet_owner'
         )
         RETURNING *

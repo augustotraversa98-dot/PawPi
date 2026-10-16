@@ -36,7 +36,7 @@ async function GET(request, { params }) {
         pol.terms_accepted_at, pol.payment_id, pol.documents, pol.created_at,
         pl.name AS plan_name, pl.tier,
         p.name AS pet_name,
-        COALESCE(up.full_name, up.username) AS owner_name,
+        NULLIF(BTRIM(up.full_name), '') AS owner_name,
         pay.status AS payment_status
       FROM insurance_policies pol
       LEFT JOIN insurance_plans pl ON pl.id = pol.plan_id

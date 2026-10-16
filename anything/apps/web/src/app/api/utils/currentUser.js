@@ -12,6 +12,7 @@
 // gotcha): the query is a tagged template; the param binds via `${}`.
 
 import sql from './sql';
+import { usernameBaseFor } from './ownerDisplay';
 import { isValidAuthUserId } from './authUserId';
 import { recallRequestIdentity } from './requestIdentity';
 
@@ -61,18 +62,15 @@ async function uniqueUsername(base, exists) {
 //
 // setCurrentUserId is imported lazily (requestContext is a heavier module that many unit tests
 // replace with a partial mock, and it used to import resolveUserId from this file).
-export async function ensureUserProfile(authUserId, { fullName, email } = {}) {
+export async function ensureUserProfile(authUserId, { fullName } = {}) {
   const existing = await sql`
     SELECT id FROM user_profiles WHERE auth_user_id = ${authUserId} LIMIT 1
   `;
   if (existing.length > 0) return existing[0].id;
 
-  // Username base from email local-part, then name, then a timestamp — same
-  // precedence as pets/route.js.
-  const baseUsername =
-    email?.split('@')[0] ||
-    fullName?.toLowerCase().replace(/\s+/g, '') ||
-    `user_${Date.now()}`;
+  // Username base: from the person's NAME or a random neutral handle — never from the
+  // e-mail (privacy, QA 2026-10-16 bug 04). See utils/ownerDisplay.js.
+  const baseUsername = usernameBaseFor(fullName);
   const username = await uniqueUsername(baseUsername, async (candidate) => {
     const taken = await sql`
       SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1
@@ -145,12 +143,8 @@ export async function resolveOrCreateUserId(session) {
   const authRows = await sql`SELECT 1 FROM auth_users WHERE id = ${authUserId} LIMIT 1`;
   if (authRows.length === 0) return null;
 
-  const email = session.user.email;
   const fullName = session.user.name;
-  const baseUsername =
-    email?.split('@')[0] ||
-    fullName?.toLowerCase().replace(/\s+/g, '') ||
-    `user_${Date.now()}`;
+  const baseUsername = usernameBaseFor(fullName);
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const username = await uniqueUsername(baseUsername, async (candidate) => {

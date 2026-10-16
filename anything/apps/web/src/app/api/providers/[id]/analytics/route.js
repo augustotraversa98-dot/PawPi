@@ -106,7 +106,7 @@ async function GET(request, { params }) {
         va.status,
         va.capability,
         p.name AS pet_name,
-        COALESCE(up.full_name, up.username) AS owner_name,
+        NULLIF(BTRIM(up.full_name), '') AS owner_name,
         s.name AS service_name
       FROM vet_appointments va
       LEFT JOIN pets p ON p.id = va.pet_id

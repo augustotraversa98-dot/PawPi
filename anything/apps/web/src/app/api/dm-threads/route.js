@@ -36,8 +36,8 @@ async function GET(request) {
         t.created_at,
         t.last_message_at,
         ou.id AS other_user_id,
-        COALESCE(ou.full_name, ou.username) AS other_name,
-        ou.username AS other_username,
+        NULLIF(BTRIM(ou.full_name), '') AS other_name,
+        NULLIF(BTRIM(ou.full_name), '') AS other_username,
         ou.avatar_url AS other_avatar_url,
         (
           SELECT m.body FROM dm_messages m

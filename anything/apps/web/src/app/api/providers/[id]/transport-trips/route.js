@@ -155,7 +155,7 @@ async function GET(request, { params }) {
         t.pet_size, t.carrier_needed, t.assigned_staff_id, t.status, t.fare_amount,
         t.notes, t.created_at,
         p.name AS pet_name,
-        COALESCE(up.full_name, up.username) AS owner_name
+        NULLIF(BTRIM(up.full_name), '') AS owner_name
       FROM transport_trips t
       LEFT JOIN pets p ON p.id = t.pet_id
       LEFT JOIN user_profiles up ON up.id = t.owner_user_id

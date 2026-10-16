@@ -235,9 +235,11 @@ export const PostCard = memo(function PostCard({
                 @{petHandle}
               </Text>
             ) : null}
-            <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-              by {ownerName}
-            </Text>
+            {ownerName ? (
+              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
+                by {ownerName}
+              </Text>
+            ) : null}
           </View>
         </View>
         <View style={{ alignItems: "flex-end", gap: 4 }}>

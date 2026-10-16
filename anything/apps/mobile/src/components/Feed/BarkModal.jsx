@@ -24,6 +24,7 @@ import { useMyProfileId } from "@/hooks/useUserProfile";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useTranslation } from "react-i18next";
+import { ownerDisplayName } from "@/utils/ownerDisplayName";
 
 export const BarkModal = memo(function BarkModal({
   visible,
@@ -263,7 +264,7 @@ export const BarkModal = memo(function BarkModal({
                           color: COLORS.coral,
                         }}
                       >
-                        {bark.pet_handle ? `@${bark.pet_handle}` : bark.username}
+                        {bark.pet_handle ? `@${bark.pet_handle}` : ownerDisplayName(bark.username, t)}
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={{ fontSize: 11, color: COLORS.mutedBrown }}>

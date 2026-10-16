@@ -14,7 +14,7 @@ async function GET(request, { params }) {
     const barks = await sql`
       SELECT
         pb.*,
-        up.username,
+        NULLIF(BTRIM(up.full_name), '') AS username,
         up.avatar_url,
         p.handle AS pet_handle,
         p.name AS pet_name,
@@ -130,7 +130,7 @@ async function POST(request, { params }) {
     const barkWithUser = await sql`
       SELECT
         pb.*,
-        up.username,
+        NULLIF(BTRIM(up.full_name), '') AS username,
         up.avatar_url,
         p.handle AS pet_handle,
         p.name AS pet_name,

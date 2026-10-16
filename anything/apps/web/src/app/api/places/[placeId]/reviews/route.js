@@ -92,7 +92,7 @@ async function GET(request, { params }) {
         r.comment,
         r.created_at,
         r.updated_at,
-        COALESCE(up.full_name, up.username) AS reviewer_name
+        NULLIF(BTRIM(up.full_name), '') AS reviewer_name
       FROM place_reviews r
       LEFT JOIN user_profiles up ON up.id = r.owner_user_id
       WHERE r.place_id = ${placeId}

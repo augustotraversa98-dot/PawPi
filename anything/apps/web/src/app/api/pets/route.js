@@ -1,5 +1,6 @@
 import { normalizeWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
+import { usernameBaseFor } from "@/app/api/utils/ownerDisplay";
 import { auth } from "@/auth";
 import {
   withRequestContext,
@@ -106,13 +107,11 @@ async function POST(request) {
     `;
 
     if (userProfile.length === 0) {
-      // Generate username from email or name, then uniquify on conflict: an
-      // orphaned/duplicate profile (or two users sharing an email prefix) may
-      // already own this base, which would otherwise throw a raw 23505 → 500.
-      const baseUsername =
-        session.user.email?.split("@")[0] ||
-        session.user.name?.toLowerCase().replace(/\s+/g, "") ||
-        `user_${Date.now()}`;
+      // Generate username from the NAME (or a random neutral handle) — never from the
+      // e-mail (privacy, QA 2026-10-16 bug 04) — then uniquify on conflict: an
+      // orphaned/duplicate profile may already own this base, which would otherwise
+      // throw a raw 23505 → 500.
+      const baseUsername = usernameBaseFor(session.user.name);
       const username = await uniqueUsername(baseUsername, async (candidate) => {
         const taken = await sql`
           SELECT id FROM user_profiles WHERE username = ${candidate} LIMIT 1

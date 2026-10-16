@@ -47,7 +47,7 @@ async function GET(request, { params }) {
         sv.photo_urls, sv.video_urls, sv.check_in_lat, sv.check_in_lng,
         sv.created_at,
         p.name AS provider_name,
-        COALESCE(up.full_name, up.username) AS sitter_name
+        NULLIF(BTRIM(up.full_name), '') AS sitter_name
       FROM sitting_visits sv
       LEFT JOIN providers p ON p.id = sv.provider_id
       LEFT JOIN user_profiles up ON up.id = sv.staff_user_id

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, PawPrint, Grid3X3, MessageCircle, Share2 } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
@@ -77,7 +78,7 @@ export default function PetProfileScreen({ embedded = false }) {
   const handle = pet?.handle || params.petHandle || "";
   const avatarUrl = pet?.avatar_url || params.avatar || "";
   const ownerName = pet
-    ? owner?.full_name || owner?.username || ""
+    ? owner?.full_name || ""
     : params.ownerName || "";
   const breed = pet?.breed ?? params.breed ?? "";
   const ageParts = pet ? getDisplayAgeParts(pet) : null;
@@ -94,6 +95,7 @@ export default function PetProfileScreen({ embedded = false }) {
 
   // Message the OWNER (ticket 2.27) — same gate; needs the owner's user id. Starts
   // (or reuses) a 1:1 DM thread, then opens the conversation.
+  const { t } = useTranslation();
   const startDM = useStartDM();
   const canMessage = canFollow && !!owner?.id;
   const handleMessage = useCallback(async () => {
@@ -105,21 +107,20 @@ export default function PetProfileScreen({ embedded = false }) {
         params: {
           threadId: String(thread.id),
           otherUserId: String(owner.id),
-          otherName: owner.full_name || owner.username || "Pet parent",
+          otherName: ownerDisplayName(owner.full_name, t),
           otherAvatar: owner.avatar_url || "",
         },
       });
     } catch (e) {
       // Non-fatal: the button just no-ops on failure.
     }
-  }, [owner, startDM, router]);
+  }, [owner, startDM, router, t]);
 
   // ── Post detail / bark modals (mirror the feed) ──
   const [detailPost, setDetailPost] = useState(null);
   const [barkPost, setBarkPost] = useState(null);
   const [likedPosts, setLikedPosts] = useState({});
   const [shareDeckVisible, setShareDeckVisible] = useState(false);
-  const { t } = useTranslation();
   // Localized age string ("3 años", "2 años, 6 meses", "~6 meses"). Units come
   // from i18n; the shared getDisplayAge stays English-only for its callers/tests.
   const formatAge = (parts) => {
@@ -148,7 +149,8 @@ export default function PetProfileScreen({ embedded = false }) {
         pet_name: pet?.name,
         pet_handle: pet?.handle,
         pet_avatar: pet?.avatar_url,
-        username: owner?.username,
+        // Display name only — never the username (privacy, QA 2026-10-16 bug 04).
+        username: owner?.full_name || null,
       });
     },
     [pet, owner],

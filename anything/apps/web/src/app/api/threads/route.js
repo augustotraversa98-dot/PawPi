@@ -45,7 +45,7 @@ function threadCards(userId, whereClause) {
       t.last_message_at,
       pr.name AS provider_name,
       pr.logo_url AS provider_logo_url,
-      COALESCE(ow.full_name, ow.username) AS owner_name,
+      NULLIF(BTRIM(ow.full_name), '') AS owner_name,
       ow.avatar_url AS owner_avatar_url,
       (
         SELECT m.body FROM messages m

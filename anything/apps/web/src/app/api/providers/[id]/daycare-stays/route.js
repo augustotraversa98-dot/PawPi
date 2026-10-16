@@ -56,7 +56,7 @@ async function GET(request, { params }) {
         ds.feeding_instructions, ds.med_instructions,
         ds.checked_in_at, ds.checked_out_at, ds.created_at,
         p.name AS pet_name,
-        COALESCE(up.full_name, up.username) AS owner_name,
+        NULLIF(BTRIM(up.full_name), '') AS owner_name,
         l.name AS location_name,
         (SELECT COUNT(*)::int FROM report_cards rc WHERE rc.stay_id = ds.id) AS report_card_count
       FROM daycare_stays ds

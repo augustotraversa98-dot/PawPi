@@ -84,7 +84,7 @@ async function GET(request, { params }) {
             ws.duration_s, ws.route, ws.potty_pee, ws.potty_poo, ws.notes,
             ws.photo_urls, ws.created_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name
+            NULLIF(BTRIM(up.full_name), '') AS owner_name
           FROM walk_sessions ws
           LEFT JOIN pets p ON p.id = ws.pet_id
           LEFT JOIN user_profiles up ON up.id = ws.owner_user_id
@@ -100,7 +100,7 @@ async function GET(request, { params }) {
             ws.duration_s, ws.route, ws.potty_pee, ws.potty_poo, ws.notes,
             ws.photo_urls, ws.created_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name
+            NULLIF(BTRIM(up.full_name), '') AS owner_name
           FROM walk_sessions ws
           LEFT JOIN pets p ON p.id = ws.pet_id
           LEFT JOIN user_profiles up ON up.id = ws.owner_user_id

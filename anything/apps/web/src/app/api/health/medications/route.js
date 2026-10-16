@@ -26,7 +26,7 @@ async function GET(request) {
     }
 
     const medications = await sql`
-      SELECT m.*, coalesce(up.full_name, up.username) AS created_by_name
+      SELECT m.*, NULLIF(BTRIM(up.full_name), '') AS created_by_name
       FROM pet_medications m
       LEFT JOIN user_profiles up ON up.id = m.created_by_user_id
       WHERE m.pet_id = ${parseInt(petId)}

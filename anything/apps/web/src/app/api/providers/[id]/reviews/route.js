@@ -67,7 +67,7 @@ async function GET(request, { params }) {
         r.rating,
         r.body,
         r.created_at,
-        COALESCE(up.full_name, up.username) AS reviewer_name,
+        NULLIF(BTRIM(up.full_name), '') AS reviewer_name,
         p.name AS pet_name
       FROM provider_reviews r
       LEFT JOIN user_profiles up ON up.id = r.owner_user_id

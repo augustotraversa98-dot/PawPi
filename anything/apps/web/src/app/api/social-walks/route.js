@@ -242,7 +242,7 @@ async function GET(request) {
           sw.status,
           p.name as pet_name,
           p.avatar_url as pet_avatar,
-          up.username as owner_username,
+          NULLIF(BTRIM(up.full_name), '') AS owner_username,
           (
             SELECT COUNT(*)
             FROM social_walk_join_requests swjr
@@ -267,7 +267,7 @@ async function GET(request) {
           sw.*,
           p.name as pet_name,
           p.avatar_url as pet_avatar,
-          up.username as owner_username,
+          NULLIF(BTRIM(up.full_name), '') AS owner_username,
           (
             SELECT COUNT(*)
             FROM social_walk_join_requests swjr
@@ -307,7 +307,7 @@ async function GET(request) {
             sw.status,
             p.name as pet_name,
             p.avatar_url as pet_avatar,
-            up.username as owner_username,
+            NULLIF(BTRIM(up.full_name), '') AS owner_username,
             (
               SELECT COUNT(*)
               FROM social_walk_join_requests swjr
@@ -364,7 +364,7 @@ async function GET(request) {
             sw.status,
             p.name as pet_name,
             p.avatar_url as pet_avatar,
-            up.username as owner_username,
+            NULLIF(BTRIM(up.full_name), '') AS owner_username,
             (
               SELECT COUNT(*)
               FROM social_walk_join_requests swjr
