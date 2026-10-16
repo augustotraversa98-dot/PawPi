@@ -48,6 +48,13 @@ const product = (over = {}) => ({
   ...over,
 });
 
+// The two per-sub guard queries the route runs right after the due scan (advisory lock, then the
+// "still due?" re-read). Queue them so the older tests keep reading in route order.
+const guardsPass = () => {
+  sql.mockResolvedValueOnce([{ locked: true }]); // pg_try_advisory_xact_lock
+  sql.mockResolvedValueOnce([{ "?column?": 1 }]); // still due under the lock
+};
+
 let savedSecret;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -78,6 +85,7 @@ describe("auth gating", () => {
 describe("charging a due subscription", () => {
   it("builds a kind='product' order with server price, charges with a period idempotency key, advances next_charge_at", async () => {
     sql.mockResolvedValueOnce([dueSub()]); // app_due_subscriptions()
+    guardsPass();
     sql.mockResolvedValueOnce([product()]); // shop_products re-validate
     sql.mockResolvedValueOnce([{ id: 900 }]); // INSERT orders
     sql.mockResolvedValueOnce([]); // INSERT order_items
@@ -92,12 +100,12 @@ describe("charging a due subscription", () => {
 
     // The order INSERT is kind='product' (SQL literal) and binds amount = price (3000) *
     // qty (2) = 6000 + the subscription source_ref.
-    const orderInsert = sql.mock.calls[2];
+    const orderInsert = sql.mock.calls[4];
     expect(orderInsert[0].join(" ")).toContain("INSERT INTO orders");
     expect(orderInsert[0].join(" ")).toContain("'product'");
     expect(orderInsert).toEqual(expect.arrayContaining(["subscription:1", 6000]));
     // order_items bound the server-side unit price + quantity + product id.
-    const itemInsert = sql.mock.calls[3];
+    const itemInsert = sql.mock.calls[5];
     expect(itemInsert[0].join(" ")).toContain("INSERT INTO order_items");
     expect(itemInsert).toEqual(expect.arrayContaining([2, 3000, 50]));
 
@@ -108,7 +116,7 @@ describe("charging a due subscription", () => {
     );
 
     // next_charge_at advanced one month (monthly) — only after a successful checkout.
-    const update = sql.mock.calls[4];
+    const update = sql.mock.calls[6];
     expect(update[0].join(" ")).toContain("UPDATE subscriptions");
     const boundDate = update.find((v) => v instanceof Date);
     expect(boundDate.toISOString()).toBe("2026-07-01T00:00:00.000Z");
@@ -118,6 +126,7 @@ describe("charging a due subscription", () => {
 describe("clean skips (no advance, no throw, always 200)", () => {
   it("PaymentsNotConfigured → skipped, next_charge_at NOT advanced", async () => {
     sql.mockResolvedValueOnce([dueSub()]); // due
+    guardsPass();
     sql.mockResolvedValueOnce([product()]); // re-validate
     sql.mockResolvedValueOnce([{ id: 900 }]); // INSERT orders
     sql.mockResolvedValueOnce([]); // INSERT order_items
@@ -129,7 +138,7 @@ describe("clean skips (no advance, no throw, always 200)", () => {
     expect(res.status).toBe(200);
     expect(body.charged).toBe(0);
     expect(body.skipped).toEqual([{ subId: 1, reason: "payments not configured" }]);
-    // No UPDATE subscriptions ran (the only sql calls are due + revalidate + 2 inserts).
+    // No UPDATE subscriptions ran (the only sql calls are due + 2 guards + revalidate + 2 inserts).
     const ranUpdate = sql.mock.calls.some((c) =>
       (c?.[0] ?? []).join(" ").includes("UPDATE subscriptions"),
     );
@@ -138,6 +147,7 @@ describe("clean skips (no advance, no throw, always 200)", () => {
 
   it("an Rx product is never auto-reordered → skipped before any order", async () => {
     sql.mockResolvedValueOnce([dueSub()]); // due
+    guardsPass();
     sql.mockResolvedValueOnce([product({ is_rx: true })]); // re-validate → Rx
 
     const res = await POST(req("topsecret"));
@@ -145,12 +155,13 @@ describe("clean skips (no advance, no throw, always 200)", () => {
 
     expect(body.skipped).toEqual([{ subId: 1, reason: "rx product not auto-reordered" }]);
     expect(createCheckout).not.toHaveBeenCalled();
-    // Only due + revalidate ran — no order INSERT.
-    expect(sql).toHaveBeenCalledTimes(2);
+    // Only due + 2 guards + revalidate ran — no order INSERT.
+    expect(sql).toHaveBeenCalledTimes(4);
   });
 
   it("insufficient stock → skipped", async () => {
     sql.mockResolvedValueOnce([dueSub({ quantity: 5 })]);
+    guardsPass();
     sql.mockResolvedValueOnce([product({ stock_qty: 2 })]);
 
     const body = await (await POST(req("topsecret"))).json();
@@ -160,6 +171,7 @@ describe("clean skips (no advance, no throw, always 200)", () => {
 
   it("an inactive/missing product → skipped", async () => {
     sql.mockResolvedValueOnce([dueSub()]);
+    guardsPass();
     sql.mockResolvedValueOnce([]); // shop_products returns nothing (inactive)
 
     const body = await (await POST(req("topsecret"))).json();
@@ -176,3 +188,34 @@ describe("clean skips (no advance, no throw, always 200)", () => {
     expect(createCheckout).not.toHaveBeenCalled();
   });
 });
+
+describe("overlap guard (advisory lock + re-check)", () => {
+  it("lock held by another run → skipped before any product read, order or charge", async () => {
+    sql.mockResolvedValueOnce([dueSub()]); // due
+    sql.mockResolvedValueOnce([{ locked: false }]); // pg_try_advisory_xact_lock
+
+    const body = await (await POST(req("topsecret"))).json();
+
+    expect(body.charged).toBe(0);
+    expect(body.skipped).toEqual([{ subId: 1, reason: "already being charged" }]);
+    expect(sql).toHaveBeenCalledTimes(2); // due + lock only
+    expect(createCheckout).not.toHaveBeenCalled();
+    const lockCall = sql.mock.calls[1];
+    expect(lockCall[0].join(" ")).toContain("pg_try_advisory_xact_lock(hashtext('sub-charge')");
+    expect(lockCall).toContain(1); // keyed by the subscription id
+  });
+
+  it("no longer due after taking the lock (a prior run advanced it) → skipped", async () => {
+    sql.mockResolvedValueOnce([dueSub()]); // stale snapshot
+    sql.mockResolvedValueOnce([{ locked: true }]);
+    sql.mockResolvedValueOnce([]); // re-read: next_charge_at already advanced
+
+    const body = await (await POST(req("topsecret"))).json();
+
+    expect(body.charged).toBe(0);
+    expect(body.skipped).toEqual([{ subId: 1, reason: "no longer due" }]);
+    expect(sql).toHaveBeenCalledTimes(3);
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+});
+

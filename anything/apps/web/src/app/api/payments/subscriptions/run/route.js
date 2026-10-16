@@ -14,7 +14,8 @@ import { secretEquals } from "@/app/api/utils/secretCompare";
 // here on a daily cadence with the shared secret header. It re-buys each DUE shop
 // subscription through the SAME payment layer as a normal shop order, then advances
 // next_charge_at by the plan cadence. Safe to run repeatedly (period-stable idempotency key);
-// degrades cleanly when payments aren't configured (each charge simply skips).
+// degrades cleanly when payments aren't configured (each charge simply skips). Simultaneous
+// runs are safe too: each charge takes a per-subscription advisory lock (see below).
 //
 // RLS: the due-scan crosses owners, so it enumerates via the SECURITY DEFINER
 // app_due_subscriptions() (0039) — the route NEVER reads `subscriptions` directly across
@@ -52,6 +53,25 @@ async function POST(request) {
       // aborts the run or another sub's write.
       const outcome = await withTransaction(async () => {
         await setCurrentUserId(sub.owner_user_id);
+
+        // Overlap guard. app_due_subscriptions() is a plain read, so two SIMULTANEOUS runs
+        // (e.g. the manual GitHub fallback fired during the 06:00 Railway run) see the same due
+        // set. A transaction-scoped advisory lock per subscription lets exactly one of them
+        // charge it; the other skips instead of waiting. Nothing is stored — the lock is
+        // released automatically at COMMIT/ROLLBACK (so also safe behind the pgbouncer pooler).
+        const [lock] = await sql`
+          SELECT pg_try_advisory_xact_lock(hashtext('sub-charge'), ${sub.id}) AS locked
+        `;
+        if (!lock?.locked) return { skip: "already being charged" };
+
+        // Re-read UNDER the lock: a run that held it before us has committed its
+        // next_charge_at advance by now, so our stale snapshot of the due set no longer applies.
+        const stillDue = await sql`
+          SELECT 1
+          FROM subscriptions
+          WHERE id = ${sub.id} AND status = 'active' AND next_charge_at <= now()
+        `;
+        if (stillDue.length === 0) return { skip: "no longer due" };
 
         // Re-validate the product UNDER THE OWNER'S identity (RLS lets an authed owner read a
         // published shop's active product). Price is read server-side — never a stored amount.
