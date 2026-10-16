@@ -9,6 +9,9 @@ jobs:
   mobile:
     name: mobile (jest)
     runs-on: ubuntu-latest
+    # The suite takes ~2 min. A hung run (jest idling on a leaked timer after every test passed)
+    # once burned ~34 min per run for ten days; fail loudly instead of waiting that out.
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: anything/apps/mobile
@@ -23,6 +26,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Logged so a slow run can be tied to runner size (jest runs in-band on a 1-CPU view).
+      - name: Runner size
+        run: echo "cpus=$(nproc)"
 
       - name: Run tests
         run: npm test
