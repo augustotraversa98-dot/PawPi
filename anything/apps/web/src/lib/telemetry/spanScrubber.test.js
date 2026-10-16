@@ -45,7 +45,7 @@ function expectClean(attrs) {
   const json = JSON.stringify(attrs);
   for (const bad of FORBIDDEN) expect(json, `leaked "${bad}": ${json}`).not.toContain(bad);
   for (const k of Object.keys(attrs)) {
-    expect(k).not.toMatch(/^(client\.|network\.peer\.|network\.local\.|net\.sock\.|url\.query$|http\.request\.header)/);
+    expect(k).not.toMatch(/^(client\.|peer\.|network\.peer\.|network\.local\.|net\.sock\.|url\.query$|http\.request\.header)/);
   }
 }
 
@@ -166,6 +166,53 @@ describe('scrubSpanAttributes', () => {
     expectClean(attrs);
     expect(attrs['network.transport']).toBe('tcp');
     expect(attrs['server.address']).toBe('db.internal');
+  });
+
+  it('drops peer.ipv4 and every other IP-bearing attribute, and keeps ordinary attributes', () => {
+    const ipAttrs = {
+      'peer.ipv4': '203.0.113.9',
+      'peer.ipv6': '2001:db8::9',
+      'peer.port': 51234,
+      'peer.hostname': 'host-10.1.2.3.example',
+      'net.peer.ip': '203.0.113.9',
+      'net.sock.peer.addr': '203.0.113.9',
+      'net.sock.host.addr': '10.1.2.3',
+      'network.peer.address': '203.0.113.9',
+      'client.address': '203.0.113.9',
+      'client.ip': '203.0.113.9',
+      'http.client_ip': '203.0.113.9',
+      'http.request.header.x-forwarded-for': '203.0.113.9',
+      'http.request.header.x_forwarded_for': '203.0.113.9',
+      'http.request.header.x-real-ip': '203.0.113.9',
+      'http.x_forwarded_for': '203.0.113.9',
+      'x-forwarded-for': '203.0.113.9',
+      'x-real-ip': '203.0.113.9',
+    };
+    const kept = {
+      'http.request.method': 'GET',
+      'http.response.status_code': 200,
+      'http.route': '/api/pets/:id',
+      'url.scheme': 'https',
+      'server.address': 'www.pawpi.info',
+      'network.transport': 'tcp',
+    };
+    const attrs = { ...ipAttrs, ...kept };
+    scrubSpanAttributes(attrs, { kind: SERVER, matchRoute });
+    for (const k of Object.keys(ipAttrs)) expect(k in attrs, `${k} survived`).toBe(false);
+    expect(attrs).toEqual(kept);
+    expect(JSON.stringify(attrs)).not.toMatch(/203\.0\.113\.9|10\.1\.2\.3/);
+  });
+
+  it('SpanScrubber removes peer.ipv4 from a real exported span', () => {
+    const exporter = new tracing.InMemorySpanExporter();
+    const provider = new tracing.BasicTracerProvider({
+      spanProcessors: [new SpanScrubber({ templates: TEMPLATES }), new tracing.SimpleSpanProcessor(exporter)],
+    });
+    provider
+      .getTracer('t')
+      .startSpan('GET', { kind: SERVER, attributes: { 'peer.ipv4': '203.0.113.9', 'http.request.method': 'GET' } })
+      .end();
+    expect(exporter.getFinishedSpans()[0].attributes).toEqual({ 'http.request.method': 'GET' });
   });
 
   it('error.type holding an error message is reduced to _OTHER; a type token is kept', () => {
