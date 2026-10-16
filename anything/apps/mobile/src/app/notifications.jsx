@@ -238,7 +238,8 @@ function winbackDisplay(n, t) {
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
-const TYPE_LABEL = { paw: "New paw", bark: "New bark", follow: "New follower" };
+// paw / bark / follow render from localized copy (the server's body is English-only).
+const LOCALIZED_TYPES = new Set(["paw", "bark", "follow"]);
 // E6/E7 engagement notifications — rendered from localized copy (EN+ES), not the server's body string.
 const ENGAGEMENT_TYPES = new Set(["welcome", "pack_invite", "pack_accepted", "boop"]);
 // BN2 business (provider-facing) notifications — rendered from localized copy (EN+ES) via the
@@ -380,7 +381,9 @@ function mapDbNotification(n, t) {
         : ownerDisplayName(n.actor_username, t),
     message: isEngagement
       ? t(`notifications.${n.type}`)
-      : n.body || TYPE_LABEL[n.type] || "New activity",
+      : LOCALIZED_TYPES.has(n.type)
+        ? t(`notifications.type_${n.type}`)
+        : n.body || t("notifications.newActivity"),
     timestamp: n.created_at,
     read: !!n.read_at,
     avatar: n.actor_avatar || null,
@@ -426,7 +429,7 @@ const NotificationIcon = ({ type }) => {
   }
 };
 
-const formatTimestamp = (timestamp) => {
+const formatTimestamp = (timestamp, t) => {
   const now = new Date();
   const then = new Date(timestamp);
   const diffMs = now - then;
@@ -434,18 +437,24 @@ const formatTimestamp = (timestamp) => {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t("notifications.justNow");
+  if (diffMins < 60) return t("notifications.minutesAgo", { n: diffMins });
+  if (diffHours < 24) return t("notifications.hoursAgo", { n: diffHours });
+  if (diffDays === 1) return t("notifications.yesterday");
+  if (diffDays < 7) return t("notifications.daysAgo", { n: diffDays });
   return then.toLocaleDateString();
 };
 
-// The "Requests" and "Bookings" chips have localized labels; the other chips are
-// pre-existing copy owned by the i18n extraction branch, so they pass through.
+// Filter ids stay English (they key the filtering logic); every chip label is localized.
 const FILTER_LABEL_KEYS = {
+  All: "notifications.filterAll",
   Requests: "notifications.filterRequests",
   Bookings: "notifications.filterBookings",
+  Walks: "notifications.filterWalks",
+  Feeding: "notifications.filterFeeding",
+  Paws: "notifications.filterPaws",
+  Barks: "notifications.filterBarks",
+  Training: "notifications.filterTraining",
 };
 function filterLabel(filter, t) {
   const key = FILTER_LABEL_KEYS[filter];
@@ -614,11 +623,11 @@ export default function NotificationsScreen() {
             <X size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            Notifications
+            {t("notifications.title")}
           </Text>
           <PressableScale onPress={handleMarkAllRead} accessibilityRole="button">
             <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral }]}>
-              Mark all read
+              {t("notifications.markAllRead")}
             </Text>
           </PressableScale>
         </View>
@@ -714,7 +723,7 @@ export default function NotificationsScreen() {
                 { fontWeight: "700", color: COLORS.warmBrown, marginTop: SPACING.lg },
               ]}
             >
-              No new notifications yet
+              {t("notifications.empty")}
             </Text>
             <Text
               style={[
@@ -727,7 +736,7 @@ export default function NotificationsScreen() {
                 },
               ]}
             >
-              It's quiet here for now.
+              {t("notifications.emptyQuiet")}
             </Text>
           </View>
         ) : (
@@ -821,7 +830,7 @@ export default function NotificationsScreen() {
                           { letterSpacing: 0, fontWeight: "500", color: COLORS.mutedBrown },
                         ]}
                       >
-                        {formatTimestamp(notif.timestamp)}
+                        {formatTimestamp(notif.timestamp, t)}
                       </Text>
                     </View>
                     <Text

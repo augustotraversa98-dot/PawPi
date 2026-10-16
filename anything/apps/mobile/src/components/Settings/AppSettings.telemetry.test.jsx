@@ -3,7 +3,7 @@
 // unit tested in src/telemetry/client.test.js.
 
 import React from "react";
-import { Switch } from "react-native";
+import { Switch, Linking } from "react-native";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 const mockReadEnabled = jest.fn();
@@ -26,6 +26,10 @@ jest.mock("@/i18n/localePreference", () => ({
   setLocalePreference: jest.fn(),
 }));
 jest.mock("@/components/Health/WalkActivity/WalkTrackingSettings", () => () => null);
+jest.mock("@/constants/legal", () => ({
+  ...jest.requireActual("@/constants/legal"),
+  PRIVACY_POLICY_URL: "https://www.pawpi.info/privacy",
+}));
 
 import AppSettings from "./AppSettings";
 
@@ -42,7 +46,9 @@ beforeEach(() => {
 it("shows the telemetry switch ON by default with the explanatory copy", async () => {
   const utils = render(<AppSettings />);
   expect(utils.getByText("Help improve PawPi (anonymous)")).toBeTruthy();
-  expect(utils.getByText(/anonymous usage and error data/i)).toBeTruthy();
+  // One short line (QA 2026-10-16 bug 11); the long explanation lives behind "Learn more" → Privacy Policy.
+  expect(utils.getByText(/anonymous usage data/i)).toBeTruthy();
+  expect(utils.getByText("Learn more")).toBeTruthy();
   expect(telemetrySwitch(utils).props.value).toBe(true);
   await waitFor(() => expect(mockReadEnabled).toHaveBeenCalled());
 });
@@ -71,4 +77,13 @@ it("the same copy exists in Spanish", () => {
   expect(es.settings.telemetryHint.length).toBeGreaterThan(20);
   expect(es.settings.telemetryTitle).not.toBe(en.settings.telemetryTitle);
   expect(es.settings.telemetryHint).not.toBe(en.settings.telemetryHint);
+});
+
+it("'Learn more' opens the existing Privacy Policy page", () => {
+  const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  const utils = render(<AppSettings />);
+  fireEvent.press(utils.getByTestId("telemetry-learn-more"));
+  expect(openURL).toHaveBeenCalledTimes(1);
+  expect(String(openURL.mock.calls[0][0])).toMatch(/privacy/i);
+  openURL.mockRestore();
 });

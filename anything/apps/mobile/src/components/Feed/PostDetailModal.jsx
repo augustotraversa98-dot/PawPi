@@ -161,11 +161,11 @@ export const PostDetailModal = memo(function PostDetailModal({
             <X size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-            Pet moment
+            {t("feed.petMomentTitle")}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.lg }}>
             {canDelete ? (
-              <PressableScale onPress={onDelete} accessibilityLabel="Delete post" accessibilityRole="button">
+              <PressableScale onPress={onDelete} accessibilityLabel={t("feed.deletePostLabel")} accessibilityRole="button">
                 <Trash2 size={20} color={COLORS.coral} />
               </PressableScale>
             ) : null}
@@ -220,7 +220,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                   </Text>
                 ) : null}
                 <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                  {ownerName ? `by ${ownerName} · ` : ""}{timestamp}
+                  {ownerName ? `${t("search.byOwner", { name: ownerName })} · ` : ""}{timestamp}
                 </Text>
               </View>
             </View>
@@ -301,7 +301,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     accessibilityRole="button"
                   >
                     <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.mutedBrown }]}>
-                      Cancel
+                      {t("common.cancel")}
                     </Text>
                   </PressableScale>
                   <PressableScale
@@ -332,7 +332,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                   <PressableScale
                     testID="edit-caption"
                     onPress={startEditCaption}
-                    accessibilityLabel="Edit caption"
+                    accessibilityLabel={t("feed.editCaptionLabel")}
                     accessibilityRole="button"
                     style={{ paddingLeft: SPACING.sm, paddingTop: 2 }}
                   >
@@ -347,7 +347,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               <PressableScale
                 testID="add-caption"
                 onPress={startEditCaption}
-                accessibilityLabel="Add caption"
+                accessibilityLabel={t("feed.addCaptionLabel")}
                 accessibilityRole="button"
                 style={{
                   flexDirection: "row",
@@ -427,7 +427,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               <View style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
                 <Text style={{ fontSize: 28 }}>🐾</Text>
                 <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: SPACING.sm }]}>
-                  No barks yet
+                  {t("feed.noBarksYet")}
                 </Text>
               </View>
             ) : (

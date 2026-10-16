@@ -43,7 +43,17 @@ function StatPill({ value, label, color, onPress, testID }) {
       <Text style={[TYPE.title2, { color: color || COLORS.warmBrown }]}>
         {value}
       </Text>
-      <Text style={[TYPE.caption, { color: COLORS.mutedBrown, marginTop: 2 }]}>
+      {/* One line that SHRINKS to fit instead of breaking mid-word in narrow pills / longer
+          languages (QA 2026-10-16 bug 06: "Publicacione/s diarias"). */}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        style={[
+          TYPE.caption,
+          { color: COLORS.mutedBrown, marginTop: 2, textAlign: "center", alignSelf: "stretch" },
+        ]}
+      >
         {label}
       </Text>
     </>

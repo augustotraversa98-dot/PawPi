@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Repeat, Settings } from "lucide-react-native";
 
 // Import only Routines and Settings tabs
@@ -26,6 +27,7 @@ const TABS = {
 };
 
 export default function RemindersRoutinesScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // Optional deep-link from Health → Today's heads-up "Edit": open this routine
@@ -100,7 +102,7 @@ export default function RemindersRoutinesScreen() {
                 letterSpacing: -0.5,
               }}
             >
-              Reminders & Routines
+              {t("remindersScreen.title")}
             </Text>
             <Text
               style={{
@@ -109,7 +111,7 @@ export default function RemindersRoutinesScreen() {
                 marginTop: 2,
               }}
             >
-              Set your pet's care schedule and reminder preferences
+              {t("remindersScreen.subtitle")}
             </Text>
           </View>
         </View>
@@ -124,8 +126,8 @@ export default function RemindersRoutinesScreen() {
           flexDirection: "row",
         }}
       >
-        <TabButton tab={TABS.ROUTINES} label="Routines" icon={Repeat} />
-        <TabButton tab={TABS.SETTINGS} label="Settings" icon={Settings} />
+        <TabButton tab={TABS.ROUTINES} label={t("remindersScreen.tabRoutines")} icon={Repeat} />
+        <TabButton tab={TABS.SETTINGS} label={t("remindersScreen.tabSettings")} icon={Settings} />
       </View>
 
       {/* Tab Content */}

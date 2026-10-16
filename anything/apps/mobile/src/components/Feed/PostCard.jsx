@@ -220,7 +220,7 @@ export const PostCard = memo(function PostCard({
                 {dogName}
               </Text>
               {isBirthday ? (
-                <Text accessibilityLabel="Birthday" style={{ fontSize: 15 }}>
+                <Text accessibilityLabel={t("feed.birthdayLabel")} style={{ fontSize: 15 }}>
                   🎂
                 </Text>
               ) : null}
@@ -237,7 +237,7 @@ export const PostCard = memo(function PostCard({
             ) : null}
             {ownerName ? (
               <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
-                by {ownerName}
+                {t("search.byOwner", { name: ownerName })}
               </Text>
             ) : null}
           </View>

@@ -644,12 +644,18 @@ export default function PetProfileScreen({ embedded = false }) {
           <Text
             style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", marginBottom: SPACING.md + 2 }]}
           >
-            About {name}
+            {t("petProfile.aboutName", { name })}
           </Text>
           {[
-            breed ? { label: "Breed", value: breed } : null,
-            ageText ? { label: "Age", value: ageText } : null,
-            ownerName ? { label: "Owner", value: ownerName } : null,
+            breed
+              ? {
+                  label: t("petProfile.breed"),
+                  // "Mixed Breed" is the stored picker value (never translated in data) — show it localized.
+                  value: breed === "Mixed Breed" ? t("petProfile.mixedBreed") : breed,
+                }
+              : null,
+            ageText ? { label: t("petProfile.age"), value: ageText } : null,
+            ownerName ? { label: t("petProfile.owner"), value: ownerName } : null,
           ]
             .filter(Boolean)
             .map((row) => (
