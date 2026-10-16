@@ -27,6 +27,7 @@ import {
   ScrollText,
 } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
 import {
   getLocalePreference,
@@ -612,6 +613,8 @@ function BusinessNotificationToggles() {
 export default function AppSettings({ mode = "petOwner" }) {
   const isBusiness = mode === "business";
   const insets = useSafeAreaInsets();
+  // Keep the last rows / footer clear of the native tab bar (QA 2026-10-16 bug 03).
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const { t } = useTranslation();
   const { setAuth } = useAuth();
@@ -790,7 +793,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 24 }}>
         <Text
           style={{
             fontSize: 11,

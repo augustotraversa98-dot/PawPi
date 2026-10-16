@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -62,6 +63,7 @@ function isExpired(grant) {
 export default function DataAccessScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
@@ -181,7 +183,7 @@ export default function DataAccessScreen() {
       ) : (
         <RefreshableScrollView
           refetch={refetch}
-          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 32 }}
         >
           {/* Reassurance copy, mirroring the Vet Record access-control message. */}
           <View

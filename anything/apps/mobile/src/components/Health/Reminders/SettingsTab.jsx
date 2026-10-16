@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react-native";
 import * as Notifications from "expo-notifications";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -33,6 +34,7 @@ const C = {
 };
 
 export default function SettingsTab() {
+  const bottomClearance = useBottomClearance();
   const { t } = useTranslation();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [timeSensitiveEnabled, setTimeSensitiveEnabled] = useState(true);
@@ -270,7 +272,7 @@ export default function SettingsTab() {
   };
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 16 }}>
       {/* Header */}
       <View style={{ marginBottom: 20 }}>
         <Text

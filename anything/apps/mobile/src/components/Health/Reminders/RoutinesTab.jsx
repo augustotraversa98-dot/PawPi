@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react-native";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import useRoutinesStore from "@/store/routinesStore";
 import { ROUTINE_TYPES } from "@/data/routinesData";
@@ -41,6 +42,7 @@ const C = {
 };
 
 export default function RoutinesTab({ editRoutineId } = {}) {
+  const bottomClearance = useBottomClearance();
   const { t } = useTranslation();
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
   const queryClient = useQueryClient();
@@ -277,7 +279,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       <RefreshableScrollView
         refetch={handleRefresh}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 16 }}
       >
         {/* Header */}
         <View style={{ marginBottom: 20 }}>

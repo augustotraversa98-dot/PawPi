@@ -31,6 +31,7 @@ import {
 } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
@@ -51,6 +52,8 @@ const fieldLabelStyle = { ...TYPE.callout, fontWeight: "700", color: COLORS.warm
 
 export default function ProfileEditScreen() {
   const insets = useSafeAreaInsets();
+  // Keeps the sticky Save footer above the native tab bar (QA 2026-10-16 bug 01).
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -328,7 +331,7 @@ export default function ProfileEditScreen() {
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 20,
-            paddingBottom: insets.bottom + 120,
+            paddingBottom: bottomClearance + 120,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -584,7 +587,7 @@ export default function ProfileEditScreen() {
             backgroundColor: COLORS.cream,
             paddingHorizontal: SPACING.xl,
             paddingTop: SPACING.lg,
-            paddingBottom: insets.bottom + SPACING.lg,
+            paddingBottom: bottomClearance + SPACING.lg,
             borderTopWidth: 1,
             borderTopColor: MATERIALS.hairline,
           }}
