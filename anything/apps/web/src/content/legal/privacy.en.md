@@ -1,4 +1,4 @@
-**Last updated:** October 5, 2026
+**Last updated:** October 16, 2026
 
 This Privacy Policy explains how Augusto Traversa ("PawPi," "we," "us") collects, uses, and
 shares information when you use the PawPi mobile app and related services (the "Service"). PawPi is
@@ -199,9 +199,13 @@ contract, only as needed:
 - **Uploadcare / the app's media upload service** — Purpose: Image and document upload/storage; Data involved: Photos, documents, media you upload
 - **Google Maps Platform** — Purpose: Maps and place data; Data involved: Approximate/precise location when you use map features
 - **Grafana Cloud** (Grafana Labs) — Purpose: Hosting and monitoring of the anonymous usage and diagnostics data described in Section 5; Data involved: Anonymous usage and diagnostics events and statistics, tied only to random identifiers — no name, email, account, pet, content, or location data
+- **Daily** (Daily.co) — Purpose: Video calls for veterinary telehealth consultations; Data involved: When you join a video consultation, Daily handles your account name (shown to the other participant), your audio and video, any chat messages and any screen you share during the call, and technical connection data such as your IP address. [Daily's privacy policy](https://www.daily.co/privacy/)
+- **Expo** (app updates) — Purpose: Checking for and delivering updates to the app's code; Data involved: When the app starts, it asks Expo's update service whether an update is available and sends the app version and update identifiers, your platform (iOS or Android), the update channel, a random client identifier, and your IP address. [Expo's privacy policy](https://expo.dev/privacy)
+- **OpenStreetMap Foundation** (Nominatim) — Purpose: Turning a place name or address you type into map coordinates when you use the "search a location" filter in Services; Data involved: The text you type in that search and your IP address, sent directly from your device. [OpenStreetMap Foundation privacy policy](https://osmfoundation.org/wiki/Privacy_Policy)
 
-We keep this list current as our vendors change. We do not permit these vendors to use your data for
-their own purposes.
+OpenStreetMap Nominatim is a public service that the app contacts directly from your device; it handles that data
+under its own privacy policy, linked above. We keep this list current as our vendors change. We do not permit the
+vendors we engage under contract to use your data for their own purposes.
 
 ## 9. Data retention
 

@@ -11,4 +11,4 @@ export const PRIVACY_POLICY_URL = process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL || 
 // matching constant together when either document materially changes (a version bump is what the
 // future "re-consent on version change" backstop ticket keys off).
 export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION || "2026-06-22";
-export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION || "2026-10-05";
+export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION || "2026-10-16";

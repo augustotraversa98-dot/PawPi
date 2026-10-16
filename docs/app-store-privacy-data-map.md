@@ -60,6 +60,37 @@ Declared in App Store Connect as **"Data Not Linked to You"** and **not used to 
 - Retention: no specific period is stated. It is set by the hosting/monitoring provider's plan and is
   deliberately not stated in the privacy policy (`docs/privacy/telemetry.md`).
 
+## Third-party services that receive data (audit 2026-10-16)
+
+Checked against the code and the production Railway service's variable **names** (values not read).
+"Live" = reachable in the shipped app/backend today; "Inactive" = bundled or coded but sends nothing.
+Policy Section 8 (EN + ES) lists the live ones. This is a factual inventory, not legal advice.
+
+| Service | Status | What it receives | In policy §8 |
+|---|---|---|---|
+| **RevenueCat** (`react-native-purchases`) | **Inactive.** SDK is bundled, but `Purchases.configure` is only called from `useInAppPurchase().initiate`, which nothing imports. No webhook or `/api/revenue-cat/*` route exists. The EAS `production` profile sets no RevenueCat keys. | **Nothing today.** | No (not live) |
+| **Daily.co** | **Live.** Telehealth video consults (`service/telehealth-call.jsx` WebView; `VIDEO_PROVIDER` + `VIDEO_API_KEY` set on Railway; confirmed end to end 2026-08-01). | Account display name (meeting token `user_name`), live audio/video, in-call chat, screen share, IP. We create a private room (no PII) and do not enable recording. | Yes (added) |
+| **Expo Updates** (`u.expo.dev`) | **Live.** `expo-updates` enabled in `app.json`, checks on launch. | App/runtime/update ids, platform, channel, random `EAS-Client-ID`, IP. | Yes (added, within the Expo entry) |
+| **OpenStreetMap Nominatim** | **Live.** Services Discover "search a location" (`ServicesDiscovery.jsx` → `geocodeLocation`), called from the device on explicit submit. | The typed place/address text, IP, a PawPi User-Agent. No account id. | Yes (added) |
+| **Anthropic (Claude)** | **Inactive.** AI document reading (`enrichment/petRecords.js`) 503s unless `ANTHROPIC_API_KEY` is set; the key is **not** set on production Railway. | Nothing today. When enabled: the uploaded vet document (image/PDF). | No (not live) |
+
+If RevenueCat or Anthropic is switched on later, update this table, policy §2/§8 (EN + ES) and the label first.
+
+### Label impact (for the App Store Connect owner)
+
+- **RevenueCat:** none today. When live it would receive purchase/subscription data plus an app user id
+  (anonymous RevenueCat id unless we pass `logIn`) and device/IP → declare **Purchases → Purchase History** and
+  **Identifiers → User ID / Device ID** (linked if we pass our own user id).
+- **Daily.co:** live audio/video/chat are real-time; Apple excludes data not kept longer than needed to serve the
+  request. We do not record, so no change is strictly required, but this is a judgement call. Conservative option:
+  **User Content → Audio Data**, Linked, App Functionality, not tracking. Photos or Videos is already declared.
+- **Expo Updates:** random client id + IP, no account link. Treated like `install_id` above (no change); the
+  conservative option is **Identifiers → Device ID**, Not linked, App Functionality.
+- **Nominatim:** a typed place name is not the user's location. Borderline **Search History** (Not linked,
+  App Functionality); conservative option is to declare it.
+- **Anthropic:** none today. When live, uploaded vet documents map to the already-declared **Photos or Videos /
+  Other User Content** (Linked, App Functionality). Pet health data stays User Content, not Health & Fitness.
+
 ## Explicitly NOT collected / declared
 - **Financial Info (card/wallet):** handled by the payment processors (MercadoPago / Binance /
   Stripe), **not stored by PawPi** → declare **Purchase History**, not Payment Info. (Confirm against
@@ -70,7 +101,9 @@ Declared in App Store Connect as **"Data Not Linked to You"** and **not used to 
   first-party telemetry only. (Builds before 26 collect none.)
 - **Crash Data:** **Not declared.** No crash-reporting SDK; native crash logs are not collected by PawPi.
 - **Advertising Data, Tracking:** **None.**
-- **Browsing History, Search History, Sensitive Info, Contacts:** **None.**
+- **Browsing History, Sensitive Info, Contacts:** **None.**
+- **Search History:** **None declared.** The only search text sent off-device is the Services "search a location"
+  query to OpenStreetMap Nominatim (see the third-party table above for the borderline call).
 
 ## Notes for the reviewer form
 - Location is requested only for nearby features and the app works with location denied.
