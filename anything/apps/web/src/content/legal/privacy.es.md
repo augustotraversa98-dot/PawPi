@@ -1,4 +1,4 @@
-**Última actualización:** 5 de octubre de 2026
+**Última actualización:** 16 de octubre de 2026
 
 Esta Política de Privacidad explica cómo Augusto Traversa ("PawPi", "nosotros") recopila, usa y
 comparte información cuando usás la aplicación móvil PawPi y los servicios relacionados (el
@@ -207,9 +207,13 @@ nombre bajo contrato, solo según sea necesario:
 - **Uploadcare / el servicio de subida de medios de la app** — Finalidad: Subida/almacenamiento de imágenes y documentos; Datos involucrados: Fotos, documentos y medios que subís
 - **Google Maps Platform** — Finalidad: Mapas y datos de lugares; Datos involucrados: Ubicación aproximada/precisa cuando usás funciones de mapa
 - **Grafana Cloud** (Grafana Labs) — Finalidad: Alojamiento y monitoreo de los datos anónimos de uso y diagnóstico descritos en la Sección 5; Datos involucrados: Eventos y estadísticas anónimos de uso y diagnóstico, asociados solo a identificadores aleatorios — sin nombre, correo, cuenta, mascotas, contenido ni ubicación
+- **Daily** (Daily.co) — Finalidad: Videollamadas de las consultas de telesalud veterinaria; Datos involucrados: Cuando te unís a una videoconsulta, Daily procesa el nombre de tu cuenta (que ve la otra persona), tu audio y video, los mensajes de chat y la pantalla que compartas durante la llamada, y datos técnicos de conexión como tu dirección IP. [Política de privacidad de Daily](https://www.daily.co/privacy/)
+- **Expo** (actualizaciones de la app) — Finalidad: Verificar y entregar actualizaciones del código de la app; Datos involucrados: Al iniciar, la app le pregunta al servicio de actualizaciones de Expo si hay una actualización disponible y le envía la versión de la app y los identificadores de actualización, tu plataforma (iOS o Android), el canal de actualización, un identificador aleatorio del cliente y tu dirección IP. [Política de privacidad de Expo](https://expo.dev/privacy)
+- **OpenStreetMap Foundation** (Nominatim) — Finalidad: Convertir en coordenadas de mapa el nombre de un lugar o una dirección que escribís cuando usás el filtro "buscar una ubicación" en Servicios; Datos involucrados: El texto que escribís en esa búsqueda y tu dirección IP, enviados directamente desde tu dispositivo. [Política de privacidad de la Fundación OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy)
 
-Mantenemos esta lista actualizada a medida que cambian nuestros proveedores. No les permitimos usar
-tus datos para sus propios fines.
+OpenStreetMap Nominatim es un servicio público al que la app consulta directamente desde tu dispositivo; trata esos datos
+según su propia política de privacidad, enlazada arriba. Mantenemos esta lista actualizada a medida que cambian nuestros
+proveedores. No permitimos que los proveedores que contratamos usen tus datos para sus propios fines.
 
 ## 9. Conservación de datos
 
