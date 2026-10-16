@@ -34,10 +34,9 @@ checklist: [`release-build-26.md`](release-build-26.md); on-device queue: [`test
 - ✅ **Scheduled jobs: Railway cron DONE and verified (2026-10-16).** All 5 services ran on schedule for 24 h (hourly jobs every hour, no gaps; all `status=200 OK`). GitHub cron fired the hourly jobs ~6×/day, so
   #632 moved the five jobs to Railway cron services (`scripts/cron/cron-trigger.mjs`); `cron-jobs.yml` is now a manual fallback (no
   `schedule:`). Runbook [`ops/railway-cron.md`](ops/railway-cron.md); `test-backlog.md` → ACTION 5. No migration.
-- ⏳ **Follow-up (low priority, small): advisory-lock guard on `POST /api/payments/subscriptions/run`** — per-subscription
-  `pg_try_advisory_xact_lock` + re-check `next_charge_at`. Why: two *simultaneous* runs (e.g. the manual GitHub fallback fired during the
-  06:00 Railway run) both read the same due set and can each insert an orphan `pending` order; the payment dedupes on its idempotency key, so
-  **no double-charge**. Railway never overlaps itself, so exposure is manual-only. No migration; design in [`ops/railway-cron.md`](ops/railway-cron.md).
+- ✅ **Subscription charger is overlap-safe.** `POST /api/payments/subscriptions/run` takes a per-subscription `pg_try_advisory_xact_lock`
+  and re-checks `next_charge_at` under it, so two simultaneous runs (e.g. the manual fallback during the 06:00 Railway run) create exactly one
+  order and one charge attempt. No migration. Runbook [`ops/railway-cron.md`](ops/railway-cron.md); test `subscription-run-overlap.integration.test.ts`.
 - ⏳ **Next:** Apple's review result → release; run the build-26 device checklist; resume Grafana client alert rules a few days after build 26
   has live data; APNs `.p8` key still gates business pushes.
 

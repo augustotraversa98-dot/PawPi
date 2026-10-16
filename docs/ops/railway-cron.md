@@ -56,20 +56,28 @@ Only needed if one is lost or you add a job. Repeat for the row in question:
 | winback | ✅ | Claim is `INSERT … ON CONFLICT DO UPDATE … WHERE last_winback_sent < now() - cap`; the second run re-evaluates the guard after the row lock and skips. |
 | push-receipts | ✅ | Only touches unresolved tickets; resolve / mark-invalid / log GC are idempotent. Worst case an overlap fetches the same receipts twice. |
 | calendar-sync | ✅ | Replaces each feed's busy blocks wholesale — same input, same result. |
-| subscriptions | ⚠️ **sequential yes, simultaneous no** | See below. |
+| subscriptions | ✅ | Per-subscription `pg_try_advisory_xact_lock` + re-check of `next_charge_at` under the lock (see below); the payment also dedupes on `sub-<id>-<date>`. |
 
-**subscriptions — finding.** `app_due_subscriptions()` is a plain `STABLE` read with no row locking. A run that starts
-*after* a previous one finished is safe: `next_charge_at` has advanced, and the payment uses a period-stable idempotency key
-(`sub-<id>-<date>`). But two runs *at the same moment* both read the same due set and each inserts its own `orders` row
-(and `order_items`); the payment dedupes on the key, so the customer is **not double-charged**, but an orphan `pending`
-order (and possibly a second stock decrement) can appear. Railway never overlaps itself (a run is skipped if the previous
-is still running), so the only exposure is a manual GitHub run fired *during* the 06:00 run. **Don't run the manual
-`subscriptions` fallback around 06:00 UTC.**
+**subscriptions — overlap guard.** `app_due_subscriptions()` is a plain `STABLE` read with no row locking, so two runs *at the
+same moment* read the same due set. Before the guard, each inserted its own `orders` row (and `order_items`); the payment
+deduped on its period-stable idempotency key (`sub-<id>-<date>`), so the customer was never double-charged, but an orphan
+`pending` order (and possibly a second stock decrement) could appear. A run that starts *after* another finished was always
+safe (`next_charge_at` had advanced).
 
-**Proposed guard (not implemented — it touches job logic; say the word):** at the top of each per-subscription
-transaction in `payments/subscriptions/run/route.js`, take `SELECT pg_try_advisory_xact_lock(hashtext('sub-charge'), ${sub.id})`
-and skip the sub when it returns `false`; then re-read the sub's `next_charge_at` (under the lock) and skip if it's no longer due.
-No migration needed (advisory locks are session/transaction-scoped, nothing is stored).
+Now, at the top of each per-subscription transaction in `payments/subscriptions/run/route.js`:
+
+1. `SELECT pg_try_advisory_xact_lock(hashtext('sub-charge'), <sub id>)` — if it returns `false` another run is charging that
+   subscription right now, so this run **skips it immediately** (`skipped: "already being charged"`; it never waits).
+2. Under the lock it re-reads the subscription (`status = 'active' AND next_charge_at <= now()`); if a run that held the lock
+   before it already advanced the schedule, it skips (`skipped: "no longer due"`). This covers a run holding a stale due-set
+   snapshot that only reaches the lock after the first run committed.
+
+The lock is **transaction-scoped** and per subscription: nothing is stored (no migration), it is released automatically at
+COMMIT/ROLLBACK (including when a charge throws), and it is safe behind the Supabase pooler (transaction mode). Different
+subscriptions never block each other. `pawpi_app` can call the lock functions (they live in `pg_catalog`, executable by default).
+Proven against real Postgres, as `pawpi_app`, by `test/integration/subscription-run-overlap.integration.test.ts`. A skipped
+sub shows up in the response body's `skipped` list, which is normal when a manual run overlaps the scheduled one — the manual
+`subscriptions` fallback is therefore safe to run at any time.
 
 ## Current setup
 
