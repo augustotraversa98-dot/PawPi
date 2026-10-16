@@ -27,12 +27,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Logged so a slow run can be tied to runner size (jest runs in-band on a 1-CPU view).
+      # Logged so a slow run can be tied to runner size (jest runs in-band on a 1-2 CPU view).
       - name: Runner size
         run: echo "cpus=$(nproc)"
 
+      # Jest's transform cache (babel output per file, keyed by file content, so a stale entry
+      # is never reused wrongly). Restored on every run; saved only from main so PR runs read
+      # main's cache without filling the repo's cache quota. Measured: tests ~75-100 s -> ~50 s.
+      - name: Restore jest cache
+        id: jest-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: anything/apps/mobile/node_modules/.cache/jest
+          key: jest-${{ runner.os }}-${{ hashFiles('anything/apps/mobile/package-lock.json', 'anything/apps/mobile/package.json', 'anything/apps/mobile/babel.config.js') }}-${{ github.sha }}
+          restore-keys: |
+            jest-${{ runner.os }}-${{ hashFiles('anything/apps/mobile/package-lock.json', 'anything/apps/mobile/package.json', 'anything/apps/mobile/babel.config.js') }}-
+            jest-${{ runner.os }}-
+
       - name: Run tests
         run: npm test
+
+      - name: Save jest cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: anything/apps/mobile/node_modules/.cache/jest
+          key: ${{ steps.jest-cache.outputs.cache-primary-key }}
 
   web:
     name: web (vitest)

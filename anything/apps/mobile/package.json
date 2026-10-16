@@ -138,6 +138,7 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "cacheDirectory": "<rootDir>/node_modules/.cache/jest",
     "globalSetup": "<rootDir>/jest.tz.setup.js",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.rntl.js"
