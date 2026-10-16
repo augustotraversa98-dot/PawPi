@@ -77,13 +77,13 @@ The five services above exist in Railway (project `surprising-clarity`, env `pro
 (Root Directory `/scripts/cron`, Restart Policy *Never*, no public domain). They were created after PR #632 merged, directly
 on `main` via the Railway API, with `CRON_SECRET` = reference to the backend's `${{PawPi.CRON_SECRET}}` and `CRON_BASE_URL` = the
 backend's public Railway service domain (not the custom domain). GitHub cron has been off since that merge, so Railway is the
-only scheduler. **Status: first-run verification pending** — see the 24 h check below.
+only scheduler. **Status: DONE, verified 2026-10-16** — over 24 h all five ran on schedule with `status=200 … OK` (hourly jobs every hour, no gaps; subscriptions 06:04, calendar-sync 06:15, winback 13:33 UTC). Expect a start lag of up to ~5 min.
 
 **Changing a schedule or start command later:** Railway → the service → **Settings → Deploy** → *Cron Schedule* /
 *Custom Start Command*, then update the table above (and keep `cron-trigger.mjs` job names in sync for a new job).
 Changing the script itself needs a push to `main`; the services pick it up on their next deploy (Redeploy to force it).
 
-## Verify each job fired on time (24 h)
+## Verify each job fired on time (24 h) — how, if you ever need to re-check
 
 In Railway → each cron service → **Deployments** (one row per run) and **Logs**. A healthy run logs one line:
 
