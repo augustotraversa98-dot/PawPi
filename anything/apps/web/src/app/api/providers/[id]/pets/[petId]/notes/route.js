@@ -56,13 +56,13 @@ async function POST(request, { params }) {
     // vet_name defaults to the acting provider/staff display name. It must NEVER
     // end up null: a vet note with no attribution renders on the owner's record as
     // "You" (indistinguishable from an owner-authored note). So the chain falls
-    // through to the acting user's email and finally a neutral "Veterinario" — the
+    // through to the provider name and finally a neutral "Veterinario" (never the e-mail or username — privacy) — the
     // note always names who wrote it. (No schema change; vet_notes still has only
     // the denormalized vet_name text — a structured author FK stays a proposal.)
     let resolvedVetName = vet_name ?? null;
     if (!resolvedVetName) {
       const nameRows = await sql`
-        SELECT pr.name AS provider_name, up.full_name AS staff_name, up.username AS staff_username
+        SELECT pr.name AS provider_name, up.full_name AS staff_name
         FROM providers pr
         LEFT JOIN user_profiles up ON up.id = ${staffUserId}
         WHERE pr.id = ${providerId}
@@ -70,9 +70,7 @@ async function POST(request, { params }) {
       const n = nameRows[0] ?? {};
       resolvedVetName =
         n.staff_name ||
-        n.staff_username ||
         n.provider_name ||
-        session.user.email ||
         "Veterinario";
     }
 

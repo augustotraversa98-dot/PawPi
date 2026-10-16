@@ -18,6 +18,7 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface, PawMark } from "@/components/ui";
@@ -376,9 +377,7 @@ function mapDbNotification(n, t) {
     title:
       n.type === "welcome"
         ? t("notifications.welcomeTitle")
-        : n.actor_username
-          ? `@${n.actor_username}`
-          : "Someone",
+        : ownerDisplayName(n.actor_username, t),
     message: isEngagement
       ? t(`notifications.${n.type}`)
       : n.body || TYPE_LABEL[n.type] || "New activity",

@@ -422,3 +422,10 @@ describe("loading / error gates", () => {
     expect(mockRefetchDb).toHaveBeenCalled();
   });
 });
+
+test("an actor without a display name shows the neutral fallback, never an @username", () => {
+  mockDbNotifications = [{ ...dbPaw, actor_username: null }];
+  const { queryByText } = render(<NotificationsScreen />);
+  expect(queryByText(/^@/)).toBeNull();
+  expect(queryByText("Pet parent")).toBeTruthy();
+});
