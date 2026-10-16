@@ -176,9 +176,22 @@ function TelemetryToggle() {
         <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
           {t("settings.telemetryTitle")}
         </Text>
-        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }} numberOfLines={2}>
           {t("settings.telemetryHint")}
         </Text>
+        {/* The full explanation lives in the Privacy Policy page — keep this row to one short line. */}
+        {PRIVACY_POLICY_URL ? (
+          <TouchableOpacity
+            testID="telemetry-learn-more"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+            style={{ alignSelf: "flex-start", paddingVertical: 4 }}
+          >
+            <Text style={{ fontSize: 12, color: C.coral, fontWeight: "700" }}>
+              {t("settings.learnMore")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
       <Switch
         testID="telemetry-toggle"
