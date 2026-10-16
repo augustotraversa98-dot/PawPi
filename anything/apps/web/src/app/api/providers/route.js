@@ -39,7 +39,6 @@ async function POST(request) {
     // ensureUserProfile.
     const userId = await ensureUserProfile(session.user.id, {
       fullName: session.user.name,
-      email: session.user.email,
     });
 
     const body = await request.json();

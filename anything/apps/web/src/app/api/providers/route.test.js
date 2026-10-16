@@ -131,12 +131,14 @@ describe('POST /api/providers — create', () => {
       provider: { ...CREATED, capabilities: ['vet'] },
     });
 
-    // The profile was lazily created with the default role; username derives from
-    // the email local-part, and the auth id is the bound value.
+    // The profile was lazily created with the default role; the username derives from the
+    // NAME (never the e-mail local-part — privacy, QA 2026-10-16 bug 04), and the auth id
+    // is the bound value.
     const profileInsert = queryTextOf(2);
     expect(profileInsert).toContain('INSERT INTO user_profiles');
     expect(profileInsert).toContain("'pet_owner'");
-    expect(sql.mock.calls[2]).toEqual(expect.arrayContaining([42, 'owner']));
+    expect(sql.mock.calls[2]).toEqual(expect.arrayContaining([42, 'bizowner']));
+    expect(sql.mock.calls[2]).not.toContain('owner');
 
     // The provider CTE used the NEWLY created profile id (7) as owner, and the
     // capabilities insert is a SEPARATE later statement bound to the new provider id.

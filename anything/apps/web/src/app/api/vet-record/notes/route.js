@@ -28,7 +28,7 @@ async function GET(request) {
     }
 
     const notes = await sql`
-      SELECT n.*, coalesce(up.full_name, up.username) AS created_by_name
+      SELECT n.*, NULLIF(BTRIM(up.full_name), '') AS created_by_name
       FROM vet_notes n
       LEFT JOIN user_profiles up ON up.id = n.created_by_user_id
       WHERE n.pet_id = ${petId} AND n.owner_user_id = ${gate.ownerUserId}

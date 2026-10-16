@@ -1,3 +1,4 @@
+import { publicOwnerName } from "@/app/api/utils/ownerDisplay";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -58,7 +59,7 @@ async function GET(request, { params }) {
       rel === "followers"
         ? await sql`
             SELECT p.id, p.name, p.handle, p.avatar_url,
-                   up.full_name, up.username,
+                   up.full_name,
                    (vf.id IS NOT NULL) AS is_following
             FROM pet_follows f
             JOIN pets p ON p.id = f.follower_pet_id
@@ -72,7 +73,7 @@ async function GET(request, { params }) {
           `
         : await sql`
             SELECT p.id, p.name, p.handle, p.avatar_url,
-                   up.full_name, up.username,
+                   up.full_name,
                    (vf.id IS NOT NULL) AS is_following
             FROM pet_follows f
             JOIN pets p ON p.id = f.followed_pet_id
@@ -91,7 +92,7 @@ async function GET(request, { params }) {
       name: r.name,
       handle: r.handle,
       avatar_url: r.avatar_url,
-      owner_name: r.full_name || r.username || "",
+      owner_name: publicOwnerName(r) || "",
       is_following: !!r.is_following,
     }));
 

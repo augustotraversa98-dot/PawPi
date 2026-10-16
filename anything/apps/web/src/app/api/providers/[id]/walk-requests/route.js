@@ -75,7 +75,7 @@ async function GET(request, { params }) {
           SELECT
             wr.*,
             pet.name AS pet_name,
-            COALESCE(owner.full_name, owner.username) AS owner_name
+            NULLIF(BTRIM(owner.full_name), '') AS owner_name
           FROM walk_requests wr
           LEFT JOIN pets pet ON pet.id = wr.pet_id
           LEFT JOIN user_profiles owner ON owner.id = wr.owner_user_id
@@ -109,7 +109,7 @@ async function GET(request, { params }) {
         SELECT
           wr.*,
           pet.name AS pet_name,
-          COALESCE(owner.full_name, owner.username) AS owner_name
+          NULLIF(BTRIM(owner.full_name), '') AS owner_name
         FROM walk_requests wr
         LEFT JOIN pets pet ON pet.id = wr.pet_id
         LEFT JOIN user_profiles owner ON owner.id = wr.owner_user_id

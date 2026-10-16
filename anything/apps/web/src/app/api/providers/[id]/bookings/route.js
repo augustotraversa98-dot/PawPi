@@ -110,7 +110,7 @@ async function GET(request, { params }) {
           p.species AS pet_species,
           p.breed AS pet_breed,
           p.avatar_url AS pet_avatar_url,
-          COALESCE(up.full_name, up.username) AS owner_name,
+          NULLIF(BTRIM(up.full_name), '') AS owner_name,
           s.name AS service_name,
           pl.name AS location_name,
           pl.address AS location_address,
@@ -172,7 +172,7 @@ async function GET(request, { params }) {
             va.created_at,
             va.updated_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name,
+            NULLIF(BTRIM(up.full_name), '') AS owner_name,
             s.name AS service_name,
             ts.id AS telehealth_session_id,
             ts.status AS telehealth_session_status
@@ -216,7 +216,7 @@ async function GET(request, { params }) {
             va.created_at,
             va.updated_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name,
+            NULLIF(BTRIM(up.full_name), '') AS owner_name,
             s.name AS service_name,
             ts.id AS telehealth_session_id,
             ts.status AS telehealth_session_status

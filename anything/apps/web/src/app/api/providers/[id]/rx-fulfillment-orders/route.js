@@ -36,7 +36,7 @@ async function GET(request, { params }) {
         f.is_refill, f.notes, f.order_id, f.created_at,
         pr.drug_name, pr.strength, pr.dose, pr.refills_remaining,
         p.name AS pet_name,
-        COALESCE(up.full_name, up.username) AS owner_name,
+        NULLIF(BTRIM(up.full_name), '') AS owner_name,
         o.status AS order_status
       FROM rx_fulfillment_orders f
       LEFT JOIN prescriptions pr ON pr.id = f.prescription_id

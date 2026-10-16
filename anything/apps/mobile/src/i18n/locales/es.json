@@ -92,6 +92,7 @@
   },
   "common": {
     "offlineBanner": "Sin conexión a internet — mostrando datos guardados",
+    "petParent": "Dueño/a",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",

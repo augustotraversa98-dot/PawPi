@@ -213,7 +213,7 @@ async function GET(request) {
       ? await sql`
           SELECT
             p.*,
-            up.username,
+            NULLIF(BTRIM(up.full_name), '') AS username,
             up.avatar_url as user_avatar,
             pet.name as pet_name,
             pet.handle as pet_handle,
@@ -256,7 +256,7 @@ async function GET(request) {
     const suggested = await sql`
       SELECT
         p.*,
-        up.username,
+        NULLIF(BTRIM(up.full_name), '') AS username,
         up.avatar_url as user_avatar,
         pet.name as pet_name,
         pet.handle as pet_handle,
@@ -545,7 +545,7 @@ async function POST(request) {
     const fullPost = await sql`
       SELECT 
         p.*,
-        up.username,
+        NULLIF(BTRIM(up.full_name), '') AS username,
         up.avatar_url as user_avatar,
         pet.name as pet_name,
         pet.handle as pet_handle,

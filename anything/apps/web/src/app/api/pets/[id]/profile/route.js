@@ -1,3 +1,4 @@
+import { publicOwnerName } from "@/app/api/utils/ownerDisplay";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -70,12 +71,20 @@ async function GET(request, { params }) {
 
     // Owner (via pets.owner_user_id = user_profiles.id).
     const ownerRows = await sql`
-      SELECT id, full_name, username, avatar_url
+      SELECT id, full_name, avatar_url
       FROM user_profiles
       WHERE id = ${owner_user_id}
       LIMIT 1
     `;
-    const owner = ownerRows[0] || null;
+    // PRIVACY (QA 2026-10-16 bug 04): expose only the real display name + avatar — never the
+    // username, which for older accounts was derived from the e-mail local-part.
+    const owner = ownerRows[0]
+      ? {
+          id: ownerRows[0].id,
+          full_name: publicOwnerName(ownerRows[0]),
+          avatar_url: ownerRows[0].avatar_url,
+        }
+      : null;
 
     // Aggregate stats. Zero when there's nothing — no fabricated counts.
     const statRows = await sql`

@@ -54,7 +54,7 @@ async function GET(request) {
         r.id, r.pet_id, r.status, r.last_seen_lat, r.last_seen_lng, r.last_seen_area,
         r.notes, r.reward, r.created_at,
         p.name AS pet_name, p.avatar_url AS pet_avatar, p.breed AS pet_breed,
-        up.username AS owner_username
+        NULLIF(BTRIM(up.full_name), '') AS owner_username
       FROM lost_reports r
       JOIN pets p ON p.id = r.pet_id
       JOIN user_profiles up ON up.id = r.owner_user_id

@@ -105,7 +105,7 @@ async function GET(request, { params }) {
         p.amount_cents AS gross_cents,
         p.commission_cents,
         p.rail,
-        COALESCE(up.full_name, up.username) AS counterpart
+        NULLIF(BTRIM(up.full_name), '') AS counterpart
       FROM payments p
       JOIN orders o ON o.id = p.order_id
       LEFT JOIN user_profiles up ON up.id = o.owner_user_id

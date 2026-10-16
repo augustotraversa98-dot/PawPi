@@ -56,7 +56,7 @@ async function GET(request, { params }) {
         a.id, a.listing_id, a.provider_id, a.applicant_owner_user_id, a.answers,
         a.status, a.transferred_pet_id, a.created_at, a.updated_at,
         l.name AS listing_name, l.breed AS listing_breed, l.status AS listing_status,
-        COALESCE(up.full_name, up.username) AS applicant_name,
+        NULLIF(BTRIM(up.full_name), '') AS applicant_name,
         au.email AS applicant_email
       FROM adoption_applications a
       LEFT JOIN adoptable_listings l ON l.id = a.listing_id

@@ -63,7 +63,7 @@ async function GET(request, { params }) {
             sv.photo_urls, sv.video_urls, sv.check_in_lat, sv.check_in_lng,
             sv.created_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name
+            NULLIF(BTRIM(up.full_name), '') AS owner_name
           FROM sitting_visits sv
           LEFT JOIN pets p ON p.id = sv.pet_id
           LEFT JOIN user_profiles up ON up.id = sv.owner_user_id
@@ -79,7 +79,7 @@ async function GET(request, { params }) {
             sv.photo_urls, sv.video_urls, sv.check_in_lat, sv.check_in_lng,
             sv.created_at,
             p.name AS pet_name,
-            COALESCE(up.full_name, up.username) AS owner_name
+            NULLIF(BTRIM(up.full_name), '') AS owner_name
           FROM sitting_visits sv
           LEFT JOIN pets p ON p.id = sv.pet_id
           LEFT JOIN user_profiles up ON up.id = sv.owner_user_id

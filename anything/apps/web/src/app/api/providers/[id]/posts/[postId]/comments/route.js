@@ -47,7 +47,7 @@ async function GET(request, { params }) {
       comments = await sql`
         SELECT c.id, c.post_id, c.provider_id, c.author_user_id, c.body, c.created_at,
                up.full_name AS author_name,
-               up.username AS author_username,
+               NULLIF(BTRIM(up.full_name), '') AS author_username,
                up.avatar_url AS author_avatar_url,
                p.name AS pet_name,
                p.handle AS pet_handle,
@@ -65,7 +65,7 @@ async function GET(request, { params }) {
       comments = await sql`
         SELECT c.id, c.post_id, c.provider_id, c.author_user_id, c.body, c.created_at,
                up.full_name AS author_name,
-               up.username AS author_username,
+               NULLIF(BTRIM(up.full_name), '') AS author_username,
                up.avatar_url AS author_avatar_url
         FROM provider_post_comments c
         JOIN user_profiles up ON up.id = c.author_user_id
@@ -172,7 +172,7 @@ async function POST(request, { params }) {
     // pet LEFT JOIN keys on the literal storedPetId (not the pet_id column), so this never 42703s;
     // storedPetId is null pre-migration / when no pet was sent → pet_* come back NULL.
     const enriched = await sql`
-      SELECT up.full_name AS author_name, up.username AS author_username, up.avatar_url AS author_avatar_url,
+      SELECT up.full_name AS author_name, NULLIF(BTRIM(up.full_name), '') AS author_username, up.avatar_url AS author_avatar_url,
              p.name AS pet_name, p.handle AS pet_handle, p.avatar_url AS pet_avatar_url
       FROM user_profiles up
       LEFT JOIN pets p ON p.id = ${storedPetId}

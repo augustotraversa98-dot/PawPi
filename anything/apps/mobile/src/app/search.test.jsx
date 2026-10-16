@@ -159,3 +159,41 @@ test("tap-throughs push (never replace/dismiss), keeping one back stack", () => 
   });
   expect(mockBack).not.toHaveBeenCalled();
 });
+
+test("owner results never show an (e-mail-derived) username — real name or neutral fallback only", async () => {
+  mockSearch = {
+    data: {
+      pets: [],
+      owners: [
+        { id: 1, full_name: "Jane Doe", username: "jane+demo2", avatar_url: null },
+        { id: 2, full_name: null, username: "qa-core-1785273320", avatar_url: null },
+      ],
+      providers: [],
+    },
+    isLoading: false,
+  };
+  const { getByPlaceholderText, getByText, queryByText } = render(<SearchScreen />);
+  await act(async () => {
+    fireEvent.changeText(
+      getByPlaceholderText("Search pets, breeds, owners, or businesses…"),
+      "ja",
+    );
+  });
+  await waitFor(() => expect(getByText("Jane Doe")).toBeTruthy());
+  expect(getByText("Pet parent")).toBeTruthy();
+  expect(queryByText(/jane\+demo2/)).toBeNull();
+  expect(queryByText(/qa-core/)).toBeNull();
+});
+
+test("Discover profiles with no owner name show no 'by …' line (never a username)", () => {
+  mockDiscover = {
+    data: {
+      profiles: [{ id: 1, name: "Cooper", breed: "Golden", owner_name: null, paws: 1, barks: 0 }],
+      moments: [],
+    },
+    isLoading: false,
+  };
+  const { getByText, queryByText } = render(<SearchScreen />);
+  expect(getByText("Cooper")).toBeTruthy();
+  expect(queryByText(/^by /)).toBeNull();
+});

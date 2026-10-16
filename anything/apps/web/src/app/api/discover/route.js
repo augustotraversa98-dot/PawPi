@@ -37,7 +37,7 @@ async function GET(request) {
         p.avatar_url,
         p.species,
         p.breed,
-        ow.username AS owner_name,
+        NULLIF(BTRIM(ow.full_name), '') AS owner_name,
         (SELECT COUNT(*)::int FROM pet_follows f WHERE f.followed_pet_id = p.id) AS followers,
         (SELECT COUNT(*)::int FROM post_paws pp
            JOIN posts po ON po.id = pp.post_id

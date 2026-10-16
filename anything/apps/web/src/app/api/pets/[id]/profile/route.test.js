@@ -96,7 +96,9 @@ describe('GET /api/pets/[id]/profile', () => {
     // ever show a calculated age.
     expect(body.pet.birthday).toBe('2022-01-15');
     expect(queryText(0).toLowerCase()).toContain('birthday');
-    expect(body.owner).toEqual(OWNER_ROW);
+    // Privacy: the owner is exposed as id + display name + avatar only — never the username.
+    expect(body.owner).toEqual({ id: 7, full_name: 'Pat Owner', avatar_url: 'http://img/pat.png' });
+    expect(body.owner.username).toBeUndefined();
     expect(body.stats).toEqual({
       totalPosts: 2,
       totalPaws: 5,

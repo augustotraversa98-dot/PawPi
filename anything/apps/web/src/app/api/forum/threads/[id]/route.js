@@ -23,7 +23,7 @@ async function GET(request, { params }) {
       SELECT
         t.id, t.category, t.title, t.body, t.image_urls, t.score, t.created_at,
         t.author_user_id,
-        up.username AS author_username,
+        NULLIF(BTRIM(up.full_name), '') AS author_username,
         up.avatar_url AS author_avatar,
         (
           SELECT v.value FROM forum_votes v
@@ -45,7 +45,7 @@ async function GET(request, { params }) {
       SELECT
         c.id, c.thread_id, c.parent_comment_id, c.body, c.score, c.created_at,
         c.author_user_id,
-        up.username AS author_username,
+        NULLIF(BTRIM(up.full_name), '') AS author_username,
         up.avatar_url AS author_avatar,
         (
           SELECT v.value FROM forum_votes v

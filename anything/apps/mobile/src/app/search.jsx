@@ -21,6 +21,7 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { COLORS } from "@/constants/colors";
 import { PawMark } from "@/components/ui";
 import { useDiscover } from "@/hooks/useDiscover";
@@ -284,8 +285,7 @@ function SearchResults({ t, data, isLoading, onOpenPet, onOpenProvider }) {
               testID="search-owner"
               avatar={o.avatar_url}
               fallbackIcon={User}
-              title={o.full_name || o.username}
-              subtitle={o.username ? `@${o.username}` : null}
+              title={ownerDisplayName(o.full_name, t)}
             />
           ))}
         </>

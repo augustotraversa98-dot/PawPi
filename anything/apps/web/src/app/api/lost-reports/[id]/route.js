@@ -26,7 +26,7 @@ async function GET(request, { params }) {
     // list-vs-detail visibility was never actually kept in sync).
     const reports = await sql`
       SELECT r.*, p.name AS pet_name, p.avatar_url AS pet_avatar, p.breed AS pet_breed,
-             up.username AS owner_username
+             NULLIF(BTRIM(up.full_name), '') AS owner_username
       FROM lost_reports r
       JOIN pets p ON p.id = r.pet_id
       JOIN user_profiles up ON up.id = r.owner_user_id
@@ -41,7 +41,7 @@ async function GET(request, { params }) {
 
     const sightings = await sql`
       SELECT s.id, s.lat, s.lng, s.note, s.photo_url, s.created_at,
-             up.username AS reporter_username
+             NULLIF(BTRIM(up.full_name), '') AS reporter_username
       FROM lost_sightings s
       LEFT JOIN user_profiles up ON up.id = s.reporter_user_id
       WHERE s.lost_report_id = ${reportId}

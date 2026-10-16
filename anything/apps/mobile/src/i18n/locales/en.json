@@ -92,6 +92,7 @@
   },
   "common": {
     "offlineBanner": "No internet connection — showing saved data",
+    "petParent": "Pet parent",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",

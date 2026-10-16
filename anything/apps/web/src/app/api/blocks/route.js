@@ -65,7 +65,7 @@ async function GET(request) {
 
     const blocks = await sql`
       SELECT b.id, b.blocked_user_id, b.created_at,
-             up.username AS blocked_username, up.full_name AS blocked_full_name
+             NULLIF(BTRIM(up.full_name), '') AS blocked_username, up.full_name AS blocked_full_name
       FROM user_blocks b
       JOIN user_profiles up ON up.id = b.blocked_user_id
       WHERE b.blocker_user_id = ${userId} AND b.deleted_at IS NULL

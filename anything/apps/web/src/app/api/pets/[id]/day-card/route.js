@@ -57,7 +57,7 @@ async function GET(request, { params }) {
     // The day's moments, attributed to their authors (oldest → newest contribution).
     const slideRows = await sql`
       SELECT p.id, p.image_url, p.caption, p.created_at, p.media_type, p.video_url, p.video_thumbnail_url,
-             up.id AS author_id, up.username AS author_username, up.avatar_url AS author_avatar,
+             up.id AS author_id, NULLIF(BTRIM(up.full_name), '') AS author_username, up.avatar_url AS author_avatar,
              (SELECT count(*)::int FROM post_paws pp WHERE pp.post_id = p.id) AS paws,
              (SELECT count(*)::int FROM post_barks pb WHERE pb.post_id = p.id) AS barks
       FROM posts p
