@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ShieldCheck, Heart, ChevronRight, Store } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -132,6 +133,7 @@ function Empty({ text }) {
 
 export default function MyHubScreen() {
   const insets = useSafeAreaInsets();
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
 
   const { t } = useTranslation();
@@ -179,7 +181,7 @@ export default function MyHubScreen() {
       ) : (
         <RefreshableScrollView
           refetch={refetch}
-          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 32 }}
         >
           {/* Who has access */}
           <SectionCard

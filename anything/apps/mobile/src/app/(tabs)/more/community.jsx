@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Megaphone, Plus, Flame, Clock, TrendingUp, CalendarDays, RotateCcw } from "lucide-react-native";
@@ -42,6 +43,7 @@ const SORTS = [
 
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState("All");
@@ -293,7 +295,7 @@ export default function CommunityScreen() {
       <RefreshableScrollView
         refetch={refetch}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: bottomClearance + 24 }}
       >
         {isLoading && (
           <View style={{ alignItems: "center", padding: SPACING.huge }}>

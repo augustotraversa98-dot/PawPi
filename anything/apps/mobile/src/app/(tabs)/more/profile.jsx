@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import useBottomClearance from "@/hooks/useBottomClearance";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -42,6 +43,7 @@ const MIXED_BREED_VALUE = "Mixed Breed";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -200,7 +202,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: bottomClearance + 24 }}
       >
         {/* Hero Section */}
         <View

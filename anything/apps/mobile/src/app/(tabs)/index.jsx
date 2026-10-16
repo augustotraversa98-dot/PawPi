@@ -19,8 +19,10 @@ import { useFeedData } from "@/hooks/useFeedData";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
+import useBottomClearance from "@/hooks/useBottomClearance";
 
 export default function FeedScreen() {
+  const bottomClearance = useBottomClearance();
   const router = useRouter();
   const { t } = useTranslation();
   const {
@@ -391,7 +393,7 @@ export default function FeedScreen() {
         <View
           style={{
             position: "absolute",
-            bottom: 80,
+            bottom: bottomClearance + 16,
             left: 0,
             right: 0,
             alignItems: "center",
