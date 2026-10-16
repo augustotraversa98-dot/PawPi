@@ -38,7 +38,7 @@ export default function FollowsScreen() {
   const viewerPetId = currentPet?.id ?? null;
 
   const rel = params.rel === "following" ? "following" : "followers";
-  const title = rel === "following" ? "Following" : "Followers";
+  const title = rel === "following" ? t("follows.titleFollowing") : t("follows.titleFollowers");
   // petId from the route param; if absent (a paramless open), fall back to the
   // viewer's active pet so the list still shows the current pet's lists (2.67).
   const petId = params.petId || (viewerPetId ? String(viewerPetId) : "");
@@ -117,7 +117,7 @@ export default function FollowsScreen() {
           <PetAvatar uri={item.avatar_url || undefined} name={item.name} size={46} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 15, fontWeight: "800", color: C.warmBrown }}>
-              {item.name || "Pet"}
+              {item.name || t("follows.petFallback")}
             </Text>
             {!!item.handle && (
               <Text style={{ fontSize: 13, color: C.mutedBrown }}>
@@ -152,7 +152,7 @@ export default function FollowsScreen() {
                 color: following ? C.mutedBrown : "#FFF",
               }}
             >
-              {following ? "Following" : "Follow"}
+              {following ? t("storefront.follow.following") : t("storefront.follow.follow")}
             </Text>
           </TouchableOpacity>
         )}
@@ -162,10 +162,10 @@ export default function FollowsScreen() {
 
   const emptyText =
     query.trim().length > 0
-      ? "No matches"
+      ? t("follows.noMatches")
       : rel === "following"
-        ? "Not following anyone yet"
-        : "No followers yet";
+        ? t("follows.notFollowing")
+        : t("follows.noFollowers");
 
   return (
     <View style={{ flex: 1, backgroundColor: C.cream }}>
@@ -188,7 +188,7 @@ export default function FollowsScreen() {
         >
           <ChevronLeft size={22} color={C.coral} />
           <Text style={{ color: C.coral, fontWeight: "700", fontSize: 15 }}>
-            Back
+            {t("common.back")}
           </Text>
         </TouchableOpacity>
         <Text
@@ -223,7 +223,7 @@ export default function FollowsScreen() {
             testID="follows-search"
             value={query}
             onChangeText={setQuery}
-            placeholder="Search by name or @handle"
+            placeholder={t("follows.searchPlaceholder")}
             placeholderTextColor={C.mutedBrown}
             style={{ flex: 1, fontSize: 15, color: C.warmBrown }}
           />

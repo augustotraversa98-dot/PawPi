@@ -181,6 +181,18 @@ describe("Profile tab — embedded mode (ticket 2.60)", () => {
     );
   });
 
+  test("a 0 Followers / Following count is a plain pill, not a dead tap (QA 2026-10-16 bug 06)", () => {
+    mockViewer = { id: 4 };
+    mockProfile = {
+      ...mockProfile,
+      stats: { ...mockProfile.stats, followers: 0, following: 0 },
+    };
+    const { getByText, queryByTestId } = render(<PetProfileScreen />);
+    expect(getByText("Followers")).toBeTruthy();
+    expect(queryByTestId("stat-Followers")).toBeNull();
+    expect(queryByTestId("stat-Following")).toBeNull();
+  });
+
   test("2.67: embedded tap resolves a non-empty petId from the active pet (no param)", () => {
     // Embedded Profile tab: no route param, the viewer's active pet drives it.
     mockParams = {};

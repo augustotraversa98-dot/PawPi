@@ -22,7 +22,7 @@ import {
   SPACING,
   MATERIALS,
 } from "@/constants/theme";
-import { PressableScale } from "@/components/ui";
+import { PawMark, PressableScale } from "@/components/ui";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { usePostBarks } from "@/hooks/useFeedPosts";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
@@ -425,7 +425,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               </View>
             ) : barks.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
-                <Text style={{ fontSize: 28 }}>🐾</Text>
+                <PawMark size={28} color={COLORS.coral} />
                 <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginTop: SPACING.sm }]}>
                   {t("feed.noBarksYet")}
                 </Text>
