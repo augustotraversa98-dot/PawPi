@@ -4,6 +4,7 @@ import { PawPrint } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { PostCard } from "./PostCard";
+import { PawMark } from "@/components/ui";
 
 // (AUDIT A-15) Memoized row wrapper so React.memo(PostCard) actually holds. The
 // feed used to pass fresh `() => onToggleLike(item.id)` closures to PostCard on
@@ -218,7 +219,7 @@ export function UnlockedFeed({
 
       {posts.length === 0 && (
         <View style={{ alignItems: "center", padding: 50 }}>
-          <Text style={{ fontSize: 40 }}>🐾</Text>
+          <PawMark size={40} color={COLORS.coral} />
           <Text style={[TYPE.headline, { color: COLORS.mutedBrown, marginTop: SPACING.md }]}>
             {t("feed.emptyTitle")}
           </Text>

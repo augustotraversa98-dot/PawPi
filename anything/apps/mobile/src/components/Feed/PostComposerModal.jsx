@@ -24,7 +24,7 @@ import {
   MATERIALS,
   ELEVATION,
 } from "@/constants/theme";
-import { PressableScale } from "@/components/ui";
+import { PawMark, PressableScale } from "@/components/ui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 // Preview mirrors the feed frame: 4:5 portrait (height = 1.25 × width) so what you
@@ -251,7 +251,7 @@ export const PostComposerModal = memo(function PostComposerModal({
           // ── STEP 1: Photo picker ──
           <View style={{ flex: 1, justifyContent: "center", padding: SPACING.xxl }}>
             <View style={{ alignItems: "center", marginBottom: SPACING.huge }}>
-              <Text style={{ fontSize: 48 }}>🐾</Text>
+              <PawMark size={48} color={COLORS.coral} />
               <Text
                 style={[
                   TYPE.title,

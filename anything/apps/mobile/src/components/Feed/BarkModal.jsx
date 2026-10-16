@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Megaphone, Send, Trash2 } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { PawMark } from "@/components/ui";
 import {
   usePostBarks,
   useCreateBark,
@@ -216,7 +217,7 @@ export const BarkModal = memo(function BarkModal({
               </View>
             ) : barks.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 30 }}>
-                <Text style={{ fontSize: 32 }}>🐾</Text>
+                <PawMark size={32} color={COLORS.coral} />
                 <Text
                   style={{
                     color: COLORS.mutedBrown,

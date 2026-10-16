@@ -1056,6 +1056,15 @@
     "title": "Messages",
     "empty": "No conversations yet"
   },
+  "follows": {
+    "titleFollowers": "Followers",
+    "titleFollowing": "Following",
+    "petFallback": "Pet",
+    "noMatches": "No matches",
+    "notFollowing": "Not following anyone yet",
+    "noFollowers": "No followers yet",
+    "searchPlaceholder": "Search by name or @handle"
+  },
   "remindersScreen": {
     "title": "Reminders & Routines",
     "subtitle": "Set your pet's care schedule and reminder preferences",

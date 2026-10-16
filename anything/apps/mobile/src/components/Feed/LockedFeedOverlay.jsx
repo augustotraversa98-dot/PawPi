@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import { Camera } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS, SPACING, RADIUS } from "@/constants/theme";
-import { PressableScale } from "@/components/ui";
+import { PawMark, PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
 
 // LockedFeedOverlay — the "post to unlock" FOMO feed (feed polish #4).
@@ -65,7 +65,9 @@ function EmptyLockedState({ petName, onPostPress }) {
         alignItems: "center",
       }}
     >
-      <Text style={{ fontSize: 40, marginBottom: 8 }}>🐾</Text>
+      <View style={{ marginBottom: 8 }}>
+        <PawMark size={40} color={COLORS.coral} />
+      </View>
       <Text
         style={{
           fontSize: 18,

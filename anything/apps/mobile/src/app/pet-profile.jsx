@@ -551,17 +551,21 @@ export default function PetProfileScreen({ embedded = false }) {
               value: stats?.followers ?? 0,
               label: t("storefront.social.followers"),
               color: COLORS.sageDark,
-              onPress: resolvedFollowsPetId
-                ? () => openFollows("followers")
-                : undefined,
+              // Nothing to show at 0 → render a plain (non-tappable) pill instead of a dead tap
+              // (QA 2026-10-16 bug 06).
+              onPress:
+                resolvedFollowsPetId && (stats?.followers ?? 0) > 0
+                  ? () => openFollows("followers")
+                  : undefined,
             },
             {
               key: "following",
               value: stats?.following ?? 0,
               label: t("storefront.follow.following"),
-              onPress: resolvedFollowsPetId
-                ? () => openFollows("following")
-                : undefined,
+              onPress:
+                resolvedFollowsPetId && (stats?.following ?? 0) > 0
+                  ? () => openFollows("following")
+                  : undefined,
             },
           ]}
         />

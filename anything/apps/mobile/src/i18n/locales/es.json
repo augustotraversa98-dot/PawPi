@@ -1056,6 +1056,15 @@
     "title": "Mensajes",
     "empty": "Todavía no hay conversaciones"
   },
+  "follows": {
+    "titleFollowers": "Seguidores",
+    "titleFollowing": "Siguiendo",
+    "petFallback": "Mascota",
+    "noMatches": "Sin resultados",
+    "notFollowing": "Todavía no seguís a nadie",
+    "noFollowers": "Todavía no hay seguidores",
+    "searchPlaceholder": "Buscá por nombre o @usuario"
+  },
   "remindersScreen": {
     "title": "Recordatorios y rutinas",
     "subtitle": "Configurá el plan de cuidados de tu mascota y tus preferencias de recordatorios",
