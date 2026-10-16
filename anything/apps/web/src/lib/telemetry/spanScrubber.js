@@ -33,6 +33,11 @@ const DROP_KEYS = new Set([
   'net.peer.port',
   'net.host.ip',
   'net.host.port',
+  'client.ip', // non-standard spellings seen from vendor / eBPF instrumentation
+  'http.x_forwarded_for',
+  'http.x_real_ip',
+  'x-forwarded-for',
+  'x-real-ip',
   'url.query',
   'url.fragment',
   'http.query',
@@ -43,6 +48,7 @@ const DROP_PREFIXES = [
   'network.peer.', // address, port
   'network.local.', // address, port
   'net.sock.', // legacy semconv socket addresses
+  'peer.', // OpenTracing-style peer.ipv4 / peer.ipv6 / peer.port / peer.hostname (any peer.* is dropped)
   'http.request.header.', // header captures can carry cookies / authorization
   'http.response.header.',
 ];
