@@ -2477,7 +2477,7 @@
     "lostFound": "Lost & Found",
     "memoriesWrapped": "Memories & Wrapped",
     "remindersRoutines": "Reminders & Routines",
-    "resetAppData": "Reset App Data"
+    "resetAppData": "Log out"
   },
   "forum": {
     "title": "Discussion",
@@ -3795,7 +3795,9 @@
     "lostFound": "Lost & Found",
     "memories": "Memories & Wrapped",
     "reminders": "Reminders & Routines",
-    "resetApp": "Reset App Data"
+    "logOut": "Log out",
+    "logOutConfirmTitle": "Log out?",
+    "logOutConfirmBody": "You'll need to sign in again to get back to your dog's profile."
   },
   "medicalCare": {
     "deleteItemTitle": "Delete care item?",

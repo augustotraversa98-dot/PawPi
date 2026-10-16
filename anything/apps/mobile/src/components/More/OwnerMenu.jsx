@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -56,6 +56,15 @@ export function OwnerMenu() {
       markExpectedNavigation();
       router.replace("/welcome");
     }
+  };
+
+  // Signing out is easy to hit by accident and means re-entering credentials, so ask first
+  // (QA 2026-10-16 bug 07). Same destructive-confirm pattern as business "Log out".
+  const confirmLogout = () => {
+    Alert.alert(t("ownerMenu.logOutConfirmTitle"), t("ownerMenu.logOutConfirmBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("ownerMenu.logOut"), style: "destructive", onPress: handleLogout },
+    ]);
   };
 
   const MenuItem = ({ title, color, emoji, onPress }) => (
@@ -265,7 +274,9 @@ export function OwnerMenu() {
               />
 
               <TouchableOpacity
-                onPress={handleLogout}
+                onPress={confirmLogout}
+                accessibilityRole="button"
+                testID="owner-menu-logout"
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -281,7 +292,7 @@ export function OwnerMenu() {
               >
                 <LogOut size={18} color="#E53935" />
                 <Text style={{ color: "#E53935", fontWeight: "700", fontSize: 15 }}>
-                  {t("ownerMenu.resetApp")}
+                  {t("ownerMenu.logOut")}
                 </Text>
               </TouchableOpacity>
             </ScrollView>

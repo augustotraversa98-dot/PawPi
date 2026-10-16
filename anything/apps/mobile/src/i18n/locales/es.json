@@ -2477,7 +2477,7 @@
     "lostFound": "Perdidos y encontrados",
     "memoriesWrapped": "Recuerdos y Wrapped",
     "remindersRoutines": "Recordatorios y rutinas",
-    "resetAppData": "Borrar datos de la app"
+    "resetAppData": "Cerrar sesión"
   },
   "forum": {
     "title": "Discusión",
@@ -3795,7 +3795,9 @@
     "lostFound": "Perdidos y encontrados",
     "memories": "Recuerdos y Wrapped",
     "reminders": "Recordatorios y rutinas",
-    "resetApp": "Borrar datos de la app"
+    "logOut": "Cerrar sesión",
+    "logOutConfirmTitle": "¿Cerrar sesión?",
+    "logOutConfirmBody": "Vas a tener que iniciar sesión de nuevo para volver al perfil de tu perro."
   },
   "medicalCare": {
     "deleteItemTitle": "¿Eliminar este ítem?",

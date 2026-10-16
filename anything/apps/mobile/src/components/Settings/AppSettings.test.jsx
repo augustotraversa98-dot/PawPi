@@ -81,11 +81,12 @@ it("header back arrow returns to the host that pushed it (router.back)", () => {
 
 // ── BX4 mode-awareness ────────────────────────────────────────────────────────
 
-it("pet mode (default) shows the pet-owner categories + Walk tracking, not business ones", () => {
+it("pet mode (default) shows the pet-owner categories, not business ones, and hides the walk-tracking card until it ships", () => {
   const { getByTestId, queryByTestId, queryByText } = render(<AppSettings />);
   expect(getByTestId("notif-toggle-streak")).toBeTruthy();
   expect(getByTestId("notif-toggle-care")).toBeTruthy();
-  expect(queryByText("WALK TRACKING")).toBeTruthy();
+  // Walk tracking (Apple Health / Watch "coming soon") is hidden behind WALK_TRACKING_INTEGRATIONS_ENABLED.
+  expect(queryByText("WALK TRACKING")).toBeNull();
   expect(queryByTestId("biz-notif-toggle-walk_requests")).toBeNull();
   expect(mockGetBizPrefs).not.toHaveBeenCalled();
 });
@@ -241,4 +242,9 @@ it("a failed quiet-hours save rolls back to what the server had", async () => {
   fireEvent.press(await findByTestId("quiet-start-inc"));
   await waitFor(() => expect(mockSetQuiet).toHaveBeenCalled());
   await waitFor(async () => expect((await findByTestId("quiet-start-value")).props.children).toBe("22:00"));
+});
+
+it("the footer shows the real app version from config, not a hard-coded 1.0.0", () => {
+  const { queryByText } = render(<AppSettings />);
+  expect(queryByText("PawPi v1.0.0")).toBeNull();
 });

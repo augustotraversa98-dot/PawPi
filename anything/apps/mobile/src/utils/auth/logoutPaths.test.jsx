@@ -148,10 +148,12 @@ async function expectDeviceCleanedFor(jwt) {
 }
 
 test("1. manual logout from the owner menu", async () => {
+  const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   const { getByLabelText, getByText } = render(<OwnerMenu />);
   fireEvent.press(getByLabelText("Open menu"));
+  fireEvent.press(getByText("Log out"));
   await act(async () => {
-    fireEvent.press(getByText("Reset App Data"));
+    await spy.mock.calls[0][2].find((b) => b.style === "destructive").onPress();
   });
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
   await expectDeviceCleanedFor(JWT_A);
