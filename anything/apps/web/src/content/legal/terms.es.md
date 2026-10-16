@@ -1,4 +1,4 @@
-**Última actualización:** 15 de agosto de 2026
+**Última actualización:** 16 de octubre de 2026
 
 Estos Términos del Servicio ("Términos") rigen tu uso de la aplicación móvil PawPi y los servicios
 relacionados (el "Servicio"), provistos por Augusto Traversa ("PawPi", "nosotros"). Al crear una
@@ -90,7 +90,7 @@ reflejan las opiniones propias de las personas usuarias.
 ## 7. Pagos
 
 Los pagos por servicios del mundo real y bienes físicos son procesados por procesadores de pago
-externos (MercadoPago o Binance Pay). Al realizar un pago aceptás los términos del procesador
+externos (actualmente MercadoPago). Al realizar un pago aceptás los términos del procesador
 correspondiente. Los precios, impuestos, comisiones, reembolsos, cancelaciones y suscripciones se rigen
 por la política del proveedor y los términos del procesador. PawPi no almacena credenciales completas
 de pago. Cuando PawPi cobre comisiones de plataforma o de servicio, se informarán antes de pagar.
@@ -119,7 +119,7 @@ funciones son opcionales y podés desactivarlas en la app o en la configuración
 
 ## 10. Eliminación y cierre de la cuenta
 
-Podés eliminar tu cuenta en cualquier momento desde **Configuración → Eliminar cuenta**, lo que elimina
+Podés eliminar tu cuenta en cualquier momento desde **Ajustes → Eliminar cuenta**, lo que elimina
 de forma irreversible tu cuenta y los datos que te pertenecen (salvo la conservación legal limitada
 descrita en la Política de Privacidad). Podemos suspender o cerrar tu acceso si violás estos Términos o
 para proteger el Servicio y a sus personas usuarias.

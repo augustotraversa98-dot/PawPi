@@ -23,8 +23,10 @@ qualified attorney before launch. Give your lawyer this checklist.
    sufficient.
 5. **Location.** Precise location is used (nearby, walks, pet-taxi live-share, lost & found). Confirm
    disclosure + consent language is adequate.
-6. **Subprocessors.** Verify the list (Supabase, Railway, Expo, MercadoPago/Binance/Stripe, Resend,
-   Uploadcare/media upload, Google Maps) is complete and that DPAs are in place with each.
+6. **Subprocessors.** Verify the list (Supabase DB + storage, Railway, Cloudflare, Expo, MercadoPago, Resend,
+   Grafana Cloud, Daily.co, Apple/Google sign-in, Apple Maps on iOS, Expo Updates, OSM Nominatim) is complete
+   and that DPAs are in place with each. Binance Pay, Stripe, Uploadcare, Google Maps Platform, RevenueCat and
+   Anthropic are NOT live and were removed/omitted (see `docs/legal/accuracy-sweep-2026-10-16.md`).
 7. **International transfers.** Data is hosted outside the user's country (Supabase region sa-east-1
    today, plus vendors elsewhere). Confirm transfer mechanism/safeguards.
 8. **Payments.** Confirm refund/cancellation responsibility wording given providers set their own

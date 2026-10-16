@@ -34,4 +34,14 @@ describe('securityHeaders (AUDIT A-28)', () => {
       "form-action 'self' https://accounts.google.com",
     );
   });
+
+  // Public pages self-host Nunito / JetBrains Mono (public/fonts) and ship no Font Awesome kit, so the
+  // CSP must not re-open a third-party font origin (a visitor's IP would reach Google / Font Awesome).
+  it('CSP allows no third-party font or stylesheet origin', async () => {
+    const res = await app.request('/');
+    const csp = res.headers.get('content-security-policy');
+    expect(csp).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com|fontawesome/);
+    expect(CSP_DIRECTIVES.fontSrc).toEqual(["'self'", 'data:']);
+    expect(CSP_DIRECTIVES.styleSrc).toEqual(["'self'", "'unsafe-inline'"]);
+  });
 });

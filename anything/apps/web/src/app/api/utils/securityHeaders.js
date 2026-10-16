@@ -20,9 +20,10 @@ export const CSP_DIRECTIVES = {
   objectSrc: ["'none'"],
   frameAncestors: ["'none'"],
   scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  // Fonts are self-hosted (public/fonts, @font-face in global.css), so no Google Fonts origin is allowed.
+  styleSrc: ["'self'", "'unsafe-inline'"],
   imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-  fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+  fontSrc: ["'self'", 'data:'],
   connectSrc: ["'self'", 'https:'],
   // WebKit (Safari, and therefore every iOS WebView / ASWebAuthenticationSession)
   // enforces `form-action` across redirects; Chrome does not. The mobile sign-in

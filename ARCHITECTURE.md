@@ -38,7 +38,7 @@ anything/
 - **Expo SDK:** `54.0.34` · **React Native:** `0.81.5` · **React:** `19.1.0`
 - **Navigation:** `expo-router ~6.0.23` (file-based) + `@react-navigation/native ^7.1.8`, `@react-navigation/bottom-tabs ^7.4.0` (underlying)
 - **State management:** `zustand 5.0.3` (routines/reminders/social) + `@tanstack/react-query 5.72.2` (pet/server data)
-- **Networking:** no axios — a patched `fetch` wrapper; uploads via `@uploadcare/upload-client 6.14.3`; `@react-native-community/netinfo ^11.4.1`
+- **Networking:** no axios — a patched `fetch` wrapper; uploads go through `POST /api/upload` into Supabase Storage (the `@uploadcare/upload-client` dependency is unused leftover); `@react-native-community/netinfo ^11.4.1`
 - **Storage:** `@react-native-async-storage/async-storage 2.2.0`, `expo-secure-store ~15.0.8`, `expo-file-system 19.0.22`
 - **UI/styling:** tailwind 3 + `@tailwindcss/postcss`, `@gorhom/bottom-sheet 5.2.6`, `react-native-reanimated 4.1.1`, `moti 0.30.0`, `lucide-react-native`, `@shopify/react-native-skia`, `sonner-native`
 - **Notifications:** `expo-notifications ~0.32.17`
@@ -89,7 +89,7 @@ Mobile app  ──fetch("/api/...")──►  web app /api/* routes  ──SQL�
 - The web app runs SQL against Neon.
   - DB client: `anything/apps/web/src/app/api/utils/sql.js:1` (`import { neon } ...`), `:13` (`neon(process.env.DATABASE_URL)`).
   - Auth DB pool: `anything/apps/web/src/auth.js:9` (`Pool` from neon), `:254` (`connectionString: process.env.DATABASE_URL`).
-  - Uploads: `anything/apps/web/src/app/api/utils/upload.js:6` → `https://api.anything.com/v0/upload`.
+  - Uploads: `POST /api/upload` (`anything/apps/web/src/app/api/upload/route.js`) → Supabase Storage (public `media` bucket, or the private bucket for medical/chat files). The old `utils/upload.js` → `api.anything.com` helper was unused and has been removed.
 - Note: `anything/apps/web/src/app/api/utils/create.js:6-13` references an `/api/db/:database` endpoint that **does not exist** in this tree (likely a platform-provided route).
 
 ### Database tables referenced in code (32 total)

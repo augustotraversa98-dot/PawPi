@@ -33,7 +33,8 @@ audit (`docs/legal/privacy-policy.md`). This supersedes/expands §9 of
 | **User Content** | Photos or Videos; Other User Content (pet profiles, health/vet entries, posts, comments, messages, reviews, adoption answers); Customer Support | Core app functionality |
 | **Location** | **Precise Location** (nearby, walks, pet-taxi live-share, events, adoption distance, lost & found); **Coarse Location** (optional leaderboard area label) | Location-based features (not tracking) |
 | **Identifiers** | User ID; **Device ID** (Expo push token) | Account identity; delivering push notifications |
-| **Purchase History** | Orders / bookings / transaction references; shipping address for physical goods | Fulfilling purchases of real-world services & goods |
+| **Purchase History** | Orders / bookings / transaction references | Fulfilling purchases of real-world services & goods |
+| **Contact Info** | **Physical Address** (shipping address stored on shop orders for physical goods, `orders.shipping_address`) | Fulfilling purchases of physical goods |
 
 ## Anonymous usage & diagnostics (build 26+) — NOT linked, NOT used for tracking
 
@@ -60,41 +61,57 @@ Declared in App Store Connect as **"Data Not Linked to You"** and **not used to 
 - Retention: no specific period is stated. It is set by the hosting/monitoring provider's plan and is
   deliberately not stated in the privacy policy (`docs/privacy/telemetry.md`).
 
-## Third-party services that receive data (audit 2026-10-16)
+## Third-party services that receive data (accuracy sweep 2026-10-16)
 
-Checked against the code and the production Railway service's variable **names** (values not read).
-"Live" = reachable in the shipped app/backend today; "Inactive" = bundled or coded but sends nothing.
-Policy Section 8 (EN + ES) lists the live ones. This is a factual inventory, not legal advice.
+Checked against the code, the production Railway service's variable **names** (values never read) and live
+requests to `www.pawpi.info`. **Live** = reachable in the shipped app/backend today and receives data;
+**Inactive** = bundled or coded but sends nothing in production; **Not used** = dead code or removed. Policy
+Section 8 (EN + ES) lists exactly the **Live** rows. Full evidence and the open items:
+`docs/legal/accuracy-sweep-2026-10-16.md`. This is a factual inventory, not legal advice.
 
 | Service | Status | What it receives | In policy §8 |
 |---|---|---|---|
-| **RevenueCat** (`react-native-purchases`) | **Inactive.** SDK is bundled, but `Purchases.configure` is only called from `useInAppPurchase().initiate`, which nothing imports. No webhook or `/api/revenue-cat/*` route exists. The EAS `production` profile sets no RevenueCat keys. | **Nothing today.** | No (not live) |
-| **Daily.co** | **Live.** Telehealth video consults (`service/telehealth-call.jsx` WebView; `VIDEO_PROVIDER` + `VIDEO_API_KEY` set on Railway; confirmed end to end 2026-08-01). | Account display name (meeting token `user_name`), live audio/video, in-call chat, screen share, IP. We create a private room (no PII) and do not enable recording. | Yes (added) |
-| **Expo Updates** (`u.expo.dev`) | **Live.** `expo-updates` enabled in `app.json`, checks on launch. | App/runtime/update ids, platform, channel, random `EAS-Client-ID`, IP. | Yes (added, within the Expo entry) |
-| **OpenStreetMap Nominatim** | **Live.** Services Discover "search a location" (`ServicesDiscovery.jsx` → `geocodeLocation`), called from the device on explicit submit. | The typed place/address text, IP, a PawPi User-Agent. No account id. | Yes (added) |
-| **Anthropic (Claude)** | **Inactive.** AI document reading (`enrichment/petRecords.js`) 503s unless `ANTHROPIC_API_KEY` is set; the key is **not** set on production Railway. | Nothing today. When enabled: the uploaded vet document (image/PDF). | No (not live) |
+| **Supabase** (Postgres + Storage) | **Live** | All app data; uploaded photos/docs/video via `POST /api/upload` (public `media` bucket, private bucket for medical/chat files) | Yes (now says "database and file storage") |
+| **Railway** | **Live** | Hosting; requests in transit | Yes |
+| **Cloudflare** | **Live, proxied.** `www.pawpi.info` (incl. `/api/*`) and the apex answer from Cloudflare (`server: cloudflare`, `cf-ray`, Cloudflare IPs, `cf-cache-status: DYNAMIC`). | Every request to the site and API passes through Cloudflare in transit: IP address and request content. | Yes (added) |
+| **Expo push** (+ APNs/FCM behind it) | **Live** | Push token, notification content | Yes (now notes Apple/Google push) |
+| **Expo Updates** (`u.expo.dev`) | **Live** | Update ids, platform, channel, random client id, IP | Yes |
+| **MercadoPago** | **Live.** `MP_*` variables are set on production. | Order amount/status/reference; payment details entered directly with MercadoPago | Yes (now named alone) |
+| **Resend** | **Live.** `EMAIL_API_KEY`/`EMAIL_FROM` set; the only email adapter. | Recipient email address and message content (password reset, digests) | Yes |
+| **Grafana Cloud** | **Live.** `GRAFANA_LOKI_*` and `OTEL_*` set. | Anonymous app events; server request records (route template, status, duration, request id) and trace spans with IP/query/URL ids scrubbed | Yes (server records sentence added to §5) |
+| **Daily.co** | **Live** (`VIDEO_PROVIDER` + `VIDEO_API_KEY` set; telehealth WebView). | Account display name, live audio/video, in-call chat, screen share, IP. Room is private; no recording. | Yes |
+| **Sign in with Apple / Google** | **Live.** `AUTH_APPLE_*` and `AUTH_GOOGLE_*` set; the Welcome buttons appear only when configured. | Basic profile (name, email incl. Apple private relay) and token verification | Yes (added; was in §2 but missing from §8) |
+| **Apple Maps / Apple geocoder** (iOS system) | **Live on iPhone.** `react-native-maps` uses `PROVIDER_DEFAULT` (Apple Maps) and `expo-location` reverse-geocoding uses Apple's geocoder. | Map area viewed; coordinates to turn into a street address | Yes (added, within the Apple entry) |
+| **OpenStreetMap Nominatim** | **Live.** Services Discover "search a location", from the device on explicit submit. | Typed place text, IP, a PawPi User-Agent | Yes |
+| GitHub (`GITHUB_DISPATCH_TOKEN`) | **Live, internal ops only.** Observability alert-to-autofix loop. | Alert payloads (route/metric text), no user data | No (not user data) |
+| **RevenueCat** (`react-native-purchases`) | **Inactive.** `Purchases.configure` is only reachable from an unused hook; no RevenueCat keys in the EAS `production` profile; no webhook route. | Nothing today | No |
+| **Anthropic (Claude)** AI document reading | **Inactive.** Returns 503 unless `ANTHROPIC_API_KEY` is set; the key (and `ENRICHMENT_LLM_KEY`) is not set on production. | Nothing today. When enabled: the uploaded vet document | No |
+| **Google Maps Platform** (Places enrichment, browser map picker) | **Inactive.** `GOOGLE_PLACES_API_KEY` is not set on production; `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is not set, so the provider-dashboard map picker renders nothing. Android shows a "coming soon" map placeholder (no Google key). | Nothing today | **Removed** |
+| **Binance Pay** | **Inactive.** Adapter exists; `BINANCE_PAY_API_*` not set on production, routes answer 503 "not configured". | Nothing today | **Removed** |
+| **Stripe** | **Not used.** Only a platform scaffold (`src/__create/stripe.ts`) that nothing imports; no Stripe key. | Nothing | **Removed** |
+| **Uploadcare / `api.anything.com`** | **Not used.** Real uploads go to Supabase Storage. `utils/upload.js` (the `api.anything.com` helper) had no importers and was deleted; `@uploadcare/upload-client` in the mobile `package.json` is an unused leftover. | Nothing | **Removed** |
+| **Google Fonts** and **Font Awesome kit** | **Removed from public pages in this PR.** Nunito/JetBrains Mono are now self-hosted; the Font Awesome Pro kit was loaded in `root.tsx` for every page but no `fa-` icon is used anywhere (and the CSP did not even allow its stylesheet). Verified no third-party request on `/`, `/privacy`, `/terms`, `/eula`, `/support`, `/account/signin`, `/p/tag/*`. | Was: visitor IP to Google / Font Awesome | n/a (no longer happens) |
 
-If RevenueCat or Anthropic is switched on later, update this table, policy §2/§8 (EN + ES) and the label first.
+If RevenueCat, Anthropic, Google Maps, Binance Pay or an uploads vendor is switched on later, update this table,
+policy §2/§8 (EN + ES) and the App Store label first.
 
 ### Label impact (for the App Store Connect owner)
 
-- **RevenueCat:** none today. When live it would receive purchase/subscription data plus an app user id
-  (anonymous RevenueCat id unless we pass `logIn`) and device/IP → declare **Purchases → Purchase History** and
-  **Identifiers → User ID / Device ID** (linked if we pass our own user id).
-- **Daily.co:** live audio/video/chat are real-time; Apple excludes data not kept longer than needed to serve the
-  request. We do not record, so no change is strictly required, but this is a judgement call. Conservative option:
-  **User Content → Audio Data**, Linked, App Functionality, not tracking. Photos or Videos is already declared.
-- **Expo Updates:** random client id + IP, no account link. Treated like `install_id` above (no change); the
-  conservative option is **Identifiers → Device ID**, Not linked, App Functionality.
+- **Cloudflare / Railway / Supabase / Resend / MercadoPago:** processors for data already declared; no new data type.
+- **Daily.co:** live audio/video/chat are real-time and not recorded; Apple excludes data not kept longer than needed
+  to serve the request, so no change is strictly required. Conservative option: **User Content → Audio Data**,
+  Linked, App Functionality.
+- **Expo Updates:** random client id + IP, no account link. Conservative option: **Identifiers → Device ID**, Not linked,
+  App Functionality.
 - **Nominatim:** a typed place name is not the user's location. Borderline **Search History** (Not linked,
   App Functionality); conservative option is to declare it.
-- **Anthropic:** none today. When live, uploaded vet documents map to the already-declared **Photos or Videos /
-  Other User Content** (Linked, App Functionality). Pet health data stays User Content, not Health & Fitness.
+- **RevenueCat / Anthropic:** none today. If RevenueCat goes live: **Purchases → Purchase History** and
+  **Identifiers → User ID / Device ID**. If Anthropic goes live: uploaded vet documents map to the already-declared
+  **Photos or Videos / Other User Content** (Linked, App Functionality).
 
 ## Explicitly NOT collected / declared
-- **Financial Info (card/wallet):** handled by the payment processors (MercadoPago / Binance /
-  Stripe), **not stored by PawPi** → declare **Purchase History**, not Payment Info. (Confirm against
-  what your processors report back.)
+- **Financial Info (card/wallet):** handled by the payment processor (MercadoPago; Binance Pay and Stripe are
+  not live), **not stored by PawPi** → declare **Purchase History**, not Payment Info.
 - **Health & Fitness (Apple category):** **No** — that category is the *user's own* health via
   HealthKit, which PawPi does not use. Pet health data is declared as **User Content**.
 - **Diagnostics / Usage Data:** **Declared, not linked** from build 26 (table above) — anonymous
@@ -116,3 +133,41 @@ If RevenueCat or Anthropic is switched on later, update this table, policy §2/�
   `docs/privacy/telemetry.md` §5) — a human action after legal review.
 - Keep this map in sync with `docs/legal/privacy-policy.md` §7 (subprocessors) and §2 (data collected)
   whenever data practices change.
+
+## FINAL recommended App Privacy label (apply in App Store Connect)
+
+Global: **Data used to track you: No.** Third-party advertising: none. Account deletion offered: Yes.
+Every "Linked" row below is linked to the user's account; every purpose not listed is unchecked.
+Items marked **NEW vs. this doc before the sweep** are changes you may need to make.
+
+### Required (declare these)
+
+| Data type (Apple category → type) | Linked to user? | Purpose | Notes |
+|---|---|---|---|
+| Contact Info → Email Address | Linked | App Functionality | Sign-up / Sign in with Apple, Google |
+| Contact Info → Name | Linked | App Functionality | |
+| Contact Info → **Physical Address** | Linked | App Functionality | **NEW vs. this doc before the sweep.** Shipping address saved on physical-goods orders. Previously folded under Purchase History. |
+| User Content → Photos or Videos | Linked | App Functionality | Pet photos, posts, health-check images, daily moments, documents |
+| User Content → Other User Content | Linked | App Functionality | Pet profiles, health/vet entries, posts, comments, messages, reviews, adoption answers |
+| User Content → Customer Support | Linked | App Functionality | |
+| Location → Precise Location | Linked | App Functionality | Nearby, walks, pet-taxi live-share, events, adoption distance, lost and found |
+| Location → Coarse Location | Linked | App Functionality | Optional leaderboard area label |
+| Identifiers → User ID | Linked | App Functionality | |
+| Identifiers → Device ID | Linked | App Functionality | Expo push token (only if notifications are enabled) |
+| Purchases → Purchase History | Linked | App Functionality | Orders, bookings, payment references |
+| Usage Data → Product Interaction | **Not linked** | Analytics | Anonymous telemetry (build 26+); already published |
+| Diagnostics → Performance Data | **Not linked** | Analytics | Already published |
+| Diagnostics → Other Diagnostic Data | **Not linked** | Analytics | Already published |
+
+Not declared: Crash Data (no crash SDK), Health & Fitness (that category is the person's own HealthKit data),
+Financial Info, Advertising Data, Browsing History, Contacts, Sensitive Info.
+
+### Conservative extras (optional; judgement calls, each defensible either way)
+
+| Data type | Linked? | Purpose | Why you might add it |
+|---|---|---|---|
+| User Content → Emails or Text Messages | Linked | App Functionality | In-app messages with providers/other owners are currently covered by Other User Content; Apple's definition of this type names message content, so a reviewer could ask for it. |
+| User Content → Audio Data | Linked | App Functionality | Telehealth video calls (Daily.co) carry live audio; not recorded, so Apple's "not kept longer than needed" exclusion probably applies. |
+| Identifiers → Device ID (telemetry/updates) | Not linked | Analytics (telemetry) and App Functionality (Expo Updates) | Random `install_id` and Expo's random client id are not device identifiers, but this is the safest reading if review pushes back. |
+| Usage Data → Search History | Not linked | App Functionality | The Services "search a location" text is sent to OpenStreetMap Nominatim. |
+| Contact Info → Phone Number | Linked | App Functionality | Users can enter an emergency contact's and their vet's phone numbers (stored as pet-record content, not for contacting the user). |

@@ -4,12 +4,12 @@
 > actual features and policies, but not reviewed by counsel. Have an attorney review and adapt it
 > (especially liability, governing-law, and arbitration/disputes) before relying on it publicly.
 
-**Effective date:** _to be set at launch_
-**Last updated:** August 15, 2026
+_Mirror of the version served at https://www.pawpi.info/terms (source: `anything/apps/web/src/content/legal/terms.en.md`) - edit the web file first, then copy it here._
+**Last updated:** October 16, 2026
 
 These Terms of Service ("Terms") govern your use of the PawPi mobile app and related services (the
 "Service"), provided by Augusto Traversa ("PawPi," "we," "us"). By creating an account or using
-the Service, you agree to these Terms and to our [Privacy Policy](https://augustotraversa98-dot.github.io/pawpi-legal/privacy).
+the Service, you agree to these Terms and to our [Privacy Policy](/privacy).
 
 ## 1. Eligibility and accounts
 
@@ -91,7 +91,7 @@ outcome of services or goods offered by providers. Reviews reflect users' own op
 ## 7. Payments
 
 Payments for real-world services and physical goods are processed by third-party payment processors
-(MercadoPago and/or Binance Pay). By making a payment you agree to the applicable processor's
+(currently MercadoPago). By making a payment you agree to the applicable processor's
 terms. Prices, taxes, fees, refunds, cancellations, and subscriptions are governed by the provider's
 stated policy and the processor's terms. PawPi does not store full payment credentials. Where PawPi
 charges platform or service fees, they will be disclosed before you pay.

@@ -45,7 +45,7 @@ your device's Settings, and the app keeps working with reduced features.
 
 **How do bookings and payments work?**
 When you book a pet service or buy from the shop, payment is handled by our payment
-processors (MercadoPago and/or Binance Pay). PawPi does not store your full card or wallet
+processors (currently MercadoPago). PawPi does not store your full card or wallet
 credentials.
 
 ## A note on health features
