@@ -4,6 +4,8 @@
 // (package.json's "jest" block); only globalSetup and testMatch differ.
 module.exports = {
   preset: "jest-expo",
+  // Same cache dir as the main config (package.json) so CI restores one directory.
+  cacheDirectory: "<rootDir>/node_modules/.cache/jest",
   globalSetup: "<rootDir>/jest.tz.negative.setup.js",
   testMatch: ["**/*.test.tz-negative.{js,jsx,ts,tsx}"],
 };
