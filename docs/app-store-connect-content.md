@@ -82,9 +82,9 @@ dog,puppy,pet care,vet records,dog health,reminders,walker,groomer,adoption,dog 
 
 | Field | Value |
 |---|---|
-| **Support URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/support |
+| **Support URL** (required) | https://www.pawpi.info/support |
 | **Marketing URL** (optional) | https://www.pawpi.info |
-| **Privacy Policy URL** (required) | https://augustotraversa98-dot.github.io/pawpi-legal/privacy |
+| **Privacy Policy URL** (required) | https://www.pawpi.info/privacy |
 
 ## 7. "What's New in This Version" (v1.0)
 

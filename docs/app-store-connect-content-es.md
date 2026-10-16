@@ -75,9 +75,9 @@ perro,cachorro,mascota,veterinaria,salud,recordatorios,paseador,adopcion,comunid
 
 | Campo | Valor |
 |---|---|
-| **Support URL** (obligatorio) | https://augustotraversa98-dot.github.io/pawpi-legal/support |
+| **Support URL** (obligatorio) | https://www.pawpi.info/support |
 | **Marketing URL** (opcional) | https://www.pawpi.info |
-| **Privacy Policy URL** (obligatorio) | https://augustotraversa98-dot.github.io/pawpi-legal/privacy |
+| **Privacy Policy URL** (obligatorio) | https://www.pawpi.info/privacy |
 
 Las páginas legales todavía están en inglés; ASC acepta reutilizar las mismas URLs para es. Si más
 adelante publicamos `/es`, se cambian solo acá.

@@ -47,7 +47,7 @@ reducidas.
 
 **¿Cómo funcionan las reservas y los pagos?**
 Cuando reservás un servicio para mascotas o comprás en la tienda, el pago lo procesan nuestros
-procesadores de pago (MercadoPago o Binance Pay). PawPi no guarda los datos completos de tu
+procesadores de pago (actualmente MercadoPago). PawPi no guarda los datos completos de tu
 tarjeta ni de tu billetera.
 
 ## Una nota sobre las funciones de salud

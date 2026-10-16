@@ -65,8 +65,8 @@ We collect only what the app needs to work. Specifically:
 
 **Payment information**
 
-- When you pay for a service or product, payment is processed by our third-party payment processors
-  (**MercadoPago** and/or **Binance Pay**; card processing infrastructure may involve **Stripe**).
+- When you pay for a service or product, payment is processed by our third-party payment processor
+  (currently **MercadoPago**).
   We do **not** store full card or wallet credentials on our servers; we receive transaction status,
   amounts, currency, and references needed to fulfil your order. If you buy a physical product, we
   store the **shipping address** you provide for fulfilment.
@@ -147,6 +147,11 @@ advertising SDK for this: the app sends the data to our own servers, and we proc
 **Grafana Cloud** (Grafana Labs), a hosting and monitoring service (see Section 8). The aggregated
 statistics we chart (counts and timings) do not contain the random identifiers.
 
+Separately, our servers send Grafana Cloud basic technical records of the requests they handle: the
+type of screen or endpoint (not the full address), the result code, how long it took, and a request
+reference. These records leave out your IP address, account, name, email, anything in the address
+after a "?", and the content of your requests, and they are used only to detect outages and errors.
+
 **Your control**
 
 This is on by default, and you can turn it off at any time in **Settings → Help improve PawPi
@@ -191,20 +196,22 @@ We share information only as needed to run the Service:
 We use the following categories of vendors to run the Service. They process data on our behalf under
 contract, only as needed:
 
-- **Supabase** (PostgreSQL hosting) — Purpose: Primary database; Data involved: All app data described above
+- **Supabase** (PostgreSQL database and file storage) — Purpose: Primary database, and storage of the photos, documents and media you upload; Data involved: All app data described above, including the files you upload
 - **Railway** — Purpose: Web/API application hosting; Data involved: Requests to the API; data in transit
-- **Expo** (push service) — Purpose: Delivering push notifications; Data involved: Device push token, notification content
-- **MercadoPago / Binance Pay** (and card infrastructure incl. **Stripe**) — Purpose: Payment processing; Data involved: Transaction amount/status/reference; you provide payment details directly to them
+- **Cloudflare** — Purpose: DNS and traffic delivery for pawpi.info: requests from the app and the website to our servers pass through Cloudflare's network; Data involved: Requests in transit, including your IP address and the content of those requests, which Cloudflare handles only to deliver them to us and keep the service available
+- **Expo** (push service) — Purpose: Delivering push notifications (Expo passes them to Apple's or Google's push service); Data involved: Device push token, notification content
+- **MercadoPago** — Purpose: Payment processing; Data involved: Transaction amount/status/reference; you provide payment details directly to them
 - **Resend** — Purpose: Transactional email (e.g. password reset, digests); Data involved: Your email address, message content
-- **Uploadcare / the app's media upload service** — Purpose: Image and document upload/storage; Data involved: Photos, documents, media you upload
-- **Google Maps Platform** — Purpose: Maps and place data; Data involved: Approximate/precise location when you use map features
+- **Apple** — Purpose: Sign in with Apple, if you choose it; and, on iPhone, the maps and address lookup built into iOS (Apple Maps); Data involved: For sign-in, the basic profile Apple shares with us (name and email, subject to your choices, including Apple's private-relay email). For maps, the area you view and any coordinates you ask to turn into a street address are handled by Apple's system services. [Apple's privacy policy](https://www.apple.com/legal/privacy/)
+- **Google** — Purpose: Sign in with Google, if you choose it; Data involved: The basic profile Google shares with us (name and email, subject to your choices). [Google's privacy policy](https://policies.google.com/privacy)
 - **Grafana Cloud** (Grafana Labs) — Purpose: Hosting and monitoring of the anonymous usage and diagnostics data described in Section 5; Data involved: Anonymous usage and diagnostics events and statistics, tied only to random identifiers — no name, email, account, pet, content, or location data
 - **Daily** (Daily.co) — Purpose: Video calls for veterinary telehealth consultations; Data involved: When you join a video consultation, Daily handles your account name (shown to the other participant), your audio and video, any chat messages and any screen you share during the call, and technical connection data such as your IP address. [Daily's privacy policy](https://www.daily.co/privacy/)
 - **Expo** (app updates) — Purpose: Checking for and delivering updates to the app's code; Data involved: When the app starts, it asks Expo's update service whether an update is available and sends the app version and update identifiers, your platform (iOS or Android), the update channel, a random client identifier, and your IP address. [Expo's privacy policy](https://expo.dev/privacy)
 - **OpenStreetMap Foundation** (Nominatim) — Purpose: Turning a place name or address you type into map coordinates when you use the "search a location" filter in Services; Data involved: The text you type in that search and your IP address, sent directly from your device. [OpenStreetMap Foundation privacy policy](https://osmfoundation.org/wiki/Privacy_Policy)
 
-OpenStreetMap Nominatim is a public service that the app contacts directly from your device; it handles that data
-under its own privacy policy, linked above. We keep this list current as our vendors change. We do not permit the
+OpenStreetMap Nominatim is a public service that the app contacts directly from your device. Apple and Google are
+the sign-in and map services built into your device or chosen by you. Each of these handles your data under its
+own privacy policy, linked above. We keep this list current as our vendors change. We do not permit the
 vendors we engage under contract to use your data for their own purposes.
 
 ## 9. Data retention
@@ -212,10 +219,14 @@ vendors we engage under contract to use your data for their own purposes.
 We keep your information for as long as your account is active or as needed to provide the Service.
 You can delete individual content within the app at any time (posts, comments, logs, pets). When you
 delete your **account**, we remove the account and the data you own (your profile, pets, and the
-records associated with them), subject to limited retention where the law requires it (for example,
-transaction records kept for accounting/tax) or where data is needed to resolve disputes or enforce
-our Terms. Push tokens are removed when you disable notifications or delete your account. Backups are
-rotated on a routine schedule.
+records associated with them, including your orders and payment records in our database). Deleting
+your account does not remove records that belong to someone else or to a separate business: for
+example, a provider's own record of a past appointment stays with that provider (no longer linked to
+your account), and a business you created is a separate listing that deleting your personal account
+does not remove. We may also keep limited data where the law requires it or where it is needed to
+resolve disputes or enforce our Terms, and our payment processor keeps its own payment records under
+its own policy. Push tokens are removed when you disable notifications or delete your account.
+Backups are rotated on a routine schedule.
 
 ## 10. Your choices and rights
 

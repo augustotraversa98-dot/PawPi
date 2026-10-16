@@ -81,8 +81,8 @@ Recopilamos solo lo que la app necesita para funcionar. En particular:
 
 **Información de pago**
 
-- Cuando pagás un servicio o producto, el pago lo procesan nuestros procesadores de pago externos
-  (**MercadoPago** o **Binance Pay**; la infraestructura de tarjetas puede involucrar a **Stripe**).
+- Cuando pagás un servicio o producto, el pago lo procesa nuestro procesador de pago externo
+  (actualmente **MercadoPago**).
   **No** almacenamos credenciales completas de tarjeta o billetera en nuestros servidores; recibimos
   el estado, el monto, la moneda y las referencias de la transacción necesarias para cumplir tu
   pedido. Si comprás un producto físico, guardamos la **dirección de envío** que indiques.
@@ -164,6 +164,12 @@ de publicidad de terceros: la app envía los datos a nuestros propios servidores
 **Grafana Cloud** (Grafana Labs), un servicio de alojamiento y monitoreo (ver Sección 8). Las
 estadísticas agregadas que graficamos (conteos y tiempos) no contienen los identificadores aleatorios.
 
+Por separado, nuestros servidores envían a Grafana Cloud registros técnicos básicos de las solicitudes
+que atienden: el tipo de pantalla o de endpoint (no la dirección completa), el código de resultado,
+cuánto tardó y una referencia de la solicitud. Estos registros no incluyen tu dirección IP, cuenta,
+nombre, correo, nada de lo que va después de un "?" en la dirección ni el contenido de tus solicitudes,
+y se usan solo para detectar caídas y errores.
+
 **Tu control**
 
 Está activado por defecto y podés desactivarlo cuando quieras en **Ajustes → Ayudar a mejorar PawPi
@@ -209,19 +215,21 @@ Compartimos información solo según sea necesario para operar el Servicio:
 Usamos las siguientes categorías de proveedores para operar el Servicio. Procesan datos en nuestro
 nombre bajo contrato, solo según sea necesario:
 
-- **Supabase** (hosting de PostgreSQL) — Finalidad: Base de datos principal; Datos involucrados: Todos los datos descritos arriba
+- **Supabase** (base de datos PostgreSQL y almacenamiento de archivos) — Finalidad: Base de datos principal y almacenamiento de las fotos, documentos y medios que subís; Datos involucrados: Todos los datos descritos arriba, incluidos los archivos que subís
 - **Railway** — Finalidad: Hosting de la aplicación web/API; Datos involucrados: Solicitudes a la API; datos en tránsito
-- **Expo** (servicio push) — Finalidad: Envío de notificaciones push; Datos involucrados: Token push del dispositivo, contenido de la notificación
-- **MercadoPago / Binance Pay** (e infraestructura de tarjetas, incl. **Stripe**) — Finalidad: Procesamiento de pagos; Datos involucrados: Monto/estado/referencia; los datos de pago los aportás directamente a ellos
+- **Cloudflare** — Finalidad: DNS y entrega de tráfico de pawpi.info: las solicitudes de la app y del sitio web hacia nuestros servidores pasan por la red de Cloudflare; Datos involucrados: Solicitudes en tránsito, incluidas tu dirección IP y el contenido de esas solicitudes, que Cloudflare trata solo para entregárnoslas y mantener el servicio disponible
+- **Expo** (servicio push) — Finalidad: Envío de notificaciones push (Expo las pasa al servicio push de Apple o de Google); Datos involucrados: Token push del dispositivo, contenido de la notificación
+- **MercadoPago** — Finalidad: Procesamiento de pagos; Datos involucrados: Monto/estado/referencia; los datos de pago los aportás directamente a ellos
 - **Resend** — Finalidad: Correos transaccionales (p. ej. restablecer contraseña, resúmenes); Datos involucrados: Tu correo, contenido del mensaje
-- **Uploadcare / el servicio de subida de medios de la app** — Finalidad: Subida/almacenamiento de imágenes y documentos; Datos involucrados: Fotos, documentos y medios que subís
-- **Google Maps Platform** — Finalidad: Mapas y datos de lugares; Datos involucrados: Ubicación aproximada/precisa cuando usás funciones de mapa
+- **Apple** — Finalidad: Iniciar sesión con Apple, si lo elegís; y, en iPhone, los mapas y la búsqueda de direcciones integrados en iOS (Apple Maps); Datos involucrados: Para iniciar sesión, el perfil básico que Apple nos comparte (nombre y correo, según tus elecciones, incluido el correo de retransmisión privada de Apple). Para los mapas, la zona que ves y las coordenadas que pedís convertir en una dirección las procesan los servicios del sistema de Apple. [Política de privacidad de Apple](https://www.apple.com/legal/privacy/)
+- **Google** — Finalidad: Iniciar sesión con Google, si lo elegís; Datos involucrados: El perfil básico que Google nos comparte (nombre y correo, según tus elecciones). [Política de privacidad de Google](https://policies.google.com/privacy)
 - **Grafana Cloud** (Grafana Labs) — Finalidad: Alojamiento y monitoreo de los datos anónimos de uso y diagnóstico descritos en la Sección 5; Datos involucrados: Eventos y estadísticas anónimos de uso y diagnóstico, asociados solo a identificadores aleatorios — sin nombre, correo, cuenta, mascotas, contenido ni ubicación
 - **Daily** (Daily.co) — Finalidad: Videollamadas de las consultas de telesalud veterinaria; Datos involucrados: Cuando te unís a una videoconsulta, Daily procesa el nombre de tu cuenta (que ve la otra persona), tu audio y video, los mensajes de chat y la pantalla que compartas durante la llamada, y datos técnicos de conexión como tu dirección IP. [Política de privacidad de Daily](https://www.daily.co/privacy/)
 - **Expo** (actualizaciones de la app) — Finalidad: Verificar y entregar actualizaciones del código de la app; Datos involucrados: Al iniciar, la app le pregunta al servicio de actualizaciones de Expo si hay una actualización disponible y le envía la versión de la app y los identificadores de actualización, tu plataforma (iOS o Android), el canal de actualización, un identificador aleatorio del cliente y tu dirección IP. [Política de privacidad de Expo](https://expo.dev/privacy)
 - **OpenStreetMap Foundation** (Nominatim) — Finalidad: Convertir en coordenadas de mapa el nombre de un lugar o una dirección que escribís cuando usás el filtro "buscar una ubicación" en Servicios; Datos involucrados: El texto que escribís en esa búsqueda y tu dirección IP, enviados directamente desde tu dispositivo. [Política de privacidad de la Fundación OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy)
 
-OpenStreetMap Nominatim es un servicio público al que la app consulta directamente desde tu dispositivo; trata esos datos
+OpenStreetMap Nominatim es un servicio público al que la app consulta directamente desde tu dispositivo. Apple y Google
+son los servicios de inicio de sesión y de mapas integrados en tu dispositivo o elegidos por vos. Cada uno trata tus datos
 según su propia política de privacidad, enlazada arriba. Mantenemos esta lista actualizada a medida que cambian nuestros
 proveedores. No permitimos que los proveedores que contratamos usen tus datos para sus propios fines.
 
@@ -230,11 +238,15 @@ proveedores. No permitimos que los proveedores que contratamos usen tus datos pa
 Conservamos tu información mientras tu cuenta esté activa o según sea necesario para brindar el
 Servicio. Podés eliminar contenido individual dentro de la app en cualquier momento (publicaciones,
 comentarios, registros, mascotas). Cuando eliminás tu **cuenta**, borramos la cuenta y los datos que
-te pertenecen (tu perfil, tus mascotas y los registros asociados), salvo la conservación limitada que
-exija la ley (por ejemplo, registros de transacciones por motivos contables/fiscales) o cuando los
-datos sean necesarios para resolver disputas o hacer cumplir nuestros Términos. Los tokens push se
-eliminan cuando desactivás las notificaciones o eliminás tu cuenta. Las copias de seguridad se rotan
-de forma periódica.
+te pertenecen (tu perfil, tus mascotas y los registros asociados, incluidos tus pedidos y registros de
+pago en nuestra base de datos). Eliminar tu cuenta no borra los registros que pertenecen a otra persona
+o a un negocio aparte: por ejemplo, el registro propio que un proveedor tiene de un turno pasado queda
+con ese proveedor (sin vínculo con tu cuenta), y un negocio que creaste es un perfil separado que no se
+elimina al borrar tu cuenta personal. También podemos conservar datos limitados cuando la ley lo exija
+o cuando sean necesarios para resolver disputas o hacer cumplir nuestros Términos, y nuestro procesador
+de pagos conserva sus propios registros de pago según su propia política. Los tokens push se eliminan
+cuando desactivás las notificaciones o eliminás tu cuenta. Las copias de seguridad se rotan de forma
+periódica.
 
 ## 10. Tus opciones y derechos
 

@@ -5,10 +5,12 @@
 export const TERMS_OF_SERVICE_URL = process.env.NEXT_PUBLIC_TERMS_URL || "";
 export const PRIVACY_POLICY_URL = process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL || "";
 
-// Consent versions recorded at signup (POST /api/legal/consent → legal_consents). These are
-// SERVER-AUTHORITATIVE: the endpoint stamps these strings, never values from the client. Date
-// strings that match the "Last updated" date in docs/legal/*.md — bump BOTH the doc date and the
-// matching constant together when either document materially changes (a version bump is what the
-// future "re-consent on version change" backstop ticket keys off).
-export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION || "2026-06-22";
+// Consent versions recorded at signup (POST /api/legal/consent -> legal_consents). These are
+// SERVER-AUTHORITATIVE: the endpoint stamps these strings, never values from the client. Keep each
+// equal to the "Last updated" date of the served document (src/content/legal/{terms,privacy}.*.md,
+// mirrored in docs/legal/) and bump both together when a document materially changes.
+// WHAT A BUMP DOES (verified 2026-10-16): it only changes the version stamped on NEW signups' consent
+// rows. Nothing in the app or API compares a user's stored version to these constants, so existing
+// users are NOT re-prompted. A re-consent-on-version-change backstop does not exist yet.
+export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION || "2026-10-16";
 export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION || "2026-10-16";

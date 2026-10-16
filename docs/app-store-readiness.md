@@ -50,8 +50,8 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 2. **Privacy Policy + Terms URLs (required for submission). ✅ RESOLVED (2026-06-28).** Both docs are
    finalized (all placeholders filled; effective + last-updated **June 22, 2026**, matching the
    `2026-06-22` consent version) and **hosted live** at:
-   - Privacy Policy: **https://augustotraversa98-dot.github.io/pawpi-legal/privacy**
-   - Terms of Service: **https://augustotraversa98-dot.github.io/pawpi-legal/terms**
+   - Privacy Policy: **https://www.pawpi.info/privacy**
+   - Terms of Service: **https://www.pawpi.info/terms**
 
    Served from the public repo `augustotraversa98-dot/pawpi-legal` via GitHub Pages (both return HTTP 200).
    The in-app URL env vars are set — mobile `EXPO_PUBLIC_PRIVACY_POLICY_URL`/`EXPO_PUBLIC_TERMS_URL`,
@@ -62,7 +62,7 @@ The actual archive + upload needs the Apple Developer account + an EAS build —
 4. **App display name / branding.** Set to "PawPi" — confirm the final App Store name + subtitle.
 5. **Support URL (required for submission). ✅ RESOLVED (2026-07-31).** The
    support page (`docs/legal/support.md`/`.html` — now tracked in-repo as the source) is **live and
-   returns HTTP 200** at **https://augustotraversa98-dot.github.io/pawpi-legal/support** (same public
+   returns HTTP 200** at **https://www.pawpi.info/support** (same public
    `pawpi-legal` repo + GitHub Pages mechanism as Privacy/Terms; published 2026-06-29). `pawpi.info`
    itself still has no web hosting configured (parked at one.com; DNS/hosting for the root domain is
    a one.com account action Code cannot perform), so `docs/app-store-connect-content.md` §6 has been
@@ -114,7 +114,7 @@ In rough order:
    rating. Values are finalized in `docs/app-store-connect-content.md` — paste from there.
 4. **Privacy "nutrition labels"** in App Store Connect — declare the data collected (account email/name,
    pet/health content the owner enters, precise location for nearby features, photos, payment handled by the
-   processors) and link the **Privacy Policy URL** (live: https://augustotraversa98-dot.github.io/pawpi-legal/privacy).
+   processors) and link the **Privacy Policy URL** (live: https://www.pawpi.info/privacy).
 5. **Sign in with Apple** service key + the OAuth env keys (`AUTH_APPLE_ID/SECRET`, `AUTH_GOOGLE_ID/SECRET`)
    so the buttons go live (2.46).
 6. **Go-live backend env keys** (see `docs/test-backlog.md`): payment rails (MercadoPago/Binance),

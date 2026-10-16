@@ -51,30 +51,8 @@ export function useDocumentHead(descriptors) {
   }, [key]);
 }
 
-// Inject the brand Google Fonts (Nunito + JetBrains Mono) once. Id-guarded so it
-// is never duplicated across the public pages and survives lang toggles.
-export function useBrandFonts() {
-  useEffect(() => {
-    const links = [
-      ["pawpi-font-preconnect-1", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
-      [
-        "pawpi-font-preconnect-2",
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "anonymous" },
-      ],
-      [
-        "pawpi-font-css",
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap",
-        },
-      ],
-    ];
-    for (const [id, attrs] of links) {
-      if (document.getElementById(id)) continue;
-      const el = document.createElement("link");
-      el.id = id;
-      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-      document.head.appendChild(el);
-    }
-  }, []);
-}
+// Brand fonts (Nunito + JetBrains Mono) are SELF-HOSTED: the @font-face rules live in
+// src/app/global.css and the woff2 files in public/fonts, so public pages make no request to Google
+// Fonts (a visitor's IP never reaches a third party). Kept as a no-op so the page components that call
+// it stay unchanged.
+export function useBrandFonts() {}
