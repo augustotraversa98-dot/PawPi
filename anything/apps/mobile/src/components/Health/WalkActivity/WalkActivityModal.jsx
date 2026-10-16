@@ -12,6 +12,7 @@ import { X, Check, Play, Edit3, Users, AlertCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLogWalk } from "@/hooks/useHealthTracking";
 import WalkTrackingSettings from "./WalkTrackingSettings";
+import { WALK_TRACKING_INTEGRATIONS_ENABLED } from "@/constants/featureFlags";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -609,27 +610,29 @@ export default function WalkActivityModal({
                 />
               </View>
 
-              {/* Tracking Settings */}
-              <View
-                style={{
-                  marginTop: 8,
-                  paddingTop: 20,
-                  borderTopWidth: 1,
-                  borderTopColor: C.peach,
-                }}
-              >
-                <Text
+              {/* Tracking Settings — hidden until Apple Health / Watch ship (featureFlags.js) */}
+              {WALK_TRACKING_INTEGRATIONS_ENABLED && (
+                <View
                   style={{
-                    fontSize: 18,
-                    fontWeight: "700",
-                    color: C.warmBrown,
-                    marginBottom: 16,
+                    marginTop: 8,
+                    paddingTop: 20,
+                    borderTopWidth: 1,
+                    borderTopColor: C.peach,
                   }}
                 >
-                  {t("trackers.walk.trackingSettings")}
-                </Text>
-                <WalkTrackingSettings />
-              </View>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "700",
+                      color: C.warmBrown,
+                      marginBottom: 16,
+                    }}
+                  >
+                    {t("trackers.walk.trackingSettings")}
+                  </Text>
+                  <WalkTrackingSettings />
+                </View>
+              )}
 
               {/* Submit */}
               <TouchableOpacity

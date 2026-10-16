@@ -3,6 +3,7 @@
 // owner-level is orphaned once the Profile tab becomes the pet social profile.
 
 import React from "react";
+import { Alert } from "react-native";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () =>
@@ -36,7 +37,34 @@ jest.mock("react-i18next", () =>
 
 import { OwnerMenu } from "./OwnerMenu";
 
+// Logging out now asks first (QA 2026-10-16 bug 07): press the dialog's destructive button.
+async function confirmLogoutDialog() {
+  const call = Alert.alert.mock.calls[Alert.alert.mock.calls.length - 1];
+  const destructive = call[2].find((b) => b.style === "destructive");
+  await destructive.onPress();
+}
+
+test("tapping Log out shows a confirmation and does NOT log out until confirmed", () => {
+  const { getByLabelText, getByText } = render(<OwnerMenu />);
+  fireEvent.press(getByLabelText("Open menu"));
+  fireEvent.press(getByText("Log out"));
+  expect(Alert.alert).toHaveBeenCalledWith(
+    "Log out?",
+    expect.any(String),
+    expect.arrayContaining([expect.objectContaining({ style: "cancel" })]),
+  );
+  expect(mockSetAuth).not.toHaveBeenCalled();
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("the menu no longer says 'Reset App Data'", () => {
+  const { getByLabelText, queryByText } = render(<OwnerMenu />);
+  fireEvent.press(getByLabelText("Open menu"));
+  expect(queryByText("Reset App Data")).toBeNull();
+});
+
 beforeEach(() => {
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
   mockPush.mockReset();
   mockReplace.mockReset();
   mockSetAuth.mockReset();
@@ -63,7 +91,7 @@ test("the burger opens a menu with every former More destination + My Dogs", () 
     "Memories & Wrapped",
     "Reminders & Routines",
     "Settings",
-    "Reset App Data",
+    "Log out",
   ].forEach((label) => expect(getByText(label)).toBeTruthy());
 });
 
@@ -99,7 +127,8 @@ test("logout removes account storage but keeps language, notification prefs and 
 
   const { getByLabelText, getByText } = render(<OwnerMenu />);
   fireEvent.press(getByLabelText("Open menu"));
-  fireEvent.press(getByText("Reset App Data"));
+  fireEvent.press(getByText("Log out"));
+  await confirmLogoutDialog();
 
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
   expect(mockSetAuth).toHaveBeenCalledWith(null);
@@ -115,7 +144,8 @@ test("logout still drops the session when storage fails", async () => {
 
   const { getByLabelText, getByText } = render(<OwnerMenu />);
   fireEvent.press(getByLabelText("Open menu"));
-  fireEvent.press(getByText("Reset App Data"));
+  fireEvent.press(getByText("Log out"));
+  await confirmLogoutDialog();
 
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
   expect(mockSetAuth).toHaveBeenCalledWith(null);

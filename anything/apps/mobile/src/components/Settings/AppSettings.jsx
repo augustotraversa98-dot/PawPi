@@ -29,6 +29,8 @@ import {
 import { useAuth } from "@/utils/auth/useAuth";
 import useBottomClearance from "@/hooks/useBottomClearance";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
+import { WALK_TRACKING_INTEGRATIONS_ENABLED } from "@/constants/featureFlags";
+import { formatAppVersion } from "@/utils/appVersion";
 import {
   getLocalePreference,
   setLocalePreference,
@@ -809,7 +811,7 @@ export default function AppSettings({ mode = "petOwner" }) {
           {isBusiness ? <BusinessNotificationToggles /> : <NotificationToggles />}
         </SectionCard>
 
-        {!isBusiness && (
+        {!isBusiness && WALK_TRACKING_INTEGRATIONS_ENABLED && (
           <>
             <Text
               style={{
@@ -955,7 +957,7 @@ export default function AppSettings({ mode = "petOwner" }) {
           <Text
             style={{ color: C.mutedBrown, fontSize: 12, fontWeight: "600" }}
           >
-            PawPi v1.0.0
+            {`PawPi ${formatAppVersion()}`.trim()}
           </Text>
           <Text style={{ color: C.peach, fontSize: 11 }}>
             {t("settings.madeWith")}
