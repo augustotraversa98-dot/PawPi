@@ -36,7 +36,8 @@ async function GET(request) {
         n.body,
         n.read_at,
         n.created_at,
-        a.username AS actor_username,
+        -- PRIVACY (QA 2026-10-16 bug 04): the display name only — username can be e-mail derived.
+        NULLIF(BTRIM(a.full_name), '') AS actor_username,
         a.avatar_url AS actor_avatar
       FROM notifications n
       LEFT JOIN user_profiles a ON a.id = n.actor_user_id
