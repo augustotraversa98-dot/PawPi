@@ -79,6 +79,9 @@ export const RATE_LIMITS = {
   handle_check: { limit: 90, windowSeconds: 60 },
   // Pack-streak invites notify another owner; 10/hour is far above a person starting streaks with friends.
   pack_request: { limit: 10, windowSeconds: 3600 },
+  // People/pet/provider search is a typeahead (debounced) READ that can be scripted to enumerate accounts;
+  // 180/min is well above real typing and still stops bulk scraping.
+  search_query: { limit: 180, windowSeconds: 60 },
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';

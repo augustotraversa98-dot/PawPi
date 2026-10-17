@@ -11,6 +11,20 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📱 To test — next build (night runs 2026-10-16 / 2026-10-17)
+
+Merged + CI-green, **not device-verified** (the runs could not see the app). Details per item are in [`qa/runs/2026-10-17_fix-log.md`](qa/runs/2026-10-17_fix-log.md).
+
+- [ ] **Tab bar** (dark-mode phone): light translucent glass, content visible through it, readable labels; Edit Profile Save / Settings footer above it.
+- [ ] **Pet handle:** onboarding step 2 pre-fills a free handle; a taken one shows ✗ + 3 tappable alternatives; `ab` / `Admin` explain the rule; Edit Profile blocks Save on a taken handle.
+- [ ] **Streak with a friend:** search your friends by dog / @handle / owner; "No friends yet" → Find friends; free text can't be sent.
+- [ ] **Reminders:** relaunch twice → still ONE notification per reminder; delete/pause a routine → no alert; wellness routine pause/resume keeps its checks; a paused routine stays paused after editing; completed item's later alert doesn't ring; read bell rows don't return.
+- [ ] **Vet appointments** show in Today with a real date; a business booking has no "Mark completed" and can't be rescheduled (cancel & rebook).
+- [ ] **Dates** after 21:00: new medication's start date = today; routines list shows 24h times.
+- [ ] **Spanish pass:** delete-post confirm, failing action offline (friendly line, never "Network request failed"), permission prompts, no yellow Debug box in the walk routine editor.
+- [ ] **VoiceOver:** back/close/delete buttons announce their names; Lost & Found / Emergency card show a retry (not "empty") when offline.
+- [ ] **Block** someone: they can't follow/paw/message/invite you via a stale screen, and you get no notification.
+
 ## ⚙️ ACTION 1 — Apply Phase 2 migrations to Supabase (in order, after the merges)
 
 These were built + proven in the test harness but, per Cowork's rule, NOT applied to live Supabase.

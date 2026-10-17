@@ -18,6 +18,19 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 🌙 NIGHT RUNS 2026-10-16 / 2026-10-17 (post build 26) — merged to `main`, NOT in any build yet
+
+Two autonomous runs after build 26 went to review. Nothing was built or submitted; mobile changes ship with the next build (all JS-only, OTA-safe). Full log: [`qa/runs/2026-10-17_fix-log.md`](qa/runs/2026-10-17_fix-log.md) (and `2026-10-16_fix-log.md`).
+
+- **Run 1 (#642–#649):** tab-bar/safe-area overlap, Log out, privacy (no owner names from e-mail), ES copy, empty-state paw art.
+- **Run 2 (#650–#664):** tab bar stays light glass (#650); only-available pet handles (#651); friend picker for "Streak with a friend" + server-side friend authorization (#652);
+  **migration 0133 username backfill — file only, HUMAN-APPLIED** (#653, [`db-migration-runbook-0133-username-backfill.md`](db-migration-runbook-0133-username-backfill.md));
+  app-wide consistency audit (#654 → [`qa/consistency-audit-2026-10-17.md`](qa/consistency-audit-2026-10-17.md)) and its low-risk fixes (#655 copy/i18n, #656 dates, #657 popups, #658 colour tokens, #660 a11y/dead code);
+  flow-correctness passes with a matrix ([`qa/flow-matrix-2026-10-17.md`](qa/flow-matrix-2026-10-17.md)): reminders/notifications (#659), owner↔owner (#661), owner↔business (#662); general sweep (#663).
+- **Needs a human before launch-critical go-live:** apply 0133; the payment-webhook settlement migration (F3-01) **before** enabling real MercadoPago charges; the notification-type widening (F2 SQL-1); see the fix log "needs human".
+
+---
+
 ## 📦 BUILD 26 (v1.0.2) — SUBMITTED FOR APP STORE REVIEW (2026-10-14) — newest status; everything below this block is history
 
 **Build 26** (v1.0.2, commit `49a834b1`, includes **#617–#629**, all merged) is **in App Store review**. Build 25 exists in EAS but is

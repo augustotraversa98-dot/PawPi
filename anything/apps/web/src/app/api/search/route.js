@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 
 // GET /api/search?q=… — real Search across pets, owners, and provider businesses
 // (ticket 2.25). Replaces the mobile mock discovery data.
@@ -80,5 +81,6 @@ async function GET(request) {
   }
 }
 
-const wrappedGET = withRequestContext(GET);
+// Rate limited (`search_query`) so the typeahead can't be scripted to enumerate accounts.
+const wrappedGET = withRequestContext(withRateLimit("search_query", GET));
 export { wrappedGET as GET };

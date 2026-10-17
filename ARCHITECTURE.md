@@ -48,7 +48,7 @@ anything/
 ### Web app — key versions & dependencies (`anything/apps/web/package.json`)
 - **Framework:** React Router v7 (framework mode) on **Vite 6**; server via Hono (`react-router-hono-server`)
 - **React:** `^18.2.0` (note: web is React 18, mobile is React 19)
-- **DB client:** `@neondatabase/serverless ^0.10.4` (Neon serverless Postgres)
+- **DB client:** `postgres` (porsager) over **Supabase Postgres** — `src/app/api/utils/sql.js`, connecting as the least-privilege `pawpi_app` role (never the Supabase Data API)
 - **Auth:** `@auth/core` + `@hono/auth-js`; password hashing via `argon2`; internal `@auth/create` adapter
 - **Payments:** `stripe ^18.2.1`
 - **State/data:** `@tanstack/react-query`, `@tanstack/react-table`, `zustand`
@@ -78,21 +78,37 @@ Current suites:
 ## 2. Backend & Data Layer
 
 ### What backend is this?
-The **"Anything" / create.xyz platform backend**, backed by **Neon serverless Postgres**. **It is NOT Supabase** — a case-insensitive search for `supabase` across the whole tree returns zero matches.
+**Supabase Postgres, behind our own Hono/React-Router API.** The app began life on the "Anything" / create.xyz platform
+(Neon serverless Postgres); it has since been moved to Supabase and is now hosted on **Railway**. *(This section used to
+say "NOT Supabase, Neon, no migrations" — that was true of the original export and is no longer.)*
+
+- **Database:** Supabase Postgres. Schema = the ordered, idempotent files in [`supabase/migrations/`](supabase/migrations/)
+  (`0001` → today; the folder is the source of truth, see [`supabase/SCHEMA_NOTES.md`](supabase/SCHEMA_NOTES.md)).
+  Migrations are **applied by hand** (SQL editor) after merge — merging never touches the live DB — and anything hand-applied ships a
+  `supabase/verify_NNNN.sql` whose rows all read PASS. CI proves every migration on a throwaway embedded Postgres.
+- **Access model:** the API connects only as **`pawpi_app`** with **Row Level Security ENABLED + FORCED** on every public table;
+  each request runs inside a transaction that sets `app.current_user_id` (`withRequestContext`), and policies key on
+  `current_app_user_id()`. Cross-owner reads/writes go through `SECURITY DEFINER` helpers with a pinned `search_path`.
+  Rules: [`docs/rls-hardening.md`](docs/rls-hardening.md) and CLAUDE.md → "Database migration conventions".
+- **Auth:** Auth.js (credentials + Apple native + Google) on the same API; sessions are JWTs (§3, §3a).
+- **Storage:** uploads go through `POST /api/upload` into **Supabase Storage** (public `media` bucket; private bucket for medical/chat files).
+- **Hosting & jobs:** web/API on **Railway** (auto-deploys `main`); scheduled jobs are Railway cron services under
+  `scripts/cron/` (weekly digest, push receipts, win-back, subscriptions, calendar sync).
+- **Mobile:** Expo SDK 54 app talks only to `/api/*` (below); EAS builds/submits to TestFlight/App Store.
 
 ### Request flow
 ```
-Mobile app  ──fetch("/api/...")──►  web app /api/* routes  ──SQL──►  Neon Postgres
+Mobile app  ──fetch("/api/...")──►  web app /api/* routes (Hono)  ──SQL as pawpi_app (RLS)──►  Supabase Postgres
 ```
 - Mobile does **not** touch the DB directly. Its patched `fetch` rewrites relative `/api/...` paths to an absolute URL using `EXPO_PUBLIC_BASE_URL` (the web host), attaches platform headers, and adds a Bearer JWT from SecureStore.
   - `anything/apps/mobile/src/__create/fetch.ts:24-29, 37, 56-58` (base-URL rewrite), `:66-71` (platform headers), `:79-89` (JWT from SecureStore; key = `${EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`, built at `:5`).
-- The web app runs SQL against Neon.
-  - DB client: `anything/apps/web/src/app/api/utils/sql.js:1` (`import { neon } ...`), `:13` (`neon(process.env.DATABASE_URL)`).
-  - Auth DB pool: `anything/apps/web/src/auth.js:9` (`Pool` from neon), `:254` (`connectionString: process.env.DATABASE_URL`).
-  - Uploads: `POST /api/upload` (`anything/apps/web/src/app/api/upload/route.js`) → Supabase Storage (public `media` bucket, or the private bucket for medical/chat files). The old `utils/upload.js` → `api.anything.com` helper was unused and has been removed.
-- Note: `anything/apps/web/src/app/api/utils/create.js:6-13` references an `/api/db/:database` endpoint that **does not exist** in this tree (likely a platform-provided route).
+- The web app runs SQL with the porsager `postgres` client.
+  - DB client: `anything/apps/web/src/app/api/utils/sql.js` (explicit host/user parsing for Supabase pooler usernames, `prepare:false` for pgbouncer).
+  - Auth DB: `anything/apps/web/__create` adapter + `src/auth.js` (same `DATABASE_URL`).
+  - Uploads: `POST /api/upload` (`anything/apps/web/src/app/api/upload/route.js`) → Supabase Storage.
+- Note: `anything/apps/web/src/app/api/utils/create.js` references an `/api/db/:database` endpoint that **does not exist** in this tree (leftover from the Anything platform; unused).
 
-### Database tables referenced in code (32 total)
+### Database tables referenced in code (original inventory — 32 tables)
 Resolved from SQL in `anything/apps/web/src/app/api/**` (28 app tables) and `anything/apps/web/src/auth.js` (4 auth tables). One example reference each:
 
 **Auth (in `web/src/auth.js`):** `auth_users` (`:39`), `auth_accounts` (`:117`), `auth_sessions` (`:171`), `auth_verification_token` (`:19`).
@@ -105,7 +121,7 @@ Resolved from SQL in `anything/apps/web/src/app/api/**` (28 app tables) and `any
 
 **Health logs:** `health_weight_logs`, `health_food_logs`, `health_poo_logs`, `health_pee_logs`, `health_vomit_logs`, `health_walk_logs`, `health_general_checks`, `health_photo_checks`, `health_medical_care_logs`, `health_wellness_logs` (each `INSERT` in its `health/*-logs/route.js`); `health_mobility_logs` (read-only in `health/timeline/route.js:229`); `health_timeline_events` (`health/walk-logs/route.js:107`).
 
-> No SQL migration/DDL files were found in the repo — table names are inferred from queries only.
+> The list above is the original 32-table inventory from the export. The full, current schema (130+ migrations, RLS policies and DEFINER helpers) lives in `supabase/migrations/` — see `supabase/SCHEMA_NOTES.md`.
 
 ### Environment variables
 
@@ -116,7 +132,7 @@ Resolved from SQL in `anything/apps/web/src/app/api/**` (28 app tables) and `any
 
 **Web (`anything/apps/web/.env`) — present:** `ANYTHING_PROJECT_TOKEN` (a live JWT; not referenced via `process.env` in source).
 
-- **Referenced in web code but NOT in `.env` (expected to be injected by the platform/runtime):** `DATABASE_URL` (critical — the Neon connection string), `AUTH_SECRET`, `AUTH_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_CREATE_API_BASE_URL`, `NEXT_PUBLIC_CREATE_BASE_URL`, `NEXT_PUBLIC_CREATE_ENV`, `NEXT_PUBLIC_CREATE_HOST`, `NEXT_PUBLIC_PROJECT_GROUP_ID`, `NODE_ENV`.
+- **Referenced in web code but NOT in `.env` (expected to be injected by the platform/runtime):** `DATABASE_URL` (critical — the Supabase Postgres connection string for the `pawpi_app` role), `AUTH_SECRET`, `AUTH_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_CREATE_API_BASE_URL`, `NEXT_PUBLIC_CREATE_BASE_URL`, `NEXT_PUBLIC_CREATE_ENV`, `NEXT_PUBLIC_CREATE_HOST`, `NEXT_PUBLIC_PROJECT_GROUP_ID`, `NODE_ENV`.
 
 ---
 
@@ -208,8 +224,8 @@ downstream of login changes.
   onboarding a "Use a different account" log-out escape (#587). A top-level error boundary (#578) catches render
   crashes.
 
-> §3 above is otherwise unchanged. Other parts of this inventory (e.g. §2 "Neon, not Supabase", the table list) predate the
-> Supabase migration — see `supabase/SCHEMA_NOTES.md` and `PawPi_instructions.md` for current status.
+> §3 above is otherwise unchanged. §2 was corrected on 2026-10-17 (Supabase + RLS + migrations); the rest of this inventory is historical — see
+> `supabase/SCHEMA_NOTES.md` and `PawPi_instructions.md` for current status.
 
 ---
 
@@ -334,9 +350,9 @@ Full runbook: [docs/observability/OPERATIONS.md](docs/observability/OPERATIONS.m
 
 ## Top 5 things I'm least sure about (please verify)
 
-1. **Live DB schema vs. code-inferred schema.** No migration/DDL files exist in the repo; the 32 table names and all column mappings (incl. `pets.owner_user_id → user_profiles.id`) are inferred from queries only. Whether the actual Neon DB has these tables, columns, and FK constraints — and whether existing `pets` rows still carry the *wrong* `owner_user_id` (auth id) that the repair handler targets — needs to be checked against the real database.
+1. **~~Live DB schema vs. code-inferred schema.~~ Resolved.** The schema now lives in `supabase/migrations/` (130+ files, proven on a throwaway Postgres in CI and hand-applied to Supabase with `verify_NNNN.sql` checks); `pets.owner_user_id → user_profiles.id` is enforced by FKs and RLS. The original "inferred from queries only" caveat predates that.
 
-2. **Whether the `owner_user_id` repair has actually been run.** The code clearly anticipates bad historical data (`pets/route.js` PATCH `:289-558`), but I cannot tell from code whether production/your dev data is already clean or still mixed. This directly affects the "identity bug" you mentioned.
+2. **~~Whether the `owner_user_id` repair has actually been run.~~ Resolved.** The legacy `PATCH /api/pets` repair handler was removed as dead code under the RLS model (reads are scoped to the profile id, so it could never match a row); see the note in `pets/route.js`.
 
 3. **The exact mechanism of the More-tab corruption bug.** I identified several plausible structural contributors (undeclared nested routes, mixed absolute/relative paths, modals without `onRequestClose`), but I did **not** reproduce the bug or confirm which one (or combination) is the actual cause — that requires running the app and exercising Android back / iOS swipe-dismiss from routine creation.
 
