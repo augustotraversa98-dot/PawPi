@@ -234,7 +234,8 @@ export default function WalkRoutineModal({
     const routine = {
       type: ROUTINE_TYPES.WALK,
       petId: editingRoutine?.petId ?? null,
-      isActive: true,
+      // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
       walks,
       times: walks.map((w) => w.time),
       title: "Walks",

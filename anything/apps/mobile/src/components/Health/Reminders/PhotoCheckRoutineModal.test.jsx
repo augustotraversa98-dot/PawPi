@@ -73,3 +73,32 @@ describe("PhotoCheckRoutineModal — Body-areas collapsible header", () => {
     expect(summary(api)).toBe("Select areas");
   });
 });
+
+// Flow audit F1-05: editing a PAUSED routine must not resume it. (Create still starts active.)
+describe("PhotoCheckRoutineModal — save payload", () => {
+  const editing = {
+    id: "9",
+    petId: 2,
+    type: "photo_check",
+    isActive: false,
+    photoCheckSchedule: [
+      { bodyArea: "paws", frequency: "weekly", preferredDay: 2, preferredTime: "10:00", reminderEnabled: true },
+    ],
+  };
+
+  it("editing a paused routine keeps it paused", () => {
+    const onSave = jest.fn();
+    const api = render(<PhotoCheckRoutineModal visible onClose={jest.fn()} onSave={onSave} editingRoutine={editing} />);
+    fireEvent.press(api.getByText("Save Changes"));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0].isActive).toBe(false);
+    expect(onSave.mock.calls[0][0].id).toBe("9");
+  });
+
+  it("a new routine starts active", () => {
+    const onSave = jest.fn();
+    const api = render(<PhotoCheckRoutineModal visible onClose={jest.fn()} onSave={onSave} editingRoutine={null} />);
+    fireEvent.press(api.getByText("Create Routine"));
+    expect(onSave.mock.calls[0][0].isActive).toBe(true);
+  });
+});

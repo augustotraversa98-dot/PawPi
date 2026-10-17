@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
 import { queryClient } from "@/utils/queryClient";
+import { reconcileRoutineNotifications } from "@/utils/notifications";
 import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 
 const useRoutinesStore = create((set, get) => ({
@@ -109,6 +110,21 @@ const useRoutinesStore = create((set, get) => ({
         generateRemindersFromRoutine(routine),
       );
       await remindersStore.addRemindersFromRoutines(allReminders);
+
+      // Cancel duplicate/orphan OS notifications left by earlier launches or other devices (F1-01).
+      // Scoped to the pet(s) just generated; skipped when nothing was generated (unknown pet).
+      if (epoch === getSessionEpoch() && allReminders.length > 0) {
+        const petIds = new Set(allReminders.map((r) => r.petId).filter((x) => x != null));
+        const validReminderIds = new Set(allReminders.map((r) => r.id));
+        try {
+          for (const petId of petIds) {
+            await reconcileRoutineNotifications({ petId, validReminderIds });
+          }
+        } catch (sweepError) {
+          // Housekeeping only — it must never turn a successful routines load into an error state.
+          console.warn("[routinesStore] notification sweep failed:", sweepError?.message);
+        }
+      }
 
       return transformedRoutines;
     } catch (error) {
@@ -347,7 +363,10 @@ const useRoutinesStore = create((set, get) => ({
           updates.type === "wellness_check" || routine.type === "wellness_check"
             ? updates.wellnessCheckSchedule !== undefined
               ? updates.wellnessCheckSchedule
-              : routine.wellness_check_schedule || []
+              // The in-store routine carries its items as `wellnessCheckItems` (see loadRoutines); the old
+              // `wellness_check_schedule` fallback is a DB-row field that is never on the app object, so a
+              // pause/resume PUT sent [] and wiped the routine (flow audit F1-04).
+              : routine.wellnessCheckItems || []
             : null,
 
         // General fields

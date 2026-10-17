@@ -103,12 +103,20 @@ const useSocialPetStore = create((set, get) => ({
   },
 
   markNotificationRead: (notificationId) => {
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n,
-      ),
-      unreadNotificationCount: Math.max(0, state.unreadNotificationCount - 1),
-    }));
+    set((state) => {
+      // Only an UNREAD row lowers the badge: marking an already-read row (e.g. completing the
+      // reminder after opening its bell row) used to decrement again and hide other unread rows.
+      const target = state.notifications.find((n) => n.id === notificationId);
+      const wasUnread = !!target && !target.read;
+      return {
+        notifications: state.notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n,
+        ),
+        unreadNotificationCount: wasUnread
+          ? Math.max(0, state.unreadNotificationCount - 1)
+          : state.unreadNotificationCount,
+      };
+    });
   },
 
   markAllNotificationsRead: () => {

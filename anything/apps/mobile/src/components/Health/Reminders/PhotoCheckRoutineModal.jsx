@@ -323,7 +323,8 @@ export default function PhotoCheckRoutineModal({
     const routine = {
       type: ROUTINE_TYPES.PHOTO_CHECK,
       petId: editingRoutine?.petId ?? null,
-      isActive: true,
+      // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
       photoCheckSchedule,
       // Legacy fields for backward compatibility
       bodyArea: selectedBodyAreas[0], // Use first selected area as primary
@@ -331,8 +332,10 @@ export default function PhotoCheckRoutineModal({
       preferredDay: primary.preferredDay,
       times: [primary.preferredTime],
       days: primary.days?.length ? primary.days : [primary.preferredDay],
-      notificationEnabled: primary.reminderEnabled,
-      timeSensitive: primary.timeSensitive,
+      // Routine-level flags are the OR of the per-area switches: the FIRST area being off must not
+      // silence the others (the generator returns nothing when the routine flag is false).
+      notificationEnabled: photoCheckSchedule.some((s) => s.reminderEnabled !== false),
+      timeSensitive: photoCheckSchedule.some((s) => s.timeSensitive === true),
       notes: primary.notes,
       title: "Photo Check",
       description: `Photo check for ${selectedBodyAreas.length} area${selectedBodyAreas.length > 1 ? "s" : ""}`,

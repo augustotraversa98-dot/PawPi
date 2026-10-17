@@ -195,7 +195,8 @@ export default function FeedingRoutineModal({
     const routine = {
       type: ROUTINE_TYPES.FEEDING,
       petId: editingRoutine?.petId ?? null,
-      isActive: true,
+      // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
       meals,
       times: meals.map((m) => m.time),
       // For backward compatibility with old structure
