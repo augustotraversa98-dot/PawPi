@@ -6,6 +6,7 @@
 // household (2+ members); a solo owner sees nothing here.
 
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
@@ -13,12 +14,12 @@ import { Trophy } from "lucide-react-native";
 import { useHouseholdLeaderboard } from "@/hooks/useHouseholdLeaderboard";
 
 const C = {
-  card: "#FFFCF8",
-  peach: "#FFD9B3",
-  coral: "#FF6F61",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  card: COLORS.card,
+  peach: COLORS.peach,
+  coral: COLORS.coral,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export function HouseholdLeaderboardCard({ petId }) {

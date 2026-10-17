@@ -46,7 +46,7 @@ const C = {
  *   subtitle="Set up your dog's schedule"
  *   icon="🐕"
  *   ctaLabel="Save Routine"
- *   ctaColor="#6B8E6F"
+ *   ctaColor={COLORS.coral}
  *   onCtaPress={handleSave}
  *   ctaDisabled={false}
  * >
@@ -60,7 +60,7 @@ export default function KeyboardSafeFormModal({
   subtitle,
   icon,
   ctaLabel = "Save",
-  ctaColor = "#6B8E6F",
+  ctaColor = COLORS.coral, // brand coral (was an off-palette green #6B8E6F)
   onCtaPress,
   ctaDisabled = false,
   children,

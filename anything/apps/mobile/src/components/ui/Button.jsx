@@ -94,6 +94,8 @@ export function Button({
           alignItems: "center",
           justifyContent: "center",
           gap: SPACING.sm,
+          // Minimum comfortable tap target (HIG 44pt) — "sm" is otherwise ~34pt tall.
+          minHeight: 44,
           alignSelf: fullWidth ? "stretch" : "flex-start",
           opacity: isDisabled ? 0.6 : 1,
         },

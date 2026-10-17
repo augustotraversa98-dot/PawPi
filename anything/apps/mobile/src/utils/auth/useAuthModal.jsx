@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { Modal, View, Pressable, Platform } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 import { create } from "zustand";
@@ -76,7 +77,7 @@ export const AuthModal = () => {
             backgroundColor: "rgba(255,255,255,0.9)",
           }}
         >
-          <ArrowLeft size={22} color="#3B241B" />
+          <ArrowLeft size={22} color={COLORS.warmBrown} />
         </Pressable>
       </View>
     </Modal>

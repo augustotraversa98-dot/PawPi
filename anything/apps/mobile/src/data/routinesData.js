@@ -4,6 +4,7 @@
  */
 
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
+import { COLORS } from "@/constants/theme";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 export const ROUTINE_TYPES = {
@@ -156,13 +157,13 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.FEEDING]: {
     icon: "🍽️",
     label: "Feeding",
-    color: "#FF6F61",
+    color: COLORS.coral,
     description: "Meal times, snacks, and food reminders",
   },
   [ROUTINE_TYPES.WALK]: {
     icon: "🚶",
     label: "Walks",
-    color: "#A7BFA3",
+    color: COLORS.sage,
     description: "Walk schedule, social walks, and activity tracking",
   },
   [ROUTINE_TYPES.PHOTO_CHECK]: {
@@ -174,7 +175,7 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.MEDICAL_CARE]: {
     icon: "💊",
     label: "Medical Care",
-    color: "#B75D32",
+    color: COLORS.terracotta,
     description: "Medication, vaccines, flea/tick prevention, and supplements",
   },
   [ROUTINE_TYPES.WELLNESS_CHECK]: {
@@ -193,7 +194,7 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.MEDICATION]: {
     icon: "💊",
     label: "Medication",
-    color: "#B75D32",
+    color: COLORS.terracotta,
     description: "Medication schedule",
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,
@@ -209,7 +210,7 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.WEIGHT_CHECK]: {
     icon: "⚖️",
     label: "Weight Check",
-    color: "#B75D32",
+    color: COLORS.terracotta,
     description: "Weight monitoring",
     legacy: true,
     newType: ROUTINE_TYPES.WELLNESS_CHECK,
@@ -217,7 +218,7 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.PREVENTIVE]: {
     icon: "🛡️",
     label: "Preventive Care",
-    color: "#A7BFA3",
+    color: COLORS.sage,
     description: "Flea, tick, heartworm prevention",
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,
@@ -225,7 +226,7 @@ export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.VACCINE]: {
     icon: "💉",
     label: "Vaccine",
-    color: "#FF6F61",
+    color: COLORS.coral,
     description: "Vaccination schedule",
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,

@@ -47,17 +47,17 @@ const CARE_DEEPLINK_KEYS = new Set([
 ]);
 
 const C = {
-  coral: "#FF6F61",
-  apricot: "#FFB37A",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  sage: "#A7BFA3",
-  sageDark: "#5A8A74",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  coral: COLORS.coral,
+  apricot: COLORS.apricot,
+  peach: COLORS.peach,
+  terracotta: COLORS.terracotta,
+  sage: COLORS.sage,
+  sageDark: COLORS.sageDark,
+  cream: COLORS.cream,
+  sand: COLORS.sand,
+  card: COLORS.card,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 const DIFF_COLORS = {

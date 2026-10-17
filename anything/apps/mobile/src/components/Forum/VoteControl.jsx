@@ -1,12 +1,13 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { ChevronUp, ChevronDown } from "lucide-react-native";
 
 const C = {
-  coral: "#FF6F61",
-  sage: "#5A8A74",
-  mutedBrown: "#7A6254",
-  warmBrown: "#3B241B",
+  coral: COLORS.coral,
+  sage: COLORS.sageDark,
+  mutedBrown: COLORS.mutedBrown,
+  warmBrown: COLORS.warmBrown,
 };
 
 /**

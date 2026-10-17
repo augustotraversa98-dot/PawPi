@@ -1,4 +1,5 @@
 import { MATERIALS } from "@/constants/theme";
+import { COLORS } from "@/constants/theme";
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState, useEffect } from "react";
 import {
@@ -28,14 +29,14 @@ import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
 };
 

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import {
@@ -17,14 +18,14 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { addWalkToCalendar } from "@/utils/calendarIntegration";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
   honey: "#FFB74D",
 };

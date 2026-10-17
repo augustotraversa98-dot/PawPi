@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { COLORS } from "@/constants/theme";
 import { reminderTapRoute } from "./notificationDeepLink";
 
 /**
@@ -38,7 +39,7 @@ export function getNotificationDisplayInfo(notification) {
     },
     general_check: {
       icon: "✅",
-      color: "#A7BFA3",
+      color: COLORS.sage,
       trackerLabel: "General Check",
     },
     weight_check: {
@@ -58,7 +59,7 @@ export function getNotificationDisplayInfo(notification) {
     },
     vet_appointment: {
       icon: "🩺",
-      color: "#FF6F61",
+      color: COLORS.coral,
       trackerLabel: "Vet Appointment",
     },
   };
@@ -66,7 +67,7 @@ export function getNotificationDisplayInfo(notification) {
   return (
     configs[notification.type] || {
       icon: "📌",
-      color: "#A7BFA3",
+      color: COLORS.sage,
       trackerLabel: "Health",
     }
   );

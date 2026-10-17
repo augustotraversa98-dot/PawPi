@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Check, Heart, Watch, Edit3, ChevronRight } from "lucide-react-native";
@@ -11,13 +12,13 @@ import {
 } from "@/utils/healthKitIntegration";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
 };
 

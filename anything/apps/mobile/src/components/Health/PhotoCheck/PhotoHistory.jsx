@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
@@ -21,14 +22,14 @@ import { usePhotoChecks } from "@/hooks/useFetchHealthData";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
 };
 
@@ -38,9 +39,9 @@ const BODY_AREA_COLORS = {
   eyes: "#64B5F6",
   teeth: "#4DB6AC",
   skin_fur: "#FF8A65",
-  face: "#FF6F61",
-  full_body: "#A7BFA3",
-  other: "#B75D32",
+  face: COLORS.coral,
+  full_body: COLORS.sage,
+  other: COLORS.terracotta,
 };
 
 function formatDate(dateString) {

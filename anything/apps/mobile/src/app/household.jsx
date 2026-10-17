@@ -6,6 +6,7 @@
 // household flame that advances when EVERY dog's ring closed. Never shames one dog for another.
 
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,13 +17,13 @@ import { useHousehold, useFamilyStreakOptIn } from "@/hooks/useHousehold";
 import useSelectedPetStore from "@/store/selectedPetStore";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export default function HouseholdScreen() {

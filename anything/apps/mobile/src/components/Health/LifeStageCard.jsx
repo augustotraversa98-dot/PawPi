@@ -6,17 +6,18 @@
 // Never diagnostic.
 
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLifeStage, useSetLifeStageOverride } from "@/hooks/useLifeStage";
 
 const C = {
-  card: "#FFFCF8",
-  peach: "#FFD9B3",
-  coral: "#FF6F61",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  card: COLORS.card,
+  peach: COLORS.peach,
+  coral: COLORS.coral,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 const OPTIONS = [

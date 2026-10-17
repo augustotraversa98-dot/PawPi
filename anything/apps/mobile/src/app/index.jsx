@@ -159,7 +159,7 @@ export default function EntryPoint() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#FFF7EF",
+          backgroundColor: COLORS.cream,
           paddingHorizontal: 32,
         }}
       >
@@ -171,14 +171,14 @@ export default function EntryPoint() {
           hitSlop={12}
           style={{ position: "absolute", top: 60, left: 20, padding: 8 }}
         >
-          <ArrowLeft size={24} color="#3B241B" />
+          <ArrowLeft size={24} color={COLORS.warmBrown} />
         </Pressable>
         <PawMark size={72} color={COLORS.coral} style={{ marginBottom: 20 }} />
         <Text
           style={{
             fontSize: 16,
             fontWeight: "600",
-            color: "#7A6254",
+            color: COLORS.mutedBrown,
             textAlign: "center",
             marginBottom: 24,
           }}
@@ -188,7 +188,7 @@ export default function EntryPoint() {
         <Pressable
           onPress={() => determineRoute({ force: true })}
           style={{
-            backgroundColor: "#FF6F61",
+            backgroundColor: COLORS.coral,
             paddingHorizontal: 32,
             paddingVertical: 12,
             borderRadius: 24,
@@ -203,7 +203,7 @@ export default function EntryPoint() {
           accessibilityRole="button"
           style={{ marginTop: 16, paddingHorizontal: 32, paddingVertical: 12 }}
         >
-          <Text style={{ color: "#7A6254", fontSize: 16, fontWeight: "600" }}>
+          <Text style={{ color: COLORS.mutedBrown, fontSize: 16, fontWeight: "600" }}>
             {t("welcome.startOver")}
           </Text>
         </Pressable>
@@ -219,17 +219,17 @@ export default function EntryPoint() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#FFF7EF",
+          backgroundColor: COLORS.cream,
         }}
       >
         <PawMark size={72} color={COLORS.coral} style={{ marginBottom: 20 }} />
-        <ActivityIndicator size="large" color="#FF6F61" />
+        <ActivityIndicator size="large" color={COLORS.coral} />
         <Text
           style={{
             marginTop: 16,
             fontSize: 16,
             fontWeight: "600",
-            color: "#7A6254",
+            color: COLORS.mutedBrown,
           }}
         >
           Loading...

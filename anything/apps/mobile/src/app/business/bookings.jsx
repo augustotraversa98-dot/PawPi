@@ -35,11 +35,11 @@ import {
 
 // Small status chip mirroring the web StatusBadge palette so the two surfaces read alike.
 const STATUS_STYLE = {
-  requested: { bg: "#FFF1E2", fg: "#B75D32" },
+  requested: { bg: "#FFF1E2", fg: COLORS.terracotta },
   confirmed: { bg: "#E5F4EC", fg: "#1F7A4D" },
   completed: { bg: "#EAF0F6", fg: "#33587A" },
   declined: { bg: "#FBE6E4", fg: "#B23B30" },
-  cancelled: { bg: "#EFEAE6", fg: "#7A6254" },
+  cancelled: { bg: "#EFEAE6", fg: COLORS.mutedBrown },
 };
 
 function StatusChip({ status, t }) {

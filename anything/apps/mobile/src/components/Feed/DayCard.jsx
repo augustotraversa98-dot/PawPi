@@ -19,11 +19,11 @@ import { COLORS, TAG_COLORS } from "@/constants/theme";
 import { formatRelativeTime } from "@/utils/relativeTime";
 
 const C = {
-  card: "#FFFCF8",
-  peach: "#FFD9B3",
+  card: COLORS.card,
+  peach: COLORS.peach,
   coral: COLORS.coral, // #FF6F61
   warmBrown: COLORS.warmBrown, // #3B241B
-  mutedBrown: "#7A6254",
+  mutedBrown: COLORS.mutedBrown,
 };
 
 // Daily moments always carry the "Daily moment" tag (same as a PostCard daily update).
@@ -52,7 +52,7 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
   // not a hardcoded-filled paw beside a day-level aggregate.
   const pawCount = curPost.paw_count ?? current?.paw_count ?? 0;
   const barkCount = curPost.bark_count ?? current?.bark_count ?? 0;
-  const tagStyle = TAG_COLORS[DAILY_TAG] || { bg: C.peach, text: "#B75D32" };
+  const tagStyle = TAG_COLORS[DAILY_TAG] || { bg: C.peach, text: COLORS.terracotta };
   const timeAgo = formatRelativeTime(current?.created_at, { t });
 
   return (

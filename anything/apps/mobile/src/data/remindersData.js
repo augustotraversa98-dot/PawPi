@@ -1,4 +1,5 @@
 import { formatLocalTime } from "@/utils/localeDateTime";
+import { COLORS } from "@/constants/theme";
 
 // ─────────────────────────────────────────────
 // REMINDERS DATA MODEL & MOCK DATA
@@ -490,13 +491,13 @@ export const REMINDER_TYPE_CONFIG = {
   [REMINDER_TYPES.VET_APPOINTMENT]: {
     label: "Vet Appointment",
     icon: "🩺",
-    color: "#FF6F61",
+    color: COLORS.coral,
     actionLabel: "View details",
   },
   [REMINDER_TYPES.GENERAL_CHECK]: {
     label: "General Check",
     icon: "✅",
-    color: "#A7BFA3",
+    color: COLORS.sage,
     actionLabel: "Start check",
   },
   [REMINDER_TYPES.WEIGHT_CHECK]: {

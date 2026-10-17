@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
@@ -28,16 +29,16 @@ import {
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
   red: "#D7553F",
-  peach: "#FFD9B3",
-  sand: "#F8EBDD",
-  sage: "#A7BFA3",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  peach: COLORS.peach,
+  sand: COLORS.sand,
+  sage: COLORS.sage,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export default function LostFoundScreen() {
