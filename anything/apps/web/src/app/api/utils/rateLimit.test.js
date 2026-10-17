@@ -248,6 +248,7 @@ describe('the limit catalog', () => {
       'paw_toggle',
       'post_create',
       'report_create',
+      'search_query',
       'upload_create',
     ]);
   });

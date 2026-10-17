@@ -194,8 +194,14 @@ export const PostComposerModal = memo(function PostComposerModal({
     }
   }, []);
 
+  // Double-tap guard: a second tap before the sheet finishes closing must not post twice.
+  const submittedRef = useRef(false);
+  useEffect(() => {
+    if (visible) submittedRef.current = false;
+  }, [visible]);
   const handleSubmit = useCallback(() => {
-    if (!mediaUri) return;
+    if (!mediaUri || submittedRef.current) return;
+    submittedRef.current = true;
     onPost({ uri: mediaUri, caption, mediaType });
     onClose();
   }, [mediaUri, caption, mediaType, onPost, onClose]);

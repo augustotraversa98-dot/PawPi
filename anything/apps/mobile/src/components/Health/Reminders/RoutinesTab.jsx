@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import useSingleFlight from "@/hooks/useSingleFlight";
 import { COLORS } from "@/constants/theme";
 import {
   View,
@@ -204,7 +205,11 @@ export default function RoutinesTab({ editRoutineId } = {}) {
     setSelectedType(type);
   };
 
-  const handleSaveRoutine = async (routine) => {
+  // A second tap on Save while the first is still awaiting the server used to create a DUPLICATE
+  // routine (the modal only closes after the await). The lock is a ref so it survives re-renders.
+  const runSingleFlight = useSingleFlight();
+  const handleSaveRoutine = (routine) => runSingleFlight(() => saveRoutine(routine));
+  const saveRoutine = async (routine) => {
     try {
       // Ensure petId is set to current pet
       const routineToSave = {
