@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { alertError, alertText } from "@/utils/appAlert";
 import {
   useFeedPosts,
   useCreatePost,
@@ -10,7 +11,7 @@ import { useTodayDailyUpdate } from "./useTodayDailyUpdate";
 import { useOwnerPostedToday } from "./useOwnerPostedToday";
 import { useUpload } from "@/utils/useUpload";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import { getLocalPostDateString, normalizePostDate } from "@/utils/dateUtils";
 import useUser from "@/utils/auth/useUser";
 
@@ -118,7 +119,7 @@ export function useFeedData() {
       // Step 1: Check if pet exists
       if (!currentPet?.id) {
         console.error("[useFeedData] ERROR: No pet profile found");
-        Alert.alert("Error", "Please create your pet profile first.");
+        alertText("common.error", "appAlerts.needPetProfile");
         return;
       }
 
@@ -130,10 +131,7 @@ export function useFeedData() {
           "[useFeedData] ERROR: Daily update already exists:",
           effectiveTodayDailyUpdate,
         );
-        Alert.alert(
-          "Already Posted",
-          "You've already posted a daily update today!",
-        );
+        alertText("appAlerts.alreadyPostedTitle", "appAlerts.alreadyPostedBody");
         return;
       }
 
@@ -232,14 +230,11 @@ export function useFeedData() {
         // Surface the server's daily video gate (403) as a friendly message
         // instead of a raw "Could not save: ..." crash line.
         if (/available for you today/i.test(error.message || "")) {
-          Alert.alert(
-            "Daily video",
-            "Video posting isn't available for you today 🐾 — share a photo instead!",
-          );
+          alertText("appAlerts.dailyVideoTitle", "appAlerts.dailyVideoBody");
           return;
         }
 
-        Alert.alert("Error", `Could not save: ${error.message}`);
+        alertError(error, "appAlerts.couldNotSavePost");
       }
     },
     [
@@ -266,7 +261,7 @@ export function useFeedData() {
         await deletePostMutation.mutateAsync(postId);
         await Promise.all([refetchPosts(), refetchTodayDailyUpdate()]);
       } catch (error) {
-        Alert.alert("Error", `Could not delete: ${error.message}`);
+        alertError(error, "feed.deletePostFailed");
       }
     },
     [deletePostMutation, refetchPosts, refetchTodayDailyUpdate],

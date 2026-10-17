@@ -6,6 +6,7 @@ import {
   Modal,
   TextInput,
   Image,
+  Alert,
 } from "react-native";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
@@ -113,7 +114,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      alert("Camera permission is required to take photos");
+      Alert.alert(t("common.error"), t("appAlerts.cameraPermRequired"));
       return;
     }
 
@@ -133,7 +134,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      alert("Photo library permission is required");
+      Alert.alert(t("common.error"), t("appAlerts.libraryPermRequired"));
       return;
     }
 

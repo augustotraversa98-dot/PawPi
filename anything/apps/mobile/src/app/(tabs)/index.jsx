@@ -198,12 +198,12 @@ export default function FeedScreen() {
     (post) => {
       if (!post?.id) return;
       Alert.alert(
-        "Delete post?",
-        "This permanently removes the post. You can post a new daily photo afterwards.",
+        t("feed.deletePostTitle"),
+        t("feed.deletePostBody"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Delete",
+            text: t("common.delete"),
             style: "destructive",
             onPress: async () => {
               setDetailPost(null);
@@ -213,7 +213,7 @@ export default function FeedScreen() {
         ],
       );
     },
-    [handleDeletePost],
+    [handleDeletePost, t],
   );
 
   const handleBarkAddedWithUpdate = useCallback(

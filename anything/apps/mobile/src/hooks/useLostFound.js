@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { alertError, alertText } from "@/utils/appAlert";
 import { isValidCoord } from "@/utils/walkBuddies";
 
 // Lost & Found (ticket 2.48): lost mode, near-me browse, sightings, resolve.
@@ -66,9 +66,9 @@ export function useMarkLost() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lost-reports"] });
       qc.invalidateQueries({ queryKey: ["my-lost-reports"] });
-      Alert.alert("Lost mode on", "Nearby users and followers have been alerted.");
+      alertText("appAlerts.lostModeOnTitle", "appAlerts.lostModeOnBody");
     },
-    onError: (e) => Alert.alert("Error", e.message || "Could not mark lost."),
+    onError: (e) => alertError(e, "appAlerts.couldNotMarkLost"),
   });
 }
 
@@ -89,9 +89,9 @@ export function useReportSighting(reportId) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lost-report", reportId] });
-      Alert.alert("Thank you!", "The owner has been notified of your sighting.");
+      alertText("appAlerts.sightingThanksTitle", "appAlerts.sightingThanksBody");
     },
-    onError: (e) => Alert.alert("Error", e.message || "Could not report sighting."),
+    onError: (e) => alertError(e, "appAlerts.couldNotReportSighting"),
   });
 }
 
@@ -106,8 +106,8 @@ export function useResolveLost() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lost-reports"] });
       qc.invalidateQueries({ queryKey: ["my-lost-reports"] });
-      Alert.alert("Welcome home! 🐾", "Lost mode cleared.");
+      alertText("appAlerts.welcomeHomeTitle", "appAlerts.welcomeHomeBody");
     },
-    onError: (e) => Alert.alert("Error", e.message || "Could not resolve."),
+    onError: (e) => alertError(e, "appAlerts.couldNotResolve"),
   });
 }

@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { alertError } from "@/utils/appAlert";
 
 // Community forum data hooks (ticket 2.44). Threads → comments → votes, all real API.
 
@@ -60,7 +60,7 @@ export function useCreateThread() {
       return res.json();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["forum-threads"] }),
-    onError: (e) => Alert.alert("Error", e.message || "Could not post."),
+    onError: (e) => alertError(e, "appAlerts.couldNotPost"),
   });
 }
 
@@ -83,7 +83,7 @@ export function useCreateComment(threadId) {
       qc.invalidateQueries({ queryKey: ["forum-thread", threadId] });
       qc.invalidateQueries({ queryKey: ["forum-threads"] });
     },
-    onError: (e) => Alert.alert("Error", e.message || "Could not comment."),
+    onError: (e) => alertError(e, "appAlerts.couldNotComment"),
   });
 }
 

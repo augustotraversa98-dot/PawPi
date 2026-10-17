@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { alertError, alertText } from "@/utils/appAlert";
 
 // Family/caregiver sharing (ticket 2.47): person↔person pet access grants.
 
@@ -45,9 +45,9 @@ export function useInviteCaregiver(petId) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pet-grants", petId] });
-      Alert.alert("Invite sent", "They'll get access once they accept.");
+      alertText("appAlerts.inviteSentTitle", "appAlerts.inviteSentBody");
     },
-    onError: (e) => Alert.alert("Error", e.message || "Could not invite."),
+    onError: (e) => alertError(e, "appAlerts.couldNotInvite"),
   });
 }
 
@@ -67,7 +67,7 @@ export function useRespondGrant() {
       return res.json();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["shared-with-me"] }),
-    onError: (e) => Alert.alert("Error", e.message || "Could not respond."),
+    onError: (e) => alertError(e, "appAlerts.couldNotRespond"),
   });
 }
 
@@ -80,6 +80,6 @@ export function useRevokeGrant(petId) {
       return res.json();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pet-grants", petId] }),
-    onError: (e) => Alert.alert("Error", e.message || "Could not revoke."),
+    onError: (e) => alertError(e, "appAlerts.couldNotRevoke"),
   });
 }

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Keyboard,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +26,7 @@ import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 import { postOnboardingWelcome } from "@/utils/onboardingWelcome";
 import useHandleAvailability, { canSaveHandle } from "@/hooks/useHandleAvailability";
 import HandleAvailabilityHint from "@/components/HandleAvailabilityHint";
@@ -432,7 +434,7 @@ function OnboardingScreen() {
         if (errorData?.code === "handle_taken" || errorData?.code === "handle_invalid") {
           handleAvail.markTaken(formData.handle, errorData.alternatives);
           setCurrentStep(1);
-          alert(t("onboarding.handleSaveTaken"));
+          Alert.alert(t("onboarding.handleSaveTaken"));
           return;
         }
         throw new Error(errorData.error || "Failed to create pet profile");
@@ -585,7 +587,7 @@ function OnboardingScreen() {
       console.error("[Onboarding] Error stack:", error.stack);
       console.error("[Onboarding] ========================================");
       formTelemetry.error("step_8");
-      alert(error.message || t("onboarding.saveProfileError"));
+      Alert.alert(t("common.error"), friendlyErrorMessage(error, "onboarding.saveProfileError"));
     } finally {
       setIsSubmitting(false);
     }

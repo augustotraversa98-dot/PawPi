@@ -368,7 +368,7 @@ export default function WalkRoutineModal({
             </TouchableOpacity>
 
             {/* Debug Status (Development Only) */}
-            {debugStatus !== "" && (
+            {__DEV__ && debugStatus !== "" && (
               <View
                 style={{
                   backgroundColor: "#FFF3CD",
