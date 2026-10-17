@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,14 +14,14 @@ import { onThisDay, detectMilestones } from "@/utils/memoriesWrapped";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  sand: "#F8EBDD",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  sand: COLORS.sand,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export default function MemoriesScreen() {

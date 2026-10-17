@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -10,15 +11,15 @@ import RoutinesTab from "@/components/Health/Reminders/RoutinesTab";
 import SettingsTab from "@/components/Health/Reminders/SettingsTab";
 
 const C = {
-  coral: "#FF6F61",
-  apricot: "#FFB37A",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  coral: COLORS.coral,
+  apricot: COLORS.apricot,
+  peach: COLORS.peach,
+  terracotta: COLORS.terracotta,
+  cream: COLORS.cream,
+  sand: COLORS.sand,
+  card: COLORS.card,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 const TABS = {

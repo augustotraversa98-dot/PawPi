@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
@@ -15,13 +16,13 @@ import { useFollowList } from "@/hooks/usePetSocialProfile";
 import { useTranslation } from "react-i18next";
 
 const C = {
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  cream: COLORS.cream,
+  sand: COLORS.sand,
+  card: COLORS.card,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 // Followers / Following list (ticket 2.61): a searchable list of pets with a paw
@@ -249,7 +250,7 @@ export default function FollowsScreen() {
                 accessibilityRole="button"
                 style={{ backgroundColor: C.coral, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
               >
-                <Text style={{ color: "#FFF", fontWeight: "700" }}>{t("common.retry")}</Text>
+                <Text style={{ color: COLORS.cream, fontWeight: "700" }}>{t("common.retry")}</Text>
               </TouchableOpacity>
             </View>
           ) : (

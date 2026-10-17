@@ -188,7 +188,7 @@ export default function EventsScreen() {
               accessibilityRole="button"
               style={{ backgroundColor: COLORS.coral, paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS.chip }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "700" }}>{t("common.retry")}</Text>
+              <Text style={{ color: COLORS.cream, fontWeight: "700" }}>{t("common.retry")}</Text>
             </PressableScale>
           </Card>
         ) : events.length === 0 ? (

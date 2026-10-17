@@ -1,4 +1,5 @@
 import * as Calendar from "expo-calendar";
+import { COLORS } from "@/constants/theme";
 import { Platform, Alert } from "react-native";
 import { translate } from "@/utils/appAlert";
 import {
@@ -33,7 +34,7 @@ export { formatFrequency };
 // Per-feature calendar identities (title is the lookup key; color/name set on create).
 const WALK_CALENDAR = {
   title: "PawPi - Walks",
-  color: "#A7BFA3", // Sage green
+  color: COLORS.sage, // Sage green
   name: "socialPetWalks",
 };
 const VET_CALENDAR = {
@@ -405,12 +406,12 @@ export async function deleteVetAppointmentFromCalendar(eventId) {
 
 const BOOKING_CALENDAR = {
   title: "PawPi - Bookings",
-  color: "#FF6F61", // Coral
+  color: COLORS.coral, // Coral
   name: "socialPetBookings",
 };
 const TRANSPORT_CALENDAR = {
   title: "PawPi - Transport",
-  color: "#B75D32", // Terracotta
+  color: COLORS.terracotta, // Terracotta
   name: "socialPetTransport",
 };
 const TELEHEALTH_CALENDAR = {
@@ -420,7 +421,7 @@ const TELEHEALTH_CALENDAR = {
 };
 const EVENT_CALENDAR = {
   title: "PawPi - Events",
-  color: "#A7BFA3", // Sage green
+  color: COLORS.sage, // Sage green
   name: "socialPetEvents",
 };
 

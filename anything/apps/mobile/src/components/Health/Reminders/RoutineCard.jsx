@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity, Switch, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,12 +18,12 @@ import { addWalkToCalendar } from "@/utils/calendarIntegration";
 
 const C = {
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
 };
 

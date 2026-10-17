@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -10,12 +11,12 @@ import { buildWrapped, wrappedSlides } from "@/utils/memoriesWrapped";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export default function WrappedScreen() {

@@ -1,4 +1,5 @@
 import { formatLocalDate } from "@/utils/localeDateTime";
+import { COLORS } from "@/constants/theme";
 
 // Mock data and state for Walk, Activity, and Mobility tracking
 // In a production app, this would be connected to a database
@@ -301,7 +302,7 @@ export const getPaceColor = (pace) => {
   const colors = {
     relaxed: "#9575CD", // purple
     normal: "#42A5F5", // blue
-    active: "#FF6F61", // coral
+    active: COLORS.coral, // coral
   };
   return colors[pace] || "#42A5F5";
 };
@@ -320,10 +321,10 @@ export const getEnergyEmoji = (energy) => {
 export const getEnergyColor = (energy) => {
   const colors = {
     low: "#FFB74D", // orange
-    normal: "#A7BFA3", // sage
-    high: "#FF6F61", // coral
+    normal: COLORS.sage, // sage
+    high: COLORS.coral, // coral
   };
-  return colors[energy] || "#A7BFA3";
+  return colors[energy] || COLORS.sage;
 };
 
 // Format duration

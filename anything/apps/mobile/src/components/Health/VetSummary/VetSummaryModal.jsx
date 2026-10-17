@@ -1,4 +1,5 @@
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
+import { COLORS } from "@/constants/theme";
 import React, { useState, useMemo } from "react";
 import {
   View,
@@ -30,15 +31,15 @@ import { summaryToText } from "@/utils/vetSummaryText";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
   green: "#2E8F62",
   amber: "#B8860B",
-  peach: "#FFD9B3",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  peach: COLORS.peach,
+  sand: COLORS.sand,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 const RANGES = [

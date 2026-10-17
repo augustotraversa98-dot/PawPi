@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
@@ -30,14 +31,14 @@ import { routinesQueryKey } from "@/utils/routinesQuery";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
   sand: "#F5EDE4",
 };
 

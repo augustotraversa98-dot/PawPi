@@ -1,4 +1,5 @@
 import { MATERIALS } from "@/constants/theme";
+import { COLORS } from "@/constants/theme";
 import React from "react";
 import { View, Text, TouchableOpacity, Modal } from "react-native";
 import { X, Clock } from "lucide-react-native";
@@ -6,12 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SNOOZE_OPTIONS } from "@/data/remindersData";
 
 const C = {
-  cream: "#FFF7EF",
+  cream: COLORS.cream,
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
   sand: "#F5EDE4",
 };

@@ -1,5 +1,6 @@
 // Mock data and state for Vomit/Digestive Event tracking
 // In a production app, this would be connected to a database
+import { COLORS } from "@/constants/theme";
 
 export const vomitLogs = [
   {
@@ -212,11 +213,11 @@ export const getEnergyLabel = (energy) => {
 // Get energy color
 export const getEnergyColor = (energy) => {
   const colors = {
-    normal: "#A7BFA3", // sage green
+    normal: COLORS.sage, // sage green
     low: "#FFB74D", // orange
     "very low": "#FF5733", // red
   };
-  return colors[energy] || "#A7BFA3";
+  return colors[energy] || COLORS.sage;
 };
 
 // Check if log has urgent concerns

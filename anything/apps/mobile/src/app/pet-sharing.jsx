@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
@@ -33,16 +34,16 @@ import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  sage: "#A7BFA3",
-  sageDark: "#5A8A74",
-  sand: "#F8EBDD",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  terracotta: COLORS.terracotta,
+  sage: COLORS.sage,
+  sageDark: COLORS.sageDark,
+  sand: COLORS.sand,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 const useRoleLabel = () => {

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Clock, CheckCircle, Zap } from "lucide-react-native";
 import { getTimeDisplay, REMINDER_TYPE_CONFIG } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 
 const C = {
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   honey: "#F4A460",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
   sand: "#F5EDE4",
   peach: "#FFE5D9",

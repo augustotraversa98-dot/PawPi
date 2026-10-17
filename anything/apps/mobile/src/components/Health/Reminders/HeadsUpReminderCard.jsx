@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { X, Pencil } from "lucide-react-native";
 import { REMINDER_TYPE_CONFIG } from "@/data/remindersData";
@@ -15,8 +16,8 @@ import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
 
 const C = {
   card: "#FFFBF7",
-  terracotta: "#B75D32",
-  warmBrown: "#3B241B",
+  terracotta: COLORS.terracotta,
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
   peach: "#FFE5D9",
   sand: "#F5EDE4",

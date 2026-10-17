@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useTranslation } from "react-i18next";
 import DateField from "@/components/DateField";
@@ -14,7 +15,7 @@ import DayChips from "./DayChips";
 const C = {
   card: "#FFFBF7",
   peach: "#FFE5D9",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
   sand: "#F5EDE4",
 };

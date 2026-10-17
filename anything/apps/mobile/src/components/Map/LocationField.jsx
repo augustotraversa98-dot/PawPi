@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MapPin, X } from "lucide-react-native";
@@ -9,9 +10,9 @@ import { isValidCoord } from "@/utils/walkBuddies";
 const C = {
   card: "#FFFBF7",
   bg: "#FFF7F0",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
 };
 

@@ -3,9 +3,10 @@
 // then fade. Deterministic layout (index-derived) — no per-frame randomness.
 
 import React, { useEffect, useRef } from "react";
+import { COLORS } from "@/constants/theme";
 import { Animated, View, Easing, StyleSheet } from "react-native";
 
-const PALETTE = ["#FF6F61", "#FFB37A", "#FFC857", "#A7BFA3", "#B75D32"];
+const PALETTE = [COLORS.coral, COLORS.apricot, COLORS.honey, COLORS.sage, COLORS.terracotta];
 
 export function Confetti({ count = 14, duration = 1600, height = 240 }) {
   const pieces = useRef(

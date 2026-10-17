@@ -4,6 +4,7 @@
 // Aspect ratio is fixed: height = 0.947 x width (brand geometry). Never set them independently.
 // Color must be an approved brand value: coral #FF6F61, warm brown #3B241B, or cream #FFF7EF.
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { SvgXml } from "react-native-svg";
 
 const PAW_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 180" width="190" height="180" role="img" aria-label="PawPi paw prints">
@@ -27,7 +28,7 @@ const PAW_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 180" w
   </g>
 </svg>`;
 
-export function PawMark({ size = 120, color = "#FF6F61", style, accessibilityLabel = "PawPi" }) {
+export function PawMark({ size = 120, color = COLORS.coral, style, accessibilityLabel = "PawPi" }) {
   return (
     <SvgXml
       xml={PAW_XML}

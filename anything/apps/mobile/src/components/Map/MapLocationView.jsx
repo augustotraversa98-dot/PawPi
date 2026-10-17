@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 import { MapPin } from "lucide-react-native";
@@ -7,7 +8,7 @@ import { isValidCoord } from "@/utils/walkBuddies";
 
 const C = {
   card: "#FFFBF7",
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   peach: "#FFE5D9",
   mutedBrown: "#8B7355",
 };

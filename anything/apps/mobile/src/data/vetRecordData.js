@@ -1,4 +1,5 @@
 import { Stethoscope, Syringe, Pill } from "lucide-react-native";
+import { COLORS } from "@/constants/theme";
 
 export const recentRecordsData = [
   {
@@ -6,7 +7,7 @@ export const recentRecordsData = [
     title: "Annual Checkup",
     date: "March 15, 2026",
     clinic: "Happy Paws Veterinary Clinic",
-    color: "#B75D32",
+    color: COLORS.terracotta,
   },
   {
     icon: Syringe,

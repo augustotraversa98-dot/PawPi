@@ -48,8 +48,8 @@ import { formatDisplayDate } from "@/utils/canonicalDateTime";
 // read alike: open (submitted/pending) → warm; under_review → info/blue; approved → green;
 // declined → red.
 const STATUS_STYLE = {
-  submitted: { bg: "#FFF1E2", fg: "#B75D32" },
-  pending: { bg: "#FFF1E2", fg: "#B75D32" },
+  submitted: { bg: "#FFF1E2", fg: COLORS.terracotta },
+  pending: { bg: "#FFF1E2", fg: COLORS.terracotta },
   under_review: { bg: "#EAF0F6", fg: "#33587A" },
   approved: { bg: "#E5F4EC", fg: "#1F7A4D" },
   declined: { bg: "#FBE6E4", fg: "#B23B30" },
@@ -58,8 +58,8 @@ const STATUS_STYLE = {
 // Listing (dog) status pill palette for the group header.
 const LISTING_STYLE = {
   available: { bg: "#E5F4EC", fg: "#1F7A4D" },
-  pending: { bg: "#FFF1E2", fg: "#B75D32" },
-  adopted: { bg: "#EFEAE6", fg: "#7A6254" },
+  pending: { bg: "#FFF1E2", fg: COLORS.terracotta },
+  adopted: { bg: "#EFEAE6", fg: COLORS.mutedBrown },
 };
 
 const DECIDED = new Set(["approved", "declined"]);

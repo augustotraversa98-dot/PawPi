@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -67,14 +68,14 @@ import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
 
 const C = {
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  terracotta: "#B75D32",
-  cream: "#FFF7EF",
-  sand: "#F8EBDD",
-  card: "#FFFCF8",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  terracotta: COLORS.terracotta,
+  cream: COLORS.cream,
+  sand: COLORS.sand,
+  card: COLORS.card,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 // Language selector (ticket 2.29): System default / English / Español. Updates the app
@@ -110,13 +111,13 @@ function LanguageSelector() {
             alignItems: "center",
             paddingVertical: 14,
             borderBottomWidth: i < OPTIONS.length - 1 ? 1 : 0,
-            borderBottomColor: "#FFD9B3",
+            borderBottomColor: COLORS.peach,
           }}
         >
-          <Text style={{ flex: 1, fontSize: 15, color: "#3B241B", fontWeight: "600" }}>
+          <Text style={{ flex: 1, fontSize: 15, color: COLORS.warmBrown, fontWeight: "600" }}>
             {o.label}
           </Text>
-          {pref === o.value ? <Check size={18} color="#FF6F61" /> : null}
+          {pref === o.value ? <Check size={18} color={COLORS.coral} /> : null}
         </TouchableOpacity>
       ))}
     </View>

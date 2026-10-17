@@ -1,4 +1,5 @@
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useTranslation } from "react-i18next";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
@@ -6,7 +7,7 @@ import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 const C = {
   card: "#FFFBF7",
   peach: "#FFE5D9",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
 };
 
 // English labels are used as a fallback when a caller renders outside a

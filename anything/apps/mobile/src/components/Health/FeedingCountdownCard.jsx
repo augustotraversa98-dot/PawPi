@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Clock, CheckCircle, Zap, AlertCircle } from "lucide-react-native";
@@ -10,13 +11,13 @@ import { buildQuickFoodLogPayload } from "@/utils/reminderLogFlow";
 import FeedingIssueModal from "./FeedingIssueModal";
 
 const C = {
-  coral: "#FF6F61",
+  coral: COLORS.coral,
   honey: "#F4A460",
-  warmBrown: "#3B241B",
+  warmBrown: COLORS.warmBrown,
   mutedBrown: "#8B7355",
   sand: "#F5EDE4",
   peach: "#FFE5D9",
-  sage: "#A7BFA3",
+  sage: COLORS.sage,
 };
 
 export default function FeedingCountdownCard({

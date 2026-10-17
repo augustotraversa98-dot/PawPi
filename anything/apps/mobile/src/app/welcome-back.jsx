@@ -5,6 +5,7 @@
 // window. All real — a clean empty state when there's nothing, never fabricated activity.
 
 import React from "react";
+import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,13 +16,13 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useReengagement, useReengagementAction } from "@/hooks/useReengagement";
 
 const C = {
-  cream: "#FFF7EF",
-  card: "#FFFCF8",
-  coral: "#FF6F61",
-  peach: "#FFD9B3",
-  sageDark: "#5A8A74",
-  warmBrown: "#3B241B",
-  mutedBrown: "#7A6254",
+  cream: COLORS.cream,
+  card: COLORS.card,
+  coral: COLORS.coral,
+  peach: COLORS.peach,
+  sageDark: COLORS.sageDark,
+  warmBrown: COLORS.warmBrown,
+  mutedBrown: COLORS.mutedBrown,
 };
 
 export default function WelcomeBackScreen() {
