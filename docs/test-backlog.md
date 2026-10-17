@@ -443,6 +443,20 @@ PR #632 merged: `scripts/cron/` added and GitHub cron removed (manual fallback k
 
 ---
 
+## ⚙️ ACTION 6 — Apply the username backfill (pending, human-applied) — night run #2, PR D
+
+`supabase/migrations/0133_username_backfill.sql` — **file-only, NOT applied to any live database.** Rewrites the
+e-mail-derived `user_profiles.username` values (QA 2026-10-16 bug 04 follow-up) to name-based unique ones and
+keeps the old value in `user_profile_username_backfill_audit` (RLS forced, owner-select only). Merging does not
+apply it (no migrate step in the web deploy).
+
+- [ ] Apply via `docs/db-migration-runbook-0133-username-backfill.md` (SQL editor as `postgres`).
+- [ ] Run `supabase/verify_0133.sql` — every row **PASS**.
+- [ ] Re-run once → `NOTICE … 0 username(s) rewritten` (idempotent).
+- Heads-up for support: an invite typed with someone's *old* username (staff / family / walk invitee) will say "not found" afterwards.
+
+---
+
 ## Follow-up (not scheduled): web catch-all 404 route
 
 The web catch-all route (`anything/apps/web/src/app/__create/not-found.tsx`) runs a filesystem glob (`fast-glob`) on **every
