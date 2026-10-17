@@ -33,6 +33,9 @@ import { PressableScale } from "@/components/ui";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import useBottomClearance from "@/hooks/useBottomClearance";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import useHandleAvailability, { canSaveHandle } from "@/hooks/useHandleAvailability";
+import HandleAvailabilityHint from "@/components/HandleAvailabilityHint";
+import { sanitizeHandleInput } from "@/utils/validateHandle";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
@@ -81,6 +84,15 @@ export default function ProfileEditScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Same availability logic as onboarding: the pet's OWN current handle is fine; a taken or
+  // malformed one blocks Save and offers free alternatives.
+  const handleAvail = useHandleAvailability(formData.handle, {
+    petId: currentPet?.id ?? null,
+    currentHandle: currentPet?.handle || "",
+    enabled: !!formData.handle.trim(),
+  });
+  const handleBlocksSave =
+    !!formData.handle.trim() && !canSaveHandle(handleAvail.status);
   // Anonymous telemetry (additive): the Edit Profile form (view / complete / abandon / error).
   const formTelemetry = useFormTelemetry("edit_profile");
 
@@ -145,6 +157,8 @@ export default function ProfileEditScreen() {
       Alert.alert(t("common.error"), t("profileEdit.noPetToUpdate"));
       return;
     }
+
+    if (handleBlocksSave) return;
 
     setIsSubmitting(true);
 
@@ -223,6 +237,12 @@ export default function ProfileEditScreen() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("[Profile Edit] ERROR:", errorData);
+        // Lost a race for the handle (or it was rejected): show fresh alternatives, not a raw error.
+        if (errorData?.code === "handle_taken" || errorData?.code === "handle_invalid") {
+          handleAvail.markTaken(formData.handle, errorData.alternatives);
+          Alert.alert(t("common.error"), t("onboarding.handleSaveTaken"));
+          return;
+        }
         throw new Error(errorData.error || "Failed to update profile");
       }
 
@@ -396,11 +416,21 @@ export default function ProfileEditScreen() {
             label={t("profileEdit.fieldHandle")}
             value={formData.handle}
             onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, handle: text }))
+              setFormData((prev) => ({ ...prev, handle: sanitizeHandleInput(text) }))
             }
             placeholder={t("profileEdit.handlePlaceholder")}
             autoCapitalize="none"
+            marginBottom={SPACING.sm}
           />
+          <View style={{ marginBottom: SPACING.xl }}>
+            <HandleAvailabilityHint
+              availability={handleAvail}
+              testIDPrefix="profile-edit-handle"
+              onPickAlternative={(alt) =>
+                setFormData((prev) => ({ ...prev, handle: alt }))
+              }
+            />
+          </View>
 
           {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
           <View style={{ marginBottom: SPACING.xl }}>
@@ -595,10 +625,13 @@ export default function ProfileEditScreen() {
           <PressableScale
             trackId="edit_profile_save"
             onPress={handleSave}
-            disabled={isSubmitting || !formData.name.trim()}
+            disabled={isSubmitting || !formData.name.trim() || handleBlocksSave}
             accessibilityRole="button"
             style={{
-              backgroundColor: formData.name.trim() ? COLORS.coral : MATERIALS.surfaceSunken,
+              backgroundColor:
+                formData.name.trim() && !handleBlocksSave
+                  ? COLORS.coral
+                  : MATERIALS.surfaceSunken,
               borderRadius: RADIUS.control,
               height: 56,
               flexDirection: "row",
@@ -632,8 +665,9 @@ const FormField = ({
   required = false,
   keyboardType = "default",
   autoCapitalize = "words",
+  marginBottom = SPACING.xl,
 }) => (
-  <View style={{ marginBottom: SPACING.xl }}>
+  <View style={{ marginBottom }}>
     <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
       {label} {required && <Text style={{ color: COLORS.coral }}>*</Text>}
     </Text>

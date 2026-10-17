@@ -2167,6 +2167,17 @@
     "handlePlaceholder": "usuario_personalizado",
     "handleChecking": "Verificando disponibilidad…",
     "handleTaken": "Este usuario ya está en uso",
+    "handleAvailable": "Disponible",
+    "handleTakenAlternatives": "Probá con uno de estos:",
+    "handleUnverified": "No pudimos verificarlo ahora. Lo confirmamos cuando sigas.",
+    "handleSaveTaken": "Alguien acaba de usar ese usuario. Elegí otro.",
+    "handleReason": {
+      "empty": "Elegí un usuario",
+      "too_short": "Usá al menos 3 caracteres",
+      "too_long": "Usá 20 caracteres o menos",
+      "invalid_chars": "Usá minúsculas, números, _ o . y empezá con una letra o un número",
+      "reserved": "Ese usuario está reservado. Probá con otro."
+    },
     "breedTitle": "¿Qué raza es {{name}}?",
     "breedSubtitle": "Esto nos ayuda a personalizar las recomendaciones de cuidado",
     "breedMixed": "Mestizo",

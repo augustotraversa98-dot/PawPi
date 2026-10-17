@@ -5,7 +5,17 @@ import { auth } from "@/auth";
 import {
   withRequestContext,
   setCurrentUserId,
+  withSavepoint,
 } from "@/app/api/utils/requestContext";
+import {
+  normalizeHandle,
+  handleFormatCode,
+  handleCandidates,
+  findFreeHandles,
+  takenAmong,
+  alternativesFor,
+  isHandleUniqueViolation,
+} from "@/app/api/utils/petHandle";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 
@@ -24,6 +34,25 @@ async function uniqueUsername(base, exists) {
     if (!(await exists(candidate))) return candidate;
   }
   return `${base}_${Date.now()}`;
+}
+
+// 409 for a taken handle: friendly copy plus up to 3 free alternatives so the app can offer chips.
+// Additive for older clients, which only read `error` (they throw it as the message).
+async function handleTakenResponse(handle) {
+  let alternatives = [];
+  try {
+    alternatives = await alternativesFor(sql, handle, 3);
+  } catch {
+    alternatives = [];
+  }
+  return Response.json(
+    {
+      error: "That handle was just taken. Pick another one.",
+      code: "handle_taken",
+      alternatives,
+    },
+    { status: 409 },
+  );
 }
 
 // Get all pets for the current user (owner-scoped; pets.owner_user_id = user_profiles.id).
@@ -161,33 +190,34 @@ async function POST(request) {
     const blockedPet = moderationResponse(name, breed, notes);
     if (blockedPet) return blockedPet;
 
-    // Generate unique handle if not provided
-    let finalHandle = handle;
-    if (!finalHandle) {
-      const baseName = name.toLowerCase().replace(/\s+/g, "");
-      finalHandle = baseName;
-
-      // Check if handle exists
-      const existing = await sql`
-        SELECT id FROM pets WHERE handle = ${finalHandle}
-      `;
-
-      if (existing.length > 0) {
-        // Add random suffix
-        finalHandle = `${baseName}_${Math.floor(Math.random() * 10000)}`;
-      }
-    } else {
-      // Check if provided handle is unique
-      const existing = await sql`
-        SELECT id FROM pets WHERE handle = ${finalHandle}
-      `;
-
-      if (existing.length > 0) {
+    // Handle: normalized (lowercase, no leading "@"), validated with the SAME rules as the app,
+    // and compared case-insensitively. A taken handle is a friendly 409 that carries fresh free
+    // alternatives (never a raw error); the INSERT below also catches the unique-violation race.
+    let finalHandle;
+    if (handle != null && String(handle).trim() !== "") {
+      finalHandle = normalizeHandle(handle);
+      const reason = handleFormatCode(finalHandle);
+      if (reason) {
         return Response.json(
-          { error: "Handle already taken" },
+          {
+            error: "That handle can't be used. Try a different one.",
+            code: "handle_invalid",
+            reason,
+          },
           { status: 400 },
         );
       }
+      if ((await takenAmong(sql, [finalHandle])).length > 0) {
+        return handleTakenResponse(finalHandle);
+      }
+    } else {
+      // No handle supplied: pick the first FREE deterministic candidate from the pet name.
+      const [free] = await findFreeHandles(
+        handleCandidates({ name, breed }),
+        (chunk) => takenAmong(sql, chunk),
+        1,
+      );
+      finalHandle = free || `pup${Date.now()}`.slice(0, 20);
     }
 
     // Convert birthday/adoption date strings to proper format if provided
@@ -195,8 +225,11 @@ async function POST(request) {
     const adoptionDateFormatted =
       adoption_date && adoption_date !== "" ? adoption_date : null;
 
-    // Create pet
-    const pet = await sql`
+    // Create pet. The INSERT runs in a savepoint so a same-handle race (unique violation) is
+    // handled as a friendly 409 instead of aborting the request transaction into a blanket 500.
+    let pet;
+    try {
+      pet = await withSavepoint(() => sql`
       INSERT INTO pets (
         owner_user_id, name, handle, avatar_url, species, breed,
         age_years, age_months, gender, weight, weight_unit,
@@ -209,7 +242,13 @@ async function POST(request) {
         ${birthdayDate}, ${adoptionDateFormatted}, ${notes || null}
       )
       RETURNING *
-    `;
+    `);
+    } catch (insertError) {
+      if (isHandleUniqueViolation(insertError)) {
+        return handleTakenResponse(finalHandle);
+      }
+      throw insertError;
+    }
 
     recordBusinessEvent("pet_created");
     return Response.json({ pet: pet[0] }, { status: 201 });
