@@ -320,6 +320,13 @@ async function findPaymentForWebhook(ref) {
 // owner or a webhook, not a shop admin — can adjust catalog stock without catalog write
 // access. Non-product orders have no product_id lines, so the helper is a no-op for them.
 export async function applyPaymentStatus(payment, status, rawStatus) {
+  // MONOTONIC (flow audit F3-03): rails deliver events late and out of order, and unknown actions map to
+  // 'pending'. A refunded payment is terminal; an approved one may only move to refunded. Anything else
+  // (refunded→approved re-paying + re-decrementing stock, approved→pending/failed flipping a paid order)
+  // is ignored instead of regressing the ledger.
+  if (payment.status === 'refunded' && status !== 'refunded') return;
+  if (payment.status === 'approved' && status !== 'approved' && status !== 'refunded') return;
+
   await sql`
     UPDATE payments
     SET status = ${status}, raw_status = ${rawStatus ?? null}, updated_at = now()

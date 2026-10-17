@@ -338,7 +338,9 @@ export default function VetAppointmentDetailModal({
           )}
 
           {/* Mark Completed — hidden once already completed */}
-          {appointment.status !== "completed" && (
+          {/* A booking made with a business is completed BY the business (that is what unlocks the review),
+              so the owner can only self-complete personal vet appointments (flow audit F3-04). */}
+          {appointment.status !== "completed" && appointment.provider_id == null && (
             <PressableScale
               onPress={handleMarkCompleted}
               disabled={isPending}

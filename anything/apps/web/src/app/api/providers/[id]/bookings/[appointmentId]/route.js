@@ -90,6 +90,20 @@ async function PATCH(request, { params }) {
     }
     const currentStatus = rows[0].booking_status;
 
+    // The customer cancelled (lifecycle status) but the workflow column may be stale on older rows:
+    // a cancelled booking can't be confirmed/completed/assigned (flow audit F3-08).
+    if (rows[0].status === "cancelled" && currentStatus !== "declined" && currentStatus !== "cancelled") {
+      return Response.json(
+        { error: "The customer cancelled this booking.", code: "booking_cancelled" },
+        { status: 409 },
+      );
+    }
+    const staleResponse = () =>
+      Response.json(
+        { error: "This booking just changed. Refresh to see its current state.", code: "booking_changed" },
+        { status: 409 },
+      );
+
     // Notify the booking's OWNER of a lifecycle change, deep-linking to the booking
     // summary (/service/booking-summary?id=<appointment id>). actor = the acting staff
     // member; recipient = the owner (a DIFFERENT user, so app_notify's cross-user insert
@@ -112,12 +126,18 @@ async function PATCH(request, { params }) {
     // booking_id FK). Keeps the owner's consult card in sync with a declined/cancelled booking so
     // it never lingers as "Scheduled". Only scheduled/in_progress sessions are touched (an already
     // ended session is left as history); a booking with no consult is a no-op.
-    const cancelLinkedTelehealthSession = async (bookingId) => {
+    // `expectedStates` guards the cascade: if the booking has already moved on (another staff member
+    // or the customer acted first) the consult is left alone and the guarded UPDATE below answers 409.
+    const cancelLinkedTelehealthSession = async (bookingId, expectedStates) => {
       await sql`
         UPDATE telehealth_sessions
         SET status = ${"cancelled"}, updated_at = NOW()
         WHERE booking_id = ${bookingId}
           AND status IN ('scheduled', 'in_progress')
+          AND EXISTS (
+            SELECT 1 FROM vet_appointments
+            WHERE id = ${bookingId} AND booking_status = ANY(${expectedStates})
+          )
       `;
     };
 
@@ -188,8 +208,10 @@ async function PATCH(request, { params }) {
               staff_user_id = ${staffUserId},
               updated_at = NOW()
           WHERE id = ${appointmentId} AND provider_id = ${providerId}
+          AND booking_status = 'requested' AND deleted_at IS NULL
           RETURNING *
         `;
+        if (updated.length === 0) return staleResponse();
         await notifyOwner("booking_confirmed");
         return Response.json({ booking: updated[0] });
       }
@@ -197,8 +219,10 @@ async function PATCH(request, { params }) {
         UPDATE vet_appointments
         SET booking_status = ${"confirmed"}, updated_at = NOW()
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
+        AND booking_status = 'requested' AND deleted_at IS NULL
         RETURNING *
       `;
+      if (updated.length === 0) return staleResponse();
       await notifyOwner("booking_confirmed");
       return Response.json({ booking: updated[0] });
     }
@@ -215,7 +239,7 @@ async function PATCH(request, { params }) {
       // Cascade to the linked telehealth consult so it doesn't keep reading "Scheduled"/"Consult
       // ended" after the booking is dead. Only a still-open session (scheduled/in_progress) is
       // cancelled; a no-op when the booking has no consult. Same request tx as the update below.
-      await cancelLinkedTelehealthSession(appointmentId);
+      await cancelLinkedTelehealthSession(appointmentId, ["requested"]);
       const updated = await sql`
         UPDATE vet_appointments
         SET booking_status = ${"declined"},
@@ -223,8 +247,10 @@ async function PATCH(request, { params }) {
             reminder_enabled = ${false},
             updated_at = NOW()
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
+          AND booking_status = 'requested' AND deleted_at IS NULL
         RETURNING *
       `;
+      if (updated.length === 0) return staleResponse();
 
       // Pay-at-request model: if the customer already paid for this booking, declining it
       // must refund them. Best-effort — the decline NEVER fails on a refund error (an
@@ -267,7 +293,7 @@ async function PATCH(request, { params }) {
         );
       }
       // Same cascade as decline — a cancelled booking cancels its linked (still-open) consult.
-      await cancelLinkedTelehealthSession(appointmentId);
+      await cancelLinkedTelehealthSession(appointmentId, ["requested", "confirmed"]);
       const updated = await sql`
         UPDATE vet_appointments
         SET booking_status = ${"cancelled"},
@@ -275,8 +301,10 @@ async function PATCH(request, { params }) {
             reminder_enabled = ${false},
             updated_at = NOW()
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
+          AND booking_status IN ('requested', 'confirmed') AND deleted_at IS NULL
         RETURNING *
       `;
+      if (updated.length === 0) return staleResponse();
       await notifyOwner("booking_cancelled");
       return Response.json({ booking: updated[0] });
     }
@@ -301,8 +329,10 @@ async function PATCH(request, { params }) {
             reminder_enabled = ${false},
             updated_at = NOW()
         WHERE id = ${appointmentId} AND provider_id = ${providerId}
+          AND booking_status = 'confirmed' AND deleted_at IS NULL
         RETURNING *
       `;
+      if (updated.length === 0) return staleResponse();
       return Response.json({ booking: updated[0] });
     }
 
@@ -321,8 +351,10 @@ async function PATCH(request, { params }) {
       UPDATE vet_appointments
       SET staff_user_id = ${staffUserId}, updated_at = NOW()
       WHERE id = ${appointmentId} AND provider_id = ${providerId}
+      AND booking_status IN ('requested', 'confirmed') AND deleted_at IS NULL
       RETURNING *
     `;
+    if (updated.length === 0) return staleResponse();
     return Response.json({ booking: updated[0] });
   } catch (error) {
     if (error.status === 403) {
