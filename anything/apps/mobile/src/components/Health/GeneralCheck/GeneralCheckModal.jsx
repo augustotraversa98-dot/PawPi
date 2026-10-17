@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -408,7 +409,7 @@ export default function GeneralCheckModal({
         <KeyboardAvoidingView
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -815,7 +816,7 @@ export default function GeneralCheckModal({
       <KeyboardAvoidingView
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: MATERIALS.overlay,
           justifyContent: "flex-end",
         }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

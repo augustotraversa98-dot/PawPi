@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, PawPrint } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
-import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
+import { COLORS, TYPE, SPACING, RADIUS, MATERIALS } from "@/constants/theme";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 // FF2 — a compact "Log a walk" sheet a FAMILY caregiver opens for a pet SHARED with them (from the
@@ -56,7 +56,7 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}>
+      <KeyboardAvoidingAnimatedView style={{ flex: 1, backgroundColor: MATERIALS.overlay, justifyContent: "flex-end" }}>
         <View
           style={{
             backgroundColor: COLORS.cream,

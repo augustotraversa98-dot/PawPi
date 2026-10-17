@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import React, { useState, useEffect } from "react";
 import {
@@ -237,8 +238,8 @@ export default function WellnessCheckRoutineModal({
             `[WellnessCheck] Duplicate check type detected: ${checkType}`,
           );
           Alert.alert(
-            "Already Added",
-            "You already added this check.\nYou can edit its schedule or delete it first.",
+            t("wellnessCheck.alreadyAddedTitle"),
+            t("wellnessCheck.alreadyAddedBody"),
           );
           setShowTypePicker(false);
           return;
@@ -282,7 +283,7 @@ export default function WellnessCheckRoutineModal({
       );
     } catch (err) {
       console.error("[WellnessCheck] Error adding check item:", err);
-      setError(`Could not add check item: ${err.message}`);
+      setError(t("wellnessCheck.addFailed"));
       setShowTypePicker(false);
     }
   };
@@ -325,15 +326,15 @@ export default function WellnessCheckRoutineModal({
       if (editingRoutine?.id) {
         // Existing routine - show delete routine confirmation
         Alert.alert(
-          "Delete Wellness Check Routine?",
-          "This is the last wellness check. Deleting it will remove future wellness reminders. Past wellness history will stay saved.",
+          t("wellnessCheck.deleteLastTitle"),
+          t("wellnessCheck.deleteLastBody"),
           [
             {
-              text: "Cancel",
+              text: t("common.cancel"),
               style: "cancel",
             },
             {
-              text: "Delete routine",
+              text: t("wellnessCheck.deleteRoutine"),
               style: "destructive",
               onPress: async () => {
                 try {
@@ -1021,7 +1022,7 @@ export default function WellnessCheckRoutineModal({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.45)",
+              backgroundColor: MATERIALS.overlay,
               justifyContent: "center",
               alignItems: "center",
               padding: 24,

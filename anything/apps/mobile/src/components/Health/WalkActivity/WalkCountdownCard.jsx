@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import {
   CheckCircle,
@@ -32,6 +33,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
   const [startWalkVisible, setStartWalkVisible] = useState(false);
   const [postWalkVisible, setPostWalkVisible] = useState(false);
   const [walkData, setWalkData] = useState(null);
+  const { t } = useTranslation();
   const { data: currentPet } = useCurrentPet();
 
   const timeDisplay = getTimeDisplay(reminder);
@@ -59,15 +61,15 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
     setPostWalkVisible(false);
     setWalkData(null);
     onComplete(reminder);
-    Alert.alert("✅ Walk completed!", `${walk.name} has been logged`);
+    Alert.alert(t("walkCountdownAlerts.completedTitle"), t("walkCountdownAlerts.completedBody", { name: walk.name }));
   };
 
   const handleLogManually = () => {
     // Just complete the reminder, user can log manually from track section
     onComplete(reminder);
     Alert.alert(
-      "Reminder dismissed",
-      "Log this walk manually from Health → Track when ready",
+      t("walkCountdownAlerts.dismissedTitle"),
+      t("walkCountdownAlerts.dismissedBody"),
     );
   };
 

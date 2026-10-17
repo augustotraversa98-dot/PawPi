@@ -1,5 +1,6 @@
 import * as Calendar from "expo-calendar";
 import { Platform, Alert } from "react-native";
+import { translate } from "@/utils/appAlert";
 import {
   getRecurrenceRule,
   parseWalkTime,
@@ -54,16 +55,16 @@ export async function requestCalendarPermission() {
     // Show rationale before requesting
     return new Promise((resolve) => {
       Alert.alert(
-        "Calendar Access",
-        "PawPi can add walk blocks to your calendar so your time stays protected.",
+        translate("permissionAlerts.calendarTitle", "Calendar access"),
+        translate("permissionAlerts.calendarBody", "PawPi can add walk blocks to your calendar so your time stays protected."),
         [
           {
-            text: "Not now",
+            text: translate("permissionAlerts.notNow", "Not now"),
             style: "cancel",
             onPress: () => resolve(false),
           },
           {
-            text: "Allow calendar access",
+            text: translate("permissionAlerts.allowCalendar", "Allow calendar access"),
             onPress: async () => {
               const { status } =
                 await Calendar.requestCalendarPermissionsAsync();
@@ -207,8 +208,8 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
     const hasPermission = await requestCalendarPermission();
     if (!hasPermission) {
       Alert.alert(
-        "Permission needed",
-        "Calendar access is required to add walk events.",
+        translate("permissionAlerts.permissionNeededTitle", "Permission needed"),
+        translate("permissionAlerts.calendarRequiredBody", "Calendar access is required to add walk events."),
       );
       return false;
     }
@@ -216,8 +217,8 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
     const calendarId = await getOrCreatePawPiCalendar(WALK_CALENDAR);
     if (!calendarId) {
       Alert.alert(
-        "Calendar unavailable",
-        "Could not access or create calendar. Please try again.",
+        translate("permissionAlerts.calendarUnavailableTitle", "Calendar unavailable"),
+        translate("permissionAlerts.calendarUnavailableBody", "Could not access or create the calendar. Please try again."),
       );
       return false;
     }
@@ -246,8 +247,10 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
 
     if (eventId) {
       Alert.alert(
-        "Added to calendar",
-        `Walk block added to your calendar${recurrenceRule ? " as a repeating event" : ""}.`,
+        translate("permissionAlerts.addedTitle", "Added to calendar"),
+        recurrenceRule
+          ? translate("permissionAlerts.addedBodyRepeating", "Walk block added to your calendar as a repeating event.")
+          : translate("permissionAlerts.addedBody", "Walk block added to your calendar."),
       );
       return true;
     }
@@ -255,7 +258,10 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
     return false;
   } catch (error) {
     console.error("[Calendar] Error adding walk to calendar:", error);
-    Alert.alert("Error", "Could not add walk to calendar. Please try again.");
+    Alert.alert(
+      translate("common.error", "Error"),
+      translate("permissionAlerts.addFailedBody", "Could not add the walk to your calendar. Please try again."),
+    );
     return false;
   }
 }

@@ -342,10 +342,7 @@ export default function HealthToday() {
       Alert.alert(t("health.todayView.alertSavedTitle"), t("health.todayView.alertIssueSaved"));
     } catch (err) {
       console.error("[HealthToday] medical care issue save failed", err);
-      Alert.alert(
-        "Could not save",
-        "We couldn't save this entry. Please try again.",
-      );
+      Alert.alert(t("common.error"), t("common.couldNotSave"));
     }
   };
 

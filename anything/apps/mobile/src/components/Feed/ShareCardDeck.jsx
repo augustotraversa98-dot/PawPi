@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 // ShareCardDeck (unit E4) — the branded story-card deck. Lists the templates built from REAL stats;
 // each available card gets a one-tap ShareCardButton, and an unavailable one shows a clean empty
 // state (an honest "unlock" hint) — never a fake number. Reuses the existing capture+share path.
@@ -66,7 +67,7 @@ export function ShareCardDeck({ visible, onClose, petId, petDates }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  backdrop: { flex: 1, backgroundColor: MATERIALS.overlay, justifyContent: "flex-end" },
   sheet: {
     backgroundColor: COLORS.cream,
     borderTopLeftRadius: 24,

@@ -4,7 +4,7 @@ import QRCode from "react-native-qrcode-svg";
 import { X } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
-import { TYPE, RADIUS, SPACING } from "@/constants/theme";
+import { TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { useWalkPickupToken } from "@/hooks/useProviders";
 
 // Owner's "Show pickup QR" (ticket B3). Fetches a short-lived signed token for (pet, provider) and
@@ -31,7 +31,7 @@ export default function WalkPickupQRModal({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: MATERIALS.overlay,
           justifyContent: "center",
           alignItems: "center",
           padding: SPACING.xl,

@@ -5,6 +5,7 @@
 
 import * as Notifications from "expo-notifications";
 import { Platform, Alert } from "react-native";
+import { translate } from "@/utils/appAlert";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { formatScheduledTime } from "./scheduledTimeFormat";
@@ -79,16 +80,16 @@ export async function requestNotificationPermissions() {
       // Show explanation modal first
       return new Promise((resolve) => {
         Alert.alert(
-          "🔔 Enable Reminders",
-          "PawPi can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track.",
+          translate("permissionAlerts.remindersTitle", "Enable reminders"),
+          translate("permissionAlerts.remindersBody", "PawPi can remind you about feeding, walks, medication, and photo checks so your pet's care routine stays on track."),
           [
             {
-              text: "Maybe later",
+              text: translate("permissionAlerts.maybeLater", "Maybe later"),
               style: "cancel",
               onPress: () => resolve(false),
             },
             {
-              text: "Enable reminders",
+              text: translate("permissionAlerts.enableReminders", "Enable reminders"),
               onPress: async () => {
                 const { status } =
                   await Notifications.requestPermissionsAsync();
