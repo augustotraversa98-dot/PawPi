@@ -2,10 +2,11 @@
 //
 // Shows active pack flames (🔥 count + partner) with a friendly "boop" nudge when the friend hasn't
 // closed their ring yet, pending invites to accept, and a way to start a new pack by a friend's
-// @handle. Copy celebrates the run — a broken streak surfaces the best run, never blame.
+// friend picked from a typeahead of their friends. Copy celebrates the run — a broken streak surfaces the best run, never blame.
 
 import React, { useState } from "react";
-import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import {
@@ -14,6 +15,7 @@ import {
   useAcceptPackStreak,
   useBoopPackStreak,
 } from "@/hooks/usePackStreaks";
+import PackFriendPicker from "@/components/Health/PackFriendPicker";
 import { COLORS } from "@/constants/colors";
 
 export function PackStreaksCard({ petId }) {
@@ -22,7 +24,9 @@ export function PackStreaksCard({ petId }) {
   const request = useRequestPackStreak(petId);
   const accept = useAcceptPackStreak(petId);
   const boop = useBoopPackStreak(petId);
-  const [handle, setHandle] = useState("");
+  const router = useRouter();
+  // The friend picked in the typeahead. Free text that isn't a selected friend is never submitted.
+  const [selected, setSelected] = useState(null);
   const [note, setNote] = useState(null);
 
   const active = packs.filter((p) => p.status === "active");
@@ -31,14 +35,24 @@ export function PackStreaksCard({ petId }) {
   const outgoing = packs.filter((p) => p.status === "pending" && p.is_requester);
 
   const doRequest = async () => {
-    const h = handle.trim();
-    if (!h) return;
+    if (!selected) {
+      setNote(t("packStreaks.pickHint"));
+      return;
+    }
     setNote(null);
     try {
-      await request.request(h);
-      setHandle("");
+      await request.request(selected);
+      setNote(t("packStreaks.requested", { name: selected.name }));
+      setSelected(null);
     } catch (e) {
-      setNote(t("packStreaks.requestFailed"));
+      const code = e?.data?.code;
+      if (code === "already_exists") {
+        setNote(t("packStreaks.alreadyExists", { name: selected.name }));
+      } else if (code === "not_a_friend") {
+        setNote(t("packStreaks.notAFriend"));
+      } else {
+        setNote(t("packStreaks.requestFailed"));
+      }
     }
   };
 
@@ -107,23 +121,28 @@ export function PackStreaksCard({ petId }) {
         <Text style={styles.empty}>{t("packStreaks.empty")}</Text>
       ) : null}
 
-      {/* Start a new pack by a friend's @handle */}
+      {/* Start a new pack with a friend: pick from a typeahead of your friends */}
       <View style={styles.addRow}>
-        <TextInput
-          value={handle}
-          onChangeText={setHandle}
-          placeholder={t("packStreaks.handlePlaceholder")}
-          placeholderTextColor={COLORS.mutedBrown}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-          accessibilityLabel={t("packStreaks.handlePlaceholder")}
-        />
+        <View style={{ flex: 1 }}>
+          <PackFriendPicker
+            petId={petId}
+            selected={selected}
+            onSelect={(friend) => {
+              setNote(null);
+              setSelected(friend);
+            }}
+            onClear={() => setSelected(null)}
+            onFindFriends={() => router.push("/search")}
+            disabled={request.isPending}
+          />
+        </View>
         <Pressable
-          style={styles.startBtn}
+          style={[styles.startBtn, !selected && { opacity: 0.55 }]}
           onPress={doRequest}
           disabled={request.isPending}
           accessibilityRole="button"
+          accessibilityState={{ disabled: !selected || request.isPending }}
+          testID="pack-start"
         >
           <Text style={styles.startText}>{t("packStreaks.start")}</Text>
         </Pressable>
@@ -146,12 +165,8 @@ const styles = StyleSheet.create({
   acceptText: { fontSize: 13, fontWeight: "800", color: "#FFF" },
   pending: { marginTop: 10, fontSize: 13, color: COLORS.mutedBrown },
   empty: { marginTop: 8, fontSize: 13, color: COLORS.mutedBrown, lineHeight: 18 },
-  addRow: { flexDirection: "row", alignItems: "center", marginTop: 14, gap: 8 },
-  input: {
-    flex: 1, backgroundColor: COLORS.sand, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
-    color: COLORS.warmBrown, fontSize: 14,
-  },
-  startBtn: { backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 },
+  addRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 14, gap: 8 },
+  startBtn: { backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 44, justifyContent: "center" },
   startText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
   note: { marginTop: 8, fontSize: 12, color: COLORS.terracotta, fontWeight: "600" },
 });
