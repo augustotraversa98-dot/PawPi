@@ -90,7 +90,7 @@ describe("firstIncompleteRequiredStep", () => {
     f.name = "Buddy";
     expect(firstIncompleteRequiredStep(f)).toBe(1); // @handle (empty → invalid)
 
-    f.handle = "buddy_dog"; // valid + not in TAKEN_HANDLES
+    f.handle = "buddy_dog"; // valid format
     expect(firstIncompleteRequiredStep(f)).toBe(2); // breed
 
     f.breed = "Mixed Breed";
@@ -106,8 +106,8 @@ describe("firstIncompleteRequiredStep", () => {
     expect(firstIncompleteRequiredStep(f)).toBeNull(); // complete
   });
 
-  test('a real @handle is required — a "taken" one does not satisfy it', () => {
-    const f = { ...blankForm(), name: "Buddy", handle: "max" }; // max ∈ TAKEN_HANDLES
+  test("a real @handle is required — a reserved one does not satisfy it", () => {
+    const f = { ...blankForm(), name: "Buddy", handle: "admin" };
     expect(firstIncompleteRequiredStep(f)).toBe(1);
   });
 
@@ -242,7 +242,7 @@ describe("OnboardingScreen — step-0 back arrow returns to the photo screen", (
 
 // Ticket: validate pet-handle uniqueness at step 2 (where it's chosen), not only
 // at the final review step. A handle can be free in the client's mock
-// TAKEN_HANDLES list (checkHandleUniqueness) yet already exist on a real pet, so
+// local format rules yet already exist on a real pet, so
 // step 2 also debounces a call to GET /api/pets/handle-availability — the same
 // uniqueness source POST /api/pets already enforces at creation.
 describe("OnboardingScreen — live handle-availability check (step 2)", () => {
@@ -274,9 +274,12 @@ describe("OnboardingScreen — live handle-availability check (step 2)", () => {
       "brandnewhandle",
     );
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-    expect(global.fetch.mock.calls[0][0]).toContain(
-      "/api/pets/handle-availability?handle=brandnewhandle",
+    await waitFor(() =>
+      expect(
+        global.fetch.mock.calls.some(([u]) =>
+          String(u).includes("/api/pets/handle-availability?handle=brandnewhandle"),
+        ),
+      ).toBe(true),
     );
     await waitFor(() =>
       expect(screen.getByTestId("onboarding-handle-checking")).toBeTruthy(),
@@ -677,5 +680,84 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
     await waitFor(() => expect(postsToPets()).toHaveLength(1));
     expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
     expect(mockNoteBounce).not.toHaveBeenCalled();
+  });
+});
+
+// Night run #2 PR B — suggestions, alternatives chips and the save-time race.
+describe("OnboardingScreen — server suggestions, alternatives and save race (PR B)", () => {
+  const originalFetch = global.fetch;
+  // The wizard persists its progress in AsyncStorage; start each case from a clean slate so a
+  // previous case's handle is not restored on top of this one.
+  beforeEach(async () => {
+    const mod = require("@react-native-async-storage/async-storage");
+    await (mod.default ?? mod).clear();
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const respond = (routes) =>
+    jest.fn((url) => {
+      const key = Object.keys(routes).find((k) => String(url).includes(k));
+      return Promise.resolve({ ok: true, json: async () => routes[key] ?? {} });
+    });
+
+  function goToHandleStep() {
+    const screen = render(<OnboardingScreen />);
+    fireEvent.changeText(screen.getByTestId("onboarding-name"), "Buddy");
+    fireEvent.press(screen.getByTestId("onboarding-next"));
+    return screen;
+  }
+
+  test("the field is pre-filled with the first FREE server suggestion and Next unlocks once checked", async () => {
+    global.fetch = respond({
+      "handle-suggestions": { default: "buddy2", suggestions: ["buddy2", "buddy.paws"] },
+      "handle-availability": { available: true },
+    });
+    const screen = goToHandleStep();
+
+    await waitFor(
+      () => expect(screen.getByTestId("onboarding-handle-input").props.value).toBe("buddy2"),
+      { timeout: 4000 },
+    );
+    expect(screen.getByText("@buddy.paws")).toBeTruthy();
+    await waitFor(
+      () => expect(screen.getByTestId("onboarding-next").props.accessibilityState?.disabled).toBe(false),
+      { timeout: 4000 },
+    );
+  });
+
+  test("a taken handle shows tappable free alternatives; tapping one fills the field", async () => {
+    global.fetch = respond({
+      "handle-suggestions": { suggestions: [] },
+      "handle-availability?handle=popular2": { available: true },
+      "handle-availability?handle=popular": { available: false, alternatives: ["popular2", "popular.paws"] },
+    });
+    const screen = goToHandleStep();
+    fireEvent.changeText(screen.getByTestId("onboarding-handle-input"), "popular");
+
+    const chip = await screen.findByTestId("onboarding-handle-alt-popular2", {}, { timeout: 4000 });
+    expect(screen.getByTestId("onboarding-handle-error").props.children).toBe(
+      "This handle is already taken",
+    );
+    fireEvent.press(chip);
+    expect(screen.getByTestId("onboarding-handle-input").props.value).toBe("popular2");
+    await waitFor(
+      () => expect(screen.getByTestId("onboarding-next").props.accessibilityState?.disabled).toBe(false),
+      { timeout: 4000 },
+    );
+  });
+
+  test("an invalid handle explains the rule and keeps Next disabled (no network check)", async () => {
+    global.fetch = respond({ "handle-suggestions": { suggestions: [] } });
+    const screen = goToHandleStep();
+    fireEvent.changeText(screen.getByTestId("onboarding-handle-input"), "ab");
+    expect(screen.getByTestId("onboarding-handle-error").props.children).toBe(
+      "Use at least 3 characters",
+    );
+    expect(screen.getByTestId("onboarding-next").props.accessibilityState?.disabled).toBe(true);
+    expect(
+      global.fetch.mock.calls.some(([u]) => String(u).includes("handle-availability")),
+    ).toBe(false);
   });
 });

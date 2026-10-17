@@ -38,13 +38,50 @@ describe('GET /api/pets/handle-availability — authenticated path', () => {
   it('handle already on a pet -> 200 { available: false }', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 1 }]);
+    sql.mockResolvedValueOnce([]); // alternatives lookup: none of the variants is taken
 
     const res = await GET(
-      new Request('http://localhost/api/pets/handle-availability?handle=max'),
+      new Request('http://localhost/api/pets/handle-availability?handle=maximus'),
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ available: false });
+    const body = await res.json();
+    expect(body.available).toBe(false);
+    // Up to 3 FREE alternatives, none equal to the requested handle.
+    expect(body.alternatives).toHaveLength(3);
+    expect(body.alternatives).not.toContain('maximus');
+    // Reveals nothing about the holder.
+    expect(Object.keys(body).sort()).toEqual(['alternatives', 'available']);
+  });
+
+  it('invalid format -> available:false with a reason code, never touches the DB', async () => {
+    auth.mockResolvedValue(SESSION);
+
+    const res = await GET(
+      new Request('http://localhost/api/pets/handle-availability?handle=ab'),
+    );
+
+    expect(await res.json()).toEqual({
+      available: false,
+      valid: false,
+      reason: 'too_short',
+    });
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('reserved word -> not available, never touches the DB', async () => {
+    auth.mockResolvedValue(SESSION);
+
+    const res = await GET(
+      new Request('http://localhost/api/pets/handle-availability?handle=@Admin'),
+    );
+
+    expect(await res.json()).toEqual({
+      available: false,
+      valid: false,
+      reason: 'reserved',
+    });
+    expect(sql).not.toHaveBeenCalled();
   });
 
   it('normalizes the handle (lowercase, trims, strips a leading @) before querying', async () => {

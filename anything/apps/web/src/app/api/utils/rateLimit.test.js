@@ -243,6 +243,7 @@ describe('the limit catalog', () => {
       'emergency_public_read',
       'emergency_relay',
       'follow_toggle',
+      'handle_check',
       'paw_toggle',
       'post_create',
       'report_create',

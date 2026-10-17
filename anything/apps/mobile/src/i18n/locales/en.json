@@ -2167,6 +2167,17 @@
     "handlePlaceholder": "custom_handle",
     "handleChecking": "Checking availability…",
     "handleTaken": "This handle is already taken",
+    "handleAvailable": "Available",
+    "handleTakenAlternatives": "Try one of these:",
+    "handleUnverified": "Couldn't check right now. We'll confirm when you continue.",
+    "handleSaveTaken": "Someone just took that handle. Pick another one.",
+    "handleReason": {
+      "empty": "Pick a handle",
+      "too_short": "Use at least 3 characters",
+      "too_long": "Use 20 characters or fewer",
+      "invalid_chars": "Use lowercase letters, numbers, _ or . and start with a letter or number",
+      "reserved": "That handle is reserved. Try another one."
+    },
     "breedTitle": "What breed is {{name}}?",
     "breedSubtitle": "This helps us personalize care recommendations",
     "breedMixed": "Mixed Breed",

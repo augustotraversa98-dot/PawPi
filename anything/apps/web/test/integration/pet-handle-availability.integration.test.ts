@@ -72,7 +72,7 @@ describe('GET /api/pets/handle-availability', () => {
     await seedOwnerWithPet(raw, A);
     authState.session = { user: { id: A.authUserId, email: 'a@example.com', name: 'A' } };
 
-    const res = await GET(new Request(url('totally_unused_handle')));
+    const res = await GET(new Request(url('totally_unused')));
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ available: true });
@@ -86,7 +86,7 @@ describe('GET /api/pets/handle-availability', () => {
     const res = await GET(new Request(url(pet.handle)));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ available: false });
+    expect(await res.json()).toMatchObject({ available: false });
   });
 
   it("reports a DIFFERENT owner's handle as taken too (pets_authed_read is any-signed-in-user, not owner-scoped)", async () => {
@@ -99,7 +99,7 @@ describe('GET /api/pets/handle-availability', () => {
     const res = await GET(new Request(url(petB.handle)));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ available: false });
+    expect(await res.json()).toMatchObject({ available: false });
   });
 
   it('normalizes case/whitespace/@ before matching a stored lowercase handle', async () => {
@@ -110,7 +110,7 @@ describe('GET /api/pets/handle-availability', () => {
     const res = await GET(new Request(url(`  @${pet.handle.toUpperCase()}  `)));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ available: false });
+    expect(await res.json()).toMatchObject({ available: false });
   });
 
   it('anonymous -> 401, never touches the DB result', async () => {

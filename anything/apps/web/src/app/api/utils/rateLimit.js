@@ -74,6 +74,9 @@ export const RATE_LIMITS = {
   upload_create: { limit: 30, windowSeconds: 300 }, // caps storage/cost flooding
   checkout_create: { limit: 15, windowSeconds: 3600 }, // mirrors booking_create
   dm_message_create: { limit: 60, windowSeconds: 60 }, // fast enough for a real back-and-forth
+  // Pet-handle availability + suggestions (debounced typeahead). A READ, limited only to stop
+  // handle enumeration/scraping; 90/min is far above a person typing (~1 check per 400 ms pause).
+  handle_check: { limit: 90, windowSeconds: 60 },
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';

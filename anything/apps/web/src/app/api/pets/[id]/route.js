@@ -1,7 +1,32 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import {
+  normalizeHandle,
+  handleFormatCode,
+  takenAmong,
+  alternativesFor,
+  isHandleUniqueViolation,
+} from "@/app/api/utils/petHandle";
 import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+
+// 409 for a taken handle: friendly copy plus up to 3 free alternatives (additive for old clients).
+async function handleTakenResponse(handle) {
+  let alternatives = [];
+  try {
+    alternatives = await alternativesFor(sql, handle, 3);
+  } catch {
+    alternatives = [];
+  }
+  return Response.json(
+    {
+      error: "That handle was just taken. Pick another one.",
+      code: "handle_taken",
+      alternatives,
+    },
+    { status: 409 },
+  );
+}
 
 // Update a specific pet
 async function PATCH(request, { params }) {
@@ -73,21 +98,32 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Pet name is required" }, { status: 400 });
     }
 
-    // Check handle uniqueness if provided and different from current
-    if (handle && handle !== existingPet[0].handle) {
-
-      const existing = await sql`
-        SELECT id FROM pets 
-        WHERE handle = ${handle} AND id != ${petId}
-        LIMIT 1
-      `;
-
-      if (existing.length > 0) {
-        console.error("[PATCH /api/pets/[id]] ERROR: Handle already taken");
-        return Response.json(
-          { error: "Handle already taken" },
-          { status: 400 },
-        );
+    // Handle edit: normalize, validate with the SAME rules as the app, compare case-insensitively
+    // (the pet's own current handle is always fine). Taken -> friendly 409 with free alternatives.
+    // A blank/null handle means "no change" — a pet is never left without one.
+    let nextHandle;
+    if (handle !== undefined && handle !== null && String(handle).trim() !== "") {
+      nextHandle = normalizeHandle(handle);
+      if (nextHandle !== String(existingPet[0].handle || "").toLowerCase()) {
+        const reason = handleFormatCode(nextHandle);
+        if (reason) {
+          return Response.json(
+            {
+              error: "That handle can't be used. Try a different one.",
+              code: "handle_invalid",
+              reason,
+            },
+            { status: 400 },
+          );
+        }
+        const taken = await sql`
+          SELECT id FROM pets
+          WHERE lower(handle) = ${nextHandle} AND id != ${petId}
+          LIMIT 1
+        `;
+        if (taken.length > 0) {
+          return await handleTakenResponse(nextHandle);
+        }
       }
     }
 
@@ -113,9 +149,9 @@ async function PATCH(request, { params }) {
       updates.push(`name = $${paramIndex++}`);
       values.push(name);
     }
-    if (handle !== undefined) {
+    if (nextHandle !== undefined) {
       updates.push(`handle = $${paramIndex++}`);
-      values.push(handle);
+      values.push(nextHandle);
     }
     if (avatar_url !== undefined) {
       updates.push(`avatar_url = $${paramIndex++}`);
@@ -175,7 +211,16 @@ async function PATCH(request, { params }) {
         RETURNING *
       `;
 
-      const result = await sql.unsafe(updateQuery, values);
+      let result;
+      try {
+        // Savepoint so a same-handle race is a handled 409, not an aborted transaction.
+        result = await withSavepoint(() => sql.unsafe(updateQuery, values));
+      } catch (updateError) {
+        if (isHandleUniqueViolation(updateError)) {
+          return await handleTakenResponse(nextHandle);
+        }
+        throw updateError;
+      }
       updatedPet = result[0];
     }
 
