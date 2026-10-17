@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // Resolve the caller's user_profiles.id and verify they own followerPetId.
 // Returns { error, status } on failure, or { userId } on success.
@@ -78,6 +79,12 @@ async function POST(request, { params }) {
 
     if (followedPet.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
+    }
+
+    // A blocked pair (either direction) cannot follow each other — enforced on the API, not just in
+    // the UI (flow audit F2-05). Generic copy: never reveals who blocked whom.
+    if (await isBlockedBetween(owner.userId, followedPet[0].owner_user_id)) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
     }
 
     // Idempotent: a repeat follow is a no-op, not a duplicate. RETURNING tells us

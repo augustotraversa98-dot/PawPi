@@ -328,3 +328,333 @@ No bug above requires an index or RLS change.
 4. F1-09/F1-10 (bell), F1-12, F1-08 decision.
 5. F1-11 migration (human), F1-15/F1-16/F1-17/F1-18 server tweaks.
 
+
+---
+
+
+### Status after PR F2
+
+| Bug | Status | Where |
+|---|---|---|
+| F2-01 incoming DMs: no notification/push/badge | OPEN — bell row needs a new notification type (**SQL-1**, needs human); badge via the unused `/api/dm-threads/unread-count` is a client change not done tonight | — |
+| F2-02 caregiver/family invite silent | NEEDS-HUMAN (SQL-1 for new notification types) | — |
+| F2-03 "caregiver" role can read nothing through the API | OPEN — touches many read routes (medium risk) | — |
+| F2-04 legacy `username` leaks / `granteeUserId` enumeration | OPEN — fixed at the data level by migration 0133 (human-applied) | — |
+| F2-05 blocks not enforced on follow & paw | **FIXED** (403 either direction, no row, no notification) + hidden posts can't be pawed | `pets/[id]/follow`, `posts/[id]/paw` |
+| F2-06 blocks not enforced elsewhere | **FIXED** for DM thread start, caregiver invite, lost sighting, forum vote; OPEN for pack request (inside the DEFINER fn → SQL-1) and walk join/invite | `dm-threads`, `pet-caregivers`, `lost-reports/[id]/sightings`, `forum/vote` |
+| F2-08 duplicate paw → two notifications | **FIXED** (notify only when the INSERT returned a row) | `posts/[id]/paw` |
+| F2-09 notification spam by toggling | NEEDS-HUMAN (SQL-1 dedupe inside `app_notify`) | — |
+| F2-10 ended pack can't restart / invites can't be declined | NEEDS-HUMAN (SQL-2); friendly distinct 409 added in PR C | — |
+| F2-11 pack invites unlimited | **FIXED** (`pack_request` bucket 10/h) | `pets/[id]/pack-streaks` |
+| F2-12…F2-28 | OPEN (see entries) | — |
+| (new, found while fixing) caregiver-invite duplicate and lost-sighting RLS rejection were *handled* errors that aborted the request transaction → **500 instead of 409/404** | **FIXED** (savepoints) | `pet-caregivers`, `lost-reports/[id]/sightings` |
+| (new) forum vote accepted any target id | **FIXED** (404 for missing/hidden target) | `forum/vote` |
+
+Product facts established while tracing: the real social graph is **one-way follows** (`pet_follows`); `pet_friendships` has no creation path in the app (F2-15), so "friend" features key on **mutual follow OR accepted friendship** (PR C).
+
+## F2 — Owner ↔ owner
+
+Repo: /Users/augustotraversa/Desktop/Pawpi/2026_05_23_Pawpi  (web = anything/apps/web/src/app/api, mobile = anything/apps/mobile/src, SQL = supabase/migrations)
+Method: read every route, the DB helper it calls, the RLS/DEFINER SQL, the mobile hook and the recipient screen. No DB was touched. Path prefix `api/` below = `anything/apps/web/src/app/api/`; `m/` = `anything/apps/mobile/src/`.
+
+Legend for "verified": YES = read end to end (route + SQL + recipient screen). Severity: High / Med / Low.
+
+## 0. Ground truths confirmed up front
+
+* `pet_follows` is the real social graph (0012; unique (follower,followed), no-self check; RLS any-authed read, write only if you own the FOLLOWER pet - 0021 l.98-128).
+* `pet_friendships` has NO creation path in the app: the only `INSERT INTO pet_friendships` are in `test/integration/*.ts` and `scripts/demo-seed`. CONFIRMED. Yet four features read it as if friends existed: `api/social-walks/route.js:349-390` (friends_only discovery), `api/pets/[id]/reengagement/route.js:72-90`, `api/pets/[id]/weekly-digest/route.js:152-160`, and SQL `app_leaderboard` friends cohort (`0098_engagement_leaderboards.sql:133-138`). In production all four are permanently empty / solo. (F2-15)
+* "pack-friends" route does not exist (only `api/pets/[id]/pack-streaks`). Pack requests are by partner @handle and require NO friendship/follow.
+* "Mentions": there is no @mention feature anywhere (grep of web+mobile: only unrelated hits). Nothing to trace; not a bug, a gap.
+* In-app bell rows (`notifications` via `app_notify`, 0044/0108) are the ONLY channel for paw/bark/follow/pack_invite/pack_accepted/boop/lost_alert/emergency_contact. None of them is a phone push: `api/utils/notificationCategories.js:67-71` returns IN_APP_ONLY for every non-business type; `OWNER_PUSH_TYPES` (`api/utils/ownerNotifications.js:25-35`) pushes only digest/winback/booking/adoption/walk_request_accepted/lost_alert and only when `NOTIF_V2_ENABLED` is on.
+* Bell BADGE counts server rows only while `NOTIF_V2_ENABLED` is on (`api/notifications/route.js:52-61`, `m/utils/bellBadge.js`). With the flag off (default) a paw/bark/follow/pack invite never lights the badge.
+* `app_notify` (0108 version, `supabase/migrations/0108_notification_prefs.sql:71-115`) has NO block check and NO dedupe; it only skips self/NULL recipients.
+* Blocks: `app_user_is_blocked` (0065) is either-direction and used on READ paths (feed, search, forum, lost list, walks discovery, pet profile 404) and as a WRITE gate (`isBlockedBetween`) in exactly THREE routes: bark create, DM send, forum comment create.
+
+## 1. FLOW MATRIX
+
+| # | Flow | Trigger | Expected DB rows / state (BOTH sides) | Expected notification (recipient / type / text / deep-link / read) | Verified | BUG? |
+|---|------|---------|----------------------------------------|---------------------------------------------------------------------|----------|------|
+| 1 | Follow pet | `m/hooks/usePetSocialProfile.js:58` -> POST `api/pets/[id]/follow` (`route.js:50`) | `pet_follows(follower_pet_id=my pet, followed_pet_id=target)` ON CONFLICT DO NOTHING (`route.js:85-90`). Followed side: `followers` +1 (profile `route.js:99`, follows list). Follower side: `following` +1 (own profile). Response returns followersCount only; mobile invalidates only `["petProfile", petId]` (`usePetSocialProfile.js:105`) so the follower's own `following` count and `["follows",...]` list (staleTime 30 s) lag. Ownership of follower pet enforced (`route.js:27-31`), self-follow 400 (`:67`). | to followed pet's OWNER only (`recipient = followedPet.owner_user_id`, `route.js:94-100`), type `follow`, EN "started following your pet" / ES "empezo a seguir a tu mascota" (client i18n `notifications.type_follow`), unread. Deep link: `subject_ref = followedPetId` (the RECIPIENT's own pet) -> tap opens the recipient's own pet profile, not the follower's (`notifications.jsx:391`). No self-notify (safeNotify skips recipient===actor). Same-owner pet->pet follow: skipped correctly. | YES | F2-05, F2-09, F2-18 |
+| 2 | Unfollow | DELETE same route (`route.js:113`) | row deleted; counts -1 both sides; idempotent (DELETE of absent row = 200). Previous bell row is NOT retracted. | none | YES | F2-09 |
+| 3 | Followers/Following lists | GET `api/pets/[id]/follows` | public pet cards; `is_following` for viewer pet. No block / banned filter (`route.js:58-87`). | - | YES | F2-23 |
+| 4 | Friendships | (no creation path) | `pet_friendships` stays empty forever | - | YES | F2-15 |
+| 5 | Paw post | POST `api/posts/[id]/paw` | `post_paws(post_id,user_id)` unique (0004). Existing check then `INSERT ... ON CONFLICT DO NOTHING` WITHOUT `RETURNING` (`route.js:44-62`). paw_count recomputed. Already-pawed returns `{message}` with no `paw_count` (`:51`). | post OWNER only, type `paw`, EN "pawed your post" / ES "le dio una patita a tu publicacion", unread. NOT guarded by "was this a new row" (`:72-78`) -> duplicates on race; re-paw after un-paw re-notifies. Deep link: tap -> `router.back()` (`notifications.jsx:582`), post never opened. Self: none. | YES | F2-08, F2-09, F2-05, F2-18 |
+| 6 | Un-paw | DELETE same route | row removed, count -1; bell row stays | none | YES | F2-09 |
+| 7 | Bark (comment) | POST `api/posts/[id]/barks` | `post_barks(post_id,user_id,pet_id,text)`; pet ownership checked (`route.js:82-93`); content filter (`:74`); blocked pair 403 vs post owner (`:106`); rate limit 30/5 min. GET filters hidden + blocked authors (`:27-28`). | post OWNER only, type `bark`, "barked on your post" / "dejo un ladrido en tu publicacion"; no self; tap -> `router.back()`. Bark text not in the notification (fine). | YES | F2-18 (deep link), F2-22 (counts) |
+| 8 | Delete bark | DELETE `api/posts/[id]/barks/[barkId]` | author-scoped hard delete (`route.js:40-44`); IDOR-safe; counts -1 | existing bell row remains (orphan, harmless: tap just goes back) | YES | none |
+| 9 | Delete post | DELETE `api/posts/[id]` | cascade removes paws/barks | bell rows remain | YES | none |
+| 10 | Edit post caption | PATCH `api/posts/[id]` | author-scoped | - | YES | F2-16 (no content filter) |
+| 11 | Mentions | - | not implemented | - | YES | gap, not bug |
+| 12 | Pack request | POST `api/pets/[id]/pack-streaks` `{action:"request", partner_handle}` -> `app_request_pack_streak` (0097:70-108) | `pet_pack_streaks` row `pending`; one row per UNORDERED pair (unique idx `0097:36-37`). Returns NULL (-> HTTP 409 "check the @handle, or a pack may already exist", `route.js:76-81`) for unknown handle, own pet, OR ANY existing row for the pair incl. status `ended`. No friendship, no block, no rate limit. | partner OWNER, type `pack_invite`, EN "invited you to a pack streak" / ES "te invito a una racha en manada", unread; tap -> `router.back()` (invite is accepted from Health tab card, user is not sent there). | YES | F2-10, F2-11, F2-06 |
+| 13 | Pack accept | `action:"accept"` -> `app_accept_pack_streak` (0097:113-129) | receiver only, only from `pending`; sets `active` | requester OWNER, `pack_accepted`, "accepted your pack streak" | YES | none (idempotent: 2nd call -> 409) |
+| 14 | Pack end / decline / cancel | `action:"end"` (`route.js:115-119`) plain UPDATE to `ended`, no status guard, no notification, no UI (`PackStreaksCard.jsx` has no end/decline/cancel button; `useEndPackStreak` is unused) | `ended` is TERMINAL: the pair can never start another pack (see F2-10) | none | YES | F2-10 |
+| 15 | Pack advance | ring close -> `care-ring/route.js:223-228` -> `app_advance_pack_streaks` (0097:137-174) | both closed same day -> count +1 / restart at 1; count is never reset on a gap | none | YES | F2-12 |
+| 16 | Boop | `action:"boop"` -> `app_pack_boop` (0097:180-223) | no row; 1 boop/pack/actor/UTC day computed from `notifications` | partner OWNER `boop` "booped you - finish your ring" - in-app only (never a phone push), so a nudge nobody sees in time | YES | F2-18 |
+| 17 | Walk with buddies - create | POST `api/social-walks` | `social_walks`; private walk -> `social_walk_invites` rows (`route.js:126-146`, ON CONFLICT DO NOTHING, invalid user id -> FK 23503 -> whole request 500); `friends_only` branch builds a friend list then does nothing (`:149-168`) | NONE to invitees (no safeNotify anywhere in the file). Invitee only sees it by opening nearby-walks "invited" tab (`GET ?invited=true`, `:225-262`, block-filtered). No invitee accept/decline route exists although 0046 RLS allows it. | YES | F2-13, F2-14, F2-15 |
+| 18 | Walk join request | POST `api/social-walks/[id]/join-request` | `social_walk_join_requests` pending (always - `approval_required=false` ignored, `route.js:108`); no visibility/hidden/block/past-date check (`:47-57`); message stored unfiltered (`:107`) | owner: NONE ("This will be handled via a notification system", `:114-115`). | YES | F2-13, F2-14, F2-06 |
+| 19 | Walk approve / decline | POST `.../approve`, `.../decline` | status flips (owner-scoped `:28-31`, `:54-59`); approve does not check walk still scheduled | requester: NONE (`approve:69`, `decline:56` are TODO comments) | YES | F2-13 |
+| 20 | Join-request list (owner) | GET `.../join-request` | returns `up.username AS requester_username` (`route.js:182`) | - | YES | F2-04 |
+| 21 | DM start thread | POST `api/dm-threads` | `dm_threads(user_a<user_b)` unique pair; idempotent reuse. Any authed user, any integer id, no relationship/block/ban check (`route.js:82-121`), no rate limit. Empty thread appears in the recipient's inbox (GET lists all threads, `:56-60`). | none | YES | F2-21, F2-06 |
+| 22 | DM send | POST `api/dm-threads/[id]/messages` | `dm_messages` (RLS: sender=caller and participant), bump `last_message_at`; blocked pair -> 403 (`:114`); content filter (`:102`); 60/min; `image_url` stored as any string (`:89-92`) | **NONE**: no `safeNotify`, no push, no bell row (`route.js:122-146`). Receiver learns only by opening Messages (polls 15 s, `useDMs.js:8`). `/api/dm-threads/unread-count` is never called by the app (only listed in `m/telemetry/apiRoutes.js:48`); the Feed header message icon has no badge (`FeedHeader.jsx:77-79`). | YES | F2-01, F2-20, F2-21 |
+| 23 | DM read / unread | POST `.../read`, list `unread_count` | read_at set for messages from other side (`read/route.js:30-37`); chat marks read on `rawMessages.length` change (`chat.jsx:53-57`) - stalls once 50 msgs loaded (limit 50). List `unread_count` and `last_message_body` include moderator-hidden messages (`dm-threads/route.js:42-55`); `unread-count` too (`unread-count/route.js:19-26`) | - | YES | F2-20, F2-21 |
+| 24 | Family/caregiver invite | POST `api/pet-caregivers` (by `granteeUsername` or `granteeUserId`) | `pet_caregivers` pending (+ audit 'grant'); owner of pet enforced (`route.js:96-101`); self 400; unique live (pet,grantee) -> 409; `expiresAt` accepted unvalidated (`:89`), not settable from the app UI (`pet-sharing.jsx:84`); no block check | grantee: **NONE**. Grantee must open More > Family & caregivers > "Shared with me" to find it. | YES | F2-02, F2-04, F2-06, F2-19 |
+| 25 | Caregiver accept/decline | POST `api/pet-caregivers/[id]/respond` -> `respond_pet_caregiver` (0049:98-127) | pending -> active/declined (+audit); grantee-pinned DEFINER, cannot alter role/scopes | owner: NONE | YES | F2-02 |
+| 26 | What the grantee can actually do | RLS 0049 6a-6d vs API | RLS lets ANY active grantee SELECT pets/routines/medical profile and FAMILY write ~18 health tables. The API read routes are owner-only (`routines/route.js:36-59`, `pets/[id]/route.js:66`, `pets/route.js:80`, `pet-medical-profiles/route.js:49,73`, `health/medications/route.js:33`, `health/timeline/route.js:74-116`). Only reachable grantee surfaces: health-log POSTs gated by `resolvePetLogOwner` (`utils/petLogAccess.js`), care-ring shared ring, `api/household` co-cared list, "Log a walk". A `caregiver` (viewer) role can read NOTHING through the app though the intro copy promises "a scoped view". | - | YES | F2-03 |
+| 27 | Revoke | DELETE `api/pet-caregivers/[id]` | `status='revoked'`, audit row; access gone instantly (RLS `status='active'` in helpers 0049:60-72). Revoked rows REMAIN in the owner's list (`GET` filters only `declined`, `route.js:63`) and tapping the bin again 404s ("Failed to revoke"). Expired-but-'active' grants are never flipped to 'expired' and still occupy the unique live index. | grantee: NONE (list just changes on next fetch) | YES | F2-19, F2-02 |
+| 28 | Lost - activate | POST `api/lost-reports` | `lost_reports` active (unique per pet, `:124`); content filter on notes/area only (reward unfiltered, `:103`); no lat/lng range check (`:99-100`) | each FOLLOWER-pet owner (not "nearby users"): `app_notify(..,'lost_alert', petId, "<Pet> is missing near <area>. Keep an eye out!")` hard-coded English body (`:142-143`); bell shows body raw (no i18n key, `notifications.jsx:386`); push only if `NOTIF_V2_ENABLED` + pref (`ownerNotifications.js:34`); tap -> back, no deep link; unbounded loop inside request. | YES | F2-17, F2-18, F2-26 |
+| 29 | Lost - sighting | POST `api/lost-reports/[id]/sightings` | `lost_sightings` (RLS: report must be active); note/photo unfiltered, `photoUrl` unvalidated (`:23-26`); no rate limit, no block check | owner: `lost_alert`, `subject_ref = reportId` (differs from #28 where it is petId), English "New sighting reported for your lost pet" | YES | F2-16, F2-17, F2-06 |
+| 30 | Lost - resolve | POST `.../resolve` | status resolved (owner-scoped `:21-26`) | followers get no "found" update | YES | F2-17 (gap) |
+| 31 | Emergency tag contact (anonymous) | POST `api/public/emergency/tag/[token]/contact` -> `app_emergency_relay_contact` (0051:175-198) | none | owner: `emergency_contact`, actor NULL, body = stranger's raw text (<=500, unfiltered). Bell title falls back to localized "Pet parent" (actor null) which mislabels a stranger as a pet parent; body not localized; IP rate limit 10/h. | YES | F2-16, F2-17 |
+| 32 | Forum thread / comment / vote | `api/forum/*` | threads/comments soft-delete, author-only edit (RLS); list/detail hide hidden + blocked authors; comment create blocked-pair check only vs THREAD author (`comments/route.js:47`); vote via DEFINER `forum_vote` (0047:156-199) with no target validation | none (no reply/vote notifications exist) | YES | F2-07, F2-16, F2-22, F2-24 |
+| 33 | Block user | POST `api/blocks` (mobile: `useModeration.js:54` only) | `user_blocks` live pair, idempotent; GET/DELETE routes exist but are NEVER called by the app: no blocked-list, no unblock | - | YES | F2-05, F2-06, F2-23 |
+| 34 | Bell list / mark read | GET `api/notifications`, POST `.../read` | recipient-scoped (WHERE + RLS) - IDOR safe (`read/route.js:35-49`); actor shown by `full_name` only (QA bug 04 fixed) ; no block / hidden-target filter | - | YES | F2-27, F2-28 |
+
+## 2. Block enforcement matrix (every interaction surface)
+
+| Surface | Enforced? | Where |
+|---|---|---|
+| Feed / search / pet profile (404) / lost list / walks discovery / forum read / bark read | YES (read filter) | multiple |
+| Bark create | YES (post author only) | `posts/[id]/barks/route.js:106` |
+| DM send | YES | `dm-threads/[id]/messages/route.js:114` |
+| Forum comment create | PARTIAL - thread author only, not parent-comment author | `forum/threads/[id]/comments/route.js:47` |
+| Follow pet | **NO** | `pets/[id]/follow/route.js:50-110` |
+| Paw | **NO** | `posts/[id]/paw/route.js:8-88` |
+| Pack request | **NO** | `0097:70-108` |
+| Walk join request / invite | **NO** (invite hidden only on invitee read) | `join-request/route.js`, `social-walks/route.js:138-145` |
+| Caregiver invite | **NO** | `pet-caregivers/route.js:117` |
+| DM thread start | **NO** | `dm-threads/route.js:82-121` |
+| Lost sighting | **NO** | `sightings/route.js` |
+| Forum vote | **NO** | `forum/vote/route.js:34` |
+| Notification creation (`app_notify`) | **NO** | `0108:71-115` |
+| Existing follows / packs / caregiver grants / DM threads when a block is created | NOT cleaned up | - |
+| Unblock | no UI at all | `useModeration.js` |
+
+## 3. BUGS FOUND (all confirmed by reading code)
+
+### F2-01  HIGH  - Incoming DMs produce no notification, no push, no unread badge
+* Files: `api/dm-threads/[id]/messages/route.js:122-146` (INSERT + bump only; no `safeNotify`); `m/components/Feed/FeedHeader.jsx:77-79` (message icon has no badge; bell badge = reminders + pending care grants + DB notifications only, `:51-55`); `/api/dm-threads/unread-count` has no mobile caller (grep: only `m/telemetry/apiRoutes.js:48`).
+* Scenario: A sends B "Is Rex coming to the park?". B's phone is silent, bell empty, header icon unchanged. B sees it only if she opens Messages (15 s poll).
+* Minimal fix (code only, no migration): add `useDmUnreadCount()` (GET `/api/dm-threads/unread-count`, `refetchInterval` 60 s, `retry:false`) and render a count dot on the MessageCircle `HeaderIconButton`; also add its result into `bellBadgeCount` or a separate dot. For a bell row + push: `safeNotify({recipient: otherUserId, actor: userId, type:'dm_message', subjectRef:String(threadId), body:'sent you a message'})` after the INSERT - BUT `notifications_type_check` rejects the type -> **NEEDS-HUMAN (SQL-1 below)**. Until then `safeNotify` would swallow the error (it never throws) so the code change is safe to ship first.
+* Test: unit (route test with mocked sql + `vi.mock` of notify: assert `safeNotify` called once with recipient = other participant); badge via RNTL on FeedHeader. Integration to prove the CHECK widen.
+* Risk: low for badge; push volume needs a per-thread dedupe (one push per unread burst).
+
+### F2-02  HIGH(Med-High)  - Caregiver/family invite, accept, decline and revoke are completely silent
+* Files: `api/pet-caregivers/route.js:125-148` (no notify), `api/pet-caregivers/[id]/respond/route.js:29` , `api/pet-caregivers/[id]/route.js:22-35`; recipient screen `m/app/pet-sharing.jsx:229-291` is the only place pending invites show (bell merges only provider `care_access_grants`, `notifications.jsx:506-508`).
+* Scenario: owner invites B as family. B is never told; the grant stays `pending`. Owner is never told B accepted/declined; B is never told of revocation.
+* Fix: after INSERT call `safeNotify({recipient: granteeId, actor: userId, type:'caregiver_invite', subjectRef:String(created[0].id)})`; in respond route read the grant's owner (`SELECT owner_user_id`) and notify `caregiver_accepted`/declined. Needs new notification types -> **NEEDS-HUMAN (SQL-1)**. Code-only interim: add pending-invite count to `bellBadgeCount` (`useSharedWithMe` where status==='pending') and to `notifications.jsx` as an "access" style item, exactly like `mapAccessGrant`.
+* Test: unit (mock sql/safeNotify). Risk: low.
+
+### F2-03  HIGH  - "Caregiver (viewer)" grant gives the grantee nothing they can read; family grant only enables log writes
+* Files: owner-only gates `api/routines/route.js:36-59`, `api/pets/[id]/route.js:66,285`, `api/pets/route.js:80`, `api/pet-medical-profiles/route.js:49,73`, `api/health/medications/route.js:33`, `api/health/timeline/route.js:74-116`. The RLS side is correct (`0049_family_caregiver_sharing.sql` 6a-6d) so the DB would allow it; the route WHEREs prevent it. Copy promises it: `en.json petSharing.intro` ("Family co-manage everything; caregivers get a scoped, optionally expiring view").
+* Scenario: owner shares Rex as `caregiver`; B accepts, sees "Active" but `GET /api/routines?petId=Rex` -> 403, `GET /api/pet-medical-profiles` -> owner-only. B can never read feeding/med instructions or emergency info.
+* Fix: add `resolvePetReadAccess(callerId, petId)` next to `utils/petLogAccess.js` using `SELECT app_user_has_pet_access(${petId})` (same savepoint/42883 degrade pattern) and use it in routines GET, pet-medical-profiles GET, pets/[id] GET; drop the `owner_user_id = me` predicate on the grantee path (query by `pet_id`; RLS scopes). Also add a "Shared pets" entry to a read-only screen. Medium effort; no migration.
+* Test: integration (real PG + real router) - grantee GET returns rows, stranger 403, expired grantee 403. Risk: medium (touches many read routes; do one route at a time).
+
+### F2-04  MED (HIGH while 0133 is unapplied)  - `username` (legacy e-mail-derived) still leaks to other users; granteeUserId enumerates users
+* Files: `api/pet-caregivers/route.js:38` (`owner.username AS owner_username` shown to the grantee) and `:58` (`grantee.username`, shown to the owner); `api/social-walks/[id]/join-request/route.js:182` (`up.username AS requester_username`); `api/search/route.js:52-61` (owners list returns and ILIKE-matches `username`); `m/app/pet-sharing.jsx:188,215,243` render `@{username}`. QA 2026-10-16 bug 04 (see `utils/ownerDisplay.js:1-12`) moved everything else to `full_name`. `supabase/migrations/0133_username_backfill.sql` is HUMAN-APPLIED and unapplied.
+* Extra vector: POST accepts any `granteeUserId` integer (`route.js:88,104`); the owner then GETs `grantee_username` back -> iterate ids 1..N to harvest usernames AND spam every user with pending invites (no notification today, but a pending row exists).
+* Fix: select `NULLIF(BTRIM(full_name),'') AS ..._name` (use `publicOwnerName`) instead of username in the three routes and make the UI fall back to `t('common.petParent')`; restrict `granteeUserId` path to ids returned by search (or drop it and require `granteeUsername`); keep `search` ILIKE on full_name only if product allows. No migration.
+* Test: unit (route test asserts response has no `username`/e-mail-like value). Risk: low; UI strings need EN+ES.
+
+### F2-05  MED  - Blocks are not enforced on follow and paw (and the blocker receives the notification)
+* Files: `api/pets/[id]/follow/route.js:66-101` (no block check), `api/posts/[id]/paw/route.js:34-78` (none; also no `hidden_at` check on the post, `:35-37`).
+* Scenario: A blocks B. B (direct API, or a cached screen) POSTs `/api/pets/<A's pet>/follow` or `/api/posts/<A's post>/paw`: row inserted and A gets "started following your pet" / "pawed your post" from the person they blocked. (Profile GET already 404s, so only the UI path is protected, not the API.)
+* Fix: after resolving the target owner / post, `if (await isBlockedBetween(owner.userId, followedPet[0].owner_user_id)) return 403 {error:"You can't interact with this user"}` (import from `@/app/api/utils/moderation`), and add `AND hidden_at IS NULL` to the post SELECT in paw. Same for DELETE not needed.
+* Test: unit (mock `isBlockedBetween`); integration to prove end to end. Risk: low. Defense in depth: SQL-1 (block gate inside `app_notify`).
+
+### F2-06  MED  - Blocks not enforced on pack request, walk join/invite, caregiver invite, DM thread start, lost sighting, forum vote
+* Files: `0097_engagement_pack_streaks.sql:70-108`; `api/social-walks/[id]/join-request/route.js:47-111`; `api/social-walks/route.js:131-145`; `api/pet-caregivers/route.js:117-130`; `api/dm-threads/route.js:93-121`; `api/lost-reports/[id]/sightings/route.js:34-45`; `api/forum/vote/route.js:34`.
+* Scenario: blocked user keeps sending pack invites ("invited you to a pack streak"), walk join requests, caregiver invites, empty DM threads (these appear in the blocker's inbox: list has no filter, `dm-threads/route.js:56-60`), sightings (notify the blocker), and votes on the blocker's thread.
+* Fix (code): call `isBlockedBetween(userId, <other>)` -> 403 in each route before the INSERT (pack: the partner owner is resolved inside the DEFINER fn and pets RLS hides it from the route, so for pack use the SQL-1 central gate or add the check inside `app_request_pack_streak` -> NEEDS-HUMAN for pack only). DM list: add `AND NOT app_user_is_blocked(${userId}, ou.id)` to the thread list and unread-count queries.
+* Test: unit per route. Risk: low-med (403 copy must be localized in UI: chat currently shows nothing, see F2-20).
+
+### F2-07  LOW-MED  - Forum reply to a comment authored by someone who blocked you (or hidden/deleted/other-thread parent)
+* File: `api/forum/threads/[id]/comments/route.js:24-26, 37-58`: `parentCommentId` is never validated; block check is against the THREAD author only.
+* Scenario: C blocked D; D replies under C's comment inside E's thread -> row inserted (visible to others, hidden from C by read filter). D can also set `parentCommentId` to a comment of another thread (no composite FK) -> orphan reply.
+* Fix: when `parentCommentId` is set: `SELECT author_user_id FROM forum_comments WHERE id=${pid} AND thread_id=${threadId} AND deleted_at IS NULL AND hidden_at IS NULL` -> 404 if none; run `isBlockedBetween(userId, parent.author_user_id)` -> 403. Test: unit. Risk: low.
+
+### F2-08  MED  - Paw notification fires even when no row was inserted (double-tap race) - "idempotent" only for the count
+* File: `api/posts/[id]/paw/route.js:44-78`. The SELECT-then-INSERT `ON CONFLICT DO NOTHING` has no `RETURNING`; `safeNotify` at `:72` runs unconditionally.
+* Scenario: two concurrent POSTs (double tap / client retry on flaky network): both pass the existence check, one inserts, the other no-ops, BOTH notify -> post owner gets two "pawed your post".
+* Fix: `const ins = await sql\`INSERT ... ON CONFLICT (post_id,user_id) DO NOTHING RETURNING id\`; if (ins.length > 0) await safeNotify(...)` (same pattern follow already uses at `follow/route.js:85-101`). Also return `paw_count` on the "Already pawed" branch (`:51`).
+* Test: unit (mock sql so INSERT returns []; assert safeNotify not called) - fully provable. Risk: very low.
+
+### F2-09  MED  - Notification spam by toggling (paw/un-paw, follow/unfollow)
+* Files: `paw/route.js:72` and `follow/route.js:92-101` notify on every fresh insert; limiter allows 120 paw toggles/min (`utils/rateLimit.js:60`) and 60 follows/5 min (`:61`); `app_notify` has no dedupe.
+* Scenario: a user (or a flaky-network retry loop) toggles a paw 60 times -> the owner gets 60 bell rows.
+* Fix in code is limited because the ACTOR cannot read the recipient's `notifications` (recipient-only SELECT RLS). **NEEDS-HUMAN (SQL-1)**: dedupe `paw`/`follow` per (recipient, actor, type, subject_ref) for 24 h inside `app_notify`. Cheap code-side mitigation: lower `paw_toggle` to ~20/min and notify only if `!user previously pawed` (cannot know) - so prefer SQL-1.
+* Test: integration only (needs real DB). Risk: low.
+
+### F2-10  MED  - An ENDED (or declined) pack can never be restarted; invites cannot be declined or cancelled
+* Files: unique index `0097:36-37` on `least/greatest(requester_pet_id, receiver_pet_id)`; `app_request_pack_streak` returns NULL for ANY existing row regardless of status (`0097:92-98`); route maps NULL to a generic 409 (`api/pets/[id]/pack-streaks/route.js:76-81`); mobile shows a generic `packStreaks.requestFailed` (`PackStreaksCard.jsx:41`). `end` is the only way out (`route.js:115-119`), has no UI (`PackStreaksCard.jsx` has no end/decline/cancel button; `useEndPackStreak` at `usePackStreaks.js:62` has no caller), so in practice a pending invite can neither be declined nor withdrawn.
+* Scenario 1: Rex+Luna run a pack, someone calls `end` (API, or a future button) -> forever "Couldn't start that pack". Scenario 2: Luna's owner doesn't want the invite; the only action is `end` = permanently blocks the pair. Scenario 3: requester typo'd the wrong dog, invite sits pending forever and cannot be re-sent to the same pet.
+* Fix: code-only mitigations - add Decline/Cancel/End buttons using the existing `end` action and make the 409 copy distinguish "already exists" (return `reason:"exists"|"unknown_handle"` by doing a participant-scoped `SELECT status FROM pet_pack_streaks WHERE <pair>` before calling the fn: RLS shows the caller their own pairs). Real fix = **NEEDS-HUMAN (SQL-2)**: let the function revive an `ended` row.
+* Test: integration (real PG: request -> accept -> end -> request must create/revive). Risk: low-med.
+
+### F2-11  LOW-MED  - Pack invites: no rate limit, no block, no relationship, generic error
+* `api/pets/[id]/pack-streaks/route.js:143-145` (POST not wrapped in `withRateLimit`); `0097:85-90` resolves ANY pet by handle. A user can invite every handle they can guess (notification to each owner).
+* Fix: wrap POST with `withRateLimit("pack_request", ...)` (add bucket e.g. 10/hour in `utils/rateLimit.js`, fail-open) when `action==='request'`. Risk: low.
+
+### F2-12  LOW  - Broken pack still displays its old flame count
+* `0097:137-174` only writes on a mutual close; no job resets `current_count` on a missed day. `PackStreaksCard.jsx:63-65` prints `p.current_count` for any `active` pack without comparing `last_active_day` to today/yesterday.
+* Fix (client/route): in `api/pets/[id]/pack-streaks/route.js` GET, map rows: if `last_active_day < (owner-tz today - 1)` return `current_count: 0` (keep `longest_count`). Test: unit. Risk: low. (Timezone: see suspicion U-1.)
+
+### F2-13  MED  - Walk-with-buddies flow is entirely silent (invites, join requests, approvals, declines)
+* Files: `api/social-walks/route.js:138-146` (no notify to invitees), `social-walks/[id]/join-request/route.js:114-115` (TODO comment), `approve/route.js:68-69`, `decline/route.js:55-56` (TODO comments). There is also no invitee accept/decline route although 0046 RLS (`social_walk_invites_update`) supports it.
+* Scenario: owner invites 3 friends to a private walk; nobody is told. Friend requests to join; owner is never told; owner approves; requester never learns.
+* Fix: call `safeNotify` in the four places (types need widening -> **NEEDS-HUMAN SQL-1**: `walk_invite`, `walk_join_request`, `walk_join_approved`, `walk_join_declined`); body = JSON via the existing `bizNotifyBody`-style helper; deep link target nearby-walks screen. Test: unit with mocked notify. Risk: low-med (needs i18n keys EN+ES and bell mapping).
+
+### F2-14  MED  - Join-request ignores visibility, moderation, approval mode, block, dates; invalid invite id 500s the whole create
+* `join-request/route.js:47-57` (`SELECT * ... WHERE id AND status='scheduled'` - RLS hides only `private` walks; a `friends_only` walk is joinable by anyone who guesses the id; no `hidden_at IS NULL`, no `scheduled_at > now()`); `:107` message stored without `moderationResponse` (shown to the walk owner); `:108` `'pending'` hard-coded so `approval_required=false` never auto-approves; no `isBlockedBetween`; GET `:182` leaks username (F2-04). `social-walks/route.js:131-145`: `inviteUserIds` not checked to exist -> FK 23503 -> unhandled 500 and the walk creation rolls back.
+* Fix: add `AND hidden_at IS NULL AND scheduled_at > now()`; require visibility rules (friends_only -> mutual follow, see F2-15); `moderationResponse(message)`; if `!approval_required` insert as `approved` (respecting max_pets in the same statement); `isBlockedBetween`; validate invitee ids with `SELECT id FROM user_profiles WHERE id = ANY(${cleanIds})` first. Test: unit + integration. Risk: medium.
+
+### F2-15  MED  - Features that depend on `pet_friendships` are dead in production
+* `social-walks/route.js:349-390` (friends_only discovery + the no-op block `:149-168`), `pets/[id]/reengagement/route.js:72-90`, `pets/[id]/weekly-digest/route.js:152-160`, SQL `0098:133-138` (friends leaderboard = only your own pet).
+* Fix (code): define "friend" as MUTUAL follow: `EXISTS (SELECT 1 FROM pet_follows a JOIN pet_follows b ON a.follower_pet_id=b.followed_pet_id AND a.followed_pet_id=b.follower_pet_id WHERE a.follower_pet_id = sw.pet_id AND a.followed_pet_id = ANY(${userPetIds}))` in the three routes; leaderboard function = **NEEDS-HUMAN (SQL-3)**. Test: integration. Risk: medium (product decision: is a friend = mutual follow?).
+
+### F2-16  MED  - Content filter bypassed on edit and on several user-text fields (Guideline 1.2)
+* No `moderationResponse` on: `api/posts/[id]/route.js:77-137` (caption edit; POST create does filter, `posts/route.js:435`), `api/forum/threads/[id]/route.js:70-110` (title/body edit), `api/forum/comments/[id]/route.js:8-39` (comment edit), `social-walks/[id]/join-request/route.js:107` (message), `lost-reports/[id]/sightings/route.js:23-26` (note), `lost-reports/route.js:103` (`reward` unfiltered), `api/public/emergency/tag/[token]/contact/route.js:15` (anonymous message), `forum/threads/route.js:85` (category free text).
+* Scenario: post a clean caption, then PATCH it to objectionable text.
+* Fix: `const blocked = moderationResponse(text); if (blocked) return blocked;` at each site (helper already imported elsewhere). Test: unit (mirror the existing create-route tests). Risk: very low.
+
+### F2-17  LOW-MED  - Lost/sighting/emergency notifications are English-only, inconsistent and mislabelled
+* `lost-reports/route.js:143` (English template), `sightings/route.js:53` (English; subject_ref=reportId whereas #28 uses petId), `0051:192`; recipient `notifications.jsx:372-393` falls to `n.body || t("notifications.newActivity")` - there is no `notifications.lost_alert`/`emergency_contact` key in en.json/es.json. Spanish users read English; the title for the anonymous emergency relay is `ownerDisplayName(null)` = "Pet parent". No "found" update to followers on resolve (`resolve/route.js:21-30`).
+* Fix: add i18n keys + branch in `mapDbNotification` for `lost_alert` (pet name/area from a JSON body via `bizNotifyBody`), `emergency_contact` (title key "Someone scanned the tag"), keep subject_ref = reportId everywhere; on resolve notify the same followers (`lost_alert` body `{resolved:true}`). Test: RNTL for the mapping. Risk: low.
+
+### F2-18  MED  - Deep links from owner<>owner notifications go nowhere useful
+* `m/app/notifications.jsx:580-583` (`router.back()` for paw/bark/pack_*/boop/lost_alert/emergency_contact - the user lands on whatever screen the bell was opened from); `:391` follow -> opens the recipient's OWN pet because `subject_ref = followedPetId` (`follow/route.js:98`). `m/utils/notificationDeepLink.js:47-53` sends every OS push tap to the inbox.
+* Fix: follow route -> `subjectRef: String(followerPetId)` so the tap opens the follower's profile; add branches: paw/bark -> open post detail (route that exists for a single post, else feed with `postId`), pack_invite/accepted/boop -> `/(tabs)/health?section=...` pack card, lost_alert -> lost-report detail screen. Test: RNTL on `handleNotifTap`. Risk: low-med (need target screens).
+
+### F2-19  LOW  - Family/caregiver list state bugs
+* `api/pet-caregivers/route.js:63` returns revoked/expired rows (only `declined` excluded) so a revoked grantee stays listed with a bin that now 404s (`[id]/route.js:25`: `status <> 'revoked'` -> 404 -> alert "Failed to revoke"); `route.js:41-45` (`mine`) lists expired 'active' grants as active (UI shows "Active" + "Log a walk" that RLS then denies, `pet-sharing.jsx:247-268`); nothing ever sets `status='expired'` so an expired grant keeps the unique live slot and the owner gets 409 "already has a pending or active grant" on re-invite; `expiresAt` cannot be set from the UI (`pet-sharing.jsx:84`); raw English `status`/hard-coded English alerts (`usePetSharing.js:48`).
+* Fix: owner GET `AND pc.status IN ('pending','active')`; both GETs add `AND (pc.expires_at IS NULL OR pc.expires_at > now())` and a `computed_status`; POST first runs `UPDATE pet_caregivers SET status='expired', updated_at=now() WHERE pet_id=${petId} AND grantee_user_id=${granteeId} AND status='active' AND expires_at <= now()` (owner UPDATE policy allows it) before INSERT; validate `expiresAt` (`Number.isNaN(Date.parse())`, future) -> 400; i18n the alerts. Test: unit/integration. Risk: low.
+
+### F2-20  MED  - Chat send failures are invisible; read-mark stalls at 50 messages
+* `m/app/chat.jsx:68-72` (`send.mutate(...)` with no `onError`, no error UI; grep for isError/Alert returns nothing). A 403 "You can't message this user", 400 content-filter rejection (`messages/route.js:102-103`) and 429 all leave the text in the box with no feedback. `chat.jsx:53-57` effect depends on `rawMessages?.length` but the query is `limit=50` (`useDMs.js:28`): at 50 loaded, new incoming messages don't change the length so `markRead` never re-fires and the unread count sticks.
+* Fix: show `send.error?.message` inline (+ localize known codes); deps `[threadId, rawMessages?.[0]?.id]`. Test: RNTL. Risk: low.
+
+### F2-21  LOW-MED  - DM list/unread include hidden messages; empty/blocked threads listed; image_url unvalidated
+* `dm-threads/route.js:42-55` and `unread-count/route.js:19-26` have no `hidden_at IS NULL` (messages GET has it, `messages/route.js:52,60`): a moderator-removed message still previews in the inbox and counts as unread; list has no block filter and shows threads with zero messages; `messages/route.js:89-92` accepts any string as `image_url` (the recipient's client fetches an arbitrary URL).
+* Fix: add `AND m.hidden_at IS NULL` in the three subqueries; `AND NOT app_user_is_blocked(${userId}, ou.id)`; hide threads with no messages unless I am the creator; validate `image_url` host against the media bucket (`utils/uploadValidation.js` / `mediaAccess.js`). Test: unit. Risk: low.
+
+### F2-22  LOW  - Counts disagree with what each side can see
+* Feed/profile counts include hidden + blocked-author barks and hidden posts: `posts/route.js` (`LEFT JOIN (SELECT post_id, COUNT(*) FROM post_barks GROUP BY post_id)`, no `hidden_at`/block), `pets/[id]/profile/route.js:92-98` (total_posts/paws/barks include hidden posts), forum list `comment_count` (`forum/threads/route.js:45-48`) ignores hidden/blocked while detail filters them (`forum/threads/[id]/route.js:57-59`). Followers counts include banned/blocked owners.
+* Fix: add the same predicates to the count subqueries (`pb.hidden_at IS NULL AND NOT app_user_is_blocked(current_app_user_id(), pb.user_id)`). Test: integration. Risk: low (perf: per-row function call; keep limit sane).
+
+### F2-23  LOW  - Blocking is one-way in the UI and leaves relationships alive
+* `m/hooks/useModeration.js:54-60` is the only caller of `/api/blocks` (no list, no unblock UI; `GET /api/blocks`, `DELETE /api/blocks/[id]` unused); `BLOCK_SENSITIVE_KEYS` (`:23-35`) lists `"pet-social-profile"` but the real key is `"petProfile"` (`usePetSocialProfile.js:7`) and omits `"follows"`, `"notifications"`; existing pet_follows, pack streaks, caregiver grants and DM threads between the pair survive a block (a blocked caregiver keeps access to the pet's health data until the owner revokes by hand); followers list (`follows/route.js:58-87`) still shows blocked/banned owners' pets.
+* Fix: add Blocked users screen (GET/DELETE already exist), fix cache keys, on `POST /api/blocks` also `DELETE FROM pet_follows` both directions for the two users' pets, `UPDATE pet_pack_streaks SET status='ended'` and `UPDATE pet_caregivers SET status='revoked'` where the BLOCKER is owner (all allowed by owner/participant RLS), and filter `/follows` with `NOT app_user_is_blocked`. Test: integration. Risk: medium (product decision on caregiver auto-revoke).
+
+### F2-24  LOW  - Forum vote has no target validation
+* `forum/vote/route.js:27-36` -> `forum_vote` (0047:156-199) accepts any `target_id` (orphan vote rows for non-existent ids), votes on hidden/deleted/blocked-author content, and self-votes. Fix: before calling the fn `SELECT 1 FROM forum_threads|forum_comments WHERE id=... AND deleted_at IS NULL AND hidden_at IS NULL` -> 404; reject self-vote or ignore. Test: unit. Risk: low.
+
+### F2-25  LOW  - Non-numeric ids become 500s
+* `parseInt(params.id)` without NaN guard: `pet-caregivers/[id]/route.js:20` (revoke), `[id]/respond/route.js:21` (guarded, ok), `lost-reports/[id]/resolve/route.js:19`, `sightings/route.js:21`, `lost-reports/[id]/route.js:20`, `forum/threads/[id]/route.js:20,80,122`, `forum/threads/[id]/comments/route.js:21`; `posts/[id]/paw/route.js:16` and `barks/route.js:12` pass the raw string to `WHERE id = ${postId}` (22P02 -> 500). Fix: `if (!Number.isInteger(id)) return 400`. Test: unit. Risk: none.
+
+### F2-26  LOW  - Lost-alert fan-out is unbounded inside the request
+* `lost-reports/route.js:133-150`: one `app_notify` round-trip per follower in the request transaction (push is capped at 100, the bell insert is not). A pet with 5,000 followers makes activation take seconds and can time out the `pawpi_app` timeout (0127). Fix: single set-based `INSERT ... SELECT` is blocked (app_notify is the only insert path) so cap the loop at e.g. 500 and queue the rest. NEEDS-HUMAN only if a set-returning DEFINER is wanted. Test: unit. Risk: low.
+
+### F2-27  LOW  - Bell list shows rows from actors the viewer has since blocked
+* `api/notifications/route.js:31-47` has no block / hidden filter; with F2-05 unfixed it is also how blocked users still reach the blocker. Fix: `AND (n.actor_user_id IS NULL OR NOT app_user_is_blocked(${userId}, n.actor_user_id))`. Test: integration. Risk: low.
+
+### F2-28  LOW (config)  - Social notifications never light the bell badge unless NOTIF_V2_ENABLED is on
+* `api/notifications/route.js:52-61`, `m/utils/bellBadge.js:15`. Documented behaviour, but it means paw/bark/follow/pack_invite are invisible until the user opens the bell. Action: NEEDS-HUMAN env (Railway) decision on flipping `NOTIF_V2_ENABLED` after migrations 0131/0132 are applied.
+
+## 4. NEEDS-HUMAN SQL (not applied; proposals only)
+
+### SQL-1  widen types + block gate + dedupe in `app_notify` (central fix for F2-01/02/05/06/09/13)
+```sql
+-- 0134_notify_types_block_dedupe.sql  (proposed; copy TEMPLATE.sql conventions; hand-apply + verify_0134.sql)
+alter table notifications drop constraint if exists notifications_type_check;
+alter table notifications add constraint notifications_type_check check (type = any (array[
+  'paw','bark','follow','lost_alert','emergency_contact','food_recall','report_received',
+  'booking_requested','booking_confirmed','booking_declined','booking_cancelled',
+  'adoption_under_review','adoption_approved','adoption_declined',
+  'walk_request_targeted','walk_request_broadcast','walk_request_accepted','walk_request_taken',
+  'welcome','pack_invite','pack_accepted','boop','weekly_digest','winback',
+  'biz_booking','biz_booking_change','biz_order','biz_message','biz_adoption_application',
+  'biz_review','biz_payout','biz_post_engagement','biz_follow',
+  -- new
+  'dm_message','walk_invite','walk_join_request','walk_join_approved','walk_join_declined',
+  'caregiver_invite','caregiver_accepted','caregiver_declined'
+]::text[]));
+
+create index if not exists idx_notifications_dedupe
+  on notifications (recipient_user_id, actor_user_id, type, subject_ref, created_at desc);
+
+create or replace function app_notify(
+  p_recipient integer, p_actor integer, p_type text, p_subject_ref text, p_body text
+) returns integer
+language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare new_id integer; v_category text; v_enabled boolean;
+begin
+  if p_recipient is null or p_recipient = p_actor then return null; end if;
+  -- block gate: a blocked pair never notifies each other (system/anonymous actor = NULL is exempt)
+  if p_actor is not null and app_user_is_blocked(p_recipient, p_actor) then return null; end if;
+  -- dedupe taps: same actor+type+subject within 24h
+  if p_type in ('paw','follow','dm_message') and exists (
+      select 1 from notifications n
+      where n.recipient_user_id = p_recipient and n.actor_user_id = p_actor and n.type = p_type
+        and n.subject_ref is not distinct from p_subject_ref
+        and n.created_at > now() - interval '24 hours'
+        and (p_type <> 'dm_message' or n.read_at is null)) then
+    return null;
+  end if;
+  v_category := case p_type
+    when 'walk_request_targeted' then 'walk_requests'
+    when 'walk_request_broadcast' then 'walk_requests'
+    else null end;
+  if v_category is not null then
+    select enabled into v_enabled from notification_prefs where user_id = p_recipient and category = v_category;
+    if v_enabled is false then return null; end if;
+  end if;
+  insert into notifications (recipient_user_id, actor_user_id, type, subject_ref, body)
+  values (p_recipient, p_actor, p_type, p_subject_ref, p_body) returning id into new_id;
+  return new_id;
+end; $$;
+grant execute on function app_notify(integer, integer, text, text, text) to pawpi_app;
+```
+Notes: keep the existing 0108 body byte-for-byte except the two inserted blocks; the latest CHECK list is the one in `0110_business_notification_types.sql` (re-read it before applying in case 0131+ widened it). Re-apply-safe. Provide `supabase/verify_0134.sql` (every row PASS) per CLAUDE.md rule 4 because it is hand-applied.
+
+### SQL-2  let a pack be restarted after `ended`
+```sql
+-- replace the "a pack for this pair already exists" block in app_request_pack_streak (0097:92-98)
+declare v_existing record;
+...
+select * into v_existing from pet_pack_streaks
+ where least(requester_pet_id, receiver_pet_id) = least(p_pet, v_partner_pet)
+   and greatest(requester_pet_id, receiver_pet_id) = greatest(p_pet, v_partner_pet) for update;
+if found then
+  if v_existing.status <> 'ended' then return null; end if;      -- pending/active: still a conflict
+  update pet_pack_streaks
+     set requester_user_id = p_owner, receiver_user_id = v_partner_owner,
+         requester_pet_id = p_pet,     receiver_pet_id = v_partner_pet,
+         status = 'pending', current_count = 0, last_active_day = null, updated_at = now()
+   where id = v_existing.id;                                        -- longest_count preserved (celebrate the best run)
+  perform app_notify(v_partner_owner, p_owner, 'pack_invite', v_existing.id::text, 'invited you to a pack streak');
+  return v_existing.id;
+end if;
+```
+(`longest_count` kept so history is not lost; SECURITY DEFINER pinning/grant unchanged.)
+
+### SQL-3  friends leaderboard cohort = mutual follows (replace `0098:133-138` branch)
+```sql
+insert into _cohort (pet_id)
+select f.followed_pet_id from pet_follows f
+where f.follower_pet_id = p_pet
+  and exists (select 1 from pet_follows r where r.follower_pet_id = f.followed_pet_id and r.followed_pet_id = p_pet)
+on conflict do nothing;
+```
+(keep the preceding `select p_pet` seed row).
+
+## 5. Unverified suspicions (NOT confirmed - do not count as bugs)
+* U-1 Pack day mismatch across time zones: `app_advance_pack_streaks` looks up the partner's `pet_care_days.day = p_day` where `p_day` is the CLOSING pet's owner-tz day (0097:153-154); partner rows are keyed by the partner's own tz day. Could mis-pair near midnight for owners in different zones. Needs a two-tz integration test.
+* U-2 Whether prod has migrations 0097/0113 applied (pack streaks, rate limit): code degrades silently if not; cannot check (no DB access by instruction).
+* U-3 RLS of `social_walk_join_requests` (requester can see own request status?) not read; mobile has no obvious "my request status" view - unknown if requester can even see approved/declined.
+* U-4 Rate-limit window semantics for `paw_toggle` under multiple replicas - relies on 0113 being applied.
+* U-5 `app_pack_boop` / `app_pack_streaks_for_pet` expose partner pet name/avatar/handle without a block/ban/demo filter - not tested whether a banned partner remains visible.
+* U-6 `withRequestContext` + `safeNotify` ordering: `safeNotify` runs `app_notify` inside the request transaction with no savepoint (`utils/notify.js:25-30`); a CHECK violation there (e.g. the new types before SQL-1) would abort the whole transaction and 500 the actor's request if the error were thrown - `safeNotify` catches it, but the failed statement still poisons a Postgres transaction (25P02 on the next query). Needs a real-PG test before shipping F2-01/02/13 notify calls: wrap in `withSavepoint` (as `softV2` does) to be safe.
+* U-7 `GET /api/posts/[id]/barks` has no `auth()` call (`barks/route.js:10-37`); relies on RLS `current_app_user_id() is not null`. Probably fine; confirm an anonymous request returns 401/empty rather than 500.
+* U-8 `pets/[id]/follows` pagination orders by `created_at DESC` only (no id tiebreak) - possible duplicate/missing rows across pages under bulk follows.
+

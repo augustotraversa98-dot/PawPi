@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // Cast / change / clear a vote on a forum thread or comment (ticket 2.44). Idempotent:
 // value 1 (up), -1 (down), 0 (clear). All the work — upsert the caller's single vote row +
@@ -29,6 +30,23 @@ async function POST(request) {
     }
     if (![-1, 0, 1].includes(value)) {
       return Response.json({ error: "Invalid value" }, { status: 400 });
+    }
+
+    // The target must exist and be visible, and a blocked pair (either direction) cannot vote on
+    // each other's content (flow audit F2-06 / F2-24).
+    const target =
+      targetType === "thread"
+        ? await sql`
+            SELECT author_user_id FROM forum_threads
+            WHERE id = ${targetId} AND deleted_at IS NULL AND hidden_at IS NULL LIMIT 1`
+        : await sql`
+            SELECT author_user_id FROM forum_comments
+            WHERE id = ${targetId} AND deleted_at IS NULL AND hidden_at IS NULL LIMIT 1`;
+    if (target.length === 0) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+    if (await isBlockedBetween(userId, target[0].author_user_id)) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
     }
 
     const rows = await sql`

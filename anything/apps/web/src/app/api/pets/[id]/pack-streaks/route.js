@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { isPackFriend, findExistingPack } from "@/app/api/utils/packFriends";
+import { enforceRateLimit } from "@/app/api/utils/rateLimit";
 
 // /api/pets/[id]/pack-streaks — shared "pack" streaks between two dog friends (unit E7,
 // docs/pet-owner-engagement.md). A pack advances only when BOTH pets close their ring on the same
@@ -62,6 +63,10 @@ async function POST(request, { params }) {
     const action = body?.action;
 
     if (action === "request") {
+      // Invites notify another owner: cap them (flow audit F2-11). Fails open like every other bucket.
+      const limited = await enforceRateLimit("pack_request", request, { userId: ownerUserId });
+      if (limited) return limited;
+
       // The target is a friend picked in the app (`partner_pet_id`). Older builds send a typed
       // `partner_handle`; that path is still accepted but resolved to a pet and held to the SAME rules.
       let partnerPetId = isIntId(body.partner_pet_id) ? parseInt(body.partner_pet_id, 10) : null;

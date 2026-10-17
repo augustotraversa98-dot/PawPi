@@ -77,6 +77,8 @@ export const RATE_LIMITS = {
   // Pet-handle availability + suggestions (debounced typeahead). A READ, limited only to stop
   // handle enumeration/scraping; 90/min is far above a person typing (~1 check per 400 ms pause).
   handle_check: { limit: 90, windowSeconds: 60 },
+  // Pack-streak invites notify another owner; 10/hour is far above a person starting streaks with friends.
+  pack_request: { limit: 10, windowSeconds: 3600 },
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';

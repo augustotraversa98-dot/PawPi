@@ -5,7 +5,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn }));
+vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn, withSavepoint: (fn) => fn() }));
+vi.mock("@/app/api/utils/moderation", () => ({ isBlockedBetween: vi.fn(async () => false) }));
 vi.mock("@/app/api/utils/ownerNotifications", () => ({ pushForOwnerNotification: vi.fn().mockResolvedValue({ pushed: true }) }));
 
 import { POST } from "./route";

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // /api/dm-threads — owner ↔ owner 1:1 messaging (Phase 2 ticket 2.27). SEPARATE from the
 // owner↔provider chat (/api/threads). PARTICIPANT-SCOPED at the DB layer (0045 RLS):
@@ -96,6 +97,12 @@ async function POST(request) {
     `;
     if (otherRows.length === 0) {
       return Response.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // A blocked pair (either direction) cannot open a conversation (flow audit F2-06): the empty
+    // thread used to land in the blocker's inbox.
+    if (await isBlockedBetween(userId, otherUserId)) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
     }
 
     // Normalize the pair so (A,B) and (B,A) are one thread.

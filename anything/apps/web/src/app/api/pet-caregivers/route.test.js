@@ -8,7 +8,8 @@ import sql from "@/app/api/utils/sql";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn }));
+vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn, withSavepoint: (fn) => fn() }));
+vi.mock("@/app/api/utils/moderation", () => ({ isBlockedBetween: vi.fn(async () => false) }));
 
 const SESSION = { user: { id: 99 }, expires: "9999999999" };
 

@@ -7,9 +7,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/moderation", () => ({ isBlockedBetween: vi.fn() }));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const PROFILE_ROW = { id: 7 };
@@ -25,6 +27,7 @@ const valuesOf = (i) => sql.mock.calls[i]?.slice(1) ?? [];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isBlockedBetween.mockResolvedValue(false);
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -101,5 +104,19 @@ describe("POST /api/dm-threads", () => {
     const values = valuesOf(3);
     expect(values).toContain(3);
     expect(values).toContain(7);
+  });
+});
+
+// Flow audit F2-06: a blocked pair cannot open a conversation (the empty thread landed in the
+// blocker's inbox).
+describe("POST /api/dm-threads — blocks", () => {
+  it("403 and no thread when the pair is blocked (either direction)", async () => {
+    auth.mockResolvedValue(SESSION);
+    isBlockedBetween.mockResolvedValue(true);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([{ id: 9 }]); // profile, other user exists
+    const res = await POST(postReq({ otherUserId: 9 }));
+    expect(res.status).toBe(403);
+    expect(isBlockedBetween).toHaveBeenCalledWith(7, 9);
+    expect(sql.mock.calls.map((c) => (c?.[0] ?? []).join(" ")).some((t) => t.includes("INSERT INTO dm_threads"))).toBe(false);
   });
 });

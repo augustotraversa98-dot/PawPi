@@ -1,7 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
 // Report a sighting on a lost pet (ticket 2.48). Any authed user can submit; RLS pins the
@@ -29,13 +30,21 @@ async function POST(request, { params }) {
       return Response.json({ error: "Add a note, location, or photo" }, { status: 400 });
     }
 
+    // A blocked pair (either direction) cannot send sightings (they notify the report owner).
+    const reportOwner = await sql`SELECT owner_user_id FROM lost_reports WHERE id = ${reportId} LIMIT 1`;
+    if (reportOwner.length > 0 && (await isBlockedBetween(userId, reportOwner[0].owner_user_id))) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
+    }
+
     let created;
     try {
-      created = await sql`
+      // Savepoint: the RLS WITH CHECK failure handled below would otherwise abort the request
+      // transaction, so the friendly 404 became a 500 at COMMIT.
+      created = await withSavepoint(() => sql`
         INSERT INTO lost_sightings (lost_report_id, reporter_user_id, lat, lng, note, photo_url)
         VALUES (${reportId}, ${userId}, ${lat}, ${lng}, ${note}, ${photoUrl})
         RETURNING *
-      `;
+      `);
     } catch (e) {
       // RLS WITH CHECK fails (e.g. report not active) → friendly 404.
       if (String(e.message).match(/row-level security/i)) {

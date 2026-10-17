@@ -171,4 +171,10 @@ describe("pack-streaks request — server-side authorization", () => {
     const res = await apiReq(`/pets/${A.petId}/pack-streaks`, "POST", { action: "request", partner_pet_id: B.petId });
     expect(res.status).toBe(404);
   });
+
+  it("pack invites are rate limited (flow audit F2-11): the 11th attempt in an hour is a 429", async () => {
+    let last = 0;
+    for (let i = 0; i < 11; i++) last = (await request({ partner_pet_id: B.petId })).status;
+    expect(last).toBe(429);
+  });
 });

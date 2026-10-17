@@ -1,7 +1,8 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // Family/caregiver sharing (ticket 2.47) — person↔person pet access grants.
 //   GET ?petId=    → owner: who has access to my pet
@@ -118,16 +119,23 @@ async function POST(request) {
       return Response.json({ error: "You already own this pet" }, { status: 400 });
     }
 
+    // A blocked pair (either direction) cannot send access invites (flow audit F2-06).
+    if (await isBlockedBetween(userId, granteeId)) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
+    }
+
     const scopes = SCOPES_BY_ROLE[role];
 
     let created;
     try {
-      created = await sql`
+      // Savepoint: a unique violation caught below would otherwise abort the request transaction and
+      // turn the friendly 409 into a blanket 500 at COMMIT.
+      created = await withSavepoint(() => sql`
         INSERT INTO pet_caregivers
           (pet_id, owner_user_id, grantee_user_id, role, scopes, status, expires_at)
         VALUES (${petId}, ${userId}, ${granteeId}, ${role}, ${scopes}, 'pending', ${expiresAt})
         RETURNING *
-      `;
+      `);
     } catch (e) {
       // The partial unique index (one live grant per pet+grantee) → friendly 409.
       if (String(e.message).includes("idx_pet_caregivers_live_unique")) {

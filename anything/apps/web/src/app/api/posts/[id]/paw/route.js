@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { safeNotify } from "@/app/api/utils/notify";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 // Add a paw to a post
 async function POST(request, { params }) {
@@ -33,11 +34,18 @@ async function POST(request, { params }) {
 
     // Check if post exists (user_id = the owner, the notification recipient)
     const post = await sql`
-      SELECT id, user_id FROM posts WHERE id = ${postId} LIMIT 1
+      SELECT id, user_id FROM posts
+      WHERE id = ${postId} AND hidden_at IS NULL
+      LIMIT 1
     `;
 
     if (post.length === 0) {
       return Response.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Blocked pair (either direction) cannot paw each other's posts (flow audit F2-05).
+    if (await isBlockedBetween(userId, post[0].user_id)) {
+      return Response.json({ error: "You can't interact with this user" }, { status: 403 });
     }
 
     // Check if already pawed
@@ -55,10 +63,11 @@ async function POST(request, { params }) {
     // unique (0004) makes a double-tap idempotent — two concurrent taps both
     // passed the existence check above and the second INSERT raised 23505 → 500
     // + a UI flicker. The count read below reflects the single row either way.
-    await sql`
+    const inserted = await sql`
       INSERT INTO post_paws (post_id, user_id)
       VALUES (${postId}, ${userId})
       ON CONFLICT (post_id, user_id) DO NOTHING
+      RETURNING id
     `;
 
     // Get new paw count
@@ -68,14 +77,18 @@ async function POST(request, { params }) {
       WHERE post_id = ${postId}
     `;
 
-    // Notify the post's owner (ticket 2.26). Fire-and-don't-block; never self-notify.
-    await safeNotify({
-      recipient: post[0].user_id,
-      actor: userId,
-      type: "paw",
-      subjectRef: String(postId),
-      body: "pawed your post",
-    });
+    // Notify the post's owner (ticket 2.26) ONLY when this request actually created the paw: two
+    // concurrent taps both pass the existence check, one inserts and the other no-ops, and both used to
+    // notify (flow audit F2-08). Fire-and-don't-block; never self-notify.
+    if (inserted.length > 0) {
+      await safeNotify({
+        recipient: post[0].user_id,
+        actor: userId,
+        type: "paw",
+        subjectRef: String(postId),
+        body: "pawed your post",
+      });
+    }
 
     return Response.json({
       success: true,
