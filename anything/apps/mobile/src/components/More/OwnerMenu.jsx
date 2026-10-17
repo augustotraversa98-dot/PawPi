@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -132,7 +133,7 @@ export function OwnerMenu() {
         transparent
         onRequestClose={() => setMenuVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }}>
+        <View style={{ flex: 1, backgroundColor: MATERIALS.overlay }}>
           <TouchableOpacity
             style={{ flex: 1 }}
             activeOpacity={1}

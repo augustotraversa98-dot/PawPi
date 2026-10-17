@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Modal, Pressable, Alert } from "react-native";
 import { MoreHorizontal, Flag, Ban, ChevronLeft, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { COLORS, TYPE, RADIUS, SPACING } from "@/constants/theme";
+import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { reportContent, blockUser } from "@/hooks/useModeration";
 
@@ -130,7 +130,7 @@ export function ModerationMenu({
         <Pressable
           onPress={close}
           accessibilityLabel={t("moderation.dismissMenu")}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}
+          style={{ flex: 1, backgroundColor: MATERIALS.overlay, justifyContent: "flex-end" }}
         >
           <Pressable
             // Stop taps inside the sheet from dismissing it.

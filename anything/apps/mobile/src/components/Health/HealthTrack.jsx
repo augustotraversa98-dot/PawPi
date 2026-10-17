@@ -335,7 +335,7 @@ export default function HealthTrack() {
         transparent
         onRequestClose={() => setBathroomChooserVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
+        <View style={{ flex: 1, backgroundColor: MATERIALS.overlay, justifyContent: "flex-end" }}>
           <View
             style={{
               backgroundColor: MATERIALS.surface,

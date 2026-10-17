@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, Modal } from "react-native";
 import { X } from "lucide-react-native";
@@ -39,7 +40,7 @@ export default function RoutineTypeSelector({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          backgroundColor: MATERIALS.overlay,
           justifyContent: "flex-end",
         }}
       >

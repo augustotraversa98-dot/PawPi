@@ -24,8 +24,8 @@ export default function ProviderFollowButton({ providerId }) {
   const onPress = () => {
     if (!isAuthenticated) {
       Alert.alert(t("storefront.follow.signInPrompt"), undefined, [
+        { text: t("common.cancel"), style: "cancel" },
         { text: t("storefront.follow.signInCta"), onPress: signIn },
-        { text: "", style: "cancel" },
       ]);
       return;
     }

@@ -1,3 +1,4 @@
+import { MATERIALS } from "@/constants/theme";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -394,7 +395,7 @@ export default function MedicalCareRoutineModal({
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >

@@ -48,8 +48,8 @@ export default function ClaimCTA({ providerId, claimStatus }) {
   const onPress = () => {
     if (!isAuthenticated) {
       Alert.alert(t("claim.signInPrompt"), undefined, [
-        { text: t("claim.signIn"), onPress: signIn },
         { text: t("common.cancel"), style: "cancel" },
+        { text: t("claim.signIn"), onPress: signIn },
       ]);
       return;
     }

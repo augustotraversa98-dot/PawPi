@@ -29,7 +29,7 @@ import {
   Footprints,
 } from "lucide-react-native";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
+import { COLORS, TYPE, SPACING, RADIUS, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { PostComposerModal } from "@/components/Feed/PostComposerModal";
@@ -126,7 +126,7 @@ function MomentTile({ post, onPress, t }) {
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              backgroundColor: "rgba(0,0,0,0.55)",
+              backgroundColor: MATERIALS.overlay,
               borderRadius: RADIUS.chip,
               paddingHorizontal: SPACING.sm,
               paddingVertical: 2,
@@ -777,7 +777,7 @@ export default function BusinessHome() {
         animationType="slide"
         onRequestClose={() => setSwitcherOpen(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }}>
+        <View style={{ flex: 1, backgroundColor: MATERIALS.overlay }}>
           <PressableScale style={{ flex: 1 }} onPress={() => setSwitcherOpen(false)} />
           <View
             style={{

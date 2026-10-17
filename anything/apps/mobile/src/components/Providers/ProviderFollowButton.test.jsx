@@ -52,4 +52,14 @@ describe("ProviderFollowButton (2.92)", () => {
     expect(Alert.alert).toHaveBeenCalled();
     expect(mockToggle).not.toHaveBeenCalled();
   });
+
+  it("the sign-in prompt has a LABELLED Cancel first (was a blank button) and the action second", () => {
+    mockAuthState.isAuthenticated = false;
+    const { getByTestId } = render(<ProviderFollowButton providerId={5} />);
+    fireEvent.press(getByTestId("provider-follow-button"));
+    const buttons = Alert.alert.mock.calls[0][2];
+    expect(buttons[0]).toEqual({ text: "common.cancel", style: "cancel" });
+    expect(buttons[1].text).toBe("storefront.follow.signInCta");
+    expect(buttons.every((b) => b.text)).toBe(true);
+  });
 });

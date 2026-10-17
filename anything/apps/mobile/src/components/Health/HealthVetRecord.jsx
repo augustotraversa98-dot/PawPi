@@ -2355,7 +2355,7 @@ export default function HealthVetRecord() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >
@@ -2503,7 +2503,7 @@ export default function HealthVetRecord() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >
@@ -2608,7 +2608,7 @@ export default function HealthVetRecord() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >
@@ -2760,7 +2760,7 @@ export default function HealthVetRecord() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: MATERIALS.overlay,
             justifyContent: "flex-end",
           }}
         >
