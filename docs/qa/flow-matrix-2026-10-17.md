@@ -658,3 +658,330 @@ on conflict do nothing;
 * U-7 `GET /api/posts/[id]/barks` has no `auth()` call (`barks/route.js:10-37`); relies on RLS `current_app_user_id() is not null`. Probably fine; confirm an anonymous request returns 401/empty rather than 500.
 * U-8 `pets/[id]/follows` pagination orders by `created_at DESC` only (no id tiebreak) - possible duplicate/missing rows across pages under bulk follows.
 
+
+---
+
+
+### Status after PR F3
+
+| Bug | Status | Where |
+|---|---|---|
+| F3-01 payment webhook has no RLS identity → can never find a payment | **NEEDS-HUMAN** (DEFINER fns `app_payment_for_webhook` / `app_apply_payment_status`, SQL below) — blocks real settlement; **do before enabling live payments** | — |
+| F3-02 MP webhook extractor reads wrong ids/status | OPEN (code, depends on F3-01; needs a real MP sandbox payload to verify) | — |
+| F3-03 payment status regressions | **FIXED** — status is monotonic (refunded terminal; approved only → refunded) + tests | `utils/payments/index.js` |
+| F3-04 owner self-completes a provider booking → fake review | **FIXED** — 409 `managed_by_provider`; invalid status → 400; mobile hides "Mark completed" for provider bookings; personal appointments unchanged | `vet-appointments` PUT, `VetAppointmentDetailModal.jsx` |
+| F3-05 owner reschedule bypasses availability / desyncs calendar | **FIXED** — a real date/time change on a provider booking → 409 `reschedule_not_supported` (cancel & rebook); unchanged values still accepted | `vet-appointments` PUT |
+| F3-06 `payment_policy` ignored; `order_id` unvalidated | NEEDS-HUMAN decision (changes which bookings are allowed; **fix before enabling live payments**) | — |
+| F3-07 provider transitions unguarded (double-tap / two staff) | **FIXED** — every UPDATE carries the expected prior state; 0 rows → 409; owner notified once | `providers/[id]/bookings/[appointmentId]` |
+| F3-08 owner cancel leaves `booking_status` stale | **FIXED** — PUT/DELETE close the workflow, stop reminders, cancel the linked consult; legacy stale rows can't be confirmed/completed | `vet-appointments`, provider route |
+| F3-09 unclaimed directory providers can be booked/chatted/reviewed | OPEN — product decision (hide Book/Message for unclaimed) | — |
+| F3-10 refunds on cancel | OPEN — product decision | — |
+| F3-25 no "payments live" switch | **DECISION: not added.** Production already has MercadoPago keys on Railway and go-live is in progress; a default-off flag would silently disable it. Recommend adding `PAYMENTS_LIVE` *together with* setting it on Railway, as a human step. | — |
+| F3-11…F3-27 | OPEN (see entries) | — |
+
+**No-real-charge answer (F3 question 1):** nothing in the code can charge without MercadoPago keys + a provider-connected MP account + an explicit checkout call; there is **no** separate "live" switch (see F3-25). Settlement is also currently broken (F3-01), so a payment can be *started* but never *confirmed* by the webhook.
+
+## F3 — Owner ↔ business
+
+Repo: /Users/augustotraversa/Desktop/Pawpi/2026_05_23_Pawpi — web = `anything/apps/web/src/app/api`, mobile = `anything/apps/mobile/src`.
+Method: code reading only (no DB, no prod). Every bug below was verified by reading the cited lines; things I could not prove are in "Unverified suspicions".
+Paths below are relative to `anything/apps/web/src/app/api` unless prefixed `mobile:` or `supabase/`.
+
+---------------------------------------------------------------------------------------------------
+
+## 0. Direct answers to the specific questions
+
+**Q1 "CONFIRM no code path can attempt a REAL charge unless explicitly enabled by env/flag" -> NOT CONFIRMED.**
+There is no kill-switch flag. The only gate is *presence of MP keys*:
+- `utils/payments/config.js:mercadopagoConfig()` returns config when `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_WEBHOOK_SECRET` are all set (memory says they ARE set on Railway). `createCheckout` (`utils/payments/index.js:~100`) then calls the live `https://api.mercadopago.com/checkout/preferences` with the *provider's* OAuth token; the response URL is `init_point ?? sandbox_init_point` (`utils/payments/mercadopago.js:153`) -> a live link when the seller token is live.
+- A real charge needs ALL of: platform keys set + provider connected MP (token row) + owner opens the MP URL and pays. All five callers go through the single seam `createCheckout`: `payments/checkout`, `pets/[id]/shop-checkout`, `pets/[id]/walk-package-checkout`, `pets/[id]/daycare-stays`, `payments/subscriptions/run`. `subscriptions/run` only creates a *preference* (no off-session charge), so "auto-reorder" never charges by itself.
+- Server-side pricing is fail-closed (client `amount_cents` ignored except bounded donation <= 5,000,000 cents). `kind=subscription` is hard-rejected. Good.
+- Recommendation (F3-25): add an explicit `PAYMENTS_LIVE==="true"` guard at the top of `createCheckout` so keys-on-Railway alone cannot start a real checkout until the human flips it.
+
+**Q2 Webhook idempotency / signature.** Signature: HMAC over `id:<data.id>;request-id;ts` (timing-safe) — OK but it signs ONLY `data.id`, not the body, and there is no ts-freshness window (U2). Idempotency of repeated *same* status is fine; but (a) the webhook cannot find any payment under RLS (F3-01), (b) MP payload shape does not match what the extractor reads (F3-02), (c) no monotonic status guard (F3-03). Net: in prod the webhook today settles NOTHING.
+
+**Q3 Review only after completion and once per booking.** Once-per-booking: enforced (LEFT JOIN + unique index `idx_provider_reviews_appointment_unique`; double-tap race -> 23505 -> 500 not 409, minor). "Only after completion": **NOT enforced against the owner** — the owner can set `status='completed'` on their own provider booking via `PUT /api/vet-appointments` (F3-04) and the app itself ships that button (`mobile: components/Health/VetAppointmentDetailModal.jsx:43`).
+
+**Q4 Owner PII seen by providers.** Provider inbox/calendar/dashboard: owner `full_name` only (never username/e-mail — `ownerDisplay` guard test enforces), raw `owner_user_id`, pet name/species/breed/avatar, booking `notes`/`reason_for_visit`. Chat: owner name + avatar. Adoption: applicant **e-mail** to owner/admin roles (A-23) + free-form answers. PATCH booking returns `RETURNING *` (extra: `calendar_event_id`, reminder fields). No phone/e-mail leak found in bookings/chat. MP receives payer name/e-mail (`loadOwnerPayer`) — seller sees it in MP (U11).
+
+**Q5 Timezone/DST.** Argentina has no DST; `composeIso` uses Intl and is DST-correct. Real TZ defects: UTC-day bounds in booking/availability queries (F3-17), `now()::date` UTC in analytics (F3-22), vet-record `CURRENT_DATE` UTC (F3-21), owner reschedule ignores `start_at` (F3-05).
+
+---------------------------------------------------------------------------------------------------
+
+## 1. BOOKING STATE MACHINE
+
+Two status columns on `vet_appointments`:
+- `status` (lifecycle; DB CHECK `scheduled|completed|cancelled|missed`, 0005)
+- `booking_status` (workflow; DB CHECK NULL or `requested|confirmed|declined|cancelled|completed`, 0030). No trigger, no cross-column CHECK -> **the DB permits every transition**; all guarding is in route code.
+
+| Transition | Who/how | Guard in code | Missing guard / outcome |
+|---|---|---|---|
+| (none) -> requested/confirmed | owner `POST providers/[id]/book` | published provider, owns pet, slot (if windows), auto_confirm && !order -> confirmed | no payment_policy enforcement, order link unvalidated (F3-06), unclaimed provider allowed (F3-09), past slots allowed (F3-19) |
+| requested -> confirmed | provider staff `PATCH bookings/[id] confirm` | `currentStatus==='requested'` read; unpaid-order gate | UPDATE has no `AND booking_status='requested'` (race, F3-07); ignores `status='cancelled'` set by owner (F3-08) |
+| requested -> declined | staff `decline` | same read-then-write | same race; refund best-effort; owner notified |
+| requested/confirmed -> cancelled | staff `cancel` | read-then-write | **no refund** (F3-10); race |
+| confirmed -> completed | staff `complete` | read-then-write | no owner notification (F3-14); can complete a future booking |
+| any -> assign staff | staff `assign` | requested/confirmed | no free-at-slot check; exact-`start_at` unique index violation -> 23505 -> 500 |
+| **status** any -> any | owner `PUT vet-appointments` | NONE (arbitrary string; CHECK only) | F3-04 (self-complete), F3-08 (cancel w/o booking_status), completed->cancelled, cancelled->scheduled |
+| date/time any | owner `PUT` | NONE | F3-05 (bypasses slots, start_at stale, stays confirmed) |
+| soft delete | owner `DELETE vet-appointments` | owner-scoped | does not set booking_status, does not cancel telehealth session, no refund; frees slot (deleted_at) and notifies provider (OK) |
+
+Verdict on the specific impossible transitions you listed:
+- double-confirm (sequential): blocked (409). Double-confirm (concurrent) / confirm-vs-owner-cancel: **not blocked** (F3-07/F3-08).
+- completed -> cancelled by *provider*: blocked. By *owner* via PUT: **allowed**.
+- cancelled -> confirmed: blocked when `booking_status` is cancelled/declined; **allowed** if the owner "cancelled" via PUT (booking_status still `requested`) (F3-08).
+- decline after confirm: blocked (409; provider must use cancel).
+- Owner confirming own booking: no owner route writes `booking_status`; OK. A user who is *staff of the provider they book* can confirm/complete/review their own booking (F3-04 note).
+- Other provider's staff: scoped `WHERE id AND provider_id` + `requireProviderRole` -> 404/403. OK.
+- Provider "reschedule": **does not exist** (only owner PUT). Matrix row marked N/A.
+
+---------------------------------------------------------------------------------------------------
+
+## 2. FLOW MATRIX
+
+Legend: V = verified by code reading. Notification text = in-app bell is rendered client-side from `body` JSON via i18n (`notifications.booking_*`, `bizNotifBell.*`, both EN+ES keys present — verified); push copy is server-rendered EN/ES (`utils/push.js` PUSH_COPY, `utils/ownerNotifications.js` COPY). Tapping a *push* always opens the in-app inbox (`mobile: utils/notificationDeepLink.js:pushTapRoute`), not the booking.
+
+| # | Flow | Trigger | Expected DB rows / state (owner side | business side) | Expected notification (recipient, type, text, deep-link, read state) | V? | BUG |
+|---|---|---|---|---|---|---|---|
+| 1 | Provider discovery | `GET providers/discover`, `services/discover`, `providers/public/[slug]` | read-only. Only `status='published' AND is_demo IS NOT TRUE` (discover); public slug published only | n/a | n/a | V | F3-12 (rating aggregates include hidden reviews); F3-09 (3,627 unclaimed directory rows are discoverable AND bookable) |
+| 2 | Booking request (slot) | owner `POST providers/[id]/book` | `vet_appointments` row: owner_user_id, provider_id, capability, start_at/end_at (server-derived from slot), booking_status `requested` (or `confirmed` if provider.auto_confirm_bookings && no order), status `scheduled`, source `owner`; telehealth: `telehealth_sessions` row (solo=assigned, multi=unassigned) | Same row visible in provider inbox/calendar | OWNER (self, actor null): `booking_requested`/`booking_confirmed` "You booked..."; EN/ES bell, tap -> `/service/booking-summary?id=` ; unread. Skipped when paid-pending. PROVIDER TEAM (owner+active staff): `biz_booking` "New booking / Nueva reserva"; push (OPTIONAL_PUSH rule per catalog); tap -> bell back (F3-15) | V | F3-06, F3-09, F3-17, F3-18, F3-19, F3-24 |
+| 3 | Provider confirm | staff `PATCH bookings/[id] {action:confirm[,staffUserId]}` | `booking_status`->`confirmed` (+staff_user_id). Paid-order gate: order must be `paid` | inbox updates | OWNER: `booking_confirmed` bell + push (v2 flag) "Booking confirmed / Reserva confirmada"; unread; tap -> booking summary | V | F3-02/03 (paid orders can never become `paid`), F3-07 race, F3-08 ghost-cancelled confirm |
+| 4 | Provider decline | `decline` | booking_status `declined`, status `cancelled`, reminder off, linked telehealth session cancelled; approved payment refunded best-effort | slot freed (index/availability exclude declined) | OWNER: `booking_declined` | V | F3-07 |
+| 5 | Provider cancel | `cancel` | booking_status+status `cancelled`, reminder off, telehealth cancelled | slot freed | OWNER: `booking_cancelled` | V | F3-10 (no refund) |
+| 6 | Provider complete | `complete` | booking_status `completed`, status `completed` (unlocks review) | counts in analytics | **NONE** (no `booking_completed` type; no review prompt) | V | F3-14 |
+| 7 | Reschedule | **owner only** `PUT vet-appointments` date/time | updates naive date/time only | provider notified `biz_booking_change` "Booking changed" | PROVIDER TEAM `biz_booking_change`; no owner-side notice; provider cannot propose a new time | V | F3-05 |
+| 8 | Owner cancel | `DELETE vet-appointments` (Vet Record) or `PUT status=cancelled` | DELETE: deleted_at + status cancelled (booking_status stale). PUT: status only | DELETE: row vanishes from inbox; PUT: row stays "requested/confirmed", slot held | PROVIDER TEAM `biz_booking_change` ("cancel") | V | F3-08, F3-10 |
+| 9 | Review | owner `POST providers/[id]/reviews` | `provider_reviews` row linked to earliest unreviewed completed booking; unique per `appointment_id` | rating aggregates update | **NONE** to provider (`biz_review` type, push copy and i18n all exist but nothing emits it) | V | F3-04, F3-12, F3-14 |
+| 10 | Vet appt -> Vet Record & Today | same `vet_appointments` row | `GET vet-appointments` returns all capabilities; `vet-record/summary` counts | n/a | reminders per `reminder_enabled`; decline/cancel set it false | V (server) | F3-20; U1 |
+| 11 | Telehealth | `book` with capability telehealth -> `telehealth_sessions`; `join` | session scheduled -> in_progress -> ended; owner joins 5 min before | vet inbox shows session | none | V | F3-24 |
+| 12 | Chat start | owner `POST threads` (published provider) | `message_threads` (unique per owner+provider general, per booking) | provider Chats inbox | none on thread creation | V | F3-09 (unclaimed provider), F3-26 (blocks) |
+| 13 | Chat owner->provider | `POST threads/[id]/messages` | `messages` row; thread.last_message_at | unread = messages with sender<>me & read_at null | PROVIDER TEAM `biz_message` "New message / Nuevo mensaje" | V | F3-11 |
+| 14 | Chat provider->owner | same route | same | owner unread badge via polling `threads/unread-count` | **NONE** (explicitly out of scope per code comment) | V | F3-14, F3-11 |
+| 15 | Mark read | `POST threads/[id]/read` | `read_at=now()` on messages where sender<>me | shared flag per message | n/a | V | F3-11 |
+| 16 | Care-access request | staff `POST providers/[id]/access-requests` | `care_access_grants` pending (requested_by provider) | owner sees in bell (poll) / trust screen | owner NOT notified/pushed | V | F3-13 |
+| 17 | Care-access approve/revoke | owner `PATCH care-access/grants/[id]` | pending->active/revoked, active->revoked; guarded 409s | `assertCareAccess` reads active+unexpired+scope | none to provider | V | OK (expiresAt unvalidated -> 500 on junk, U3) |
+| 18 | Payment checkout | `POST payments/checkout` | `orders` pending + `payments` pending + MP preference | provider needs connected MP | provider team `biz_order` for products only | V | F3-06, F3-22, F3-25 |
+| 19 | Payment webhook | MP -> `webhooks/mercadopago` | should flip payment approved + order paid (+stock, walk credits) | n/a | none (no "paid" notification to owner or provider; `biz_payout` never emitted) | V | **F3-01, F3-02, F3-03** |
+| 20 | Provider dashboard counts | `GET providers/[id]/analytics` | aggregates | n/a | n/a | V | F3-12, F3-21, F3-22 |
+| 21 | Adoption apply/review | owner `POST adoption/applications`; staff `PATCH ...adoption-applications/[id]` | application submitted -> under_review/approved/declined; approve creates pet via DEFINER | shelter queue | OWNER `adoption_*`; PROVIDER `biz_adoption_application` | V | F3-16 |
+| 22 | Cross-business isolation | provider routes | `requireProviderRole` + `provider_id` scoping + RLS FORCE; only 7 provider routes lack it (all owner-context or participant-scoped by RLS) | n/a | n/a | V | none found (care access: F3-13) |
+
+---------------------------------------------------------------------------------------------------
+
+## 3. BUGS FOUND (confirmed by reading)
+
+Severity: HIGH = money/trust/data-integrity, MED = wrong results for real users, LOW = edge/UX.
+
+### F3-01 [HIGH] Payment webhook runs with NO RLS identity -> can never find a payment -> nothing ever settles  (NEEDS-HUMAN migration)
+- `payments/webhooks/mercadopago/route.js` (no `auth()`, no `withRequestContext`) -> `utils/payments/index.js:149 handleWebhook` -> `:301 findPaymentForWebhook` and `:322 applyPaymentStatus` use plain `sql`.
+- The DB role is `pawpi_app` (NOBYPASSRLS) and `payments`/`orders` are FORCE RLS: `payments_select` = `exists(select 1 from orders o where o.id = order_id)` which itself resolves via `orders_select` (owner = `current_app_user_id()` OR active staff). With no identity both are false (supabase/migrations/0029_payments_foundation.sql:286-322; the integration test `test/integration/payments-rls.integration.test.ts:159,340` literally asserts "no identity -> ZERO").
+- Failing scenario: owner pays; MP posts a correctly signed webhook; signature passes; `findPaymentForWebhook` returns `[]` -> response `{ok:true,status:"ignored",reason:"unknown_reference"}` 200. Order stays `pending` forever, so `PATCH confirm` always 409s `unpaid`, stock never decrements, walk credits never granted, refunds never apply.
+- Why tests miss it: `utils/payments/index.test.js` and the route test mock `sql`; only a real-PG test as `pawpi_app` without identity catches it.
+- Fix needs SQL (NEEDS-HUMAN), then code calls it. SQL (follows CLAUDE.md migration rules: pinned search_path, grant to pawpi_app, no anon grants):
+```sql
+-- NNNN_payment_webhook_definer.sql
+create or replace function app_payment_for_webhook(p_ref text)
+returns table (id integer, order_id integer, rail text, status text)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select p.id, p.order_id, p.rail, p.status
+  from payments p
+  where p.external_id = p_ref or p.idempotency_key = p_ref
+  order by p.id desc limit 1
+$$;
+grant execute on function app_payment_for_webhook(text) to pawpi_app;
+
+-- monotonic + atomic status application (also fixes F3-03)
+create or replace function app_apply_payment_status(p_payment_id integer, p_status text, p_raw text)
+returns table (order_id integer, order_kind text, prev_order_status text, new_order_status text)
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_pay payments%rowtype; v_ord orders%rowtype; v_new text;
+begin
+  select * into v_pay from payments where id = p_payment_id for update;
+  if not found then return; end if;
+  if v_pay.status = 'refunded' then return; end if;                       -- terminal
+  if v_pay.status = 'approved' and p_status <> 'refunded' then return; end if; -- no regression
+  update payments set status = p_status, raw_status = p_raw, updated_at = now() where id = p_payment_id;
+  select * into v_ord from orders where id = v_pay.order_id for update;
+  v_new := case p_status when 'approved' then 'paid' when 'refunded' then 'refunded'
+                         when 'failed' then 'failed' else null end;
+  if v_new is not null then
+    update orders set status = v_new, updated_at = now() where id = v_ord.id;
+  end if;
+  return query select v_ord.id, v_ord.kind, v_ord.status, coalesce(v_new, v_ord.status);
+end $$;
+grant execute on function app_apply_payment_status(integer, text, text) to pawpi_app;
+```
+  Code: `handleWebhook` uses `app_payment_for_webhook`; `applyPaymentStatus` webhook variant uses `app_apply_payment_status` and runs the existing stock/credit hooks off `prev_order_status/new_order_status`. (Keep the identity-ful path for provider-initiated `refund()`.) Hand-applied? It adds DEFINER functions only (no REVOKE) but touches payments — ship a `supabase/verify_NNNN.sql` per CLAUDE.md rule 4 if applied by hand.
+- Test that proves it: integration test (`pawpi_app`, no `app.current_user_id`) calling `handleWebhook` with a valid HMAC and asserting order -> `paid`. Risk of fix: medium (money path) -> gate behind F3-25 flag and sandbox E2E.
+
+### F3-02 [HIGH] MP webhook extractor reads the wrong identifiers/status for real MP payloads  (code-level, depends on F3-01)
+- `utils/payments/index.js:284 extractWebhookRef` (mercadopago): `externalReference = body.external_reference ?? body.data.external_reference ?? body.data.id`, `rawStatus = body.status ?? body.data.status ?? body.action`.
+- A real MP v1 payment notification body is `{action:"payment.updated", api_version, data:{id:"<MP payment id>"}, type:"payment", ...}` — no `external_reference`, no `status`. So `externalReference` = MP **payment id**, but `payments.external_id` stores the **preference id** (`createCheckout` -> `data.id` of `/checkout/preferences`, mercadopago.js:152) and `idempotency_key` is `order-N`. They never match; `rawStatus` = `"payment.updated"` -> `mapStatus` -> `pending`. `getPaymentStatus()` exists but is called by nobody (`grep getStatus` -> only index.js).
+- Scenario: even with F3-01 fixed, no payment is ever matched/approved.
+- Fix: in `handleWebhook` for MP, after signature OK, take `data.id` (payment id), fetch `GET /v1/payments/{id}` with the seller token (resolve order -> provider via the DEFINER from F3-01) and use ITS `external_reference` (we set it to the order id) and `status`; look the payment up by `order_id`. Only then `mapStatus`. Never trust `body.status`/`body.external_reference` (unsigned, attacker-editable — U2).
+- Test: unit test with a captured real MP payload fixture + mocked fetch.
+
+### F3-03 [MED] `applyPaymentStatus` has no monotonic guard (status regression)
+- `utils/payments/index.js:322`: unconditional `UPDATE payments SET status=...` then order update. Out-of-order/duplicate MP events: `refunded -> approved` re-marks a refunded order paid (and re-decrements stock); `approved -> pending` (any unknown action maps to `pending`) regresses the ledger row while the order stays paid; `approved -> failed` (late `cancelled`) flips a paid order to failed.
+- Fix: guard in SQL (see F3-01 function) or in code: `if (payment.status==='refunded') return; if (payment.status==='approved' && status!=='refunded') return;` using a fresh `SELECT ... FOR UPDATE` row, not the stale `payment` object.
+- Test: unit — sequence [approved, pending] and [refunded, approved] leaves final state refunded/approved respectively.
+
+### F3-04 [HIGH] Owner can self-"complete" any own provider booking -> fake reviews (and arbitrary status writes)
+- `vet-appointments/route.js:290` (PUT): `status` accepted verbatim, no whitelist, no check that the row is a provider booking. `reviews/route.js:149` gates only on `va.status = 'completed'`. The mobile app ships the button: `mobile: components/Health/VetAppointmentDetailModal.jsx:43-52` (`PUT {status:"completed"}`), and `canReview = status==='completed' && provider_id != null` (:~38).
+- Scenario: owner books provider X (never confirmed, never attended, or X is an unclaimed directory place), opens Vet Record -> "Mark completed" (or curl PUT) -> `POST providers/X/reviews` succeeds. Repeat per booking (booking spam is rate limited, but there is no cap on bookings with unstaffed providers, F3-09). Also a provider staff member can book their own provider and self-review.
+- Fix (minimal): in PUT, load the row first; if `provider_id IS NOT NULL` reject `status` values other than `'cancelled'` (and route cancellation through the booking-aware path in F3-08) -> 409 `{code:"managed_by_provider"}`; additionally gate reviews on `va.booking_status IN ('completed')` (keep `status='completed'`) and exclude owners who are active staff of the provider. Personal vet appointments (provider_id NULL) keep free status editing. Also validate `status` against `['scheduled','completed','cancelled','missed']` -> 400 instead of CHECK 500.
+```js
+const cur = (await sql`SELECT provider_id, booking_status FROM vet_appointments WHERE id=${id} AND owner_user_id=${ownerUserId} AND deleted_at IS NULL`)[0];
+if (!cur) return 404;
+if (cur.provider_id != null && status !== undefined && status !== 'cancelled') return Response.json({error:"Status is managed by the provider",code:"managed_by_provider"},{status:409});
+```
+  and in reviews: `AND va.booking_status = 'completed' AND NOT EXISTS (SELECT 1 FROM provider_staff ps WHERE ps.provider_id=va.provider_id AND ps.user_profile_id=va.owner_user_id AND ps.status='active')`.
+- Test: yes (route unit with mocked sql; plus integration). Risk: product-visible — the Vet Record "Mark completed" button must be hidden for provider bookings (mobile change) or it will 409. Today completion by providers is the only intended path.
+
+### F3-05 [HIGH] Owner reschedule via PUT bypasses availability and leaves `start_at`/`booking_status` stale
+- `vet-appointments/route.js:260-310` updates only `appointment_date`/`appointment_time`. `start_at`/`end_at` (used by provider calendar, the `idx_vet_appointments_no_double_book` index and `availability`) are untouched; `booking_status` stays `confirmed`.
+- Scenario: owner has a confirmed 10:00 booking; edits it to 17:30 on another day. Provider inbox shows the new naive date/time (and a `biz_booking_change` "Booking changed" push), but the provider calendar (`view=calendar` filters/orders by `start_at`) still shows 10:00; the old slot remains blocked, the new time was never checked against windows/other bookings, and the provider never re-confirmed. Telehealth join gate uses the new naive time, so the owner can join at a time the vet agreed to nothing.
+- Fix (minimal, no migration): for rows with `provider_id != null`, reject date/time edits (409 `code:"reschedule_not_supported"`: "cancel and rebook"); or, if reschedule is wanted, re-run the book slot validation, rewrite start_at/end_at and reset `booking_status='requested'`.
+- Test: yes. Risk: UX — mobile `VetAppointmentRoutineModal` edit must hide date/time for provider bookings.
+
+### F3-06 [HIGH] `book` ignores `payment_policy`; the `order_id` link is unvalidated (reusable / wrong kind / wrong amount)
+- `providers/[id]/book/route.js:201` loads the service but never reads `payment_policy`; `:423-437` only checks the order is the caller's and the provider's.
+- Scenario A (bypass): service has `payment_policy='full'`. Client skips checkout and POSTs `/book` with no `order_id`. Booking is created; with `auto_confirm_bookings` it is created `confirmed` (`:448`); otherwise provider `confirm` has no gate because `order_id` is null (`bookings/[appointmentId]/route.js` gate runs only when `order_id != null`). Service delivered without payment.
+- Scenario B (reuse): owner pays a 1-cent *donation* (`kind=donation`, bounded only >0) or a cheap booking once, then attaches that same paid `order_id` to many bookings of any service at the same provider; the confirm gate only checks `orders.status==='paid'`.
+- Fix: in `/book`, if `service.payment_policy IN ('deposit','full')` and the required cents > 0 and not `wantsCredit` -> require `effectiveOrderId` else 409 `{code:"payment_required"}`. When an order is supplied require `kind='booking'`, `amount_cents >= required`, status in (`pending`,`paid`), and `NOT EXISTS (SELECT 1 FROM vet_appointments WHERE order_id=${id} AND deleted_at IS NULL)`. (No `service_id` on orders, so amount comparison is the available binding; a `UNIQUE(order_id) WHERE order_id IS NOT NULL` index would be the DB backstop — NEEDS-HUMAN optional: `create unique index concurrently idx_vet_appointments_order_unique on vet_appointments(order_id) where order_id is not null and deleted_at is null;`).
+- Test: yes (unit with mocked sql + integration). Note: today also blocked from mattering because settlement is broken (F3-01), so fix BEFORE enabling live payments.
+
+### F3-07 [MED] Provider transition UPDATEs are unguarded -> concurrent double-tap/ two-staff races
+- `bookings/[appointmentId]/route.js:187,198,221,273,299` all `UPDATE ... WHERE id AND provider_id` after an earlier SELECT (line ~77), no row lock, no `AND booking_status = 'requested'`/`'confirmed'`, no rowcount check.
+- Scenario: front-desk A taps Confirm while B taps Decline (or owner delete/cancel lands in between): both read `requested`; last writer wins, both notify the owner ("confirmed" then "declined"), and a decline refund can run while the confirm commits. A double-tap on Confirm is 409 on the second call only if the first committed.
+- Fix: add the expected prior status to every UPDATE and 409 when `updated.length===0`:
+```js
+UPDATE vet_appointments SET booking_status='confirmed', updated_at=NOW()
+WHERE id=${id} AND provider_id=${pid} AND booking_status='requested' AND deleted_at IS NULL RETURNING *
+```
+  and only notify when a row was returned.
+- Test: yes (mock `UPDATE` returning `[]` -> expect 409 and no notify).
+
+### F3-08 [HIGH/MED] Owner "cancel" via PUT does not update `booking_status` -> provider confirms/completes a cancelled booking; slot stays held
+- `vet-appointments/route.js` PUT sets `status='cancelled'` only. Provider `confirm` checks `booking_status==='requested'` only (bookings/[appointmentId]/route.js:149) and `complete` checks `confirmed` only (:284).
+- Scenario: owner cancels via PUT (status cancelled, booking_status requested). Provider presses Confirm -> `booking_status='confirmed'`, owner gets "Booking confirmed"; or a previously confirmed one is later `complete`d -> `status` flips back to `completed` (cancelled -> completed resurrection). The slot also stays blocked: `no_double_book` index and availability queries key off `booking_status IN ('requested','confirmed')` and `deleted_at IS NULL`.
+- (DELETE path is OK for slot because it sets `deleted_at`, but also leaves `booking_status` stale and the linked `telehealth_sessions` row `scheduled`.)
+- Fix: in PUT/DELETE for provider bookings set `booking_status='cancelled', reminder_enabled=false` together with `status='cancelled'`, cancel linked telehealth session (same SQL as provider cancel), and in provider confirm/complete UPDATEs add `AND status <> 'cancelled'`.
+- Test: yes.
+
+### F3-09 [MED] Unclaimed directory providers (published, zero staff) can be booked, chatted with and reviewed
+- `book/route.js:128-137` and `threads/route.js:~145` check only `status==='published'`; capability check is skipped when `capability==='vet'` (`:142`). The directory loader publishes 3,627 rows (`vet|shop|groomer|pet_friendly`), `claim_status='unclaimed'`, owned by system profile 2147000001 with **no `provider_staff`** (supabase/seed/directory/load_master.mjs header; 0124). Mobile shows Book for them: `mobile: app/service/provider.jsx:213 showBook = bookableCaps.length>0 || !isShop`.
+- Scenario: owner books "Veterinaria X" (a scraped place). Row stays `requested` forever; `notifyProviderTeam` -> `app_provider_active_staff_ids` -> no recipients; owner got a "booking requested" bell, appointment + reminders land in Vet Record/Today for a clinic that never heard of it. Same for chat (messages to nobody) and reviews (with F3-04).
+- Fix: in `/book`, `/threads POST`, `/reviews POST`, `/availability`: require `claim_status IS DISTINCT FROM 'unclaimed'` (guarded by `withSavepoint` for pre-0124 DBs) or, version-independent: `EXISTS (SELECT 1 FROM provider_staff WHERE provider_id=... AND status='active')` else 409 `{code:"provider_not_claimed"}`; mobile: hide Book/Message when `claim_status==='unclaimed'`.
+- Test: yes.
+
+### F3-10 [MED] Refunds: provider cancel and owner cancel never refund; decline refund is best-effort and misses in-flight payments
+- `bookings/[appointmentId]/route.js:263-282` (`cancel`) has no refund logic; only `decline` (:232-257) refunds, and only a payment already `approved`. Owner cancel (`vet-appointments` PUT/DELETE) never refunds.
+- Scenario: customer paid a deposit (when F3-01/02 are fixed), provider cancels the confirmed booking -> customer is charged, booking cancelled, order stays `paid`, provider revenue (`analytics`) still counts it. Decline while the payment is still `pending` (webhook not yet landed) -> no refund; the payment later approves against a declined booking.
+- Fix: extract the decline refund block into `refundBookingIfPaid(orderId)` and call it for cancel (provider) and for the owner cancel path; for decline/cancel with a `pending` payment also mark order `cancelled` so a late approval is flagged for manual refund. Policy decision for owner-cancel refunds is a product call -> at least notify provider/admin.
+- Test: yes (mock `refund`).
+
+### F3-11 [MED] Chat unread/read-state is wrong with more than one staff member (and counts hidden messages)
+- `threads/route.js:65`, `threads/unread-count/route.js:47,56,63` count `m.sender_user_id <> ${userId}`; `threads/[id]/read/route.js:37-42` marks every message `sender_user_id <> me`.
+- Scenario 1: owner O writes; staff A replies (message M_A). For staff B, M_A is "from someone else and unread" -> B's badge counts A's own reply until the owner reads it. Scenario 2: B opens the thread -> `read` marks M_A `read_at=now()` before the owner ever saw it -> owner's unread badge for the vet's reply vanishes (owner has no push either, F3-14).
+- Also `threads/route.js:51` last_message preview and the unread count don't filter `hidden_at IS NULL` (moderated-removed text still previews and counts).
+- Fix: define side by thread: provider-side unread = `m.sender_user_id = t.owner_user_id`; owner-side = `m.sender_user_id <> t.owner_user_id`; in `read` route `UPDATE ... FROM message_threads t WHERE t.id=m.thread_id AND (CASE WHEN t.owner_user_id=${userId} THEN m.sender_user_id <> t.owner_user_id ELSE m.sender_user_id = t.owner_user_id END)`; add `AND m.hidden_at IS NULL` to previews/counts.
+- Test: yes (integration with two staff).
+
+### F3-12 [MED/LOW] Rating aggregates ignore moderation (`hidden_at`) and blocks
+- `providers/discover/route.js:128-129,182-183`, `providers/public/[slug]/route.js:55-56,67-68`, `providers/[id]/route.js:78-79`, `feed/suggestions/route.js:69-70,81-82`, `providers/[id]/analytics/route.js:143-149` aggregate over all `provider_reviews`. The list endpoint filters `hidden_at IS NULL` (reviews/route.js:~92). RLS (0028) doesn't hide them either.
+- Scenario: moderators hide an abusive 1-star; the list drops it but the star average/count shown on the card, storefront and dashboard still include it; count says 12, list shows 11.
+- Fix: add `AND r.hidden_at IS NULL` in all 8 subqueries.
+- Test: yes (SQL string assertion or integration).
+
+### F3-13 [MED] Any provider staff can request medical-scope access to ANY pet with no relationship; pet-id oracle
+- `access-requests/route.js:74-90` derives owner from `pets` for any `petId`; `bookingId` optional and only checks provider/pet match (not status/deleted). A user can create a provider (any user can), then POST `access-requests` for sequential `petId`s with `medical_read, medical_write, ...`.
+- Impact: owners get pending "X wants access" prompts from strangers (phishing/harassment vector — the approve button is one tap); `404 Pet not found` vs `201/409` is an enumeration oracle for pet ids. Owner approve flow is correct (cannot be bypassed), so this is nuisance/abuse, not data exposure.
+- Fix: require an existing live relationship: `EXISTS (SELECT 1 FROM vet_appointments WHERE pet_id=${petId} AND provider_id=${providerId} AND deleted_at IS NULL AND booking_status IN ('requested','confirmed','completed'))` (or a message thread); return the same 404 for "no pet" and "no relationship"; require provider `published`. Add rate limit (`withRateLimit`).
+- Test: yes.
+
+### F3-14 [MED] Missing notifications that the product flow needs
+- No owner notification on `complete` (so the review prompt never arrives; `bookings/[appointmentId]/route.js:284-306` has no `notifyOwner`, and no `booking_completed` type in the CHECK `supabase/migrations/0110`).
+- No owner notification/push when provider staff reply in chat (`threads/[id]/messages/route.js:~150` comment: "left unchanged"); owner only sees the polled badge.
+- `biz_review` / `biz_payout` exist in the catalog, push copy (`utils/push.js:307-313`), i18n (EN+ES) and the CHECK, but nothing emits them (`grep biz_review` -> only definitions): provider is never told about a new review or a settled payment.
+- Owner is not notified when a vet requests record access (F3-13 path).
+- Fix: `notifyOwner("booking_completed")` needs a type -> NEEDS-HUMAN for the CHECK (add `'booking_completed','message'` to `notifications_type_check` + `notificationCategories`), plus i18n. Code-only now: emit `biz_review` after review insert via `notifyProviderTeam({type:'biz_review', actor:userId, subjectRef: review.id})` (type already allowed) and emit `biz_message`-equivalent for owner after the CHECK widening.
+- Test: yes for biz_review emission.
+
+### F3-15 [LOW/MED] Business bell: every `biz_*` row taps to `router.back()` (dead tap)
+- `mobile: app/notifications.jsx:~355-370` sets all related ids null for BUSINESS_TYPES; `handleNotifTap` falls to `router.back()` (:582). Tapping "New booking" does not open the bookings hub/inbox. (Same class as the recent "no dead taps" PR #648.)
+- Fix: map `biz_booking|biz_booking_change` -> business bookings screen with `id=subject_ref`; `biz_message` -> chats; `biz_adoption_application` -> applications; `biz_order` -> orders. Mobile only; test via RNTL (`notifications.test.jsx`).
+
+### F3-16 [MED] Adoption: decisions after approval, and double approval of the same dog
+- `providers/[id]/adoption-applications/[applicationId]/route.js:112` plain `UPDATE ... SET status` for `under_review|declined` with no check of the current status: an `approved` application (pet already created, listing adopted) can be flipped to `declined`/`under_review` and the adopter is notified "declined" while owning the pet.
+- `app_approve_adoption` (supabase/migrations/0038:236-310) checks the *application* status but never `v_listing.status`. Two applicants for one dog: approve A (listing -> adopted), approve B (still `submitted`) -> second `pets` row for the same dog.
+- Fix code: in PATCH read `a.status` + `l.status` (already selects application; add listing status) and 409 when current is `approved`, or when approving and listing is `adopted`. NEEDS-HUMAN (backstop): in `app_approve_adoption` after loading the listing add `if v_listing.status = 'adopted' then return null; end if;`.
+- Test: yes.
+
+### F3-17 [MED] Taken-slot queries use UTC day bounds, not the provider's local day -> double booking of evening slots
+- `book/route.js:297-312` and `availability/route.js:~165-185`: `start_at >= ${appointment_date} AND start_at < ${rangeEnd}` — a bare date compared to `timestamptz` is UTC midnight. Buenos Aires slots from 21:00 local are stored at 00:00Z-02:59Z of the next UTC day. Those bookings are invisible when computing the booked set for local day D, so both `GET availability` shows the slot open and `POST book` accepts it (only an exact-same-staff index backstops, F3-18).
+- Seeded default windows are 09-18, so it bites only providers with evening windows (trainers/groomers closing late/daycare pickup windows) — LOW-MED.
+- Fix: compute bounds with `composeIso(date,0,tz)` / `composeIso(rangeEnd,0,tz)` and pass those ISO instants.
+- Test: yes (pure function + mocked sql), e.g. window 21:00-23:00 BA, existing booking at `…T00:00:00Z`.
+
+### F3-18 [MED] No race guard for provider-wide (no staff) slots; auto-confirm can confirm two bookings in the same slot
+- `supabase/migrations/0030` unique index applies only `WHERE staff_user_id IS NOT NULL`. Most bookings have no staff, so the check-then-insert (`book/route.js:257-370` then `:458`) is racy: two owners tapping the last slot concurrently both pass `isSlotBookable` and both insert; with `auto_confirm_bookings` both are `confirmed`.
+- Fix (code-only): inside the `windows.length > 0` branch take a tx-scoped advisory lock before the availability read: `SELECT pg_advisory_xact_lock(hashtext('book-slot'), ${providerId})` (the request already runs in one transaction; mirrors `subscriptions/run`). Optional NEEDS-HUMAN index is risky for daycare (many dogs same start) — if added, restrict to fixed-slot capabilities: `create unique index concurrently idx_va_no_double_book_provider_wide on vet_appointments (provider_id, start_at) where staff_user_id is null and start_at is not null and deleted_at is null and booking_status in ('requested','confirmed') and capability in ('vet','groomer','trainer','telehealth');`
+- Test: integration with two concurrent transactions.
+
+### F3-19 [LOW] No "slot is in the past" check; `appointment_time` not derived from the validated slot
+- `generateSlotsForDate` has no `now` filter and `book` never rejects `start_at < now()`. Availability GET returns past slots for today. `appointment_date/time` (used by inbox, reminders, telehealth gate) are client-supplied and only the date is tied to the slot, so `appointment_time` can disagree with `start_at`.
+- Fix: after slot validation, `if (new Date(slot.start) <= new Date()) 422 selected_slot_in_past` and derive `appointment_time` from `slot.start` in `timeZone`. Test: yes.
+
+### F3-20 [LOW/MED] Vet Record/Today treat every capability and every unconfirmed/declined booking as a vet visit
+- `vet-appointments/route.js` GET (select list lacks `capability`) returns walker/daycare/sitter/groomer bookings; `mobile: hooks/useVetAppointmentReminders.js` makes them "Veterinary appointment" reminders. `vet-record/summary/route.js:106` counts `status='completed' OR appointment_date < CURRENT_DATE` — includes cancelled/declined past rows and non-vet capabilities; upcoming (:97) counts `requested` and non-vet rows. `CURRENT_DATE` is UTC.
+- Fix: add `capability IN ('vet','telehealth')` (or return `capability` and filter client-side), `(booking_status IS NULL OR booking_status IN ('confirmed','completed'))` for "upcoming", and `status <> 'cancelled'` for history; use the caller's local date param. Test: yes.
+
+### F3-21 [LOW] Analytics counts cancelled/declined bookings
+- `providers/[id]/analytics/route.js:98-135`: `bookings.total`, `by_month`, `top_services` count every non-deleted row including `declined`/`cancelled`; `upcoming_count` is fine. Revenue sums `orders.status='paid'` for all kinds (donations, adoption fees) and keeps paid-then-cancelled bookings (F3-10). Fix: `AND booking_status IS DISTINCT FROM ALL (ARRAY['declined','cancelled'])`-style filter (`booking_status NOT IN ('declined','cancelled') OR booking_status IS NULL`). Test: yes.
+
+### F3-22 [LOW] `now()::date` UTC in analytics drops today's bookings after 21:00 BA
+- `analytics/route.js:117,126`: `appointment_date >= now()::date`. After 21:00 BA (00:00Z) today's remaining bookings disappear from "upcoming". Fix: `(now() AT TIME ZONE ${provider.time_zone})::date`. Test: yes.
+
+### F3-23 [LOW/MED] Client-supplied `idempotency_key` with a global UNIQUE constraint
+- `payments/checkout/route.js:362` `idempotency_key || order-${order.id}`; `payments` has `unique (idempotency_key)` (0029:146) and `createCheckout` does `ON CONFLICT (idempotency_key) DO UPDATE SET external_id` (`utils/payments/index.js:129`). A user can pre-register keys equal to other users' future default keys (`order-<id>`); the victim's checkout then hits the conflict and, because the other user's row fails the UPDATE policy, errors -> 500 (targeted checkout DoS). A double-tap with no key creates two orders + two MP preferences.
+- Fix: ignore the client key or namespace it: `` `u${userId}-${idempotency_key}` ``; for booking checkout dedupe on (owner, provider, service, pending order in last N minutes). Test: yes.
+
+### F3-24 [LOW/MED] Telehealth join ignores booking state / payment
+- `telehealth/sessions/[sessionId]/join/route.js` loads only `appointment_date/time`; the session is pre-created at book time (book/route.js telehealth block) even for unpaid `requested` bookings. Owner (and vet) can join at the appointment time without confirmation or payment; an owner-DELETEd booking leaves the session `scheduled`.
+- Fix: join `va.booking_status, va.deleted_at, orders.status` and require `booking_status IN ('confirmed','completed')`, `deleted_at IS NULL`. Test: yes.
+
+### F3-25 [MED process] No explicit "payments live" switch
+- See Q1. Fix: `if (process.env.PAYMENTS_LIVE !== "true") throw new PaymentsNotConfiguredError(rail)` in `createCheckout` (and `refund`/`payout`), document in `docs/LAUNCH-CHECKLIST.md`. Test: yes (config.test.js). Risk: low.
+
+### F3-26 [LOW] Blocked users can still book and message businesses
+- `dm-threads/[id]/messages/route.js:~105` enforces blocks; `threads/[id]/messages/route.js`, `threads/route.js` POST and `book/route.js` do not call `app_user_is_blocked`. A customer the business owner blocked (Guideline 1.2 expectation) keeps messaging and booking. Fix: in `threads POST`/`messages POST`/`book`, `app_user_is_blocked(provider.owner_user_profile_id, userId)` -> 403. Test: yes.
+
+### F3-27 [LOW] safeNotify is not savepointed; push HTTP runs inside the DB transaction
+- `utils/notify.js:22-45`: `app_notify` error (CHECK violation on an unmigrated type, deleted recipient FK) aborts the whole request transaction; the try/catch swallows it but the later COMMIT fails -> the booking confirm/decline is rolled back and the client gets 500 (the exact issue documented in `utils/requestContext.js` withSavepoint comments and memory "withRequestContext 500s over handled errors"). Also `notifyProviderTeam` awaits `pushForNotification` (Expo HTTP) per team member sequentially while the tx is open -> latency + held connection.
+- Fix: wrap the `app_notify` call in `withSavepoint(...)`; fire pushes after COMMIT (or `void`). Test: yes (mock sql throwing on app_notify -> action still returns 200).
+
+---------------------------------------------------------------------------------------------------
+
+## 4. NEEDS-HUMAN (migration/RLS/index) — consolidated
+1. F3-01: `app_payment_for_webhook`, `app_apply_payment_status` (SQL above) + verify file.
+2. F3-06 (optional): `create unique index concurrently idx_vet_appointments_order_unique on vet_appointments (order_id) where order_id is not null and deleted_at is null;`
+3. F3-14: add `'booking_completed'` (and owner `'message'`) to `notifications_type_check` (re-run the 0110 list + new types) + `notificationCategories.js`/OWNER_PUSH_TYPES/i18n.
+4. F3-16: `app_approve_adoption`: after loading listing add `if v_listing.status = 'adopted' then return null; end if;`.
+5. F3-18 (optional, fixed-slot capabilities only): index above; the advisory-lock code fix needs no SQL.
+
+## 5. Unverified suspicions (not claimed as bugs)
+- U1: `mobile: hooks/useVetAppointmentReminders.js:33` builds `` `${apt.appointment_date}T${apt.appointment_time}:00` ``. postgres.js returns `date` as a JS Date (JSON `…T00:00:00.000Z`) and `time` as `"HH:MM:SS"`, which makes an Invalid Date and `toISOString()` throws. If nothing normalizes in `fetch.ts`, Today would never show vet/provider appointments. Needs a device/sim check (QA docs show it working, so likely a normalizer I did not find).
+- U2: MP signature covers only `data.id` + request-id + ts; body fields (`external_reference`, `status`) are unsigned and there is no ts-age check. Exploitable only with a captured signed request (replay with edited body). Fix with F3-02 (fetch authoritative status from MP) + reject `ts` older than ~5 min.
+- U3: Non-numeric path/query ids (`providers/abc/...`, `NaN` staff param, `expiresAt` junk, bad `before=`) reach SQL and 500 instead of 400 across many routes.
+- U4: chat `attachment_url` is any string, `body` has no length cap.
+- U5: adoption applicant e-mail is shown to shelter owner/admin; confirm the apply screen discloses it.
+- U6: failed/abandoned payments leave bookings `requested` forever (no expiry, no re-pay endpoint); provider can only decline.
+- U7: telehealth PATCH (end/cancel) has no transition guard (ended -> cancelled, owner can end vet's call).
+- U8: `taken` set is not capability- or location-scoped (a provider with two capabilities blocks across them; may be intended).
+- U9: `loadOwnerPayer` sends owner name + e-mail to MercadoPago; the connected seller can see it in their MP dashboard (privacy copy / ToS check).
+- U10: Push tap always lands on the inbox, never the specific booking (documented design, UX gap for provider push).
+
+## 6. What is solid (verified OK)
+Provider routes scope by `provider_id` + `requireProviderRole` (cross-provider id -> 404/403); discovery is published-only and strips owner identity; chat participant gate + RLS; care-access approve/deny/revoke transitions are all 409-guarded; pricing is server-derived and fail-closed; subscription checkout rejected; booking route returns clean 400/403/404/409/422 for owner/provider/service/location/staff/slot errors; EN/ES strings exist for every booking and business notification type; once-per-booking review dedup index exists.
+

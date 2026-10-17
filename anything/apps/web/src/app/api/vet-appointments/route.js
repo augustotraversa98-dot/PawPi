@@ -1,6 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
@@ -191,6 +191,30 @@ async function POST(request) {
 }
 
 // PUT - Update an existing vet appointment
+// Owner-editable lifecycle values (the DB CHECK allows these; anything else used to be a raw 500).
+const OWNER_STATUSES = ["scheduled", "completed", "cancelled", "missed"];
+
+// Postgres hands back `date` as a JS Date (UTC midnight) and `time` as "HH:MM:SS"; clients send
+// "YYYY-MM-DD" / "HH:MM". Normalize both sides before comparing.
+const ymd = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").slice(0, 10));
+const hm = (v) => String(v ?? "").slice(0, 5);
+
+// A booking made with a PROVIDER is a two-party record: the provider confirms/declines/completes it,
+// the owner may only cancel it. Cancelling a provider booking must also close the booking workflow
+// (booking_status), stop reminders and cancel the linked consult — otherwise the provider's inbox
+// still shows it as live and they can "confirm" or "complete" a cancelled booking (flow audit F3-08).
+async function cancelLinkedConsult(appointmentId) {
+  try {
+    await withSavepoint(() => sql`
+      UPDATE telehealth_sessions
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE booking_id = ${appointmentId} AND status IN ('scheduled', 'in_progress')
+    `);
+  } catch {
+    // RLS/permissions: best effort — the provider-side cancel performs the same cascade.
+  }
+}
+
 async function PUT(request) {
   try {
     const session = await auth();
@@ -233,6 +257,47 @@ async function PUT(request) {
     }
 
     const ownerUserId = userProfileResult[0].id;
+
+    if (status !== undefined && !OWNER_STATUSES.includes(status)) {
+      return Response.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    // Load the row (owner-scoped) to decide what the owner may change on a PROVIDER booking.
+    const current = await sql`
+      SELECT provider_id, status, appointment_date, appointment_time
+      FROM vet_appointments
+      WHERE id = ${id} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      LIMIT 1
+    `;
+    if (current.length === 0) {
+      return Response.json({ error: "Appointment not found or unauthorized" }, { status: 404 });
+    }
+    const isProviderBooking = current[0].provider_id != null;
+    let cancellingProviderBooking = false;
+    if (isProviderBooking) {
+      // The owner cannot self-complete / reopen a provider booking: "completed" is what unlocks the
+      // review, so only the provider may set it (flow audit F3-04).
+      if (status !== undefined && status !== current[0].status && status !== "cancelled") {
+        return Response.json(
+          { error: "This booking's status is managed by the business.", code: "managed_by_provider" },
+          { status: 409 },
+        );
+      }
+      // A date/time edit would desync the provider's calendar and skip availability (F3-05). The edit
+      // form re-sends the unchanged values, so only a real change is refused.
+      const dateChanged = appointmentDate !== undefined && ymd(appointmentDate) !== ymd(current[0].appointment_date);
+      const timeChanged = appointmentTime !== undefined && hm(appointmentTime) !== hm(current[0].appointment_time);
+      if (dateChanged || timeChanged) {
+        return Response.json(
+          {
+            error: "To change the date or time, cancel this booking and book again with the business.",
+            code: "reschedule_not_supported",
+          },
+          { status: 409 },
+        );
+      }
+      cancellingProviderBooking = status === "cancelled" && current[0].status !== "cancelled";
+    }
 
     // Build dynamic UPDATE query
     const updates = [];
@@ -291,6 +356,11 @@ async function PUT(request) {
       updates.push(`status = $${paramCounter++}`);
       values.push(status);
     }
+    if (cancellingProviderBooking) {
+      // Close the booking workflow and stop reminders together with the lifecycle status.
+      updates.push(`booking_status = 'cancelled'`);
+      updates.push(`reminder_enabled = false`);
+    }
 
     // Always update updated_at
     updates.push(`updated_at = NOW()`);
@@ -321,6 +391,10 @@ async function PUT(request) {
         { error: "Appointment not found or unauthorized" },
         { status: 404 },
       );
+    }
+
+    if (cancellingProviderBooking) {
+      await cancelLinkedConsult(result[0].id);
     }
 
     // PROVIDER NOTIFICATION (BN2 biz_booking_change). When the CLIENT reschedules (date/time)
@@ -391,6 +465,10 @@ async function DELETE(request) {
       SET 
         deleted_at = NOW(),
         status = 'cancelled',
+        -- A provider booking also leaves the booking workflow (F3-08): otherwise the provider's inbox
+        -- keeps it as live and the linked consult stays "Scheduled".
+        booking_status = CASE WHEN provider_id IS NOT NULL THEN 'cancelled' ELSE booking_status END,
+        reminder_enabled = CASE WHEN provider_id IS NOT NULL THEN false ELSE reminder_enabled END,
         updated_at = NOW()
       WHERE id = ${id}
         AND owner_user_id = ${ownerUserId}
@@ -403,6 +481,10 @@ async function DELETE(request) {
         { error: "Appointment not found or unauthorized" },
         { status: 404 },
       );
+    }
+
+    if (result[0].provider_id != null) {
+      await cancelLinkedConsult(result[0].id);
     }
 
     // PROVIDER NOTIFICATION (BN2 biz_booking_change) — the CLIENT cancelled a PROVIDER
