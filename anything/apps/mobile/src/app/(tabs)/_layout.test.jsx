@@ -78,6 +78,9 @@ jest.mock("@/utils/reminderGenerator", () => ({
 import TabLayout from "./_layout";
 
 const originalOS = Platform.OS;
+const originalVersion = Platform.Version;
+const setIosVersion = (v) =>
+  Object.defineProperty(Platform, "Version", { value: v, configurable: true });
 beforeEach(() => {
   androidScreens.length = 0;
   nativeTriggers.length = 0;
@@ -86,6 +89,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   Platform.OS = originalOS;
+  setIosVersion(originalVersion);
 });
 
 // --- Shared config (platform-agnostic) -------------------------------------
@@ -135,12 +139,21 @@ describe("iOS native tab bar", () => {
     expect(capturedNativeProps?.minimizeBehavior).toBe("onScrollDown");
   });
 
-  test("does NOT set a custom background/blur (system renders Liquid Glass)", () => {
+  test("does NOT set a custom background/blur on iOS 26 (system renders Liquid Glass)", () => {
     Platform.OS = "ios";
+    setIosVersion("26.0");
     render(<TabLayout />);
     // Setting these would defeat the real iOS 26 material.
     expect(capturedNativeProps?.backgroundColor).toBeUndefined();
     expect(capturedNativeProps?.blurEffect).toBeUndefined();
+  });
+
+  test("iOS < 26 gets a light translucent material, never an opaque fill", () => {
+    Platform.OS = "ios";
+    setIosVersion("18.2");
+    render(<TabLayout />);
+    expect(capturedNativeProps?.blurEffect).toBe("systemUltraThinMaterialLight");
+    expect(capturedNativeProps?.backgroundColor).toBeUndefined();
   });
 
   test("does not render the Android JS <Tabs> on iOS", () => {
@@ -193,6 +206,14 @@ describe("Android JS tab bar", () => {
     expect(bar.marginBottom).toBeGreaterThanOrEqual(12); // lifted above indicator
     expect(bar.borderTopWidth).toBe(0); // no top hairline
     expect(bar.elevation).toBeGreaterThan(0); // shadow/elevation
+  });
+
+  test("Android bar stays a translucent cream surface with brand-palette tints", () => {
+    Platform.OS = "android";
+    render(<TabLayout />);
+    expect(capturedScreenOptions.tabBarStyle.backgroundColor).toBe("transparent");
+    expect(capturedScreenOptions.tabBarActiveTintColor).toBe("#FF6F61");
+    expect(capturedScreenOptions.tabBarInactiveTintColor).toBe("#7A6254");
   });
 
   test("does not render the iOS NativeTabs on Android", () => {

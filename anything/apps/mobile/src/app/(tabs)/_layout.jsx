@@ -19,6 +19,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { TABS } from "./tabsConfig";
+import { legacyTabBarBlur } from "@/utils/tabBarGlass";
 import "@/i18n"; // ensure i18n is initialized wherever the tabs render (ticket 2.29)
 
 // The Profile tab icon is the active pet's PHOTO (ticket 2.60) — a small circular
@@ -65,9 +66,12 @@ import { syncTimezoneToServer } from "@/i18n/timezoneSync";
 const POP_TO_TOP_ON_BLUR = new Set(["services", "more"]);
 
 // iOS 26 Liquid Glass native tab bar. The system renders the refractive glass
-// material, the scroll-edge effect and the scroll-to-minimize behavior — so we
-// deliberately set NO backgroundColor/blurEffect here (those only apply as an
-// iOS-18-and-earlier fallback and would defeat the real material on iOS 26).
+// material, the scroll-edge effect and the scroll-to-minimize behavior — so on iOS 26+
+// we deliberately set NO backgroundColor/blurEffect (they would defeat the real material).
+// iOS < 26 has no glass: there `legacyTabBarBlur()` asks for a light, ultra-thin
+// translucent system material (never an opaque fill). The bar is kept LIGHT in dark mode
+// by `forceLightAppearance()` in the root layout (the app has no dark theme), which is what
+// stops it reading as a black bar under the cream screens (QA 2026-10-16 bug 10).
 // Colors use semantic PlatformColor so the inactive label/icon adapts to
 // light/dark automatically; the selected tint is the PawPi coral.
 function NativeGlassTabs() {
@@ -75,6 +79,7 @@ function NativeGlassTabs() {
   return (
     <NativeTabs
       minimizeBehavior="onScrollDown"
+      blurEffect={legacyTabBarBlur()}
       iconColor={{
         default: PlatformColor("secondaryLabel"),
         selected: COLORS.coral,
@@ -141,7 +146,8 @@ function AndroidGlassTabs() {
           />
         ),
         tabBarActiveTintColor: COLORS.coral,
-        tabBarInactiveTintColor: "#B5947F",
+        // Muted brand brown (was an off-palette #B5947F at ~2.8:1 on cream; this is ~5:1).
+        tabBarInactiveTintColor: COLORS.mutedBrown,
         tabBarItemStyle: {
           paddingVertical: 4,
         },
