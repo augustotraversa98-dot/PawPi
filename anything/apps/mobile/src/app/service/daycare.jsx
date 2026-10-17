@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { parseDateValue } from "@/utils/canonicalDateTime";
 import {
   View,
   Text,
@@ -541,14 +542,14 @@ function BookStayModal({ provider, petId, onClose }) {
           ) : null}
 
           <FieldLabel>{t("daycare.startDate")}</FieldLabel>
-          <DateField value={startDate} onChange={setStartDate} placeholder={t("daycare.selectStart")} />
+          <DateField value={startDate} onChange={setStartDate} placeholder={t("daycare.selectStart")} minimumDate={new Date()} />
 
           <FieldLabel style={{ marginTop: SPACING.lg }}>{t("daycare.endDate")}</FieldLabel>
           <DateField
             value={endDate}
             onChange={setEndDate}
             placeholder={t("daycare.selectEnd")}
-            minimumDate={startDate ? new Date(startDate) : undefined}
+            minimumDate={parseDateValue(startDate) ?? undefined}
           />
 
           <FieldLabel style={{ marginTop: SPACING.lg }}>{t("daycare.feedingInstructions")}</FieldLabel>

@@ -3,7 +3,7 @@
  * Routines are the source of truth for generating reminders
  */
 
-import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
 
 export const ROUTINE_TYPES = {
@@ -288,11 +288,7 @@ export function getScheduleSummary(routine) {
     ) {
       const times = activeMeals.map((m) => m.time);
       const timeStrings = times.map((time) => {
-        const [hours, minutes] = time.split(":");
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        return `${displayHour}:${minutes} ${ampm}`;
+        return formatDisplayTime(time);
       });
       return `Every day at ${timeStrings.join(" and ")}`;
     }
@@ -318,22 +314,14 @@ export function getScheduleSummary(routine) {
     if (allDaily) {
       // All walks are daily - show times
       const timeStrings = activeWalks.map((w) => {
-        const [hours, minutes] = w.time.split(":");
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        return `${displayHour}:${minutes} ${ampm}`;
+        return formatDisplayTime(w.time);
       });
       return `Daily at ${timeStrings.join(" · ")}`;
     }
 
     // Different schedules - show individual walk summaries
     const summaries = activeWalks.map((w) => {
-      const [hours, minutes] = w.time.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      const timeStr = `${displayHour}:${minutes} ${ampm}`;
+      const timeStr = formatDisplayTime(w.time);
 
       let freqStr = "";
       switch (w.frequency) {
@@ -409,11 +397,7 @@ export function getScheduleSummary(routine) {
 
     // Helper to format time
     const formatTime = (time) => {
-      const [hours, minutes] = time.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
+      return formatDisplayTime(time);
     };
 
     // Helper to get day name
@@ -497,11 +481,7 @@ export function getScheduleSummary(routine) {
 
     // Helper to format time
     const formatTime = (time) => {
-      const [hours, minutes] = time.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
+      return formatDisplayTime(time);
     };
 
     // Helper to get day name
@@ -590,11 +570,7 @@ export function getScheduleSummary(routine) {
     // Helper to format time
     const formatTime = (time) => {
       if (!time) return "";
-      const [hours, minutes] = time.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
+      return formatDisplayTime(time);
     };
 
     // Build summary for each appointment
@@ -657,11 +633,7 @@ export function getScheduleSummary(routine) {
   // Times
   if (times.length > 0) {
     const timeStrings = times.map((time) => {
-      const [hours, minutes] = time.split(":");
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
+      return formatDisplayTime(time);
     });
     scheduleText += ` at ${timeStrings.join(" and ")}`;
   }

@@ -483,7 +483,7 @@ function BookSittingModal({ provider, petId, onClose }) {
           </View>
 
           <FieldLabel style={{ marginTop: SPACING.lg }}>{t("sitting.date")}</FieldLabel>
-          <DateField value={date} onChange={setDate} placeholder={t("sitting.selectDate")} />
+          <DateField value={date} onChange={setDate} placeholder={t("sitting.selectDate")} minimumDate={new Date()} />
 
           <FieldLabel style={{ marginTop: SPACING.lg }}>{t("sitting.notesForSitter")}</FieldLabel>
           <TextInput

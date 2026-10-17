@@ -110,3 +110,20 @@ describe("getScheduleSummary — cadence labels, no raw enum", () => {
     expect(summary).not.toContain("_");
   });
 });
+
+// The app is 24h under es-AR (consistency audit D-01): routine summaries must never show AM/PM.
+describe("getScheduleSummary — 24h times", () => {
+  it("feeding: daily meals render HH:MM, not AM/PM", () => {
+    const summary = getScheduleSummary({
+      type: ROUTINE_TYPES.FEEDING,
+      isActive: true,
+      meals: [
+        { frequency: ROUTINE_FREQUENCY.DAILY, time: "08:00", reminderEnabled: true },
+        { frequency: ROUTINE_FREQUENCY.DAILY, time: "21:30", reminderEnabled: true },
+      ],
+    });
+    expect(summary).toContain("08:00");
+    expect(summary).toContain("21:30");
+    expect(summary).not.toMatch(/AM|PM/);
+  });
+});

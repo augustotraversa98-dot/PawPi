@@ -288,7 +288,7 @@ export default function TransportScreen() {
             <View style={{ flexDirection: "row", gap: SPACING.md }}>
               <View style={{ flex: 1 }}>
                 <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>{tr("transport.date")}</Text>
-                <DateField value={date} onChange={setDate} testID="trip-date" />
+                <DateField value={date} onChange={setDate} minimumDate={new Date()} testID="trip-date" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[TYPE.callout, { color: COLORS.mutedBrown, fontWeight: "700", marginBottom: SPACING.xs }]}>{tr("transport.time")}</Text>

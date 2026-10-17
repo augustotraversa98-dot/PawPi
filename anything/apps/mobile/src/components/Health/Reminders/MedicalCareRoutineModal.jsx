@@ -21,6 +21,7 @@ import {
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
+import { getLocalPostDateString } from "@/utils/dateUtils";
 import { CADENCE_OPTIONS_FULL } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 
@@ -95,7 +96,7 @@ export const defaultItemFor = (subtype) => {
     dose: "",
     frequency: ROUTINE_FREQUENCY.DAILY,
     times: ["09:00"],
-    startDate: new Date().toISOString().split("T")[0],
+    startDate: getLocalPostDateString(),
     endDate: "",
     instructions: "",
     reminderEnabled: true,
@@ -146,7 +147,7 @@ const itemsFromRoutine = (routine) => {
         dose: routine.dose || "",
         frequency: routine.frequency || ROUTINE_FREQUENCY.DAILY,
         times: routine.times || ["09:00"],
-        startDate: routine.startDate || new Date().toISOString().split("T")[0],
+        startDate: routine.startDate || getLocalPostDateString(),
         endDate: routine.endDate || "",
         instructions: routine.instructions || "",
         reminderEnabled: routine.notificationEnabled ?? true,
@@ -770,6 +771,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   <DateField
                     value={draft.lastGiven}
                     onChange={(v) => set({ lastGiven: v })}
+                    maximumDate={new Date()}
                   />
                 </View>
 
@@ -817,6 +819,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   <DateField
                     value={draft.lastGiven}
                     onChange={(v) => set({ lastGiven: v })}
+                    maximumDate={new Date()}
                   />
                 </View>
 

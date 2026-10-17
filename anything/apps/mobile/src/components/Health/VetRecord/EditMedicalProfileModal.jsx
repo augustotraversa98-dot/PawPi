@@ -308,7 +308,7 @@ export default function EditMedicalProfileModal({
     </View>
   );
 
-  const FormDateField = ({ label, value, onChange, error }) => (
+  const FormDateField = ({ label, value, onChange, error, maximumDate }) => (
     <View style={{ marginBottom: 16 }}>
       <Text
         style={{
@@ -323,6 +323,7 @@ export default function EditMedicalProfileModal({
       <DateField
         value={value}
         onChange={onChange}
+        maximumDate={maximumDate}
         fieldStyle={{
           padding: 14,
           borderWidth: 1.5,
@@ -519,6 +520,7 @@ export default function EditMedicalProfileModal({
           label={t("editMedicalProfile.fieldAdoptionDate")}
           value={adoptionDate}
           onChange={setAdoptionDate}
+          maximumDate={new Date()}
           error={errors.adoptionDate}
         />
         <GenderSelector />
@@ -539,6 +541,7 @@ export default function EditMedicalProfileModal({
           label={t("editMedicalProfile.fieldSpayNeuterDate")}
           value={spayedNeuteredDate}
           onChange={setSpayedNeuteredDate}
+          maximumDate={new Date()}
           error={errors.spayedNeuteredDate}
         />
         <FormInput

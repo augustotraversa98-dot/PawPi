@@ -153,7 +153,7 @@ export default function CreateWalkPage() {
         <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>{t("createWalk.dateLabel")}</Text>
-            <DateField value={date} onChange={setDate} testID="walk-date" />
+            <DateField value={date} onChange={setDate} minimumDate={new Date()} testID="walk-date" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>{t("createWalk.timeLabel")}</Text>

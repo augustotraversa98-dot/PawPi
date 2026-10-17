@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getLocalPostDateString } from "@/utils/dateUtils";
 import {
   View,
   Text,
@@ -41,7 +42,7 @@ export default function MedicationRoutineModal({
   const [frequency, setFrequency] = useState(ROUTINE_FREQUENCY.DAILY);
   const [times, setTimes] = useState(["21:00"]);
   const [startDate, setStartDate] = useState(
-    new Date().toISOString().split("T")[0],
+    getLocalPostDateString(),
   );
   const [endDate, setEndDate] = useState("");
   const [prescribedBy, setPrescribedBy] = useState("");
@@ -57,7 +58,7 @@ export default function MedicationRoutineModal({
       setFrequency(editingRoutine.frequency || ROUTINE_FREQUENCY.DAILY);
       setTimes(editingRoutine.times || ["21:00"]);
       setStartDate(
-        editingRoutine.startDate || new Date().toISOString().split("T")[0],
+        editingRoutine.startDate || getLocalPostDateString(),
       );
       setEndDate(editingRoutine.endDate || "");
       setPrescribedBy(editingRoutine.prescribedBy || "");
@@ -70,7 +71,7 @@ export default function MedicationRoutineModal({
       setDose("");
       setFrequency(ROUTINE_FREQUENCY.DAILY);
       setTimes(["21:00"]);
-      setStartDate(new Date().toISOString().split("T")[0]);
+      setStartDate(getLocalPostDateString());
       setEndDate("");
       setPrescribedBy("");
       setInstructions("");

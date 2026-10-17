@@ -217,7 +217,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
           <DateField
             value={null}
             placeholder={t("health.careRing.pauseTitle", { name })}
-            minimumDate={new Date()}
+            minimumDate={new Date(Date.now() + 24 * 60 * 60 * 1000)}
             onChange={(canonical) => {
               if (canonical && canonical > getLocalPostDateString()) {
                 setPause.mutate(canonical);

@@ -485,7 +485,7 @@ function OnboardingScreen() {
       if (shouldCreateMoment === "true" && uploadedAvatarUrl) {
         console.log("[Onboarding] Creating first daily moment post...");
 
-        const today = new Date().toISOString().split("T")[0];
+        const today = getLocalPostDateString();
         console.log("[Onboarding] Today's date:", today);
 
         // Check if daily post already exists
