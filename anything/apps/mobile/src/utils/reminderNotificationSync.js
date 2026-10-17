@@ -33,7 +33,7 @@ export function syncRemindersToNotifications() {
     ) {
       // Check if notification already exists for this reminder
       const existingNotif = existingNotifications.find(
-        (n) => n.reminderId === reminder.id && !n.read,
+        (n) => n.reminderId === reminder.id,
       );
 
       if (

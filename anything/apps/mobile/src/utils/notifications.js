@@ -275,12 +275,19 @@ export async function scheduleReminderNotification(reminder, reminderTiming) {
       leadMs,
     });
 
+    // DETERMINISTIC identifier = the reminder's own id (flow audit F1-01). The reminders store is
+    // in-memory, so every relaunch regenerates the 14-day window; with the OS-assigned random id
+    // each launch stacked a duplicate set and the earlier ids were lost (so pause/delete/complete
+    // could not cancel them). Re-scheduling the same id now REPLACES the pending request, and any
+    // code can cancel by `reminder.id` after a restart.
     const notificationId = await Notifications.scheduleNotificationAsync({
+      ...(reminder.id ? { identifier: String(reminder.id) } : {}),
       content: {
         title,
         body,
         data: {
           reminderId: reminder.id,
+          petId: reminder.petId ?? null,
           type: reminder.type,
           relatedTracker: reminder.relatedTracker,
           relatedBodyArea: reminder.relatedBodyArea,
@@ -319,6 +326,53 @@ export async function cancelNotification(notificationId) {
     }
   } catch (error) {
     console.error("Error canceling notification:", error);
+  }
+}
+
+// Routine-instance reminder ids look like `reminder_<routine>_<item>_<date>…` (reminderGenerator).
+const ROUTINE_REMINDER_ID = /^reminder_/;
+
+/**
+ * Pure: which pending OS notifications must be cancelled after a routines load (F1-01).
+ *   • LEGACY duplicates — a routine-instance notification whose OS identifier is not its own
+ *     reminder id (scheduled by an older build with a random id; the same instance is re-armed under
+ *     its deterministic id by the load that precedes this sweep).
+ *   • ORPHANS — a notification for THIS pet whose reminder is no longer generated (routine deleted
+ *     or paused elsewhere/earlier, schedule edited). Notifications without a `petId` (legacy) or for
+ *     another pet are never touched here.
+ */
+export function selectStaleRoutineNotifications(pending, { petId, validReminderIds }) {
+  const valid = validReminderIds instanceof Set ? validReminderIds : new Set(validReminderIds || []);
+  const stale = [];
+  for (const n of pending || []) {
+    const data = n?.content?.data || {};
+    const rid = data.reminderId;
+    if (typeof rid !== "string" || !ROUTINE_REMINDER_ID.test(rid)) continue;
+    const identifier = n.identifier;
+    if (identifier !== rid) {
+      stale.push(identifier);
+    } else if (petId != null && data.petId != null && String(data.petId) === String(petId) && !valid.has(rid)) {
+      stale.push(identifier);
+    }
+  }
+  return stale;
+}
+
+/**
+ * Sweep the OS pending list after `loadRoutines` armed the current window for `petId`.
+ * Never throws; a no-op if the OS list can't be read.
+ */
+export async function reconcileRoutineNotifications({ petId, validReminderIds }) {
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    const stale = selectStaleRoutineNotifications(pending, { petId, validReminderIds });
+    for (const id of stale) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+    return stale.length;
+  } catch (error) {
+    console.error("Error reconciling routine notifications:", error);
+    return 0;
   }
 }
 

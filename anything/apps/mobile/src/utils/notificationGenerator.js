@@ -236,11 +236,13 @@ export function shouldCreateNotification(reminder, existingNotifications) {
     return false;
   }
 
-  // Don't create duplicate
+  // Don't create a duplicate — NOT even after the owner has READ the row (flow audit F1-09): the
+  // 60 s sync used to see "no unread row" for a read one and insert a fresh unread row for the same
+  // reminder every minute, so the badge came back and "Mark all read" never stuck.
   const existingNotif = existingNotifications.find(
     (n) => n.reminderId === reminder.id,
   );
-  if (existingNotif && !existingNotif.read) {
+  if (existingNotif) {
     return false;
   }
 

@@ -69,7 +69,8 @@ export default function PreventiveCareRoutineModal({
     const routine = {
       type: ROUTINE_TYPES.PREVENTIVE,
       petId: editingRoutine?.petId ?? null,
-      isActive: true,
+      // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
       productName,
       treatmentType,
       lastGiven,

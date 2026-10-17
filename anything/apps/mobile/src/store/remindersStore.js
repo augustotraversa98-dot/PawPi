@@ -11,6 +11,11 @@ import {
   resolveReminderTiming,
 } from "@/utils/notifications";
 
+// The OS notification id for a reminder. Notifications are now scheduled with the reminder's own
+// (deterministic) id, so `reminder.id` is a valid cancel handle even after an app restart, when the
+// in-memory `scheduledNotificationId` is gone (flow audit F1-01).
+const notificationIdOf = (r) => r?.scheduledNotificationId || r?.id || null;
+
 const useRemindersStore = create(
   persist(
     (set, get) => ({
@@ -149,9 +154,7 @@ const useRemindersStore = create(
 
     // Cancel notifications
     for (const reminder of toRemove) {
-      if (reminder.scheduledNotificationId) {
-        await cancelNotification(reminder.scheduledNotificationId);
-      }
+      await cancelNotification(notificationIdOf(reminder));
     }
 
     set((state) => ({
@@ -178,9 +181,7 @@ const useRemindersStore = create(
 
     // Cancel notifications
     for (const reminder of toDisable) {
-      if (reminder.scheduledNotificationId) {
-        await cancelNotification(reminder.scheduledNotificationId);
-      }
+      await cancelNotification(notificationIdOf(reminder));
     }
 
     set((state) => ({
@@ -203,9 +204,7 @@ const useRemindersStore = create(
       updates.nextTriggerAt &&
       updates.nextTriggerAt !== currentReminder.nextTriggerAt
     ) {
-      if (currentReminder.scheduledNotificationId) {
-        await cancelNotification(currentReminder.scheduledNotificationId);
-      }
+      await cancelNotification(notificationIdOf(currentReminder));
       if (
         updates.notificationEnabled !== false &&
         updates.status !== REMINDER_STATUS.DISABLED
@@ -232,8 +231,8 @@ const useRemindersStore = create(
 
   deleteReminder: async (id) => {
     const reminder = get().reminders.find((r) => r.id === id);
-    if (reminder?.scheduledNotificationId) {
-      await cancelNotification(reminder.scheduledNotificationId);
+    if (reminder) {
+      await cancelNotification(notificationIdOf(reminder));
     }
 
     set((state) => ({
@@ -259,6 +258,10 @@ const useRemindersStore = create(
     get().clearSnooze(id);
     const reminder = get().reminders.find((r) => r.id === id);
     if (!reminder) return;
+
+    // Done (or skipped) means the pending alert must not ring later (F1-07). Fire-and-forget:
+    // cancelNotification never throws, and this action stays synchronous for its callers.
+    cancelNotification(notificationIdOf(reminder));
 
     set((state) => ({
       reminders: state.reminders.map((reminder) =>
@@ -386,9 +389,7 @@ const useRemindersStore = create(
 
     if (newStatus === REMINDER_STATUS.DISABLED) {
       // Cancel notification
-      if (reminder.scheduledNotificationId) {
-        await cancelNotification(reminder.scheduledNotificationId);
-      }
+      await cancelNotification(notificationIdOf(reminder));
     } else {
       // Re-schedule notification
       const newNotificationId = await scheduleReminderNotification(reminder);

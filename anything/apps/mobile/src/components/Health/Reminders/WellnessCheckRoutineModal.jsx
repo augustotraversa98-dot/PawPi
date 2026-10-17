@@ -415,7 +415,8 @@ export default function WellnessCheckRoutineModal({
                     id: editingRoutine.id,
                     type: ROUTINE_TYPES.WELLNESS_CHECK,
                     petId: editingRoutine.petId,
-                    isActive: true,
+                    // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
                     wellnessCheckSchedule: wellnessCheckSchedule,
                     frequency:
                       updatedItems.length > 0
@@ -496,7 +497,8 @@ export default function WellnessCheckRoutineModal({
     const routine = {
       type: ROUTINE_TYPES.WELLNESS_CHECK,
       petId: editingRoutine?.petId ?? null,
-      isActive: true,
+      // Editing keeps the routine's current state: a PAUSED routine must not silently resume on save.
+      isActive: editingRoutine?.isActive ?? true,
       wellnessCheckSchedule,
       // Legacy fields for backward compatibility
       frequency:
