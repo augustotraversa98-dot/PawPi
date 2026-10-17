@@ -7,9 +7,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST, DELETE } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
+import { isBlockedBetween } from '@/app/api/utils/moderation';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+vi.mock('@/app/api/utils/moderation', () => ({ isBlockedBetween: vi.fn() }));
 
 // Identity chain: auth_users.id (42) -> user_profiles.auth_user_id (42) ->
 // user_profiles.id (7) -> pets.owner_user_id (7).
@@ -35,10 +37,27 @@ const unfollowReq = (body = { followerPetId: 1 }) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isBlockedBetween.mockResolvedValue(false);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 describe('POST /api/pets/[id]/follow', () => {
+  // Flow audit F2-05: blocks are enforced on the API (a cached screen / direct call must not follow).
+  it('403 when the pair is blocked (either direction): nothing inserted, nothing notified', async () => {
+    auth.mockResolvedValue(SESSION);
+    isBlockedBetween.mockResolvedValue(true);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([OWNED_PET])
+      .mockResolvedValueOnce([FOLLOWED_PET]);
+    const res = await POST(followReq(), { params: { id: '2' } });
+    expect(res.status).toBe(403);
+    expect(isBlockedBetween).toHaveBeenCalledWith(7, 9);
+    const texts = sql.mock.calls.map((c) => (c?.[0] ?? []).join(' '));
+    expect(texts.some((t) => t.includes('INSERT INTO pet_follows'))).toBe(false);
+    expect(texts.some((t) => t.includes('app_notify'))).toBe(false);
+  });
+
   it('inserts and returns following:true with followersCount; notifies the followed pet owner', async () => {
     auth.mockResolvedValue(SESSION);
     // 1: profile, 2: owned-pet, 3: followed-pet, 4: INSERT (RETURNING a new row),

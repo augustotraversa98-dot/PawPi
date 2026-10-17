@@ -5,10 +5,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import { isBlockedBetween } from "@/app/api/utils/moderation";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn }));
+vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn, withSavepoint: (fn) => fn() }));
+vi.mock("@/app/api/utils/moderation", () => ({ isBlockedBetween: vi.fn(async () => false) }));
 
 const SESSION = { user: { id: 99 }, expires: "9999999999" };
 
@@ -62,4 +64,17 @@ it("404 when RLS rejects the insert (report not active)", async () => {
   });
   const res = await POST(req({ note: "late" }), { params: { id: "1" } });
   expect(res.status).toBe(404);
+});
+
+// Flow audit F2-06: a blocked pair cannot send sightings (they would notify the blocker), and a
+// handled RLS rejection is a clean 404 (the insert runs in a savepoint so the tx is not aborted).
+it("403 when the reporter and the report owner are blocked; nothing inserted or notified", async () => {
+  auth.mockResolvedValue(SESSION);
+  mockSql();
+  isBlockedBetween.mockResolvedValueOnce(true);
+  const res = await POST(req({ note: "near the park" }), { params: { id: "1" } });
+  expect(res.status).toBe(403);
+  const text = sql.mock.calls.map((c) => (c?.[0] ?? []).join(" ")).join(" | ");
+  expect(text).not.toContain("INSERT INTO lost_sightings");
+  expect(text).not.toContain("app_notify");
 });
