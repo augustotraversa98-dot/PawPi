@@ -593,7 +593,7 @@ export default function BookingFormModal({
         <>
           <SectionLabel>{t("booking.sectionDate")}</SectionLabel>
           <View style={{ marginBottom: 16 }}>
-            <DateField value={date} onChange={setDate} testID="booking-date" />
+            <DateField value={date} onChange={setDate} minimumDate={new Date()} testID="booking-date" />
           </View>
 
           <SectionLabel>{t("booking.sectionTime")}</SectionLabel>

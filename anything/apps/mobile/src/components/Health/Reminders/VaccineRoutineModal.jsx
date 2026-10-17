@@ -178,7 +178,7 @@ export default function VaccineRoutineModal({
                 >
                   Last Given
                 </Text>
-                <DateField value={lastGiven} onChange={setLastGiven} />
+                <DateField value={lastGiven} onChange={setLastGiven} maximumDate={new Date()} />
               </View>
               <View>
                 <Text

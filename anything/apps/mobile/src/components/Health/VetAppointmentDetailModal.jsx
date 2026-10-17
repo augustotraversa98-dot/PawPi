@@ -16,6 +16,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { formatDisplayTime } from "@/utils/canonicalDateTime";
+import { combineDateAndTime } from "@/utils/calendarFormat";
 import { Card, PressableScale } from "@/components/ui";
 import { formatLocalDateTime } from "@/utils/localeDateTime";
 
@@ -134,9 +135,11 @@ export default function VetAppointmentDetailModal({
 
   const formatDateTime = () => {
     try {
-      const date = new Date(
-        `${appointment.appointment_date}T${appointment.appointment_time}`,
+      const date = combineDateAndTime(
+        appointment.appointment_date,
+        appointment.appointment_time,
       );
+      if (Number.isNaN(date.getTime())) return "";
       return formatLocalDateTime(date, {
         weekday: "long",
         month: "long",

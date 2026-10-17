@@ -119,7 +119,7 @@ export default function EventCreateScreen() {
 
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <View style={{ flex: 1 }}>
-            <DateField testID="event-date" value={date} onChange={setDate} />
+            <DateField testID="event-date" value={date} onChange={setDate} minimumDate={new Date()} />
           </View>
           <View style={{ flex: 1 }}>
             <TimeField testID="event-time" value={time} onChange={setTime} />

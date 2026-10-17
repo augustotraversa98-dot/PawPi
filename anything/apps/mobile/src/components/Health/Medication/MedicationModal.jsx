@@ -678,7 +678,7 @@ export default function MedicationModal({
                         <Input value={vaxName} onChangeText={setVaxName} placeholder={tc("phVaxName")} />
                       </Field>
                       <Field label={tc("fieldDateGiven")}>
-                        <DateField value={vaxDateGiven} onChange={setVaxDateGiven} fieldStyle={styles.input} />
+                        <DateField value={vaxDateGiven} onChange={setVaxDateGiven} maximumDate={new Date()} fieldStyle={styles.input} />
                       </Field>
                       <Field label={tc("fieldExpiration")}>
                         <DateField value={vaxDueDate} onChange={setVaxDueDate} fieldStyle={styles.input} />
@@ -778,7 +778,7 @@ export default function MedicationModal({
                         <Input value={prevFrequency} onChangeText={setPrevFrequency} placeholder={tc("phPrevFrequency")} />
                       </Field>
                       <Field label={tc("fieldLastGiven")}>
-                        <DateField value={prevLastGiven} onChange={setPrevLastGiven} fieldStyle={styles.input} />
+                        <DateField value={prevLastGiven} onChange={setPrevLastGiven} maximumDate={new Date()} fieldStyle={styles.input} />
                       </Field>
                       <Field label={tc("fieldNextDue")}>
                         <DateField value={prevNextDue} onChange={setPrevNextDue} fieldStyle={styles.input} />
