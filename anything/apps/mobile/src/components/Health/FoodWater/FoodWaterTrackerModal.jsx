@@ -200,7 +200,7 @@ export default function FoodWaterTrackerModal({
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
             {trackingType === "food" ? t("trackers.foodWater.titleFood") : t("trackers.foodWater.titleWater")}
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={handleClose}
             style={{
               width: 32,

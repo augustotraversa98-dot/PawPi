@@ -58,7 +58,7 @@ export default function SitterVisitsScreen() {
           borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: 14 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -233,7 +233,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
           <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}>
             {t("sitterVisits.logVisitTitle")}
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
           </TouchableOpacity>
         </View>

@@ -209,7 +209,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
           }}
         >
           {step !== "select" ? (
-            <TouchableOpacity onPress={handleBack}>
+            <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleBack}>
               <ChevronLeft size={24} color={C.warmBrown} />
             </TouchableOpacity>
           ) : (
@@ -226,7 +226,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
             {step === "capture" && selectedArea?.label}
             {step === "preview" && "Review Photo"}
           </Text>
-          <TouchableOpacity onPress={handleClose}>
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleClose}>
             <X size={24} color={C.warmBrown} />
           </TouchableOpacity>
         </View>

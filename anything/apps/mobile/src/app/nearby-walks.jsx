@@ -156,7 +156,7 @@ export default function NearbyWalksPage() {
           borderBottomColor: C.peach,
         }}
       >
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           onPress={() => router.back()}
           style={{
             width: 32,
@@ -561,7 +561,7 @@ export default function NearbyWalksPage() {
             >
               {t("nearbyWalks.requestToJoin", "Request to join")}
             </Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={() => setSelectedWalk(null)}
               style={{
                 width: 32,

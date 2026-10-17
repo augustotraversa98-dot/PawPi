@@ -308,7 +308,7 @@ export function ListingDetailModal({ data, onClose, router }) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
               {/* Report this adoption listing (T4). */}
               <ModerationMenu targetType="adoption_listing" targetId={listing.id} iconSize={18} />
-              <PressableScale onPress={onClose}>
+              <PressableScale accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={onClose}>
                 <X size={22} color={COLORS.warmBrown} />
               </PressableScale>
             </View>

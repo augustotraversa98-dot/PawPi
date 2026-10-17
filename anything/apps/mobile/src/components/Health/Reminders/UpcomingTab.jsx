@@ -236,7 +236,7 @@ export default function UpcomingTab() {
             >
               <CheckCircle size={18} color="#FFF" />
             </TouchableOpacity>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={() => handleDelete(reminder)}
               style={{
                 backgroundColor: C.sand,

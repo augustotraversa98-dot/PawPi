@@ -336,7 +336,7 @@ export default function ProfileEditScreen() {
             borderBottomColor: MATERIALS.hairline,
           }}
         >
-          <PressableScale onPress={() => router.back()}>
+          <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()}>
             <ArrowLeft size={22} color={COLORS.warmBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>

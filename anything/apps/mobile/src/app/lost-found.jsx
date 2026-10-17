@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import WalkMapPicker from "@/components/SocialWalks/WalkMapPicker";
 import { isValidCoord } from "@/utils/walkBuddies";
-import { PawMark } from "@/components/ui";
+import { PawMark, ErrorState } from "@/components/ui";
 import {
   useLostReports,
   useMyLostReports,
@@ -65,7 +65,7 @@ export default function LostFoundScreen() {
     return () => { active = false; };
   }, []);
 
-  const { data: nearby, isLoading: nearbyLoading } = useLostReports(location);
+  const { data: nearby, isLoading: nearbyLoading, isError: nearbyError, refetch: refetchNearby } = useLostReports(location);
   const { data: mine } = useMyLostReports();
   const markLost = useMarkLost();
   const resolve = useResolveLost();
@@ -81,7 +81,7 @@ export default function LostFoundScreen() {
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity testID="lost-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="lost-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("lostFound.title")}</Text>
@@ -113,6 +113,10 @@ export default function LostFoundScreen() {
         {tab === "near" ? (
           <>
             {nearbyLoading && <ActivityIndicator color={C.red} />}
+            {/* A failed fetch must not read as "no lost pets nearby" (safety-relevant). */}
+            {!nearbyLoading && nearbyError && !nearby && (
+              <ErrorState testID="lost-error" onRetry={() => refetchNearby?.()} />
+            )}
             {!nearbyLoading && nearby && nearby.length === 0 && (
               <View style={{ alignItems: "center", padding: 40 }}>
                 <PawMark size={34} color={C.warmBrown} />
@@ -270,7 +274,7 @@ function SightingModal({ report, onClose, insets }) {
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
             {t("lostFound.reportSightingTitle")}
           </Text>
-          <TouchableOpacity testID="sighting-close" onPress={onClose}>
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="sighting-close" onPress={onClose}>
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>
@@ -337,7 +341,7 @@ function MarkLostModal({ visible, pet, onClose, markLost, insets }) {
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
             {t("lostFound.markTitle", { name: pet?.name || t("lostFound.pet") })}
           </Text>
-          <TouchableOpacity testID="mark-close" onPress={onClose}>
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="mark-close" onPress={onClose}>
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>

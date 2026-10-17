@@ -93,7 +93,7 @@ export default function TrainingServiceScreen() {
           alignItems: "center",
         }}
       >
-        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <View style={{ flex: 1 }}>
@@ -467,7 +467,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
           <Text style={[TYPE.title2, { fontSize: 18, lineHeight: 24, color: COLORS.warmBrown }]}>
             {t("training.bookTraining")}
           </Text>
-          <PressableScale onPress={onClose}>
+          <PressableScale accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={onClose}>
             <X size={22} color={COLORS.warmBrown} />
           </PressableScale>
         </View>

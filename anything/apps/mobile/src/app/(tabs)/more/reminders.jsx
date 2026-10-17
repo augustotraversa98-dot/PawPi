@@ -88,7 +88,7 @@ export default function RemindersRoutinesScreen() {
             marginBottom: 8,
           }}
         >
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={() => router.back()}
             style={{ marginRight: 12 }}
           >

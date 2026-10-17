@@ -567,7 +567,7 @@ export default function WellnessCheckRoutineModal({
               Track health changes over time
             </Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={onClose}
             style={{
               width: 36,
@@ -707,7 +707,7 @@ export default function WellnessCheckRoutineModal({
                           gap: 8,
                         }}
                       >
-                        <TouchableOpacity
+                        <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                           onPress={() => handleRemoveItem(item.id)}
                           style={{ padding: 4 }}
                         >

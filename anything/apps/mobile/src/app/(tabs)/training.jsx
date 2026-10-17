@@ -388,7 +388,7 @@ function TrainingScreenContent() {
               backgroundColor: C.card,
             }}
           >
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               testID="program-back"
               onPress={() => setOpenProgram(null)}
               style={{ marginRight: 12 }}
@@ -471,7 +471,7 @@ function TrainingScreenContent() {
               backgroundColor: C.card,
             }}
           >
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               testID="session-close"
               onPress={() => setOpenSession(null)}
               style={{ marginRight: 12 }}

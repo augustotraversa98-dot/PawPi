@@ -104,7 +104,7 @@ export default function VetSummaryModal({ visible, onClose }) {
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown, marginLeft: 8 }}>
             {t("health.vetSummary.title")}{currentPet?.name ? ` · ${currentPet.name}` : ""}
           </Text>
-          <PressableScale testID="vetsummary-close" onPress={onClose}>
+          <PressableScale accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="vetsummary-close" onPress={onClose}>
             <X size={22} color={C.warmBrown} />
           </PressableScale>
         </View>

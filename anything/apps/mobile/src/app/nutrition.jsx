@@ -106,7 +106,7 @@ export default function NutritionScreen() {
           borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: 14 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
@@ -144,7 +144,7 @@ export default function NutritionScreen() {
                   ) : null}
                 </View>
               </View>
-              <TouchableOpacity testID={`recall-dismiss-${r.id}`} onPress={() => dismiss.mutate(r.id)} hitSlop={8}>
+              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" testID={`recall-dismiss-${r.id}`} onPress={() => dismiss.mutate(r.id)} hitSlop={8}>
                 <X size={18} color="#B23A2E" />
               </TouchableOpacity>
             </View>

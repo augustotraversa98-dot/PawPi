@@ -851,7 +851,7 @@ export default function GeneralCheckModal({
             >
               {tc("title")}
             </Text>
-            <TouchableOpacity onPress={handleCloseModal}>
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleCloseModal}>
               <X size={24} color={C.warmBrown} />
             </TouchableOpacity>
           </View>

@@ -177,7 +177,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
                 {title}
               </Text>
             </View>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={onClose}
               disabled={isSaving}
               style={{

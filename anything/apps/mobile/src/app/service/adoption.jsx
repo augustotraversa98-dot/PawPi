@@ -132,7 +132,7 @@ export default function AdoptionScreen() {
           alignItems: "center",
         }}
       >
-        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <View style={{ flex: 1 }}>
@@ -387,7 +387,7 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
             padding: SPACING.lg,
           }}
         >
-          <PressableScale onPress={onClose} testID="filters-close">
+          <PressableScale accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={onClose} testID="filters-close">
             <X size={22} color={COLORS.warmBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>{t("adoption.filters")}</Text>

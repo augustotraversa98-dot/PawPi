@@ -72,7 +72,7 @@ export default function GroomingScreen() {
           alignItems: "center",
         }}
       >
-        <PressableScale
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           onPress={() => router.back()}
           style={{ marginRight: SPACING.md + 2 }}
         >

@@ -157,7 +157,7 @@ export const PostDetailModal = memo(function PostDetailModal({
             borderBottomColor: COLORS.peach,
           }}
         >
-          <PressableScale onPress={onClose} accessibilityRole="button">
+          <PressableScale accessibilityLabel={t("common.close")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={onClose} accessibilityRole="button">
             <X size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>

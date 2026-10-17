@@ -230,7 +230,7 @@ export default function ProviderPostScreen() {
           backgroundColor: COLORS.card,
         }}
       >
-        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text
@@ -462,7 +462,7 @@ export default function ProviderPostScreen() {
                           {formatRelativeTime(c.created_at, { t })}
                         </Text>
                         {mine ? (
-                          <TouchableOpacity
+                          <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
                             testID={`delete-comment-${c.id}`}
                             onPress={() => handleDelete(c)}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
