@@ -1,6 +1,6 @@
 import { useMemo } from "react";
+import { alertError } from "@/utils/appAlert";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
 import { completionId } from "@/data/trainingCurriculum";
 
 // DIY self-training progress (ticket 2.45). Completion persists per owner + pet, scoped to
@@ -46,6 +46,6 @@ export function useToggleSession(petId) {
       return res.json();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["self-training", petId] }),
-    onError: (e) => Alert.alert("Error", e.message || "Could not save progress."),
+    onError: (e) => alertError(e, "appAlerts.couldNotSaveProgress"),
   });
 }

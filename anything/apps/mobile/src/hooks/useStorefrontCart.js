@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 import { Alert, Linking } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useShopProducts, useShopCheckout } from "@/hooks/useProviders";
@@ -98,25 +99,19 @@ export function useStorefrontCart(shop, petId, { onComplete } = {}) {
         // Send the buyer to MercadoPago. The order stays PENDING until the payment
         // webhook confirms it — so we must NOT tell them it's "placed"/on its way yet.
         Linking.openURL(payUrl).catch(() => {});
-        Alert.alert(
-          "Complete your payment",
-          "Finish paying in MercadoPago to confirm your order. It isn't confirmed until your payment goes through.",
-        );
+        Alert.alert(t("appAlerts.completePaymentTitle"), t("appAlerts.completePaymentBody"));
         reset();
         setShowCheckout(false);
         onComplete?.();
       } else {
         // 201 but no checkout URL → payment could NOT be started. Never claim success:
         // nothing was charged. Keep the checkout sheet open so the buyer can retry.
-        Alert.alert(
-          "Payment couldn't start",
-          "We couldn't open the payment window, so nothing was charged. Please try again.",
-        );
+        Alert.alert(t("appAlerts.paymentNotStartedTitle"), t("appAlerts.paymentNotStartedBody"));
       }
     } catch (e) {
       Alert.alert(
         t("storefront.checkoutFailedTitle"),
-        e.message || t("storefront.checkoutFailedBody"),
+        friendlyErrorMessage(e, "storefront.checkoutFailedBody"),
       );
     }
   };

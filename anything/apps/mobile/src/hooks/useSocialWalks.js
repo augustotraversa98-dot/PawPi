@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert } from "react-native";
+import { alertError, alertText } from "@/utils/appAlert";
 import { isValidCoord } from "@/utils/walkBuddies";
 
 // Create a social walk
@@ -27,7 +27,7 @@ export function useCreateSocialWalk() {
     },
     onError: (error) => {
       console.error("[useSocialWalks] Error creating social walk:", error);
-      Alert.alert("Error", "Could not create social walk. Please try again.");
+      alertText("common.error", "appAlerts.walkCreateFailed");
     },
   });
 }
@@ -95,11 +95,11 @@ export function useJoinSocialWalk() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["social-walks"] });
-      Alert.alert("Request sent!", "The walk owner will review your request.");
+      alertText("appAlerts.walkRequestSentTitle", "appAlerts.walkRequestSentBody");
     },
     onError: (error) => {
       console.error("[useSocialWalks] Error requesting to join:", error);
-      Alert.alert("Error", error.message || "Could not send request.");
+      alertError(error, "appAlerts.couldNotSendRequest");
     },
   });
 }
@@ -152,11 +152,11 @@ export function useApproveJoinRequest() {
         queryKey: ["social-walk-join-requests"],
       });
       queryClient.invalidateQueries({ queryKey: ["social-walks"] });
-      Alert.alert("Approved!", "The requester has been notified.");
+      alertText("appAlerts.walkApprovedTitle", "appAlerts.walkApprovedBody");
     },
     onError: (error) => {
       console.error("[useSocialWalks] Error approving request:", error);
-      Alert.alert("Error", error.message || "Could not approve request.");
+      alertError(error, "appAlerts.couldNotApprove");
     },
   });
 }
@@ -185,11 +185,11 @@ export function useDeclineJoinRequest() {
       queryClient.invalidateQueries({
         queryKey: ["social-walk-join-requests"],
       });
-      Alert.alert("Declined", "The request has been declined.");
+      alertText("appAlerts.walkDeclinedTitle", "appAlerts.walkDeclinedBody");
     },
     onError: (error) => {
       console.error("[useSocialWalks] Error declining request:", error);
-      Alert.alert("Error", error.message || "Could not decline request.");
+      alertError(error, "appAlerts.couldNotDecline");
     },
   });
 }

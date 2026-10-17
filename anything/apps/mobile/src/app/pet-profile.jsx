@@ -185,12 +185,12 @@ export default function PetProfileScreen({ embedded = false }) {
     const target = detailPost;
     if (!target?.id) return;
     Alert.alert(
-      "Delete post?",
-      "This permanently removes the post.",
+      t("feed.deletePostTitle"),
+      t("feed.deletePostBodyShort"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             setDetailPost(null);
@@ -198,13 +198,13 @@ export default function PetProfileScreen({ embedded = false }) {
               await deletePost.mutateAsync(target.id);
               await refetch();
             } catch (e) {
-              Alert.alert("Error", `Could not delete: ${e.message}`);
+              Alert.alert(t("common.error"), t("feed.deletePostFailed"));
             }
           },
         },
       ],
     );
-  }, [detailPost, deletePost, refetch]);
+  }, [detailPost, deletePost, refetch, t]);
 
   // Tapping Followers / Following opens the searchable list (ticket 2.61).
   // Resolve the pet robustly (ticket 2.67): the route param, else — in the
