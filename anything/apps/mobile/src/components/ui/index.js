@@ -7,3 +7,4 @@ export { Sheet, Grabber } from "./Sheet";
 export { Button } from "./Button";
 export { PressableScale } from "./PressableScale";
 export { PawMark } from "./PawMark";
+export { ErrorState } from "./ErrorState";

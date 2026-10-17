@@ -71,7 +71,7 @@ export default function ForumThreadScreen() {
           paddingBottom: SPACING.md,
         }}
       >
-        <PressableScale
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           testID="thread-back"
           onPress={() => router.back()}
           style={{ marginRight: SPACING.md }}

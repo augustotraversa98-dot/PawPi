@@ -120,7 +120,7 @@ export default function VaccineRoutineModal({
                 Track vaccination schedule
               </Text>
             </View>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={onClose}
               style={{
                 width: 36,

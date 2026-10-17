@@ -112,7 +112,7 @@ export default function WalkItem({
             >
               {t("walkItem.walkN", { n: index + 1 })}
             </Text>
-            <TouchableOpacity onPress={handleRemove}>
+            <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleRemove}>
               <Trash2 size={16} color={C.coral} />
             </TouchableOpacity>
           </View>
@@ -237,7 +237,7 @@ export default function WalkItem({
                 {t("walkItem.walkDetailsBadge")}
               </Text>
             </View>
-            <TouchableOpacity onPress={handleRemove}>
+            <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleRemove}>
               <Trash2 size={16} color={C.coral} />
             </TouchableOpacity>
           </View>

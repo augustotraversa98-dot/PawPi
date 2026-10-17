@@ -308,7 +308,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
           <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
             {t("trackers.vomit.title")}
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={handleClose}
             style={{
               width: 32,
@@ -916,7 +916,7 @@ export default function VomitTrackerModal({ visible, onClose }) {
                       }}
                       resizeMode="cover"
                     />
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       onPress={handleRemovePhoto}
                       style={{
                         position: "absolute",

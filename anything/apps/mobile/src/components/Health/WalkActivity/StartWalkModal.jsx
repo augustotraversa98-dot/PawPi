@@ -184,7 +184,7 @@ export default function StartWalkModal({
             </Text>
             <Text style={{ fontSize: 13, color: C.mutedBrown }}>{petLabel}</Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={handleClose}
             style={{
               width: 32,

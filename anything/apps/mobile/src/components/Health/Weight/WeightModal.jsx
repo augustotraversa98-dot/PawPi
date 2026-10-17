@@ -17,7 +17,6 @@ import {
 import {
   X,
   Scale,
-  Camera,
   Calendar,
   ChevronDown,
   Info,
@@ -254,7 +253,7 @@ export default function WeightModal({ visible, onClose }) {
               >
                 {t("trackers.weight.title")}
               </Text>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 onPress={onClose}
                 style={{
                   width: 32,
@@ -509,32 +508,6 @@ export default function WeightModal({ visible, onClose }) {
                         />
                       </View>
 
-                      {/* Photo Upload Placeholder */}
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: C.sand,
-                          borderRadius: 12,
-                          paddingVertical: 14,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 8,
-                          borderWidth: 1,
-                          borderColor: C.peach,
-                          borderStyle: "dashed",
-                        }}
-                      >
-                        <Camera size={18} color={C.mutedBrown} />
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "600",
-                            color: C.mutedBrown,
-                          }}
-                        >
-                          {t("trackers.weight.modal.addPhotoSoon")}
-                        </Text>
-                      </TouchableOpacity>
                     </View>
 
                     {/* Info Banner */}
@@ -657,7 +630,7 @@ export default function WeightModal({ visible, onClose }) {
                               </Text>
                             </View>
                           </View>
-                          <TouchableOpacity
+                          <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                             onPress={() => handleDelete(entry.id)}
                             style={{
                               width: 32,

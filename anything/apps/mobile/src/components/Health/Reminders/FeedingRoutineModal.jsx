@@ -264,7 +264,7 @@ export default function FeedingRoutineModal({
                   How many meals does {petName} eat per day?
                 </Text>
               </View>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 onPress={onClose}
                 style={{
                   width: 36,
@@ -371,7 +371,7 @@ export default function FeedingRoutineModal({
               Set meal-specific schedules
             </Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={onClose}
             style={{
               width: 36,
@@ -467,7 +467,7 @@ export default function FeedingRoutineModal({
                     }}
                   >
                     {meals.length > 1 && (
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                         onPress={() => handleRemoveMeal(index)}
                         style={{ padding: 4 }}
                       >

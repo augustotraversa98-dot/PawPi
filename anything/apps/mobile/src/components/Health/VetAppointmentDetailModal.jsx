@@ -180,7 +180,7 @@ export default function VetAppointmentDetailModal({
               {t("health.vetAppt.detailSubtitle")}
             </Text>
           </View>
-          <PressableScale
+          <PressableScale accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={onClose}
             disabled={isPending}
             style={{

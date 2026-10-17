@@ -121,7 +121,7 @@ export default function DataAccessScreen() {
         borderBottomColor: COLORS.peach,
       }}
     >
-      <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 14 }}>
+      <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: 14 }}>
         <ArrowLeft size={22} color={COLORS.warmBrown} />
       </TouchableOpacity>
       <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>

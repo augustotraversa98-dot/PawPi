@@ -193,7 +193,7 @@ export default function PostWalkFeedbackModal({
               {t("walkFeedback.minutes", { count: walkData?.durationMinutes || 0 })}
             </Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={onClose}
             style={{
               width: 32,

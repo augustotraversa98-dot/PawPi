@@ -348,7 +348,7 @@ export default function PhotoCheckCaptureModal({
               {step === "skipConfirm" && "Skip photo?"}
             </Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={handleClose}
             style={{
               width: 36,

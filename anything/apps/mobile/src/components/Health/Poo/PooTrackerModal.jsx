@@ -247,7 +247,7 @@ export default function PooTrackerModal({ visible, onClose }) {
             >
               {t("trackers.poo.title")}
             </Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={handleClose}
               style={{
                 width: 32,
@@ -877,7 +877,7 @@ export default function PooTrackerModal({ visible, onClose }) {
                         }}
                         resizeMode="cover"
                       />
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                         onPress={() => setLocalPhotoUri(null)}
                         style={{
                           position: "absolute",

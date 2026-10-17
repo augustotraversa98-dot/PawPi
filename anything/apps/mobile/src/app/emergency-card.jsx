@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { ErrorState } from "@/components/ui";
 import {
   View,
   Text,
@@ -90,7 +91,7 @@ export default function EmergencyCardScreen() {
   const { data: currentPet } = useCurrentPet();
   const petId = params.petId || (currentPet?.id != null ? String(currentPet.id) : "");
 
-  const { data, isLoading } = useEmergencyCard(petId || null);
+  const { data, isLoading, isError, refetch } = useEmergencyCard(petId || null);
   const update = useUpdateEmergencyCard(petId);
   const createLink = useCreateEmergencyLink(petId);
   const revokeLink = useRevokeEmergencyLink(petId);
@@ -165,6 +166,9 @@ export default function EmergencyCardScreen() {
       <KeyboardAwareScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
         {isLoading ? (
           <Text style={{ color: COLORS.mutedBrown, textAlign: "center", marginTop: 24 }}>{t("common.loading")}</Text>
+        ) : isError && !data ? (
+          // A failed load must not render an empty card (reads as "no allergies / no vet").
+          <ErrorState testID="emergency-error" onRetry={() => refetch?.()} style={{ marginTop: 24 }} />
         ) : (
           <>
             {lost && (
@@ -333,7 +337,7 @@ export default function EmergencyCardScreen() {
                         </Text>
                       </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       testID={`revoke-link-${l.id}`}
                       onPress={() =>
                         Alert.alert(t("emergencyCard.revokeTitle"), t("emergencyCard.revokeBody"), [

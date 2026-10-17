@@ -96,3 +96,16 @@ test("an already-lost pet shows the resolve action", () => {
   fireEvent.press(getByTestId("resolve-lost"));
   expect(mockResolve.mutate).toHaveBeenCalledWith(7);
 });
+
+// Consistency audit S-02: a failed nearby fetch must not read as "no lost pets nearby".
+describe("Lost & Found — failed load", () => {
+  it("shows a retryable error instead of the 'none nearby' empty state", () => {
+    const refetch = jest.fn();
+    mockNearby = { data: undefined, isLoading: false, isError: true, refetch };
+    const { getByTestId, queryByText } = render(<LostFoundScreen />);
+    expect(getByTestId("lost-error")).toBeTruthy();
+    expect(queryByText("lostFound.noneNearby")).toBeNull();
+    fireEvent.press(getByTestId("lost-error-retry"));
+    expect(refetch).toHaveBeenCalled();
+  });
+});

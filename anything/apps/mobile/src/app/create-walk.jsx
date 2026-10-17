@@ -114,7 +114,7 @@ export default function CreateWalkPage() {
           borderBottomColor: C.peach,
         }}
       >
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           testID="create-walk-back"
           onPress={() => router.back()}
           style={{

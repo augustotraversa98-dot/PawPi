@@ -168,7 +168,7 @@ export default function MessagesScreen() {
             marginBottom: SPACING.md,
           }}
         >
-          <PressableScale onPress={() => router.back()} accessibilityRole="button">
+          <PressableScale accessibilityLabel={t("common.close")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
             <X size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
@@ -200,7 +200,7 @@ export default function MessagesScreen() {
             autoCapitalize="none"
           />
           {searchQuery.length > 0 && (
-            <PressableScale onPress={() => setSearchQuery("")} accessibilityRole="button">
+            <PressableScale accessibilityLabel={t("common.close")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => setSearchQuery("")} accessibilityRole="button">
               <X size={16} color={COLORS.mutedBrown} />
             </PressableScale>
           )}

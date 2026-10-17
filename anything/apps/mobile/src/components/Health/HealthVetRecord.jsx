@@ -1397,7 +1397,7 @@ export default function HealthVetRecord() {
                       >
                         {formatDisplayDate(note.note_date)}
                       </Text>
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
                         testID="delete-vet-note"
                         onPress={() => deleteVetNote(note)}
                         hitSlop={8}
@@ -1595,7 +1595,7 @@ export default function HealthVetRecord() {
                     </View>
                     {renderAttribution(doc)}
                   </View>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
                     testID="delete-document"
                     onPress={() => deleteDocument(doc)}
                     hitSlop={8}
@@ -2385,7 +2385,7 @@ export default function HealthVetRecord() {
               >
                 {t("health.vetRecord.addRecordTitle")}
               </Text>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 onPress={() => setShowAddRecordPicker(false)}
                 style={{
                   width: 36,
@@ -2533,7 +2533,7 @@ export default function HealthVetRecord() {
               >
                 {t("health.vetRecord.chooseAllergyOrConditionTitle")}
               </Text>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 onPress={() => setShowAllergyConditionChooser(false)}
                 style={{
                   width: 36,
@@ -2640,7 +2640,7 @@ export default function HealthVetRecord() {
                   >
                     {selectedSurgery.procedure}
                   </Text>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     onPress={() => setSelectedSurgery(null)}
                     style={{
                       width: 36,
@@ -2792,7 +2792,7 @@ export default function HealthVetRecord() {
                   >
                     {selectedLab.test_name}
                   </Text>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     onPress={() => setSelectedLab(null)}
                     style={{
                       width: 36,

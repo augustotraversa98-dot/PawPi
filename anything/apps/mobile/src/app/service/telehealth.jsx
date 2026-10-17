@@ -79,7 +79,7 @@ export default function TelehealthScreen() {
           alignItems: "center",
         }}
       >
-        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md + 2 }}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md + 2 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <View style={{ flex: 1 }}>

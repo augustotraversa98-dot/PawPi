@@ -47,7 +47,7 @@ export default function HouseholdScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
       <View style={styles.header}>
-        <TouchableOpacity testID="household-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="household-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("household.homeTitle")}</Text>

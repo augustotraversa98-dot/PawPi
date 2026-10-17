@@ -99,7 +99,7 @@ export default function PetSharingScreen() {
           borderBottomColor: C.peach,
         }}
       >
-        <TouchableOpacity testID="sharing-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="sharing-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
@@ -219,7 +219,7 @@ export default function PetSharingScreen() {
                     {ROLE_LABEL[g.role]} · {g.status}
                   </Text>
                 </View>
-                <TouchableOpacity testID={`revoke-${g.id}`} onPress={() => revoke.mutate(g.id)}>
+                <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID={`revoke-${g.id}`} onPress={() => revoke.mutate(g.id)}>
                   <Trash2 size={18} color={C.terracotta} />
                 </TouchableOpacity>
               </View>
@@ -277,7 +277,7 @@ export default function PetSharingScreen() {
                     >
                       <Check size={16} color="#FFF" />
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       testID={`decline-${g.id}`}
                       onPress={() => respond.mutate({ grantId: g.id, accept: false })}
                       style={{ backgroundColor: C.sand, borderRadius: 10, padding: 8 }}

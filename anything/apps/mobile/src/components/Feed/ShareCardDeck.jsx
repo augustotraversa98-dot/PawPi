@@ -37,7 +37,7 @@ export function ShareCardDeck({ visible, onClose, petId, petDates }) {
         <View style={styles.sheet}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>{t("share.deckTitle")}</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" hitSlop={10}>
+            <Pressable accessibilityLabel={t("common.close")} onPress={onClose} accessibilityRole="button" hitSlop={10}>
               <X size={22} color={COLORS.warmBrown} />
             </Pressable>
           </View>

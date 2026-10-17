@@ -8,6 +8,8 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 let mockData;
+let mockError = false;
+const mockRefetch = jest.fn();
 const mockUpdate = jest.fn();
 const mockCreate = jest.fn();
 const mockRevoke = jest.fn();
@@ -26,7 +28,7 @@ jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(), shareAsync: jest
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
 jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => ({ data: { id: 5 } }) }));
 jest.mock("@/hooks/useEmergencyCard", () => ({
-  useEmergencyCard: () => ({ data: mockData, isLoading: false }),
+  useEmergencyCard: () => ({ data: mockData, isLoading: false, isError: !!mockError, refetch: mockRefetch }),
   useUpdateEmergencyCard: () => ({ mutate: mockUpdate }),
   useCreateEmergencyLink: () => ({ mutate: mockCreate }),
   useRevokeEmergencyLink: () => ({ mutate: mockRevoke }),
@@ -38,6 +40,7 @@ import EmergencyCardScreen from "./emergency-card";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockError = false;
   mockData = {
     card: {
       id: 1,
@@ -103,4 +106,17 @@ test("revoking an active link calls the revoke mutation (confirmed)", () => {
   fireEvent.press(getByTestId("revoke-link-7"));
   expect(alertSpy).toHaveBeenCalled();
   expect(mockRevoke).toHaveBeenCalledWith(7);
+});
+
+// Consistency audit S-02: a failed load must not render an empty card.
+describe("Emergency card — failed load", () => {
+  it("shows a retryable error instead of an empty card", () => {
+    mockData = undefined;
+    mockError = true;
+    const { getByTestId, queryByTestId } = render(<EmergencyCardScreen />);
+    expect(getByTestId("emergency-error")).toBeTruthy();
+    expect(queryByTestId("share-card")).toBeNull();
+    fireEvent.press(getByTestId("emergency-error-retry"));
+    expect(mockRefetch).toHaveBeenCalled();
+  });
 });

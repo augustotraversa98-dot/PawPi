@@ -125,7 +125,7 @@ export default function PlaceScreen() {
           alignItems: "center",
         }}
       >
-        <PressableScale onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown }]} numberOfLines={1}>
