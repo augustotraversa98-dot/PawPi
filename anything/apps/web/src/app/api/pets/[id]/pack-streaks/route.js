@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { isPackFriend, findExistingPack } from "@/app/api/utils/packFriends";
 
 // /api/pets/[id]/pack-streaks — shared "pack" streaks between two dog friends (unit E7,
 // docs/pet-owner-engagement.md). A pack advances only when BOTH pets close their ring on the same
@@ -61,21 +62,82 @@ async function POST(request, { params }) {
     const action = body?.action;
 
     if (action === "request") {
-      const handle = String(body.partner_handle ?? "").replace(/^@/, "").trim();
-      if (!handle) return Response.json({ error: "A partner @handle is required" }, { status: 400 });
+      // The target is a friend picked in the app (`partner_pet_id`). Older builds send a typed
+      // `partner_handle`; that path is still accepted but resolved to a pet and held to the SAME rules.
+      let partnerPetId = isIntId(body.partner_pet_id) ? parseInt(body.partner_pet_id, 10) : null;
+      if (partnerPetId === null) {
+        const handle = String(body.partner_handle ?? "").replace(/^@+/, "").trim().toLowerCase();
+        if (!handle) {
+          return Response.json(
+            { error: "Pick a friend to start a pack streak with", code: "partner_required" },
+            { status: 400 },
+          );
+        }
+        const [found] = await sql`SELECT id FROM pets WHERE lower(handle) = ${handle} LIMIT 1`;
+        if (!found) {
+          return Response.json(
+            { error: "We couldn't find that dog — pick one of your friends", code: "not_a_friend" },
+            { status: 403 },
+          );
+        }
+        partnerPetId = found.id;
+      }
+
+      if (partnerPetId === petId) {
+        return Response.json(
+          { error: "You can't start a pack streak with your own dog", code: "self" },
+          { status: 400 },
+        );
+      }
+
+      // Authorization: only a real friend (accepted friendship or mutual follow), other owner, no block.
+      // One generic answer for every "no" so it never reveals blocks or who exists.
+      const partner = await isPackFriend(sql, { petId, ownerUserId, partnerPetId });
+      if (!partner) {
+        return Response.json(
+          { error: "You can only start a pack streak with a dog friend", code: "not_a_friend" },
+          { status: 403 },
+        );
+      }
+
+      let existing = null;
+      try {
+        existing = await findExistingPack(sql, petId, partnerPetId);
+      } catch (e) {
+        if (!isMissingSchema(e)) throw e;
+      }
+      if (existing) {
+        return Response.json(
+          {
+            error: "You already have a pack streak with this friend",
+            code: "already_exists",
+            pack_id: existing.id,
+            status: existing.status,
+          },
+          { status: 409 },
+        );
+      }
+
       let packId = null;
       try {
         await withSavepoint(async () => {
-          const [row] = await sql`SELECT app_request_pack_streak(${petId}, ${ownerUserId}, ${handle}) AS id`;
+          const [row] = await sql`SELECT app_request_pack_streak(${petId}, ${ownerUserId}, ${partner.handle}) AS id`;
           packId = row?.id ?? null;
         });
       } catch (e) {
+        if (e?.code === "23505") {
+          // Both friends started it at the same moment — the unordered-pair unique index won.
+          return Response.json(
+            { error: "You already have a pack streak with this friend", code: "already_exists" },
+            { status: 409 },
+          );
+        }
         if (!isMissingSchema(e)) throw e;
         return Response.json({ error: "Pack streaks aren't available yet", degraded: true }, { status: 503 });
       }
       if (packId == null) {
         return Response.json(
-          { error: "Couldn't start that pack — check the @handle, or a pack may already exist" },
+          { error: "Couldn't start that pack — it may already exist", code: "already_exists" },
           { status: 409 },
         );
       }

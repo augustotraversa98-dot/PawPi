@@ -4,7 +4,7 @@
 // Proves: opt-in (request -> pending -> accept -> active); a pack advances ONLY when BOTH pets close
 // their ring on the same owner-tz day; a single close does not advance but leaves a boop available; a
 // boop is suppressed once the friend has closed; only the two participants can see/act (RLS); break/
-// gap restarts at 1; unknown handle -> 409.
+// gap restarts at 1; unknown handle -> 403 (a partner must be a friend).
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { inject } from "vitest";
@@ -62,6 +62,8 @@ beforeEach(async () => {
   await seedOwnerWithPet(raw, A);
   await seedOwnerWithPet(raw, B);
   await seedOwnerWithPet(raw, C);
+  // A and B are FRIENDS (mutual follow) — a pack can only start with a friend (night run #2, PR C).
+  await raw`insert into pet_follows (follower_pet_id, followed_pet_id) values (${A.petId}, ${B.petId}), (${B.petId}, ${A.petId})`;
   authState.session = sessionFor(A.authUserId);
 });
 
@@ -107,10 +109,11 @@ describe("E7 — pack streak opt-in", () => {
     expect(list.pack_streaks[0].partner_pet_name).toBe("Bella");
   });
 
-  it("rejects an unknown @handle with 409", async () => {
+  it("rejects an unknown @handle: only a friend can be a partner (403 not_a_friend)", async () => {
     authState.session = sessionFor(A.authUserId);
     const res = await apiReq(`/pets/${A.petId}/pack-streaks`, "POST", { action: "request", partner_handle: "nobody-here" });
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("not_a_friend");
   });
 });
 

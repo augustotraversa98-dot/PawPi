@@ -50,7 +50,13 @@ export function useRequestPackStreak(petId) {
   const action = usePackAction(petId);
   return {
     ...action,
-    request: (partnerHandle) => action.mutateAsync({ action: "request", partner_handle: partnerHandle }),
+    // `partner` is a picked friend ({ id }) — preferred — or, for older callers, a typed @handle.
+    request: (partner) =>
+      action.mutateAsync(
+        partner && typeof partner === "object"
+          ? { action: "request", partner_pet_id: partner.id }
+          : { action: "request", partner_handle: partner },
+      ),
   };
 }
 
