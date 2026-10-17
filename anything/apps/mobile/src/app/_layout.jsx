@@ -20,8 +20,12 @@ import { initLocaleFromStorage } from "@/i18n/localePreference";
 import { markBootStep } from "../../__create/boot-trace";
 import { recordRoute } from "@/utils/navTrail";
 import { useTelemetryLifecycle } from "@/telemetry/TelemetryProvider";
+import { forceLightAppearance } from "@/utils/tabBarGlass";
 
 SplashScreen.preventAutoHideAsync();
+// PawPi is a light, cream app with no dark theme: pin the native chrome (the iOS glass tab bar,
+// keyboard, alerts) to light so it never renders as a dark/black bar in dark mode.
+forceLightAppearance();
 markBootStep("layout:module-evaluated");
 // Tell React-Query about offline + background BEFORE any query mounts (A-06 / A-16).
 wireQueryConnectivity();
