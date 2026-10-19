@@ -30,6 +30,19 @@ Strategy + priorities: `PawPi_instructions.md` and `docs/`. Mobile app: `anythin
 All user-facing copy ships EN + ES (`anything/apps/mobile/src/i18n/locales/en.json` + `es.json`).
 Product name is "PawPi". No fake/mock data — empty states only.
 
+## Committing — READ BEFORE ANY `git add` / COMMIT
+This repo is **public**. Local untracked files (prompts, notes, exports, env files, screenshots, personal docs) often sit
+next to the code, and a sweep-add once published 165 of them (night run #2, PR #653).
+1. **Never run `git add -A`, `git add .`, `git add -u` on a directory you did not write every file of, or `git commit -a`.**
+   Stage **explicit paths only**: `git add path/one path/two`.
+2. **Before every commit**, compare `git status --short` (and `git diff --cached --stat`) with the file list you intended
+   to change. Any file you did not create or edit for this task — especially untracked `??` files — must NOT be staged.
+   If something unexpected is staged, `git restore --staged <path>` it and say so.
+3. Never commit secrets or secret-like files (`.env*`, keys, tokens, `service-account*.json`, `google-services.json`,
+   dumps, exports, real passwords or logins, even in docs). Use placeholders ("stored in my password manager",
+   `openssl rand -hex 32`). CI runs gitleaks on every PR (`.gitleaks.toml`); fix findings, do not widen the allowlist.
+4. Prefer a clean worktree off `main` for each change so unrelated local files cannot be swept in.
+
 ## Database migration conventions — READ BEFORE WRITING ANY MIGRATION
 Full model: `docs/rls-hardening.md`. Copy `supabase/migrations/TEMPLATE.sql` to
 `supabase/migrations/NNNN_short_name.sql` (next free number) and follow it. The rules

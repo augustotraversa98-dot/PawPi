@@ -34,6 +34,35 @@ android/app/build/
 .env.*
 !.env.example
 
+# ---- More secret-like files (guardrails: see .gitleaks.toml + CLAUDE.md "Committing") ----
+*.env
+.dev.vars
+*.keystore
+*.pfx
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+credentials*.json
+secrets*.json
+passwords*.txt
+accounts*.csv
+.npmrc
+.netrc
+.pypirc
+*.dump
+*.bak
+dump*.sql
+*dump.sql
+backup*.sql
+*backup.sql
+export*.csv
+id_rsa*
+*.tfstate
+*.tfstate.*
+*.tfvars
+.htpasswd
+.git-credentials
+
 # ---- Logs / debug ----
 *.log
 npm-debug.*
