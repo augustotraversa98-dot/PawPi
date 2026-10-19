@@ -12,6 +12,7 @@
 //   gate.mjs provenance --repo R --branch B --number N       stdin: PR object     -> {ok, reasons[]}
 //   gate.mjs files                             stdin: PR files array              -> {ok, reasons[], files, lines}
 //   gate.mjs confidence                        stdin: incident.md text            -> {high}
+//   gate.mjs known --name N [--root R]                                            -> {known} (is N a real rule / legacy / datasource alert?)
 //   gate.mjs ratelimit [--now ISO]             stdin: merged PR array             -> {blocked, count, reason}
 //   gate.mjs checks --sha SHA                  stdin: check_runs array            -> {state: pending|success|failed, details}
 //   gate.mjs health --sha SHORT                stdin: /api/health/deep body       -> {ok, reason}
@@ -31,10 +32,40 @@ export const REQUIRED_CHECKS = Object.freeze(['mobile (jest)', 'web (vitest)', '
  *    traffic, so one app-launch burst moves it, and past autofix runs chased that noise with speculative N+1 edits.
  *    The cause is infrastructure (cross-region DB round trips + pool queueing), so a human decides.
  */
-export const ISSUE_ONLY_ALERTS = Object.freeze(['P1-ServerMetricsSilent', 'P1-HealthDeepFailing', 'HighLatencyP95']);
+export const ISSUE_ONLY_ALERTS = Object.freeze(['P1-ServerMetricsSilent', 'P1-HealthDeepFailing', 'HighLatencyP95', 'DatasourceError', 'DatasourceNoData']);
+/**
+ * Alerts that are real but are not rules in observability/grafana/alerts/*.json: the three legacy live rules and Grafana's own
+ * data-source alerts. A relay dispatch for any other name is ignored (see isKnownAlert); manual runs are exempt.
+ */
+export const LEGACY_ALERTS = Object.freeze(['HighServerErrorRate', 'HighLatencyP95', 'PaymentFailuresSpike', 'DatasourceError', 'DatasourceNoData']);
+/** Label keys that may reach the model (mirrors LABEL_ALLOWLIST in anything/apps/web/src/lib/alertRelayPayload.js; a test pins both). */
+export const LABEL_ALLOWLIST = Object.freeze([
+  'alertname', 'severity', 'area', 'route', 'app_version', 'method', 'status_class', 'op', 'event', 'kind', 'funnel', 'step',
+  'platform', 'screen', 'grafana_folder',
+]);
 export const ALLOWED_PREFIX = 'anything/apps/web/src/';
-/** Anything whose path matches is human-only (payments, auth/session, DB). Applied to the whole path, case-insensitive. */
-export const SENSITIVE_PATH = /payment|mercadopago|auth|session|migrations|supabase\//i;
+/**
+ * ALLOWLIST of low-risk folders (deterministic; replaces the old "anything under web/src except a denylist"). A change is only
+ * auto-merged when EVERY file lives under one of these. Public/read-mostly directory endpoints, observability code and public-site
+ * helpers only. Add a folder only in a reviewed commit; never add a folder that handles accounts, private pet data, payments,
+ * orders, messages, uploads or access control.
+ */
+export const ALLOWED_DIRS = Object.freeze([
+  `${ALLOWED_PREFIX}lib/telemetry/`,
+  `${ALLOWED_PREFIX}lib/home/`,
+  `${ALLOWED_PREFIX}lib/brand/`,
+  `${ALLOWED_PREFIX}lib/legal/`,
+  `${ALLOWED_PREFIX}app/api/places/`,
+  `${ALLOWED_PREFIX}app/api/discover/`,
+  `${ALLOWED_PREFIX}app/api/services/discover/`,
+  `${ALLOWED_PREFIX}app/api/providers/discover/`,
+]);
+/** Even inside an allowed folder, any path containing one of these words is human-only (case-insensitive, whole path). */
+export const SENSITIVE_PATH = /rls|consent|care|upload|internal|admin|cron|shop|order|redeem|payout|auth|session|payment|mercadopago|migrations?|supabase|utils\/sql/i;
+/** Test/fixture/config files: an auto-merged PR may not edit them (the fix must pass tests it did not write). */
+export const TEST_PATH = /(^|\/)(__tests__|__mocks__|__fixtures__|tests?|fixtures?)\/|\.(test|spec)\.[cm]?[jt]sx?$|(^|\/)(vitest|jest|vite)[^/]*\.config\.[cm]?[jt]s$|(^|\/)setup[^/]*\.[cm]?[jt]s$/i;
+/** Added source lines that make a diff human-only: new imports/requires, process/env/network/fs/exec primitives, URLs, SQL DDL/DML/RLS verbs. */
+export const DANGEROUS_ADDED_LINE = /child_process|\beval\s*\(|new\s+Function|process\.(env|exit|binding)|\bimport\b|\brequire\s*\(|\bfetch\s*\(|XMLHttpRequest|WebSocket|\bfs\.|https?:\/\/|\bexec(Sync)?\s*\(|\bspawn\s*\(|set_config|current_app_user_id|security\s+definer|\b(drop|alter|truncate|grant|revoke)\s|delete\s+from/i;
 /** Never auto-merged, wherever they live (package*.json, lockfiles, app.json, eas.json). */
 const FORBIDDEN_BASENAME = /^(package.*\.json|npm-shrinkwrap\.json|bun\.lockb?|yarn\.lock|pnpm-lock\.yaml|app\.json|eas\.json)$/i;
 export const MAX_FILES = 5;
@@ -72,7 +103,48 @@ export function buildContext({ payload, inName, inSummary } = {}) {
     try { obj = JSON.parse(payload); } catch { obj = null; }
   }
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { alertname: 'alert', source: 'unknown' };
-  return { ...obj, alertname: cleanAlertName(obj.alertname) };
+  // WHITELIST, not spread: whoever sent the dispatch (the relay, or anyone holding a leaked dispatch token) can only hand the
+  // model an alert name, a status, a severity enum and allow-listed label values. No free text ever reaches the prompt.
+  const labels = {};
+  if (obj.labels && typeof obj.labels === 'object' && !Array.isArray(obj.labels)) {
+    for (const k of LABEL_ALLOWLIST) {
+      const v = obj.labels[k];
+      if (typeof v === 'string' || typeof v === 'number') labels[k] = String(v).replace(/[^A-Za-z0-9_.\-/:@ ]/g, '_').slice(0, 80);
+    }
+  }
+  return {
+    // 'manual' is reserved for workflow_dispatch runs (inName above); a dispatch payload can never claim it.
+    source: ((s) => (s === 'manual' || !s ? 'unknown' : s))(String(obj.source ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20)),
+    status: obj.status === 'resolved' ? 'resolved' : 'firing',
+    alertname: cleanAlertName(obj.alertname),
+    severity: String(obj.severity ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20) || 'warning',
+    labels,
+  };
+}
+
+/** Rule titles in observability/grafana/alerts/*.json (alert rules as code), cleaned like alert names. */
+export function loadRuleNames(rootDir) {
+  const dir = path.join(rootDir, 'observability', 'grafana', 'alerts');
+  const names = new Set();
+  const walk = (o) => {
+    if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === 'object') {
+      if (typeof o.title === 'string' && ('condition' in o || 'data' in o)) names.add(cleanAlertName(o.title));
+      Object.values(o).forEach(walk);
+    }
+  };
+  let entries = [];
+  try { entries = fs.readdirSync(dir).filter((n) => n.endsWith('.json')); } catch { /* no rules dir: only the legacy names are known */ }
+  for (const n of entries) {
+    try { walk(JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8'))); } catch { /* unreadable file: ignore it */ }
+  }
+  return [...names].sort();
+}
+
+/** Is this alert name one of the real rules (as code), a legacy live rule or a Grafana data-source alert? */
+export function isKnownAlert(name, ruleNames = []) {
+  const n = cleanAlertName(name);
+  return LEGACY_ALERTS.map(cleanAlertName).includes(n) || ruleNames.includes(n);
 }
 
 export function isKillSwitchOn(value) {
@@ -133,12 +205,22 @@ export function pathProblems(p) {
   const base = clean.split('/').pop();
   if (clean.startsWith('.github/')) out.push(`${clean}: CI/workflow files are human-only`);
   if (FORBIDDEN_BASENAME.test(base)) out.push(`${clean}: package/lock/app/eas config is human-only`);
-  if (!clean.startsWith(ALLOWED_PREFIX)) out.push(`${clean}: outside ${ALLOWED_PREFIX}`);
-  if (SENSITIVE_PATH.test(clean)) out.push(`${clean}: touches a sensitive area (payment|mercadopago|auth|session|migrations|supabase/)`);
+  if (!ALLOWED_DIRS.some((d) => clean.startsWith(d))) out.push(`${clean}: outside the auto-merge allowlist (ALLOWED_DIRS in scripts/autofix/gate.mjs)`);
+  if (SENSITIVE_PATH.test(clean)) out.push(`${clean}: touches a sensitive area (${SENSITIVE_PATH.source.replace(/\\\//g, '/')})`);
   return out;
 }
 
-/** The file gate. `files` is the GitHub "list pull request files" array. */
+/** The "+" lines of a unified-diff patch (excluding the +++ header). */
+function addedLines(patch) {
+  return String(patch).split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1));
+}
+
+/**
+ * The file gate (deterministic; enforced in code, not by the model). `files` is the GitHub "list pull request files" array
+ * (with `patch`). All of these must hold: 1..MAX_FILES files, <= MAX_CHANGED_LINES changed lines, every path inside ALLOWED_DIRS
+ * and free of SENSITIVE_PATH words, only edits to existing files (no new/removed/renamed), no test/fixture/config files, no
+ * package/lock/app/eas/CI files, and no dangerous added line.
+ */
 export function evaluateFiles(files) {
   const reasons = [];
   const list = Array.isArray(files) ? files : [];
@@ -151,8 +233,16 @@ export function evaluateFiles(files) {
     lines += adds + dels;
     reasons.push(...pathProblems(f.filename));
     if (f.previous_filename) reasons.push(...pathProblems(f.previous_filename));
-    if (f.status === 'removed' || f.status === 'renamed') reasons.push(`${f.filename}: ${f.status} (deleting/moving files is human-only)`);
+    // NO new files: only edits to files that already exist ('modified') may be auto-merged.
+    if (f.status !== 'modified') reasons.push(`${f.filename}: status "${f.status}" (new, removed, renamed or copied files are human-only; only edits to existing files may be auto-merged)`);
     if (adds + dels === 0) reasons.push(`${f.filename}: no line changes (binary or mode-only change)`);
+    if (TEST_PATH.test(String(f.filename ?? ''))) reasons.push(`${f.filename}: test/fixture/config file (an auto-merged fix may not edit the tests that gate it)`);
+    // Deterministic content check on what the diff ADDS (no model judgement).
+    if (typeof f.patch !== 'string' || f.patch === '') {
+      reasons.push(`${f.filename}: GitHub returned no diff text (too large or binary), so the added lines cannot be inspected`);
+    } else if (addedLines(f.patch).some((l) => DANGEROUS_ADDED_LINE.test(l))) {
+      reasons.push(`${f.filename}: the diff adds an import/require, env/process/network/fs/exec call, URL or SQL DDL/RLS statement (human-only)`);
+    }
   }
   if (lines > MAX_CHANGED_LINES) reasons.push(`${lines} changed lines (max ${MAX_CHANGED_LINES})`);
   return { ok: reasons.length === 0, reasons: [...new Set(reasons)], files: list.length, lines };
@@ -253,6 +343,7 @@ export function runCli(argv, env = process.env) {
     case 'checks': return evaluateChecks(readJson(), f.sha);
     case 'health': return verifyHealth(readStdin().trim() || null, f.sha);
     case 'annotation': return buildAnnotation({ text: f.text, tags: f.tags ? f.tags.split(',') : [] });
+    case 'known': return { known: isKnownAlert(f.name, loadRuleNames(f.root || '.')) };
     case 'slug': return { slug: cleanAlertName(f.name) };
     default: throw new Error(`unknown command "${cmd}"`);
   }

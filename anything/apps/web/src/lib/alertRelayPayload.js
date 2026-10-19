@@ -1,33 +1,27 @@
 // Builds the `client_payload` of the GitHub repository_dispatch sent by the Grafana alert relay
 // (src/app/api/internal/grafana-alert/route.js).
 //
-// HARD LIMIT: GitHub rejects a repository_dispatch whose client_payload has more than 10 TOP-LEVEL properties with
-// 422 "No more than 10 properties" (it already bit this relay once: see the OPERATIONS.md troubleshooting table). Nested objects count
-// as ONE property, so everything variable (area, route, app_version, ...) lives inside the single `labels` object and
-// the top-level key set is fixed below. Every value is length-capped and stripped of control characters, because the
-// workflow pastes this JSON into an LLM prompt and uses `alertname` in a git branch name.
+// NO FREE TEXT REACHES THE MODEL. The workflow pastes this JSON into an LLM prompt, so anything an alert sender can write
+// (annotations: summary / runbook, valueString, URLs, label values outside the allow-list) is a prompt-injection channel.
+// The payload therefore carries only: the (allow-listed) alert name, a status flag, a short severity token and allow-listed
+// label values, each reduced to a safe character set and length. The agent reads the rule's own description / runbook from the
+// repository (observability/grafana/alerts/*.json), which is trusted, reviewed content.
+//
+// GitHub rejects a repository_dispatch whose client_payload has more than 10 TOP-LEVEL properties (422); the key set below is
+// fixed and far below that. Nested objects count as one property, so variable data lives inside `labels`.
 
 export const MAX_CLIENT_PAYLOAD_KEYS = 10;
 
-/** The fixed top-level keys (exactly 10 = the GitHub maximum; adding one more breaks the autofix loop). */
-export const CLIENT_PAYLOAD_KEYS = Object.freeze([
-  'source', 'status', 'alertname', 'severity', 'summary', 'value', 'labels', 'generatorURL', 'panelURL', 'runbook',
-]);
+/** The fixed top-level keys. */
+export const CLIENT_PAYLOAD_KEYS = Object.freeze(['source', 'status', 'alertname', 'severity', 'labels']);
 
-/** Alert labels that are forwarded (bounded contract labels + Grafana's own). Everything else is dropped. */
+/** Alert labels that are forwarded (bounded contract labels + Grafana's own). Everything else is dropped.
+ *  Mirrored in scripts/autofix/gate.mjs (LABEL_ALLOWLIST); autofix-gate.test.js pins both. */
 export const LABEL_ALLOWLIST = Object.freeze([
   'alertname', 'severity', 'area', 'route', 'app_version', 'method', 'status_class', 'op', 'event', 'kind', 'funnel', 'step',
   'platform', 'screen', 'grafana_folder',
 ]);
 export const MAX_LABEL_VALUE_LENGTH = 80;
-
-const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
-
-/** Free text: control characters (newlines too) become a space, whitespace collapses, length is capped. */
-export function sanitizeText(value, max) {
-  const s = String(value ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim();
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
-}
 
 /** Label values / identifiers: only characters that occur in route templates, versions and metric label values (no shell/markdown metacharacters). */
 export function sanitizeLabelValue(value, max = MAX_LABEL_VALUE_LENGTH) {
@@ -45,35 +39,18 @@ export function sanitizeLabels(labels) {
   return out;
 }
 
-function safeUrl(value) {
-  const s = String(value ?? '').trim();
-  return /^https?:\/\/[^\s]+$/.test(s) ? s.slice(0, 500) : '';
-}
-
 /**
  * @param {object} payload  the Grafana webhook body ({status, title, message, alerts: [...]})
- * @param {object[]} firing the firing alerts (may be empty for a test ping)
+ * @param {object[]} firing the firing alerts whose names passed the allow-list (may be empty)
  * @returns {object} client_payload with exactly CLIENT_PAYLOAD_KEYS
  */
 export function buildClientPayload(payload = {}, firing = []) {
   const first = firing[0] || {};
-  const labels = sanitizeLabels(first.labels);
-  let summary = sanitizeText(first.annotations?.summary || first.annotations?.description || payload.message || '', 500);
-  if (firing.length > 1) {
-    // Several rules in one notification group: the relay dispatches once, so name the others for the investigator.
-    const others = [...new Set(firing.slice(1).map((a) => sanitizeLabelValue(a.labels?.alertname || 'unknown', 60)))].slice(0, 5);
-    summary = sanitizeText(`${summary} [+${firing.length - 1} more firing: ${others.join(', ')}]`, 600);
-  }
   return {
     source: 'grafana',
-    status: payload.status === 'resolved' ? 'resolved' : 'firing',
-    alertname: sanitizeLabelValue(first.labels?.alertname || payload.title || 'unknown', 100) || 'unknown',
-    severity: sanitizeLabelValue(first.labels?.severity || 'warning', 20) || 'warning',
-    summary,
-    value: sanitizeText(first.valueString || '', 200),
-    labels,
-    generatorURL: safeUrl(first.generatorURL),
-    panelURL: safeUrl(first.panelURL),
-    runbook: sanitizeText(first.annotations?.runbook || '', 400),
+    status: payload?.status === 'resolved' ? 'resolved' : 'firing',
+    alertname: sanitizeLabelValue(first.labels?.alertname || 'unknown', 100) || 'unknown',
+    severity: String(first.labels?.severity ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20) || 'warning',
+    labels: sanitizeLabels(first.labels),
   };
 }

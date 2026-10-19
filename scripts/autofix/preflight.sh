@@ -34,6 +34,18 @@ if [ "$(jq -r .killed <<<"$RES")" = "true" ]; then
   exit 0
 fi
 
+# 1b. unknown alert names are ignored. Only the real rules (observability/grafana/alerts/*.json), the legacy live rules and Grafana's
+#     data-source alerts may start a run; manual (workflow_dispatch) runs are exempt. The relay checks this too (defence in depth:
+#     a leaked dispatch token could otherwise start a run directly).
+if [ "$SOURCE" != "manual" ]; then
+  KNOWN="$(node "$GATE" known --name "$ALERT" --root "$HERE/../..")"
+  if [ "$(jq -r .known <<<"$KNOWN")" != "true" ]; then
+    echo "Alert '$ALERT' is not a known rule (alerts-as-code, legacy live rules or Grafana data-source alerts). Ignored; nothing was investigated or changed." | tee -a "$SUMMARY"
+    emit run false; emit killed false; emit duplicate ""; emit issue_only false
+    exit 0
+  fi
+fi
+
 # 2. dedupe: an OPEN autofix PR for the same alertname means the fix is already in flight
 OPEN_PRS="$(gh api "repos/$REPO/pulls?state=open&per_page=100")"
 RES="$(jq -n --arg a "$ALERT" --argjson p "$OPEN_PRS" '{alertname:$a, openPrs:$p}' | node "$GATE" preflight --kill "${AUTOFIX_ENABLED:-}")"
