@@ -1,0 +1,35 @@
+# gitleaks config for PawPi (used by .github/workflows/gitleaks.yml).
+# Start from gitleaks' default ruleset; every allowlist below is PATH-SCOPED (and, where noted, line-scoped too).
+# Never add a blanket allow (no global regex, no "docs/" or "test/" directory wildcard). To allow a new fixture,
+# list the single file and say why. A real secret is never allowed here: rotate it and remove it instead.
+
+title = "PawPi gitleaks config"
+
+[extend]
+useDefault = true
+
+# 1. Fake credentials that live in unit-test / mock fixtures (verified by hand: short fake strings, a JWT with no role,
+#    a mock Grafana token, "0123456789abcdef" filler, etc.).
+[[allowlists]]
+description = "Fake credentials in specific test fixtures / mocks"
+paths = [
+  '''^anything/apps/web/src/lib/telemetry/serverLogs\.test\.js$''',
+  '''^anything/apps/web/src/lib/telemetry/healthDeep\.test\.js$''',
+  '''^anything/apps/web/src/lib/telemetry/spanScrubber\.test\.js$''',
+  '''^anything/apps/web/src/app/api/utils/sql\.metrics\.test\.js$''',
+  '''^anything/apps/web/src/observability/apply-grafana\.test\.js$''',
+  '''^anything/apps/web/src/observability/mockGrafana\.js$''',
+  '''^anything/apps/web/src/app/api/internal/grafana-alert/route\.test\.js$''',
+  '''^anything/apps/web/src/app/api/upload/route\.test\.js$''',
+  '''^anything/apps/web/src/app/api/utils/oauthProviders\.test\.js$''',
+  '''^scripts/cron/cron-trigger\.test\.mjs$''',
+]
+
+# 2. The shared demo/QA seed password: known and accepted by the owner. Allowed ONLY on the DEMO_PASSWORD line of the
+#    seed spec (path AND line must match), not anywhere else in the repo.
+[[allowlists]]
+description = "Accepted shared demo/QA seed password (known, accepted)"
+condition = "AND"
+paths = ['''^anything/apps/web/scripts/demo-seed/spec\.mjs$''']
+regexes = ['''DEMO_PASSWORD''']
+regexTarget = "line"
