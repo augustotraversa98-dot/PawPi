@@ -1,6 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
+import { expireSession, __resetSessionExpiryForTests as resetExpiry } from '@/utils/auth/sessionExpiry';
+import { hasSessionExpiredHeader, isSessionDead, trackAuthDiag } from '@/utils/auth/sessionHealth';
+import { isLaunchGateOpen } from '@/utils/auth/sessionLaunchGate';
 
 const originalFetch = fetch;
 
@@ -81,41 +84,30 @@ const isAuthBridgeURL = (url: string) => {
   return path.startsWith('/api/auth/');
 };
 
-let sessionExpiryInFlight = false;
-const handleSessionExpired = () => {
-  // Several queries usually fail together; sign out once.
-  if (sessionExpiryInFlight) return;
-  sessionExpiryInFlight = true;
-  try {
-    const { useAuthStore } = require('@/utils/auth/store');
-    if (useAuthStore.getState().auth) {
-      // The server already rejected this session: the cleanup in setAuth must not try to
-      // unregister the push token as that (dead) user.
-      require('@/utils/auth/sessionEpoch').markSessionExpired();
-      useAuthStore.getState().setAuth(null);
-    }
-    // Anonymous telemetry only: tag the coming landing on Welcome as "session_expired" (annotation, no
-    // navigation change; it can never throw into the session handling below).
-    try {
-      require('@/telemetry/navExpect').markNavigationReason('session_expired');
-    } catch {
-      // ignore
-    }
-    const { router } = require('expo-router');
-    router.replace('/welcome');
-  } catch {
-    // Never let session handling break the request itself.
-  } finally {
-    // Allow a later, genuinely new session to be handled again.
-    setTimeout(() => {
-      sessionExpiryInFlight = false;
-    }, 1000);
-  }
-};
-
 // Test-only: clear the one-shot guard between cases.
-export const __resetSessionExpiryForTests = () => {
-  sessionExpiryInFlight = false;
+export const __resetSessionExpiryForTests = resetExpiry;
+
+// A first-party /api 401 while a bearer was attached. It is a dead session ONLY if it carries the
+// server's `session_expired` code, or one re-check against GET /api/session confirms it (see
+// utils/auth/sessionHealth). A bare 401 that the re-check does not confirm — and any network error —
+// leaves the user signed in. While the launch gate is open the EntryPoint owns the decision.
+const handleUnauthorized = (response: Response, jwt: string) => {
+  if (isLaunchGateOpen()) return;
+  if (hasSessionExpiredHeader(response)) {
+    expireSession({ reason: 'code', jwt });
+    return;
+  }
+  isSessionDead({ response, jwt })
+    .then((verdict) => {
+      if (!verdict.dead) {
+        if (verdict.recheck === 'alive') trackAuthDiag('recheck_alive');
+        return;
+      }
+      expireSession({ reason: verdict.via === 'code' ? 'code' : 'recheck', jwt });
+    })
+    .catch(() => {
+      // never let session handling break the request itself
+    });
 };
 
 type Params = Parameters<typeof expoFetch>;
@@ -199,17 +191,18 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     deadline.clear();
   }
 
-  // Expired / revoked session (AUDIT_2026-09 A-07). A 401 on an /api route while we were
-  // sending a bearer means the stored JWT is dead. Before this, nothing reacted: every query
-  // and mutation kept failing until the user force-quit so the EntryPoint could notice.
-  // Drop the session (which also clears the React-Query cache) and send the user to Welcome.
-  // Guards: only first-party /api URLs, only when a bearer was actually attached (an
-  // unauthenticated 401 is the caller's business), and never for the auth bridge itself
-  // (/api/auth/*), which legitimately 401s during sign-in. The auth store + router are
-  // required lazily so this entry-file module keeps zustand/expo-router out of its import
-  // graph (see utils/auth/secureStore).
+  // Expired / revoked session (AUDIT_2026-09 A-07, refined). A 401 on an /api route while we were
+  // sending a bearer MAY mean the stored JWT is dead — but a 401 is not proof: it used to sign the
+  // user out for ANY 401, including business errors and transient proxy answers. handleUnauthorized
+  // only drops the session when the 401 carries the server's `session_expired` code or one re-check
+  // confirms it; a dead session then drops the session (which also clears the React-Query cache) and
+  // sends the user to Welcome, once. Guards: only first-party /api URLs, only when a bearer was
+  // actually attached (an unauthenticated 401 is the caller's business), and never for the auth
+  // bridge itself (/api/auth/*), which legitimately 401s during sign-in. The auth store + router are
+  // required lazily so this entry-file module keeps zustand/expo-router out of its import graph
+  // (see utils/auth/secureStore).
   if (auth && response.status === 401 && isApiURL(url) && !isAuthBridgeURL(url)) {
-    handleSessionExpired();
+    handleUnauthorized(response, auth.jwt);
   }
 
   // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —

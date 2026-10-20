@@ -28,6 +28,9 @@ const sessions = meter.createCounter('pawpi_client_sessions_total', {
 const funnelSteps = meter.createCounter('pawpi_funnel_step_total', {
   description: 'Funnel steps reached (anonymous), by funnel and step',
 });
+const authDiag = meter.createCounter('pawpi_client_auth_diag_total', {
+  description: 'Anonymous session / Keychain diagnostics by kind and app version',
+});
 const ingestTotal = meter.createCounter('pawpi_telemetry_ingest_total', {
   description: 'Client telemetry events (or requests, for rate_limited) by ingest result',
 });
@@ -122,6 +125,9 @@ export function recordClientEvent(event, envelope) {
         break;
       case 'perf_startup':
         startup.record(MS_BUCKET_SECONDS[props.ms_bucket], { app_version });
+        break;
+      case 'auth_diag':
+        authDiag.add(1, { diag: props.kind, app_version });
         break;
       case 'funnel_step':
         funnelSteps.add(1, { funnel: props.funnel, step: props.step });

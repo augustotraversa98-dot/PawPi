@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // POST /api/providers/[id]/walk-pickup/redeem — the walker scans the owner's QR (Ticket B3). Gates
 // (capability + active staff) → token verify (bound to THIS provider) → app_redeem_walk_credit
-// (atomic decrement + session insert). 409 no-credits; 401 bad token; 403 wrong provider; 404
+// (atomic decrement + session insert). 409 no-credits; 403 bad token; 403 wrong provider; 404
 // non-integer id; 404 degrade-clean (unmigrated — never a 5xx). auth/sql/providerAuth/token-util
 // mocked.
 
@@ -70,12 +70,13 @@ describe("POST redeem", () => {
     expect(res.status).toBe(403);
   });
 
-  it("401 for an invalid token", async () => {
+  it("403 (never 401 — that would sign the walker out) for an invalid token", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([PROFILE_ROW]);
     verifyPickupToken.mockReturnValue(null);
     const res = await POST(postReq({ token: "bad" }), PARAMS);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("Invalid or expired pickup code");
   });
 
   it("403 when the token is for a different provider", async () => {

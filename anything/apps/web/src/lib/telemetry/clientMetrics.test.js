@@ -17,7 +17,7 @@ vi.mock('@opentelemetry/api', () => otel.api);
 
 import { recordClientEvent, recordIngest, appVersionLabel, MAX_APP_VERSIONS, MS_BUCKET_SECONDS, INGEST_RESULTS, __resetAppVersionsForTests } from './clientMetrics.js';
 import { validateEvent } from './ingestSchema.js';
-import { AREAS, SCREENS, MS_BUCKETS, ERROR_KINDS, STATUS_CLASSES, FUNNELS, PLATFORMS, EVENT_NAMES } from './registry.js';
+import { AREAS, SCREENS, MS_BUCKETS, ERROR_KINDS, AUTH_DIAG_KINDS, STATUS_CLASSES, FUNNELS, PLATFORMS, EVENT_NAMES } from './registry.js';
 
 const ENV = { platform: 'ios', app_version: '1.4.2' };
 const ev = (name, props) => ({ name, t: 5, props });
@@ -140,6 +140,7 @@ describe('client metric label cardinality', () => {
           ev('screen_view', { screen }), ev('error', { kind: 'js', screen }), ev('perf_screen_ready', { screen, ms_bucket: 'lt100' }),
           ev('api_call', { area: screen, route: '/api/x', status_class: screen, ms_bucket: 'lt100' }),
           ev('funnel_step', { funnel: screen, step: screen }), ev('tap', { target: screen, screen }),
+          ev('auth_diag', { kind: screen }),
         ];
         // route through the REAL validator first (as the endpoint does): only accepted events are recorded
         for (const e of events) {
@@ -153,6 +154,7 @@ describe('client metric label cardinality', () => {
       event: new Set(EVENT_NAMES), platform: new Set(PLATFORMS), screen: new Set(SCREENS), kind: new Set(ERROR_KINDS),
       area: new Set(AREAS), status_class: new Set(STATUS_CLASSES), funnel: new Set(Object.keys(FUNNELS)),
       step: new Set(Object.values(FUNNELS).flat()), result: new Set(INGEST_RESULTS),
+      diag: new Set(AUTH_DIAG_KINDS),
     };
     const versions = new Set();
     for (const { attrs } of otel.calls) {
@@ -173,5 +175,12 @@ describe('client metric label cardinality', () => {
   it('no metric ever carries an id-ish label key', () => {
     recordClientEvent(ev('api_call', { area: 'pets', route: '/api/pets/:id', status_class: '2xx', ms_bucket: 'lt100' }), { ...ENV, install_id: 'x', session_id: 'y' });
     for (const { attrs } of otel.calls) for (const k of Object.keys(attrs)) expect(['install_id', 'session_id', 'route', 'code', 'target', 'feature']).not.toContain(k);
+  });
+});
+
+describe('auth_diag', () => {
+  it('auth_diag -> pawpi_client_auth_diag_total{diag,app_version} and nothing else about the event', () => {
+    recordClientEvent(ev('auth_diag', { kind: 'keychain_write_failed' }), ENV);
+    expect(only('pawpi_client_auth_diag_total')[0].attrs).toEqual({ diag: 'keychain_write_failed', app_version: '1.4.2' });
   });
 });

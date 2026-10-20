@@ -167,7 +167,8 @@ export default function WalkerWalksScreen() {
           t("walkPickup.noCreditsTitle", "No walks left"),
           t("walkPickup.noCreditsBody", "Ask the owner to buy a pack before this walk."),
         );
-      } else if (e?.status === 401 || e?.status === 403) {
+      } else if (e?.status === 403) {
+        // 403 = a bad / wrong-business pickup code. (A 401 is a dead session; the fetch layer handles it.)
         Alert.alert(
           t("walkPickup.badCodeTitle", "Invalid code"),
           t("walkPickup.badCodeBody", "That QR isn't a valid pickup code for your business."),

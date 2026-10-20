@@ -33,6 +33,7 @@ const ALLOWLIST = new Set([
   'auth/mobile-return/route.js', // reads the session JWT, 302s to the pawpi:// deep link; no DB
   'auth/mobile-start/route.js', // renders the CSRF auto-submit page to start web OAuth; no DB
   'auth/social-enabled/route.js', // reports which social providers are configured (env only); no DB
+  'session/route.js', // "is my bearer still a live session?" re-check: auth() only, no DB (a request tx would turn a DB blip into a 500 and a false "not dead")
   'upload/route.js', // proxies bytes to Supabase Storage; no DB
   'client-diagnostics/route.js', // authenticated beacon: writes ONE log line, no DB (deliberately must not depend on the DB)
   'health/deep/route.js', // public uptime probe; `select 1` on the global pool via lib/telemetry/healthDeep (no table, no identity; a request tx would turn a DB outage into a generic 500)

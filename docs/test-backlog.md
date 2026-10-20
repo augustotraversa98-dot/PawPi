@@ -11,6 +11,18 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📱 To test — "logged out every time" fix (session 401 code + Keychain write check)
+
+Needs a **new native build** (mobile code) AND the matching web deploy (server code `session_expired` + `GET /api/session`). Merged + CI-green, **not device-verified**. Telemetry to read afterwards: `pawpi_client_auth_diag_total{diag=…}` (Grafana).
+
+- [ ] **Fresh Apple sign-in on a real device** → finish sign-in, force-quit, reopen: you are still signed in (no Welcome). In Grafana `keychain_ok` goes up; `keychain_write_failed` / `keychain_readback_mismatch` stay at 0.
+- [ ] **Stale token at cold launch:** sign in, delete the app, reinstall (the iOS Keychain item survives), open it once the account's sessions were revoked (e.g. reset the password on web first): you land on **Welcome once** — no flash of the home screen, no second Welcome, no loop — and `session_cleared_launch_401` ticks up. Signing in again works.
+- [ ] **Airplane mode at launch** (signed in): you get the "We couldn't reach PawPi" screen with *Try again*, NOT Welcome; turn Wi-Fi back on, tap *Try again* → straight into the app, still signed in.
+- [ ] **A business error no longer logs you out:** as a walker, scan an invalid / expired pickup QR (Walker walks → scan) → "Invalid code" alert, you stay signed in.
+- [ ] **A real revoked session mid-use** (sign in on the device, reset the password on web, then pull-to-refresh any tab): you are taken to Welcome once (`session_cleared_code`).
+- [ ] **Telemetry sanity (no PII):** in the telemetry events nothing but the `kind` value appears for `auth_diag` — no token, e-mail or id.
+- [ ] Optional (iOS 26 device): sign in with the device in Low Power Mode / right after a reboot before first unlock — the app must not crash even if the Keychain write is refused.
+
 ## 📱 To test — next build (night runs 2026-10-16 / 2026-10-17)
 
 Merged + CI-green, **not device-verified** (the runs could not see the app). Details per item are in [`qa/runs/2026-10-17_fix-log.md`](qa/runs/2026-10-17_fix-log.md).

@@ -1,5 +1,5 @@
-// A dead session (server answers 401 on the startup fetch — e.g. a pre-#582 ghost Google token)
-// must be CLEARED from the Keychain and land on Welcome, NOT the "couldn't reach PawPi" screen.
+// A dead session (server answers a session_expired 401 on the startup fetch — e.g. a pre-#582 ghost
+// Google token) must be CLEARED from the Keychain and land on Welcome, NOT the "couldn't reach PawPi" screen.
 // Uses the REAL auth store (only expo-secure-store is faked) so this proves the Keychain item is
 // actually deleted with the same key + options it was written under.
 
@@ -34,7 +34,13 @@ const GOOD = "eyJhbGciOiJkaXIifQ..abc-_1.def.ghi";
 test("startup 401 deletes the Keychain token and lands on Welcome (not the network-error screen)", async () => {
   useAuthStore.setState({ isReady: true, auth: { jwt: GOOD } });
   global.fetch = jest.fn(() =>
-    Promise.resolve({ ok: false, status: 401, json: async () => ({ error: "expired" }) }),
+    Promise.resolve({
+      ok: false,
+      status: 401,
+      headers: { get: (h) => (h.toLowerCase() === "x-pawpi-error-code" ? "session_expired" : null) },
+      clone() { return this; },
+      json: async () => ({ error: "expired", code: "session_expired" }),
+    }),
   );
 
   const { findByText, queryByText } = render(<EntryPoint />);
@@ -45,4 +51,25 @@ test("startup 401 deletes the Keychain token and lands on Welcome (not the netwo
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(authKey, secureStoreOptions),
   );
   expect(useAuthStore.getState().auth).toBeNull();
+});
+
+test("a BARE startup 401 (no session_expired code, re-check unavailable) keeps the token and shows the retry screen", async () => {
+  SecureStore.deleteItemAsync.mockClear();
+  useAuthStore.setState({ isReady: true, auth: { jwt: GOOD } });
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: false,
+      status: 401,
+      headers: { get: () => null },
+      clone() { return this; },
+      json: async () => ({ error: "Unauthorized" }),
+    }),
+  );
+
+  const { findByText, queryByText } = render(<EntryPoint />);
+
+  await findByText("Try again");
+  expect(queryByText("redirect:/welcome")).toBeNull();
+  expect(SecureStore.deleteItemAsync).not.toHaveBeenCalled();
+  expect(useAuthStore.getState().auth).toEqual({ jwt: GOOD });
 });

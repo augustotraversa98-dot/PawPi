@@ -70,6 +70,7 @@ Event: { name, t (ms since session start), props }
 - perf_startup { ms_bucket }, perf_screen_ready { screen, ms_bucket }
 - feature_used { feature }
 - funnel_step { funnel, step }
+- auth_diag { kind }   (session cleared + why / Keychain write-verify result / cold launch found a stored token or none; `kind` in the registry `AUTH_DIAG_KINDS`; counted as `pawpi_client_auth_diag_total{diag,app_version}`; never a token, id or email)
 - opt_out {}   (sent once, then everything stops)
 Buckets for durations: <100, <300, <1000, <3000, <10000, >=10000 ms.
 
