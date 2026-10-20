@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AREAS, MAX_FILES, RULES, classify, decide, listPullRequestFiles, main } from '../../../../../scripts/ci/changed-areas.mjs';
+import { AREAS, MAX_FILES, RULES, classify, decide, decidePush, listCompareFiles, listPullRequestFiles, main } from '../../../../../scripts/ci/changed-areas.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../../..');
@@ -88,8 +88,8 @@ describe('fail safe: when unsure, run everything', () => {
   const kv = (file) => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
   const filesBody = (...names) => async () => Response.json(names.map((filename) => ({ filename })));
 
-  it('push to main / any non-PR event runs everything without calling GitHub', async () => {
-    for (const name of ['push', 'workflow_dispatch', undefined]) {
+  it('any event that is neither a pull request nor a push runs everything without calling GitHub', async () => {
+    for (const name of ['workflow_dispatch', 'schedule', undefined]) {
       const { env: e, out } = env({ GITHUB_EVENT_NAME: name });
       const r = await main(['--area', 'integration'], e, async () => { throw new Error('must not be called'); });
       expect(r.run, String(name)).toBe(true);
@@ -138,6 +138,88 @@ describe('fail safe: when unsure, run everything', () => {
     const files = await listPullRequestFiles({ repo: 'o/r', number: 1, token: 't', fetchImpl });
     expect(pages).toEqual([1, 2]);
     expect(files).toHaveLength(101);
+  });
+});
+
+describe('push to main: skip ONLY when every changed file is non-code; otherwise everything runs', () => {
+  const NONCODE = ['docs/roadmap.md', 'docs/qa/runs/x.md', 'README.md', 'pawpi-brand-kit/BRAND-GUIDELINES.md', 'anything/apps/FOO_SUMMARY.md', 'TESTING_AND_CI_PLAN.md', '.gitignore'];
+
+  it('non-code only => no job needs to run', () => {
+    expect(decidePush(NONCODE).run).toBe(false);
+    expect(decidePush(['docs/a.md']).run).toBe(false);
+  });
+
+  it('ANY code, workflow, lockfile, migration, observability/scripts file or unmapped path => run (all three, no per-area narrowing)', () => {
+    for (const f of [
+      'anything/apps/web/src/app/api/pets/route.js', 'anything/apps/mobile/src/app/index.jsx', 'anything/apps/mobile/app.json', 'anything/apps/mobile/package-lock.json',
+      'anything/apps/web/bun.lock', 'supabase/migrations/0134_x.sql', 'supabase/verify_0134.sql', '.github/workflows/ci.yml', '.github/workflows/gitleaks.yml',
+      'scripts/ci/changed-areas.mjs', 'scripts/autofix/gate.mjs', 'observability/grafana/alerts/p1-critical.json', 'docs/observability/OPERATIONS.md',
+      'docs/ops/railway-cron.md', 'package.json', 'package-lock.json', 'bun.lockb', 'newfolder/src/x.js', 'tools/x.mjs',
+    ]) {
+      expect(decidePush([...NONCODE, f]).run, f).toBe(true);
+      expect(decidePush([f]).run, f).toBe(true);
+    }
+  });
+
+  it('web-only or mobile-only code does NOT narrow the jobs on main (unlike a PR)', () => {
+    expect(decide(['anything/apps/web/src/x.js'], 'mobile').run).toBe(false); // PR: mobile skipped
+    expect(decidePush(['anything/apps/web/src/x.js']).run).toBe(true); // push: everything
+  });
+
+  it('fail safe: empty / missing list, a huge push', () => {
+    expect(decidePush([]).run).toBe(true);
+    expect(decidePush(undefined).run).toBe(true);
+    expect(decidePush(Array.from({ length: MAX_FILES }, (_, i) => `docs/f${i}.md`)).run).toBe(true);
+  });
+
+  it('listCompareFiles: compare URL, both paths of a rename, pagination', async () => {
+    const urls = [];
+    const fetchImpl = async (url) => {
+      urls.push(url);
+      const page = Number(new URL(url).searchParams.get('page'));
+      return Response.json({ files: page === 1 ? Array.from({ length: 100 }, (_, i) => ({ filename: `docs/${i}.md` })) : [{ filename: 'docs/new.md', previous_filename: 'anything/apps/web/src/old.js' }] });
+    };
+    const files = await listCompareFiles({ repo: 'o/r', before: 'a'.repeat(40), after: 'b'.repeat(40), token: 't', fetchImpl });
+    expect(urls[0]).toContain(`/repos/o/r/compare/${'a'.repeat(40)}...${'b'.repeat(40)}?per_page=100&page=1`);
+    expect(urls).toHaveLength(2);
+    expect(files).toHaveLength(102);
+    expect(files).toContain('anything/apps/web/src/old.js');
+  });
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'areas-push-'));
+  const penv = (event, over = {}) => {
+    const ev = path.join(tmp, `event-${Math.random()}.json`);
+    const out = path.join(tmp, `out-${Math.random()}`);
+    fs.writeFileSync(ev, JSON.stringify(event));
+    fs.writeFileSync(out, '');
+    return { env: { GITHUB_EVENT_NAME: 'push', GITHUB_EVENT_PATH: ev, GITHUB_REPOSITORY: 'o/r', GITHUB_TOKEN: 't', GITHUB_OUTPUT: out, GITHUB_SHA: 'b'.repeat(40), ...over }, out };
+  };
+  const kv = (file) => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
+  const compare = (...names) => async () => Response.json({ files: names.map((filename) => ({ filename })) });
+  const GOOD = { before: 'a'.repeat(40), after: 'b'.repeat(40) };
+
+  it('main(): a docs-only push skips all three areas; a code push runs all three', async () => {
+    for (const area of AREAS) {
+      const a = penv(GOOD);
+      expect((await main(['--area', area], a.env, compare('docs/a.md', 'README.md'))).run, area).toBe(false);
+      expect(kv(a.out)).toMatchObject({ run: 'false' });
+      const b = penv(GOOD);
+      expect((await main(['--area', area], b.env, compare('docs/a.md', 'anything/apps/web/src/x.js'))).run, area).toBe(true);
+    }
+  });
+
+  it('main(): force push, zero/missing before, API errors and bad bodies all run everything', async () => {
+    const noCall = async () => { throw new Error('must not be called'); };
+    for (const ev of [{ ...GOOD, forced: true }, { before: '0'.repeat(40), after: GOOD.after }, { after: GOOD.after }, { before: 'nonsense', after: GOOD.after }, { ...GOOD, after: 'zzz' }]) {
+      const a = penv(ev);
+      const r = await main(['--area', 'mobile'], a.env, noCall);
+      expect(r.run, JSON.stringify(ev)).toBe(true);
+      expect(kv(a.out).reason).toMatch(/fail safe/);
+    }
+    for (const f of [async () => new Response('no', { status: 404 }), async () => { throw new Error('down'); }, async () => Response.json({ nope: 1 })]) {
+      const a = penv(GOOD);
+      expect((await main(['--area', 'web'], a.env, f)).run).toBe(true);
+    }
   });
 });
 
@@ -274,7 +356,7 @@ describe('workflow wiring (.github/workflows/ci.yml)', () => {
       // steps after the filter: each uses/run must be guarded, except the filter itself and the explicit "Skipped" no-op
       const afterFilter = b.slice(b.indexOf('id: areas'));
       const steps = afterFilter.split(/\n {6}- /).slice(1);
-      const unguarded = steps.filter((s) => !/steps\.areas\.outputs\.run (==|!=) 'true'|github\.ref == 'refs\/heads\/main'/.test(s));
+      const unguarded = steps.filter((s) => !/steps\.areas\.outputs\.run (==|!=) 'true'/.test(s));
       expect(unguarded.map((s) => s.split('\n')[0]), id).toEqual([]);
       expect(b, id).toMatch(/Skipped \(/);
       expect(b, id).toContain("steps.areas.outputs.run != 'true'");
@@ -289,8 +371,13 @@ describe('workflow wiring (.github/workflows/ci.yml)', () => {
     expect(runLines.filter((l) => l.includes('${{'))).toEqual([]);
   });
 
-  it('push to main always runs everything: the filter only narrows pull_request events', () => {
+  it('the main-only jest cache save is also guarded by the filter (its key comes from the skipped restore step)', () => {
+    expect(CI).toContain("if: github.ref == 'refs/heads/main' && steps.areas.outputs.run == 'true'");
+  });
+
+  it('push events go through decidePush (skip only non-code), never the per-area decide()', () => {
     const src = fs.readFileSync(path.join(REPO_ROOT, 'scripts/ci/changed-areas.mjs'), 'utf8');
-    expect(src).toContain("env.GITHUB_EVENT_NAME !== 'pull_request'");
+    expect(src).toContain("env.GITHUB_EVENT_NAME === 'push'");
+    expect(src).toContain('result = decidePush(files);');
   });
 });
