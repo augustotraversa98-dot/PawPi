@@ -148,9 +148,10 @@ describe('new-user onboarding under pawpi_app + FORCE RLS (R3 cutover safety)', 
     // An orphaned/duplicate profile already owns 'augusto'...
     const oldAuth = await seedAuthUser('augusto@old.com');
     await seedProfile(oldAuth, 'augusto');
-    // ...a DIFFERENT new identity whose email prefix is also 'augusto' onboards.
+    // ...a DIFFERENT new identity whose NAME slugs to 'augusto' onboards (privacy #645: a username comes from the person's name, never
+    // from the e-mail, so the collision has to come from the name).
     const newAuth = await seedAuthUser('augusto@new.com');
-    authState.session = { user: { id: newAuth, email: 'augusto@new.com' } };
+    authState.session = { user: { id: newAuth, email: 'augusto@new.com', name: 'Augusto' } };
 
     const res = await POST(petRequest({ name: 'Bella' }));
     expect(res.status).toBe(201); // NOT 500
@@ -159,6 +160,23 @@ describe('new-user onboarding under pawpi_app + FORCE RLS (R3 cutover safety)', 
     expect(prof).toBeTruthy();
     expect(prof.username).not.toBe('augusto'); // uniquified off the taken base
     expect(prof.username).toMatch(/^augusto_\d+$/);
+  });
+
+  it('a username is NEVER derived from the e-mail: no name -> a random neutral handle; a name -> its slug', async () => {
+    // No name on the session: the e-mail local-part ('augusto') must not leak into the username.
+    const a1 = await seedAuthUser('augusto.garcia+demo@new.com');
+    authState.session = { user: { id: a1, email: 'augusto.garcia+demo@new.com' } };
+    expect((await POST(petRequest({ name: 'Bella' }))).status).toBe(201);
+    const [p1] = await raw`select username from user_profiles where auth_user_id = ${a1}`;
+    expect(p1.username).toMatch(/^pawpi_[a-z0-9]{1,6}$/);
+    expect(p1.username).not.toMatch(/augusto|garcia|demo/);
+
+    // A name on the session: the username is the name's slug, still nothing from the e-mail.
+    const a2 = await seedAuthUser('augusto.garcia+demo2@new.com');
+    authState.session = { user: { id: a2, email: 'augusto.garcia+demo2@new.com', name: 'Marta Gómez' } };
+    expect((await POST(petRequest({ name: 'Luna' }))).status).toBe(201);
+    const [p2] = await raw`select username from user_profiles where auth_user_id = ${a2}`;
+    expect(p2.username).toBe('martagomez');
   });
 
   it('existing-user path is unchanged — pet created under the pre-existing profile, no duplicate profile', async () => {

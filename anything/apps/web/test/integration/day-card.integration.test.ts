@@ -15,8 +15,8 @@ import { makeTestSql, resetDb, seedOwnerWithPet, seedUser, seedPetCaregiver } fr
 const authState = vi.hoisted(() => ({ session: null as any }));
 vi.mock("@/auth", () => ({ auth: async () => authState.session }));
 
-const OWNER = { authUserId: 1, profileId: 1, username: "owner", petId: 1, petName: "Rex" };
-const CARE = { authUserId: 2, profileId: 2, username: "caregiver" };
+const OWNER = { authUserId: 1, profileId: 1, username: "owner", fullName: "owner", petId: 1, petName: "Rex" };
+const CARE = { authUserId: 2, profileId: 2, username: "caregiver", fullName: "caregiver" };
 const VIEWER = { authUserId: 3, profileId: 3, username: "viewer" };
 const STRANGER = { authUserId: 4, profileId: 4, username: "stranger" };
 const TODAY = new Date().toISOString().slice(0, 10); // the route caps against the real "today"
@@ -99,6 +99,16 @@ describe("E13 PR2 — multi-caregiver daily moment", () => {
     const authors = b.slides.map((s: any) => s.author.username).sort();
     expect(authors).toEqual(["caregiver", "owner"]);
     expect(b.latest_contribution_at).toBeTruthy();
+  });
+
+  it("an author with NO full name: slide author.username is null — the username is never exposed", async () => {
+    authState.session = sessionFor(OWNER.authUserId);
+    await postMoment(OWNER.petId, "owner-slide");
+    await raw`update user_profiles set full_name = null where id = ${OWNER.profileId}`;
+    const b = await (await apiReq(`/pets/${OWNER.petId}/day-card?day=${TODAY}`)).json();
+    expect(b.slides.length).toBe(1);
+    expect(b.slides[0].author.username).toBeNull();
+    expect(JSON.stringify(b.slides[0].author)).not.toContain(OWNER.username);
   });
 
   it("day-card-level paw total sums across slides", async () => {

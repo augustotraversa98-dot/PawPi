@@ -60,7 +60,7 @@ afterEach(async () => {
 
 beforeEach(async () => {
   await seedUser(raw, { authUserId: OWNER.authUserId, profileId: OWNER.profileId, username: 'ownera' });
-  await seedUser(raw, { authUserId: USER.authUserId, profileId: USER.profileId, username: 'commenter' });
+  await seedUser(raw, { authUserId: USER.authUserId, profileId: USER.profileId, username: 'commenter', fullName: 'commenter' });
   await seedUser(raw, { authUserId: OTHER.authUserId, profileId: OTHER.profileId, username: 'other' });
   await seedProviderWithStaff(raw, {
     providerId: PROV,
@@ -92,6 +92,17 @@ describe('GET comments (public)', () => {
     const res = await apiReq(commentsUrl, 'GET');
     expect(res.status).toBe(200);
     expect((await res.json()).comments).toEqual([]);
+  });
+
+  it('a commenter with NO full name: author_username is null — the username is never exposed', async () => {
+    await seedComment('anon');
+    await raw`update user_profiles set full_name = null where id = ${USER.profileId}`;
+    authState.session = null;
+    const { comments } = await (await apiReq(commentsUrl, 'GET')).json();
+    expect(comments).toHaveLength(1);
+    expect(comments[0].author_user_id).toBe(USER.profileId);
+    expect(comments[0].author_username).toBeNull();
+    expect(JSON.stringify(comments[0])).not.toContain('commenter');
   });
 
   it('returns comments oldest→newest with author name + avatar', async () => {
