@@ -21,9 +21,36 @@ afterAll(async () => {
 
 const verifySql = (n: string) => readFileSync(join(MIGRATIONS_DIR, '..', `verify_${n}.sql`), 'utf8');
 
+// verify_0124 also looks for the seeded system "PawPi Directory" account, which migration 0124 inserts once but
+// every integration test's resetDb() truncates — so whether it is there depends on file order. Make the test
+// order-independent: inside a transaction that is rolled back, drop any copy and re-run 0124's own seeding block.
+const seedSystemAccount = async (tx: Sql) => {
+  const migration = readFileSync(join(MIGRATIONS_DIR, '0124_provider_claimable.sql'), 'utf8');
+  const block = migration.match(/do \$\$\s*\ndeclare\s+v_profile[\s\S]*?end \$\$;/);
+  expect(block, '0124 system-account DO block not found').not.toBeNull();
+  await tx.unsafe(`delete from user_profiles where username = 'pawpi_directory'`);
+  await tx.unsafe(`delete from auth_users where email = 'directory@pawpi.system'`);
+  await tx.unsafe(block![0]);
+};
+
+const runVerify = async (n: string) => {
+  const ROLLBACK = new Error('rollback');
+  let rows: { ord: number; check_name: string; detail: string; status: string }[] = [];
+  await raw
+    .begin(async (tx) => {
+      if (n === '0124') await seedSystemAccount(tx);
+      rows = await tx.unsafe(verifySql(n));
+      throw ROLLBACK;
+    })
+    .catch((e) => {
+      if (e !== ROLLBACK) throw e;
+    });
+  return rows;
+};
+
 describe.each(['0122', '0123', '0124', '0125'])('verify_%s.sql', (n) => {
   it('every row reads PASS on the harness schema', async () => {
-    const rows = await raw.unsafe<{ ord: number; check_name: string; detail: string; status: string }[]>(verifySql(n));
+    const rows = await runVerify(n);
     expect(rows.length).toBeGreaterThanOrEqual(5);
     const failing = rows.filter((r) => r.status !== 'PASS').map((r) => `${r.ord} ${r.check_name} -> ${r.detail}`);
     expect(failing, `verify_${n}.sql rows not PASS:\n${failing.join('\n')}`).toEqual([]);
