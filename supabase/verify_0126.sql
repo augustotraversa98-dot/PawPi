@@ -1,5 +1,10 @@
 -- Verification for migration 0126 (revoke Data-API roles; pin current_app_user_id search_path).
 -- Run in the Supabase SQL editor AFTER applying 0126. EVERY row should read PASS.
+--
+-- PRODUCTION NOTE (2026-10-20): row 2 was fixed by migration 0134 (the notification-v2 functions created after
+-- 0126). ROW 8 is a KNOWN ACCEPTED FAIL: it reads "3 default acl entries" — role supabase_admin's defaults for
+-- tables / sequences / functions — and the SQL editor cannot revoke them (42501). Decision and reasoning:
+-- docs/db-migration-runbook-0134-revoke-anon-execute.md ("Decision recorded"). Every other row must PASS.
 with checks as (
   select 1 as ord, 'anon/authenticated hold NO table privileges in public' as check_name,
          count(*)::text||' grants' as detail,
