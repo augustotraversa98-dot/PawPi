@@ -11,6 +11,19 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 🔐 Accepted database leftover — `supabase_admin` default privileges (decision 2026-10-20)
+
+`verify_0126.sql` **row 8** and `verify_0134_default_acl.sql` **row 1** are a **KNOWN ACCEPTED FAIL** on production. The owner ran the three
+`alter default privileges for role supabase_admin …` statements in the SQL editor and got **`42501`**; leaving it is a conscious choice.
+Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to revisit are in
+[`db-migration-runbook-0134-revoke-anon-execute.md`](db-migration-runbook-0134-revoke-anon-execute.md) ("Decision recorded").
+
+- [x] 0134 applied; `verify_0134.sql` all PASS; `verify_0126.sql` rows 1–7 and 9 PASS (row 2 closed by 0134).
+- [ ] Standing check after any Supabase platform upgrade or Dashboard-side operation: re-run `verify_0134_default_acl.sql` — row 1 may list **only** `supabase_admin` entries, **rows 2 and 3 must PASS**. Anything else is a regression.
+- CI does **not** expect or run this (the integration harness has no `supabase_admin`/`anon`/`authenticated` roles, so there it passes); nothing to change in any pipeline.
+
+---
+
 ## 📱 To test — "logged out every time" fix (session 401 code + Keychain write check)
 
 **⚠️ The app-side fix needs a NEW NATIVE BUILD — next EAS build number: 27** (iOS, version 1.0.2; builds up to 26 still log out on ANY 401 and never write-verify the Keychain). The server half (PR #698: `session_expired` code, walk-pickup 403, `GET /api/session`) is **already live on production** (deploy SUCCESS, `GET /api/session` without a token → 401 + `session_expired`, checked 2026-10-20), and already protects old builds from the business-401 logout. Merged + CI-green, **not device-verified**. Telemetry to read afterwards: `pawpi_client_auth_diag_total{diag=…}` (Grafana).

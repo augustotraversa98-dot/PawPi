@@ -58,6 +58,41 @@ not try `grant supabase_admin to postgres` (it is Supabase's superuser). Your op
 1. **Supabase support ticket** (Dashboard → Support): "Please run, as `supabase_admin`, on project `<ref>`: `alter default privileges for role supabase_admin in schema public revoke all on tables|sequences|functions from anon, authenticated;`" and attach `verify_0134_default_acl.sql`.
 2. **Accept the residual, knowingly.** The entries only affect objects *created by `supabase_admin` in `public`*. PawPi migrations and the SQL editor create objects as `postgres`, whose defaults 0126 already cleaned; the sweep in `0134` closes everything that exists; and from now on CI (`test/integration/no-public-grants.integration.test.ts`) plus the per-function revoke in `TEMPLATE.sql` §2 keep PawPi's own objects closed. Removing `public` from *Exposed schemas* (Part C) removes the PostgREST path to `public` entirely. If you accept it, note the date here and leave `verify_0126` row 8 as a known FAIL.
 
+### Decision recorded — 2026-10-20: leftover ACCEPTED
+
+**Result of Part B on production (owner, 2026-10-20):** the three `alter default privileges for role supabase_admin …` statements, run in the
+SQL editor as `postgres`, **failed with `42501` (insufficient privilege)**. The SQL editor role cannot change another role's default
+privileges, so option 1 (support ticket) was not pursued and the owner **accepted option 2, knowingly**.
+
+**Reasoning (why this is acceptable):**
+1. The 3 remaining entries (`verify_0126` row 8 / `verify_0134_default_acl` row 1) only decide what *objects created by role `supabase_admin`* in
+   schema `public` inherit. PawPi never creates objects as `supabase_admin`: migrations and the SQL editor run as `postgres`, whose defaults
+   0126 already removed (`verify_0134` row 7 PASS).
+2. Everything that **exists today** is closed: `0134` swept every function, table and sequence in `public` (`verify_0134` all PASS, and
+   `verify_0126` rows 1–7 and 9 PASS).
+3. Everything PawPi **creates from now on** is guarded by CI: `no-public-grants.integration.test.ts` fails the build if any function/table
+   is reachable from PUBLIC/anon/authenticated, and `TEMPLATE.sql` §2 carries the required revoke+grant pair.
+4. The Data API path to `public` is closed independently when `public` is removed from *Settings → API → Exposed schemas* (Part C).
+5. The app never uses the Data API (`docs/db-data-api-safety-evidence.md`).
+
+**Residual risk:** an object that Supabase itself (as `supabase_admin`) creates in `public` — e.g. a Dashboard/extension operation that runs as that
+role — would be granted to `anon`/`authenticated`. Check by re-running `supabase/verify_0134_default_acl.sql` after any such operation or
+platform upgrade: row 1 must still list **only** `supabase_admin` entries, and **row 3 must read PASS**.
+
+**Known accepted FAIL (do not "fix" the script; investigate anything beyond this):**
+
+| Script | Row | Reads on production | Expected detail |
+|---|---|---|---|
+| `verify_0126.sql` | 8 `no default privileges for anon/authenticated on future public tables` | **FAIL — accepted 2026-10-20** | `3 default acl entries` |
+| `verify_0134_default_acl.sql` | 1 `no default privilege … grants anon / authenticated, for ANY owning role` | **FAIL — accepted 2026-10-20** | only `supabase_admin:r`, `supabase_admin:S`, `supabase_admin:f` (tables, sequences, functions) |
+
+Anything else failing in `verify_0126.sql` (any row but 8), `verify_0134.sql` (any row), or `verify_0134_default_acl.sql` (row 2 or **row 3**) is a
+real regression. Row 3 exists so the accepted leftover can never hide a new one: it passes only if no entry for any role **other than
+`supabase_admin`** grants `anon`/`authenticated`.
+
+**Revisit** if Supabase ever lets the project owner change these (support ticket template in option 1 above) or if PawPi starts creating
+objects as `supabase_admin`.
+
 ## Part C — confirm the dashboard belt (read-only check)
 
 Dashboard → **Settings → API → Exposed schemas**: `public` should **not** be in the list (0126 runbook §1b). If it still is, remove it (instant,
