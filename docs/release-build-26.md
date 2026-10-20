@@ -118,3 +118,73 @@ Carry-over checks from the other build-26 PRs — not part of the pass above, st
   behaviour; the migrations are additive and stay. Telemetry has its own kill switch (`TELEMETRY_INGEST_ENABLED=false`).
 - If #618's first-focus mounting misbehaves on a device, the single switch is `components/FirstFocusGate.jsx`
   (render `children` unconditionally) — one-file revert.
+
+---
+
+## 8. Build 27 (v1.0.3) prep — what YOU verify before submitting
+
+**Claude does not build, submit or publish.** Build 26 (v1.0.2) is live on the App Store, so the next build ships as
+**v1.0.3, EAS iOS build number 27** (remote counter is at 26; `autoIncrement` assigns 27; nothing in the repo carries it).
+This section supersedes §1 for the next release: marketing version is bumped in `app.json` by PR #700.
+
+### 8.1 Before you build
+- [ ] **#700 (version 1.0.3) merged**; `main` CI green (mobile jest, web vitest, web integration) and the gitleaks scan green.
+- [ ] **Server first.** The server half of the session fix (#698: `session_expired` code, `GET /api/session`, walk-pickup 403)
+  is already live on production. Re-check read-only: `curl -i https://www.pawpi.info/api/session` → `401`, header
+  `x-pawpi-error-code: session_expired`, body `{"error":"Unauthorized","code":"session_expired"}`.
+- [ ] Release notes: paste `docs/app-store-whats-new-1.0.3.md` (EN + ES) into the 1.0.3 version page after you have edited it.
+- [ ] Privacy declaration: **no change**. The new anonymous `auth_diag` events (a fixed key such as `session_cleared_code`; never a
+  token, id or e-mail) fall under the already-declared *Other Diagnostic Data* (see `docs/privacy/telemetry.md` §1/§6).
+- [ ] Open items that are NOT part of this build and must not be assumed applied: migration `0133` (username clean-up), the
+  case-insensitive pet-handle index, payment-settlement SQL, notification-type SQL (see `docs/qa/runs/2026-10-17_fix-log.md`).
+
+### 8.2 On a real iPhone with the TestFlight build 27 (before "Submit for Review")
+Settings → **Help improve PawPi** must be ON for the telemetry checks. Use a real device — the simulator cannot reproduce Keychain
+behaviour.
+
+- [ ] **Fresh Apple sign-in stays signed in:** sign in with Apple, finish the first screens, force-quit, reopen → still signed in
+  (no Welcome). Repeat once after a phone restart (before first unlock the Keychain can refuse reads).
+- [ ] **Stale token at cold launch:** reinstall over an account whose sessions were revoked (reset its password on the web, then open
+  the app with the old install's Keychain item) → **Welcome once**: no flash of the home screen, no second Welcome, no loop; signing in
+  again works.
+- [ ] **Airplane mode at launch (signed in):** "We couldn't reach PawPi" + *Try again* — NOT Welcome. Turn Wi-Fi back on → *Try again*
+  → straight in, still signed in.
+- [ ] **No logout on a wrong pickup code:** with a walker/business account, Walker walks → scan an invalid or expired pickup QR
+  (or any non-PawPi QR) → the "Invalid code" alert appears and you are **still signed in** afterwards (kill and reopen to be sure).
+- [ ] **A real revoked session mid-use:** sign in, reset that account's password on the web, pull-to-refresh any tab → Welcome, once.
+- [ ] **Version label:** Settings footer reads `v1.0.3 (27)`.
+- [ ] Tab bar, Settings (Log out + confirm), pet-handle suggestions, "Streak with a friend", reminders — the other night-run items in
+  `docs/test-backlog.md` "To test — next build".
+
+### 8.3 The `auth_diag` telemetry reaches the server (do this on the same device, right after 8.2)
+Within about a minute of a cold launch + sign-in, events for `app_version` **1.0.3** must appear. Nothing appears until the first event
+(the counter is created lazily), and nothing if telemetry is OFF or the kill switch `TELEMETRY_INGEST_ENABLED=false` is set.
+
+- [ ] **Grafana Explore → Prometheus (metrics):**
+  `sum by (diag) (increase(pawpi_client_auth_diag_total{app_version="1.0.3"}[1h]))`
+  Expected after a clean sign-in + relaunch: `launch_token_found` (or `launch_no_token` on the very first launch) and `keychain_ok`.
+- [ ] **Grafana Explore → Loki (one log line per event):**
+  `{job="pawpi-client", event="auth_diag", app_version="1.0.3"} | json | line_format "{{.props_kind}} build={{.build}} ios={{.os_major}}"`
+  (stream labels are only `job`, `event`, `app_version`, `platform`; the kind is in the JSON field `props.kind`). The line must NOT
+  contain a token, e-mail or user id — if it does, stop and do not submit.
+- [ ] Ingest health: `sum by (result) (increase(pawpi_telemetry_ingest_total[1h]))` — `invalid` should stay at 0 (an `invalid` here after
+  build 27 would mean the app and the server disagree on the event registry).
+
+**How to read the kinds** (the question is "why were people logged out every time?"):
+
+| `diag` | Meaning |
+|---|---|
+| `keychain_ok` / `keychain_retried_ok` | sign-in token written and read back (second = needed the retry) |
+| `keychain_write_failed` / `keychain_readback_mismatch` | **cause B is real**: the Keychain refused/lost the token (user stayed signed in only until the next launch) |
+| `launch_no_token` shortly after a successful sign-in | same signature as cause B |
+| `session_cleared_launch_401` / `_403` | **cause A**: a stored token the server rejected at cold launch (e.g. reinstall kept an old Keychain item) |
+| `session_cleared_code` / `session_cleared_recheck` | a real dead session while using the app (revoked/expired), by code or by the one re-check |
+| `recheck_alive` | a bare 401 that was NOT a dead session (the old "log out on any 401" bug would have logged these users out) |
+| `launch_token_found` | cold launch found a stored token |
+
+Alert rules for client signals stay **paused** (see §3 item 7 and `OPERATIONS.md` §8); this is a manual read until a few days of
+build-27 data exist.
+
+### 8.4 Rollback
+Same as §7: expedite a fix as 1.0.4, or re-promote 1.0.2 (build 26) in App Store Connect. The server half is backward compatible with
+builds ≤ 26 (it only adds a code/header and one route; the one status change is walk-pickup 401 → 403).
