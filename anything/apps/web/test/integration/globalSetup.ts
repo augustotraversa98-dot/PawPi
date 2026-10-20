@@ -8,6 +8,7 @@
 //
 // This never touches Supabase or the app singleton (src/app/api/utils/sql.js).
 
+import { existsSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -40,7 +41,9 @@ function getFreePort(): Promise<number> {
 }
 
 export default async function setup({ provide }: GlobalSetupContext) {
-  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'pawpi-pg-'));
+  const baseTmp = existsSync('/dev/shm') ? '/dev/shm' : os.tmpdir();
+  const dataDir = await mkdtemp(path.join(baseTmp, 'pawpi-pg-'));
+  console.log(`[integration] data dir under ${baseTmp}`);
   const port = await getFreePort();
 
   const pg = new EmbeddedPostgres({
