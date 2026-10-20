@@ -19,6 +19,14 @@ permissions:
   contents: read
   pull-requests: read
 
+# Cancel a superseded run: when a pull request gets a newer push, its older in-progress run is cancelled (the newest commit's run is the
+# one that counts). The group key is the workflow name + the PR number for pull_request events; for EVERY other event (push to main,
+# workflow_dispatch) it is the workflow name + the unique run id, so such runs never share a group and are NEVER cancelled or queued
+# behind each other: a deploy commit on main is always fully tested. cancel-in-progress is true for pull_request events only.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   mobile:
     name: mobile (jest)

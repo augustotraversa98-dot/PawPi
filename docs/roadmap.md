@@ -66,6 +66,8 @@ stopped shipping a stale committed `ios/`). Production = Railway web/API at `htt
 (checklist: [`test-backlog.md`](test-backlog.md) → "To test — build 24") and then **Submit for Review**
 in App Store Connect (manual step).
 
+**CI: cancel superseded PR runs (2026-10-20)** — `ci.yml` + `gitleaks.yml` cancel a PR's older in-progress run when the PR gets a newer push (group `<workflow>-pr-<number>`, `cancel-in-progress` for `pull_request` only); runs on push to `main` have a unique group and are never cancelled. ≈ -40-60 min/month (more in night-run bursts). See `TESTING_AND_CI_PLAN.md` B5.
+
 **No new migrations in the #567–#592 run** — nothing under `supabase/` changed since #566; the latest migration
 is still **0130** (0128/0129 remain file-only, hand-apply tracked in `test-backlog.md` ACTION 1).
 
