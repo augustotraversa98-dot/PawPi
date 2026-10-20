@@ -63,7 +63,10 @@ the offender.
    `test/integration/security-hardening.integration.test.ts`. Prefer `SECURITY INVOKER`
    (the default) unless the function must read rows the caller's RLS would hide.
 3. **Never `GRANT … TO anon`, `authenticated`, or `PUBLIC`** on app tables/sequences/
-   functions. The app connects only as `pawpi_app` (never the Supabase Data API/PostgREST);
+   functions, and **every new function must `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` +
+   `GRANT EXECUTE … TO pawpi_app`** (Postgres makes new functions PUBLIC-executable; copy the pair from
+   `TEMPLATE.sql` §2 — `test/integration/no-public-grants.integration.test.ts` fails the build otherwise).
+   The app connects only as `pawpi_app` (never the Supabase Data API/PostgREST);
    `pawpi_app` already holds DML on all objects and future ones (`0019` + its
    `ALTER DEFAULT PRIVILEGES`), and `0126` revokes the Supabase-default anon/authenticated
    grants. See `docs/db-data-api-safety-evidence.md`.

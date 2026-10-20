@@ -4,7 +4,7 @@
 -- (anything/apps/web/test/integration/migrate.ts) only runs files matching
 -- NNNN_*.sql, and Supabase applies whatever you paste into the SQL editor. Copy
 -- this file to supabase/migrations/NNNN_short_name.sql (NNNN = the next free
--- number; today's highest is 0127) and delete the parts you don't need.
+-- number: `ls supabase/migrations | tail -3`) and delete the parts you don't need.
 --
 -- The rules below are enforced or checked in CI:
 --   • RLS completeness  — test/integration/rls-gap-closure.integration.test.ts
@@ -12,6 +12,11 @@
 --       or is not in the documented RLS_EXEMPT allowlist.
 --   • DEFINER search_path — test/integration/security-hardening.integration.test.ts
 --       FAILS if a SECURITY DEFINER function in schema public does not pin search_path.
+--   • No Data-API exposure — test/integration/no-public-grants.integration.test.ts
+--       FAILS if, after all migrations, ANY function in public is still executable by PUBLIC (that is
+--       the Postgres default for a new function!) / anon / authenticated, a table or sequence is granted
+--       to them, or pawpi_app cannot execute a function. Every function you create needs the
+--       revoke+grant pair in §2 below. (This is how 12 functions slipped through after 0126 — 0134.)
 --   • Route identity — src/app/api/rls-rollout-completeness.test.js
 --       every DB-touching route runs inside withRequestContext (sets app.current_user_id).
 -- See docs/rls-hardening.md for the full model and CLAUDE.md → "Database migration
@@ -70,9 +75,27 @@ as $$
   )
 $$;
 
+-- REQUIRED for EVERY new function, DEFINER or INVOKER (the test above fails without it):
+-- Postgres grants EXECUTE to PUBLIC the moment a function is created, and Supabase's PostgREST serves
+-- `anon` / `authenticated` (the publishable key) from schema public. A schema-level default privilege
+-- cannot remove the PUBLIC default, so close it explicitly, per function:
+revoke execute on function app_example_helper(integer) from public;
+do $$
+declare r text;
+begin
+  -- REVOKE ... FROM a role that does not exist is a hard error; the integration harness has no anon/authenticated.
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke execute on function app_example_helper(integer) from %I', r);
+    end if;
+  end loop;
+end
+$$;
 grant execute on function app_example_helper(integer) to pawpi_app;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- NEW TABLE / SEQUENCE: never `GRANT … TO anon | authenticated | PUBLIC` (see §1). The same test fails on it.
+--
 -- 3. Ship a supabase/verify_NNNN.sql alongside anything hand-applied (role/grant/
 --    RLS/auth/storage), shaped so every row reads PASS. See verify_0126.sql /
 --    verify_0127.sql for the pattern.
