@@ -9,8 +9,12 @@
 // "web (integration / real Postgres)") always report `success`. (A job-level `if:` would report `skipped`, which GitHub's branch
 // protection accepts but scripts/autofix/gate.mjs does not: it treats anything but `success` as failed.)
 //
-// FAIL SAFE: anything unsure runs everything: not a pull_request, API error, more than MAX_FILES changed files, an empty file list,
-// or any changed path that no rule below maps. The "honesty test" (anything/apps/web/src/observability/ciAreas.test.js) fails CI
+// Push to main is stricter than a pull request: the three jobs are skipped ONLY when every file of the push is a non-code file (rule
+// areas === 'ignore': docs, notes, brand kit, ...). Any change to code, workflows, lockfiles, migrations, observability, scripts or an
+// unmapped path runs all three jobs on main (a job is never narrowed to its own area there).
+//
+// FAIL SAFE: anything unsure runs everything: an event that is not a pull_request or a push to main, API error, more than MAX_FILES
+// changed files, an empty file list, a force push or a push without a usable `before` commit, or any changed path no rule below maps. The "honesty test" (anything/apps/web/src/observability/ciAreas.test.js) fails CI
 // when a tracked file is not covered by a rule, so a new code folder cannot silently fall outside every filter.
 //
 // Zero dependencies, Node >= 18 (preinstalled on GitHub's runners), no secrets (the read-only GITHUB_TOKEN only lists PR files).
@@ -80,6 +84,40 @@ export function decide(files, area) {
   return { run: false, reason: `none of the ${files.length} changed files needs ${area} (${ignored} need no job at all)` };
 }
 
+/**
+ * Push to main: skip everything only if EVERY changed file is a non-code file; otherwise every job runs (no per-area narrowing).
+ * @returns {{run: boolean, reason: string}}
+ */
+export function decidePush(files) {
+  if (!Array.isArray(files) || files.length === 0) return { run: true, reason: 'no changed-file list: running (fail safe)' };
+  if (files.length >= MAX_FILES) return { run: true, reason: `${files.length} changed files (GitHub's list is capped at ${MAX_FILES}): running (fail safe)` };
+  for (const f of files) {
+    const c = classify(f);
+    if (c.areas === null) return { run: true, reason: `"${f}" is not mapped to any area: running (fail safe)` };
+    if (c.areas !== 'ignore') return { run: true, reason: `"${f}" (${c.why}) is not a non-code file: everything runs on main` };
+  }
+  return { run: false, reason: `all ${files.length} files of this push are non-code (docs, notes, assets): nothing to test` };
+}
+
+/** Files changed by a push: GET /compare/{before}...{after} (paginated). Throws on any problem; the caller turns that into "run". */
+export async function listCompareFiles({ repo, before, after, token, apiUrl = 'https://api.github.com', fetchImpl = fetch }) {
+  const out = [];
+  for (let page = 1; page <= 30; page += 1) {
+    const res = await fetchImpl(`${apiUrl}/repos/${repo}/compare/${before}...${after}?per_page=100&page=${page}`, {
+      headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const body = await res.json();
+    if (!body || !Array.isArray(body.files)) throw new Error('unexpected API body');
+    for (const f of body.files) {
+      if (f?.filename) out.push(String(f.filename));
+      if (f?.previous_filename) out.push(String(f.previous_filename));
+    }
+    if (body.files.length < 100) return out;
+  }
+  return out; // MAX_FILES reached: decidePush() runs everything
+}
+
 /** Changed files of a pull request via the REST API (paginated). Throws on any problem; the caller turns that into "run". */
 export async function listPullRequestFiles({ repo, number, token, apiUrl = 'https://api.github.com', fetchImpl = fetch }) {
   const out = [];
@@ -111,8 +149,17 @@ export async function main(argv, env = process.env, fetchImpl = fetch) {
   const area = i >= 0 ? argv[i + 1] : '';
   let result;
   try {
-    if (env.GITHUB_EVENT_NAME !== 'pull_request') {
-      result = { run: true, reason: `event "${env.GITHUB_EVENT_NAME || 'unknown'}" is not a pull request: everything runs` };
+    if (env.GITHUB_EVENT_NAME === 'push') {
+      const event = JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
+      const before = String(event?.before ?? '');
+      const after = String(event?.after ?? env.GITHUB_SHA ?? '');
+      if (event?.forced) throw new Error('force push');
+      if (!/^[0-9a-f]{7,40}$/.test(before) || /^0+$/.test(before) || !/^[0-9a-f]{7,40}$/.test(after)) throw new Error('no usable before/after commit');
+      if (!env.GITHUB_REPOSITORY) throw new Error('no repository');
+      const files = await listCompareFiles({ repo: env.GITHUB_REPOSITORY, before, after, token: env.GITHUB_TOKEN, apiUrl: env.GITHUB_API_URL || 'https://api.github.com', fetchImpl });
+      result = decidePush(files);
+    } else if (env.GITHUB_EVENT_NAME !== 'pull_request') {
+      result = { run: true, reason: `event "${env.GITHUB_EVENT_NAME || 'unknown'}" is neither a pull request nor a push: everything runs` };
     } else {
       const event = JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
       const number = event?.pull_request?.number ?? event?.number;

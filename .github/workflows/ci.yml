@@ -4,7 +4,9 @@ name: CI
 # pull request its first step asks which areas the PR changed and the expensive steps (setup, install, tests) only run when the
 # job has something to test. There is deliberately NO workflow-level `paths:` filter and NO job-level `if:` (a workflow that does
 # not run leaves required checks pending; a job-level skip reports `skipped`, which scripts/autofix/gate.mjs counts as failed).
-# Push to main always runs everything. Anything unsure (workflow/lockfile/root-config change, unmapped path, API error) runs everything.
+# Push to main skips all three jobs ONLY when every file of the push is a non-code file (docs, notes, assets); any code, workflow,
+# lockfile, migration, observability/scripts change or unmapped path runs all three there. Anything unsure (force push, API error)
+# runs everything.
 # The three job names are the required checks (scripts/autofix/gate.mjs REQUIRED_CHECKS): never rename them.
 
 on:
@@ -78,7 +80,7 @@ jobs:
         run: echo "mobile (jest) skipped - $REASON"
 
       - name: Save jest cache
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.areas.outputs.run == 'true'
         uses: actions/cache/save@v4
         with:
           path: anything/apps/mobile/node_modules/.cache/jest
