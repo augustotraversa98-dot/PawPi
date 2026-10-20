@@ -35,13 +35,23 @@ export function makeTestSql(): Sql {
  * clean slate between tests. Generic on purpose — it discovers tables from the
  * catalog so new migrations need no maintenance here.
  */
+const __g = globalThis as any;
 export async function resetDb(sql: Sql): Promise<void> {
-  const rows = await sql<{ tablename: string }[]>`
-    select tablename from pg_tables where schemaname = 'public'
-  `;
-  if (rows.length === 0) return;
-  const list = rows.map((r) => `"${r.tablename}"`).join(', ');
-  await sql.unsafe(`truncate table ${list} restart identity cascade`);
+  const s = (__g.__rs ??= { calls: 0, qMs: 0, tMs: 0 });
+  const t0 = performance.now();
+  let list: string = '';
+  if (!list) {
+    const rows = await sql<{ tablename: string }[]>`
+      select tablename from pg_tables where schemaname = 'public'
+    `;
+    list = rows.map((r) => `"${r.tablename}"`).join(', ');
+    
+  }
+  const t1 = performance.now();
+  if (list) await sql.unsafe(`truncate table ${list} restart identity cascade`);
+  const t2 = performance.now();
+  s.calls += 1; s.qMs += t1 - t0; s.tMs += t2 - t1;
+  if (s.calls % 100 === 0) console.log(`[resetDb-split] calls=${s.calls} queryAvgMs=${(s.qMs / s.calls).toFixed(1)} truncateAvgMs=${(s.tMs / s.calls).toFixed(1)} totalMs=${Math.round(s.qMs + s.tMs)}`);
 }
 
 /**
