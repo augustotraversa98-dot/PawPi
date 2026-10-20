@@ -94,6 +94,9 @@ The repo goes private on 2026-10-31 (free plan: **2,000 Actions minutes/month**)
 - Coverage is reported but not blocking.
 - CI time is short enough that you'll wait for it.
 
+### B5. Cancel superseded pull-request runs (2026-10)
+`ci.yml` and `gitleaks.yml` have a workflow-level `concurrency` block: group = workflow name + `pr-<PR number>` for `pull_request` events and workflow name + `run-<run id>` for every other event; `cancel-in-progress` is true for `pull_request` events only. So a new push to a PR cancels that PR's older in-progress run (only the newest commit's run counts), while **runs on push to `main` (and manual runs) have a unique group and are never cancelled** (a deploy commit is always fully tested). `claude-autofix.yml` (own group, `cancel-in-progress: false`) and `cron-jobs.yml` are untouched. Measured over 30 days: 11 of 116 PR runs were followed by another push to the same branch within 9 minutes; estimated saving ≈ 40-60 min/month at today's volume, more in night-run bursts (a PR pushed repeatedly while the 7.5-min Postgres job runs). Tests: `anything/apps/web/src/observability/ciConcurrency.test.js`.
+
 ---
 
 ## Phase C — Broaden coverage + the data-layer round-trip
