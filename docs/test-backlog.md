@@ -39,6 +39,8 @@ Merged + CI-green, **not device-verified** (the runs could not see the app). Det
 
 ## ⚙️ ACTION 1 — Apply Phase 2 migrations to Supabase (in order, after the merges)
 
+> **Historical list.** Several entries below carry no ✅ mark but are applied (later notes show the live DB at 0064, then 0110, 0119 …). The current list of what is NOT confirmed applied is [`db-migration-inventory.md`](db-migration-inventory.md).
+
 These were built + proven in the test harness but, per Cowork's rule, NOT applied to live Supabase.
 Hand-apply in numeric order, then the live app gets all the new features. (Same harness-only pattern
 as the RLS migrations 0019–0026.)
@@ -469,17 +471,17 @@ PR #632 merged: `scripts/cron/` added and GitHub cron removed (manual fallback k
 
 ---
 
-## ⚙️ ACTION 6 — Apply the username backfill (pending, human-applied) — night run #2, PR D
+## ⚙️ ACTION 6 — Username backfill `0133` — ✅ APPLIED + VERIFIED (owner-confirmed 2026-10-20)
 
-`supabase/migrations/0133_username_backfill.sql` — **file-only, NOT applied to any live database.** Rewrites the
-e-mail-derived `user_profiles.username` values (QA 2026-10-16 bug 04 follow-up) to name-based unique ones and
-keeps the old value in `user_profile_username_backfill_audit` (RLS forced, owner-select only). Merging does not
-apply it (no migrate step in the web deploy).
+`supabase/migrations/0133_username_backfill.sql` was applied to production by the owner and `supabase/verify_0133.sql`
+read all-PASS. (This entry used to say "file-only, NOT applied"; that was stale.) It rewrote the e-mail-derived
+`user_profiles.username` values (QA 2026-10-16 bug 04 follow-up) to name-based unique ones and kept the old value in
+`user_profile_username_backfill_audit` (RLS forced, owner-select only). Runbook: `docs/db-migration-runbook-0133-username-backfill.md`.
 
-- [ ] Apply via `docs/db-migration-runbook-0133-username-backfill.md` (SQL editor as `postgres`).
-- [ ] Run `supabase/verify_0133.sql` — every row **PASS**.
-- [ ] Re-run once → `NOTICE … 0 username(s) rewritten` (idempotent).
-- Heads-up for support: an invite typed with someone's *old* username (staff / family / walk invitee) will say "not found" afterwards.
+- [x] Applied via the runbook; `verify_0133.sql` all **PASS**.
+- [ ] *(optional, if not done yet)* re-run once → `NOTICE … 0 username(s) rewritten` (the migration is idempotent).
+- Heads-up for support: an invite typed with someone's *old* username (staff / family / walk invitee) says "not found" now.
+- What is still pending in the database (not 0133): see [`db-migration-inventory.md`](db-migration-inventory.md).
 
 ---
 

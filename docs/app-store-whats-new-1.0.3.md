@@ -11,8 +11,8 @@ Earlier release notes live in [`app-store-connect-content.md`](app-store-connect
 Customer-visible, in the app: #650 tab bar, #651 handles, #652 streak friend picker, #643 / #644 / #648 layout + Settings,
 #645 / #646 names, #647 / #655 / #657 Spanish + pop-ups, #656 dates, #659 reminders, #660 accessibility, #661 blocking,
 #662 bookings, #698 stays signed in. Left OUT on purpose (server/internal or not live yet): CI, autofix, security hardening,
-cron, database/migrations, anything that needs SQL that is still unapplied (username clean-up `0133`, payment settlement,
-notification-type fix), and the hidden walk-tracking card.
+cron, database/migrations, anything that needs SQL that is still unapplied (payment settlement, notification-type fix,
+see `db-migration-inventory.md`), and the hidden walk-tracking card.
 Re-read this list against what actually ships in build 27 before pasting.
 
 ---
@@ -58,4 +58,4 @@ Gracias por tus comentarios: seguí escribiéndonos a support@pawpi.info.
 ## Checks before pasting
 - [ ] `support@pawpi.info` is the contact already used in the Review notes (`app-store-connect-content.md` §10); the App Store Connect Support URL is `https://www.pawpi.info/support`. Confirm the mailbox is live.
 - [ ] Every bullet is true for the binary that is submitted (device checks in `docs/release-build-26.md` §8 and `docs/test-backlog.md`).
-- [ ] Do not add the "handles are unique ignoring capital letters" or "old usernames cleaned up" claims until migration `0133` / the case-insensitive index are applied.
+- [ ] Do not add the "handles are unique ignoring capital letters" claim until the case-insensitive pet-handle index is applied (see `db-migration-inventory.md`). The username clean-up (`0133`) is applied.
