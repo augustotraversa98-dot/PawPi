@@ -66,13 +66,20 @@ stopped shipping a stale committed `ios/`). Production = Railway web/API at `htt
 (checklist: [`test-backlog.md`](test-backlog.md) → "To test — build 24") and then **Submit for Review**
 in App Store Connect (manual step).
 
-**CI: cancel superseded PR runs (2026-10-20)** — `ci.yml` + `gitleaks.yml` cancel a PR's older in-progress run when the PR gets a newer push (group `<workflow>-pr-<number>`, `cancel-in-progress` for `pull_request` only); runs on push to `main` have a unique group and are never cancelled. ≈ -40-60 min/month (more in night-run bursts). See `TESTING_AND_CI_PLAN.md` B5.
-
 **No new migrations in the #567–#592 run** — nothing under `supabase/` changed since #566; the latest migration
 is still **0130** (0128/0129 remain file-only, hand-apply tracked in `test-backlog.md` ACTION 1).
 
-### CI minutes (2026-10-20) — repo goes private 2026-10-31 (2,000 free Actions min/month)
-Steady state was ~2,850 min/month (4,549 in the 30 days to 10-19, incl. ~1,234 from the old broken mobile jest job and ~347 from the retired GitHub cron). **Path-aware CI** (`scripts/ci/changed-areas.mjs`; details and mapping in `TESTING_AND_CI_PLAN.md` B4): docs-only PRs finish the three required checks in seconds without installs; code PRs run the real tests; `main` always runs everything. Estimated CI 2,666 -> 2,100 min/month. Next: cancel superseded PR runs, then measure/trim the Postgres integration job (7.5 min per run, the biggest line).
+### CI minutes (2026-10-20) — ✅ done (#693, #694, #696, #697, #703), repo may go private 2026-10-31 (2,000 free Actions min/month)
+**New CI behavior** (all merged, details in `TESTING_AND_CI_PLAN.md` B4-B6):
+- **Path-aware CI** (`scripts/ci/changed-areas.mjs`): the three required checks (`mobile (jest)`, `web (vitest)`, `web (integration / real Postgres)`) keep their names and always end green, but on a PR each job only does real work when the PR touches what it tests (docs-only PR: all three green in ~10-20 s, no installs). **Pushes to `main` skip all three jobs only when every changed file is non-code**; any code, workflow, lockfile, migration, observability/scripts change or unmapped path runs everything there. Anything unsure (API error, force push, > 3000 files) runs everything.
+- **Honesty-test rule for new top-level code folders:** `anything/apps/web/src/observability/ciAreas.test.js` fails CI if a tracked file is not covered by a rule in `scripts/ci/changed-areas.mjs`, if a top-level or `anything/apps/*` folder has no rule, or if a web/mobile test reads a repo file outside its own app that the filter would not trigger on. **Adding a new code folder = add a rule there** (or an explicit `ignore`), otherwise CI tells you.
+- **Cancel superseded runs:** `ci.yml` + `gitleaks.yml` cancel a PR's older in-progress run when the PR gets a newer push; runs on push to `main` have a unique group and are never cancelled.
+- **Integration job ~35 % faster:** the throwaway Postgres keeps its data dir on `/dev/shm` (Linux, >= 1 GB free), else the OS temp dir (`PAWPI_INTEGRATION_TMPFS=0` forces that).
+- **The integration check is now truthful:** `vitest run --config vitest.integration.config.ts` used to exit 0 even when tests failed (the `globalSetup` teardown ended the process with 0), so the required check could never go red and 8 tests (stale since #645) had been failing unnoticed. The teardown now restores `process.exitCode` (proven red on a throwaway failing test), the 8 tests were updated, and any future integration failure turns the check red on PRs and on `main`.
+
+**Minutes estimate (30 days of real runs replayed through the real mapping, steady-state costs):** before ~2,850 min/month (4,549 measured in the 30 days to 10-19, incl. ~1,234 from the old broken mobile jest job and ~347 from the retired GitHub cron); CI 2,666 -> 1,968 after path filters (PRs 1,438 -> 872, main pushes 1,228 -> 1,096) -> ~1,590 after cancel-superseded (~-50) and the integration speed-up (~-330); with gitleaks + autofix (~180) **≈ 1,770 min/month (~11 % under the 2,000 free minutes)**. A night-run-heavy month (2x volume) would not fit. Main pushes are deliberately **not** narrowed per area (would save ~370 more): revisit after a week of real billing numbers.
+
+**Owner check:** Augusto will look at the billing page (Settings > Billing > Usage) around **Oct 27** and decide on making the repo private for **Oct 31** (see `test-backlog.md` ACTION 7).
 
 ### ✅ #567–#592 — done (all merged, CI-green)
 Status mirror (✅ merged). Grouped by theme; PR numbers link to `augustotraversa98-dot/PawPi`.

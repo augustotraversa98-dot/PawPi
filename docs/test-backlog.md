@@ -615,6 +615,12 @@ Open the keyboard on each and confirm the focused field and the Save/primary but
   ACTION 2 §4 above. Binance Pay remains optional.
 - **Deferred:** pinned-footer redesign for long routine forms (tracked in `docs/roadmap.md`).
 
+## ⚙️ ACTION 7 — Check Actions billing, decide on private (Augusto, ~Oct 27 -> Oct 31)
+
+- [ ] **Around Oct 27:** open GitHub **Settings > Billing > Usage** and look at the Actions minutes used so far this cycle (expected pace: ≈ 1,770 min/month after the CI work, see `docs/roadmap.md` "CI minutes"; the free private-repo allowance is 2,000/month). **Decide on making the repo private for Oct 31** (when the minutes reset). If usage is running above ~1,900/month, revisit narrowing `main` pushes per area (≈ -370 min) before going private.
+- [ ] After a week of real numbers, tell Claude Code the figure so the estimate in the roadmap can be replaced by the measured one.
+- [x] CI behavior changes you may notice (nothing to test on a phone): docs-only PRs finish in seconds; the integration check can now go **red** for real (it used to always be green); adding a new top-level code folder fails the CI honesty test until it gets a rule in `scripts/ci/changed-areas.mjs`.
+
 ---
 
 ## Passed (archive)
