@@ -16,8 +16,8 @@ import { makeTestSql, resetDb, seedOwnerWithPet, seedUser, seedPetCaregiver } fr
 const authState = vi.hoisted(() => ({ session: null as any }));
 vi.mock("@/auth", () => ({ auth: async () => authState.session }));
 
-const OWNER = { authUserId: 1, profileId: 1, username: "owner_a", petId: 1, petName: "Rex" };
-const EDITOR = { authUserId: 2, profileId: 2, username: "editor_e" };
+const OWNER = { authUserId: 1, profileId: 1, username: "owner_a", fullName: "owner_a", petId: 1, petName: "Rex" };
+const EDITOR = { authUserId: 2, profileId: 2, username: "editor_e", fullName: "editor_e" };
 const VIEWER = { authUserId: 3, profileId: 3, username: "viewer_v" };
 const OUT = { authUserId: 4, profileId: 4, username: "out_o" };
 
@@ -60,6 +60,22 @@ beforeEach(async () => {
     granteeUserId: VIEWER.profileId, role: "caregiver", status: "active",
   });
   authState.session = sessionFor(OWNER.authUserId);
+});
+
+describe("a record author with NO full name", () => {
+  it("created_by_name is null — the username is never shown — while attribution (id + role) is intact", async () => {
+    await raw`update user_profiles set full_name = null where id = ${OWNER.profileId}`;
+    const created = await apiReq("/vet-record/allergies", "POST", {
+      petId: OWNER.petId, allergen: "Beef", severity: "Mild",
+    });
+    expect(created.status).toBe(200);
+    const list = await (await apiReq(`/vet-record/allergies?petId=${OWNER.petId}`)).json();
+    expect(list.allergies.length).toBe(1);
+    expect(list.allergies[0].created_by_name).toBeNull();
+    expect(list.allergies[0].created_by_user_id).toBe(OWNER.profileId);
+    expect(list.allergies[0].created_by_role).toBe("owner");
+    expect(JSON.stringify(list)).not.toContain(OWNER.username);
+  });
 });
 
 describe("owner adds records — attributed 'owner', anchored to owner", () => {

@@ -75,8 +75,15 @@ export default async function setup({ provide }: GlobalSetupContext) {
   provide('TEST_DATABASE_URL', url);
 
   return async () => {
+    // vitest has already set the exit code (1 when a test failed) when the global teardown runs.
+    const exitCode = process.exitCode;
     await pg.stop();
     await rm(dataDir, { recursive: true, force: true });
+    // embedded-postgres' stop()/exit hook ends the process with code 0, which used to swallow a failing run (the integration check was
+    // always green). Put the exit code back so a failing test fails the job.
+    process.once('exit', () => {
+      if (exitCode) process.exitCode = exitCode;
+    });
   };
 }
 

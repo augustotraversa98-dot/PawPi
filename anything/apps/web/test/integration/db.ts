@@ -58,18 +58,21 @@ export async function seedOwnerWithPet(
     authUserId: number;
     profileId: number;
     username: string;
+    /** Public display name (user_profiles.full_name). Omitted/null = the user has NO public name (the API then shows null, never the username). */
+    fullName?: string | null;
     petId: number;
     petName: string;
   },
 ): Promise<{ authUserId: number; ownerUserId: number; petId: number }> {
   const { authUserId, profileId, username, petId, petName } = opts;
+  const fullName = opts.fullName ?? null;
   await sql`
     insert into auth_users (id, name, email)
     values (${authUserId}, ${username}, ${`${username}@example.com`})
   `;
   await sql`
-    insert into user_profiles (id, auth_user_id, username, onboarding_completed)
-    values (${profileId}, ${authUserId}, ${username}, true)
+    insert into user_profiles (id, auth_user_id, username, full_name, onboarding_completed)
+    values (${profileId}, ${authUserId}, ${username}, ${fullName}, true)
   `;
   await sql`
     insert into pets (id, owner_user_id, name, handle)
@@ -84,16 +87,23 @@ export async function seedOwnerWithPet(
  */
 export async function seedUser(
   sql: Sql,
-  opts: { authUserId: number; profileId: number; username: string },
+  opts: {
+    authUserId: number;
+    profileId: number;
+    username: string;
+    /** Public display name (user_profiles.full_name). Omitted/null = the user has NO public name (the API then shows null, never the username). */
+    fullName?: string | null;
+  },
 ): Promise<{ profileId: number }> {
   const { authUserId, profileId, username } = opts;
+  const fullName = opts.fullName ?? null;
   await sql`
     insert into auth_users (id, name, email)
     values (${authUserId}, ${username}, ${`${username}@example.com`})
   `;
   await sql`
-    insert into user_profiles (id, auth_user_id, username, onboarding_completed)
-    values (${profileId}, ${authUserId}, ${username}, true)
+    insert into user_profiles (id, auth_user_id, username, full_name, onboarding_completed)
+    values (${profileId}, ${authUserId}, ${username}, ${fullName}, true)
   `;
   return { profileId };
 }

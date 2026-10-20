@@ -32,7 +32,7 @@ import {
 const authState = vi.hoisted(() => ({ session: null as any }));
 vi.mock('@/auth', () => ({ auth: async () => authState.session }));
 
-const A = { authUserId: 1, profileId: 1, username: 'adopter' }; // an applicant
+const A = { authUserId: 1, profileId: 1, username: 'adopter', fullName: 'adopter' }; // an applicant (with a public name)
 const B = { authUserId: 2, profileId: 2, username: 'otheradopter' }; // another applicant
 const SOWN = { authUserId: 3, profileId: 3, username: 'shelterown' }; // shelter owner/admin
 const SQ = { authUserId: 4, profileId: 4, username: 'otherprov' }; // a different provider's admin
@@ -168,11 +168,24 @@ describe('adoption v2 — answers roundtrip + applicant contact (real router)', 
     expect(apps).toHaveLength(1);
     const appRow = apps[0];
     expect(appRow.applicant_email).toBe('adopter@example.com');
-    expect(appRow.applicant_name).toBe('adopter');
+    expect(appRow.applicant_name).toBe('adopter'); // the applicant's public name (full_name)
     expect(appRow.answers).toEqual([
       { question: 'Best contact number', answer: '+54 11 5555 1234' },
       { question: 'Do you have a yard?', answer: 'Yes, fenced' },
     ]);
+  });
+
+  it('an applicant with NO full name: applicant_name is null (the username is never shown), the contact e-mail still is', async () => {
+    authState.session = sessionFor(A.authUserId);
+    expect((await apiReq(`/adoption/applications`, 'POST', { listing_id: LISTING })).status).toBe(201);
+    await raw`update user_profiles set full_name = null where id = ${A.profileId}`;
+
+    authState.session = sessionFor(SOWN.authUserId);
+    const res = await apiReq(`/providers/${SHELTER}/adoption-applications`);
+    expect(res.status).toBe(200);
+    const appRow = (await res.json()).applications[0];
+    expect(appRow.applicant_name).toBeNull();
+    expect(appRow.applicant_email).toBe('adopter@example.com');
   });
 });
 
