@@ -15,6 +15,10 @@ import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
+import {
+  SESSION_EXPIRED_CODE,
+  stampSessionExpired,
+} from '../src/app/api/utils/sessionExpiredCode.js';
 import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
@@ -468,6 +472,10 @@ app.use('/api/auth/*', async (c, next) => {
   return next();
 });
 
+// Stamp the machine code `session_expired` on every real session 401 (see sessionExpiredCode.js).
+// Registered BEFORE the revocation guard below so it also wraps that guard's own 401s.
+app.use('/api/*', stampSessionExpired());
+
 // (AUDIT A-05) Server-side JWT revocation guard. For every authenticated /api/*
 // request (never the auth endpoints themselves), if the caller's JWT was issued
 // before their auth_users.token_invalidated_at cutoff, reject it. That cutoff is
@@ -498,7 +506,10 @@ app.use('/api/*', async (c, next) => {
   // touches the id (a 22P02 would abort the request tx and 500). Independent of iat.
   if (sub != null && !isValidAuthUserId(sub)) {
     return c.json(
-      { error: 'Your session has expired. Please sign in again.' },
+      {
+        error: 'Your session has expired. Please sign in again.',
+        code: SESSION_EXPIRED_CODE,
+      },
       401
     );
   }
@@ -509,7 +520,10 @@ app.use('/api/*', async (c, next) => {
       );
       if (await isTokenRevoked(sub, iat)) {
         return c.json(
-          { error: 'Your session has expired. Please sign in again.' },
+          {
+            error: 'Your session has expired. Please sign in again.',
+            code: SESSION_EXPIRED_CODE,
+          },
           401
         );
       }

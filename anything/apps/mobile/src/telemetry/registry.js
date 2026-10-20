@@ -28,6 +28,7 @@ export const EVENT_NAMES = [
   'feature_used',
   'funnel_step',
   'opt_out',
+  'auth_diag',
 ];
 
 // -- screens -------------------------------------------------------------------------------------------
@@ -292,6 +293,27 @@ export const ERROR_KINDS = ['js', 'promise', 'render', 'network', 'api'];
 // Why the app landed on onboarding/welcome unexpectedly (nav_unexpected_redirect.reason).
 export const NAV_REDIRECT_REASONS = ['onboarding_guard', 'welcome_guard', 'session_expired', 'deeplink', 'other'];
 
+// auth_diag.kind: why a session was cleared, and whether the sign-in token really reached the Keychain.
+// Anonymous diagnostics for the "logged out every time" class of bug; never carries a token, id or email.
+//   session_cleared_*  : the app dropped the session — by a 401 that carried the server's `session_expired`
+//                        code (`code`), by a 401 without the code confirmed dead by one re-check (`recheck`),
+//                        or by the launch gate on a 401 / 403 (`launch_401`, `launch_403`).
+//   recheck_alive      : a 401 without the code was NOT a dead session (the re-check said the session is fine).
+//   keychain_*         : after sign-in the token is written, read back and compared (one retry on a mismatch).
+//   launch_*           : the cold-launch Keychain read found a stored token / found none.
+export const AUTH_DIAG_KINDS = [
+  'session_cleared_code',
+  'session_cleared_recheck',
+  'session_cleared_launch_401',
+  'session_cleared_launch_403',
+  'recheck_alive',
+  'keychain_ok',
+  'keychain_write_failed',
+  'keychain_readback_mismatch',
+  'launch_token_found',
+  'launch_no_token',
+];
+
 // error.code: a short machine code (HTTP status, error class name, ...), never a message.
 export const ERROR_CODE_PATTERN = '^[A-Za-z0-9_.-]{1,32}$';
 // api_call.route: a ROUTE TEMPLATE ("/api/pets/:id/profile", params spelled :id) or a bounded fallback token.
@@ -340,6 +362,7 @@ export const PROP_SCHEMA = {
     step: { type: 'pattern', pattern: '^[a-z][a-z0-9_]{0,39}$' },
   },
   opt_out: {},
+  auth_diag: { kind: { type: 'enum', values: AUTH_DIAG_KINDS } },
 };
 
 // -- envelope patterns -------------------------------------------------------------------------------

@@ -19,7 +19,8 @@ Anonymous product-analytics events, only while "Help improve PawPi" is ON (the d
   `/health`, never a URL with ids), taps on registered controls (a stable key such as `tab_services`, never the visible label), form
   steps (form + step key + view/complete/abandon/error), API calls (feature area, route template, HTTP status class, bucketed latency),
   errors (kind, screen, short code), unexpected navigation redirects (from, to, reason), startup and screen-ready timings (buckets),
-  feature usage (registered feature key), funnel steps (registered funnel + step), and a single `opt_out` event.
+  feature usage (registered feature key), funnel steps (registered funnel + step), sign-in/session diagnostics (`auth_diag`: one fixed
+  key such as `session_cleared_code` or `keychain_write_failed`; never a token, id or e-mail), and a single `opt_out` event.
 - Each event carries `t` (milliseconds since the session started) and the server receive time.
 - Client behaviour (mobile, build 26): events are validated against the allowlist ON THE DEVICE before they are queued (anything the server
   would drop never leaves the phone); `session_end` is sent each time the app goes to the background and carries the length of that

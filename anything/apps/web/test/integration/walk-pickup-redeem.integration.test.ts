@@ -156,10 +156,10 @@ describe("B3 — walker redeem", () => {
     expect(res.status).toBe(404);
   });
 
-  it("401 for an invalid/garbage token", async () => {
+  it("403 (never 401 — that would sign the walker out) for an invalid/garbage token", async () => {
     authState.session = sessionFor(W.authUserId);
     const res = await apiReq(`/providers/${WALKER}/walk-pickup/redeem`, "POST", { token: "not.a.token", lat: 1, lng: 2 });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it("403 for a non-staff caller (walker of a different provider)", async () => {

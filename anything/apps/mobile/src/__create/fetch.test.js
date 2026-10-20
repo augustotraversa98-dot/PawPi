@@ -21,6 +21,8 @@ import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 import fetchToWeb from './fetch';
 import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
+import { closeLaunchGate, __resetLaunchGateForTests } from '@/utils/auth/sessionLaunchGate';
+import { __resetSessionHealthForTests, RECHECK_ALIVE_COOLDOWN_MS } from '@/utils/auth/sessionHealth';
 
 const BASE_URL = 'https://pawpi-production.up.railway.app';
 
@@ -180,19 +182,24 @@ describe('first-party request deadline', () => {
   });
 });
 
-// Expired session (AUDIT_2026-09 A-07): a 401 on an /api route while a bearer was attached
-// must drop the session and route to Welcome — once — and never fire for the auth bridge or
-// for requests that carried no token.
+// Expired session (AUDIT_2026-09 A-07, refined). A 401 on an /api route while a bearer was attached is
+// a DEAD session only when it carries the server's `session_expired` code, or when ONE re-check against
+// GET /api/session confirms it. A bare 401 / a business error / a network error never signs the user out.
 describe('expired-session handling', () => {
   const mockSetAuth = jest.fn();
   const mockReplace = jest.fn();
+  const mockTrack = jest.fn();
   let storedAuth;
 
   beforeEach(() => {
     jest.useFakeTimers();
     jest.requireActual('./fetch').__resetSessionExpiryForTests();
+    __resetSessionHealthForTests();
+    __resetLaunchGateForTests();
+    closeLaunchGate(); // past the cold-launch window (the EntryPoint owns that: see index.launch.test)
     mockSetAuth.mockClear();
     mockReplace.mockClear();
+    mockTrack.mockClear();
     storedAuth = { jwt: 'test-jwt', user: { id: 'u1' } };
     jest.doMock('@/utils/auth/store', () => ({
       useAuthStore: {
@@ -206,6 +213,7 @@ describe('expired-session handling', () => {
       },
     }));
     jest.doMock('expo-router', () => ({ router: { replace: mockReplace } }));
+    jest.doMock('@/telemetry/track', () => ({ track: (...a) => mockTrack(...a) }));
   });
 
   afterEach(() => {
@@ -213,53 +221,185 @@ describe('expired-session handling', () => {
     jest.useRealTimers();
     jest.dontMock('@/utils/auth/store');
     jest.dontMock('expo-router');
+    jest.dontMock('@/telemetry/track');
   });
 
-  const unauthorized = () => resp({ ok: false, status: 401, contentType: 'application/json' });
+  // A real dead session: the server stamps its 401 (header + body) with the code.
+  const sessionExpired = () => ({
+    ok: false,
+    status: 401,
+    headers: { get: (h) => (h.toLowerCase() === 'x-pawpi-error-code' ? 'session_expired' : 'application/json') },
+    clone() {
+      return this;
+    },
+    json: async () => ({ error: 'Unauthorized', code: 'session_expired' }),
+  });
+  // A bare 401: no code anywhere (an old server, a proxy, or something that is not a session problem).
+  const bare401 = () => ({
+    ...resp({ ok: false, status: 401, contentType: 'application/json' }),
+    clone() {
+      return this;
+    },
+    json: async () => ({ error: 'Unauthorized' }),
+  });
+  // Route the first-party request vs the single /api/session re-check.
+  const serve = ({ main, recheck }) =>
+    expoFetch.mockImplementation(async (url) => {
+      if (String(url).endsWith('/api/session')) {
+        if (recheck instanceof Error) throw recheck;
+        return recheck;
+      }
+      return main;
+    });
+  const recheckCalls = () => expoFetch.mock.calls.filter(([u]) => String(u).endsWith('/api/session'));
+  const flush = () => jest.advanceTimersByTimeAsync(0);
+  const diag = () => mockTrack.mock.calls.filter(([n]) => n === 'auth_diag').map(([, p]) => p.kind);
 
-  test('401 with a bearer on an /api route signs out and goes to Welcome', async () => {
-    expoFetch.mockResolvedValueOnce(unauthorized());
+  test('a 401 carrying session_expired signs out and goes to Welcome (no re-check needed)', async () => {
+    serve({ main: sessionExpired() });
 
     const res = await fetchToWeb('/api/pets');
+    await flush();
 
     expect(res.status).toBe(401);
     expect(mockSetAuth).toHaveBeenCalledWith(null);
     expect(mockReplace).toHaveBeenCalledWith('/welcome');
+    expect(recheckCalls()).toHaveLength(0);
+    expect(diag()).toEqual(['session_cleared_code']);
   });
 
-  test('a burst of 401s signs out only once', async () => {
-    expoFetch.mockResolvedValue(unauthorized());
+  test('a business 403 (what a bad pickup code now returns) does NOT sign out', async () => {
+    serve({ main: resp({ ok: false, status: 403, contentType: 'application/json' }) });
 
+    const res = await fetchToWeb('/api/providers/1/walk-pickup/redeem', { method: 'POST' });
+    await flush();
+
+    expect(res.status).toBe(403);
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(recheckCalls()).toHaveLength(0);
+  });
+
+  test('a bare 401 is re-checked once; a 401 from the session endpoint confirms it is dead', async () => {
+    serve({ main: bare401(), recheck: resp({ ok: false, status: 401, contentType: 'application/json' }) });
+
+    await fetchToWeb('/api/pets');
+    await flush();
+
+    expect(recheckCalls()).toHaveLength(1);
+    expect(recheckCalls()[0][1].headers.authorization).toBe('Bearer test-jwt');
+    expect(mockSetAuth).toHaveBeenCalledWith(null);
+    expect(mockReplace).toHaveBeenCalledWith('/welcome');
+    expect(diag()).toEqual(['session_cleared_recheck']);
+  });
+
+  test('a bare 401 whose re-check says the session is fine does NOT sign out (and is reported)', async () => {
+    serve({ main: bare401(), recheck: resp({ ok: true, status: 200, contentType: 'application/json' }) });
+
+    await fetchToWeb('/api/pets');
+    await flush();
+
+    expect(recheckCalls()).toHaveLength(1);
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(diag()).toEqual(['recheck_alive']);
+  });
+
+  test.each([
+    ['a network error', new Error('Network request failed')],
+    ['a 500', resp({ ok: false, status: 500, contentType: 'application/json' })],
+    ['a 404 (older server without /api/session)', resp({ ok: false, status: 404, contentType: 'application/json' })],
+  ])('a bare 401 whose re-check fails with %s does NOT sign out', async (_name, recheck) => {
+    serve({ main: bare401(), recheck });
+
+    await fetchToWeb('/api/pets');
+    await flush();
+
+    expect(recheckCalls()).toHaveLength(1);
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('a burst of bare 401s shares ONE re-check; a burst of coded 401s signs out only once', async () => {
+    serve({ main: bare401(), recheck: resp({ ok: true, status: 200, contentType: 'application/json' }) });
     await Promise.all([fetchToWeb('/api/pets'), fetchToWeb('/api/posts'), fetchToWeb('/api/routines')]);
+    await flush();
+    expect(recheckCalls()).toHaveLength(1);
+    expect(mockSetAuth).not.toHaveBeenCalled();
 
+    // …and a recent "alive" answer is reused instead of re-checking again right away.
+    await fetchToWeb('/api/pets');
+    await flush();
+    expect(recheckCalls()).toHaveLength(1);
+    await jest.advanceTimersByTimeAsync(RECHECK_ALIVE_COOLDOWN_MS + 1);
+
+    serve({ main: sessionExpired() });
+    await Promise.all([fetchToWeb('/api/pets'), fetchToWeb('/api/posts'), fetchToWeb('/api/routines')]);
+    await flush();
     expect(mockSetAuth).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledTimes(1);
   });
 
-  test('401 without a stored token is left to the caller', async () => {
-    SecureStore.getItemAsync.mockResolvedValue(null);
-    expoFetch.mockResolvedValueOnce(unauthorized());
+  test('a late 401 for an OLD token never signs out the session that replaced it', async () => {
+    serve({ main: sessionExpired() });
+    const pending = fetchToWeb('/api/pets'); // sent with 'test-jwt'
+    storedAuth = { jwt: 'other-jwt', user: { id: 'u2' } }; // the user signs in as someone else meanwhile
+    await pending;
+    await flush();
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(storedAuth.jwt).toBe('other-jwt');
+  });
+
+  test('while the launch gate is open the EntryPoint owns the decision: the wrapper does nothing', async () => {
+    __resetLaunchGateForTests(); // open again
+    serve({ main: sessionExpired() });
 
     await fetchToWeb('/api/pets');
+    await flush();
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(recheckCalls()).toHaveLength(0);
+  });
+
+  test('401 without a stored token is left to the caller', async () => {
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    serve({ main: sessionExpired() });
+
+    await fetchToWeb('/api/pets');
+    await flush();
 
     expect(mockSetAuth).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
   test('401 from the auth bridge never counts as an expired session', async () => {
-    expoFetch.mockResolvedValueOnce(unauthorized());
+    serve({ main: sessionExpired() });
 
     await fetchToWeb('/api/auth/token');
+    await flush();
 
     expect(mockSetAuth).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
   test('a non-401 failure does not sign out', async () => {
-    expoFetch.mockResolvedValueOnce(resp({ ok: false, status: 500, contentType: 'application/json' }));
+    serve({ main: resp({ ok: false, status: 500, contentType: 'application/json' }) });
 
     await fetchToWeb('/api/pets');
+    await flush();
 
     expect(mockSetAuth).not.toHaveBeenCalled();
+  });
+
+  test('a network error on a first-party request never signs out (the request just rejects)', async () => {
+    expoFetch.mockRejectedValueOnce(new Error('Network request failed'));
+
+    await expect(fetchToWeb('/api/pets')).rejects.toThrow('Network request failed');
+    await flush();
+
+    expect(mockSetAuth).not.toHaveBeenCalled();
+    expect(recheckCalls()).toHaveLength(0);
   });
 });

@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { queryClient } from '@/utils/queryClient';
 import { authKey, secureStoreOptions } from './secureStore';
 import { cleanUpAfterIdentityChange, isIdentityChange } from './sessionCleanup';
+import { persistAuth } from './persistAuth';
 
 // Re-exported for the existing importers (useAuth, tests). The definitions live
 // in ./secureStore so the global fetch wrapper can share them without pulling
@@ -31,16 +32,12 @@ export const useAuthStore = create((set, get) => ({
       }
     }
     if (auth) {
-      SecureStore.setItemAsync(
-        authKey,
-        JSON.stringify(auth),
-        secureStoreOptions,
-      ).catch(() => {
-        // Swallow Keychain write errors — the app remains in-memory authed
-        // for this session and the next launch will re-auth via the WebView.
-        // Throwing here would propagate into the unhandled-rejection /
-        // TurboModule rethrow path and crash on iOS 26.x.
-      });
+      // Write -> read back -> retry once -> report (persistAuth). It never rejects, so a Keychain
+      // failure cannot reach the unhandled-rejection / TurboModule rethrow path that crashes iOS
+      // 26.x; on failure the app stays authed in memory for this session (and the failure is
+      // recorded as anonymous telemetry). `get().auth === auth` stops a retry from resurrecting a
+      // session the user signed out of (or replaced) while we were verifying.
+      persistAuth(auth, { isCurrent: () => get().auth === auth });
     } else {
       SecureStore.deleteItemAsync(authKey, secureStoreOptions).catch(() => {});
     }

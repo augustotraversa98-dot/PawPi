@@ -32,6 +32,7 @@ const TOP_LEVEL_AREA = Object.freeze({
   // auth / account lifecycle
   auth: 'auth',
   account: 'auth',
+  session: 'auth',
   'user-profile': 'auth',
   onboarding: 'auth',
   legal: 'auth',

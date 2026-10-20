@@ -54,7 +54,10 @@ async function POST(request, { params }) {
 
     const payload = verifyPickupToken(token);
     if (!payload) {
-      return Response.json({ error: "Invalid or expired pickup code" }, { status: 401 });
+      // 403, not 401: a bad scanned code is a business error. A 401 means "your session is dead" and
+      // makes the app sign the walker out (builds in the wild still do that on ANY 401). The mobile
+      // handler already shows its "Invalid code" alert for 403.
+      return Response.json({ error: "Invalid or expired pickup code" }, { status: 403 });
     }
     // The token must be for THIS provider — a token minted for provider A can't be redeemed at B.
     if (Number(payload.provider_id) !== Number(providerId)) {

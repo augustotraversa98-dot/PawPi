@@ -7,6 +7,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { isUsableToken, startOver } from "@/utils/auth/recovery";
+import { isSessionDead, reportLaunchToken } from "@/utils/auth/sessionHealth";
+import { expireSession } from "@/utils/auth/sessionExpiry";
+import { closeLaunchGate } from "@/utils/auth/sessionLaunchGate";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
 import { markNavigationReady } from "@/utils/notificationDeepLink";
 import { queryClient } from "@/utils/queryClient";
@@ -52,10 +55,15 @@ export default function EntryPoint() {
       return;
     }
 
+    // Anonymous diagnostics, once per launch: did the Keychain read find a stored session? (a
+    // "found nothing" right after a successful sign-in is the signature of a token that never persisted)
+    reportLaunchToken(!!auth);
+
     // Not authenticated → Welcome screen
     if (!auth) {
       console.log("[EntryPoint] No auth, redirecting to /welcome");
       markBootStep("entrypoint:no-auth-welcome");
+      closeLaunchGate();
       routedForSession.current = sessionKey;
       setDestination("/welcome");
       setLoading(false);
@@ -66,6 +74,7 @@ export default function EntryPoint() {
     if (!isUsableToken(auth.jwt)) {
       console.log("[EntryPoint] Stored token is malformed, clearing session");
       setAuth(null);
+      closeLaunchGate();
       routedForSession.current = sessionKey;
       setDestination("/welcome");
       setLoading(false);
@@ -93,6 +102,8 @@ export default function EntryPoint() {
     // fetched ONLY there — an account that has pets never pays for it at launch. Best-effort: a
     // failed/slow providers read degrades to [] (not a business) and never blocks the pet flow.
     let providers = [];
+    // Set only when the launch read proved the stored token dead (see below).
+    let deadReason = null;
     try {
       const pets = await queryClient.fetchQuery({
         queryKey: PETS_QUERY_KEY,
@@ -115,6 +126,21 @@ export default function EntryPoint() {
       if (typeof apiError?.status === "number") {
         // The server answered with a non-OK status (401/403 → login, 5xx → retry screen).
         outcome = { ok: false, status: apiError.status };
+        if (apiError.status === 401 || apiError.status === 403) {
+          // A 401/403 is NOT proof the token is dead (a business or proxy answer can look the same,
+          // and signing out on it is the "logged out every time" bug). Only the server's
+          // session_expired code, or one re-check against GET /api/session, clears the session;
+          // anything else gets the retry screen, which keeps the user signed in.
+          const verdict = await isSessionDead({
+            hasCode: apiError.sessionExpired === true,
+            jwt: auth.jwt,
+          });
+          if (verdict.dead) {
+            deadReason = apiError.status === 401 ? "launch_401" : "launch_403";
+          } else {
+            outcome = { networkError: true };
+          }
+        }
       } else {
         console.error("[EntryPoint] Pets fetch failed:", apiError);
         outcome = { networkError: true };
@@ -127,8 +153,16 @@ export default function EntryPoint() {
     console.log("[EntryPoint] Pets outcome:", outcome, "→", result.action);
 
     if (result.clearSession) {
-      // Expired/invalid token: drop the stored JWT so the app stops reading
-      // Auth: true with a dead token, then send the user to log in fresh.
+      // Confirmed-dead token: drop the stored JWT so the app stops reading Auth: true with a dead
+      // token, then send the user to log in fresh (Welcome, once — no navigation from here, the
+      // Redirect below is the only one). expireSession records WHY (anonymous), setAuth(null) after it
+      // is idempotent and makes sure the session is gone even if the one-shot guard swallowed the call.
+      expireSession({
+        reason: deadReason ?? "launch_401",
+        jwt: auth.jwt,
+        navigate: false,
+        markExpired: false, // unchanged launch behaviour: the cleanup still tries the push-token unregister
+      });
       setAuth(null);
     }
     if (result.action === "home") {
@@ -142,6 +176,8 @@ export default function EntryPoint() {
       return;
     }
 
+    // The launch decision is made: from here the fetch wrapper handles session expiry itself.
+    closeLaunchGate();
     routedForSession.current = sessionKey;
     setDestination(result.destination);
     setLoading(false);

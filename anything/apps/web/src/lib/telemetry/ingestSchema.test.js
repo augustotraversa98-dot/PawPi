@@ -17,6 +17,7 @@ const VALID = {
   feature_used: { feature: 'add_dog' },
   funnel_step: { funnel: 'activation', step: 'auth_done' },
   opt_out: {},
+  auth_diag: { kind: 'keychain_readback_mismatch' },
 };
 const ev = (name, props, t = 1200) => ({ name, t, props });
 

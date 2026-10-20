@@ -264,6 +264,7 @@ export const API_ROUTE_TEMPLATES = [
   '/api/saved-places/:id',
   '/api/search',
   '/api/services/discover',
+  '/api/session',
   '/api/shop/orders',
   '/api/shop/subscriptions',
   '/api/shop/subscriptions/:id',

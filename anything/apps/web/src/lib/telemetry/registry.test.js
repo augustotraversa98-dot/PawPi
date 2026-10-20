@@ -18,7 +18,7 @@ const MOBILE_REGISTRY = path.join(REPO, 'anything/apps/mobile/src/telemetry/regi
 // Spelled out so a drive-by edit fails here (contract: 01-TELEMETRY-CONTRACT.md).
 const CONTRACT_EVENTS = [
   'session_start', 'session_end', 'screen_view', 'tap', 'form_step', 'api_call', 'error',
-  'nav_unexpected_redirect', 'perf_startup', 'perf_screen_ready', 'feature_used', 'funnel_step', 'opt_out',
+  'nav_unexpected_redirect', 'perf_startup', 'perf_screen_ready', 'feature_used', 'funnel_step', 'opt_out', 'auth_diag',
 ];
 const CONTRACT_FUNNELS = {
   activation: ['welcome_view', 'signup_or_oauth_start', 'auth_done', 'onboarding_photo', 'onboarding_dog_details', 'onboarding_done', 'first_post', 'first_health_log'],
