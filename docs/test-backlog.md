@@ -13,7 +13,7 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📱 To test — "logged out every time" fix (session 401 code + Keychain write check)
 
-Needs a **new native build** (mobile code) AND the matching web deploy (server code `session_expired` + `GET /api/session`). Merged + CI-green, **not device-verified**. Telemetry to read afterwards: `pawpi_client_auth_diag_total{diag=…}` (Grafana).
+**⚠️ The app-side fix needs a NEW NATIVE BUILD — next EAS build number: 27** (iOS, version 1.0.2; builds up to 26 still log out on ANY 401 and never write-verify the Keychain). The server half (PR #698: `session_expired` code, walk-pickup 403, `GET /api/session`) is **already live on production** (deploy SUCCESS, `GET /api/session` without a token → 401 + `session_expired`, checked 2026-10-20), and already protects old builds from the business-401 logout. Merged + CI-green, **not device-verified**. Telemetry to read afterwards: `pawpi_client_auth_diag_total{diag=…}` (Grafana).
 
 - [ ] **Fresh Apple sign-in on a real device** → finish sign-in, force-quit, reopen: you are still signed in (no Welcome). In Grafana `keychain_ok` goes up; `keychain_write_failed` / `keychain_readback_mismatch` stay at 0.
 - [ ] **Stale token at cold launch:** sign in, delete the app, reinstall (the iOS Keychain item survives), open it once the account's sessions were revoked (e.g. reset the password on web first): you land on **Welcome once** — no flash of the home screen, no second Welcome, no loop — and `session_cleared_launch_401` ticks up. Signing in again works.
