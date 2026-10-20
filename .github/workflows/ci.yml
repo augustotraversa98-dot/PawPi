@@ -1,9 +1,31 @@
 name: CI
 
+# PATH-AWARE (see scripts/ci/changed-areas.mjs and docs/roadmap.md "CI minutes"): every job below ALWAYS runs and ends green, but on a
+# pull request its first step asks which areas the PR changed and the expensive steps (setup, install, tests) only run when the
+# job has something to test. There is deliberately NO workflow-level `paths:` filter and NO job-level `if:` (a workflow that does
+# not run leaves required checks pending; a job-level skip reports `skipped`, which scripts/autofix/gate.mjs counts as failed).
+# Push to main skips all three jobs ONLY when every file of the push is a non-code file (docs, notes, assets); any code, workflow,
+# lockfile, migration, observability/scripts change or unmapped path runs all three there. Anything unsure (force push, API error)
+# runs everything.
+# The three job names are the required checks (scripts/autofix/gate.mjs REQUIRED_CHECKS): never rename them.
+
 on:
   pull_request:
   push:
     branches: [main]
+
+# The path filter lists the PR's files through the REST API (private repos need pull-requests: read for that).
+permissions:
+  contents: read
+  pull-requests: read
+
+# Cancel a superseded run: when a pull request gets a newer push, its older in-progress run is cancelled (the newest commit's run is the
+# one that counts). The group key is the workflow name + the PR number for pull_request events; for EVERY other event (push to main,
+# workflow_dispatch) it is the workflow name + the unique run id, so such runs never share a group and are NEVER cancelled or queued
+# behind each other: a deploy commit on main is always fully tested. cancel-in-progress is true for pull_request events only.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   mobile:
@@ -18,17 +40,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Which areas changed? (mobile)
+        id: areas
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ci/changed-areas.mjs --area mobile || { echo "run=true" >> "$GITHUB_OUTPUT"; echo "::warning::path filter failed, running everything"; }
+
       - uses: actions/setup-node@v4
+        if: steps.areas.outputs.run == 'true'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: anything/apps/mobile/package-lock.json
 
       - name: Install dependencies
+        if: steps.areas.outputs.run == 'true'
         run: npm ci
 
       # Logged so a slow run can be tied to runner size (jest runs in-band on a 1-2 CPU view).
       - name: Runner size
+        if: steps.areas.outputs.run == 'true'
         run: echo "cpus=$(nproc)"
 
       # Jest's transform cache (babel output per file, keyed by file content, so a stale entry
@@ -36,6 +68,7 @@ jobs:
       # main's cache without filling the repo's cache quota. Measured: tests ~75-100 s -> ~50 s.
       - name: Restore jest cache
         id: jest-cache
+        if: steps.areas.outputs.run == 'true'
         uses: actions/cache/restore@v4
         with:
           path: anything/apps/mobile/node_modules/.cache/jest
@@ -45,10 +78,17 @@ jobs:
             jest-${{ runner.os }}-
 
       - name: Run tests
+        if: steps.areas.outputs.run == 'true'
         run: npm test
 
+      - name: Skipped (no mobile changes in this pull request)
+        if: steps.areas.outputs.run != 'true'
+        env:
+          REASON: ${{ steps.areas.outputs.reason }}
+        run: echo "mobile (jest) skipped - $REASON"
+
       - name: Save jest cache
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.areas.outputs.run == 'true'
         uses: actions/cache/save@v4
         with:
           path: anything/apps/mobile/node_modules/.cache/jest
@@ -63,21 +103,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Which areas changed? (web)
+        id: areas
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ci/changed-areas.mjs --area web || { echo "run=true" >> "$GITHUB_OUTPUT"; echo "::warning::path filter failed, running everything"; }
+
       - uses: actions/setup-node@v4
+        if: steps.areas.outputs.run == 'true'
         with:
           node-version: 20
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.areas.outputs.run == 'true'
 
       # Install with bun (only bun.lock is present); --frozen-lockfile is the
       # CI equivalent of `npm ci` — fails if the lockfile is out of date.
       - name: Install dependencies
+        if: steps.areas.outputs.run == 'true'
         run: bun install --frozen-lockfile
 
       # Run via npm, NOT `bun test` — `bun test` bypasses Vitest. `npm test`
       # invokes the package script (`vitest run`) regardless of installer.
       - name: Run tests
+        if: steps.areas.outputs.run == 'true'
         run: npm test
+
+      - name: Skipped (nothing the web unit tests cover changed in this pull request)
+        if: steps.areas.outputs.run != 'true'
+        env:
+          REASON: ${{ steps.areas.outputs.reason }}
+        run: echo "web (vitest) skipped - $REASON"
 
   # SEPARATE, slightly slower job (RLS R0 / Phase C): real-Postgres integration
   # tests. The fast `web` job above still gates PRs quickly; this proves the real
@@ -92,17 +149,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Which areas changed? (integration)
+        id: areas
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ci/changed-areas.mjs --area integration || { echo "run=true" >> "$GITHUB_OUTPUT"; echo "::warning::path filter failed, running everything"; }
+
       - uses: actions/setup-node@v4
+        if: steps.areas.outputs.run == 'true'
         with:
           node-version: 20
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.areas.outputs.run == 'true'
 
       # --frozen-lockfile = `npm ci` equivalent. trustedDependencies in
       # package.json lets the @embedded-postgres/* binary postinstall run so the
       # Postgres binary is hydrated for the linux-x64 runner.
       - name: Install dependencies
+        if: steps.areas.outputs.run == 'true'
         run: bun install --frozen-lockfile
 
       - name: Run integration tests
+        if: steps.areas.outputs.run == 'true'
         run: npm run test:integration
+
+      - name: Skipped (no web or migration changes in this pull request)
+        if: steps.areas.outputs.run != 'true'
+        env:
+          REASON: ${{ steps.areas.outputs.reason }}
+        run: echo "web (integration / real Postgres) skipped - $REASON"
+

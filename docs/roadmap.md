@@ -66,8 +66,13 @@ stopped shipping a stale committed `ios/`). Production = Railway web/API at `htt
 (checklist: [`test-backlog.md`](test-backlog.md) → "To test — build 24") and then **Submit for Review**
 in App Store Connect (manual step).
 
+**CI: cancel superseded PR runs (2026-10-20)** — `ci.yml` + `gitleaks.yml` cancel a PR's older in-progress run when the PR gets a newer push (group `<workflow>-pr-<number>`, `cancel-in-progress` for `pull_request` only); runs on push to `main` have a unique group and are never cancelled. ≈ -40-60 min/month (more in night-run bursts). See `TESTING_AND_CI_PLAN.md` B5.
+
 **No new migrations in the #567–#592 run** — nothing under `supabase/` changed since #566; the latest migration
 is still **0130** (0128/0129 remain file-only, hand-apply tracked in `test-backlog.md` ACTION 1).
+
+### CI minutes (2026-10-20) — repo goes private 2026-10-31 (2,000 free Actions min/month)
+Steady state was ~2,850 min/month (4,549 in the 30 days to 10-19, incl. ~1,234 from the old broken mobile jest job and ~347 from the retired GitHub cron). **Path-aware CI** (`scripts/ci/changed-areas.mjs`; details and mapping in `TESTING_AND_CI_PLAN.md` B4): docs-only PRs finish the three required checks in seconds without installs; code PRs run the real tests; `main` always runs everything. Estimated CI 2,666 -> 2,100 min/month. Next: cancel superseded PR runs, then measure/trim the Postgres integration job (7.5 min per run, the biggest line).
 
 ### ✅ #567–#592 — done (all merged, CI-green)
 Status mirror (✅ merged). Grouped by theme; PR numbers link to `augustotraversa98-dot/PawPi`.
