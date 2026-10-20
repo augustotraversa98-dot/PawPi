@@ -24,10 +24,10 @@ Two autonomous runs after build 26 went to review. Nothing was built or submitte
 
 - **Run 1 (#642–#649):** tab-bar/safe-area overlap, Log out, privacy (no owner names from e-mail), ES copy, empty-state paw art.
 - **Run 2 (#650–#664):** tab bar stays light glass (#650); only-available pet handles (#651); friend picker for "Streak with a friend" + server-side friend authorization (#652);
-  **migration 0133 username backfill — file only, HUMAN-APPLIED** (#653, [`db-migration-runbook-0133-username-backfill.md`](db-migration-runbook-0133-username-backfill.md));
+  **migration 0133 username backfill — ✅ APPLIED + VERIFIED by the owner (2026-10-20)** (#653, [`db-migration-runbook-0133-username-backfill.md`](db-migration-runbook-0133-username-backfill.md));
   app-wide consistency audit (#654 → [`qa/consistency-audit-2026-10-17.md`](qa/consistency-audit-2026-10-17.md)) and its low-risk fixes (#655 copy/i18n, #656 dates, #657 popups, #658 colour tokens, #660 a11y/dead code);
   flow-correctness passes with a matrix ([`qa/flow-matrix-2026-10-17.md`](qa/flow-matrix-2026-10-17.md)): reminders/notifications (#659), owner↔owner (#661), owner↔business (#662); general sweep (#663).
-- **Needs a human before launch-critical go-live:** apply 0133; the payment-webhook settlement migration (F3-01) **before** enabling real MercadoPago charges; the notification-type widening (F2 SQL-1); see the fix log "needs human".
+- **Needs a human before launch-critical go-live:** (0133 is applied) the payment-webhook settlement migration (F3-01) **before** enabling real MercadoPago charges; the notification-type widening (F2 SQL-1); see the fix log "needs human" and [`db-migration-inventory.md`](db-migration-inventory.md) for everything still unapplied in the database.
 
 ---
 

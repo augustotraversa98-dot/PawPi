@@ -135,8 +135,7 @@ This section supersedes §1 for the next release: marketing version is bumped in
 - [ ] Release notes: paste `docs/app-store-whats-new-1.0.3.md` (EN + ES) into the 1.0.3 version page after you have edited it.
 - [ ] Privacy declaration: **no change**. The new anonymous `auth_diag` events (a fixed key such as `session_cleared_code`; never a
   token, id or e-mail) fall under the already-declared *Other Diagnostic Data* (see `docs/privacy/telemetry.md` §1/§6).
-- [ ] Open items that are NOT part of this build and must not be assumed applied: migration `0133` (username clean-up), the
-  case-insensitive pet-handle index, payment-settlement SQL, notification-type SQL (see `docs/qa/runs/2026-10-17_fix-log.md`).
+- [ ] Open items that are NOT part of this build and must not be assumed applied: the case-insensitive pet-handle index, payment-settlement SQL, notification-type SQL, and the finishing migration for 0126 (`0134`). Applied + verified: 0122–0125, 0127–0129 (2026-10-20) and 0133 (see `docs/db-migration-inventory.md`).
 
 ### 8.2 On a real iPhone with the TestFlight build 27 (before "Submit for Review")
 Settings → **Help improve PawPi** must be ON for the telemetry checks. Use a real device — the simulator cannot reproduce Keychain
