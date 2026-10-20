@@ -585,7 +585,7 @@ maybe('preflight.sh: kill switch, dedupe, labels', () => {
     for (const name of ['P1-Http5xxRate', 'HighServerErrorRate', 'DatasourceError']) {
       expect(pre({ IN_NAME: '', PAYLOAD: JSON.stringify({ alertname: name, source: 'grafana' }) }).outputs.run, name).toBe('true');
     }
-  });
+  }, 30_000); // five real bash+node preflight runs in one test: the 5 s default flaked when two test files ran at once
 
   it('a hostile alertname cannot inject into outputs or branch names', () => {
     const r = pre({ IN_NAME: 'x\nrun=true\n../../evil;$(id)' });

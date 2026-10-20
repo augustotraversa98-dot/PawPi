@@ -76,7 +76,10 @@ jobs:
   investigate:
     needs: preflight
     if: ${{ needs.preflight.outputs.run == 'true' }}
-    runs-on: ubuntu-latest
+    # PINNED on purpose (the other jobs stay on ubuntu-latest): the model step needs bubblewrap, and whether unprivileged user
+    # namespaces work depends on the image (Ubuntu 24.04 restricts them with AppArmor; ubuntu-latest is being moved to a newer
+    # release). A new image must be adopted deliberately by changing this line after checking the sandbox step below on it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     # Least privilege: the model's job can read the repo and nothing else (no PAT, no write token).
     permissions:
@@ -105,7 +108,48 @@ jobs:
           node scripts/autofix/gate.mjs context > /tmp/alert.json
           echo "Alert context:"; cat /tmp/alert.json
 
+      # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 (set on the next step) makes the Claude CLI run every command the model starts inside a
+      # bubblewrap sandbox with a scrubbed environment, and the CLI REFUSES TO START without bubblewrap. So: install it, prove it
+      # works here, and if it cannot work, fail the job loudly instead of running the model unsandboxed or reporting nothing.
+      - name: Install and verify the sandbox (bubblewrap)
+        run: |
+          # GitHub runs this with `bash -e`; switch -e off so EVERY failure below reaches fail_loud (an aborted step would skip the report)
+          set +e
+          set -u -o pipefail
+          fail_loud() {
+            mkdir -p /tmp/out
+            {
+              echo "# INVESTIGATION DID NOT RUN: sandbox unavailable"
+              echo
+              echo "$1. The Claude CLI needs a bubblewrap sandbox (env scrubbing and isolation), so the model was NOT started and nothing was investigated. This is not a 'nothing found' result. See the log of the 'Install and verify the sandbox (bubblewrap)' step."
+            } > /tmp/out/incident.md
+            echo "::error title=Investigation did not run::sandbox unavailable: $1"
+            exit 1
+          }
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap || fail_loud "bubblewrap could not be installed on the runner"
+          echo "image: $(. /etc/os-release && echo "$PRETTY_NAME"), kernel $(uname -r)"
+          bwrap --version
+          sysctl kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
+          # the same kind of namespaces the CLI asks for: read-only root, private /proc, own PID namespace
+          probe() { bwrap --ro-bind / / --dev /dev --proc /proc --unshare-pid --die-with-parent true; }
+          if ! probe; then
+            # Ubuntu 24.04 blocks unprivileged user namespaces for every program by default (AppArmor). Least-permissive fix: allow them
+            # for /usr/bin/bwrap ONLY, on this throw-away runner VM (no global sysctl change, no other program gains anything).
+            echo "::warning::bwrap blocked by the AppArmor userns restriction; adding an allow rule for /usr/bin/bwrap only"
+            sudo tee /etc/apparmor.d/bwrap-userns >/dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap-userns /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          PROFILE
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns || fail_loud "the AppArmor rule for bwrap could not be loaded"
+          fi
+          probe || fail_loud "bwrap cannot create the namespaces the CLI needs on this runner, even after allowing user namespaces for it"
+          echo "sandbox OK: bwrap can create the namespaces the CLI needs"
+
       - name: Run Claude investigation
+        id: claude
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -180,13 +224,23 @@ jobs:
           PROMPT_EOF
           fi
           } > /tmp/prompt.txt
+          rc=0
           claude -p "$(cat /tmp/prompt.txt)" \
             --permission-mode acceptEdits \
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(npm --prefix anything/apps/web test:*),Bash(bun install --cwd anything/apps/web --frozen-lockfile),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)" \
             --disallowedTools "WebFetch,WebSearch" \
-            --output-format text || echo "claude exited non-zero (continuing)"
+            --output-format text || rc=$?
           if [ ! -f /tmp/incident.md ]; then
-            echo "No incident report produced." > /tmp/incident.md
+            # no report = the model did not run or did not finish: say so, and fail the job below (never an empty "nothing found")
+            {
+              echo "# INVESTIGATION DID NOT RUN OR DID NOT FINISH"
+              echo
+              echo "The model wrote no incident report (claude exit code: ${rc}). Nothing was investigated; this is NOT a 'nothing found' result. See the log of the 'Run Claude investigation' step."
+            } > /tmp/incident.md
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::error title=Investigation did not run::the Claude CLI exited ${rc} without writing a report"
+          elif [ "$rc" -ne 0 ]; then
+            echo "::warning::claude exited ${rc} but wrote a report; delivering it"
           fi
 
       - name: Package the result (report + patch)
@@ -211,6 +265,13 @@ jobs:
           path: /tmp/out
           if-no-files-found: warn
           retention-days: 14
+
+      # After the artifact is uploaded (so deliver still opens the needs-human issue carrying the "did not run" report): turn the job red.
+      - name: Fail the job if the investigation did not run
+        if: ${{ always() && steps.claude.outputs.ran == 'false' }}
+        run: |
+          echo "::error::The investigation did not run (see the report). Failing the job on purpose."
+          exit 1
 
   deliver:
     needs: [preflight, investigate]
