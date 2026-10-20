@@ -172,11 +172,11 @@ These are the ones that actually protect revenue.
    - **Otherwise:** create an API key at console.anthropic.com and save it as the
      secret `ANTHROPIC_API_KEY` (pay-per-use).
 
-5. **Your generated relay secret** (already made for you — reuse this exact value
-   in Railway and in the Grafana contact point):
+5. **Generate your own relay secret** (never commit it, never paste it into a doc or chat):
+   run `openssl rand -hex 32` and use that value in Railway and in the Grafana contact point:
 
    ```
-   ALERT_WEBHOOK_SECRET=452b0c4067f646c3921119b73cba38e5f0818afbb078445a476fb72829834fb4
+   ALERT_WEBHOOK_SECRET=<output of: openssl rand -hex 32>
    ```
 
 ---
@@ -235,7 +235,7 @@ After Prompt A passes, set these **Railway variables** on the PawPi service
 OTEL_EXPORTER_OTLP_ENDPOINT = <from Grafana OTLP page>
 OTEL_EXPORTER_OTLP_HEADERS  = Authorization=Basic <base64 instanceID:token>
 OTEL_SERVICE_NAME           = pawpi-web
-ALERT_WEBHOOK_SECRET        = 452b0c4067f646c3921119b73cba38e5f0818afbb078445a476fb72829834fb4
+ALERT_WEBHOOK_SECRET        = <output of: openssl rand -hex 32>
 GITHUB_DISPATCH_TOKEN       = <the fine-grained PAT from step 2>
 
 # --- Free-tier guardrails (keep these) ---

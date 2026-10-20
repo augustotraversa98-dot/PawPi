@@ -147,8 +147,8 @@ Notes / decisions to confirm:
 
 ```
 DEMO ACCOUNT
-Email: augustotraversa98+appreview@gmail.com
-Password: PawpiReview2026!
+Email: (stored in my password manager)
+Password: (stored in my password manager)
 (Pre-seeded with a sample dog, a few posts, and example reminders so all tabs are reviewable.)
 
 PAYMENTS — EXTERNAL PAYMENT IS INTENTIONAL (Guideline 3.1.3(e))

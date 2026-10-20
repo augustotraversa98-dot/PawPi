@@ -143,8 +143,8 @@ Notas / decisiones a confirmar:
 
 ```
 CUENTA DEMO
-Email: augustotraversa98+appreview@gmail.com
-Contraseña: PawpiReview2026!
+Email: (stored in my password manager)
+Contraseña: (stored in my password manager)
 (Precargada con un perro, algunos posts y recordatorios de ejemplo para que todas las pestañas sean revisables.)
 
 PAGOS — PAGO EXTERNO INTENCIONAL (Guía 3.1.3(e))

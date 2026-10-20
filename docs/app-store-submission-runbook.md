@@ -40,7 +40,7 @@ release steps for each build.
    (see `anything/apps/mobile/src/constants/legal.js`) point at them. The ASC **Privacy Policy URL**
    must equal the hosted EN Privacy Policy URL.
 8. **Demo account for review** — sign up **inside the app** with the credentials in
-   `app-store-connect-content.md` §10 (`augustotraversa98+appreview@gmail.com`) and hand-populate one
+   `app-store-connect-content.md` §10 (demo credentials: stored in my password manager) and hand-populate one
    dog + a few posts + a couple of reminders + one vet-record entry, so no tab looks empty. (The
    global demo *seed* is deliberately excluded from real users' feeds — see night-run A2a — so this
    review account is a normal, real account you fill in by hand.)
