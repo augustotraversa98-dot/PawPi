@@ -86,6 +86,9 @@ Small hand-built fixtures matching the real identity chain (`auth_users.id` → 
 - Coverage is reported but not blocking.
 - CI time is short enough that you'll wait for it.
 
+### B6. Integration job speed (2026-10): throwaway Postgres on tmpfs
+`web (integration / real Postgres)` was the biggest line (~7.5 billed min per run, 96 % of it the test step; Postgres start + 133 migrations take ~2 s, install ~15 s). `resetDb` (TRUNCATE ... CASCADE over ~130 tables before every one of ~1,200 tests) was 50-60 % of the test step, dominated by file creation/removal in the data dir, not by fsync and not by the number of tables (`fsync=off` measured: no change; truncating only dirty tables: ~-16 % but the CASCADE pulls in most tables anyway, and it risks skipping identity restarts). `test/integration/pgDataDir.ts` now puts the cluster's data directory on **`/dev/shm` (tmpfs) on Linux when it has >= 1 GB free**, else the OS temp dir (macOS, Windows, no tmpfs, `PAWPI_INTEGRATION_TMPFS=0`). Same cluster, same per-test TRUNCATE: isolation unchanged; the dir is wiped on teardown anyway. Measured on real runners (step seconds): before 333 / 442 / 459 (mean 411), after 201 / 321 (mean 261); paired runs 459 -> 321 and 333 -> 201 = -30 % to -40 %.
+
 ---
 
 ## Phase C — Broaden coverage + the data-layer round-trip
