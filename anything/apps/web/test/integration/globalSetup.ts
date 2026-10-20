@@ -49,6 +49,7 @@ export default async function setup({ provide }: GlobalSetupContext) {
     password: DB_PASSWORD,
     port,
     persistent: false,
+    postgresFlags: ['-c', 'fsync=off', '-c', 'synchronous_commit=off', '-c', 'full_page_writes=off'],
     // Keep test output readable — swallow the cluster's chatty stdout/stderr.
     onLog: () => {},
     onError: () => {},

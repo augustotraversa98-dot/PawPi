@@ -36,12 +36,18 @@ export function makeTestSql(): Sql {
  * catalog so new migrations need no maintenance here.
  */
 export async function resetDb(sql: Sql): Promise<void> {
+  const t0 = performance.now();
   const rows = await sql<{ tablename: string }[]>`
-    select tablename from pg_tables where schemaname = 'public'
+    select c.relname as tablename from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and pg_relation_size(c.oid) > 0
   `;
-  if (rows.length === 0) return;
-  const list = rows.map((r) => `"${r.tablename}"`).join(', ');
-  await sql.unsafe(`truncate table ${list} restart identity cascade`);
+  if (rows.length > 0) {
+    const list = rows.map((r) => `"${r.tablename}"`).join(', ');
+    await sql.unsafe(`truncate table ${list} restart identity cascade`);
+  }
+  const g = globalThis as any;
+  const s = (g.__rs ??= { calls: 0, ms: 0, tables: 0 });
+  s.calls += 1; s.ms += performance.now() - t0; s.tables += rows.length;
+  if (s.calls % 100 === 0) console.log(`[resetDb-stats] calls=${s.calls} totalMs=${Math.round(s.ms)} avgMs=${(s.ms / s.calls).toFixed(1)} tablesPerCall=${(s.tables / s.calls).toFixed(1)}`);
 }
 
 /**
