@@ -9,13 +9,13 @@
 // This never touches Supabase or the app singleton (src/app/api/utils/sql.js).
 
 import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import EmbeddedPostgres from 'embedded-postgres';
 import postgres from 'postgres';
 import type { GlobalSetupContext } from 'vitest/node';
 import { runMigrations } from './migrate';
+import { dataDirBase } from './pgDataDir';
 
 const DB_NAME = 'pawpi_test';
 const DB_USER = 'pawpi';
@@ -40,7 +40,7 @@ function getFreePort(): Promise<number> {
 }
 
 export default async function setup({ provide }: GlobalSetupContext) {
-  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'pawpi-pg-'));
+  const dataDir = await mkdtemp(path.join(dataDirBase(), 'pawpi-pg-'));
   const port = await getFreePort();
 
   const pg = new EmbeddedPostgres({
@@ -66,7 +66,7 @@ export default async function setup({ provide }: GlobalSetupContext) {
     const applied = await runMigrations(migrationSql);
     // eslint-disable-next-line no-console
     console.log(
-      `[integration] embedded Postgres ready on :${port} — applied ${applied.length} migrations`,
+      `[integration] embedded Postgres ready on :${port} (data dir ${path.dirname(dataDir)}) — applied ${applied.length} migrations`,
     );
   } finally {
     await migrationSql.end();
