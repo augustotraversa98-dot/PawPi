@@ -202,7 +202,10 @@ describe('honesty test: cross-folder test dependencies are covered by the filter
   // A web or mobile test that reads a repo file outside its own app must be covered by that app's job, otherwise a change to that
   // file would skip the test that guards it. Scan the test sources for repo-root-relative path literals.
   const files = trackedFiles();
-  const testFiles = files.filter((f) => /^anything\/apps\/(web|mobile)\//.test(f) && /\.(test|spec)\.[cm]?[jt]sx?$|\/(test|__tests__)\//.test(f) && /\.[cm]?[jt]sx?$/.test(f));
+  // This file is excluded from the scan: its own example paths ('docs/a.md', ...) are test data, not real dependencies. (Found by the
+  // first real CI run: locally the file was still untracked, so `git ls-files` did not list it.)
+  const SELF = 'anything/apps/web/src/observability/ciAreas.test.js';
+  const testFiles = files.filter((f) => f !== SELF && /^anything\/apps\/(web|mobile)\//.test(f) && /\.(test|spec)\.[cm]?[jt]sx?$|\/(test|__tests__)\//.test(f) && /\.[cm]?[jt]sx?$/.test(f));
   const LITERAL = /['"`]((?:scripts|observability|docs|supabase|\.github|pawpi-brand-kit|demo-assets|anything\/docs|anything\/apps\/(?:mobile|web)|[A-Z][A-Za-z_]+\.md)\/?[\w./\-[\]]*)['"`]/g;
 
   const needs = (app) => {
