@@ -500,6 +500,52 @@ describe('workflow invariants (.github/workflows/claude-autofix.yml)', () => {
     expect(inv).toContain('git add -A -- anything/apps/web/src');
     expect(inv).not.toMatch(/git add -A(?! --)/);
   });
+  it('the model never starts without a verified sandbox: pinned runner, bubblewrap installed + probed BEFORE the Claude step, scrub kept ON', () => {
+    const inv = jobBlock('investigate');
+    expect(inv).toMatch(/runs-on: ubuntu-24\.04\n/);
+    expect(inv).not.toMatch(/runs-on: ubuntu-latest/);
+    const sbx = inv.indexOf('name: Install and verify the sandbox (bubblewrap)');
+    const claude = inv.indexOf('name: Run Claude investigation');
+    expect(sbx).toBeGreaterThan(-1);
+    expect(sbx).toBeLessThan(claude);
+    const step = inv.slice(sbx, claude);
+    expect(step).toContain('apt-get install -y -qq bubblewrap');
+    expect(step).toContain('probe()');
+    expect(step).toContain('--unshare-pid');
+    // userns is allowed for /usr/bin/bwrap ONLY: an AppArmor rule for that one binary, never a global sysctl change
+    expect(step).toContain('profile bwrap-userns /usr/bin/bwrap');
+    expect(step).not.toMatch(/sysctl -w|sysctl --write/);
+    expect(step).toContain('set +e'); // GitHub's `bash -e` must not abort before fail_loud writes the report
+    expect(step).toMatch(/probe \|\| fail_loud/);
+    expect(step).toContain('INVESTIGATION DID NOT RUN: sandbox unavailable');
+    expect(step).toContain('exit 1');
+    // the scrub/isolation setting stays on, on the Claude step (removing it to make the run pass is not allowed)
+    expect(inv.slice(claude)).toContain("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'");
+    expect(inv).not.toMatch(/CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '?0'?/);
+  });
+  it('a missing report is never silent: explicit "did not run" text, ran=false, and the job fails AFTER the artifact upload', () => {
+    const inv = jobBlock('investigate');
+    expect(WORKFLOW).not.toContain('No incident report produced.');
+    expect(WORKFLOW).not.toContain('claude exited non-zero (continuing)');
+    expect(inv).toContain('INVESTIGATION DID NOT RUN OR DID NOT FINISH');
+    expect(inv).toContain("NOT a 'nothing found' result");
+    expect(inv).toContain('echo "ran=false" >> "$GITHUB_OUTPUT"');
+    expect(inv).toMatch(/id: claude\n/);
+    const upload = inv.indexOf('actions/upload-artifact@v4');
+    const fail = inv.indexOf('name: Fail the job if the investigation did not run');
+    expect(fail).toBeGreaterThan(upload);
+    expect(inv.slice(fail)).toContain("steps.claude.outputs.ran == 'false'");
+    expect(inv.slice(fail)).toContain('exit 1');
+  });
+  it('the model job got no new secrets or env: only the two Claude credentials (+ the scrub flag and ISSUE_ONLY) reach the Claude step', () => {
+    const inv = jobBlock('investigate');
+    const secrets = [...inv.matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]).sort();
+    expect(secrets).toEqual(['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN']);
+    const claude = inv.slice(inv.indexOf('name: Run Claude investigation'), inv.indexOf('name: Package the result'));
+    const envBlock = claude.slice(claude.indexOf('env:'), claude.indexOf('run: |'));
+    const keys = [...envBlock.matchAll(/^ {10}([A-Z_]+):/gm)].map((m) => m[1]).sort();
+    expect(keys).toEqual(['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB', 'ISSUE_ONLY']);
+  });
   it('the prompt tells the model to read the rule from the repo, not from alert text (no summary / runbook / value fields)', () => {
     expect(WORKFLOW).toContain('observability/grafana/alerts/*.json');
     expect(WORKFLOW).toContain('deliberately NOT included');
