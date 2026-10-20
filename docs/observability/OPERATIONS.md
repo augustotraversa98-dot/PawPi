@@ -4,7 +4,7 @@ PawPi watches itself (Grafana Cloud free tier), alerts you (email, plus phone pu
 approval (Claude -> PR). Since night run 3 a small, gated class of fixes can **merge and deploy automatically** (section 17); everything else
 still waits for you. This is the single source of truth for operating it.
 
-_Last updated: 2026-10-04 (night run steps A-E; night run 3: server rules resumed as code, automatic fix loop)._
+_Last updated: 2026-10-19 (autofix hardening phase 1: alert-name allow-list + hourly cap at the relay, no free text to the model, command allow-list, deterministic merge gate; see 17.9). Earlier: 2026-10-04 (night run steps A-E; night run 3)._
 
 **What is live vs. what still needs you.** Server metrics, client-telemetry ingest, the alert relay and the autofix loop are live in
 production. The dashboards, 15 new alert rules, routing, synthetic checks, structured logs and deploy markers are merged **as code**
@@ -37,17 +37,20 @@ Contents: 1 Architecture - 2 Tiers and alerts - 3 Signals - 4 Dashboards - 5 Ale
                                                                                         policies: P1 -> Augusto, P2 -> pawpi-digest
                                                                                                 │ alert fires
                                          email to you  ◄────────────────────────────────────────┤
-                                         P1 webhook ──► App relay POST /api/internal/grafana-alert  (Bearer secret)
+                                         P1 webhook ──► App relay POST /api/internal/grafana-alert  (Bearer secret;
+                                                          │   known alert names only; hard hourly cap; no free text)
                                                           │  GitHub repository_dispatch (event: grafana-alert)
                                                           ▼
                                          GitHub Action .github/workflows/claude-autofix.yml
-                                           Claude reads the alert + code -> minimal fix OR diagnosis
+                                           Claude reads the rule + code -> minimal fix OR diagnosis
                                                           ▼
-                                         Opens a PR (fix) or an Issue (diagnosis)  <- you review
-                                           CI (ci.yml) gates the PR -> you merge -> Railway auto-deploys
+                                         Opens a PR (fix) or an Issue (diagnosis)
+                                           CI (ci.yml) gates the PR -> YOU merge it, or the loop merges it
+                                           ONLY when the deterministic gate passes (section 17.2)
+                                           -> Railway auto-deploys -> production verified, auto-revert on failure
 ```
 
-No step ever deploys to production without your merge. Every telemetry path is a **no-op without its env vars** and can never break
+Deploys happen only when a PR is merged: by you, or automatically by the loop when every rule of the deterministic safety gate holds (section 17.2: a short folder allowlist, no new or test files, size caps, all three required checks green); a merge that fails post-deploy verification is reverted automatically. Every telemetry path is a **no-op without its env vars** and can never break
 or slow a request (fire-and-forget, try/catch, timeouts, bounded queues; contract principle 4 in
 `docs/observability/night-run/01-TELEMETRY-CONTRACT.md`, the single source of truth for every metric, label, event and log field).
 
@@ -426,7 +429,7 @@ check that signs IN (not up) with it and reads a protected endpoint; keep the cr
 | `AUTOFIX_PAT` | **Required** for the loop to open and merge PRs (a PR from the default token does not trigger CI). Fine-grained: Contents + Pull requests + Issues read/write. Has an expiry. Without it the loop opens `needs-human` issues instead. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude auth in CI (your Max plan, $0 extra). |
 | `ANTHROPIC_API_KEY` | Alternative to the OAuth token (pay per use). |
-| `GRAFANA_URL`, `GRAFANA_TOKEN` | Optional: Claude can query Grafana while investigating. |
+| `GRAFANA_URL` | Optional: used by the revert annotation. (`GRAFANA_TOKEN`, which let Claude query Grafana, is no longer passed to the model: delete that secret.) |
 | `GRAFANA_ANNOTATION_TOKEN` | Optional (with `GRAFANA_URL`): annotation posted when an automatic merge is reverted (section 17.3). Repository **secret**, separate from the Railway variable of the same name. |
 | _variable_ `AUTOFIX_ENABLED` | Repository **variable** (not a secret): `false` switches the whole automatic fix loop off (section 17.4). |
 
@@ -633,17 +636,18 @@ one triggers a Railway deploy. **Reviewing an autofix PR:** read Claude's incide
 
 _Added in night run 3. Source of truth for the rules: `scripts/autofix/gate.mjs` (unit-tested). Workflow: `.github/workflows/claude-autofix.yml`._
 
-A **P1 alert fires -> Claude investigates -> a fix PR is opened -> the safety gate decides -> checks -> squash-merge -> Railway deploys -> production is verified -> auto-revert if it is not healthy.** A person is only needed when the gate says "no" (label `needs-human`) or when something was reverted.
+A **P1 alert fires -> Claude investigates -> a fix PR is opened -> the safety gate decides -> checks -> squash-merge -> Railway deploys -> production is verified -> auto-revert if it is not healthy.** A person is only needed when the gate says "no" (label `needs-human`) or when something was reverted. The gate is **deterministic code** (`scripts/autofix/gate.mjs`); the model's own confidence line is one extra input and is never sufficient on its own.
 
 ### 17.1 The flow
 
 ```
 Grafana P1 rule fires (contact point Augusto webhook)
-  -> POST /api/internal/grafana-alert (app relay, Bearer ALERT_WEBHOOK_SECRET)
+  -> POST /api/internal/grafana-alert (app relay: Bearer ALERT_WEBHOOK_SECRET, known alert name, hourly cap, no free text)
   -> GitHub repository_dispatch "grafana-alert"
   -> workflow "Claude autofix (Grafana alert)"
-       1. preflight    kill switch? duplicate open autofix PR for this alert? ensure labels
-       2. investigate  Claude (read-only token, no PAT) reads the alert + code, writes /tmp/incident.md and maybe a patch
+       1. preflight    kill switch? unknown alert name (ignored)? duplicate open autofix PR for this alert? ensure labels
+       2. investigate  Claude (read-only token, no PAT, no Grafana token, command allow-list, no alert free text) reads the rule from the repo + code,
+                       writes /tmp/incident.md and maybe a patch (only changes under anything/apps/web/src are packaged)
        3. deliver      issue-only | PR -> merge gate -> wait for the 3 required checks -> sha-pinned squash merge
                        -> verify production (<= 15 min) -> OK: done | FAIL: revert PR (merged when green) + issue + annotation
        4. outcome      one comment on the PR / issue: merged | left for human | reverted
@@ -657,15 +661,16 @@ Only the four server rules are live today (`P1-ServerMetricsSilent`, `P1-Http5xx
 |---|---|---|
 | 1 | The PR was opened **by this workflow run** (its own branch `autofix/<alert>-<runId>`, same repo, label `autofix`, open, not draft, base `main`) | `checkProvenance` |
 | 2 | The three required checks are `success` on the **head sha**: `mobile (jest)`, `web (vitest)`, `web (integration / real Postgres)` (REST check-runs, polled up to **25 min**; a failed check stops immediately; a timeout is "left for human") | `evaluateChecks` |
-| 3 | Changed files are **only under `anything/apps/web/src/`** and none matches `payment`, `mercadopago`, `auth`, `session`, `migrations` or `supabase/` | `pathProblems` |
-| 4 | No `package*.json`, lockfile, `.github/**`, `app.json`, `eas.json`; no deleted, renamed or binary/mode-only files | `pathProblems`, `evaluateFiles` |
+| 3 | **Allowlist, not denylist:** every changed file is inside one of the low-risk folders in `ALLOWED_DIRS` (`lib/telemetry/`, `lib/home/`, `lib/brand/`, `lib/legal/`, `app/api/places/`, `app/api/discover/`, `app/api/services/discover/`, `app/api/providers/discover/`, all under `anything/apps/web/src/`) **and** the path contains none of `rls`, `consent`, `care`, `upload`, `internal`, `admin`, `cron`, `shop`, `order`, `redeem`, `payout`, `auth`, `session`, `payment`, `mercadopago`, `migration(s)`, `supabase`, `utils/sql` | `pathProblems` |
+| 4 | **Only edits to existing files** (status `modified`): no new, deleted, renamed or copied file; **no test, fixture, mock or config file at all** (a fix may not edit the tests that gate it); no `package*.json`, lockfile, `.github/**`, `app.json`, `eas.json`; no binary / mode-only change | `pathProblems`, `evaluateFiles` |
+| 4b | The diff text must be available and its **added lines** contain no `import`/`require`, `process.env`/`process.exit`, `fetch`/network, `fs.`, `child_process`/`exec`/`spawn`, `eval`/`new Function`, URL, `set_config`/`current_app_user_id`/`SECURITY DEFINER`, or `DROP`/`ALTER`/`TRUNCATE`/`GRANT`/`REVOKE`/`DELETE FROM` | `evaluateFiles` (`DANGEROUS_ADDED_LINE`) |
 | 5 | **At most 5 files and 80 changed lines** (additions + deletions) | `evaluateFiles` |
-| 6 | `/tmp/incident.md` has the exact line `CONFIDENCE: high` (and no other CONFIDENCE line). Claude may write `high` only if it reproduced the problem or clearly traced the cause **and** the web tests pass | `isHighConfidence` + the prompt |
+| 6 | **Extra input only (AND, never the sole condition):** `/tmp/incident.md` has the exact line `CONFIDENCE: high` (and no other CONFIDENCE line). The model writes it, so rows 1-5 and 7-9 are what actually protect production | `isHighConfidence` + the prompt |
 | 7 | **Rate limit:** fewer than 3 autofix PRs merged in the last 24 h, and no autofix **revert** merged in the last 24 h | `rateLimit` |
 | 8 | The kill switch is still off, and the PR head is unchanged, immediately before merging | `deliver.sh` |
 | 9 | The merge is `PUT /pulls/{n}/merge` with `merge_method=squash` and `sha=<head sha>` (GitHub refuses if anything was pushed in between) | `deliver.sh` |
 
-Never auto-merged, whatever the checks say: alerts `P1-ServerMetricsSilent` and `P1-HealthDeepFailing` (**issue only**: the app itself may be down, so any patch is discarded), the legacy `HighLatencyP95` (**issue only** since 2026-10-05: at current traffic its p95 is moved by a single app-launch burst and the cause is DB round-trip latency, not a code defect a patch can safely guess at; see section 18), and **manual** runs (`workflow_dispatch`) unless you pass `allow_merge=true`.
+Never auto-merged, whatever the checks say: alerts `P1-ServerMetricsSilent`, `P1-HealthDeepFailing`, and Grafana's `DatasourceError` / `DatasourceNoData` (**issue only**: the app itself may be down or the problem is the data source, so any patch is discarded), the legacy `HighLatencyP95` (**issue only** since 2026-10-05: at current traffic its p95 is moved by a single app-launch burst and the cause is DB round-trip latency, not a code defect a patch can safely guess at; see section 18), and **manual** runs (`workflow_dispatch`) unless you pass `allow_merge=true`.
 
 **Dedupe:** if an open PR labelled `autofix` already exists for the same alertname, the run does nothing (see its run summary). A re-fire of an alert whose diagnosis issue is still open comments on that issue.
 
@@ -692,7 +697,7 @@ If that fails the workflow: (1) opens a **revert PR** (`git revert` of the merge
 ### 17.6 What a human must review
 
 - **Every `needs-human` PR / issue** (filter by label): the gate said no, or nothing was fixable. Read the incident summary, then merge, fix or close.
-- **Every merged autofix PR, the next morning** (label `autofix`, state merged): the loop merged it without a person. Confirm the change is sensible; revert it if not. Merged PRs are small by construction (<= 5 files, <= 80 lines, web `src/` only, no payments / auth / session / migrations).
+- **Every merged autofix PR, the next morning** (label `autofix`, state merged): the loop merged it without a person. Confirm the change is sensible; revert it if not. Merged PRs are small by construction (<= 5 files, <= 80 lines, existing files only, no tests, only the allowlisted folders, no sensitive path words, no risky added lines).
 - **Every `🚨 Autofix reverted` issue**: something that passed CI broke production. Find out why the checks did not catch it and add a test.
 - **The rate limit and revert pause**: if auto-merge keeps stopping with "rate limit", the same problem is probably recurring: fix the root cause by hand.
 - **Weekly:** the gate itself (`scripts/autofix/gate.mjs`) is part of the safety system: any PR that touches `scripts/autofix/` or `.github/workflows/claude-autofix.yml` needs a human review (the loop can never change them: they are outside the allowed path).
@@ -703,14 +708,21 @@ If that fails the workflow: (1) opens a **revert PR** (`git revert` of the merge
 |---|---|---|
 | GitHub secret | `AUTOFIX_PAT` | **Required** to open / merge PRs (fine-grained: Contents + Pull requests + Issues read/write). Without it the loop opens `needs-human` issues. |
 | GitHub secret | `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` | The investigation |
-| GitHub secret (optional) | `GRAFANA_URL`, `GRAFANA_TOKEN` | Claude can query Grafana while investigating |
+| GitHub secret (obsolete) | `GRAFANA_TOKEN` | **No longer given to Claude (hardening phase 1). Delete this secret.** `GRAFANA_URL` is still used by the revert annotation. |
 | GitHub secret (optional) | `GRAFANA_ANNOTATION_TOKEN` (+ `GRAFANA_URL`) | Annotation when a merge is reverted |
 | GitHub variable | `AUTOFIX_ENABLED` | `false` = kill switch |
-| Railway | `ALERT_WEBHOOK_SECRET`, `GITHUB_DISPATCH_TOKEN` | Grafana -> app -> GitHub relay |
+| Railway | `ALERT_WEBHOOK_SECRET`, `GITHUB_DISPATCH_TOKEN` | Grafana -> app -> GitHub relay. The dispatch token needs **Contents: write** (repository_dispatch) and **Actions: read** (the hourly-cap count); without Actions read the relay fails closed (503). |
+| Railway (optional) | `ALERT_MAX_DISPATCHES_PER_HOUR` | Hard cap of dispatches per hour, 1..60, default 6 (counted on GitHub, so it survives restarts) |
 
 ### 17.8 Testing the loop safely
 
 Actions -> "Claude autofix (Grafana alert)" -> Run workflow with `alertname = ManualTest`, `summary = loop test - no code change expected`. A manual run **never merges** (unless you tick `allow_merge`): expect a `needs-human` issue. Do not tick `allow_merge` unless you want the change deployed.
+
+### 17.9 Hardening phase 1 (2026-10-19): what changed and what is still open
+
+Changed: (1) the relay forwards only **known alert names** (real rules + legacy + Grafana data-source alerts; `src/lib/alertRelayAllowlist.js`, pinned to `observability/grafana/alerts/*.json` by a test) and answers 202 "ignored" otherwise, including Grafana's own `TestAlert` ping (test the loop with a manual run, 17.8); preflight repeats the check inside the workflow. (2) A **hard cap of 6 dispatches per hour**, counted on GitHub (`claude-autofix.yml` runs created in the last hour), failing closed. (3) The dispatch carries **no free text**: only alert name, status, a short severity token and allow-listed labels; the model reads the rule's description and runbook from the repo. (4) The model step has a **command allow-list** (`npm --prefix anything/apps/web test`, `bun install --cwd anything/apps/web --frozen-lockfile`, read-only git) instead of a free shell, no Grafana token, `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, and only changes under `anything/apps/web/src` are packaged. (5) The merge gate is deterministic (17.2 rows 3, 4, 4b).
+
+Still open (not covered by this phase): the relay credential is still a static bearer (no HMAC / timestamp); anyone who learns it can still trigger up to 6 allow-listed runs per hour (diagnosis issues). `main` has no branch protection or ruleset. The Claude credential is still present in the model step's process (the CLI itself needs it). The loop merges without a human by design.
 
 ## 18. HighLatencyP95: stall investigation and tuned rule (2026-10-05)
 

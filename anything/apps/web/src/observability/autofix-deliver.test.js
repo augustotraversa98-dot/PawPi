@@ -18,7 +18,8 @@ const maybe = CAN_RUN ? describe : describe.skip;
 
 const REPO = 'o/r';
 const RUN_ID = '777';
-const SRC = 'anything/apps/web/src/app/api/pets/route.js';
+// must live in an ALLOWED_DIRS folder of scripts/autofix/gate.mjs (the auto-merge allowlist)
+const SRC = 'anything/apps/web/src/app/api/places/route.js';
 const AUTH_SRC = 'anything/apps/web/src/app/api/auth/token/route.js';
 const PAT = 'pat-token-SECRET';
 const DEFAULT_TOKEN = 'default-token';
@@ -86,10 +87,11 @@ const sh = (cwd, cmd, args, env = {}) => {
   return r.stdout.trim();
 };
 
-const INCIDENT_HIGH = '# Incident\n\nRoot cause traced to a null deref in pets/route.js.\n\nCONFIDENCE: high\n';
+const INCIDENT_HIGH = '# Incident\n\nRoot cause traced to a null deref in places/route.js.\n\nCONFIDENCE: high\n';
 const prObj = (n, head, over = {}) => ({ number: n, state: 'open', draft: false, merged: false, head: { ref: `autofix/ManualTest-${RUN_ID}`, sha: head, repo: { full_name: REPO } }, base: { ref: 'main' }, labels: [{ name: 'autofix' }], ...over });
 const okChecks = (names = ['mobile (jest)', 'web (vitest)', 'web (integration / real Postgres)']) => ({ check_runs: names.map((name, i) => ({ id: i + 1, name, status: 'completed', conclusion: 'success' })) });
-const goodFile = (filename = SRC) => ({ filename, status: 'modified', additions: 1, deletions: 1, changes: 2 });
+const PATCH_OK = '@@ -1,3 +1,3 @@\n export async function GET() {\n-  return Response.json({ ok: true });\n+  return Response.json({ ok: true, fixed: 1 });\n }';
+const goodFile = (filename = SRC) => ({ filename, status: 'modified', additions: 1, deletions: 1, changes: 2, patch: PATCH_OK });
 const recentMerged = (n, h = 1) => ({ number: n, labels: [{ name: 'autofix' }], pull_request: { merged_at: new Date(Date.now() - h * 3600e3).toISOString() } });
 
 /** Build an isolated world: fake bin dir, bare remote + clone, result dir, state files. */
@@ -274,6 +276,14 @@ maybe('deliver.sh: the merge gate', () => {
     ['a package file', { files: [goodFile('anything/apps/web/package.json')] }, /package\/lock/],
     ['a workflow file', { files: [goodFile('.github/workflows/ci.yml')] }, /workflow/],
     ['a file outside web/src', { files: [goodFile('anything/apps/mobile/src/x.js')] }, /outside/],
+    ['a web/src folder that is not on the allowlist (pets)', { files: [goodFile('anything/apps/web/src/app/api/pets/route.js')] }, /outside the auto-merge allowlist/],
+    ['a sensitive word inside an allowed folder (order)', { files: [goodFile('anything/apps/web/src/app/api/places/order/route.js')] }, /sensitive/],
+    ['a test file', { files: [goodFile('anything/apps/web/src/app/api/places/route.test.js')] }, /test\/fixture\/config/],
+    ['a code edit together with a test edit', { files: [goodFile(), goodFile('anything/apps/web/src/app/api/places/route.test.js')] }, /may not edit the tests/],
+    ['a NEW file', { files: [{ ...goodFile('anything/apps/web/src/app/api/places/new.js'), status: 'added' }] }, /new, removed, renamed or copied/],
+    ['a diff that adds an import', { files: [{ ...goodFile(), patch: '@@ -1 +1,2 @@\n+import fs from "node:fs";\n x' }] }, /adds an import/],
+    ['a diff that adds an env read', { files: [{ ...goodFile(), patch: '@@ -1 +1 @@\n+const k = process.env.SECRET_KEY;' }] }, /adds an import\/require, env/],
+    ['a diff GitHub did not return (cannot be inspected)', { files: [{ ...goodFile(), patch: undefined }] }, /cannot be inspected/],
   ])('refuses %s', (_n, ruleOpts, re) => {
     const r = run({}, ruleOpts);
     expect(merged(r.calls)).toHaveLength(0);
@@ -561,6 +571,20 @@ maybe('preflight.sh: kill switch, dedupe, labels', () => {
     expect(pre({ IN_ALLOW: 'true' }).outputs.allow_merge).toBe('true');
     const relay = pre({ IN_NAME: '', PAYLOAD: JSON.stringify({ alertname: 'P1-HealthDeepFailing', source: 'grafana' }) });
     expect(relay.outputs).toMatchObject({ allow_merge: 'true', issue_only: 'true', alert_name: 'P1-HealthDeepFailing', run: 'true' });
+  });
+
+  it('an alert name that is not a real rule is ignored for relay dispatches (no run, no GitHub calls); a payload cannot claim to be manual', () => {
+    const unknown = pre({ IN_NAME: '', PAYLOAD: JSON.stringify({ alertname: 'TotallyMadeUp', source: 'grafana' }) });
+    expect(unknown.outputs).toMatchObject({ run: 'false', issue_only: 'false' });
+    expect(unknown.summary).toMatch(/not a known rule/);
+    expect(unknown.calls).toHaveLength(0);
+    const claimsManual = pre({ IN_NAME: '', PAYLOAD: JSON.stringify({ alertname: 'TotallyMadeUp', source: 'manual' }) });
+    expect(claimsManual.outputs).toMatchObject({ run: 'false' });
+    expect(claimsManual.outputs.source).toBe('unknown');
+    // real rule (alerts-as-code), legacy live rule, Grafana data-source alert: known
+    for (const name of ['P1-Http5xxRate', 'HighServerErrorRate', 'DatasourceError']) {
+      expect(pre({ IN_NAME: '', PAYLOAD: JSON.stringify({ alertname: name, source: 'grafana' }) }).outputs.run, name).toBe('true');
+    }
   });
 
   it('a hostile alertname cannot inject into outputs or branch names', () => {

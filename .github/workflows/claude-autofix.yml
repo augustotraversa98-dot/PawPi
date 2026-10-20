@@ -8,9 +8,14 @@ name: Claude autofix (Grafana alert)
 # All gate logic lives in scripts/autofix/gate.mjs (unit-tested); the rules are documented in
 # docs/observability/OPERATIONS.md ("Automatic fix loop").
 #
-# Secrets: CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY (investigation), AUTOFIX_PAT (REQUIRED to open/merge PRs: a PR from the
-# default GITHUB_TOKEN does not trigger CI), optional GRAFANA_URL / GRAFANA_TOKEN (read context) and GRAFANA_ANNOTATION_TOKEN
-# (annotation when a merge is reverted). Repo variable: AUTOFIX_ENABLED ('false' = kill switch).
+# Secrets: CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY (investigation; the ONLY secret the model step can see), AUTOFIX_PAT
+# (REQUIRED to open/merge PRs: a PR from the default GITHUB_TOKEN does not trigger CI), optional GRAFANA_URL +
+# GRAFANA_ANNOTATION_TOKEN (annotation when a merge is reverted; deliver step only). Repo variable: AUTOFIX_ENABLED ('false' = kill switch).
+#
+# Hardening (phase 1): the alert name is checked against the known rules (preflight); the model gets no free-text alert fields,
+# a command allow-list instead of a free shell, and no Grafana token; only changes under anything/apps/web/src are packaged;
+# the merge gate is deterministic (scripts/autofix/gate.mjs: folder allowlist, no test/new-file edits, caps, green checks,
+# diff-content scan; the model's CONFIDENCE line is one extra input, never the only one).
 
 on:
   repository_dispatch:
@@ -104,8 +109,9 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+          # Strip the Claude credentials from the environment of every command the model runs (npm test, git, ...), so a test file
+          # or a script the model writes cannot read them. No Grafana token is given to this step at all.
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
           ISSUE_ONLY: ${{ needs.preflight.outputs.issue_only }}
         run: |
           {
@@ -121,8 +127,11 @@ jobs:
 
 
           Where to look: labels.area is the API area, labels.route the route template
-          and labels.app_version the mobile build (when present); "runbook" is the first
-          thing to check. Metric and label names are defined in
+          and labels.app_version the mobile build (when present). The alert's own text is
+          deliberately NOT included. Find the rule by its alertname in
+          observability/grafana/alerts/*.json (legacy rules: docs/observability/OPERATIONS.md
+          section 5.4): its description and runbook are trusted repository content, read
+          them first. Metric and label names are defined in
           docs/observability/night-run/01-TELEMETRY-CONTRACT.md - read it before
           reasoning about any pawpi_* metric.
 
@@ -136,16 +145,23 @@ jobs:
             changes — just write the diagnosis.
           - Always write a report to /tmp/incident.md: what the alert means, root-cause
             hypothesis, the change you made (or why none), and how to verify.
-          - If you edited code, run: cd anything/apps/web && npm test. Keep the change
-            only if tests pass. Install dependencies with: cd anything/apps/web &&
-            bun install --frozen-lockfile (never npm install; leave no lockfile changes).
+          - If you edited code, run: npm --prefix anything/apps/web test. Keep the change
+            only if tests pass. Install dependencies with: bun install --cwd
+            anything/apps/web --frozen-lockfile (never npm install; leave no lockfile
+            changes).
+          - You can only run those two commands and read-only git (status, diff, log, show).
+            Every other shell command is blocked; do not try to work around that.
 
-          Merge safety (a machine decides whether your change is merged without a human):
+          Merge safety (code, not you, decides whether your change is merged without a human):
           - A change is only ever auto-merged when it touches at most 5 files and 80 lines,
-            all under anything/apps/web/src/, and none of them relate to payments,
-            MercadoPago, auth, sessions, migrations or Supabase, and no package/lock/CI/
-            app.json/eas.json file. Anything else is reviewed by a person, so prefer a
-            diagnosis over a change outside those limits.
+            edits ONLY existing files (no new, deleted or renamed files), edits NO test or
+            fixture file, every file lives in one of a short list of low-risk folders
+            (public directory endpoints, telemetry and public-site helpers), no path
+            contains rls, consent, care, upload, internal, admin, cron, shop, order, redeem,
+            payout, auth, session, payment, mercadopago, migrations, supabase or utils/sql,
+            and the diff adds no import/require, env/process/network/fs/exec call, URL or
+            SQL DDL/RLS statement. Everything else is reviewed by a person, so prefer a
+            diagnosis, or a change a person can review, over a change outside those limits.
           - The LAST line of /tmp/incident.md MUST be exactly one of these three lines:
             CONFIDENCE: high
             CONFIDENCE: medium
@@ -166,7 +182,8 @@ jobs:
           } > /tmp/prompt.txt
           claude -p "$(cat /tmp/prompt.txt)" \
             --permission-mode acceptEdits \
-            --allowedTools "Read,Edit,Write,Grep,Glob,Bash" \
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(npm --prefix anything/apps/web test:*),Bash(bun install --cwd anything/apps/web --frozen-lockfile),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)" \
+            --disallowedTools "WebFetch,WebSearch" \
             --output-format text || echo "claude exited non-zero (continuing)"
           if [ ! -f /tmp/incident.md ]; then
             echo "No incident report produced." > /tmp/incident.md
@@ -180,9 +197,9 @@ jobs:
           cp /tmp/alert.json /tmp/out/alert.json
           cp /tmp/incident.md /tmp/out/incident.md
           if [ "$ISSUE_ONLY" != "true" ]; then
-            # new files outside the web app source are build junk (caches, coverage, lockfiles), never part of a fix
-            git ls-files -z --others --exclude-standard | { grep -zv '^anything/apps/web/src/' || true; } | xargs -0r rm -f
-            git add -A
+            # Only changes under anything/apps/web/src are packaged: anything the model touched elsewhere (workflows, scripts, configs,
+            # lockfiles, caches) is dropped here and never reaches a branch.
+            git add -A -- anything/apps/web/src
             git diff --cached --binary > /tmp/out/changes.patch
           fi
           ls -l /tmp/out
