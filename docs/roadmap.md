@@ -1429,3 +1429,5 @@ than Phase 2 per Cowork's reset. Pull back up only if you decide to finish the s
   attached as a Railway custom domain (DNS CNAME live) but still served Railway's wildcard cert + 404
   at cutover — cert issuance/propagation pending on Railway's side (human/ops wait, not code).**
   (2026-08-17.)
+
+<!-- throwaway path-filter test -->
