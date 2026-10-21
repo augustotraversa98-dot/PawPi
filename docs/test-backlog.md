@@ -392,6 +392,18 @@ calendar, 2.25 search/discover, 2.28 share frame, 2.29 i18n.)
     "Continue with Google/Apple" buttons stay disabled ("Coming soon") and email/password login is
     byte-for-byte unchanged. Full details in `.env.example`.
 
+## ⚙️ ACTION 8 — Payment settlement `0135` — ⏳ PENDING (hand-apply BEFORE the PR merges and BEFORE any real MercadoPago charge)
+
+`supabase/migrations/0135_payment_settlement_definer.sql` (+ `supabase/verify_0135.sql`) fixes the silent failure where a real MercadoPago payment
+could be taken and the order never marked paid (flow matrix F3-01; F3-03 monotonic guard inside; F3-02 extractor is the code half). Runbook:
+[`db-migration-runbook-0135-payment-settlement.md`](db-migration-runbook-0135-payment-settlement.md). **Human-applied. Not applied yet.**
+
+- [ ] Supabase SQL editor → paste `0135_payment_settlement_definer.sql` → run.
+- [ ] Paste `verify_0135.sql` → **every row PASS** (8 rows). Then tell Claude "0135 applied" → it merges the PR (squash).
+- [ ] **One MercadoPago sandbox payment** (test seller + test buyer) and capture the real notification — exact list in the runbook §4b. The code is tested against *synthetic* fixtures until you do.
+- [ ] Decide **F3-06** (`payment_policy` / reused order) before announcing payments — runbook §6.
+- Until applied: **do not enable real charges** (`MP_*` keys already on Railway; no `PAYMENTS_LIVE` switch exists by design, F3-25).
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a
@@ -438,8 +450,8 @@ in plaintext. Generate one with `openssl rand -hex 32`.
 ### 4. Verify after setting keys
 1. Book one real low-value service (or add one shop item to cart) and confirm the checkout screen shows
    a real MercadoPago/Binance checkout link instead of "payments not configured."
-2. Complete that one real payment and confirm the webhook lands — check `payments` table for a row
-   with `status = 'approved'` (MercadoPago) or watch server logs for the webhook receiver firing.
+2. Complete that one real payment and confirm the webhook lands — **requires migration `0135` applied first (ACTION 8)**; without it the
+   webhook can never find the payment. Check the `payments` row is `approved` AND its `orders` row is `paid` (query in the 0135 runbook §4b).
 3. If using MercadoPago, confirm the provider's connect flow completes (Sales/Payouts dashboard shows
    the account as connected) before testing a booking on that provider's services.
 4. Confirm the subscription auto-charge cron (`POST /api/payments/subscriptions/run`, gated on

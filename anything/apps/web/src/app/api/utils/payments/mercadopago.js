@@ -124,7 +124,11 @@ export async function createCheckout({ order, account, idempotencyKey, payer }) 
   // localhost/unset URL is omitted so preference creation never fails on a bad
   // notification_url (tests/local keep today's behaviour).
   const notificationUrl = webhookUrl();
-  if (notificationUrl) preference.notification_url = notificationUrl;
+  // `order_ref` lets the webhook LOCATE our ledger row (and the seller whose token it must fetch the payment
+  // with) from MercadoPago's payment id; MercadoPago appends data.id/type to this URL, preserving our query.
+  if (notificationUrl) {
+    preference.notification_url = `${notificationUrl}?order_ref=${encodeURIComponent(String(order.id))}`;
+  }
   // Return URLs the payer is bounced back to after paying. MercadoPago's testing
   // checklist REQUIRES valid HTTPS return URLs; auto_return only fires when back_urls is
   // present, so we set them together and ONLY when a public https base is configured
@@ -173,11 +177,67 @@ export function verifyWebhook({ headers, dataId }) {
   const ts = parts.ts;
   const v1 = parts.v1;
   if (!ts || !v1) return false;
-  const manifest = `id:${dataId};request-id:${requestId ?? ''};ts:${ts};`;
-  const expected = createHmac('sha256', cfg.webhookSecret)
-    .update(manifest)
-    .digest('hex');
-  return safeEqualHex(expected, v1);
+  // MercadoPago signs an alphanumeric data.id in LOWERCASE even when the URL carries it as sent, so try
+  // both spellings (still an HMAC check — a forger cannot produce either without the secret).
+  const ids = [dataId, typeof dataId === 'string' ? dataId.toLowerCase() : dataId];
+  return [...new Set(ids)].some((id) => {
+    const manifest = `id:${id};request-id:${requestId ?? ''};ts:${ts};`;
+    const expected = createHmac('sha256', cfg.webhookSecret)
+      .update(manifest)
+      .digest('hex');
+    return safeEqualHex(expected, v1);
+  });
+}
+
+// Pull what we need out of a MercadoPago notification, tolerating every shape the rail uses (flow matrix F3-02).
+// Pure — no keys, no I/O. `query` is the notification URL's query string as an object; `body` the parsed JSON
+// body (or {}).
+//
+//   Webhooks (v1)   POST …?data.id=<payment id>&type=payment      body {"action":"payment.updated","type":"payment",
+//                                                                  "data":{"id":"<payment id>"},"user_id":"<seller>",…}
+//   Legacy IPN      POST …?id=<payment id>&topic=payment           body empty, or {"resource":"<id or URL>","topic":"payment"}
+//   Other topics    merchant_order, plan, subscription_*, …        acknowledged, never settled
+//
+// We deliberately take NO status from the notification: it is unauthenticated apart from the signed data.id.
+// The authoritative status comes from GET /v1/payments/{id} (getPaymentStatus). The only other thing we read is
+// an ORDER REFERENCE used purely to LOCATE our ledger row (and so the seller whose token to fetch with):
+//   1. `order_ref` — appended to the per-preference notification_url by createCheckout, and
+//   2. body.external_reference / body.data.external_reference — tolerated for payloads that carry it.
+// A wrong or forged reference cannot settle anything: the fetched payment's own external_reference must equal
+// the located order (handleWebhook), and the signature covers data.id.
+export function extractNotification({ query, body } = {}) {
+  const q = query && typeof query === 'object' ? query : {};
+  const b = body && typeof body === 'object' ? body : {};
+  const topic = firstString(q.type, q.topic, b.type, b.topic);
+  const kind = topic === 'payment' ? 'payment' : topic ? 'other' : null;
+  const dataId = firstString(
+    q['data.id'],
+    b.data?.id,
+    topic === 'payment' ? q.id : null,
+    resourceTail(b.resource),
+  );
+  const orderRef = firstString(
+    q.order_ref,
+    b.external_reference,
+    b.data?.external_reference,
+  );
+  return { kind, dataId, orderRef };
+}
+
+// First value that is a non-empty string or finite number, as a trimmed string; else null.
+function firstString(...vals) {
+  for (const v of vals) {
+    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+    if (typeof v === 'string' && v.trim() !== '') return v.trim();
+  }
+  return null;
+}
+
+// IPN `resource` is either a bare id or a URL ending in the id.
+function resourceTail(resource) {
+  if (typeof resource !== 'string' || resource.trim() === '') return null;
+  const tail = resource.trim().split('?')[0].split('/').filter(Boolean).pop();
+  return tail || null;
 }
 
 // Map MercadoPago's payment status to our ledger status. Pure — no keys needed.
@@ -208,7 +268,13 @@ export async function getPaymentStatus({ externalId, account }) {
   );
   if (!res.ok) throw new Error(`MercadoPago status fetch failed (${res.status})`);
   const data = await res.json();
-  return { rawStatus: data.status, status: mapStatus(data.status) };
+  return {
+    rawStatus: data.status,
+    status: mapStatus(data.status),
+    // We set external_reference to the ORDER id in the preference; the webhook uses it to confirm the fetched
+    // payment really belongs to the order it located.
+    externalReference: data.external_reference != null ? String(data.external_reference) : null,
+  };
 }
 
 // ── Refund ───────────────────────────────────────────────────────────────────

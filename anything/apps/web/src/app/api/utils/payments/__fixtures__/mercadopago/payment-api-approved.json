@@ -1,0 +1,13 @@
+{
+  "_note": "SYNTHETIC fixture modelled on MercadoPago's documented notification/payment shapes. NOT captured from a live sandbox: ids are made up. Replace with a real sandbox capture (docs/db-migration-runbook-0135-payment-settlement.md section 'Capture a real sandbox payload') and keep the tests green against it.",
+  "id": 1320000000001,
+  "status": "approved",
+  "status_detail": "accredited",
+  "external_reference": "4821",
+  "transaction_amount": 100.0,
+  "currency_id": "ARS",
+  "collector_id": 2000000001,
+  "live_mode": false,
+  "payment_type_id": "credit_card",
+  "date_approved": "2026-10-21T12:00:05Z"
+}

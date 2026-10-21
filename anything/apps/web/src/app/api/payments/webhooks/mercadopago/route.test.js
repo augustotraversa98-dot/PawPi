@@ -45,6 +45,49 @@ describe('POST /api/payments/webhooks/mercadopago', () => {
     expect(res.status).toBe(401);
   });
 
+  it('forwards the QUERY STRING (data.id / type / order_ref) to the layer — MercadoPago sends the id there (F3-02)', async () => {
+    handleWebhook.mockResolvedValue({ ok: true, status: 'approved', applied: true });
+    const req = new Request(
+      'http://localhost/api/payments/webhooks/mercadopago?order_ref=4821&data.id=1320000000001&type=payment',
+      { method: 'POST', headers: { 'x-signature': 'ts=1,v1=abc' }, body: JSON.stringify({ type: 'payment' }) },
+    );
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect((await res.json()).applied).toBe(true);
+    expect(handleWebhook).toHaveBeenCalledWith(
+      'mercadopago',
+      expect.objectContaining({
+        query: { order_ref: '4821', 'data.id': '1320000000001', type: 'payment' },
+      }),
+    );
+  });
+
+  it('an empty body with a query string (legacy IPN) is handled, not a parse error', async () => {
+    handleWebhook.mockResolvedValue({ ok: true, status: 'ignored', reason: 'unsupported_topic' });
+    const res = await POST(
+      new Request('http://localhost/api/payments/webhooks/mercadopago?id=1&topic=merchant_order', {
+        method: 'POST',
+        headers: { 'x-signature': 'ts=1,v1=abc' },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(handleWebhook).toHaveBeenCalledWith('mercadopago', expect.objectContaining({ body: {} }));
+  });
+
+  it('a settlement failure (MP down, seller not connected, migration not applied) → 500 so MercadoPago REDELIVERS', async () => {
+    handleWebhook.mockRejectedValue(new Error('MercadoPago status fetch failed (502)'));
+    const res = await POST(webhookReq({ data: { id: '1' } }));
+    expect(res.status).toBe(500);
+  });
+
+  it('never logs the request body or query string', async () => {
+    handleWebhook.mockRejectedValue(new Error('boom'));
+    await POST(webhookReq({ data: { id: 'SENSITIVE-ID-123' }, payer: { email: 'pii@example.com' } }));
+    const logged = JSON.stringify(console.error.mock.calls);
+    expect(logged).not.toContain('SENSITIVE-ID-123');
+    expect(logged).not.toContain('pii@example.com');
+  });
+
   it('not configured → 503 (never crashes)', async () => {
     handleWebhook.mockRejectedValue(new PaymentsNotConfiguredError('mercadopago'));
     const res = await POST(webhookReq({}));

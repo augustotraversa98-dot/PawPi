@@ -143,43 +143,97 @@ export async function createCheckout(order, { rail, idempotencyKey }) {
  * map the rail status, and flip both the payment ledger row and its order. Returns
  * { ok, status } or { ok:false, reason }. NEVER trusts an unverified payload.
  *
+ * The webhook is called by the RAIL, not a logged-in user, so it has NO RLS identity and payments/orders
+ * (FORCE RLS) read as empty. Every DB touch here therefore goes through the SECURITY DEFINER functions of
+ * migration 0135 (app_payment_for_webhook / app_apply_payment_status) — the signature gate comes FIRST and
+ * nothing touches the DB before it passes (flow matrix F3-01).
+ *
  * @param {string} rail
- * @param {object} payload  { headers, rawBody, body } as parsed by the webhook route
+ * @param {object} payload  { headers, rawBody, body, query } as parsed by the webhook route
  */
 export async function handleWebhook(rail, payload) {
   if (!railConfig(rail)) throw new PaymentsNotConfiguredError(rail);
   const adapter = getAdapter(rail);
+  const body = payload.body ?? {};
+
+  if (rail === 'mercadopago') {
+    return handleMercadoPagoWebhook(adapter, payload, body);
+  }
 
   // 1. Signature gate — reject anything we cannot verify.
-  const verified =
-    rail === 'mercadopago'
-      ? adapter.verifyWebhook({
-          headers: payload.headers ?? {},
-          dataId: payload.body?.data?.id ?? payload.body?.id ?? null,
-        })
-      : adapter.verifyWebhook({
-          headers: payload.headers ?? {},
-          rawBody: payload.rawBody ?? '',
-        });
+  const verified = adapter.verifyWebhook({
+    headers: payload.headers ?? {},
+    rawBody: payload.rawBody ?? '',
+  });
   if (!verified) {
     return { ok: false, reason: 'invalid_signature', status: 401 };
   }
 
   // 2. Resolve external id + raw status from the rail-specific payload shape.
-  const { externalReference, rawStatus } = extractWebhookRef(rail, payload.body ?? {});
+  const { externalReference, rawStatus } = extractWebhookRef(rail, body);
   const status = adapter.mapStatus(rawStatus);
 
-  // 3. Find the payment by external_id (MP/Binance order id) or order reference.
+  // 3. Find the payment by external_id (Binance order id) or order reference.
   const payment = await findPaymentForWebhook(externalReference);
-  if (!payment) {
+  if (!payment || payment.rail !== rail) {
     // Acknowledge (200) so the rail stops retrying, but record nothing — unknown ref.
     return { ok: true, status: 'ignored', reason: 'unknown_reference' };
   }
 
-  // 4. Reconcile: flip the payment + cascade to the order. Idempotent (re-applying the
-  //    same terminal status is a no-op write).
-  await applyPaymentStatus(payment, status, rawStatus);
-  return { ok: true, status };
+  // 4. Reconcile atomically + monotonically (the DB function owns the guard and the once-only side effects).
+  const result = await applyPaymentStatus(payment, status, rawStatus);
+  return { ok: true, status, applied: result.applied };
+}
+
+// MercadoPago. The notification is a POINTER, not a verdict: it is unauthenticated apart from the signed
+// data.id, so we never read a status out of it (flow matrix F3-02). Instead:
+//   signature (HMAC over data.id)  →  locate our ledger row from the order reference  →  fetch the payment from
+//   MercadoPago with the SELLER's token  →  require its external_reference to be that same order  →  apply the
+//   status MercadoPago reports. A replayed/forged/misrouted notification can therefore never settle anything.
+async function handleMercadoPagoWebhook(adapter, payload, body) {
+  const note = adapter.extractNotification({ query: payload.query, body });
+
+  // 1. Signature gate FIRST — no DB, no outbound call before this passes.
+  const verified = adapter.verifyWebhook({
+    headers: payload.headers ?? {},
+    dataId: note.dataId,
+  });
+  if (!verified) {
+    return { ok: false, reason: 'invalid_signature', status: 401 };
+  }
+
+  // 2. Only payment notifications settle anything (merchant_order, plan, … are acknowledged and dropped).
+  if (note.kind !== 'payment') {
+    return { ok: true, status: 'ignored', reason: 'unsupported_topic' };
+  }
+  if (!note.dataId || !note.orderRef) {
+    // A signed payment notification we cannot tie to an order (no order_ref on the URL). Acknowledge — a retry
+    // would be identical — but make it loud: this is a payment that will need a manual look.
+    console.error('[mercadopago webhook] payment notification without a locatable order reference');
+    return { ok: true, status: 'ignored', reason: 'unknown_reference' };
+  }
+
+  // 3. Locate the ledger row (DEFINER; no identity needed).
+  const payment = await findPaymentForWebhook(note.orderRef);
+  if (!payment || payment.rail !== 'mercadopago') {
+    return { ok: true, status: 'ignored', reason: 'unknown_reference' };
+  }
+
+  // 4. Ask MercadoPago for the real status, with the seller's token. A missing/undecryptable account or a
+  //    failed fetch THROWS → the route answers 5xx and MercadoPago redelivers (the money is taken: never drop it).
+  const account = await loadProviderAccount(payment.provider_id, 'mercadopago');
+  if (!account?.access_token) throw new ProviderPaymentAccountError('mercadopago', 'not_connected');
+  const remote = await adapter.getPaymentStatus({ externalId: note.dataId, account });
+
+  // 5. The fetched payment must belong to the order we located (we set external_reference = order id).
+  if (remote.externalReference !== String(payment.order_id)) {
+    console.error('[mercadopago webhook] payment/order reference mismatch — ignored');
+    return { ok: true, status: 'ignored', reason: 'reference_mismatch' };
+  }
+
+  // 6. Reconcile atomically + monotonically.
+  const result = await applyPaymentStatus(payment, remote.status, remote.rawStatus);
+  return { ok: true, status: remote.status, applied: result.applied };
 }
 
 /**
@@ -296,96 +350,48 @@ function extractWebhookRef(rail, body) {
   };
 }
 
-// Find the payment a webhook refers to — by external_id or idempotency_key. Returns null
-// when nothing matches (an unknown reference → acknowledged-but-ignored).
+// Find the payment a webhook refers to — by external_id, idempotency_key or ORDER id. Returns null
+// when nothing matches (an unknown reference → acknowledged-but-ignored). Goes through the SECURITY DEFINER
+// app_payment_for_webhook (0135): a webhook has no RLS identity, so a direct SELECT on payments sees nothing.
+// Returns { id, order_id, provider_id, rail, status, external_id, amount_cents }.
 async function findPaymentForWebhook(ref) {
   if (ref == null) return null;
   const rows = await sql`
-    SELECT * FROM payments
-    WHERE external_id = ${String(ref)} OR idempotency_key = ${String(ref)}
-    ORDER BY id DESC
-    LIMIT 1
+    SELECT * FROM app_payment_for_webhook(${String(ref)}::text)
   `;
   return rows[0] ?? null;
 }
 
-// Flip a payment's status and cascade to its order. Pure status-reconciliation logic:
+// Flip a payment's status and cascade to its order — ATOMICALLY and MONOTONICALLY, in the database.
 //   approved → order 'paid'; refunded → order 'refunded'; failed → order 'failed'.
-// Idempotent — writing the same status again is harmless.
-//
-// SHOP STOCK (ticket 2.11): for a 'product' order, paid DECREMENTS inventory and refunded
-// RESTOCKS it. We read the order's PRIOR status first so the move only happens on a real
-// TRANSITION (a repeated terminal webhook does not double-move stock). The move runs via
-// the SECURITY DEFINER app_adjust_order_stock helper (0037) so the payment actor — the
-// owner or a webhook, not a shop admin — can adjust catalog stock without catalog write
-// access. Non-product orders have no product_id lines, so the helper is a no-op for them.
+// All of it lives in the SECURITY DEFINER app_apply_payment_status (0135), the single implementation of the
+// status machine, callable with or without a request identity (webhook, provider refund, status reconcile):
+//   - refunded is terminal; approved only moves to refunded; a repeated status is a no-op (flow audit F3-03),
+//     decided on a row-locked read, not on the possibly-stale `payment` object passed in here;
+//   - on a REAL order transition it runs the once-only side effects: product stock (paid −1, refunded +1 only if
+//     it had been paid — ticket 2.11), walk-package credits (ticket B2), and auto-confirm of the linked booking.
+// Returns { applied } — false when the guard/idempotency skipped it or the payment does not exist.
 export async function applyPaymentStatus(payment, status, rawStatus) {
-  // MONOTONIC (flow audit F3-03): rails deliver events late and out of order, and unknown actions map to
-  // 'pending'. A refunded payment is terminal; an approved one may only move to refunded. Anything else
-  // (refunded→approved re-paying + re-decrementing stock, approved→pending/failed flipping a paid order)
-  // is ignored instead of regressing the ledger.
-  if (payment.status === 'refunded' && status !== 'refunded') return;
-  if (payment.status === 'approved' && status !== 'approved' && status !== 'refunded') return;
-
-  await sql`
-    UPDATE payments
-    SET status = ${status}, raw_status = ${rawStatus ?? null}, updated_at = now()
-    WHERE id = ${payment.id}
+  const rows = await sql`
+    SELECT * FROM app_apply_payment_status(${payment.id}::int, ${status}::text, ${rawStatus ?? null}::text)
   `;
+  const r = rows[0];
+  if (!r) return { applied: false, reason: 'payment_not_found' };
   try {
-    if (payment.status !== status) {
-      if (status === 'approved') paymentSuccess.add(1, { rail: payment.rail ?? 'unknown' });
-      else if (status === 'failed') paymentFailure.add(1, { rail: payment.rail ?? 'unknown' });
+    if (r.applied) {
+      if (r.new_payment_status === 'approved') paymentSuccess.add(1, { rail: payment.rail ?? 'unknown' });
+      else if (r.new_payment_status === 'failed') paymentFailure.add(1, { rail: payment.rail ?? 'unknown' });
     }
   } catch {}
-  const orderStatus =
-    status === 'approved'
-      ? 'paid'
-      : status === 'refunded'
-        ? 'refunded'
-        : status === 'failed'
-          ? 'failed'
-          : null;
-  if (orderStatus) {
-    // Read the prior order row (kind + status) so the stock move is transition-only.
-    const prior = await sql`
-      SELECT kind, status FROM orders WHERE id = ${payment.order_id} LIMIT 1
-    `;
-    const prev = prior[0] ?? null;
-    await sql`
-      UPDATE orders SET status = ${orderStatus}, updated_at = now()
-      WHERE id = ${payment.order_id}
-    `;
-    if (prev?.kind === 'product') {
-      // Decrement on the first transition into paid; restock on the first into refunded.
-      if (orderStatus === 'paid' && prev.status !== 'paid') {
-        await sql`SELECT app_adjust_order_stock(${payment.order_id}, -1)`;
-      } else if (orderStatus === 'refunded' && prev.status !== 'refunded') {
-        await sql`SELECT app_adjust_order_stock(${payment.order_id}, 1)`;
-      }
-    }
-    // WALK PACKAGES (ticket B2): on the FIRST transition into paid, grant the prepaid credit
-    // balance. app_grant_walk_credits is idempotent (guards on order_id) so a re-delivered webhook
-    // never double-grants, and it is a SECURITY DEFINER helper because the payment actor (owner or
-    // webhook) has no walk_credit_packs write policy — same posture as app_adjust_order_stock.
-    // Degrade clean: if the helper/table is absent (unmigrated prod) the grant is a no-op, never a
-    // 500 — the payment still reconciles.
-    if (prev?.kind === 'walk_package' && orderStatus === 'paid' && prev.status !== 'paid') {
-      try {
-        await sql`SELECT app_grant_walk_credits(${payment.order_id})`;
-      } catch (grantErr) {
-        const missing =
-          grantErr?.code === '42883' || // undefined_function
-          grantErr?.code === '42P01' || // undefined_table
-          /does not exist/i.test(grantErr?.message ?? '');
-        if (!missing) throw grantErr;
-        console.error(
-          '[applyPaymentStatus] walk-credit grant skipped (unmigrated):',
-          grantErr?.message,
-        );
-      }
-    }
-  }
+  return {
+    applied: r.applied === true,
+    orderId: r.out_order_id ?? null,
+    prevPaymentStatus: r.prev_payment_status ?? null,
+    newPaymentStatus: r.new_payment_status ?? null,
+    prevOrderStatus: r.prev_order_status ?? null,
+    newOrderStatus: r.new_order_status ?? null,
+    confirmedBookingIds: r.confirmed_booking_ids ?? [],
+  };
 }
 
 export { PaymentsNotConfiguredError } from './config';
