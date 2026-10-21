@@ -8,6 +8,7 @@ import {
   refund,
   payout,
   getPaymentStatus,
+  extractNotification,
   exchangeOAuthCode,
   webhookUrl,
   backUrls,
@@ -18,6 +19,12 @@ import {
   ProviderPaymentAccountError,
   commissionCents,
 } from './config';
+import queryAndBody from './__fixtures__/mercadopago/webhook-v1-query-and-body.json';
+import bodyOnly from './__fixtures__/mercadopago/webhook-v1-body-only.json';
+import ipnQuery from './__fixtures__/mercadopago/ipn-legacy-query-only.json';
+import ipnResource from './__fixtures__/mercadopago/ipn-legacy-resource-url.json';
+import merchantOrder from './__fixtures__/mercadopago/webhook-merchant-order.json';
+import apiApproved from './__fixtures__/mercadopago/payment-api-approved.json';
 
 // MercadoPago adapter — the SIGNATURE-VERIFICATION + pure mapping surface. Real HMAC is
 // computed so the test proves a forged signature is rejected and a valid one accepted.
@@ -90,6 +97,21 @@ describe('verifyWebhook (signature gate)', () => {
         dataId,
       }),
     ).toBe(false);
+  });
+
+  it('accepts the signature MercadoPago makes over the LOWERCASED id when the URL carries an alphanumeric id', () => {
+    configure();
+    const ts = '1700000000';
+    const requestId = 'req-2';
+    const v1 = createHmac('sha256', 'whsecret')
+      .update(`id:abc123def;request-id:${requestId};ts:${ts};`)
+      .digest('hex');
+    expect(
+      verifyWebhook({
+        headers: { 'x-signature': `ts=${ts},v1=${v1}`, 'x-request-id': requestId },
+        dataId: 'ABC123DEF',
+      }),
+    ).toBe(true);
   });
 
   it('returns false on a missing/malformed signature header', () => {
@@ -224,8 +246,9 @@ describe('createCheckout notification_url (webhook wiring)', () => {
       account: { access_token: 'provider-token' },
       idempotencyKey: 'order-42',
     });
+    // carries the order reference so the webhook can locate the ledger row (F3-02)
     expect(bodyOfLastCall().notification_url).toBe(
-      'https://pawpi-production.up.railway.app/api/payments/webhooks/mercadopago',
+      'https://pawpi-production.up.railway.app/api/payments/webhooks/mercadopago?order_ref=42',
     );
   });
 
@@ -394,5 +417,83 @@ describe('backUrls helper', () => {
     expect(backUrls()).toBe(null);
     process.env.APP_BASE_URL = 'http://localhost:4000';
     expect(backUrls()).toBe(null);
+  });
+});
+
+// F3-02: the payload extractor must read MercadoPago's REAL notification shapes (query params and/or JSON body).
+// Fixtures are synthetic stand-ins for a captured sandbox payload (see the fixture _note).
+describe('extractNotification (F3-02: tolerant of every real shape)', () => {
+  it('Webhooks v1 query string + body → payment, data.id from the query, order from order_ref', () => {
+    expect(extractNotification({ query: queryAndBody.query, body: queryAndBody.body })).toEqual({
+      kind: 'payment',
+      dataId: '1320000000001',
+      orderRef: '4821',
+    });
+  });
+
+  it('Webhooks v1 BODY only (no query string) → payment id from body.data.id, no order reference', () => {
+    expect(extractNotification({ query: bodyOnly.query, body: bodyOnly.body })).toEqual({
+      kind: 'payment',
+      dataId: '1320000000002',
+      orderRef: null,
+    });
+  });
+
+  it('legacy IPN query (?id=&topic=payment, empty body) → payment id from `id`', () => {
+    expect(extractNotification({ query: ipnQuery.query, body: ipnQuery.body })).toEqual({
+      kind: 'payment',
+      dataId: '1320000000003',
+      orderRef: '4821',
+    });
+  });
+
+  it('legacy IPN `resource` URL in the body → the id is its last path segment', () => {
+    expect(extractNotification({ query: ipnResource.query, body: ipnResource.body })).toMatchObject({
+      kind: 'payment',
+      dataId: '1320000000004',
+    });
+  });
+
+  it('a bare-id `resource` works too', () => {
+    expect(extractNotification({ query: { topic: 'payment' }, body: { resource: '777' } }).dataId).toBe('777');
+  });
+
+  it('a non-payment topic is classified "other" (never settles)', () => {
+    expect(extractNotification({ query: merchantOrder.query, body: merchantOrder.body }).kind).toBe('other');
+  });
+
+  it('prefers the query data.id over the body (the signature covers the query value)', () => {
+    expect(
+      extractNotification({ query: { 'data.id': 'Q1', type: 'payment' }, body: { data: { id: 'B1' }, type: 'payment' } }).dataId,
+    ).toBe('Q1');
+  });
+
+  it('does NOT use the body.id (that is the NOTIFICATION id, not the payment id)', () => {
+    expect(extractNotification({ query: {}, body: { id: 900000000001, type: 'payment' } }).dataId).toBeNull();
+  });
+
+  it('numeric ids are stringified; empty / missing / junk input never throws', () => {
+    expect(extractNotification({ query: {}, body: { type: 'payment', data: { id: 42 } } }).dataId).toBe('42');
+    expect(extractNotification({})).toEqual({ kind: null, dataId: null, orderRef: null });
+    expect(extractNotification({ query: null, body: 'junk' })).toEqual({ kind: null, dataId: null, orderRef: null });
+    expect(extractNotification()).toEqual({ kind: null, dataId: null, orderRef: null });
+  });
+
+  it('does not read a status out of the notification (it is unauthenticated)', () => {
+    const out = extractNotification({ query: {}, body: { type: 'payment', data: { id: '1' }, status: 'approved' } });
+    expect(Object.keys(out).sort()).toEqual(['dataId', 'kind', 'orderRef']);
+  });
+});
+
+describe('getPaymentStatus returns the external_reference used to confirm the order', () => {
+  it('reads status + external_reference from the payments API response', async () => {
+    configure();
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => apiApproved });
+    try {
+      const out = await getPaymentStatus({ externalId: '1320000000001', account: { access_token: 'seller' } });
+      expect(out).toEqual({ rawStatus: 'approved', status: 'approved', externalReference: '4821' });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

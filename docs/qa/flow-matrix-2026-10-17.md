@@ -666,12 +666,12 @@ on conflict do nothing;
 
 | Bug | Status | Where |
 |---|---|---|
-| F3-01 payment webhook has no RLS identity → can never find a payment | **NEEDS-HUMAN** (DEFINER fns `app_payment_for_webhook` / `app_apply_payment_status`, SQL below) — blocks real settlement; **do before enabling live payments** | — |
-| F3-02 MP webhook extractor reads wrong ids/status | OPEN (code, depends on F3-01; needs a real MP sandbox payload to verify) | — |
-| F3-03 payment status regressions | **FIXED** — status is monotonic (refunded terminal; approved only → refunded) + tests | `utils/payments/index.js` |
+| F3-01 payment webhook has no RLS identity → can never find a payment | **FIXED IN CODE + MIGRATION `0135` (2026-10-21) — migration NOT yet applied** (`0135_payment_settlement_definer.sql`, `verify_0135.sql`, runbook `docs/db-migration-runbook-0135-payment-settlement.md`); **apply before enabling live payments** | `utils/payments/index.js`, `0135` |
+| F3-02 MP webhook extractor reads wrong ids/status | **FIXED (2026-10-21)** — reads query + body + legacy IPN, never trusts the body status, fetches the payment from MercadoPago with the seller token and requires its `external_reference` = our order; tested on synthetic fixtures — **still needs one real sandbox payload to confirm** (runbook §4) | `utils/payments/mercadopago.js`, `index.js`, route |
+| F3-03 payment status regressions | **FIXED** — status is monotonic (refunded terminal; approved only → refunded); since 2026-10-21 the guard lives **inside the database** (`app_apply_payment_status`, row-locked) and is proven on real Postgres | `0135`, `utils/payments/index.js` |
 | F3-04 owner self-completes a provider booking → fake review | **FIXED** — 409 `managed_by_provider`; invalid status → 400; mobile hides "Mark completed" for provider bookings; personal appointments unchanged | `vet-appointments` PUT, `VetAppointmentDetailModal.jsx` |
 | F3-05 owner reschedule bypasses availability / desyncs calendar | **FIXED** — a real date/time change on a provider booking → 409 `reschedule_not_supported` (cancel & rebook); unchanged values still accepted | `vet-appointments` PUT |
-| F3-06 `payment_policy` ignored; `order_id` unvalidated | NEEDS-HUMAN decision (changes which bookings are allowed; **fix before enabling live payments**) | — |
+| F3-06 `payment_policy` ignored; `order_id` unvalidated | NEEDS-HUMAN decision (changes which bookings are allowed; **fix before enabling live payments**) — deliberately NOT in the `0135` PR, reasons in runbook §6; note it becomes exploitable once settlement works | — |
 | F3-07 provider transitions unguarded (double-tap / two staff) | **FIXED** — every UPDATE carries the expected prior state; 0 rows → 409; owner notified once | `providers/[id]/bookings/[appointmentId]` |
 | F3-08 owner cancel leaves `booking_status` stale | **FIXED** — PUT/DELETE close the workflow, stop reminders, cancel the linked consult; legacy stale rows can't be confirmed/completed | `vet-appointments`, provider route |
 | F3-09 unclaimed directory providers can be booked/chatted/reviewed | OPEN — product decision (hide Book/Message for unclaimed) | — |

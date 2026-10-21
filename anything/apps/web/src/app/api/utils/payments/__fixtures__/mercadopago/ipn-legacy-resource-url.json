@@ -1,0 +1,11 @@
+{
+  "_note": "SYNTHETIC fixture modelled on MercadoPago's documented notification/payment shapes. NOT captured from a live sandbox: ids are made up. Replace with a real sandbox capture (docs/db-migration-runbook-0135-payment-settlement.md section 'Capture a real sandbox payload') and keep the tests green against it.",
+  "query": {
+    "topic": "payment"
+  },
+  "headers": {},
+  "body": {
+    "resource": "https://api.mercadopago.com/v1/payments/1320000000004",
+    "topic": "payment"
+  }
+}

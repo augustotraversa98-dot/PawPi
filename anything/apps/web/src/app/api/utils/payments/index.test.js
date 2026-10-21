@@ -207,83 +207,38 @@ describe('createCheckout', () => {
   });
 });
 
-describe('handleWebhook', () => {
+// The MercadoPago webhook path (signature → locate → fetch from MP → apply) is covered end-to-end with the REAL
+// adapter in settlement.webhook.test.js; here we keep the rail-agnostic seams (Binance, not-configured).
+describe('handleWebhook (rail-agnostic seams)', () => {
   it('rejects an INVALID signature and changes nothing', async () => {
-    configureMp();
-    mp.verifyWebhook.mockReturnValue(false);
+    configureBinance();
+    binance.verifyWebhook.mockReturnValue(false);
 
-    const res = await handleWebhook('mercadopago', {
-      headers: {},
-      body: { data: { id: 'x' } },
-    });
+    const res = await handleWebhook('binance', { headers: {}, rawBody: '{}', body: {} });
 
     expect(res).toMatchObject({ ok: false, reason: 'invalid_signature', status: 401 });
     expect(sql).not.toHaveBeenCalled(); // no reconciliation on a forged payload
   });
 
-  it('verified approved webhook flips payment → approved and order → paid', async () => {
-    configureMp();
-    mp.verifyWebhook.mockReturnValue(true);
-    mp.mapStatus.mockReturnValue('approved');
-    sql.mockResolvedValueOnce([{ id: 99, order_id: 10, rail: 'mercadopago' }]); // findPayment
-    sql.mockResolvedValueOnce([]); // UPDATE payments
-    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'pending' }]); // SELECT prior order (2.11 stock guard)
-    sql.mockResolvedValueOnce([]); // UPDATE orders → paid
+  it('binance: verified webhook locates via the DEFINER lookup and settles via app_apply_payment_status', async () => {
+    configureBinance();
+    binance.verifyWebhook.mockReturnValue(true);
+    binance.mapStatus.mockReturnValue('approved');
+    sql.mockResolvedValueOnce([{ id: 99, order_id: 10, provider_id: 5, rail: 'binance', status: 'pending' }]); // app_payment_for_webhook
+    sql.mockResolvedValueOnce([{ applied: true, new_payment_status: 'approved' }]); // app_apply_payment_status
 
-    const res = await handleWebhook('mercadopago', {
-      headers: { 'x-signature': 'ts=1,v1=ok' },
-      body: { external_reference: '99', status: 'approved' },
+    const res = await handleWebhook('binance', {
+      headers: {},
+      rawBody: '{}',
+      body: { merchantTradeNo: 'order-10', bizStatus: 'PAY_SUCCESS' },
     });
 
-    expect(res).toMatchObject({ ok: true, status: 'approved' });
-    const updPayments = sql.mock.calls[1];
-    expect(updPayments[0].join(' ')).toContain('UPDATE payments');
-    expect(updPayments).toEqual(expect.arrayContaining(['approved']));
-    // call[2] is the prior-order SELECT (2.11); call[3] is the UPDATE orders.
-    const updOrders = sql.mock.calls[3];
-    expect(updOrders[0].join(' ')).toContain('UPDATE orders');
-    expect(updOrders).toEqual(expect.arrayContaining(['paid']));
-    // booking order → no stock adjustment call.
-    expect(allQueryText()).not.toContain('app_adjust_order_stock');
-  });
-
-  it('a PAID walk_package order grants walk credits (ticket B2) on the first transition', async () => {
-    configureMp();
-    mp.verifyWebhook.mockReturnValue(true);
-    mp.mapStatus.mockReturnValue('approved');
-    sql.mockResolvedValueOnce([{ id: 99, order_id: 42, rail: 'mercadopago' }]); // findPayment
-    sql.mockResolvedValueOnce([]); // UPDATE payments
-    sql.mockResolvedValueOnce([{ kind: 'walk_package', status: 'pending' }]); // prior order (transition)
-    sql.mockResolvedValueOnce([]); // UPDATE orders → paid
-    sql.mockResolvedValueOnce([{ app_grant_walk_credits: 7 }]); // grant helper
-
-    const res = await handleWebhook('mercadopago', {
-      headers: { 'x-signature': 'ts=1,v1=ok' },
-      body: { external_reference: '99', status: 'approved' },
-    });
-
-    expect(res).toMatchObject({ ok: true, status: 'approved' });
-    // The grant runs exactly once, on the first transition into paid.
-    expect(allQueryText()).toContain('app_grant_walk_credits');
-    const grantCall = sql.mock.calls.find((c) => (c?.[0] ?? []).join(' ').includes('app_grant_walk_credits'));
-    expect(grantCall).toEqual(expect.arrayContaining([42])); // bound the order id
-  });
-
-  it('a walk_package order ALREADY paid does NOT re-grant (idempotent transition guard)', async () => {
-    configureMp();
-    mp.verifyWebhook.mockReturnValue(true);
-    mp.mapStatus.mockReturnValue('approved');
-    sql.mockResolvedValueOnce([{ id: 99, order_id: 42, rail: 'mercadopago' }]); // findPayment
-    sql.mockResolvedValueOnce([]); // UPDATE payments
-    sql.mockResolvedValueOnce([{ kind: 'walk_package', status: 'paid' }]); // already paid → no transition
-    sql.mockResolvedValueOnce([]); // UPDATE orders (no-op status write)
-
-    await handleWebhook('mercadopago', {
-      headers: { 'x-signature': 'ts=1,v1=ok' },
-      body: { external_reference: '99', status: 'approved' },
-    });
-
-    expect(allQueryText()).not.toContain('app_grant_walk_credits');
+    expect(res).toMatchObject({ ok: true, status: 'approved', applied: true });
+    expect(sql.mock.calls[0][0].join(' ')).toContain('app_payment_for_webhook');
+    expect(sql.mock.calls[1][0].join(' ')).toContain('app_apply_payment_status');
+    expect(sql.mock.calls[1].slice(1)).toEqual([99, 'approved', 'PAY_SUCCESS']);
+    // no direct table writes from the webhook path — the status machine is in the database
+    expect(allQueryText()).not.toMatch(/UPDATE (payments|orders)/);
   });
 
   it('verified but UNKNOWN reference → acknowledged (200) with nothing changed', async () => {
@@ -299,7 +254,7 @@ describe('handleWebhook', () => {
     });
 
     expect(res).toMatchObject({ ok: true, status: 'ignored' });
-    expect(sql).toHaveBeenCalledTimes(1); // only the lookup, no UPDATE
+    expect(sql).toHaveBeenCalledTimes(1); // only the lookup, no apply
   });
 
   it('not configured → throws (route turns it into 503)', async () => {
@@ -316,13 +271,13 @@ describe('getStatus / refund / payout', () => {
     sql.mockResolvedValueOnce([ORDER]); // loadOrder
     sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
     mp.getPaymentStatus.mockResolvedValue({ status: 'approved', rawStatus: 'approved' });
-    sql.mockResolvedValueOnce([]); // UPDATE payments
-    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'pending' }]); // SELECT prior order (2.11)
-    sql.mockResolvedValueOnce([]); // UPDATE orders
+    sql.mockResolvedValueOnce([{ applied: true, new_payment_status: 'approved' }]); // app_apply_payment_status
 
     const res = await getStatus(payment);
     expect(res.status).toBe('approved');
     expect(mp.getPaymentStatus).toHaveBeenCalled();
+    expect(sql.mock.calls[2][0].join(' ')).toContain('app_apply_payment_status');
+    expect(sql.mock.calls[2].slice(1)).toEqual([99, 'approved', 'approved']);
   });
 
   it('refund calls the adapter then flips to refunded', async () => {
@@ -331,16 +286,15 @@ describe('getStatus / refund / payout', () => {
     sql.mockResolvedValueOnce([ORDER]); // loadOrder
     sql.mockResolvedValueOnce([{ access_token: 'tok' }]); // loadProviderAccount
     mp.refund.mockResolvedValue({ status: 'refunded' });
-    sql.mockResolvedValueOnce([]); // UPDATE payments
-    sql.mockResolvedValueOnce([{ kind: 'booking', status: 'paid' }]); // SELECT prior order (2.11)
-    sql.mockResolvedValueOnce([]); // UPDATE orders
+    sql.mockResolvedValueOnce([{ applied: true, new_payment_status: 'refunded' }]); // app_apply_payment_status
 
     const res = await refund(payment);
     expect(res.status).toBe('refunded');
     expect(mp.refund).toHaveBeenCalled();
-    // call[0] (loadOrder), call[1] (loadProviderAccount), call[2] (UPDATE payments),
-    // call[3] (SELECT prior order, 2.11), call[4] (UPDATE orders → refunded).
-    expect(sql.mock.calls[4]).toEqual(expect.arrayContaining(['refunded']));
+    // call[0] (loadOrder), call[1] (loadProviderAccount), call[2] (app_apply_payment_status → refunded):
+    // the identity-ful refund path shares the one status machine with the webhook.
+    expect(sql.mock.calls[2][0].join(' ')).toContain('app_apply_payment_status');
+    expect(sql.mock.calls[2].slice(1)).toEqual([99, 'refunded', 'refunded']);
   });
 
   it('payout calls the rail Payout API and records a payouts row', async () => {
