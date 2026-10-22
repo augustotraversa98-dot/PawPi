@@ -12,6 +12,7 @@ let mockFeed;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useLocalSearchParams: () => ({}),
 }));
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),

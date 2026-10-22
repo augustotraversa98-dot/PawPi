@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, ActivityIndicator, Text, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, ELEVATION } from "@/constants/theme";
@@ -63,6 +63,12 @@ export default function FeedScreen() {
 
   // Modal states — each isolated from the other
   const [composerVisible, setComposerVisible] = useState(false);
+  // Other screens (e.g. the weekly-digest "post a daily moment" prompt) ask the Feed to open the
+  // composer by navigating here with a fresh `compose` param.
+  const { compose } = useLocalSearchParams();
+  useEffect(() => {
+    if (compose) setComposerVisible(true);
+  }, [compose]);
   const [barkPost, setBarkPost] = useState(null);
   const [detailPost, setDetailPost] = useState(null);
 

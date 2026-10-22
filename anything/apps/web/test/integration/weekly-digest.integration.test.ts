@@ -110,6 +110,33 @@ describe("E11 — weekly digest GET", () => {
     expect(b.best_moment.paws).toBe(4);
   });
 
+  it("week_moments lists ONLY this pet's photo moments from the digest week (share-card picker)", async () => {
+    const inWeekA = await seedDailyPost(OWNER.petId, OWNER.profileId, "2026-08-11");
+    const inWeekB = await seedDailyPost(OWNER.petId, OWNER.profileId, "2026-08-14");
+    const prevWeek = await seedDailyPost(OWNER.petId, OWNER.profileId, "2026-08-04");
+    const noPhoto = await seedDailyPost(OWNER.petId, OWNER.profileId, "2026-08-12");
+    const otherPet = await seedDailyPost(OTHER.petId, OTHER.profileId, "2026-08-12");
+    await raw`update posts set image_url = ${"https://cdn.example/a.jpg"} where id = ${inWeekA}`;
+    // A video moment contributes its poster frame.
+    await raw`update posts set media_type = 'video', video_url = 'https://cdn.example/b.mp4',
+              video_thumbnail_url = 'https://cdn.example/b-thumb.jpg' where id = ${inWeekB}`;
+    await raw`update posts set image_url = ${"https://cdn.example/old.jpg"} where id = ${prevWeek}`;
+    await raw`update posts set image_url = ${"https://cdn.example/other.jpg"} where id = ${otherPet}`;
+    void noPhoto;
+
+    const b = await (await digestOf(OWNER.petId)).json();
+    expect(b.week_moments.map((m: any) => m.post_id)).toEqual([inWeekB, inWeekA]); // newest first
+    expect(b.week_moments[0].photo_url).toBe("https://cdn.example/b-thumb.jpg");
+    expect(b.week_moments[1].photo_url).toBe("https://cdn.example/a.jpg");
+    expect(JSON.stringify(b.week_moments)).not.toContain("old.jpg");
+    expect(JSON.stringify(b.week_moments)).not.toContain("other.jpg");
+  });
+
+  it("an empty week has no week_moments", async () => {
+    const b = await (await digestOf(OWNER.petId)).json();
+    expect(b.week_moments).toEqual([]);
+  });
+
   it("a thin week (one walk, nothing else) degrades to 'quiet'", async () => {
     await seedWalk(OWNER.petId, OWNER.profileId, "2026-08-11 12:00:00+00");
     const b = await (await digestOf(OWNER.petId)).json();

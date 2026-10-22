@@ -9,14 +9,29 @@ let mockDigest;
 let mockPrefs;
 let mockMutate;
 
-jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ back: jest.fn(), push: (...a) => mockRouterPush(...a) }),
+}));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
-jest.mock("expo-image", () => ({ Image: () => null }));
+jest.mock("expo-image", () => {
+  const { View } = require("react-native");
+  return { Image: (props) => <View {...props} /> };
+});
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
-jest.mock("@/components/Feed/MemoryShareButton", () => ({ MemoryShareButton: () => null }));
+let mockShareProps;
+const mockRouterPush = jest.fn();
+jest.mock("@/components/Feed/MemoryShareButton", () => {
+  const { Text } = require("react-native");
+  return {
+    MemoryShareButton: (props) => {
+      mockShareProps = props;
+      return <Text testID="memory-share">{props.label}</Text>;
+    },
+  };
+});
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: { id: 7, name: "Rex" } }),
 }));
@@ -29,6 +44,8 @@ jest.mock("@/hooks/useWeeklyDigest", () => ({
 import WeeklyDigestScreen from "./weekly-digest";
 
 beforeEach(() => {
+  mockShareProps = undefined;
+  mockRouterPush.mockReset();
   mockMutate = jest.fn();
   mockPrefs = { data: { push_enabled: true, email_enabled: false } };
   mockDigest = {
@@ -42,6 +59,11 @@ beforeEach(() => {
       moments: 3,
       streak: { current: 12, longest: 20 },
       best_moment: { post_id: 9, image_url: "a.png", caption: "park day", paws: 4 },
+      week_moments: [
+        { post_id: 9, photo_url: "a.png", post_date: "2026-08-13" },
+        { post_id: 10, photo_url: "b.png", post_date: "2026-08-14" },
+        { post_id: 8, photo_url: "c.png", post_date: "2026-08-11" },
+      ],
       friends: [{ pet_id: 2, name: "Bella", avatar_url: "b.png" }],
       milestone: { kind: "birthday", in_days: 3 },
     },
@@ -78,4 +100,63 @@ test("toggling email PUTs the pref", () => {
   const { getByTestId } = render(<WeeklyDigestScreen />);
   fireEvent(getByTestId("pref-email"), "valueChange", true);
   expect(mockMutate).toHaveBeenCalledWith({ email_enabled: true });
+});
+
+
+describe("share card", () => {
+  it("the button label shows the real pet name — no raw {{placeholder}} anywhere", () => {
+    const { getByTestId, toJSON } = render(<WeeklyDigestScreen />);
+    expect(getByTestId("memory-share")).toHaveTextContent("Share Rex's week");
+    expect(JSON.stringify(toJSON())).not.toContain("{{");
+  });
+
+  it("defaults to the best moment and lists only the week's moments in the picker", () => {
+    const { getByTestId, queryByTestId } = render(<WeeklyDigestScreen />);
+    expect(mockShareProps.card.photoUri).toBe("a.png");
+    expect(getByTestId("share-pick-9")).toBeTruthy();
+    expect(getByTestId("share-pick-10")).toBeTruthy();
+    expect(getByTestId("share-pick-8")).toBeTruthy();
+    expect(queryByTestId("share-pick-99")).toBeNull();
+    expect(getByTestId("share-pick-9").props.accessibilityState.selected).toBe(true);
+  });
+
+  it("picking a moment updates the preview and the exported card", () => {
+    const { getByTestId } = render(<WeeklyDigestScreen />);
+    fireEvent.press(getByTestId("share-pick-10"));
+    expect(mockShareProps.card.photoUri).toBe("b.png");
+    expect(getByTestId("share-preview").props.source.uri).toBe("b.png");
+    expect(getByTestId("share-pick-10").props.accessibilityState.selected).toBe(true);
+  });
+
+  it("zero-activity week: the shared frame has no zero stats", () => {
+    mockDigest = {
+      isLoading: false,
+      data: {
+        state: "empty", walks: 0, ring_days_closed: 0, ring_days_total: 7, care_actions: 0, moments: 0,
+        streak: null, best_moment: null, week_moments: [], friends: [], milestone: null,
+        pet: { id: 7, avatar_url: "avatar.png" },
+      },
+    };
+    render(<WeeklyDigestScreen />);
+    expect(mockShareProps.card.photoUri).toBe("avatar.png"); // no moments -> profile photo
+    expect(mockShareProps.card.subtitle).toBe("A fresh week starts today");
+    expect(mockShareProps.card.headline + mockShareProps.card.subtitle).not.toMatch(/\d/);
+  });
+
+  it("no moments and no profile photo: asks for a daily moment (opens the composer), no paw card", () => {
+    mockDigest = {
+      isLoading: false,
+      data: {
+        state: "empty", walks: 0, ring_days_closed: 0, ring_days_total: 7, care_actions: 0, moments: 0,
+        streak: null, best_moment: null, week_moments: [], friends: [], milestone: null,
+      },
+    };
+    const { getByTestId, queryByTestId } = render(<WeeklyDigestScreen />);
+    expect(queryByTestId("memory-share")).toBeNull();
+    expect(getByTestId("share-prompt")).toBeTruthy();
+    fireEvent.press(getByTestId("share-prompt-cta"));
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/(tabs)", params: expect.objectContaining({ compose: expect.any(String) }) }),
+    );
+  });
 });
