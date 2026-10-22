@@ -18,6 +18,7 @@ import {
   Store,
   User,
   Sparkles,
+  Lock,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -367,12 +368,29 @@ function Discover({ t, data, isLoading, onOpenPet }) {
                   borderColor: COLORS.peach,
                 }}
               >
-                <Image
-                  source={{ uri: m.image_url }}
-                  style={{ width: "100%", height: 140 }}
-                  contentFit="cover"
-                  transition={100}
-                />
+                {m.image_url ? (
+                  <Image
+                    source={{ uri: m.image_url }}
+                    style={{ width: "100%", height: 140 }}
+                    contentFit="cover"
+                    transition={100}
+                  />
+                ) : (
+                  // Locked by the daily-post gate (the server withholds other owners'
+                  // media until the viewer has posted today): a plain placeholder tile.
+                  <View
+                    testID="discover-moment-locked"
+                    style={{
+                      width: "100%",
+                      height: 140,
+                      backgroundColor: COLORS.peach,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Lock size={24} color={COLORS.terracotta} />
+                  </View>
+                )}
                 <View style={{ padding: 12 }}>
                   <View
                     style={{

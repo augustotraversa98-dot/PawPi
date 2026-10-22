@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { alertError, alertText } from "@/utils/appAlert";
 import {
   useFeedPosts,
@@ -86,6 +86,14 @@ export function useFeedData() {
   const { data: ownerPostedToday = false, isLoading: loadingOwnerPosted } =
     useOwnerPostedToday(hasPet);
   const feedUnlocked = ownerPostedToday || hasPostedToday;
+
+  // The server withholds other owners' media (posts come back `locked: true`) until the viewer
+  // has posted today. If the lock lifts without our own post flow refetching (e.g. the owner
+  // posted from another pet or device), pull the feed again so the redacted cards fill in.
+  const hasRedactedPosts = posts.some((p) => p?.locked === true);
+  useEffect(() => {
+    if (feedUnlocked && hasRedactedPosts) refetchPosts();
+  }, [feedUnlocked, hasRedactedPosts, refetchPosts]);
 
   // (AUDIT A-27) Removed the mount/update debug block that logged the auth
   // email, the full auth-user and pet objects and per-post state — PII that was

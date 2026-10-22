@@ -1,6 +1,10 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import {
+  getViewerDailyStatus,
+  applyDailyMomentsLock,
+} from "@/app/api/utils/dailyMomentsGate";
 
 // GET /api/discover — real Discover data for the mobile Search & Discover screen
 // (ticket 2.25). Replaces mockPopularProfiles + mockPopularPetMoments.
@@ -8,7 +12,8 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 //   • profiles — pets ranked by a REAL signal: followers (pet_follows) then paws
 //                received (post_paws), newest as the tiebreak. Public profile fields +
 //                the stats the card shows. No owner_user_id, no medical data.
-//   • moments  — recent real posts (the same shape /api/posts surfaces), newest first.
+//   • moments  — recent real posts (the same shape /api/posts surfaces), newest first. Other
+//                owners' media is redacted (`locked: true`) until the viewer posts today.
 //
 // Empty when there's nothing — no fabricated counts, no mock fallback. Session required.
 // Pagination via ?limit/&offset (applies to both lists' caps).
@@ -59,6 +64,7 @@ async function GET(request) {
       SELECT
         p.id,
         p.pet_id,
+        p.user_id,
         p.image_url,
         p.caption,
         p.created_at,
@@ -81,7 +87,14 @@ async function GET(request) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    return Response.json({ profiles, moments });
+    // Daily-post lock (utils/dailyMomentsGate.js): until the viewer has posted today, other
+    // owners' photos/captions are withheld and the moment is tagged `locked: true`. The viewer's
+    // own moments, and everything once they have posted, come back untouched.
+    const status = await getViewerDailyStatus(session.user.id);
+    return Response.json({
+      profiles,
+      moments: applyDailyMomentsLock(moments, status),
+    });
   } catch (error) {
     console.error("[GET /api/discover] Error:", error.message);
     return Response.json({ error: "Failed to load discover" }, { status: 500 });

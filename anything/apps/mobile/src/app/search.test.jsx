@@ -61,6 +61,24 @@ test("first render shows real Discover profiles + moments (no mock)", () => {
   expect(getByTestId("discover-moment")).toBeTruthy();
 });
 
+test("a moment the server locked (no image_url) renders a placeholder tile, not a broken image", () => {
+  mockDiscover = {
+    data: {
+      profiles: [],
+      moments: [
+        { id: 5, pet_id: 2, image_url: null, caption: null, locked: true, pet_name: "Bella" },
+      ],
+    },
+    isLoading: false,
+  };
+  const { getByText, getByTestId, queryByTestId } = render(<SearchScreen />);
+  expect(getByText("Bella")).toBeTruthy();
+  expect(getByTestId("discover-moment-locked")).toBeTruthy();
+  fireEvent.press(getByTestId("discover-moment"));
+  expect(mockPush).toHaveBeenCalled();
+  expect(queryByTestId("discover-moment-locked")).toBeTruthy();
+});
+
 test("tapping a discover profile opens the real pet profile by id", () => {
   mockDiscover = {
     data: { profiles: [{ id: 42, name: "Rex" }], moments: [] },

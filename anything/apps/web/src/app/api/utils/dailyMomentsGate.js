@@ -7,6 +7,7 @@ import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
 //   - GET /api/posts/owner-posted-today   (the Feed's lock — the client reads it)
 //   - GET /api/pets/[id]/profile          (hides the Daily moments grid)
 //   - GET /api/posts/history              (a pet's daily-post history)
+//   - GET /api/posts                      (the feed — other owners' media is redacted)
 // so the lock the Feed shows and the data the API withholds can never disagree.
 //
 // Identity: the caller passes the AUTH user id (session.user.id). It is mapped to
@@ -46,4 +47,28 @@ export async function getViewerDailyStatus(authUserId, { targetOwnerId } = {}) {
   `;
 
   return { userId, todayDate, isOwner: false, hasPostedToday: rows.length > 0 };
+}
+
+// Fields that expose another owner's moment: the photo, the video + its poster frame, and the
+// caption (the locked card shows a placeholder bar instead of the caption anyway).
+const LOCKED_POST_FIELDS = ["image_url", "video_url", "video_thumbnail_url", "caption"];
+
+// Feed lock, server side. While the viewer has not posted today, every OTHER owner's pet post
+// is returned WITHOUT its media/caption and tagged `locked: true`, so the client renders its
+// existing blurred card with nothing to read off the wire. The viewer's own posts (matched on
+// posts.user_id = user_profiles.id) are never redacted, and once the viewer has posted today
+// the posts are returned untouched. `status` is getViewerDailyStatus() — null (anonymous, or no
+// profile yet) means "has not posted", so everything of anyone else's is redacted. Business
+// (provider_post) items are public marketing content and are left as they are.
+export function applyDailyMomentsLock(posts, status) {
+  if (status?.hasPostedToday) return posts;
+  return posts.map((post) => {
+    if (post.item_type === "provider_post") return post;
+    if (status && String(post.user_id) === String(status.userId)) return post;
+    const redacted = { ...post, locked: true };
+    for (const field of LOCKED_POST_FIELDS) {
+      if (field in redacted) redacted[field] = null;
+    }
+    return redacted;
+  });
 }

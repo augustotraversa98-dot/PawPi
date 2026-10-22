@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 🤖 UNATTENDED RUN 2026-10-22 — daily-post lock follow-up, weekly share card, navigation layers — merged to `main`, NOT device-tested
+
+- ✅ **Locked feed redacts other owners' media server-side:** `GET /api/posts` and `GET /api/discover` return other owners' `image_url` / `video_url` / `video_thumbnail_url` / `caption` as `null` + `locked: true` until the viewer has posted today (shared `utils/dailyMomentsGate.js`); own posts and the unlocked case are untouched. JS/server only, no migration.
+
+---
+
 ## 🌙 NIGHT RUNS 2026-10-16 / 2026-10-17 (post build 26) — merged to `main`, NOT in any build yet
 
 Two autonomous runs after build 26 went to review. Nothing was built or submitted; mobile changes ship with the next build (all JS-only, OTA-safe). Full log: [`qa/runs/2026-10-17_fix-log.md`](qa/runs/2026-10-17_fix-log.md) (and `2026-10-16_fix-log.md`).

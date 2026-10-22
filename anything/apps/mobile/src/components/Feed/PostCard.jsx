@@ -285,12 +285,17 @@ export const PostCard = memo(function PostCard({
           onPress={onLockedPress}
           style={{ width: mediaWidth, height: mediaHeight }}
         >
-          <Image
-            testID="feed-post-locked-media"
-            source={{ uri: lockedMediaUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
+          {/* The server redacts other owners' media while the viewer is locked
+              (image_url / video poster are null) — only render an <Image> when there
+              is something to blur, so there's no broken-image flash. */}
+          {lockedMediaUri ? (
+            <Image
+              testID="feed-post-locked-media"
+              source={{ uri: lockedMediaUri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+          ) : null}
           {useSolidFallback ? (
             // Reduce Transparency (blur can't render) OR no poster/photo to blur:
             // a near-opaque muted wash keeps the media obscured with nothing glassy.

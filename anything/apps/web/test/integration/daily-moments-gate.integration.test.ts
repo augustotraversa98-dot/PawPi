@@ -126,3 +126,60 @@ describe('another owner\'s pet — viewer HAS posted today', () => {
     expect(profile.posts).toEqual([]);
   });
 });
+
+// The Feed itself (and Discover) are gated server-side too: a locked viewer must not be able to
+// read other owners' photos off GET /api/posts or GET /api/discover. State carried over from the
+// block above: the viewer's only post is from YESTERDAY, so they have NOT posted today.
+describe('the feed + discover — media is redacted server-side while locked', () => {
+  it('feed: the other owner\'s post is returned redacted + locked, the viewer\'s own is intact', async () => {
+    as(VIEWER);
+    const res = await get(`/posts?viewerPetId=${VIEWER.petId}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    const theirs = body.posts.find((p: any) => p.user_id === AUTHOR.profileId);
+    expect(theirs).toBeTruthy();
+    expect(theirs.locked).toBe(true);
+    expect(theirs.image_url).toBeNull();
+    expect(theirs.caption).toBeNull();
+    expect(theirs.pet_name).toBe('Rex'); // identity stays; WHO is fine, WHAT is not
+    expect(JSON.stringify(body)).not.toContain('author.jpg');
+    expect(JSON.stringify(body)).not.toContain('secret');
+
+    const mine = body.posts.find((p: any) => p.user_id === VIEWER.profileId);
+    expect(mine.image_url).toBe('https://cdn.example/viewer.jpg');
+    expect(mine.locked).toBeUndefined();
+  });
+
+  it('discover: moments are redacted the same way', async () => {
+    as(VIEWER);
+    const body = await (await get('/discover')).json();
+    const theirs = body.moments.find((m: any) => m.user_id === AUTHOR.profileId);
+    expect(theirs.locked).toBe(true);
+    expect(theirs.image_url).toBeNull();
+    expect(JSON.stringify(body)).not.toContain('author.jpg');
+  });
+
+  it('the author (who posted today) sees their own feed unredacted', async () => {
+    as(AUTHOR);
+    const body = await (await get(`/posts?viewerPetId=${AUTHOR.petId}`)).json();
+    const own = body.posts.find((p: any) => p.user_id === AUTHOR.profileId);
+    expect(own.image_url).toBe('https://cdn.example/author.jpg');
+    expect(own.locked).toBeUndefined();
+  });
+
+  it('once the viewer posts today, the feed + discover return the real media', async () => {
+    await raw`update posts set post_date = (now() at time zone 'UTC')::date where user_id = ${VIEWER.profileId}`;
+    as(VIEWER);
+
+    const feed = await (await get(`/posts?viewerPetId=${VIEWER.petId}`)).json();
+    const theirs = feed.posts.find((p: any) => p.user_id === AUTHOR.profileId);
+    expect(theirs.image_url).toBe('https://cdn.example/author.jpg');
+    expect(theirs.locked).toBeUndefined();
+
+    const discover = await (await get('/discover')).json();
+    const moment = discover.moments.find((m: any) => m.user_id === AUTHOR.profileId);
+    expect(moment.image_url).toBe('https://cdn.example/author.jpg');
+    expect(moment.locked).toBeUndefined();
+  });
+});

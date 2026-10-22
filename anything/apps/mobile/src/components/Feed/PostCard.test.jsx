@@ -203,6 +203,19 @@ describe("PostCard — photo/caption tap targets", () => {
 });
 
 describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
+  it("renders cleanly when the server redacted the media (no image_url, no broken <Image>)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <PostCard
+        post={{ ...basePost, image_url: null, video_url: null, video_thumbnail_url: null, caption: null, locked: true }}
+        locked
+      />,
+    );
+    expect(queryByTestId("feed-post-locked-media")).toBeNull();
+    expect(getByTestId("feed-post-locked-solid")).toBeTruthy();
+    expect(getByTestId("feed-post-caption-locked")).toBeTruthy();
+  });
+
+
   it("obscures the caption while locked (identity stays, content hidden)", () => {
     const { getByText, queryByText, getByTestId } = render(
       <PostCard post={{ ...basePost, pet_handle: "phoebe" }} locked />,
