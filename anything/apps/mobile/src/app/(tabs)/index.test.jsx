@@ -8,9 +8,10 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 
 let mockFeed;
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -36,14 +37,28 @@ jest.mock("@/components/Feed/FeedHeader", () => ({ FeedHeader: () => null }));
 jest.mock("@/components/Feed/DailyPromptCard", () => ({
   DailyPromptCard: () => null,
 }));
-jest.mock("@/components/Feed/LockedFeedOverlay", () => ({
-  LockedFeedOverlay: () => null,
-}));
+// The locked overlay is stubbed to two tap targets that forward to the props the
+// screen wires: a pet name/avatar tap (onOpenProfile) and the post CTA (onPostPress).
+jest.mock("@/components/Feed/LockedFeedOverlay", () => {
+  const { Pressable } = require("react-native");
+  return {
+    LockedFeedOverlay: ({ posts, onOpenProfile, onPostPress }) => (
+      <>
+        <Pressable testID="locked-name" onPress={() => onOpenProfile(posts[0])} />
+        <Pressable testID="locked-post-cta" onPress={onPostPress} />
+      </>
+    ),
+  };
+});
 jest.mock("@/components/Feed/UnlockedFeed", () => ({ UnlockedFeed: () => null }));
 jest.mock("@/components/Feed/MilestoneEventCard", () => ({ FollowedMilestones: () => null }));
-jest.mock("@/components/Feed/PostComposerModal", () => ({
-  PostComposerModal: () => null,
-}));
+jest.mock("@/components/Feed/PostComposerModal", () => {
+  const { View } = require("react-native");
+  return {
+    PostComposerModal: ({ visible }) =>
+      visible ? <View testID="composer-open" /> : null,
+  };
+});
 jest.mock("@/components/Feed/BarkModal", () => ({ BarkModal: () => null }));
 jest.mock("@/components/Feed/PostDetailModal", () => ({
   PostDetailModal: () => null,
@@ -76,6 +91,32 @@ test("locked feed still scrolls (FOMO tease, not a frozen wall)", () => {
   mockFeed = feedData({ feedUnlocked: false });
   const { getByTestId } = render(<FeedScreen />);
   expect(getByTestId("feed-scroll").props.scrollEnabled).toBe(true);
+});
+
+beforeEach(() => mockPush.mockClear());
+
+test("locked feed: tapping a pet name/avatar opens THAT pet's profile, not the composer", () => {
+  mockFeed = feedData({
+    feedUnlocked: false,
+    posts: [{ id: 9, pet_id: 42, pet_handle: "phoebe", pet_name: "Phoebe" }],
+  });
+  const { getByTestId, queryByTestId } = render(<FeedScreen />);
+  fireEvent.press(getByTestId("locked-name"));
+  expect(mockPush).toHaveBeenCalledTimes(1);
+  expect(mockPush.mock.calls[0][0]).toMatchObject({
+    pathname: "/pet-profile",
+    params: { petId: "42", petHandle: "phoebe", dogName: "Phoebe" },
+  });
+  expect(queryByTestId("composer-open")).toBeNull();
+});
+
+test("locked feed: the explicit post CTA opens the composer, not a profile", () => {
+  mockFeed = feedData({ feedUnlocked: false, posts: [{ id: 9, pet_id: 42 }] });
+  const { getByTestId, queryByTestId } = render(<FeedScreen />);
+  expect(queryByTestId("composer-open")).toBeNull();
+  fireEvent.press(getByTestId("locked-post-cta"));
+  expect(getByTestId("composer-open")).toBeTruthy();
+  expect(mockPush).not.toHaveBeenCalled();
 });
 
 test("unlocked feed scrolls", () => {

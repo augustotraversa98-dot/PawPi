@@ -1,12 +1,15 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { getViewerDailyStatus } from "@/app/api/utils/dailyMomentsGate";
 
 // A pet's own daily-post history (ticket 2.49 — Memories "On this day" + Wrapped). Read-only
-// over the public daily posts (image + date). Any signed-in user may read a pet's daily
-// history (same any-authed visibility as the feed); the client aggregates "on this day".
+// over the daily posts (image + date); the client aggregates "on this day". The viewer's own
+// pets are always readable. ANOTHER owner's pet history is withheld ({ posts: [], locked: true })
+// until the viewer has posted their own daily moment today — the same unlock as the Feed and the
+// pet profile (utils/dailyMomentsGate.js), so the grid can't be re-fetched around the lock.
 //
-// GET /api/posts/history?petId=<id>  → { posts: [{ id, image_url, caption, post_date }] }
+// GET /api/posts/history?petId=<id>  → { posts: [{ id, image_url, caption, post_date }], locked? }
 
 async function GET(request) {
   try {
@@ -19,6 +22,17 @@ async function GET(request) {
     const petId = parseInt(searchParams.get("petId"));
     if (!Number.isInteger(petId)) {
       return Response.json({ error: "Invalid petId" }, { status: 400 });
+    }
+
+    const petRows = await sql`SELECT owner_user_id FROM pets WHERE id = ${petId} LIMIT 1`;
+    if (petRows.length === 0) {
+      return Response.json({ posts: [] });
+    }
+    const viewer = await getViewerDailyStatus(session.user.id, {
+      targetOwnerId: petRows[0].owner_user_id,
+    });
+    if (!viewer?.isOwner && !viewer?.hasPostedToday) {
+      return Response.json({ posts: [], locked: true });
     }
 
     const rows = await sql`

@@ -232,10 +232,28 @@ describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
     expect(onOpenProfile).not.toHaveBeenCalled();
   });
 
-  it("tapping the locked header invokes the composer callback, not open-profile", () => {
+  it("tapping the locked header (name / handle / avatar row) opens the profile, not the composer", () => {
     const onLockedPress = jest.fn();
     const onOpenProfile = jest.fn();
-    const { getByText } = render(
+    const { getByText, getByTestId } = render(
+      <PostCard
+        post={{ ...basePost, pet_handle: "phoebe" }}
+        locked
+        onLockedPress={onLockedPress}
+        onOpenProfile={onOpenProfile}
+      />,
+    );
+    fireEvent.press(getByText("Phoebe"));
+    fireEvent.press(getByText("@phoebe"));
+    fireEvent.press(getByTestId("feed-post-header")); // the avatar sits in this same tap target
+    expect(onOpenProfile).toHaveBeenCalledTimes(3);
+    expect(onLockedPress).not.toHaveBeenCalled();
+  });
+
+  it("the locked post CTA still opens the composer and never the profile", () => {
+    const onLockedPress = jest.fn();
+    const onOpenProfile = jest.fn();
+    const { getByTestId } = render(
       <PostCard
         post={basePost}
         locked
@@ -243,7 +261,7 @@ describe("PostCard — locked variant (BeReal tease, 2.77)", () => {
         onOpenProfile={onOpenProfile}
       />,
     );
-    fireEvent.press(getByText("Phoebe"));
+    fireEvent.press(getByTestId("feed-post-locked-cta"));
     expect(onLockedPress).toHaveBeenCalledTimes(1);
     expect(onOpenProfile).not.toHaveBeenCalled();
   });

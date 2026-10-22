@@ -67,8 +67,9 @@ export const PostCard = memo(function PostCard({
   onOpenBarks,
   onOpenDetail,
   onOpenProfile,
-  // While locked, tapping anywhere on the card nudges the viewer to post (opens
-  // the composer) instead of doing nothing.
+  // While locked, tapping the photo / caption area nudges the viewer to post (opens
+  // the composer). The identity header (avatar / name / @handle) is NOT part of
+  // that nudge — it always opens the pet's profile via onOpenProfile.
   onLockedPress,
   // Position of this card in the locked feed — picks which rotating FOMO CTA to
   // show (feed polish #4). Ignored when unlocked.
@@ -188,10 +189,13 @@ export const PostCard = memo(function PostCard({
         borderWidth: isBirthday ? 2.5 : 1,
       }}
     >
-      {/* Header — identity stays fully visible while locked; tapping it nudges
-          the viewer to post rather than opening the (hidden) profile. */}
+      {/* Header — identity stays fully visible while locked, and tapping it
+          ALWAYS opens that pet's profile (the profile itself withholds the Daily
+          moments until the viewer posts). Only the explicit post CTA / photo /
+          caption area opens the composer. */}
       <TouchableOpacity
-        onPress={locked ? onLockedPress : onOpenProfile}
+        testID="feed-post-header"
+        onPress={onOpenProfile}
         activeOpacity={0.8}
         style={{
           flexDirection: "row",

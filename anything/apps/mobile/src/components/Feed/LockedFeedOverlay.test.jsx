@@ -91,6 +91,23 @@ describe("LockedFeedOverlay — scrollable blurred FOMO feed", () => {
     expect(onPostPress).toHaveBeenCalledTimes(1);
   });
 
+  it("tapping a locked card's pet name opens THAT post's pet profile, not the composer", () => {
+    const onPostPress = jest.fn();
+    const onOpenProfile = jest.fn();
+    const { getByText } = render(
+      <LockedFeedOverlay
+        posts={[post(1), post(2)]}
+        petName="Rex"
+        onPostPress={onPostPress}
+        onOpenProfile={onOpenProfile}
+      />,
+    );
+    fireEvent.press(getByText("Pet2"));
+    expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    expect(onOpenProfile).toHaveBeenCalledWith(expect.objectContaining({ id: 2, pet_handle: "pet2" }));
+    expect(onPostPress).not.toHaveBeenCalled();
+  });
+
   it("shows the 'be the first' empty state + CTA with no posts (no crash, no scrim)", () => {
     const onPostPress = jest.fn();
     const { queryAllByTestId, getByText } = render(

@@ -1,7 +1,6 @@
-import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
+import { getViewerDailyStatus } from "@/app/api/utils/dailyMomentsGate";
 
 /**
  * GET /api/posts/owner-posted-today
@@ -27,41 +26,20 @@ async function GET(request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUserId = session.user.id;
+    // Shared with the pet-profile / history gates (utils/dailyMomentsGate.js) so the
+    // Feed's lock and the data the API withholds are decided by the same query.
+    const status = await getViewerDailyStatus(session.user.id);
 
-    // Resolve the owner key (user_profiles.id) from the auth user id.
-    const userProfile = await sql`
-      SELECT id, (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
-      FROM user_profiles
-      WHERE auth_user_id = ${authUserId}
-      LIMIT 1
-    `;
-
-    if (userProfile.length === 0) {
+    if (!status) {
       return Response.json(
         { error: "User profile not found" },
         { status: 404 },
       );
     }
 
-    const userId = userProfile[0].id;
-    // Owner-local today (AUDIT_2026-09 A-10) — must agree with the Care Ring and POST /api/posts.
-    const todayDate = ownerTodayFrom(userProfile[0]);
-
-    // Any daily update today across ALL pets owned by this user.
-    const rows = await sql`
-      SELECT 1
-      FROM posts p
-      INNER JOIN pets pet ON p.pet_id = pet.id
-      WHERE pet.owner_user_id = ${userId}
-        AND p.is_daily_update = true
-        AND p.post_date = ${todayDate}
-      LIMIT 1
-    `;
-
     return Response.json({
-      hasPostedToday: rows.length > 0,
-      todayDate,
+      hasPostedToday: status.hasPostedToday,
+      todayDate: status.todayDate,
     });
   } catch (error) {
     console.error("[GET /api/posts/owner-posted-today] ERROR:", error.message);

@@ -2,10 +2,14 @@ import { publicOwnerName } from "@/app/api/utils/ownerDisplay";
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { getViewerDailyStatus } from "@/app/api/utils/dailyMomentsGate";
 
 // Public-within-the-app pet profile: any authed user may read any pet's
-// profile (it's social — no owner restriction). The [id] segment is a real
-// pet_id OR a pet handle. Optional ?viewerPetId=NN drives the isFollowing flag
+// profile (it's social — no owner restriction), EXCEPT the Daily moments grid:
+// another owner's moments are withheld (posts: [], momentsLocked: true) until the
+// viewer has posted their own daily moment today — the same unlock the Feed uses
+// (utils/dailyMomentsGate.js). The viewer's own pets are never gated. The [id]
+// segment is a real pet_id OR a pet handle. Optional ?viewerPetId=NN drives the isFollowing flag
 // for the viewer's own pet; ?limit / ?offset paginate the daily-moments grid.
 async function GET(request, { params }) {
   try {
@@ -120,6 +124,26 @@ async function GET(request, { params }) {
       isFollowing = followRows.length > 0;
     }
 
+    // Daily-moments gate. Viewing ANOTHER owner's pet requires that the viewer has posted
+    // their own daily moment today (any of their pets); the viewer's own pets are never
+    // gated. Enforced here, not just in the UI, so the moments can't be fetched around the
+    // lock. When locked we return no rows and no new counts — the only numbers are the
+    // existing public `stats` above.
+    const viewer = await getViewerDailyStatus(session.user.id, {
+      targetOwnerId: owner_user_id,
+    });
+    const momentsLocked = !viewer?.isOwner && !viewer?.hasPostedToday;
+    if (momentsLocked) {
+      return Response.json({
+        pet,
+        owner,
+        stats,
+        isFollowing,
+        posts: [],
+        momentsLocked: true,
+      });
+    }
+
     // Daily-moments grid: this pet's posts, newest first. Empty array when none.
     const posts = await sql`
       SELECT
@@ -143,7 +167,7 @@ async function GET(request, { params }) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    return Response.json({ pet, owner, stats, isFollowing, posts });
+    return Response.json({ pet, owner, stats, isFollowing, posts, momentsLocked: false });
   } catch (error) {
     console.error("Error fetching pet profile:", error);
     return Response.json(

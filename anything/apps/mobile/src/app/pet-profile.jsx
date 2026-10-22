@@ -1,15 +1,16 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, PawPrint, Grid3X3, MessageCircle, Share2 } from "lucide-react-native";
+import { ChevronLeft, PawPrint, Grid3X3, MessageCircle, Share2, Camera, Lock } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
+import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { SocialStatRow } from "@/components/social/SocialStatRow";
 import { MomentsGrid } from "@/components/social/MomentsGrid";
@@ -19,6 +20,7 @@ import { StreakChip } from "@/components/Health/StreakChip";
 import { MilestoneCountdownBanner } from "@/components/Feed/MilestoneCountdownBanner";
 import { ShareCardDeck } from "@/components/Feed/ShareCardDeck";
 import { useCareRing } from "@/hooks/useCareRing";
+import { useFeedData } from "@/hooks/useFeedData";
 import { useTogglePaw, useUpdatePostCaption, useDeletePost } from "@/hooks/useFeedPosts";
 import {
   usePetSocialProfile,
@@ -68,6 +70,14 @@ export default function PetProfileScreen({ embedded = false }) {
   );
   const toggleFollow = useToggleFollow(petId);
 
+  // The daily-post unlock — the SAME source the Feed uses (useFeedData's owner-level
+  // `feedUnlocked` + its handlePost), not a second copy of the logic. Another owner's
+  // Daily moments stay hidden until the viewer has posted their own today; the server
+  // withholds them too (GET /api/pets/[id]/profile → momentsLocked, posts: []), so this
+  // screen only RENDERS the lock the API reports. The viewer's own pets are never gated.
+  const { feedUnlocked, handlePost, petName: viewerPetName } = useFeedData();
+  const [composerVisible, setComposerVisible] = useState(false);
+
   // Identity params are instant placeholders only while the fetch is in flight;
   // once data arrives we render entirely from the server. No fake defaults.
   const pet = profile?.pet;
@@ -85,6 +95,17 @@ export default function PetProfileScreen({ embedded = false }) {
 
   const posts = profile?.posts || [];
   const isFollowing = !!profile?.isFollowing;
+
+  // Locked = the server withheld the moments (not own pet, viewer hasn't posted today).
+  // If the viewer has JUST posted (feedUnlocked) but the cached profile still says
+  // locked, we're waiting for the post-create invalidation to refetch: show the grid's
+  // loading state instead of flashing "locked" or a false "no posts yet", then refetch.
+  const serverLocked = profile?.momentsLocked === true && !ownsProfilePet;
+  const awaitingUnlock = serverLocked && feedUnlocked;
+  const momentsLocked = serverLocked && !feedUnlocked;
+  useEffect(() => {
+    if (awaitingUnlock) refetch();
+  }, [awaitingUnlock, refetch]);
 
   // You can't follow your own pet (the server rejects it too), and there's
   // nothing to follow with when you have no active pet.
@@ -586,54 +607,119 @@ export default function PetProfileScreen({ embedded = false }) {
             </Text>
           </View>
 
-          <MomentsGrid
-            isLoading={isLoading}
-            moments={posts.map((p) => ({
-              id: p.id,
-              imageUri: p.image_url,
-              post: p,
-              badge: {
-                icon: <PawPrint size={10} color="#FFF" fill="#FFF" />,
-                count: p.paw_count,
-              },
-            }))}
-            onOpen={(m) => openMoment(m.post)}
-            empty={
+          {momentsLocked ? (
+            <View
+              testID="pet-profile-moments-locked"
+              style={{
+                alignItems: "center",
+                paddingVertical: SPACING.xxl,
+                paddingHorizontal: SPACING.xl,
+                backgroundColor: MATERIALS.surface,
+                borderRadius: RADIUS.card,
+                borderWidth: 1,
+                borderColor: COLORS.peach,
+              }}
+            >
               <View
                 style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: COLORS.coral,
+                  justifyContent: "center",
                   alignItems: "center",
-                  paddingVertical: SPACING.huge,
-                  backgroundColor: MATERIALS.surface,
-                  borderRadius: RADIUS.card,
-                  borderWidth: 1,
-                  borderColor: COLORS.peach,
-                  borderStyle: "dashed",
+                  marginBottom: SPACING.md,
                 }}
               >
-                <PawMark size={36} color={COLORS.warmBrown} />
-                <Text
-                  style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
-                >
-                  {t("petProfile.noDailyPosts")}
-                </Text>
-                <Text
-                  style={[
-                    TYPE.subhead,
-                    {
-                      color: COLORS.mutedBrown,
-                      marginTop: SPACING.xs,
-                      textAlign: "center",
-                      paddingHorizontal: SPACING.xl,
-                    },
-                  ]}
-                >
-                  {name
-                    ? t("petProfile.momentsEmpty", { name })
-                    : t("petProfile.momentsEmptyGeneric")}
-                </Text>
+                <Lock size={24} color={COLORS.cream} />
               </View>
-            }
-          />
+              <Text
+                style={[TYPE.headline, { color: COLORS.warmBrown, fontWeight: "800", textAlign: "center" }]}
+              >
+                {name
+                  ? t("petProfile.momentsLockedTitle", { name })
+                  : t("petProfile.momentsLockedTitleGeneric")}
+              </Text>
+              <Text
+                style={[
+                  TYPE.subhead,
+                  { color: COLORS.mutedBrown, marginTop: SPACING.xs, textAlign: "center" },
+                ]}
+              >
+                {t("petProfile.momentsLockedBody")}
+              </Text>
+              <PressableScale
+                testID="pet-profile-moments-locked-cta"
+                onPress={() => setComposerVisible(true)}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: SPACING.sm,
+                  marginTop: SPACING.lg,
+                  backgroundColor: COLORS.coral,
+                  paddingVertical: SPACING.sm + 2,
+                  paddingHorizontal: SPACING.xl,
+                  borderRadius: RADIUS.chip,
+                }}
+              >
+                <Camera size={18} color={COLORS.cream} />
+                <Text style={[TYPE.subhead, { color: COLORS.cream, fontWeight: "800" }]}>
+                  {t("petProfile.momentsLockedCta")}
+                </Text>
+              </PressableScale>
+            </View>
+          ) : (
+            <MomentsGrid
+              isLoading={isLoading || awaitingUnlock}
+              tileTestID="pet-profile-moment-tile"
+              moments={posts.map((p) => ({
+                id: p.id,
+                imageUri: p.image_url,
+                post: p,
+                badge: {
+                  icon: <PawPrint size={10} color="#FFF" fill="#FFF" />,
+                  count: p.paw_count,
+                },
+              }))}
+              onOpen={(m) => openMoment(m.post)}
+              empty={
+                <View
+                  style={{
+                    alignItems: "center",
+                    paddingVertical: SPACING.huge,
+                    backgroundColor: MATERIALS.surface,
+                    borderRadius: RADIUS.card,
+                    borderWidth: 1,
+                    borderColor: COLORS.peach,
+                    borderStyle: "dashed",
+                  }}
+                >
+                  <PawMark size={36} color={COLORS.warmBrown} />
+                  <Text
+                    style={[TYPE.body, { color: COLORS.mutedBrown, fontWeight: "600", marginTop: SPACING.md }]}
+                  >
+                    {t("petProfile.noDailyPosts")}
+                  </Text>
+                  <Text
+                    style={[
+                      TYPE.subhead,
+                      {
+                        color: COLORS.mutedBrown,
+                        marginTop: SPACING.xs,
+                        textAlign: "center",
+                        paddingHorizontal: SPACING.xl,
+                      },
+                    ]}
+                  >
+                    {name
+                      ? t("petProfile.momentsEmpty", { name })
+                      : t("petProfile.momentsEmptyGeneric")}
+                  </Text>
+                </View>
+              }
+            />
+          )}
         </View>
 
         {/* ── Pet info card ── */}
@@ -710,6 +796,14 @@ export default function PetProfileScreen({ embedded = false }) {
         post={barkPost}
         onClose={() => setBarkPost(null)}
         onBarkAdded={() => refetch()}
+      />
+
+      {/* ── POST COMPOSER — opened by the locked-moments CTA (same handlePost as the Feed) ── */}
+      <PostComposerModal
+        visible={composerVisible}
+        petName={viewerPetName}
+        onClose={() => setComposerVisible(false)}
+        onPost={handlePost}
       />
 
       {/* ── SHARE-CARD DECK (E4) — own pet only ── */}
