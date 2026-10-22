@@ -137,17 +137,21 @@ export default function RootLayout() {
             {/* Shared service screens — a root-level stack OVER the tabs, so opening a
                 service from any tab never buries the More tab root (ticket 2.19). */}
             <Stack.Screen name="service" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="notifications"
-              options={{ presentation: "modal" }}
-            />
+            {/* Notifications is a CARD, not a modal. Tapping an item pushes onward (weekly digest,
+                health, walker walks, welcome-back, ...); as a modal that piled a second layer
+                on top of the sheet with no clear way back. As a card the destination sits on
+                the same back stack: back returns to Notifications, back again to the tab you
+                came from. Rule: a screen you navigate ONWARD from is never a modal
+                (guarded by navigation-layers.test.js). */}
+            <Stack.Screen name="notifications" />
             {/* Search & Discover is a CARD PUSH, not a modal (PP1). It is a hub you
                 navigate ONWARD from — a tapped result pushes /pet-profile, whose photo
                 opens a full-screen viewer. As a modal it stacked card-on-modal-on-modal
                 with no back button ("layers on layers"); as a card the whole chain lives
                 on one back stack. Keep it a card. */}
             <Stack.Screen name="search" />
-            <Stack.Screen name="messages" options={{ presentation: "modal" }} />
+            {/* Messages pushes onward to /chat, so it is a card too (see notifications). */}
+            <Stack.Screen name="messages" />
             <Stack.Screen name="chat" />
             {/* Owner ↔ provider messaging (ticket 2.5) — distinct from the social-pet
                 messages/chat screens above. */}

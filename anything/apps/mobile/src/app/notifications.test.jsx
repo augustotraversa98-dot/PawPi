@@ -146,6 +146,14 @@ test("merges real social notifications with local reminder notifications", () =>
   expect(getByText("started following your pet")).toBeTruthy();
 });
 
+test("the header has a visible BACK button (card, not a modal) that pops to where the user came from", () => {
+  mockBack.mockClear();
+  const { getByTestId, getByLabelText } = render(<NotificationsScreen />);
+  expect(getByLabelText("Back")).toBeTruthy();
+  fireEvent.press(getByTestId("notifications-back"));
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});
+
 test("filtering by Paws shows only paw notifications", () => {
   const { getByText, queryByText } = render(<NotificationsScreen />);
   fireEvent.press(getByText("Paws"));

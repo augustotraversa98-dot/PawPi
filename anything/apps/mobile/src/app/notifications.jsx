@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, Image, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  X,
+  ArrowLeft,
   Bell,
   PawPrint,
   Megaphone,
@@ -619,8 +619,8 @@ export default function NotificationsScreen() {
             justifyContent: "space-between",
           }}
         >
-          <PressableScale accessibilityLabel={t("common.close")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
-            <X size={22} color={COLORS.mutedBrown} />
+          <PressableScale testID="notifications-back" accessibilityLabel={t("common.back")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
+            <ArrowLeft size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             {t("notifications.title")}
